@@ -15,6 +15,5 @@ export * as GoogleAiConfig from "./GoogleAiConfig.js"
 
 /**
  * @since 1.0.0
- * @category Context
  */
 export * as GoogleAiLanguageModel from "./GoogleAiLanguageModel.js"

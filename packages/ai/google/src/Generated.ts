@@ -10,17 +10,7 @@ import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
 
-/**
- * Request message for PredictionService.Predict.
- */
-export class PredictRequest extends S.Class<PredictRequest>("PredictRequest")({}) {}
-
-/**
- * Response message for [PredictionService.Predict].
- */
-export class PredictResponse extends S.Class<PredictResponse>("PredictResponse")({}) {}
-
-export class ListOperationsByModelParams extends S.Struct({
+export class ListOperationsParams extends S.Struct({
   "filter": S.optionalWith(S.String, { nullable: true }),
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
   "pageToken": S.optionalWith(S.String, { nullable: true })
@@ -37,6 +27,10 @@ export class ListOperationsByModelParams extends S.Struct({
  */
 export class Status extends S.Class<Status>("Status")({
   /**
+   * The status code, which should be an enum value of google.rpc.Code.
+   */
+  "code": S.optionalWith(S.Int, { nullable: true }),
+  /**
    * A developer-facing error message, which should be in English. Any
    * user-facing error message should be localized and sent in the
    * google.rpc.Status.details field, or localized by the client.
@@ -46,11 +40,7 @@ export class Status extends S.Class<Status>("Status")({
    * A list of messages that carry the error details.  There is a common set of
    * message types for APIs to use.
    */
-  "details": S.optionalWith(S.Array(S.Record({ key: S.String, value: S.Unknown })), { nullable: true }),
-  /**
-   * The status code, which should be an enum value of google.rpc.Code.
-   */
-  "code": S.optionalWith(S.Int, { nullable: true })
+  "details": S.optionalWith(S.Array(S.Record({ key: S.String, value: S.Unknown })), { nullable: true })
 }) {}
 
 /**
@@ -77,9 +67,11 @@ export class Operation extends S.Class<Operation>("Operation")({
    */
   "response": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   /**
-   * The error result of the operation in case of failure or cancellation.
+   * The server-assigned name, which is only unique within the same service that
+   * originally returns it. If you use the default HTTP mapping, the
+   * `name` should be a resource name ending with `operations/{unique_id}`.
    */
-  "error": S.optionalWith(Status, { nullable: true }),
+  "name": S.optionalWith(S.String, { nullable: true }),
   /**
    * If the value is `false`, it means the operation is still in progress.
    * If `true`, the operation is completed, and either `error` or `response` is
@@ -87,11 +79,9 @@ export class Operation extends S.Class<Operation>("Operation")({
    */
   "done": S.optionalWith(S.Boolean, { nullable: true }),
   /**
-   * The server-assigned name, which is only unique within the same service that
-   * originally returns it. If you use the default HTTP mapping, the
-   * `name` should be a resource name ending with `operations/{unique_id}`.
+   * The error result of the operation in case of failure or cancellation.
    */
-  "name": S.optionalWith(S.String, { nullable: true })
+  "error": S.optionalWith(Status, { nullable: true })
 }) {}
 
 /**
@@ -108,155 +98,288 @@ export class ListOperationsResponse extends S.Class<ListOperationsResponse>("Lis
   "nextPageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class ListPermissionsParams extends S.Struct({
+export class ListOperationsByParams extends S.Struct({
+  "filter": S.optionalWith(S.String, { nullable: true }),
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListOperationsByModelParams extends S.Struct({
+  "filter": S.optionalWith(S.String, { nullable: true }),
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
   "pageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Optional. Immutable. The type of the grantee.
+ * A generic empty message that you can re-use to avoid defining duplicated
+ * empty messages in your APIs. A typical example is to use it as the request
+ * or the response type of an API method. For instance:
+ *
+ *     service Foo {
+ *       rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty);
+ *     }
  */
-export class PermissionGranteeType extends S.Literal("GRANTEE_TYPE_UNSPECIFIED", "USER", "GROUP", "EVERYONE") {}
+export class Empty extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 /**
- * Required. The role granted by this permission.
+ * Raw media bytes.
+ *
+ * Text should not be sent as raw bytes, use the 'text' field.
  */
-export class PermissionRole extends S.Literal("ROLE_UNSPECIFIED", "OWNER", "WRITER", "READER") {}
-
-/**
- * Permission resource grants user, group or the rest of the world access to the
- * PaLM API resource (e.g. a tuned model, corpus).
- *
- * A role is a collection of permitted operations that allows users to perform
- * specific actions on PaLM API resources. To make them available to users,
- * groups, or service accounts, you assign roles. When you assign a role, you
- * grant permissions that the role contains.
- *
- * There are three concentric roles. Each role is a superset of the previous
- * role's permitted operations:
- *
- * - reader can use the resource (e.g. tuned model, corpus) for inference
- * - writer has reader's permissions and additionally can edit and share
- * - owner has writer's permissions and additionally can delete
- */
-export class Permission extends S.Class<Permission>("Permission")({
+export class Blob extends S.Class<Blob>("Blob")({
   /**
-   * Optional. Immutable. The type of the grantee.
-   */
-  "granteeType": S.optionalWith(PermissionGranteeType, { nullable: true }),
-  /**
-   * Optional. Immutable. The email address of the user of group which this permission refers.
-   * Field is not set when permission's grantee type is EVERYONE.
-   */
-  "emailAddress": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Identifier. The permission name. A unique name will be generated on create.
+   * The IANA standard MIME type of the source data.
    * Examples:
-   *     tunedModels/{tuned_model}/permissions/{permission}
-   *     corpora/{corpus}/permissions/{permission}
-   * Output only.
+   *   - image/png
+   *   - image/jpeg
+   * If an unsupported MIME type is provided, an error will be returned. For a
+   * complete list of supported types, see [Supported file
+   * formats](https://ai.google.dev/gemini-api/docs/prompting_with_media#supported_file_formats).
    */
-  "name": S.optionalWith(S.String, { nullable: true }),
+  "mimeType": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Required. The role granted by this permission.
+   * Raw bytes for media formats.
    */
-  "role": PermissionRole
+  "data": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Response from `ListPermissions` containing a paginated list of
- * permissions.
+ * A predicted `FunctionCall` returned from the model that contains
+ * a string representing the `FunctionDeclaration.name` with the
+ * arguments and their values.
  */
-export class ListPermissionsResponse extends S.Class<ListPermissionsResponse>("ListPermissionsResponse")({
+export class FunctionCall extends S.Class<FunctionCall>("FunctionCall")({
   /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
+   * Optional. The unique id of the function call. If populated, the client to execute the
+   * `function_call` and return the response with the matching `id`.
+   */
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The name of the function to call.
+   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
+   * length of 63.
+   */
+  "name": S.String,
+  /**
+   * Optional. The function parameters and values in JSON object format.
+   */
+  "args": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * Optional. Specifies how the response should be scheduled in the conversation.
+ * Only applicable to NON_BLOCKING function calls, is ignored otherwise.
+ * Defaults to WHEN_IDLE.
+ */
+export class FunctionResponseScheduling
+  extends S.Literal("SCHEDULING_UNSPECIFIED", "SILENT", "WHEN_IDLE", "INTERRUPT")
+{}
+
+/**
+ * The result output from a `FunctionCall` that contains a string
+ * representing the `FunctionDeclaration.name` and a structured JSON
+ * object containing any output from the function is used as context to
+ * the model. This should contain the result of a`FunctionCall` made
+ * based on model prediction.
+ */
+export class FunctionResponse extends S.Class<FunctionResponse>("FunctionResponse")({
+  /**
+   * Optional. The id of the function call this response is for. Populated by the client
+   * to match the corresponding function call `id`.
+   */
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The name of the function to call.
+   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
+   * length of 63.
+   */
+  "name": S.String,
+  /**
+   * Required. The function response in JSON object format.
+   */
+  "response": S.Record({ key: S.String, value: S.Unknown }),
+  /**
+   * Optional. Signals that function call continues, and more responses will be
+   * returned, turning the function call into a generator.
+   * Is only applicable to NON_BLOCKING function calls, is ignored otherwise.
+   * If set to false, future responses will not be considered.
+   * It is allowed to return empty `response` with `will_continue=False` to
+   * signal that the function call is finished. This may still trigger the model
+   * generation. To avoid triggering the generation and finish the function
+   * call, additionally set `scheduling` to `SILENT`.
+   */
+  "willContinue": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Optional. Specifies how the response should be scheduled in the conversation.
+   * Only applicable to NON_BLOCKING function calls, is ignored otherwise.
+   * Defaults to WHEN_IDLE.
+   */
+  "scheduling": S.optionalWith(FunctionResponseScheduling, { nullable: true })
+}) {}
+
+/**
+ * URI based data.
+ */
+export class FileData extends S.Class<FileData>("FileData")({
+  /**
+   * Optional. The IANA standard MIME type of the source data.
+   */
+  "mimeType": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. URI.
+   */
+  "fileUri": S.String
+}) {}
+
+/**
+ * Required. Programming language of the `code`.
+ */
+export class ExecutableCodeLanguage extends S.Literal("LANGUAGE_UNSPECIFIED", "PYTHON") {}
+
+/**
+ * Code generated by the model that is meant to be executed, and the result
+ * returned to the model.
+ *
+ * Only generated when using the `CodeExecution` tool, in which the code will
+ * be automatically executed, and a corresponding `CodeExecutionResult` will
+ * also be generated.
+ */
+export class ExecutableCode extends S.Class<ExecutableCode>("ExecutableCode")({
+  /**
+   * Required. Programming language of the `code`.
+   */
+  "language": ExecutableCodeLanguage,
+  /**
+   * Required. The code to be executed.
+   */
+  "code": S.String
+}) {}
+
+/**
+ * Required. Outcome of the code execution.
+ */
+export class CodeExecutionResultOutcome
+  extends S.Literal("OUTCOME_UNSPECIFIED", "OUTCOME_OK", "OUTCOME_FAILED", "OUTCOME_DEADLINE_EXCEEDED")
+{}
+
+/**
+ * Result of executing the `ExecutableCode`.
+ *
+ * Only generated when using the `CodeExecution`, and always follows a `part`
+ * containing the `ExecutableCode`.
+ */
+export class CodeExecutionResult extends S.Class<CodeExecutionResult>("CodeExecutionResult")({
+  /**
+   * Required. Outcome of the code execution.
+   */
+  "outcome": CodeExecutionResultOutcome,
+  /**
+   * Optional. Contains stdout when code execution is successful, stderr or other
+   * description otherwise.
+   */
+  "output": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Metadata describes the input video content.
+ */
+export class VideoMetadata extends S.Class<VideoMetadata>("VideoMetadata")({
+  /**
+   * Optional. The start offset of the video.
+   */
+  "startOffset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. The end offset of the video.
+   */
+  "endOffset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. The frame rate of the video sent to the model. If not specified, the
+   * default value will be 1.0.
+   * The fps range is (0.0, 24.0].
+   */
+  "fps": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * A datatype containing media that is part of a multi-part `Content` message.
+ *
+ * A `Part` consists of data which has an associated datatype. A `Part` can only
+ * contain one of the accepted types in `Part.data`.
+ *
+ * A `Part` must have a fixed IANA MIME type identifying the type and subtype
+ * of the media if the `inline_data` field is filled with raw bytes.
+ */
+export class Part extends S.Class<Part>("Part")({
+  /**
+   * Inline text.
+   */
+  "text": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Inline media bytes.
+   */
+  "inlineData": S.optionalWith(Blob, { nullable: true }),
+  /**
+   * A predicted `FunctionCall` returned from the model that contains
+   * a string representing the `FunctionDeclaration.name` with the
+   * arguments and their values.
+   */
+  "functionCall": S.optionalWith(FunctionCall, { nullable: true }),
+  /**
+   * The result output of a `FunctionCall` that contains a string
+   * representing the `FunctionDeclaration.name` and a structured JSON
+   * object containing any output from the function is used as context to
+   * the model.
+   */
+  "functionResponse": S.optionalWith(FunctionResponse, { nullable: true }),
+  /**
+   * URI based data.
+   */
+  "fileData": S.optionalWith(FileData, { nullable: true }),
+  /**
+   * Code generated by the model that is meant to be executed.
+   */
+  "executableCode": S.optionalWith(ExecutableCode, { nullable: true }),
+  /**
+   * Result of executing the `ExecutableCode`.
+   */
+  "codeExecutionResult": S.optionalWith(CodeExecutionResult, { nullable: true }),
+  /**
+   * Optional. Video metadata. The metadata should only be specified while the video
+   * data is presented in inline_data or file_data.
+   */
+  "videoMetadata": S.optionalWith(VideoMetadata, { nullable: true }),
+  /**
+   * Optional. Indicates if the part is thought from the model.
+   */
+  "thought": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Optional. An opaque signature for the thought so it can be reused in subsequent
+   * requests.
+   */
+  "thoughtSignature": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The base structured datatype containing multi-part content of a message.
+ *
+ * A `Content` includes a `role` field designating the producer of the `Content`
+ * and a `parts` field containing multi-part data that contains the content of
+ * the message turn.
+ */
+export class Content extends S.Class<Content>("Content")({
+  /**
+   * Ordered `Parts` that constitute a single message. Parts may have different
+   * MIME types.
+   */
+  "parts": S.optionalWith(S.Array(Part), { nullable: true }),
+  /**
+   * Optional. The producer of the content. Must be either 'user' or 'model'.
    *
-   * If this field is omitted, there are no more pages.
+   * Useful to set for multi-turn conversations, otherwise can be left blank
+   * or unset.
    */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Returned permissions.
-   */
-  "permissions": S.optionalWith(S.Array(Permission), { nullable: true })
+  "role": S.optionalWith(S.String, { nullable: true })
 }) {}
-
-export class ListCachedContentsParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Optional. Specifies the mode in which function calling should execute. If
- * unspecified, the default value will be set to AUTO.
- */
-export class FunctionCallingConfigMode extends S.Literal("MODE_UNSPECIFIED", "AUTO", "ANY", "NONE", "VALIDATED") {}
-
-/**
- * Configuration for specifying function calling behavior.
- */
-export class FunctionCallingConfig extends S.Class<FunctionCallingConfig>("FunctionCallingConfig")({
-  /**
-   * Optional. Specifies the mode in which function calling should execute. If
-   * unspecified, the default value will be set to AUTO.
-   */
-  "mode": S.optionalWith(FunctionCallingConfigMode, { nullable: true }),
-  /**
-   * Optional. A set of function names that, when provided, limits the functions the model
-   * will call.
-   *
-   * This should only be set when the Mode is ANY. Function names
-   * should match [FunctionDeclaration.name]. With mode set to ANY, model will
-   * predict a function call from the set of function names provided.
-   */
-  "allowedFunctionNames": S.optionalWith(S.Array(S.String), { nullable: true })
-}) {}
-
-/**
- * The Tool configuration containing parameters for specifying `Tool` use
- * in the request.
- */
-export class ToolConfig extends S.Class<ToolConfig>("ToolConfig")({
-  /**
-   * Optional. Function calling config.
-   */
-  "functionCallingConfig": S.optionalWith(FunctionCallingConfig, { nullable: true })
-}) {}
-
-/**
- * The mode of the predictor to be used in dynamic retrieval.
- */
-export class DynamicRetrievalConfigMode extends S.Literal("MODE_UNSPECIFIED", "MODE_DYNAMIC") {}
-
-/**
- * Describes the options to customize dynamic retrieval.
- */
-export class DynamicRetrievalConfig extends S.Class<DynamicRetrievalConfig>("DynamicRetrievalConfig")({
-  /**
-   * The mode of the predictor to be used in dynamic retrieval.
-   */
-  "mode": S.optionalWith(DynamicRetrievalConfigMode, { nullable: true }),
-  /**
-   * The threshold to be used in dynamic retrieval.
-   * If not set, a system default value is used.
-   */
-  "dynamicThreshold": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Tool to retrieve public web data for grounding, powered by Google.
- */
-export class GoogleSearchRetrieval extends S.Class<GoogleSearchRetrieval>("GoogleSearchRetrieval")({
-  /**
-   * Specifies the dynamic retrieval configuration for the given source.
-   */
-  "dynamicRetrievalConfig": S.optionalWith(DynamicRetrievalConfig, { nullable: true })
-}) {}
-
-/**
- * Optional. Specifies the function Behavior.
- * Currently only supported by the BidiGenerateContent method.
- */
-export class FunctionDeclarationBehavior extends S.Literal("UNSPECIFIED", "BLOCKING", "NON_BLOCKING") {}
 
 export class Type
   extends S.Literal("TYPE_UNSPECIFIED", "STRING", "NUMBER", "INTEGER", "BOOLEAN", "ARRAY", "OBJECT", "NULL")
@@ -382,6 +505,12 @@ export class Schema extends S.Class<Schema>("Schema")({
 }) {}
 
 /**
+ * Optional. Specifies the function Behavior.
+ * Currently only supported by the BidiGenerateContent method.
+ */
+export class FunctionDeclarationBehavior extends S.Literal("UNSPECIFIED", "BLOCKING", "NON_BLOCKING") {}
+
+/**
  * Structured representation of a function declaration as defined by the
  * [OpenAPI 3.03 specification](https://spec.openapis.org/oas/v3.0.3). Included
  * in this declaration are the function name and parameters. This
@@ -390,14 +519,22 @@ export class Schema extends S.Class<Schema>("Schema")({
  */
 export class FunctionDeclaration extends S.Class<FunctionDeclaration>("FunctionDeclaration")({
   /**
+   * Required. The name of the function.
+   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
+   * length of 63.
+   */
+  "name": S.String,
+  /**
    * Required. A brief description of the function.
    */
   "description": S.String,
   /**
-   * Optional. Specifies the function Behavior.
-   * Currently only supported by the BidiGenerateContent method.
+   * Optional. Describes the parameters to this function. Reflects the Open API 3.03
+   * Parameter Object string Key: the name of the parameter. Parameter names are
+   * case sensitive. Schema Value: the Schema defining the type used for the
+   * parameter.
    */
-  "behavior": S.optionalWith(FunctionDeclarationBehavior, { nullable: true }),
+  "parameters": S.optionalWith(Schema, { nullable: true }),
   /**
    * Optional. Describes the output from this function in JSON Schema format. Reflects the
    * Open API 3.03 Response Object. The Schema defines the type used for the
@@ -405,19 +542,50 @@ export class FunctionDeclaration extends S.Class<FunctionDeclaration>("FunctionD
    */
   "response": S.optionalWith(Schema, { nullable: true }),
   /**
-   * Required. The name of the function.
-   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * Optional. Specifies the function Behavior.
+   * Currently only supported by the BidiGenerateContent method.
    */
-  "name": S.String,
-  /**
-   * Optional. Describes the parameters to this function. Reflects the Open API 3.03
-   * Parameter Object string Key: the name of the parameter. Parameter names are
-   * case sensitive. Schema Value: the Schema defining the type used for the
-   * parameter.
-   */
-  "parameters": S.optionalWith(Schema, { nullable: true })
+  "behavior": S.optionalWith(FunctionDeclarationBehavior, { nullable: true })
 }) {}
+
+/**
+ * The mode of the predictor to be used in dynamic retrieval.
+ */
+export class DynamicRetrievalConfigMode extends S.Literal("MODE_UNSPECIFIED", "MODE_DYNAMIC") {}
+
+/**
+ * Describes the options to customize dynamic retrieval.
+ */
+export class DynamicRetrievalConfig extends S.Class<DynamicRetrievalConfig>("DynamicRetrievalConfig")({
+  /**
+   * The mode of the predictor to be used in dynamic retrieval.
+   */
+  "mode": S.optionalWith(DynamicRetrievalConfigMode, { nullable: true }),
+  /**
+   * The threshold to be used in dynamic retrieval.
+   * If not set, a system default value is used.
+   */
+  "dynamicThreshold": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * Tool to retrieve public web data for grounding, powered by Google.
+ */
+export class GoogleSearchRetrieval extends S.Class<GoogleSearchRetrieval>("GoogleSearchRetrieval")({
+  /**
+   * Specifies the dynamic retrieval configuration for the given source.
+   */
+  "dynamicRetrievalConfig": S.optionalWith(DynamicRetrievalConfig, { nullable: true })
+}) {}
+
+/**
+ * Tool that executes code generated by the model, and automatically returns
+ * the result to the model.
+ *
+ * See also `ExecutableCode` and `CodeExecutionResult` which are only generated
+ * when using this tool.
+ */
+export class CodeExecution extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 /**
  * Represents a time interval, encoded as a Timestamp start (inclusive) and a
@@ -458,15 +626,6 @@ export class GoogleSearch extends S.Class<GoogleSearch>("GoogleSearch")({
 }) {}
 
 /**
- * Tool that executes code generated by the model, and automatically returns
- * the result to the model.
- *
- * See also `ExecutableCode` and `CodeExecutionResult` which are only generated
- * when using this tool.
- */
-export class CodeExecution extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-/**
  * Tool to support URL context retrieval.
  */
 export class UrlContext extends S.Record({ key: S.String, value: S.Unknown }) {}
@@ -479,10 +638,6 @@ export class UrlContext extends S.Record({ key: S.String, value: S.Unknown }) {}
  * knowledge and scope of the model.
  */
 export class Tool extends S.Class<Tool>("Tool")({
-  /**
-   * Optional. Retrieval tool that is powered by Google search.
-   */
-  "googleSearchRetrieval": S.optionalWith(GoogleSearchRetrieval, { nullable: true }),
   /**
    * Optional. A list of `FunctionDeclarations` available to the model that can be used
    * for function calling.
@@ -499,14 +654,18 @@ export class Tool extends S.Class<Tool>("Tool")({
    */
   "functionDeclarations": S.optionalWith(S.Array(FunctionDeclaration), { nullable: true }),
   /**
-   * Optional. GoogleSearch tool type.
-   * Tool to support Google Search in Model. Powered by Google.
+   * Optional. Retrieval tool that is powered by Google search.
    */
-  "googleSearch": S.optionalWith(GoogleSearch, { nullable: true }),
+  "googleSearchRetrieval": S.optionalWith(GoogleSearchRetrieval, { nullable: true }),
   /**
    * Optional. Enables the model to execute code as part of generation.
    */
   "codeExecution": S.optionalWith(CodeExecution, { nullable: true }),
+  /**
+   * Optional. GoogleSearch tool type.
+   * Tool to support Google Search in Model. Powered by Google.
+   */
+  "googleSearch": S.optionalWith(GoogleSearch, { nullable: true }),
   /**
    * Optional. Tool to support URL context retrieval.
    */
@@ -514,362 +673,40 @@ export class Tool extends S.Class<Tool>("Tool")({
 }) {}
 
 /**
- * Metadata describes the input video content.
+ * Optional. Specifies the mode in which function calling should execute. If
+ * unspecified, the default value will be set to AUTO.
  */
-export class VideoMetadata extends S.Class<VideoMetadata>("VideoMetadata")({
-  /**
-   * Optional. The end offset of the video.
-   */
-  "endOffset": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. The start offset of the video.
-   */
-  "startOffset": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. The frame rate of the video sent to the model. If not specified, the
-   * default value will be 1.0.
-   * The fps range is (0.0, 24.0].
-   */
-  "fps": S.optionalWith(S.Number, { nullable: true })
-}) {}
+export class FunctionCallingConfigMode extends S.Literal("MODE_UNSPECIFIED", "AUTO", "ANY", "NONE", "VALIDATED") {}
 
 /**
- * Raw media bytes.
- *
- * Text should not be sent as raw bytes, use the 'text' field.
+ * Configuration for specifying function calling behavior.
  */
-export class Blob extends S.Class<Blob>("Blob")({
+export class FunctionCallingConfig extends S.Class<FunctionCallingConfig>("FunctionCallingConfig")({
   /**
-   * The IANA standard MIME type of the source data.
-   * Examples:
-   *   - image/png
-   *   - image/jpeg
-   * If an unsupported MIME type is provided, an error will be returned. For a
-   * complete list of supported types, see [Supported file
-   * formats](https://ai.google.dev/gemini-api/docs/prompting_with_media#supported_file_formats).
+   * Optional. Specifies the mode in which function calling should execute. If
+   * unspecified, the default value will be set to AUTO.
    */
-  "mimeType": S.optionalWith(S.String, { nullable: true }),
+  "mode": S.optionalWith(FunctionCallingConfigMode, { nullable: true }),
   /**
-   * Raw bytes for media formats.
-   */
-  "data": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A predicted `FunctionCall` returned from the model that contains
- * a string representing the `FunctionDeclaration.name` with the
- * arguments and their values.
- */
-export class FunctionCall extends S.Class<FunctionCall>("FunctionCall")({
-  /**
-   * Optional. The unique id of the function call. If populated, the client to execute the
-   * `function_call` and return the response with the matching `id`.
-   */
-  "id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. The function parameters and values in JSON object format.
-   */
-  "args": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  /**
-   * Required. The name of the function to call.
-   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
-   */
-  "name": S.String
-}) {}
-
-/**
- * URI based data.
- */
-export class FileData extends S.Class<FileData>("FileData")({
-  /**
-   * Required. URI.
-   */
-  "fileUri": S.String,
-  /**
-   * Optional. The IANA standard MIME type of the source data.
-   */
-  "mimeType": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Required. Outcome of the code execution.
- */
-export class CodeExecutionResultOutcome
-  extends S.Literal("OUTCOME_UNSPECIFIED", "OUTCOME_OK", "OUTCOME_FAILED", "OUTCOME_DEADLINE_EXCEEDED")
-{}
-
-/**
- * Result of executing the `ExecutableCode`.
- *
- * Only generated when using the `CodeExecution`, and always follows a `part`
- * containing the `ExecutableCode`.
- */
-export class CodeExecutionResult extends S.Class<CodeExecutionResult>("CodeExecutionResult")({
-  /**
-   * Required. Outcome of the code execution.
-   */
-  "outcome": CodeExecutionResultOutcome,
-  /**
-   * Optional. Contains stdout when code execution is successful, stderr or other
-   * description otherwise.
-   */
-  "output": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Optional. Specifies how the response should be scheduled in the conversation.
- * Only applicable to NON_BLOCKING function calls, is ignored otherwise.
- * Defaults to WHEN_IDLE.
- */
-export class FunctionResponseScheduling
-  extends S.Literal("SCHEDULING_UNSPECIFIED", "SILENT", "WHEN_IDLE", "INTERRUPT")
-{}
-
-/**
- * The result output from a `FunctionCall` that contains a string
- * representing the `FunctionDeclaration.name` and a structured JSON
- * object containing any output from the function is used as context to
- * the model. This should contain the result of a`FunctionCall` made
- * based on model prediction.
- */
-export class FunctionResponse extends S.Class<FunctionResponse>("FunctionResponse")({
-  /**
-   * Optional. The id of the function call this response is for. Populated by the client
-   * to match the corresponding function call `id`.
-   */
-  "id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. Specifies how the response should be scheduled in the conversation.
-   * Only applicable to NON_BLOCKING function calls, is ignored otherwise.
-   * Defaults to WHEN_IDLE.
-   */
-  "scheduling": S.optionalWith(FunctionResponseScheduling, { nullable: true }),
-  /**
-   * Required. The name of the function to call.
-   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
-   */
-  "name": S.String,
-  /**
-   * Optional. Signals that function call continues, and more responses will be
-   * returned, turning the function call into a generator.
-   * Is only applicable to NON_BLOCKING function calls, is ignored otherwise.
-   * If set to false, future responses will not be considered.
-   * It is allowed to return empty `response` with `will_continue=False` to
-   * signal that the function call is finished. This may still trigger the model
-   * generation. To avoid triggering the generation and finish the function
-   * call, additionally set `scheduling` to `SILENT`.
-   */
-  "willContinue": S.optionalWith(S.Boolean, { nullable: true }),
-  /**
-   * Required. The function response in JSON object format.
-   */
-  "response": S.Record({ key: S.String, value: S.Unknown })
-}) {}
-
-/**
- * Required. Programming language of the `code`.
- */
-export class ExecutableCodeLanguage extends S.Literal("LANGUAGE_UNSPECIFIED", "PYTHON") {}
-
-/**
- * Code generated by the model that is meant to be executed, and the result
- * returned to the model.
- *
- * Only generated when using the `CodeExecution` tool, in which the code will
- * be automatically executed, and a corresponding `CodeExecutionResult` will
- * also be generated.
- */
-export class ExecutableCode extends S.Class<ExecutableCode>("ExecutableCode")({
-  /**
-   * Required. The code to be executed.
-   */
-  "code": S.String,
-  /**
-   * Required. Programming language of the `code`.
-   */
-  "language": ExecutableCodeLanguage
-}) {}
-
-/**
- * A datatype containing media that is part of a multi-part `Content` message.
- *
- * A `Part` consists of data which has an associated datatype. A `Part` can only
- * contain one of the accepted types in `Part.data`.
- *
- * A `Part` must have a fixed IANA MIME type identifying the type and subtype
- * of the media if the `inline_data` field is filled with raw bytes.
- */
-export class Part extends S.Class<Part>("Part")({
-  /**
-   * Optional. Video metadata. The metadata should only be specified while the video
-   * data is presented in inline_data or file_data.
-   */
-  "videoMetadata": S.optionalWith(VideoMetadata, { nullable: true }),
-  /**
-   * Inline media bytes.
-   */
-  "inlineData": S.optionalWith(Blob, { nullable: true }),
-  /**
-   * A predicted `FunctionCall` returned from the model that contains
-   * a string representing the `FunctionDeclaration.name` with the
-   * arguments and their values.
-   */
-  "functionCall": S.optionalWith(FunctionCall, { nullable: true }),
-  /**
-   * URI based data.
-   */
-  "fileData": S.optionalWith(FileData, { nullable: true }),
-  /**
-   * Result of executing the `ExecutableCode`.
-   */
-  "codeExecutionResult": S.optionalWith(CodeExecutionResult, { nullable: true }),
-  /**
-   * Optional. An opaque signature for the thought so it can be reused in subsequent
-   * requests.
-   */
-  "thoughtSignature": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The result output of a `FunctionCall` that contains a string
-   * representing the `FunctionDeclaration.name` and a structured JSON
-   * object containing any output from the function is used as context to
-   * the model.
-   */
-  "functionResponse": S.optionalWith(FunctionResponse, { nullable: true }),
-  /**
-   * Inline text.
-   */
-  "text": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Code generated by the model that is meant to be executed.
-   */
-  "executableCode": S.optionalWith(ExecutableCode, { nullable: true }),
-  /**
-   * Optional. Indicates if the part is thought from the model.
-   */
-  "thought": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
-/**
- * The base structured datatype containing multi-part content of a message.
- *
- * A `Content` includes a `role` field designating the producer of the `Content`
- * and a `parts` field containing multi-part data that contains the content of
- * the message turn.
- */
-export class Content extends S.Class<Content>("Content")({
-  /**
-   * Optional. The producer of the content. Must be either 'user' or 'model'.
+   * Optional. A set of function names that, when provided, limits the functions the model
+   * will call.
    *
-   * Useful to set for multi-turn conversations, otherwise can be left blank
-   * or unset.
+   * This should only be set when the Mode is ANY. Function names
+   * should match [FunctionDeclaration.name]. With mode set to ANY, model will
+   * predict a function call from the set of function names provided.
    */
-  "role": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Ordered `Parts` that constitute a single message. Parts may have different
-   * MIME types.
-   */
-  "parts": S.optionalWith(S.Array(Part), { nullable: true })
+  "allowedFunctionNames": S.optionalWith(S.Array(S.String), { nullable: true })
 }) {}
 
 /**
- * Metadata on the usage of the cached content.
+ * The Tool configuration containing parameters for specifying `Tool` use
+ * in the request.
  */
-export class CachedContentUsageMetadata extends S.Class<CachedContentUsageMetadata>("CachedContentUsageMetadata")({
+export class ToolConfig extends S.Class<ToolConfig>("ToolConfig")({
   /**
-   * Total number of tokens that the cached content consumes.
+   * Optional. Function calling config.
    */
-  "totalTokenCount": S.optionalWith(S.Int, { nullable: true })
-}) {}
-
-/**
- * Content that has been preprocessed and can be used in subsequent request
- * to GenerativeService.
- *
- * Cached content can be only used with model it was created for.
- */
-export class CachedContent extends S.Class<CachedContent>("CachedContent")({
-  /**
-   * Output only. When the cache entry was last updated in UTC time.
-   */
-  "updateTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. Input only. Immutable. Tool config. This config is shared for all tools.
-   */
-  "toolConfig": S.optionalWith(ToolConfig, { nullable: true }),
-  /**
-   * Optional. Input only. Immutable. A list of `Tools` the model may use to generate the next response
-   */
-  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
-  /**
-   * Optional. Input only. Immutable. The content to cache.
-   */
-  "contents": S.optionalWith(S.Array(Content), { nullable: true }),
-  /**
-   * Input only. New TTL for this resource, input only.
-   */
-  "ttl": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. Input only. Immutable. Developer set system instruction. Currently text only.
-   */
-  "systemInstruction": S.optionalWith(Content, { nullable: true }),
-  /**
-   * Output only. Creation time of the cache entry.
-   */
-  "createTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. Immutable. The user-generated meaningful display name of the cached content. Maximum
-   * 128 Unicode characters.
-   */
-  "displayName": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Required. Immutable. The name of the `Model` to use for cached content
-   * Format: `models/{model}`
-   */
-  "model": S.String,
-  /**
-   * Output only. Metadata on the usage of the cached content.
-   */
-  "usageMetadata": S.optionalWith(CachedContentUsageMetadata, { nullable: true }),
-  /**
-   * Timestamp in UTC of when this resource is considered expired.
-   * This is *always* provided on output, regardless of what was sent
-   * on input.
-   */
-  "expireTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Identifier. The resource name referring to the cached content.
-   * Format: `cachedContents/{id}`
-   */
-  "name": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Response with CachedContents list.
- */
-export class ListCachedContentsResponse extends S.Class<ListCachedContentsResponse>("ListCachedContentsResponse")({
-  /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
-   * If this field is omitted, there are no subsequent pages.
-   */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * List of cached contents.
-   */
-  "cachedContents": S.optionalWith(S.Array(CachedContent), { nullable: true })
-}) {}
-
-/**
- * Text given to the model as a prompt.
- *
- * The Model will use this TextPrompt to Generate a text completion.
- */
-export class TextPrompt extends S.Class<TextPrompt>("TextPrompt")({
-  /**
-   * Required. The prompt text.
-   */
-  "text": S.String
+  "functionCallingConfig": S.optionalWith(FunctionCallingConfig, { nullable: true })
 }) {}
 
 export class HarmCategory extends S.Literal(
@@ -914,362 +751,6 @@ export class SafetySetting extends S.Class<SafetySetting>("SafetySetting")({
    * Required. Controls the probability threshold at which harm is blocked.
    */
   "threshold": SafetySettingThreshold
-}) {}
-
-/**
- * Request to generate a text completion response from the model.
- */
-export class GenerateTextRequest extends S.Class<GenerateTextRequest>("GenerateTextRequest")({
-  /**
-   * Required. The free-form input text given to the model as a prompt.
-   *
-   * Given a prompt, the model will generate a TextCompletion response it
-   * predicts as the completion of the input text.
-   */
-  "prompt": TextPrompt,
-  /**
-   * Optional. A list of unique `SafetySetting` instances for blocking unsafe content.
-   *
-   * that will be enforced on the `GenerateTextRequest.prompt` and
-   * `GenerateTextResponse.candidates`. There should not be more than one
-   * setting for each `SafetyCategory` type. The API will block any prompts and
-   * responses that fail to meet the thresholds set by these settings. This list
-   * overrides the default settings for each `SafetyCategory` specified in the
-   * safety_settings. If there is no `SafetySetting` for a given
-   * `SafetyCategory` provided in the list, the API will use the default safety
-   * setting for that category. Harm categories HARM_CATEGORY_DEROGATORY,
-   * HARM_CATEGORY_TOXICITY, HARM_CATEGORY_VIOLENCE, HARM_CATEGORY_SEXUAL,
-   * HARM_CATEGORY_MEDICAL, HARM_CATEGORY_DANGEROUS are supported in text
-   * service.
-   */
-  "safetySettings": S.optionalWith(S.Array(SafetySetting), { nullable: true }),
-  /**
-   * Optional. The maximum number of tokens to consider when sampling.
-   *
-   * The model uses combined Top-k and nucleus sampling.
-   *
-   * Top-k sampling considers the set of `top_k` most probable tokens.
-   * Defaults to 40.
-   *
-   * Note: The default value varies by model, see the `Model.top_k`
-   * attribute of the `Model` returned the `getModel` function.
-   */
-  "topK": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. The maximum number of tokens to include in a candidate.
-   *
-   * If unset, this will default to output_token_limit specified in the `Model`
-   * specification.
-   */
-  "maxOutputTokens": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Controls the randomness of the output.
-   * Note: The default value varies by model, see the `Model.temperature`
-   * attribute of the `Model` returned the `getModel` function.
-   *
-   * Values can range from [0.0,1.0],
-   * inclusive. A value closer to 1.0 will produce responses that are more
-   * varied and creative, while a value closer to 0.0 will typically result in
-   * more straightforward responses from the model.
-   */
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Optional. Number of generated responses to return.
-   *
-   * This value must be between [1, 8], inclusive. If unset, this will default
-   * to 1.
-   */
-  "candidateCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * The set of character sequences (up to 5) that will stop output generation.
-   * If specified, the API will stop at the first appearance of a stop
-   * sequence. The stop sequence will not be included as part of the response.
-   */
-  "stopSequences": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * Optional. The maximum cumulative probability of tokens to consider when sampling.
-   *
-   * The model uses combined Top-k and nucleus sampling.
-   *
-   * Tokens are sorted based on their assigned probabilities so that only the
-   * most likely tokens are considered. Top-k sampling directly limits the
-   * maximum number of tokens to consider, while Nucleus sampling limits number
-   * of tokens based on the cumulative probability.
-   *
-   * Note: The default value varies by model, see the `Model.top_p`
-   * attribute of the `Model` returned the `getModel` function.
-   */
-  "topP": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * A citation to a source for a portion of a specific response.
- */
-export class CitationSource extends S.Class<CitationSource>("CitationSource")({
-  /**
-   * Optional. End of the attributed segment, exclusive.
-   */
-  "endIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Start of segment of the response that is attributed to this source.
-   *
-   * Index indicates the start of the segment, measured in bytes.
-   */
-  "startIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. URI that is attributed as a source for a portion of the text.
-   */
-  "uri": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. License for the GitHub project that is attributed as a source for segment.
-   *
-   * License info is required for code citations.
-   */
-  "license": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A collection of source attributions for a piece of content.
- */
-export class CitationMetadata extends S.Class<CitationMetadata>("CitationMetadata")({
-  /**
-   * Citations to sources for a specific response.
-   */
-  "citationSources": S.optionalWith(S.Array(CitationSource), { nullable: true })
-}) {}
-
-/**
- * Required. The probability of harm for this content.
- */
-export class SafetyRatingProbability
-  extends S.Literal("HARM_PROBABILITY_UNSPECIFIED", "NEGLIGIBLE", "LOW", "MEDIUM", "HIGH")
-{}
-
-/**
- * Safety rating for a piece of content.
- *
- * The safety rating contains the category of harm and the
- * harm probability level in that category for a piece of content.
- * Content is classified for safety across a number of
- * harm categories and the probability of the harm classification is included
- * here.
- */
-export class SafetyRating extends S.Class<SafetyRating>("SafetyRating")({
-  /**
-   * Required. The category for this rating.
-   */
-  "category": HarmCategory,
-  /**
-   * Required. The probability of harm for this content.
-   */
-  "probability": SafetyRatingProbability,
-  /**
-   * Was this content blocked because of this rating?
-   */
-  "blocked": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
-/**
- * Output text returned from a model.
- */
-export class TextCompletion extends S.Class<TextCompletion>("TextCompletion")({
-  /**
-   * Output only. Citation information for model-generated `output` in this
-   * `TextCompletion`.
-   *
-   * This field may be populated with attribution information for any text
-   * included in the `output`.
-   */
-  "citationMetadata": S.optionalWith(CitationMetadata, { nullable: true }),
-  /**
-   * Output only. The generated text returned from the model.
-   */
-  "output": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Ratings for the safety of a response.
-   *
-   * There is at most one rating per category.
-   */
-  "safetyRatings": S.optionalWith(S.Array(SafetyRating), { nullable: true })
-}) {}
-
-/**
- * The reason content was blocked during request processing.
- */
-export class ContentFilterReason extends S.Literal("BLOCKED_REASON_UNSPECIFIED", "SAFETY", "OTHER") {}
-
-/**
- * Content filtering metadata associated with processing a single request.
- *
- * ContentFilter contains a reason and an optional supporting string. The reason
- * may be unspecified.
- */
-export class ContentFilter extends S.Class<ContentFilter>("ContentFilter")({
-  /**
-   * The reason content was blocked during request processing.
-   */
-  "reason": S.optionalWith(ContentFilterReason, { nullable: true }),
-  /**
-   * A string that describes the filtering behavior in more detail.
-   */
-  "message": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Safety feedback for an entire request.
- *
- * This field is populated if content in the input and/or response is blocked
- * due to safety settings. SafetyFeedback may not exist for every HarmCategory.
- * Each SafetyFeedback will return the safety settings used by the request as
- * well as the lowest HarmProbability that should be allowed in order to return
- * a result.
- */
-export class SafetyFeedback extends S.Class<SafetyFeedback>("SafetyFeedback")({
-  /**
-   * Safety rating evaluated from content.
-   */
-  "rating": S.optionalWith(SafetyRating, { nullable: true }),
-  /**
-   * Safety settings applied to the request.
-   */
-  "setting": S.optionalWith(SafetySetting, { nullable: true })
-}) {}
-
-/**
- * The response from the model, including candidate completions.
- */
-export class GenerateTextResponse extends S.Class<GenerateTextResponse>("GenerateTextResponse")({
-  /**
-   * Candidate responses from the model.
-   */
-  "candidates": S.optionalWith(S.Array(TextCompletion), { nullable: true }),
-  /**
-   * A set of content filtering metadata for the prompt and response
-   * text.
-   *
-   * This indicates which `SafetyCategory`(s) blocked a
-   * candidate from this response, the lowest `HarmProbability`
-   * that triggered a block, and the HarmThreshold setting for that category.
-   * This indicates the smallest change to the `SafetySettings` that would be
-   * necessary to unblock at least 1 response.
-   *
-   * The blocking is configured by the `SafetySettings` in the request (or the
-   * default `SafetySettings` of the API).
-   */
-  "filters": S.optionalWith(S.Array(ContentFilter), { nullable: true }),
-  /**
-   * Returns any safety feedback related to content filtering.
-   */
-  "safetyFeedback": S.optionalWith(S.Array(SafetyFeedback), { nullable: true })
-}) {}
-
-export class ListGeneratedFilesParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Output only. The state of the GeneratedFile.
- */
-export class GeneratedFileState extends S.Literal("STATE_UNSPECIFIED", "GENERATING", "GENERATED", "FAILED") {}
-
-/**
- * A file generated on behalf of a user.
- */
-export class GeneratedFile extends S.Class<GeneratedFile>("GeneratedFile")({
-  /**
-   * Identifier. The name of the generated file.
-   * Example: `generatedFiles/abc-123`
-   */
-  "name": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Error details if the GeneratedFile ends up in the STATE_FAILED state.
-   */
-  "error": S.optionalWith(Status, { nullable: true }),
-  /**
-   * Output only. The state of the GeneratedFile.
-   */
-  "state": S.optionalWith(GeneratedFileState, { nullable: true }),
-  /**
-   * MIME type of the generatedFile.
-   */
-  "mimeType": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Response for `ListGeneratedFiles`.
- */
-export class ListGeneratedFilesResponse extends S.Class<ListGeneratedFilesResponse>("ListGeneratedFilesResponse")({
-  /**
-   * The list of `GeneratedFile`s.
-   */
-  "generatedFiles": S.optionalWith(S.Array(GeneratedFile), { nullable: true }),
-  /**
-   * A token that can be sent as a `page_token` into a subsequent
-   * `ListGeneratedFiles` call.
-   */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Request to get a text embedding from the model.
- */
-export class EmbedTextRequest extends S.Class<EmbedTextRequest>("EmbedTextRequest")({
-  /**
-   * Required. The model name to use with the format model=models/{model}.
-   */
-  "model": S.String,
-  /**
-   * Optional. The free-form input text that the model will turn into an embedding.
-   */
-  "text": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A list of floats representing the embedding.
- */
-export class Embedding extends S.Class<Embedding>("Embedding")({
-  /**
-   * The embedding values.
-   */
-  "value": S.optionalWith(S.Array(S.Number), { nullable: true })
-}) {}
-
-/**
- * The response to a EmbedTextRequest.
- */
-export class EmbedTextResponse extends S.Class<EmbedTextResponse>("EmbedTextResponse")({
-  /**
-   * Output only. The embedding generated from the input text.
-   */
-  "embedding": S.optionalWith(Embedding, { nullable: true })
-}) {}
-
-/**
- * Counts the number of tokens in the `prompt` sent to a model.
- *
- * Models may tokenize text differently, so each model may return a different
- * `token_count`.
- */
-export class CountTextTokensRequest extends S.Class<CountTextTokensRequest>("CountTextTokensRequest")({
-  /**
-   * Required. The free-form input text given to the model as a prompt.
-   */
-  "prompt": TextPrompt
-}) {}
-
-/**
- * A response from `CountTextTokens`.
- *
- * It returns the model's `token_count` for the `prompt`.
- */
-export class CountTextTokensResponse extends S.Class<CountTextTokensResponse>("CountTextTokensResponse")({
-  /**
-   * The number of tokens that the `model` tokenizes the `prompt` into.
-   *
-   * Always non-negative.
-   */
-  "tokenCount": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
 /**
@@ -1321,6 +802,10 @@ export class MultiSpeakerVoiceConfig extends S.Class<MultiSpeakerVoiceConfig>("M
  */
 export class SpeechConfig extends S.Class<SpeechConfig>("SpeechConfig")({
   /**
+   * The configuration in case of single-voice output.
+   */
+  "voiceConfig": S.optionalWith(VoiceConfig, { nullable: true }),
+  /**
    * Optional. The configuration for the multi-speaker setup.
    * It is mutually exclusive with the voice_config field.
    */
@@ -1333,22 +818,8 @@ export class SpeechConfig extends S.Class<SpeechConfig>("SpeechConfig")({
    * gu-IN, kn-IN, ml-IN, mr-IN, ta-IN, te-IN, nl-NL, ko-KR, cmn-CN, pl-PL,
    * ru-RU, and th-TH.
    */
-  "languageCode": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The configuration in case of single-voice output.
-   */
-  "voiceConfig": S.optionalWith(VoiceConfig, { nullable: true })
+  "languageCode": S.optionalWith(S.String, { nullable: true })
 }) {}
-
-/**
- * Optional. If specified, the media resolution specified will be used.
- */
-export class GenerationConfigMediaResolution extends S.Literal(
-  "MEDIA_RESOLUTION_UNSPECIFIED",
-  "MEDIA_RESOLUTION_LOW",
-  "MEDIA_RESOLUTION_MEDIUM",
-  "MEDIA_RESOLUTION_HIGH"
-) {}
 
 /**
  * Config for thinking features.
@@ -1366,10 +837,83 @@ export class ThinkingConfig extends S.Class<ThinkingConfig>("ThinkingConfig")({
 }) {}
 
 /**
+ * Optional. If specified, the media resolution specified will be used.
+ */
+export class GenerationConfigMediaResolution extends S.Literal(
+  "MEDIA_RESOLUTION_UNSPECIFIED",
+  "MEDIA_RESOLUTION_LOW",
+  "MEDIA_RESOLUTION_MEDIUM",
+  "MEDIA_RESOLUTION_HIGH"
+) {}
+
+/**
  * Configuration options for model generation and outputs. Not all parameters
  * are configurable for every model.
  */
 export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfig")({
+  /**
+   * Optional. Number of generated responses to return. If unset, this will default
+   * to 1. Please note that this doesn't work for previous generation
+   * models (Gemini 1.0 family)
+   */
+  "candidateCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. The set of character sequences (up to 5) that will stop output generation.
+   * If specified, the API will stop at the first appearance of a
+   * `stop_sequence`. The stop sequence will not be included as part of the
+   * response.
+   */
+  "stopSequences": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Optional. The maximum number of tokens to include in a response candidate.
+   *
+   * Note: The default value varies by model, see the `Model.output_token_limit`
+   * attribute of the `Model` returned from the `getModel` function.
+   */
+  "maxOutputTokens": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. Controls the randomness of the output.
+   *
+   * Note: The default value varies by model, see the `Model.temperature`
+   * attribute of the `Model` returned from the `getModel` function.
+   *
+   * Values can range from [0.0, 2.0].
+   */
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. The maximum cumulative probability of tokens to consider when sampling.
+   *
+   * The model uses combined Top-k and Top-p (nucleus) sampling.
+   *
+   * Tokens are sorted based on their assigned probabilities so that only the
+   * most likely tokens are considered. Top-k sampling directly limits the
+   * maximum number of tokens to consider, while Nucleus sampling limits the
+   * number of tokens based on the cumulative probability.
+   *
+   * Note: The default value varies by `Model` and is specified by
+   * the`Model.top_p` attribute returned from the `getModel` function. An empty
+   * `top_k` attribute indicates that the model doesn't apply top-k sampling
+   * and doesn't allow setting `top_k` on requests.
+   */
+  "topP": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. The maximum number of tokens to consider when sampling.
+   *
+   * Gemini models use Top-p (nucleus) sampling or a combination of Top-k and
+   * nucleus sampling. Top-k sampling considers the set of `top_k` most probable
+   * tokens. Models running with nucleus sampling don't allow top_k setting.
+   *
+   * Note: The default value varies by `Model` and is specified by
+   * the`Model.top_p` attribute returned from the `getModel` function. An empty
+   * `top_k` attribute indicates that the model doesn't apply top-k sampling
+   * and doesn't allow setting `top_k` on requests.
+   */
+  "topK": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. Seed used in decoding. If not set, the request uses a randomly generated
+   * seed.
+   */
+  "seed": S.optionalWith(S.Int, { nullable: true }),
   /**
    * Optional. MIME type of the generated candidate text.
    * Supported MIME types are:
@@ -1410,98 +954,6 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
    */
   "presencePenalty": S.optionalWith(S.Number, { nullable: true }),
   /**
-   * Optional. The requested modalities of the response. Represents the set of modalities
-   * that the model can return, and should be expected in the response. This is
-   * an exact match to the modalities of the response.
-   *
-   * A model may have multiple combinations of supported modalities. If the
-   * requested modalities do not match any of the supported combinations, an
-   * error will be returned.
-   *
-   * An empty list is equivalent to requesting only text.
-   */
-  "responseModalities": S.optionalWith(S.Array(S.Literal("MODALITY_UNSPECIFIED", "TEXT", "IMAGE", "AUDIO")), {
-    nullable: true
-  }),
-  /**
-   * Optional. Number of generated responses to return. If unset, this will default
-   * to 1. Please note that this doesn't work for previous generation
-   * models (Gemini 1.0 family)
-   */
-  "candidateCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. The speech generation config.
-   */
-  "speechConfig": S.optionalWith(SpeechConfig, { nullable: true }),
-  /**
-   * Optional. Enables enhanced civic answers. It may not be available for all models.
-   */
-  "enableEnhancedCivicAnswers": S.optionalWith(S.Boolean, { nullable: true }),
-  /**
-   * Optional. If specified, the media resolution specified will be used.
-   */
-  "mediaResolution": S.optionalWith(GenerationConfigMediaResolution, { nullable: true }),
-  /**
-   * Optional. The maximum cumulative probability of tokens to consider when sampling.
-   *
-   * The model uses combined Top-k and Top-p (nucleus) sampling.
-   *
-   * Tokens are sorted based on their assigned probabilities so that only the
-   * most likely tokens are considered. Top-k sampling directly limits the
-   * maximum number of tokens to consider, while Nucleus sampling limits the
-   * number of tokens based on the cumulative probability.
-   *
-   * Note: The default value varies by `Model` and is specified by
-   * the`Model.top_p` attribute returned from the `getModel` function. An empty
-   * `top_k` attribute indicates that the model doesn't apply top-k sampling
-   * and doesn't allow setting `top_k` on requests.
-   */
-  "topP": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Optional. Config for thinking features.
-   * An error will be returned if this field is set for models that don't
-   * support thinking.
-   */
-  "thinkingConfig": S.optionalWith(ThinkingConfig, { nullable: true }),
-  /**
-   * Optional. If true, export the logprobs results in response.
-   */
-  "responseLogprobs": S.optionalWith(S.Boolean, { nullable: true }),
-  /**
-   * Optional. The maximum number of tokens to include in a response candidate.
-   *
-   * Note: The default value varies by model, see the `Model.output_token_limit`
-   * attribute of the `Model` returned from the `getModel` function.
-   */
-  "maxOutputTokens": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. The set of character sequences (up to 5) that will stop output generation.
-   * If specified, the API will stop at the first appearance of a
-   * `stop_sequence`. The stop sequence will not be included as part of the
-   * response.
-   */
-  "stopSequences": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * Optional. Only valid if response_logprobs=True.
-   * This sets the number of top logprobs to return at each decoding step in the
-   * Candidate.logprobs_result.
-   */
-  "logprobs": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Seed used in decoding. If not set, the request uses a randomly generated
-   * seed.
-   */
-  "seed": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Controls the randomness of the output.
-   *
-   * Note: The default value varies by model, see the `Model.temperature`
-   * attribute of the `Model` returned from the `getModel` function.
-   *
-   * Values can range from [0.0, 2.0].
-   */
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
    * Optional. Frequency penalty applied to the next token's logprobs, multiplied by the
    * number of times each token has been seen in the respponse so far.
    *
@@ -1519,25 +971,66 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
    */
   "frequencyPenalty": S.optionalWith(S.Number, { nullable: true }),
   /**
-   * Optional. The maximum number of tokens to consider when sampling.
-   *
-   * Gemini models use Top-p (nucleus) sampling or a combination of Top-k and
-   * nucleus sampling. Top-k sampling considers the set of `top_k` most probable
-   * tokens. Models running with nucleus sampling don't allow top_k setting.
-   *
-   * Note: The default value varies by `Model` and is specified by
-   * the`Model.top_p` attribute returned from the `getModel` function. An empty
-   * `top_k` attribute indicates that the model doesn't apply top-k sampling
-   * and doesn't allow setting `top_k` on requests.
+   * Optional. If true, export the logprobs results in response.
    */
-  "topK": S.optionalWith(S.Int, { nullable: true })
+  "responseLogprobs": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Optional. Only valid if response_logprobs=True.
+   * This sets the number of top logprobs to return at each decoding step in the
+   * Candidate.logprobs_result.
+   */
+  "logprobs": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. Enables enhanced civic answers. It may not be available for all models.
+   */
+  "enableEnhancedCivicAnswers": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Optional. The requested modalities of the response. Represents the set of modalities
+   * that the model can return, and should be expected in the response. This is
+   * an exact match to the modalities of the response.
+   *
+   * A model may have multiple combinations of supported modalities. If the
+   * requested modalities do not match any of the supported combinations, an
+   * error will be returned.
+   *
+   * An empty list is equivalent to requesting only text.
+   */
+  "responseModalities": S.optionalWith(S.Array(S.Literal("MODALITY_UNSPECIFIED", "TEXT", "IMAGE", "AUDIO")), {
+    nullable: true
+  }),
+  /**
+   * Optional. The speech generation config.
+   */
+  "speechConfig": S.optionalWith(SpeechConfig, { nullable: true }),
+  /**
+   * Optional. Config for thinking features.
+   * An error will be returned if this field is set for models that don't
+   * support thinking.
+   */
+  "thinkingConfig": S.optionalWith(ThinkingConfig, { nullable: true }),
+  /**
+   * Optional. If specified, the media resolution specified will be used.
+   */
+  "mediaResolution": S.optionalWith(GenerationConfigMediaResolution, { nullable: true })
 }) {}
 
 /**
  * Request to generate a completion from the model.
- * NEXT ID: 13
+ * NEXT ID: 14
  */
 export class GenerateContentRequest extends S.Class<GenerateContentRequest>("GenerateContentRequest")({
+  /**
+   * Required. The name of the `Model` to use for generating the completion.
+   *
+   * Format: `models/{model}`.
+   */
+  "model": S.String,
+  /**
+   * Optional. Developer set [system
+   * instruction(s)](https://ai.google.dev/gemini-api/docs/system-instructions).
+   * Currently, text only.
+   */
+  "systemInstruction": S.optionalWith(Content, { nullable: true }),
   /**
    * Required. The content of the current conversation with the model.
    *
@@ -1560,27 +1053,12 @@ export class GenerateContentRequest extends S.Class<GenerateContentRequest>("Gen
    */
   "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
   /**
-   * Optional. Configuration options for model generation and outputs.
+   * Optional. Tool configuration for any `Tool` specified in the request. Refer to the
+   * [Function calling
+   * guide](https://ai.google.dev/gemini-api/docs/function-calling#function_calling_mode)
+   * for a usage example.
    */
-  "generationConfig": S.optionalWith(GenerationConfig, { nullable: true }),
-  /**
-   * Optional. Developer set [system
-   * instruction(s)](https://ai.google.dev/gemini-api/docs/system-instructions).
-   * Currently, text only.
-   */
-  "systemInstruction": S.optionalWith(Content, { nullable: true }),
-  /**
-   * Required. The name of the `Model` to use for generating the completion.
-   *
-   * Format: `models/{model}`.
-   */
-  "model": S.String,
-  /**
-   * Optional. The name of the content
-   * [cached](https://ai.google.dev/gemini-api/docs/caching) to use as context
-   * to serve the prediction. Format: `cachedContents/{cachedContent}`
-   */
-  "cachedContent": S.optionalWith(S.String, { nullable: true }),
+  "toolConfig": S.optionalWith(ToolConfig, { nullable: true }),
   /**
    * Optional. A list of unique `SafetySetting` instances for blocking unsafe content.
    *
@@ -1601,168 +1079,102 @@ export class GenerateContentRequest extends S.Class<GenerateContentRequest>("Gen
    */
   "safetySettings": S.optionalWith(S.Array(SafetySetting), { nullable: true }),
   /**
-   * Optional. Tool configuration for any `Tool` specified in the request. Refer to the
-   * [Function calling
-   * guide](https://ai.google.dev/gemini-api/docs/function-calling#function_calling_mode)
-   * for a usage example.
+   * Optional. Configuration options for model generation and outputs.
    */
-  "toolConfig": S.optionalWith(ToolConfig, { nullable: true })
+  "generationConfig": S.optionalWith(GenerationConfig, { nullable: true }),
+  /**
+   * Optional. The name of the content
+   * [cached](https://ai.google.dev/gemini-api/docs/caching) to use as context
+   * to serve the prediction. Format: `cachedContents/{cachedContent}`
+   */
+  "cachedContent": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Segment of the content.
+ * Optional. Output only. The reason why the model stopped generating tokens.
+ *
+ * If empty, the model has not stopped generating tokens.
  */
-export class Segment extends S.Class<Segment>("Segment")({
-  /**
-   * Output only. The index of a Part object within its parent Content object.
-   */
-  "partIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. End index in the given Part, measured in bytes. Offset from the start of
-   * the Part, exclusive, starting at zero.
-   */
-  "endIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. The text corresponding to the segment from the response.
-   */
-  "text": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Start index in the given Part, measured in bytes. Offset from the start of
-   * the Part, inclusive, starting at zero.
-   */
-  "startIndex": S.optionalWith(S.Int, { nullable: true })
-}) {}
+export class CandidateFinishReason extends S.Literal(
+  "FINISH_REASON_UNSPECIFIED",
+  "STOP",
+  "MAX_TOKENS",
+  "SAFETY",
+  "RECITATION",
+  "LANGUAGE",
+  "OTHER",
+  "BLOCKLIST",
+  "PROHIBITED_CONTENT",
+  "SPII",
+  "MALFORMED_FUNCTION_CALL",
+  "IMAGE_SAFETY"
+) {}
 
 /**
- * Grounding support.
+ * Required. The probability of harm for this content.
  */
-export class GroundingSupport extends S.Class<GroundingSupport>("GroundingSupport")({
-  /**
-   * A list of indices (into 'grounding_chunk') specifying the
-   * citations associated with the claim. For instance [1,3,4] means
-   * that grounding_chunk[1], grounding_chunk[3],
-   * grounding_chunk[4] are the retrieved content attributed to the claim.
-   */
-  "groundingChunkIndices": S.optionalWith(S.Array(S.Int), { nullable: true }),
-  /**
-   * Segment of the content this support belongs to.
-   */
-  "segment": S.optionalWith(Segment, { nullable: true }),
-  /**
-   * Confidence score of the support references. Ranges from 0 to 1. 1 is the
-   * most confident. This list must have the same size as the
-   * grounding_chunk_indices.
-   */
-  "confidenceScores": S.optionalWith(S.Array(S.Number), { nullable: true })
-}) {}
-
-/**
- * Chunk from the web.
- */
-export class Web extends S.Class<Web>("Web")({
-  /**
-   * URI reference of the chunk.
-   */
-  "uri": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Title of the chunk.
-   */
-  "title": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Grounding chunk.
- */
-export class GroundingChunk extends S.Class<GroundingChunk>("GroundingChunk")({
-  /**
-   * Grounding chunk from the web.
-   */
-  "web": S.optionalWith(Web, { nullable: true })
-}) {}
-
-/**
- * Google search entry point.
- */
-export class SearchEntryPoint extends S.Class<SearchEntryPoint>("SearchEntryPoint")({
-  /**
-   * Optional. Web content snippet that can be embedded in a web page or an app webview.
-   */
-  "renderedContent": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. Base64 encoded JSON representing array of  tuple.
-   */
-  "sdkBlob": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Metadata related to retrieval in the grounding flow.
- */
-export class RetrievalMetadata extends S.Class<RetrievalMetadata>("RetrievalMetadata")({
-  /**
-   * Optional. Score indicating how likely information from google search could help
-   * answer the prompt. The score is in the range [0, 1], where 0 is the least
-   * likely and 1 is the most likely. This score is only populated when
-   * google search grounding and dynamic retrieval is enabled. It will be
-   * compared to the threshold to determine whether to trigger google search.
-   */
-  "googleSearchDynamicRetrievalScore": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Metadata returned to client when grounding is enabled.
- */
-export class GroundingMetadata extends S.Class<GroundingMetadata>("GroundingMetadata")({
-  /**
-   * Web search queries for the following-up web search.
-   */
-  "webSearchQueries": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * List of grounding support.
-   */
-  "groundingSupports": S.optionalWith(S.Array(GroundingSupport), { nullable: true }),
-  /**
-   * List of supporting references retrieved from specified grounding source.
-   */
-  "groundingChunks": S.optionalWith(S.Array(GroundingChunk), { nullable: true }),
-  /**
-   * Optional. Google search entry for the following-up web searches.
-   */
-  "searchEntryPoint": S.optionalWith(SearchEntryPoint, { nullable: true }),
-  /**
-   * Metadata related to retrieval in the grounding flow.
-   */
-  "retrievalMetadata": S.optionalWith(RetrievalMetadata, { nullable: true })
-}) {}
-
-/**
- * Status of the url retrieval.
- */
-export class UrlMetadataUrlRetrievalStatus
-  extends S.Literal("URL_RETRIEVAL_STATUS_UNSPECIFIED", "URL_RETRIEVAL_STATUS_SUCCESS", "URL_RETRIEVAL_STATUS_ERROR")
+export class SafetyRatingProbability
+  extends S.Literal("HARM_PROBABILITY_UNSPECIFIED", "NEGLIGIBLE", "LOW", "MEDIUM", "HIGH")
 {}
 
 /**
- * Context of the a single url retrieval.
+ * Safety rating for a piece of content.
+ *
+ * The safety rating contains the category of harm and the
+ * harm probability level in that category for a piece of content.
+ * Content is classified for safety across a number of
+ * harm categories and the probability of the harm classification is included
+ * here.
  */
-export class UrlMetadata extends S.Class<UrlMetadata>("UrlMetadata")({
+export class SafetyRating extends S.Class<SafetyRating>("SafetyRating")({
   /**
-   * Status of the url retrieval.
+   * Required. The category for this rating.
    */
-  "urlRetrievalStatus": S.optionalWith(UrlMetadataUrlRetrievalStatus, { nullable: true }),
+  "category": HarmCategory,
   /**
-   * Retrieved url by the tool.
+   * Required. The probability of harm for this content.
    */
-  "retrievedUrl": S.optionalWith(S.String, { nullable: true })
+  "probability": SafetyRatingProbability,
+  /**
+   * Was this content blocked because of this rating?
+   */
+  "blocked": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 /**
- * Metadata related to url context retrieval tool.
+ * A citation to a source for a portion of a specific response.
  */
-export class UrlContextMetadata extends S.Class<UrlContextMetadata>("UrlContextMetadata")({
+export class CitationSource extends S.Class<CitationSource>("CitationSource")({
   /**
-   * List of url context.
+   * Optional. Start of segment of the response that is attributed to this source.
+   *
+   * Index indicates the start of the segment, measured in bytes.
    */
-  "urlMetadata": S.optionalWith(S.Array(UrlMetadata), { nullable: true })
+  "startIndex": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. End of the attributed segment, exclusive.
+   */
+  "endIndex": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. URI that is attributed as a source for a portion of the text.
+   */
+  "uri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. License for the GitHub project that is attributed as a source for segment.
+   *
+   * License info is required for code citations.
+   */
+  "license": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A collection of source attributions for a piece of content.
+ */
+export class CitationMetadata extends S.Class<CitationMetadata>("CitationMetadata")({
+  /**
+   * Citations to sources for a specific response.
+   */
+  "citationSources": S.optionalWith(S.Array(CitationSource), { nullable: true })
 }) {}
 
 /**
@@ -1770,15 +1182,15 @@ export class UrlContextMetadata extends S.Class<UrlContextMetadata>("UrlContextM
  */
 export class GroundingPassageId extends S.Class<GroundingPassageId>("GroundingPassageId")({
   /**
-   * Output only. Index of the part within the `GenerateAnswerRequest`'s
-   * `GroundingPassage.content`.
-   */
-  "partIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
    * Output only. ID of the passage matching the `GenerateAnswerRequest`'s
    * `GroundingPassage.id`.
    */
-  "passageId": S.optionalWith(S.String, { nullable: true })
+  "passageId": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Index of the part within the `GenerateAnswerRequest`'s
+   * `GroundingPassage.content`.
+   */
+  "partIndex": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
 /**
@@ -1787,16 +1199,16 @@ export class GroundingPassageId extends S.Class<GroundingPassageId>("GroundingPa
  */
 export class SemanticRetrieverChunk extends S.Class<SemanticRetrieverChunk>("SemanticRetrieverChunk")({
   /**
-   * Output only. Name of the `Chunk` containing the attributed text.
-   * Example: `corpora/123/documents/abc/chunks/xyz`
-   */
-  "chunk": S.optionalWith(S.String, { nullable: true }),
-  /**
    * Output only. Name of the source matching the request's
    * `SemanticRetrieverConfig.source`. Example: `corpora/123` or
    * `corpora/123/documents/abc`
    */
-  "source": S.optionalWith(S.String, { nullable: true })
+  "source": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Name of the `Chunk` containing the attributed text.
+   * Example: `corpora/123/documents/abc/chunks/xyz`
+   */
+  "chunk": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -1825,6 +1237,131 @@ export class GroundingAttribution extends S.Class<GroundingAttribution>("Groundi
    * Grounding source content that makes up this attribution.
    */
   "content": S.optionalWith(Content, { nullable: true })
+}) {}
+
+/**
+ * Google search entry point.
+ */
+export class SearchEntryPoint extends S.Class<SearchEntryPoint>("SearchEntryPoint")({
+  /**
+   * Optional. Web content snippet that can be embedded in a web page or an app webview.
+   */
+  "renderedContent": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Base64 encoded JSON representing array of  tuple.
+   */
+  "sdkBlob": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Chunk from the web.
+ */
+export class Web extends S.Class<Web>("Web")({
+  /**
+   * URI reference of the chunk.
+   */
+  "uri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Title of the chunk.
+   */
+  "title": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Grounding chunk.
+ */
+export class GroundingChunk extends S.Class<GroundingChunk>("GroundingChunk")({
+  /**
+   * Grounding chunk from the web.
+   */
+  "web": S.optionalWith(Web, { nullable: true })
+}) {}
+
+/**
+ * Segment of the content.
+ */
+export class Segment extends S.Class<Segment>("Segment")({
+  /**
+   * Output only. The index of a Part object within its parent Content object.
+   */
+  "partIndex": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. Start index in the given Part, measured in bytes. Offset from the start of
+   * the Part, inclusive, starting at zero.
+   */
+  "startIndex": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. End index in the given Part, measured in bytes. Offset from the start of
+   * the Part, exclusive, starting at zero.
+   */
+  "endIndex": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. The text corresponding to the segment from the response.
+   */
+  "text": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Grounding support.
+ */
+export class GroundingSupport extends S.Class<GroundingSupport>("GroundingSupport")({
+  /**
+   * Segment of the content this support belongs to.
+   */
+  "segment": S.optionalWith(Segment, { nullable: true }),
+  /**
+   * A list of indices (into 'grounding_chunk') specifying the
+   * citations associated with the claim. For instance [1,3,4] means
+   * that grounding_chunk[1], grounding_chunk[3],
+   * grounding_chunk[4] are the retrieved content attributed to the claim.
+   */
+  "groundingChunkIndices": S.optionalWith(S.Array(S.Int), { nullable: true }),
+  /**
+   * Confidence score of the support references. Ranges from 0 to 1. 1 is the
+   * most confident. This list must have the same size as the
+   * grounding_chunk_indices.
+   */
+  "confidenceScores": S.optionalWith(S.Array(S.Number), { nullable: true })
+}) {}
+
+/**
+ * Metadata related to retrieval in the grounding flow.
+ */
+export class RetrievalMetadata extends S.Class<RetrievalMetadata>("RetrievalMetadata")({
+  /**
+   * Optional. Score indicating how likely information from google search could help
+   * answer the prompt. The score is in the range [0, 1], where 0 is the least
+   * likely and 1 is the most likely. This score is only populated when
+   * google search grounding and dynamic retrieval is enabled. It will be
+   * compared to the threshold to determine whether to trigger google search.
+   */
+  "googleSearchDynamicRetrievalScore": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * Metadata returned to client when grounding is enabled.
+ */
+export class GroundingMetadata extends S.Class<GroundingMetadata>("GroundingMetadata")({
+  /**
+   * Optional. Google search entry for the following-up web searches.
+   */
+  "searchEntryPoint": S.optionalWith(SearchEntryPoint, { nullable: true }),
+  /**
+   * List of supporting references retrieved from specified grounding source.
+   */
+  "groundingChunks": S.optionalWith(S.Array(GroundingChunk), { nullable: true }),
+  /**
+   * List of grounding support.
+   */
+  "groundingSupports": S.optionalWith(S.Array(GroundingSupport), { nullable: true }),
+  /**
+   * Metadata related to retrieval in the grounding flow.
+   */
+  "retrievalMetadata": S.optionalWith(RetrievalMetadata, { nullable: true }),
+  /**
+   * Web search queries for the following-up web search.
+   */
+  "webSearchQueries": S.optionalWith(S.Array(S.String), { nullable: true })
 }) {}
 
 /**
@@ -1871,57 +1408,60 @@ export class LogprobsResult extends S.Class<LogprobsResult>("LogprobsResult")({
 }) {}
 
 /**
- * Optional. Output only. The reason why the model stopped generating tokens.
- *
- * If empty, the model has not stopped generating tokens.
+ * Status of the url retrieval.
  */
-export class CandidateFinishReason extends S.Literal(
-  "FINISH_REASON_UNSPECIFIED",
-  "STOP",
-  "MAX_TOKENS",
-  "SAFETY",
-  "RECITATION",
-  "LANGUAGE",
-  "OTHER",
-  "BLOCKLIST",
-  "PROHIBITED_CONTENT",
-  "SPII",
-  "MALFORMED_FUNCTION_CALL",
-  "IMAGE_SAFETY"
-) {}
+export class UrlMetadataUrlRetrievalStatus
+  extends S.Literal("URL_RETRIEVAL_STATUS_UNSPECIFIED", "URL_RETRIEVAL_STATUS_SUCCESS", "URL_RETRIEVAL_STATUS_ERROR")
+{}
+
+/**
+ * Context of the a single url retrieval.
+ */
+export class UrlMetadata extends S.Class<UrlMetadata>("UrlMetadata")({
+  /**
+   * Retrieved url by the tool.
+   */
+  "retrievedUrl": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Status of the url retrieval.
+   */
+  "urlRetrievalStatus": S.optionalWith(UrlMetadataUrlRetrievalStatus, { nullable: true })
+}) {}
+
+/**
+ * Metadata related to url context retrieval tool.
+ */
+export class UrlContextMetadata extends S.Class<UrlContextMetadata>("UrlContextMetadata")({
+  /**
+   * List of url context.
+   */
+  "urlMetadata": S.optionalWith(S.Array(UrlMetadata), { nullable: true })
+}) {}
 
 /**
  * A response candidate generated from the model.
  */
 export class Candidate extends S.Class<Candidate>("Candidate")({
   /**
+   * Output only. Index of the candidate in the list of response candidates.
+   */
+  "index": S.optionalWith(S.Int, { nullable: true }),
+  /**
    * Output only. Generated content returned from the model.
    */
   "content": S.optionalWith(Content, { nullable: true }),
   /**
-   * Output only. Grounding metadata for the candidate.
+   * Optional. Output only. The reason why the model stopped generating tokens.
    *
-   * This field is populated for `GenerateContent` calls.
+   * If empty, the model has not stopped generating tokens.
    */
-  "groundingMetadata": S.optionalWith(GroundingMetadata, { nullable: true }),
+  "finishReason": S.optionalWith(CandidateFinishReason, { nullable: true }),
   /**
    * List of ratings for the safety of a response candidate.
    *
    * There is at most one rating per category.
    */
   "safetyRatings": S.optionalWith(S.Array(SafetyRating), { nullable: true }),
-  /**
-   * Output only. Average log probability score of the candidate.
-   */
-  "avgLogprobs": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Output only. Index of the candidate in the list of response candidates.
-   */
-  "index": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. Metadata related to url context retrieval tool.
-   */
-  "urlContextMetadata": S.optionalWith(UrlContextMetadata, { nullable: true }),
   /**
    * Output only. Citation information for model-generated candidate.
    *
@@ -1931,25 +1471,33 @@ export class Candidate extends S.Class<Candidate>("Candidate")({
    */
   "citationMetadata": S.optionalWith(CitationMetadata, { nullable: true }),
   /**
+   * Output only. Token count for this candidate.
+   */
+  "tokenCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
    * Output only. Attribution information for sources that contributed to a grounded answer.
    *
    * This field is populated for `GenerateAnswer` calls.
    */
   "groundingAttributions": S.optionalWith(S.Array(GroundingAttribution), { nullable: true }),
   /**
+   * Output only. Grounding metadata for the candidate.
+   *
+   * This field is populated for `GenerateContent` calls.
+   */
+  "groundingMetadata": S.optionalWith(GroundingMetadata, { nullable: true }),
+  /**
+   * Output only. Average log probability score of the candidate.
+   */
+  "avgLogprobs": S.optionalWith(S.Number, { nullable: true }),
+  /**
    * Output only. Log-likelihood scores for the response tokens and top tokens
    */
   "logprobsResult": S.optionalWith(LogprobsResult, { nullable: true }),
   /**
-   * Output only. Token count for this candidate.
+   * Output only. Metadata related to url context retrieval tool.
    */
-  "tokenCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Output only. The reason why the model stopped generating tokens.
-   *
-   * If empty, the model has not stopped generating tokens.
-   */
-  "finishReason": S.optionalWith(CandidateFinishReason, { nullable: true })
+  "urlContextMetadata": S.optionalWith(UrlContextMetadata, { nullable: true })
 }) {}
 
 /**
@@ -1998,48 +1546,48 @@ export class ModalityTokenCount extends S.Class<ModalityTokenCount>("ModalityTok
  */
 export class UsageMetadata extends S.Class<UsageMetadata>("UsageMetadata")({
   /**
-   * Total number of tokens across all the generated response candidates.
-   */
-  "candidatesTokenCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. Number of tokens of thoughts for thinking models.
-   */
-  "thoughtsTokenCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. List of modalities that were returned in the response.
-   */
-  "candidatesTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
-  /**
-   * Output only. List of modalities that were processed in the request input.
-   */
-  "promptTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
-  /**
    * Number of tokens in the prompt. When `cached_content` is set, this is
    * still the total effective prompt size meaning this includes the number of
    * tokens in the cached content.
    */
   "promptTokenCount": S.optionalWith(S.Int, { nullable: true }),
   /**
-   * Total token count for the generation request (prompt + response
-   * candidates).
+   * Number of tokens in the cached part of the prompt (the cached content)
    */
-  "totalTokenCount": S.optionalWith(S.Int, { nullable: true }),
+  "cachedContentTokenCount": S.optionalWith(S.Int, { nullable: true }),
   /**
-   * Output only. List of modalities that were processed for tool-use request inputs.
+   * Total number of tokens across all the generated response candidates.
    */
-  "toolUsePromptTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
+  "candidatesTokenCount": S.optionalWith(S.Int, { nullable: true }),
   /**
    * Output only. Number of tokens present in tool-use prompt(s).
    */
   "toolUsePromptTokenCount": S.optionalWith(S.Int, { nullable: true }),
   /**
+   * Output only. Number of tokens of thoughts for thinking models.
+   */
+  "thoughtsTokenCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Total token count for the generation request (prompt + response
+   * candidates).
+   */
+  "totalTokenCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. List of modalities that were processed in the request input.
+   */
+  "promptTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
+  /**
    * Output only. List of modalities of the cached content in the request input.
    */
   "cacheTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
   /**
-   * Number of tokens in the cached part of the prompt (the cached content)
+   * Output only. List of modalities that were returned in the response.
    */
-  "cachedContentTokenCount": S.optionalWith(S.Int, { nullable: true })
+  "candidatesTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
+  /**
+   * Output only. List of modalities that were processed for tool-use request inputs.
+   */
+  "toolUsePromptTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true })
 }) {}
 
 /**
@@ -2060,205 +1608,47 @@ export class GenerateContentResponse extends S.Class<GenerateContentResponse>("G
    */
   "candidates": S.optionalWith(S.Array(Candidate), { nullable: true }),
   /**
-   * Output only. The model version used to generate the response.
-   */
-  "modelVersion": S.optionalWith(S.String, { nullable: true }),
-  /**
    * Returns the prompt's feedback related to the content filters.
    */
   "promptFeedback": S.optionalWith(PromptFeedback, { nullable: true }),
   /**
-   * Output only. response_id is used to identify each response.
-   */
-  "responseId": S.optionalWith(S.String, { nullable: true }),
-  /**
    * Output only. Metadata on the generation requests' token usage.
    */
-  "usageMetadata": S.optionalWith(UsageMetadata, { nullable: true })
-}) {}
-
-export class TaskType extends S.Literal(
-  "TASK_TYPE_UNSPECIFIED",
-  "RETRIEVAL_QUERY",
-  "RETRIEVAL_DOCUMENT",
-  "SEMANTIC_SIMILARITY",
-  "CLASSIFICATION",
-  "CLUSTERING",
-  "QUESTION_ANSWERING",
-  "FACT_VERIFICATION",
-  "CODE_RETRIEVAL_QUERY"
-) {}
-
-/**
- * Request containing the `Content` for the model to embed.
- */
-export class EmbedContentRequest extends S.Class<EmbedContentRequest>("EmbedContentRequest")({
+  "usageMetadata": S.optionalWith(UsageMetadata, { nullable: true }),
   /**
-   * Optional. Optional reduced dimension for the output embedding. If set, excessive
-   * values in the output embedding are truncated from the end. Supported by
-   * newer models since 2024 only. You cannot set this value if using the
-   * earlier model (`models/embedding-001`).
+   * Output only. The model version used to generate the response.
    */
-  "outputDimensionality": S.optionalWith(S.Int, { nullable: true }),
+  "modelVersion": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Required. The content to embed. Only the `parts.text` fields will be counted.
+   * Output only. response_id is used to identify each response.
    */
-  "content": Content,
-  /**
-   * Optional. Optional task type for which the embeddings will be used. Not supported on
-   * earlier models (`models/embedding-001`).
-   */
-  "taskType": S.optionalWith(TaskType, { nullable: true }),
-  /**
-   * Required. The model's resource name. This serves as an ID for the Model to use.
-   *
-   * This name should match a model name returned by the `ListModels` method.
-   *
-   * Format: `models/{model}`
-   */
-  "model": S.String,
-  /**
-   * Optional. An optional title for the text. Only applicable when TaskType is
-   * `RETRIEVAL_DOCUMENT`.
-   *
-   * Note: Specifying a `title` for `RETRIEVAL_DOCUMENT` provides better quality
-   * embeddings for retrieval.
-   */
-  "title": S.optionalWith(S.String, { nullable: true })
+  "responseId": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Batch request to get embeddings from the model for a list of prompts.
+ * Passage included inline with a grounding configuration.
  */
-export class BatchEmbedContentsRequest extends S.Class<BatchEmbedContentsRequest>("BatchEmbedContentsRequest")({
+export class GroundingPassage extends S.Class<GroundingPassage>("GroundingPassage")({
   /**
-   * Required. Embed requests for the batch. The model in each of these requests must
-   * match the model specified `BatchEmbedContentsRequest.model`.
+   * Identifier for the passage for attributing this passage in grounded
+   * answers.
    */
-  "requests": S.Array(EmbedContentRequest)
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Content of the passage.
+   */
+  "content": S.optionalWith(Content, { nullable: true })
 }) {}
 
 /**
- * A list of floats representing an embedding.
+ * A repeated list of passages.
  */
-export class ContentEmbedding extends S.Class<ContentEmbedding>("ContentEmbedding")({
+export class GroundingPassages extends S.Class<GroundingPassages>("GroundingPassages")({
   /**
-   * The embedding values.
+   * List of passages.
    */
-  "values": S.optionalWith(S.Array(S.Number), { nullable: true })
+  "passages": S.optionalWith(S.Array(GroundingPassage), { nullable: true })
 }) {}
-
-/**
- * The response to a `BatchEmbedContentsRequest`.
- */
-export class BatchEmbedContentsResponse extends S.Class<BatchEmbedContentsResponse>("BatchEmbedContentsResponse")({
-  /**
-   * Output only. The embeddings for each request, in the same order as provided in the batch
-   * request.
-   */
-  "embeddings": S.optionalWith(S.Array(ContentEmbedding), { nullable: true })
-}) {}
-
-/**
- * Source of the File.
- */
-export class FileSource extends S.Literal("SOURCE_UNSPECIFIED", "UPLOADED", "GENERATED") {}
-
-/**
- * Metadata for a video `File`.
- */
-export class VideoFileMetadata extends S.Class<VideoFileMetadata>("VideoFileMetadata")({
-  /**
-   * Duration of the video.
-   */
-  "videoDuration": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Output only. Processing state of the File.
- */
-export class FileState extends S.Literal("STATE_UNSPECIFIED", "PROCESSING", "ACTIVE", "FAILED") {}
-
-/**
- * A file uploaded to the API.
- * Next ID: 15
- */
-export class File extends S.Class<File>("File")({
-  /**
-   * Output only. The timestamp of when the `File` will be deleted. Only set if the `File` is
-   * scheduled to expire.
-   */
-  "expirationTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. SHA-256 hash of the uploaded bytes.
-   */
-  "sha256Hash": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Source of the File.
-   */
-  "source": S.optionalWith(FileSource, { nullable: true }),
-  /**
-   * Output only. MIME type of the file.
-   */
-  "mimeType": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Immutable. Identifier. The `File` resource name. The ID (name excluding the "files/" prefix) can
-   * contain up to 40 characters that are lowercase alphanumeric or dashes (-).
-   * The ID cannot start or end with a dash. If the name is empty on create, a
-   * unique name will be generated.
-   * Example: `files/123-456`
-   */
-  "name": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Metadata for a video.
-   */
-  "videoMetadata": S.optionalWith(VideoFileMetadata, { nullable: true }),
-  /**
-   * Output only. Error status if File processing failed.
-   */
-  "error": S.optionalWith(Status, { nullable: true }),
-  /**
-   * Output only. Processing state of the File.
-   */
-  "state": S.optionalWith(FileState, { nullable: true }),
-  /**
-   * Optional. The human-readable display name for the `File`. The display name must be
-   * no more than 512 characters in length, including spaces.
-   * Example: "Welcome Image"
-   */
-  "displayName": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Size of the file in bytes.
-   */
-  "sizeBytes": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The uri of the `File`.
-   */
-  "uri": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The timestamp of when the `File` was last updated.
-   */
-  "updateTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The timestamp of when the `File` was created.
-   */
-  "createTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The download uri of the `File`.
-   */
-  "downloadUri": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A generic empty message that you can re-use to avoid defining duplicated
- * empty messages in your APIs. A typical example is to use it as the request
- * or the response type of an API method. For instance:
- *
- *     service Foo {
- *       rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty);
- *     }
- */
-export class Empty extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 /**
  * Required. Operator applied to the given key-value pair to trigger the condition.
@@ -2280,13 +1670,13 @@ export class ConditionOperation extends S.Literal(
  */
 export class Condition extends S.Class<Condition>("Condition")({
   /**
-   * The numeric value to filter the metadata on.
-   */
-  "numericValue": S.optionalWith(S.Number, { nullable: true }),
-  /**
    * The string value to filter the metadata on.
    */
   "stringValue": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The numeric value to filter the metadata on.
+   */
+  "numericValue": S.optionalWith(S.Number, { nullable: true }),
   /**
    * Required. Operator applied to the given key-value pair to trigger the condition.
    */
@@ -2314,175 +1704,19 @@ export class MetadataFilter extends S.Class<MetadataFilter>("MetadataFilter")({
 }) {}
 
 /**
- * Request for querying a `Corpus`.
- */
-export class QueryCorpusRequest extends S.Class<QueryCorpusRequest>("QueryCorpusRequest")({
-  /**
-   * Optional. Filter for `Chunk` and `Document` metadata. Each `MetadataFilter` object
-   * should correspond to a unique key. Multiple `MetadataFilter` objects are
-   * joined by logical "AND"s.
-   *
-   * Example query at document level:
-   * (year >= 2020 OR year < 2010) AND (genre = drama OR genre = action)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "document.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
-   *                 {int_value = 2010, operation = LESS}]},
-   *  {key = "document.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
-   *                 {int_value = 2010, operation = LESS}]},
-   *  {key = "document.custom_metadata.genre"
-   *   conditions = [{string_value = "drama", operation = EQUAL},
-   *                 {string_value = "action", operation = EQUAL}]}]
-   *
-   * Example query at chunk level for a numeric range of values:
-   * (year > 2015 AND year <= 2020)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2015, operation = GREATER}]},
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = LESS_EQUAL}]}]
-   *
-   * Note: "AND"s for the same key are only supported for numeric values. String
-   * values only support "OR"s for the same key.
-   */
-  "metadataFilters": S.optionalWith(S.Array(MetadataFilter), { nullable: true }),
-  /**
-   * Required. Query string to perform semantic search.
-   */
-  "query": S.String,
-  /**
-   * Optional. The maximum number of `Chunk`s to return.
-   * The service may return fewer `Chunk`s.
-   *
-   * If unspecified, at most 10 `Chunk`s will be returned.
-   * The maximum specified result count is 100.
-   */
-  "resultsCount": S.optionalWith(S.Int, { nullable: true })
-}) {}
-
-/**
- * Extracted data that represents the `Chunk` content.
- */
-export class ChunkData extends S.Class<ChunkData>("ChunkData")({
-  /**
-   * The `Chunk` content as a string.
-   * The maximum number of tokens per chunk is 2043.
-   */
-  "stringValue": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Output only. Current state of the `Chunk`.
- */
-export class ChunkState
-  extends S.Literal("STATE_UNSPECIFIED", "STATE_PENDING_PROCESSING", "STATE_ACTIVE", "STATE_FAILED")
-{}
-
-/**
- * User provided string values assigned to a single metadata key.
- */
-export class StringList extends S.Class<StringList>("StringList")({
-  /**
-   * The string values of the metadata to store.
-   */
-  "values": S.optionalWith(S.Array(S.String), { nullable: true })
-}) {}
-
-/**
- * User provided metadata stored as key-value pairs.
- */
-export class CustomMetadata extends S.Class<CustomMetadata>("CustomMetadata")({
-  /**
-   * The numeric value of the metadata to store.
-   */
-  "numericValue": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Required. The key of the metadata to store.
-   */
-  "key": S.String,
-  /**
-   * The string value of the metadata to store.
-   */
-  "stringValue": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The StringList value of the metadata to store.
-   */
-  "stringListValue": S.optionalWith(StringList, { nullable: true })
-}) {}
-
-/**
- * A `Chunk` is a subpart of a `Document` that is treated as an independent unit
- * for the purposes of vector representation and storage.
- * A `Corpus` can have a maximum of 1 million `Chunk`s.
- */
-export class Chunk extends S.Class<Chunk>("Chunk")({
-  /**
-   * Required. The content for the `Chunk`, such as the text string.
-   * The maximum number of tokens per chunk is 2043.
-   */
-  "data": ChunkData,
-  /**
-   * Output only. The Timestamp of when the `Chunk` was last updated.
-   */
-  "updateTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Immutable. Identifier. The `Chunk` resource name. The ID (name excluding the
-   * "corpora/ * /documents/ * /chunks/" prefix) can contain up to 40 characters
-   * that are lowercase alphanumeric or dashes (-). The ID cannot start or end
-   * with a dash. If the name is empty on create, a random 12-character unique
-   * ID will be generated.
-   * Example: `corpora/{corpus_id}/documents/{document_id}/chunks/123a456b789c`
-   */
-  "name": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Current state of the `Chunk`.
-   */
-  "state": S.optionalWith(ChunkState, { nullable: true }),
-  /**
-   * Output only. The Timestamp of when the `Chunk` was created.
-   */
-  "createTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. User provided custom metadata stored as key-value pairs.
-   * The maximum number of `CustomMetadata` per chunk is 20.
-   */
-  "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true })
-}) {}
-
-/**
- * The information for a chunk relevant to a query.
- */
-export class RelevantChunk extends S.Class<RelevantChunk>("RelevantChunk")({
-  /**
-   * `Chunk` associated with the query.
-   */
-  "chunk": S.optionalWith(Chunk, { nullable: true }),
-  /**
-   * `Chunk` relevance to the query.
-   */
-  "chunkRelevanceScore": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Response from `QueryCorpus` containing a list of relevant chunks.
- */
-export class QueryCorpusResponse extends S.Class<QueryCorpusResponse>("QueryCorpusResponse")({
-  /**
-   * The relevant chunks.
-   */
-  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
-}) {}
-
-/**
  * Configuration for retrieving grounding content from a `Corpus` or
  * `Document` created using the Semantic Retriever API.
  */
 export class SemanticRetrieverConfig extends S.Class<SemanticRetrieverConfig>("SemanticRetrieverConfig")({
+  /**
+   * Required. Name of the resource for retrieval. Example: `corpora/123` or
+   * `corpora/123/documents/abc`.
+   */
+  "source": S.String,
+  /**
+   * Required. Query to use for matching `Chunk`s in the given resource by similarity.
+   */
+  "query": Content,
   /**
    * Optional. Filters for selecting `Document`s and/or `Chunk`s from the resource.
    */
@@ -2492,43 +1726,9 @@ export class SemanticRetrieverConfig extends S.Class<SemanticRetrieverConfig>("S
    */
   "maxChunksCount": S.optionalWith(S.Int, { nullable: true }),
   /**
-   * Required. Query to use for matching `Chunk`s in the given resource by similarity.
-   */
-  "query": Content,
-  /**
    * Optional. Minimum relevance score for retrieved relevant `Chunk`s.
    */
-  "minimumRelevanceScore": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Required. Name of the resource for retrieval. Example: `corpora/123` or
-   * `corpora/123/documents/abc`.
-   */
-  "source": S.String
-}) {}
-
-/**
- * Passage included inline with a grounding configuration.
- */
-export class GroundingPassage extends S.Class<GroundingPassage>("GroundingPassage")({
-  /**
-   * Content of the passage.
-   */
-  "content": S.optionalWith(Content, { nullable: true }),
-  /**
-   * Identifier for the passage for attributing this passage in grounded
-   * answers.
-   */
-  "id": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A repeated list of passages.
- */
-export class GroundingPassages extends S.Class<GroundingPassages>("GroundingPassages")({
-  /**
-   * List of passages.
-   */
-  "passages": S.optionalWith(S.Array(GroundingPassage), { nullable: true })
+  "minimumRelevanceScore": S.optionalWith(S.Number, { nullable: true })
 }) {}
 
 /**
@@ -2543,6 +1743,15 @@ export class GenerateAnswerRequestAnswerStyle
  */
 export class GenerateAnswerRequest extends S.Class<GenerateAnswerRequest>("GenerateAnswerRequest")({
   /**
+   * Passages provided inline with the request.
+   */
+  "inlinePassages": S.optionalWith(GroundingPassages, { nullable: true }),
+  /**
+   * Content retrieved from resources created via the Semantic Retriever
+   * API.
+   */
+  "semanticRetriever": S.optionalWith(SemanticRetrieverConfig, { nullable: true }),
+  /**
    * Required. The content of the current conversation with the `Model`. For single-turn
    * queries, this is a single question to answer. For multi-turn queries, this
    * is a repeated field that contains conversation history and the last
@@ -2552,15 +1761,9 @@ export class GenerateAnswerRequest extends S.Class<GenerateAnswerRequest>("Gener
    */
   "contents": S.Array(Content),
   /**
-   * Optional. Controls the randomness of the output.
-   *
-   * Values can range from [0.0,1.0], inclusive. A value closer to 1.0 will
-   * produce responses that are more varied and creative, while a value closer
-   * to 0.0 will typically result in more straightforward responses from the
-   * model. A low temperature (~0.2) is usually recommended for
-   * Attributed-Question-Answering use cases.
+   * Required. Style in which answers should be returned.
    */
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  "answerStyle": GenerateAnswerRequestAnswerStyle,
   /**
    * Optional. A list of unique `SafetySetting` instances for blocking unsafe content.
    *
@@ -2582,18 +1785,15 @@ export class GenerateAnswerRequest extends S.Class<GenerateAnswerRequest>("Gener
    */
   "safetySettings": S.optionalWith(S.Array(SafetySetting), { nullable: true }),
   /**
-   * Content retrieved from resources created via the Semantic Retriever
-   * API.
+   * Optional. Controls the randomness of the output.
+   *
+   * Values can range from [0.0,1.0], inclusive. A value closer to 1.0 will
+   * produce responses that are more varied and creative, while a value closer
+   * to 0.0 will typically result in more straightforward responses from the
+   * model. A low temperature (~0.2) is usually recommended for
+   * Attributed-Question-Answering use cases.
    */
-  "semanticRetriever": S.optionalWith(SemanticRetrieverConfig, { nullable: true }),
-  /**
-   * Passages provided inline with the request.
-   */
-  "inlinePassages": S.optionalWith(GroundingPassages, { nullable: true }),
-  /**
-   * Required. Style in which answers should be returned.
-   */
-  "answerStyle": GenerateAnswerRequestAnswerStyle
+  "temperature": S.optionalWith(S.Number, { nullable: true })
 }) {}
 
 /**
@@ -2624,19 +1824,6 @@ export class InputFeedback extends S.Class<InputFeedback>("InputFeedback")({
  */
 export class GenerateAnswerResponse extends S.Class<GenerateAnswerResponse>("GenerateAnswerResponse")({
   /**
-   * Output only. Feedback related to the input data used to answer the question, as opposed
-   * to the model-generated response to the question.
-   *
-   * The input data can be one or more of the following:
-   *
-   * - Question specified by the last entry in `GenerateAnswerRequest.content`
-   * - Conversation history specified by the other entries in
-   * `GenerateAnswerRequest.content`
-   * - Grounding sources (`GenerateAnswerRequest.semantic_retriever` or
-   * `GenerateAnswerRequest.inline_passages`)
-   */
-  "inputFeedback": S.optionalWith(InputFeedback, { nullable: true }),
-  /**
    * Candidate answer from the model.
    *
    * Note: The model *always* attempts to provide a grounded answer, even when
@@ -2660,701 +1847,112 @@ export class GenerateAnswerResponse extends S.Class<GenerateAnswerResponse>("Gen
    * knowledge. The threshold and nature of such fallbacks will depend on
    * individual use cases. `0.5` is a good starting threshold.
    */
-  "answerableProbability": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Request to create a `Chunk`.
- */
-export class CreateChunkRequest extends S.Class<CreateChunkRequest>("CreateChunkRequest")({
+  "answerableProbability": S.optionalWith(S.Number, { nullable: true }),
   /**
-   * Required. The name of the `Document` where this `Chunk` will be created.
-   * Example: `corpora/my-corpus-123/documents/the-doc-abc`
-   */
-  "parent": S.String,
-  /**
-   * Required. The `Chunk` to create.
-   */
-  "chunk": Chunk
-}) {}
-
-/**
- * Request to batch create `Chunk`s.
- */
-export class BatchCreateChunksRequest extends S.Class<BatchCreateChunksRequest>("BatchCreateChunksRequest")({
-  /**
-   * Required. The request messages specifying the `Chunk`s to create.
-   * A maximum of 100 `Chunk`s can be created in a batch.
-   */
-  "requests": S.Array(CreateChunkRequest)
-}) {}
-
-/**
- * Response from `BatchCreateChunks` containing a list of created `Chunk`s.
- */
-export class BatchCreateChunksResponse extends S.Class<BatchCreateChunksResponse>("BatchCreateChunksResponse")({
-  /**
-   * `Chunk`s created.
-   */
-  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true })
-}) {}
-
-export class ListOperationsByParams extends S.Struct({
-  "filter": S.optionalWith(S.String, { nullable: true }),
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ListChunksParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Response from `ListChunks` containing a paginated list of `Chunk`s.
- * The `Chunk`s are sorted by ascending `chunk.create_time`.
- */
-export class ListChunksResponse extends S.Class<ListChunksResponse>("ListChunksResponse")({
-  /**
-   * The returned `Chunk`s.
-   */
-  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true }),
-  /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
-   * If this field is omitted, there are no more pages.
-   */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ListModelsParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Information about a Generative Language Model.
- */
-export class Model extends S.Class<Model>("Model")({
-  /**
-   * A short description of the model.
-   */
-  "description": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Required. The resource name of the `Model`. Refer to [Model
-   * variants](https://ai.google.dev/gemini-api/docs/models/gemini#model-variations)
-   * for all allowed values.
+   * Output only. Feedback related to the input data used to answer the question, as opposed
+   * to the model-generated response to the question.
    *
-   * Format: `models/{model}` with a `{model}` naming convention of:
+   * The input data can be one or more of the following:
    *
-   * * "{base_model_id}-{version}"
-   *
-   * Examples:
-   *
-   * * `models/gemini-1.5-flash-001`
+   * - Question specified by the last entry in `GenerateAnswerRequest.content`
+   * - Conversation history specified by the other entries in
+   * `GenerateAnswerRequest.content`
+   * - Grounding sources (`GenerateAnswerRequest.semantic_retriever` or
+   * `GenerateAnswerRequest.inline_passages`)
    */
-  "name": S.String,
+  "inputFeedback": S.optionalWith(InputFeedback, { nullable: true })
+}) {}
+
+export class TaskType extends S.Literal(
+  "TASK_TYPE_UNSPECIFIED",
+  "RETRIEVAL_QUERY",
+  "RETRIEVAL_DOCUMENT",
+  "SEMANTIC_SIMILARITY",
+  "CLASSIFICATION",
+  "CLUSTERING",
+  "QUESTION_ANSWERING",
+  "FACT_VERIFICATION",
+  "CODE_RETRIEVAL_QUERY"
+) {}
+
+/**
+ * Request containing the `Content` for the model to embed.
+ */
+export class EmbedContentRequest extends S.Class<EmbedContentRequest>("EmbedContentRequest")({
   /**
-   * Maximum number of output tokens available for this model.
-   */
-  "outputTokenLimit": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Required. The name of the base model, pass this to the generation request.
+   * Required. The model's resource name. This serves as an ID for the Model to use.
    *
-   * Examples:
+   * This name should match a model name returned by the `ListModels` method.
    *
-   * * `gemini-1.5-flash`
+   * Format: `models/{model}`
    */
-  "baseModelId": S.String,
+  "model": S.String,
   /**
-   * For [Nucleus
-   * sampling](https://ai.google.dev/gemini-api/docs/prompting-strategies#top-p).
+   * Required. The content to embed. Only the `parts.text` fields will be counted.
+   */
+  "content": Content,
+  /**
+   * Optional. Optional task type for which the embeddings will be used. Not supported on
+   * earlier models (`models/embedding-001`).
+   */
+  "taskType": S.optionalWith(TaskType, { nullable: true }),
+  /**
+   * Optional. An optional title for the text. Only applicable when TaskType is
+   * `RETRIEVAL_DOCUMENT`.
    *
-   * Nucleus sampling considers the smallest set of tokens whose probability
-   * sum is at least `top_p`.
-   * This value specifies default to be used by the backend while making the
-   * call to the model.
+   * Note: Specifying a `title` for `RETRIEVAL_DOCUMENT` provides better quality
+   * embeddings for retrieval.
    */
-  "topP": S.optionalWith(S.Number, { nullable: true }),
+  "title": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The model's supported generation methods.
-   *
-   * The corresponding API method names are defined as Pascal case
-   * strings, such as `generateMessage` and `generateContent`.
+   * Optional. Optional reduced dimension for the output embedding. If set, excessive
+   * values in the output embedding are truncated from the end. Supported by
+   * newer models since 2024 only. You cannot set this value if using the
+   * earlier model (`models/embedding-001`).
    */
-  "supportedGenerationMethods": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * The human-readable name of the model. E.g. "Gemini 1.5 Flash".
-   *
-   * The name can be up to 128 characters long and can consist of any UTF-8
-   * characters.
-   */
-  "displayName": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Required. The version number of the model.
-   *
-   * This represents the major version (`1.0` or `1.5`)
-   */
-  "version": S.String,
-  /**
-   * Controls the randomness of the output.
-   *
-   * Values can range over `[0.0,max_temperature]`, inclusive. A higher value
-   * will produce responses that are more varied, while a value closer to `0.0`
-   * will typically result in less surprising responses from the model.
-   * This value specifies default to be used by the backend while making the
-   * call to the model.
-   */
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * The maximum temperature this model can use.
-   */
-  "maxTemperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Maximum number of input tokens allowed for this model.
-   */
-  "inputTokenLimit": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * For Top-k sampling.
-   *
-   * Top-k sampling considers the set of `top_k` most probable tokens.
-   * This value specifies default to be used by the backend while making the
-   * call to the model.
-   * If empty, indicates the model doesn't use top-k sampling, and `top_k` isn't
-   * allowed as a generation parameter.
-   */
-  "topK": S.optionalWith(S.Int, { nullable: true })
+  "outputDimensionality": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
 /**
- * Response from `ListModel` containing a paginated list of Models.
+ * A list of floats representing an embedding.
  */
-export class ListModelsResponse extends S.Class<ListModelsResponse>("ListModelsResponse")({
+export class ContentEmbedding extends S.Class<ContentEmbedding>("ContentEmbedding")({
   /**
-   * The returned Models.
+   * The embedding values.
    */
-  "models": S.optionalWith(S.Array(Model), { nullable: true }),
-  /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
-   *
-   * If this field is omitted, there are no more pages.
-   */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+  "values": S.optionalWith(S.Array(S.Number), { nullable: true })
 }) {}
 
 /**
- * Request to delete a `Chunk`.
+ * The response to an `EmbedContentRequest`.
  */
-export class DeleteChunkRequest extends S.Class<DeleteChunkRequest>("DeleteChunkRequest")({
+export class EmbedContentResponse extends S.Class<EmbedContentResponse>("EmbedContentResponse")({
   /**
-   * Required. The resource name of the `Chunk` to delete.
-   * Example: `corpora/my-corpus-123/documents/the-doc-abc/chunks/some-chunk`
+   * Output only. The embedding generated from the input content.
    */
-  "name": S.String
+  "embedding": S.optionalWith(ContentEmbedding, { nullable: true })
 }) {}
 
 /**
- * Request to batch delete `Chunk`s.
+ * Batch request to get embeddings from the model for a list of prompts.
  */
-export class BatchDeleteChunksRequest extends S.Class<BatchDeleteChunksRequest>("BatchDeleteChunksRequest")({
+export class BatchEmbedContentsRequest extends S.Class<BatchEmbedContentsRequest>("BatchEmbedContentsRequest")({
   /**
-   * Required. The request messages specifying the `Chunk`s to delete.
+   * Required. Embed requests for the batch. The model in each of these requests must
+   * match the model specified `BatchEmbedContentsRequest.model`.
    */
-  "requests": S.Array(DeleteChunkRequest)
-}) {}
-
-export class ListPermissionsByCorpusParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ListTunedModelsParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true }),
-  "filter": S.optionalWith(S.String, { nullable: true })
+  "requests": S.Array(EmbedContentRequest)
 }) {}
 
 /**
- * Hyperparameters controlling the tuning process. Read more at
- * https://ai.google.dev/docs/model_tuning_guidance
+ * The response to a `BatchEmbedContentsRequest`.
  */
-export class Hyperparameters extends S.Class<Hyperparameters>("Hyperparameters")({
+export class BatchEmbedContentsResponse extends S.Class<BatchEmbedContentsResponse>("BatchEmbedContentsResponse")({
   /**
-   * Optional. Immutable. The learning rate hyperparameter for tuning.
-   * If not set, a default of 0.001 or 0.0002 will be calculated based on the
-   * number of training examples.
+   * Output only. The embeddings for each request, in the same order as provided in the batch
+   * request.
    */
-  "learningRate": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Immutable. The number of training epochs. An epoch is one pass through the training
-   * data.
-   * If not set, a default of 5 will be used.
-   */
-  "epochCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Immutable. The batch size hyperparameter for tuning.
-   * If not set, a default of 4 or 16 will be used based on the number of
-   * training examples.
-   */
-  "batchSize": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Immutable. The learning rate multiplier is used to calculate a final learning_rate
-   * based on the default (recommended) value.
-   * Actual learning rate := learning_rate_multiplier * default learning rate
-   * Default learning rate is dependent on base model and dataset size.
-   * If not set, a default of 1.0 will be used.
-   */
-  "learningRateMultiplier": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Record for a single tuning step.
- */
-export class TuningSnapshot extends S.Class<TuningSnapshot>("TuningSnapshot")({
-  /**
-   * Output only. The tuning step.
-   */
-  "step": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. The epoch this step was part of.
-   */
-  "epoch": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. The mean loss of the training examples for this step.
-   */
-  "meanLoss": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Output only. The timestamp when this metric was computed.
-   */
-  "computeTime": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A single example for tuning.
- */
-export class TuningExample extends S.Class<TuningExample>("TuningExample")({
-  /**
-   * Required. The expected model output.
-   */
-  "output": S.String,
-  /**
-   * Optional. Text model input.
-   */
-  "textInput": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A set of tuning examples. Can be training or validation data.
- */
-export class TuningExamples extends S.Class<TuningExamples>("TuningExamples")({
-  /**
-   * The examples. Example input can be for text or discuss, but all examples
-   * in a set must be of the same type.
-   */
-  "examples": S.optionalWith(S.Array(TuningExample), { nullable: true })
-}) {}
-
-/**
- * Dataset for training or validation.
- */
-export class Dataset extends S.Class<Dataset>("Dataset")({
-  /**
-   * Optional. Inline examples with simple input/output text.
-   */
-  "examples": S.optionalWith(TuningExamples, { nullable: true })
-}) {}
-
-/**
- * Tuning tasks that create tuned models.
- */
-export class TuningTask extends S.Class<TuningTask>("TuningTask")({
-  /**
-   * Immutable. Hyperparameters controlling the tuning process. If not provided, default
-   * values will be used.
-   */
-  "hyperparameters": S.optionalWith(Hyperparameters, { nullable: true }),
-  /**
-   * Output only. The timestamp when tuning this model started.
-   */
-  "startTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Metrics collected during tuning.
-   */
-  "snapshots": S.optionalWith(S.Array(TuningSnapshot), { nullable: true }),
-  /**
-   * Required. Input only. Immutable. The model training data.
-   */
-  "trainingData": Dataset,
-  /**
-   * Output only. The timestamp when tuning this model completed.
-   */
-  "completeTime": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Tuned model as a source for training a new model.
- */
-export class TunedModelSource extends S.Class<TunedModelSource>("TunedModelSource")({
-  /**
-   * Output only. The name of the base `Model` this `TunedModel` was tuned from.
-   * Example: `models/gemini-1.5-flash-001`
-   */
-  "baseModel": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Immutable. The name of the `TunedModel` to use as the starting point for
-   * training the new model.
-   * Example: `tunedModels/my-tuned-model`
-   */
-  "tunedModel": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Output only. The state of the tuned model.
- */
-export class TunedModelState extends S.Literal("STATE_UNSPECIFIED", "CREATING", "ACTIVE", "FAILED") {}
-
-/**
- * A fine-tuned model created using ModelService.CreateTunedModel.
- */
-export class TunedModel extends S.Class<TunedModel>("TunedModel")({
-  /**
-   * Optional. The name to display for this model in user interfaces.
-   * The display name must be up to 40 characters including spaces.
-   */
-  "displayName": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Required. The tuning task that creates the tuned model.
-   */
-  "tuningTask": TuningTask,
-  /**
-   * Optional. A short description of this model.
-   */
-  "description": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The timestamp when this model was created.
-   */
-  "createTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. TunedModel to use as the starting point for training the new model.
-   */
-  "tunedModelSource": S.optionalWith(TunedModelSource, { nullable: true }),
-  /**
-   * Immutable. The name of the `Model` to tune.
-   * Example: `models/gemini-1.5-flash-001`
-   */
-  "baseModel": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The timestamp when this model was updated.
-   */
-  "updateTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. List of project numbers that have read access to the tuned model.
-   */
-  "readerProjectNumbers": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * Output only. The tuned model name. A unique name will be generated on create.
-   * Example: `tunedModels/az2mb0bpw6i`
-   * If display_name is set on create, the id portion of the name will be set
-   * by concatenating the words of the display_name with hyphens and adding a
-   * random portion for uniqueness.
-   *
-   * Example:
-   *
-   *  * display_name = `Sentence Translator`
-   *  * name = `tunedModels/sentence-translator-u3b7m`
-   */
-  "name": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. For Nucleus sampling.
-   *
-   * Nucleus sampling considers the smallest set of tokens whose probability
-   * sum is at least `top_p`.
-   *
-   * This value specifies default to be the one used by the base model while
-   * creating the model.
-   */
-  "topP": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Output only. The state of the tuned model.
-   */
-  "state": S.optionalWith(TunedModelState, { nullable: true }),
-  /**
-   * Optional. Controls the randomness of the output.
-   *
-   * Values can range over `[0.0,1.0]`, inclusive. A value closer to `1.0` will
-   * produce responses that are more varied, while a value closer to `0.0` will
-   * typically result in less surprising responses from the model.
-   *
-   * This value specifies default to be the one used by the base model while
-   * creating the model.
-   */
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Optional. For Top-k sampling.
-   *
-   * Top-k sampling considers the set of `top_k` most probable tokens.
-   * This value specifies default to be used by the backend while making the
-   * call to the model.
-   *
-   * This value specifies default to be the one used by the base model while
-   * creating the model.
-   */
-  "topK": S.optionalWith(S.Int, { nullable: true })
-}) {}
-
-/**
- * Response from `ListTunedModels` containing a paginated list of Models.
- */
-export class ListTunedModelsResponse extends S.Class<ListTunedModelsResponse>("ListTunedModelsResponse")({
-  /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
-   *
-   * If this field is omitted, there are no more pages.
-   */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The returned Models.
-   */
-  "tunedModels": S.optionalWith(S.Array(TunedModel), { nullable: true })
-}) {}
-
-export class CreateTunedModelParams extends S.Struct({
-  "tunedModelId": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Metadata about the state and progress of creating a tuned model returned from
- * the long-running operation
- */
-export class CreateTunedModelMetadata extends S.Class<CreateTunedModelMetadata>("CreateTunedModelMetadata")({
-  /**
-   * Name of the tuned model associated with the tuning operation.
-   */
-  "tunedModel": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The total number of tuning steps.
-   */
-  "totalSteps": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * The number of steps completed.
-   */
-  "completedSteps": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * The completed percentage for the tuning operation.
-   */
-  "completedPercent": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Metrics collected during tuning.
-   */
-  "snapshots": S.optionalWith(S.Array(TuningSnapshot), { nullable: true })
-}) {}
-
-/**
- * This resource represents a long-running operation that is the result of a
- * network API call.
- */
-export class CreateTunedModelOperation extends S.Class<CreateTunedModelOperation>("CreateTunedModelOperation")({
-  "response": S.optionalWith(TunedModel, { nullable: true }),
-  "metadata": S.optionalWith(CreateTunedModelMetadata, { nullable: true }),
-  /**
-   * The error result of the operation in case of failure or cancellation.
-   */
-  "error": S.optionalWith(Status, { nullable: true }),
-  /**
-   * If the value is `false`, it means the operation is still in progress.
-   * If `true`, the operation is completed, and either `error` or `response` is
-   * available.
-   */
-  "done": S.optionalWith(S.Boolean, { nullable: true }),
-  /**
-   * The server-assigned name, which is only unique within the same service that
-   * originally returns it. If you use the default HTTP mapping, the
-   * `name` should be a resource name ending with `operations/{unique_id}`.
-   */
-  "name": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * Request message for [PredictionService.PredictLongRunning].
- */
-export class PredictLongRunningRequest extends S.Class<PredictLongRunningRequest>("PredictLongRunningRequest")({}) {}
-
-/**
- * Metadata for PredictLongRunning long running operations.
- */
-export class PredictLongRunningMetadata extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-/**
- * Representation of a video.
- */
-export class Video extends S.Class<Video>("Video")({
-  /**
-   * Raw bytes.
-   */
-  "video": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Path to another storage.
-   */
-  "uri": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A proto encapsulate various type of media.
- */
-export class Media extends S.Class<Media>("Media")({
-  /**
-   * Video as the only one for now.  This is mimicking Vertex proto.
-   */
-  "video": S.optionalWith(Video, { nullable: true })
-}) {}
-
-/**
- * Veo response.
- */
-export class GenerateVideoResponse extends S.Class<GenerateVideoResponse>("GenerateVideoResponse")({
-  /**
-   * Returns if any videos were filtered due to RAI policies.
-   */
-  "raiMediaFilteredCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Returns rai failure reasons if any.
-   */
-  "raiMediaFilteredReasons": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * The generated samples.
-   */
-  "generatedSamples": S.optionalWith(S.Array(Media), { nullable: true })
-}) {}
-
-/**
- * Response message for [PredictionService.PredictLongRunning]
- */
-export class PredictLongRunningResponse extends S.Class<PredictLongRunningResponse>("PredictLongRunningResponse")({
-  /**
-   * The response of the video generation prediction.
-   */
-  "generateVideoResponse": S.optionalWith(GenerateVideoResponse, { nullable: true })
-}) {}
-
-/**
- * This resource represents a long-running operation that is the result of a
- * network API call.
- */
-export class PredictLongRunningOperation extends S.Class<PredictLongRunningOperation>("PredictLongRunningOperation")({
-  "metadata": S.optionalWith(PredictLongRunningMetadata, { nullable: true }),
-  "response": S.optionalWith(PredictLongRunningResponse, { nullable: true }),
-  /**
-   * The error result of the operation in case of failure or cancellation.
-   */
-  "error": S.optionalWith(Status, { nullable: true }),
-  /**
-   * If the value is `false`, it means the operation is still in progress.
-   * If `true`, the operation is completed, and either `error` or `response` is
-   * available.
-   */
-  "done": S.optionalWith(S.Boolean, { nullable: true }),
-  /**
-   * The server-assigned name, which is only unique within the same service that
-   * originally returns it. If you use the default HTTP mapping, the
-   * `name` should be a resource name ending with `operations/{unique_id}`.
-   */
-  "name": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class UpdatePermissionParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
-}) {}
-
-/**
- * Request for querying a `Document`.
- */
-export class QueryDocumentRequest extends S.Class<QueryDocumentRequest>("QueryDocumentRequest")({
-  /**
-   * Optional. The maximum number of `Chunk`s to return.
-   * The service may return fewer `Chunk`s.
-   *
-   * If unspecified, at most 10 `Chunk`s will be returned.
-   * The maximum specified result count is 100.
-   */
-  "resultsCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Filter for `Chunk` metadata. Each `MetadataFilter` object should
-   * correspond to a unique key. Multiple `MetadataFilter` objects are joined by
-   * logical "AND"s.
-   *
-   * Note: `Document`-level filtering is not supported for this request because
-   * a `Document` name is already specified.
-   *
-   * Example query:
-   * (year >= 2020 OR year < 2010) AND (genre = drama OR genre = action)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
-   *                 {int_value = 2010, operation = LESS}},
-   *  {key = "chunk.custom_metadata.genre"
-   *   conditions = [{string_value = "drama", operation = EQUAL},
-   *                 {string_value = "action", operation = EQUAL}}]
-   *
-   * Example query for a numeric range of values:
-   * (year > 2015 AND year <= 2020)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2015, operation = GREATER}]},
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = LESS_EQUAL}]}]
-   *
-   * Note: "AND"s for the same key are only supported for numeric values. String
-   * values only support "OR"s for the same key.
-   */
-  "metadataFilters": S.optionalWith(S.Array(MetadataFilter), { nullable: true }),
-  /**
-   * Required. Query string to perform semantic search.
-   */
-  "query": S.String
-}) {}
-
-/**
- * Response from `QueryDocument` containing a list of relevant chunks.
- */
-export class QueryDocumentResponse extends S.Class<QueryDocumentResponse>("QueryDocumentResponse")({
-  /**
-   * The returned relevant chunks.
-   */
-  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
-}) {}
-
-export class UpdateTunedModelParams extends S.Struct({
-  "updateMask": S.optionalWith(S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$"))), {
-    nullable: true
-  })
-}) {}
-
-/**
- * Batch request to get a text embedding from the model.
- */
-export class BatchEmbedTextRequest extends S.Class<BatchEmbedTextRequest>("BatchEmbedTextRequest")({
-  /**
-   * Optional. The free-form input texts that the model will turn into an embedding. The
-   * current limit is 100 texts, over which an error will be thrown.
-   */
-  "texts": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * Optional. Embed requests for the batch. Only one of `texts` or `requests` can be set.
-   */
-  "requests": S.optionalWith(S.Array(EmbedTextRequest), { nullable: true })
-}) {}
-
-/**
- * The response to a EmbedTextRequest.
- */
-export class BatchEmbedTextResponse extends S.Class<BatchEmbedTextResponse>("BatchEmbedTextResponse")({
-  /**
-   * Output only. The embeddings generated from the input text.
-   */
-  "embeddings": S.optionalWith(S.Array(Embedding), { nullable: true })
+  "embeddings": S.optionalWith(S.Array(ContentEmbedding), { nullable: true })
 }) {}
 
 /**
@@ -3365,6 +1963,11 @@ export class BatchEmbedTextResponse extends S.Class<BatchEmbedTextResponse>("Bat
  */
 export class CountTokensRequest extends S.Class<CountTokensRequest>("CountTokensRequest")({
   /**
+   * Optional. The input given to the model as a prompt. This field is ignored when
+   * `generate_content_request` is set.
+   */
+  "contents": S.optionalWith(S.Array(Content), { nullable: true }),
+  /**
    * Optional. The overall input given to the `Model`. This includes the prompt as well as
    * other model steering information like [system
    * instructions](https://ai.google.dev/gemini-api/docs/system-instructions),
@@ -3374,12 +1977,7 @@ export class CountTokensRequest extends S.Class<CountTokensRequest>("CountTokens
    * exclusive. You can either send `Model` + `Content`s or a
    * `generate_content_request`, but never both.
    */
-  "generateContentRequest": S.optionalWith(GenerateContentRequest, { nullable: true }),
-  /**
-   * Optional. The input given to the model as a prompt. This field is ignored when
-   * `generate_content_request` is set.
-   */
-  "contents": S.optionalWith(S.Array(Content), { nullable: true })
+  "generateContentRequest": S.optionalWith(GenerateContentRequest, { nullable: true })
 }) {}
 
 /**
@@ -3389,113 +1987,114 @@ export class CountTokensRequest extends S.Class<CountTokensRequest>("CountTokens
  */
 export class CountTokensResponse extends S.Class<CountTokensResponse>("CountTokensResponse")({
   /**
-   * Output only. List of modalities that were processed in the request input.
+   * The number of tokens that the `Model` tokenizes the `prompt` into. Always
+   * non-negative.
    */
-  "promptTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
+  "totalTokens": S.optionalWith(S.Int, { nullable: true }),
   /**
    * Number of tokens in the cached part of the prompt (the cached content).
    */
   "cachedContentTokenCount": S.optionalWith(S.Int, { nullable: true }),
   /**
-   * The number of tokens that the `Model` tokenizes the `prompt` into. Always
-   * non-negative.
+   * Output only. List of modalities that were processed in the request input.
    */
-  "totalTokens": S.optionalWith(S.Int, { nullable: true }),
+  "promptTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true }),
   /**
    * Output only. List of modalities that were processed in the cached content.
    */
   "cacheTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true })
 }) {}
 
-export class UpdatePermissionByCorpusAndPermissionParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
-}) {}
-
-export class ListFilesParams extends S.Struct({
+export class ListCachedContentsParams extends S.Struct({
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
   "pageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Response for `ListFiles`.
+ * Metadata on the usage of the cached content.
  */
-export class ListFilesResponse extends S.Class<ListFilesResponse>("ListFilesResponse")({
+export class CachedContentUsageMetadata extends S.Class<CachedContentUsageMetadata>("CachedContentUsageMetadata")({
   /**
-   * The list of `File`s.
+   * Total number of tokens that the cached content consumes.
    */
-  "files": S.optionalWith(S.Array(File), { nullable: true }),
-  /**
-   * A token that can be sent as a `page_token` into a subsequent `ListFiles`
-   * call.
-   */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+  "totalTokenCount": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
 /**
- * Request for `CreateFile`.
+ * Content that has been preprocessed and can be used in subsequent request
+ * to GenerativeService.
+ *
+ * Cached content can be only used with model it was created for.
  */
-export class CreateFileRequest extends S.Class<CreateFileRequest>("CreateFileRequest")({
+export class CachedContent extends S.Class<CachedContent>("CachedContent")({
   /**
-   * Optional. Metadata for the file to create.
+   * Timestamp in UTC of when this resource is considered expired.
+   * This is *always* provided on output, regardless of what was sent
+   * on input.
    */
-  "file": S.optionalWith(File, { nullable: true })
-}) {}
-
-/**
- * Response for `CreateFile`.
- */
-export class CreateFileResponse extends S.Class<CreateFileResponse>("CreateFileResponse")({
+  "expireTime": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Metadata for the created file.
+   * Input only. New TTL for this resource, input only.
    */
-  "file": S.optionalWith(File, { nullable: true })
-}) {}
-
-/**
- * A `Document` is a collection of `Chunk`s.
- * A `Corpus` can have a maximum of 10,000 `Document`s.
- */
-export class Document extends S.Class<Document>("Document")({
+  "ttl": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Immutable. Identifier. The `Document` resource name. The ID (name excluding the
-   * "corpora/ * /documents/" prefix) can contain up to 40 characters that are
-   * lowercase alphanumeric or dashes (-). The ID cannot start or end with a
-   * dash. If the name is empty on create, a unique name will be derived from
-   * `display_name` along with a 12 character random suffix.
-   * Example: `corpora/{corpus_id}/documents/my-awesome-doc-123a456b789c`
+   * Output only. Identifier. The resource name referring to the cached content.
+   * Format: `cachedContents/{id}`
    */
   "name": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Output only. The Timestamp of when the `Document` was last updated.
-   */
-  "updateTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional. The human-readable display name for the `Document`. The display name must
-   * be no more than 512 characters in length, including spaces.
-   * Example: "Semantic Retriever Documentation"
+   * Optional. Immutable. The user-generated meaningful display name of the cached content. Maximum
+   * 128 Unicode characters.
    */
   "displayName": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Output only. The Timestamp of when the `Document` was created.
+   * Required. Immutable. The name of the `Model` to use for cached content
+   * Format: `models/{model}`
+   */
+  "model": S.String,
+  /**
+   * Optional. Input only. Immutable. Developer set system instruction. Currently text only.
+   */
+  "systemInstruction": S.optionalWith(Content, { nullable: true }),
+  /**
+   * Optional. Input only. Immutable. The content to cache.
+   */
+  "contents": S.optionalWith(S.Array(Content), { nullable: true }),
+  /**
+   * Optional. Input only. Immutable. A list of `Tools` the model may use to generate the next response
+   */
+  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+  /**
+   * Optional. Input only. Immutable. Tool config. This config is shared for all tools.
+   */
+  "toolConfig": S.optionalWith(ToolConfig, { nullable: true }),
+  /**
+   * Output only. Creation time of the cache entry.
    */
   "createTime": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Optional. User provided custom metadata stored as key-value pairs used for querying.
-   * A `Document` can have a maximum of 20 `CustomMetadata`.
+   * Output only. When the cache entry was last updated in UTC time.
    */
-  "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true })
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Metadata on the usage of the cached content.
+   */
+  "usageMetadata": S.optionalWith(CachedContentUsageMetadata, { nullable: true })
 }) {}
 
-export class DeleteDocumentParams extends S.Struct({
-  "force": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
-export class UpdateDocumentParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
-}) {}
-
-export class UpdateChunkParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
+/**
+ * Response with CachedContents list.
+ */
+export class ListCachedContentsResponse extends S.Class<ListCachedContentsResponse>("ListCachedContentsResponse")({
+  /**
+   * List of cached contents.
+   */
+  "cachedContents": S.optionalWith(S.Array(CachedContent), { nullable: true }),
+  /**
+   * A token, which can be sent as `page_token` to retrieve the next page.
+   * If this field is omitted, there are no subsequent pages.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UpdateCachedContentParams extends S.Struct({
@@ -3564,6 +2163,23 @@ export class Example extends S.Class<Example>("Example")({
  */
 export class MessagePrompt extends S.Class<MessagePrompt>("MessagePrompt")({
   /**
+   * Optional. Text that should be provided to the model first to ground the response.
+   *
+   * If not empty, this `context` will be given to the model first before the
+   * `examples` and `messages`. When using a `context` be sure to provide it
+   * with every request to maintain continuity.
+   *
+   * This field can be a description of your prompt to the model to help provide
+   * context and guide the responses. Examples: "Translate the phrase from
+   * English to French." or "Given a statement, classify the sentiment as happy,
+   * sad or neutral."
+   *
+   * Anything included in this field will take precedence over message history
+   * if the total input size exceeds the model's `input_token_limit` and the
+   * input request is truncated.
+   */
+  "context": S.optionalWith(S.String, { nullable: true }),
+  /**
    * Optional. Examples of what the model should generate.
    *
    * This includes both user input and the response that the model should
@@ -3583,24 +2199,102 @@ export class MessagePrompt extends S.Class<MessagePrompt>("MessagePrompt")({
    * If the total input size exceeds the model's `input_token_limit` the input
    * will be truncated: The oldest items will be dropped from `messages`.
    */
-  "messages": S.Array(Message),
+  "messages": S.Array(Message)
+}) {}
+
+/**
+ * Request to generate a message response from the model.
+ */
+export class GenerateMessageRequest extends S.Class<GenerateMessageRequest>("GenerateMessageRequest")({
   /**
-   * Optional. Text that should be provided to the model first to ground the response.
+   * Required. The structured textual input given to the model as a prompt.
    *
-   * If not empty, this `context` will be given to the model first before the
-   * `examples` and `messages`. When using a `context` be sure to provide it
-   * with every request to maintain continuity.
-   *
-   * This field can be a description of your prompt to the model to help provide
-   * context and guide the responses. Examples: "Translate the phrase from
-   * English to French." or "Given a statement, classify the sentiment as happy,
-   * sad or neutral."
-   *
-   * Anything included in this field will take precedence over message history
-   * if the total input size exceeds the model's `input_token_limit` and the
-   * input request is truncated.
+   * Given a
+   * prompt, the model will return what it predicts is the next message in the
+   * discussion.
    */
-  "context": S.optionalWith(S.String, { nullable: true })
+  "prompt": MessagePrompt,
+  /**
+   * Optional. Controls the randomness of the output.
+   *
+   * Values can range over `[0.0,1.0]`,
+   * inclusive. A value closer to `1.0` will produce responses that are more
+   * varied, while a value closer to `0.0` will typically result in
+   * less surprising responses from the model.
+   */
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. The number of generated response messages to return.
+   *
+   * This value must be between
+   * `[1, 8]`, inclusive. If unset, this will default to `1`.
+   */
+  "candidateCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. The maximum cumulative probability of tokens to consider when sampling.
+   *
+   * The model uses combined Top-k and nucleus sampling.
+   *
+   * Nucleus sampling considers the smallest set of tokens whose probability
+   * sum is at least `top_p`.
+   */
+  "topP": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. The maximum number of tokens to consider when sampling.
+   *
+   * The model uses combined Top-k and nucleus sampling.
+   *
+   * Top-k sampling considers the set of `top_k` most probable tokens.
+   */
+  "topK": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+/**
+ * The reason content was blocked during request processing.
+ */
+export class ContentFilterReason extends S.Literal("BLOCKED_REASON_UNSPECIFIED", "SAFETY", "OTHER") {}
+
+/**
+ * Content filtering metadata associated with processing a single request.
+ *
+ * ContentFilter contains a reason and an optional supporting string. The reason
+ * may be unspecified.
+ */
+export class ContentFilter extends S.Class<ContentFilter>("ContentFilter")({
+  /**
+   * The reason content was blocked during request processing.
+   */
+  "reason": S.optionalWith(ContentFilterReason, { nullable: true }),
+  /**
+   * A string that describes the filtering behavior in more detail.
+   */
+  "message": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The response from the model.
+ *
+ * This includes candidate messages and
+ * conversation history in the form of chronologically-ordered messages.
+ */
+export class GenerateMessageResponse extends S.Class<GenerateMessageResponse>("GenerateMessageResponse")({
+  /**
+   * Candidate response messages from the model.
+   */
+  "candidates": S.optionalWith(S.Array(Message), { nullable: true }),
+  /**
+   * The conversation history used by the model.
+   */
+  "messages": S.optionalWith(S.Array(Message), { nullable: true }),
+  /**
+   * A set of content filtering metadata for the prompt and response
+   * text.
+   *
+   * This indicates which `SafetyCategory`(s) blocked a
+   * candidate from this response, the lowest `HarmProbability`
+   * that triggered a block, and the HarmThreshold setting for that category.
+   */
+  "filters": S.optionalWith(S.Array(ContentFilter), { nullable: true })
 }) {}
 
 /**
@@ -3630,134 +2324,134 @@ export class CountMessageTokensResponse extends S.Class<CountMessageTokensRespon
   "tokenCount": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
-export class ListOperationsParams extends S.Struct({
-  "filter": S.optionalWith(S.String, { nullable: true }),
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class ListCorporaParams extends S.Struct({
+export class ListFilesParams extends S.Struct({
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
   "pageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * A `Corpus` is a collection of `Document`s.
- * A project can create up to 5 corpora.
+ * Metadata for a video `File`.
  */
-export class Corpus extends S.Class<Corpus>("Corpus")({
+export class VideoFileMetadata extends S.Class<VideoFileMetadata>("VideoFileMetadata")({
   /**
-   * Optional. The human-readable display name for the `Corpus`. The display name must be
-   * no more than 512 characters in length, including spaces.
-   * Example: "Docs on Semantic Retriever"
+   * Duration of the video.
    */
-  "displayName": S.optionalWith(S.String, { nullable: true }),
+  "videoDuration": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Output only. Processing state of the File.
+ */
+export class FileState extends S.Literal("STATE_UNSPECIFIED", "PROCESSING", "ACTIVE", "FAILED") {}
+
+/**
+ * Source of the File.
+ */
+export class FileSource extends S.Literal("SOURCE_UNSPECIFIED", "UPLOADED", "GENERATED") {}
+
+/**
+ * A file uploaded to the API.
+ * Next ID: 15
+ */
+export class File extends S.Class<File>("File")({
   /**
-   * Immutable. Identifier. The `Corpus` resource name. The ID (name excluding the "corpora/" prefix)
-   * can contain up to 40 characters that are lowercase alphanumeric or dashes
-   * (-). The ID cannot start or end with a dash. If the name is empty on
-   * create, a unique name will be derived from `display_name` along with a 12
-   * character random suffix.
-   * Example: `corpora/my-awesome-corpora-123a456b789c`
+   * Output only. Metadata for a video.
+   */
+  "videoMetadata": S.optionalWith(VideoFileMetadata, { nullable: true }),
+  /**
+   * Immutable. Identifier. The `File` resource name. The ID (name excluding the "files/" prefix) can
+   * contain up to 40 characters that are lowercase alphanumeric or dashes (-).
+   * The ID cannot start or end with a dash. If the name is empty on create, a
+   * unique name will be generated.
+   * Example: `files/123-456`
    */
   "name": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Output only. The Timestamp of when the `Corpus` was last updated.
+   * Optional. The human-readable display name for the `File`. The display name must be
+   * no more than 512 characters in length, including spaces.
+   * Example: "Welcome Image"
+   */
+  "displayName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. MIME type of the file.
+   */
+  "mimeType": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Size of the file in bytes.
+   */
+  "sizeBytes": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The timestamp of when the `File` was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The timestamp of when the `File` was last updated.
    */
   "updateTime": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Output only. The Timestamp of when the `Corpus` was created.
+   * Output only. The timestamp of when the `File` will be deleted. Only set if the `File` is
+   * scheduled to expire.
    */
-  "createTime": S.optionalWith(S.String, { nullable: true })
+  "expirationTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. SHA-256 hash of the uploaded bytes.
+   */
+  "sha256Hash": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The uri of the `File`.
+   */
+  "uri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The download uri of the `File`.
+   */
+  "downloadUri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Processing state of the File.
+   */
+  "state": S.optionalWith(FileState, { nullable: true }),
+  /**
+   * Source of the File.
+   */
+  "source": S.optionalWith(FileSource, { nullable: true }),
+  /**
+   * Output only. Error status if File processing failed.
+   */
+  "error": S.optionalWith(Status, { nullable: true })
 }) {}
 
 /**
- * Response from `ListCorpora` containing a paginated list of `Corpora`.
- * The results are sorted by ascending `corpus.create_time`.
+ * Response for `ListFiles`.
  */
-export class ListCorporaResponse extends S.Class<ListCorporaResponse>("ListCorporaResponse")({
+export class ListFilesResponse extends S.Class<ListFilesResponse>("ListFilesResponse")({
   /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
-   * If this field is omitted, there are no more pages.
+   * The list of `File`s.
    */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true }),
+  "files": S.optionalWith(S.Array(File), { nullable: true }),
   /**
-   * The returned corpora.
+   * A token that can be sent as a `page_token` into a subsequent `ListFiles`
+   * call.
    */
-  "corpora": S.optionalWith(S.Array(Corpus), { nullable: true })
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Request to generate a message response from the model.
+ * Request for `CreateFile`.
  */
-export class GenerateMessageRequest extends S.Class<GenerateMessageRequest>("GenerateMessageRequest")({
+export class CreateFileRequest extends S.Class<CreateFileRequest>("CreateFileRequest")({
   /**
-   * Optional. Controls the randomness of the output.
-   *
-   * Values can range over `[0.0,1.0]`,
-   * inclusive. A value closer to `1.0` will produce responses that are more
-   * varied, while a value closer to `0.0` will typically result in
-   * less surprising responses from the model.
+   * Optional. Metadata for the file to create.
    */
-  "temperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Required. The structured textual input given to the model as a prompt.
-   *
-   * Given a
-   * prompt, the model will return what it predicts is the next message in the
-   * discussion.
-   */
-  "prompt": MessagePrompt,
-  /**
-   * Optional. The maximum cumulative probability of tokens to consider when sampling.
-   *
-   * The model uses combined Top-k and nucleus sampling.
-   *
-   * Nucleus sampling considers the smallest set of tokens whose probability
-   * sum is at least `top_p`.
-   */
-  "topP": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Optional. The number of generated response messages to return.
-   *
-   * This value must be between
-   * `[1, 8]`, inclusive. If unset, this will default to `1`.
-   */
-  "candidateCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. The maximum number of tokens to consider when sampling.
-   *
-   * The model uses combined Top-k and nucleus sampling.
-   *
-   * Top-k sampling considers the set of `top_k` most probable tokens.
-   */
-  "topK": S.optionalWith(S.Int, { nullable: true })
+  "file": S.optionalWith(File, { nullable: true })
 }) {}
 
 /**
- * The response from the model.
- *
- * This includes candidate messages and
- * conversation history in the form of chronologically-ordered messages.
+ * Response for `CreateFile`.
  */
-export class GenerateMessageResponse extends S.Class<GenerateMessageResponse>("GenerateMessageResponse")({
+export class CreateFileResponse extends S.Class<CreateFileResponse>("CreateFileResponse")({
   /**
-   * The conversation history used by the model.
+   * Metadata for the created file.
    */
-  "messages": S.optionalWith(S.Array(Message), { nullable: true }),
-  /**
-   * Candidate response messages from the model.
-   */
-  "candidates": S.optionalWith(S.Array(Message), { nullable: true }),
-  /**
-   * A set of content filtering metadata for the prompt and response
-   * text.
-   *
-   * This indicates which `SafetyCategory`(s) blocked a
-   * candidate from this response, the lowest `HarmProbability`
-   * that triggered a block, and the HarmThreshold setting for that category.
-   */
-  "filters": S.optionalWith(S.Array(ContentFilter), { nullable: true })
+  "file": S.optionalWith(File, { nullable: true })
 }) {}
 
 /**
@@ -3766,13 +2460,567 @@ export class GenerateMessageResponse extends S.Class<GenerateMessageResponse>("G
 export class DownloadFileResponse extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 /**
- * The response to an `EmbedContentRequest`.
+ * Output only. The state of the GeneratedFile.
  */
-export class EmbedContentResponse extends S.Class<EmbedContentResponse>("EmbedContentResponse")({
+export class GeneratedFileState extends S.Literal("STATE_UNSPECIFIED", "GENERATING", "GENERATED", "FAILED") {}
+
+/**
+ * A file generated on behalf of a user.
+ */
+export class GeneratedFile extends S.Class<GeneratedFile>("GeneratedFile")({
   /**
-   * Output only. The embedding generated from the input content.
+   * Identifier. The name of the generated file.
+   * Example: `generatedFiles/abc-123`
    */
-  "embedding": S.optionalWith(ContentEmbedding, { nullable: true })
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * MIME type of the generatedFile.
+   */
+  "mimeType": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The state of the GeneratedFile.
+   */
+  "state": S.optionalWith(GeneratedFileState, { nullable: true }),
+  /**
+   * Error details if the GeneratedFile ends up in the STATE_FAILED state.
+   */
+  "error": S.optionalWith(Status, { nullable: true })
+}) {}
+
+export class ListGeneratedFilesParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Response for `ListGeneratedFiles`.
+ */
+export class ListGeneratedFilesResponse extends S.Class<ListGeneratedFilesResponse>("ListGeneratedFilesResponse")({
+  /**
+   * The list of `GeneratedFile`s.
+   */
+  "generatedFiles": S.optionalWith(S.Array(GeneratedFile), { nullable: true }),
+  /**
+   * A token that can be sent as a `page_token` into a subsequent
+   * `ListGeneratedFiles` call.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Information about a Generative Language Model.
+ */
+export class Model extends S.Class<Model>("Model")({
+  /**
+   * Required. The resource name of the `Model`. Refer to [Model
+   * variants](https://ai.google.dev/gemini-api/docs/models/gemini#model-variations)
+   * for all allowed values.
+   *
+   * Format: `models/{model}` with a `{model}` naming convention of:
+   *
+   * * "{base_model_id}-{version}"
+   *
+   * Examples:
+   *
+   * * `models/gemini-1.5-flash-001`
+   */
+  "name": S.String,
+  /**
+   * Required. The name of the base model, pass this to the generation request.
+   *
+   * Examples:
+   *
+   * * `gemini-1.5-flash`
+   */
+  "baseModelId": S.String,
+  /**
+   * Required. The version number of the model.
+   *
+   * This represents the major version (`1.0` or `1.5`)
+   */
+  "version": S.String,
+  /**
+   * The human-readable name of the model. E.g. "Gemini 1.5 Flash".
+   *
+   * The name can be up to 128 characters long and can consist of any UTF-8
+   * characters.
+   */
+  "displayName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * A short description of the model.
+   */
+  "description": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Maximum number of input tokens allowed for this model.
+   */
+  "inputTokenLimit": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Maximum number of output tokens available for this model.
+   */
+  "outputTokenLimit": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * The model's supported generation methods.
+   *
+   * The corresponding API method names are defined as Pascal case
+   * strings, such as `generateMessage` and `generateContent`.
+   */
+  "supportedGenerationMethods": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Controls the randomness of the output.
+   *
+   * Values can range over `[0.0,max_temperature]`, inclusive. A higher value
+   * will produce responses that are more varied, while a value closer to `0.0`
+   * will typically result in less surprising responses from the model.
+   * This value specifies default to be used by the backend while making the
+   * call to the model.
+   */
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * The maximum temperature this model can use.
+   */
+  "maxTemperature": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * For [Nucleus
+   * sampling](https://ai.google.dev/gemini-api/docs/prompting-strategies#top-p).
+   *
+   * Nucleus sampling considers the smallest set of tokens whose probability
+   * sum is at least `top_p`.
+   * This value specifies default to be used by the backend while making the
+   * call to the model.
+   */
+  "topP": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * For Top-k sampling.
+   *
+   * Top-k sampling considers the set of `top_k` most probable tokens.
+   * This value specifies default to be used by the backend while making the
+   * call to the model.
+   * If empty, indicates the model doesn't use top-k sampling, and `top_k` isn't
+   * allowed as a generation parameter.
+   */
+  "topK": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Whether the model supports thinking.
+   */
+  "thinking": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class ListModelsParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Response from `ListModel` containing a paginated list of Models.
+ */
+export class ListModelsResponse extends S.Class<ListModelsResponse>("ListModelsResponse")({
+  /**
+   * The returned Models.
+   */
+  "models": S.optionalWith(S.Array(Model), { nullable: true }),
+  /**
+   * A token, which can be sent as `page_token` to retrieve the next page.
+   *
+   * If this field is omitted, there are no more pages.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Tuned model as a source for training a new model.
+ */
+export class TunedModelSource extends S.Class<TunedModelSource>("TunedModelSource")({
+  /**
+   * Immutable. The name of the `TunedModel` to use as the starting point for
+   * training the new model.
+   * Example: `tunedModels/my-tuned-model`
+   */
+  "tunedModel": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The name of the base `Model` this `TunedModel` was tuned from.
+   * Example: `models/gemini-1.5-flash-001`
+   */
+  "baseModel": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Output only. The state of the tuned model.
+ */
+export class TunedModelState extends S.Literal("STATE_UNSPECIFIED", "CREATING", "ACTIVE", "FAILED") {}
+
+/**
+ * Record for a single tuning step.
+ */
+export class TuningSnapshot extends S.Class<TuningSnapshot>("TuningSnapshot")({
+  /**
+   * Output only. The tuning step.
+   */
+  "step": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. The epoch this step was part of.
+   */
+  "epoch": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. The mean loss of the training examples for this step.
+   */
+  "meanLoss": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Output only. The timestamp when this metric was computed.
+   */
+  "computeTime": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A single example for tuning.
+ */
+export class TuningExample extends S.Class<TuningExample>("TuningExample")({
+  /**
+   * Optional. Text model input.
+   */
+  "textInput": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The expected model output.
+   */
+  "output": S.String
+}) {}
+
+/**
+ * A set of tuning examples. Can be training or validation data.
+ */
+export class TuningExamples extends S.Class<TuningExamples>("TuningExamples")({
+  /**
+   * The examples. Example input can be for text or discuss, but all examples
+   * in a set must be of the same type.
+   */
+  "examples": S.optionalWith(S.Array(TuningExample), { nullable: true })
+}) {}
+
+/**
+ * Dataset for training or validation.
+ */
+export class Dataset extends S.Class<Dataset>("Dataset")({
+  /**
+   * Optional. Inline examples with simple input/output text.
+   */
+  "examples": S.optionalWith(TuningExamples, { nullable: true })
+}) {}
+
+/**
+ * Hyperparameters controlling the tuning process. Read more at
+ * https://ai.google.dev/docs/model_tuning_guidance
+ */
+export class Hyperparameters extends S.Class<Hyperparameters>("Hyperparameters")({
+  /**
+   * Optional. Immutable. The learning rate hyperparameter for tuning.
+   * If not set, a default of 0.001 or 0.0002 will be calculated based on the
+   * number of training examples.
+   */
+  "learningRate": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. Immutable. The learning rate multiplier is used to calculate a final learning_rate
+   * based on the default (recommended) value.
+   * Actual learning rate := learning_rate_multiplier * default learning rate
+   * Default learning rate is dependent on base model and dataset size.
+   * If not set, a default of 1.0 will be used.
+   */
+  "learningRateMultiplier": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Immutable. The number of training epochs. An epoch is one pass through the training
+   * data.
+   * If not set, a default of 5 will be used.
+   */
+  "epochCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Immutable. The batch size hyperparameter for tuning.
+   * If not set, a default of 4 or 16 will be used based on the number of
+   * training examples.
+   */
+  "batchSize": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+/**
+ * Tuning tasks that create tuned models.
+ */
+export class TuningTask extends S.Class<TuningTask>("TuningTask")({
+  /**
+   * Output only. The timestamp when tuning this model started.
+   */
+  "startTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The timestamp when tuning this model completed.
+   */
+  "completeTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Metrics collected during tuning.
+   */
+  "snapshots": S.optionalWith(S.Array(TuningSnapshot), { nullable: true }),
+  /**
+   * Required. Input only. Immutable. The model training data.
+   */
+  "trainingData": Dataset,
+  /**
+   * Immutable. Hyperparameters controlling the tuning process. If not provided, default
+   * values will be used.
+   */
+  "hyperparameters": S.optionalWith(Hyperparameters, { nullable: true })
+}) {}
+
+/**
+ * A fine-tuned model created using ModelService.CreateTunedModel.
+ */
+export class TunedModel extends S.Class<TunedModel>("TunedModel")({
+  /**
+   * Optional. TunedModel to use as the starting point for training the new model.
+   */
+  "tunedModelSource": S.optionalWith(TunedModelSource, { nullable: true }),
+  /**
+   * Immutable. The name of the `Model` to tune.
+   * Example: `models/gemini-1.5-flash-001`
+   */
+  "baseModel": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The tuned model name. A unique name will be generated on create.
+   * Example: `tunedModels/az2mb0bpw6i`
+   * If display_name is set on create, the id portion of the name will be set
+   * by concatenating the words of the display_name with hyphens and adding a
+   * random portion for uniqueness.
+   *
+   * Example:
+   *
+   *  * display_name = `Sentence Translator`
+   *  * name = `tunedModels/sentence-translator-u3b7m`
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. The name to display for this model in user interfaces.
+   * The display name must be up to 40 characters including spaces.
+   */
+  "displayName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. A short description of this model.
+   */
+  "description": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Controls the randomness of the output.
+   *
+   * Values can range over `[0.0,1.0]`, inclusive. A value closer to `1.0` will
+   * produce responses that are more varied, while a value closer to `0.0` will
+   * typically result in less surprising responses from the model.
+   *
+   * This value specifies default to be the one used by the base model while
+   * creating the model.
+   */
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. For Nucleus sampling.
+   *
+   * Nucleus sampling considers the smallest set of tokens whose probability
+   * sum is at least `top_p`.
+   *
+   * This value specifies default to be the one used by the base model while
+   * creating the model.
+   */
+  "topP": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. For Top-k sampling.
+   *
+   * Top-k sampling considers the set of `top_k` most probable tokens.
+   * This value specifies default to be used by the backend while making the
+   * call to the model.
+   *
+   * This value specifies default to be the one used by the base model while
+   * creating the model.
+   */
+  "topK": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Output only. The state of the tuned model.
+   */
+  "state": S.optionalWith(TunedModelState, { nullable: true }),
+  /**
+   * Output only. The timestamp when this model was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The timestamp when this model was updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The tuning task that creates the tuned model.
+   */
+  "tuningTask": TuningTask,
+  /**
+   * Optional. List of project numbers that have read access to the tuned model.
+   */
+  "readerProjectNumbers": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+export class UpdateTunedModelParams extends S.Struct({
+  "updateMask": S.optionalWith(S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$"))), {
+    nullable: true
+  })
+}) {}
+
+export class ListTunedModelsParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true }),
+  "filter": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Response from `ListTunedModels` containing a paginated list of Models.
+ */
+export class ListTunedModelsResponse extends S.Class<ListTunedModelsResponse>("ListTunedModelsResponse")({
+  /**
+   * The returned Models.
+   */
+  "tunedModels": S.optionalWith(S.Array(TunedModel), { nullable: true }),
+  /**
+   * A token, which can be sent as `page_token` to retrieve the next page.
+   *
+   * If this field is omitted, there are no more pages.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class CreateTunedModelParams extends S.Struct({
+  "tunedModelId": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Metadata about the state and progress of creating a tuned model returned from
+ * the long-running operation
+ */
+export class CreateTunedModelMetadata extends S.Class<CreateTunedModelMetadata>("CreateTunedModelMetadata")({
+  /**
+   * Name of the tuned model associated with the tuning operation.
+   */
+  "tunedModel": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The total number of tuning steps.
+   */
+  "totalSteps": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * The number of steps completed.
+   */
+  "completedSteps": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * The completed percentage for the tuning operation.
+   */
+  "completedPercent": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Metrics collected during tuning.
+   */
+  "snapshots": S.optionalWith(S.Array(TuningSnapshot), { nullable: true })
+}) {}
+
+/**
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
+ */
+export class CreateTunedModelOperation extends S.Class<CreateTunedModelOperation>("CreateTunedModelOperation")({
+  "metadata": S.optionalWith(CreateTunedModelMetadata, { nullable: true }),
+  "response": S.optionalWith(TunedModel, { nullable: true }),
+  /**
+   * The server-assigned name, which is only unique within the same service that
+   * originally returns it. If you use the default HTTP mapping, the
+   * `name` should be a resource name ending with `operations/{unique_id}`.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * If the value is `false`, it means the operation is still in progress.
+   * If `true`, the operation is completed, and either `error` or `response` is
+   * available.
+   */
+  "done": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * The error result of the operation in case of failure or cancellation.
+   */
+  "error": S.optionalWith(Status, { nullable: true })
+}) {}
+
+export class ListPermissionsParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Optional. Immutable. The type of the grantee.
+ */
+export class PermissionGranteeType extends S.Literal("GRANTEE_TYPE_UNSPECIFIED", "USER", "GROUP", "EVERYONE") {}
+
+/**
+ * Required. The role granted by this permission.
+ */
+export class PermissionRole extends S.Literal("ROLE_UNSPECIFIED", "OWNER", "WRITER", "READER") {}
+
+/**
+ * Permission resource grants user, group or the rest of the world access to the
+ * PaLM API resource (e.g. a tuned model, corpus).
+ *
+ * A role is a collection of permitted operations that allows users to perform
+ * specific actions on PaLM API resources. To make them available to users,
+ * groups, or service accounts, you assign roles. When you assign a role, you
+ * grant permissions that the role contains.
+ *
+ * There are three concentric roles. Each role is a superset of the previous
+ * role's permitted operations:
+ *
+ * - reader can use the resource (e.g. tuned model, corpus) for inference
+ * - writer has reader's permissions and additionally can edit and share
+ * - owner has writer's permissions and additionally can delete
+ */
+export class Permission extends S.Class<Permission>("Permission")({
+  /**
+   * Output only. Identifier. The permission name. A unique name will be generated on create.
+   * Examples:
+   *     tunedModels/{tuned_model}/permissions/{permission}
+   *     corpora/{corpus}/permissions/{permission}
+   * Output only.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Immutable. The type of the grantee.
+   */
+  "granteeType": S.optionalWith(PermissionGranteeType, { nullable: true }),
+  /**
+   * Optional. Immutable. The email address of the user of group which this permission refers.
+   * Field is not set when permission's grantee type is EVERYONE.
+   */
+  "emailAddress": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The role granted by this permission.
+   */
+  "role": PermissionRole
+}) {}
+
+/**
+ * Response from `ListPermissions` containing a paginated list of
+ * permissions.
+ */
+export class ListPermissionsResponse extends S.Class<ListPermissionsResponse>("ListPermissionsResponse")({
+  /**
+   * Returned permissions.
+   */
+  "permissions": S.optionalWith(S.Array(Permission), { nullable: true }),
+  /**
+   * A token, which can be sent as `page_token` to retrieve the next page.
+   *
+   * If this field is omitted, there are no more pages.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListPermissionsByCorpusParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class UpdatePermissionParams extends S.Struct({
+  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
+}) {}
+
+export class UpdatePermissionByCorpusAndPermissionParams extends S.Struct({
+  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
 }) {}
 
 /**
@@ -3791,9 +3039,365 @@ export class TransferOwnershipRequest extends S.Class<TransferOwnershipRequest>(
  */
 export class TransferOwnershipResponse extends S.Record({ key: S.String, value: S.Unknown }) {}
 
+/**
+ * Request message for PredictionService.Predict.
+ */
+export class PredictRequest extends S.Class<PredictRequest>("PredictRequest")({}) {}
+
+/**
+ * Response message for [PredictionService.Predict].
+ */
+export class PredictResponse extends S.Class<PredictResponse>("PredictResponse")({}) {}
+
+/**
+ * Request message for [PredictionService.PredictLongRunning].
+ */
+export class PredictLongRunningRequest extends S.Class<PredictLongRunningRequest>("PredictLongRunningRequest")({}) {}
+
+/**
+ * Metadata for PredictLongRunning long running operations.
+ */
+export class PredictLongRunningMetadata extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+/**
+ * Representation of a video.
+ */
+export class Video extends S.Class<Video>("Video")({
+  /**
+   * Raw bytes.
+   */
+  "video": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Path to another storage.
+   */
+  "uri": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A proto encapsulate various type of media.
+ */
+export class Media extends S.Class<Media>("Media")({
+  /**
+   * Video as the only one for now.  This is mimicking Vertex proto.
+   */
+  "video": S.optionalWith(Video, { nullable: true })
+}) {}
+
+/**
+ * Veo response.
+ */
+export class GenerateVideoResponse extends S.Class<GenerateVideoResponse>("GenerateVideoResponse")({
+  /**
+   * The generated samples.
+   */
+  "generatedSamples": S.optionalWith(S.Array(Media), { nullable: true }),
+  /**
+   * Returns if any videos were filtered due to RAI policies.
+   */
+  "raiMediaFilteredCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Returns rai failure reasons if any.
+   */
+  "raiMediaFilteredReasons": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+/**
+ * Response message for [PredictionService.PredictLongRunning]
+ */
+export class PredictLongRunningResponse extends S.Class<PredictLongRunningResponse>("PredictLongRunningResponse")({
+  /**
+   * The response of the video generation prediction.
+   */
+  "generateVideoResponse": S.optionalWith(GenerateVideoResponse, { nullable: true })
+}) {}
+
+/**
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
+ */
+export class PredictLongRunningOperation extends S.Class<PredictLongRunningOperation>("PredictLongRunningOperation")({
+  "metadata": S.optionalWith(PredictLongRunningMetadata, { nullable: true }),
+  "response": S.optionalWith(PredictLongRunningResponse, { nullable: true }),
+  /**
+   * The server-assigned name, which is only unique within the same service that
+   * originally returns it. If you use the default HTTP mapping, the
+   * `name` should be a resource name ending with `operations/{unique_id}`.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * If the value is `false`, it means the operation is still in progress.
+   * If `true`, the operation is completed, and either `error` or `response` is
+   * available.
+   */
+  "done": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * The error result of the operation in case of failure or cancellation.
+   */
+  "error": S.optionalWith(Status, { nullable: true })
+}) {}
+
+export class ListCorporaParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A `Corpus` is a collection of `Document`s.
+ * A project can create up to 5 corpora.
+ */
+export class Corpus extends S.Class<Corpus>("Corpus")({
+  /**
+   * Immutable. Identifier. The `Corpus` resource name. The ID (name excluding the "corpora/" prefix)
+   * can contain up to 40 characters that are lowercase alphanumeric or dashes
+   * (-). The ID cannot start or end with a dash. If the name is empty on
+   * create, a unique name will be derived from `display_name` along with a 12
+   * character random suffix.
+   * Example: `corpora/my-awesome-corpora-123a456b789c`
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. The human-readable display name for the `Corpus`. The display name must be
+   * no more than 512 characters in length, including spaces.
+   * Example: "Docs on Semantic Retriever"
+   */
+  "displayName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `Corpus` was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `Corpus` was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Response from `ListCorpora` containing a paginated list of `Corpora`.
+ * The results are sorted by ascending `corpus.create_time`.
+ */
+export class ListCorporaResponse extends S.Class<ListCorporaResponse>("ListCorporaResponse")({
+  /**
+   * The returned corpora.
+   */
+  "corpora": S.optionalWith(S.Array(Corpus), { nullable: true }),
+  /**
+   * A token, which can be sent as `page_token` to retrieve the next page.
+   * If this field is omitted, there are no more pages.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class DeleteCorpusParams extends S.Struct({
+  "force": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class UpdateCorpusParams extends S.Struct({
+  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
+}) {}
+
+/**
+ * Request for querying a `Corpus`.
+ */
+export class QueryCorpusRequest extends S.Class<QueryCorpusRequest>("QueryCorpusRequest")({
+  /**
+   * Required. Query string to perform semantic search.
+   */
+  "query": S.String,
+  /**
+   * Optional. Filter for `Chunk` and `Document` metadata. Each `MetadataFilter` object
+   * should correspond to a unique key. Multiple `MetadataFilter` objects are
+   * joined by logical "AND"s.
+   *
+   * Example query at document level:
+   * (year >= 2020 OR year < 2010) AND (genre = drama OR genre = action)
+   *
+   * `MetadataFilter` object list:
+   *  metadata_filters = [
+   *  {key = "document.custom_metadata.year"
+   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
+   *                 {int_value = 2010, operation = LESS}]},
+   *  {key = "document.custom_metadata.year"
+   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
+   *                 {int_value = 2010, operation = LESS}]},
+   *  {key = "document.custom_metadata.genre"
+   *   conditions = [{string_value = "drama", operation = EQUAL},
+   *                 {string_value = "action", operation = EQUAL}]}]
+   *
+   * Example query at chunk level for a numeric range of values:
+   * (year > 2015 AND year <= 2020)
+   *
+   * `MetadataFilter` object list:
+   *  metadata_filters = [
+   *  {key = "chunk.custom_metadata.year"
+   *   conditions = [{int_value = 2015, operation = GREATER}]},
+   *  {key = "chunk.custom_metadata.year"
+   *   conditions = [{int_value = 2020, operation = LESS_EQUAL}]}]
+   *
+   * Note: "AND"s for the same key are only supported for numeric values. String
+   * values only support "OR"s for the same key.
+   */
+  "metadataFilters": S.optionalWith(S.Array(MetadataFilter), { nullable: true }),
+  /**
+   * Optional. The maximum number of `Chunk`s to return.
+   * The service may return fewer `Chunk`s.
+   *
+   * If unspecified, at most 10 `Chunk`s will be returned.
+   * The maximum specified result count is 100.
+   */
+  "resultsCount": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+/**
+ * Extracted data that represents the `Chunk` content.
+ */
+export class ChunkData extends S.Class<ChunkData>("ChunkData")({
+  /**
+   * The `Chunk` content as a string.
+   * The maximum number of tokens per chunk is 2043.
+   */
+  "stringValue": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * User provided string values assigned to a single metadata key.
+ */
+export class StringList extends S.Class<StringList>("StringList")({
+  /**
+   * The string values of the metadata to store.
+   */
+  "values": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+/**
+ * User provided metadata stored as key-value pairs.
+ */
+export class CustomMetadata extends S.Class<CustomMetadata>("CustomMetadata")({
+  /**
+   * The string value of the metadata to store.
+   */
+  "stringValue": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The StringList value of the metadata to store.
+   */
+  "stringListValue": S.optionalWith(StringList, { nullable: true }),
+  /**
+   * The numeric value of the metadata to store.
+   */
+  "numericValue": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Required. The key of the metadata to store.
+   */
+  "key": S.String
+}) {}
+
+/**
+ * Output only. Current state of the `Chunk`.
+ */
+export class ChunkState
+  extends S.Literal("STATE_UNSPECIFIED", "STATE_PENDING_PROCESSING", "STATE_ACTIVE", "STATE_FAILED")
+{}
+
+/**
+ * A `Chunk` is a subpart of a `Document` that is treated as an independent unit
+ * for the purposes of vector representation and storage.
+ * A `Corpus` can have a maximum of 1 million `Chunk`s.
+ */
+export class Chunk extends S.Class<Chunk>("Chunk")({
+  /**
+   * Immutable. Identifier. The `Chunk` resource name. The ID (name excluding the
+   * "corpora/ * /documents/ * /chunks/" prefix) can contain up to 40 characters
+   * that are lowercase alphanumeric or dashes (-). The ID cannot start or end
+   * with a dash. If the name is empty on create, a random 12-character unique
+   * ID will be generated.
+   * Example: `corpora/{corpus_id}/documents/{document_id}/chunks/123a456b789c`
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The content for the `Chunk`, such as the text string.
+   * The maximum number of tokens per chunk is 2043.
+   */
+  "data": ChunkData,
+  /**
+   * Optional. User provided custom metadata stored as key-value pairs.
+   * The maximum number of `CustomMetadata` per chunk is 20.
+   */
+  "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `Chunk` was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `Chunk` was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Current state of the `Chunk`.
+   */
+  "state": S.optionalWith(ChunkState, { nullable: true })
+}) {}
+
+/**
+ * The information for a chunk relevant to a query.
+ */
+export class RelevantChunk extends S.Class<RelevantChunk>("RelevantChunk")({
+  /**
+   * `Chunk` relevance to the query.
+   */
+  "chunkRelevanceScore": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * `Chunk` associated with the query.
+   */
+  "chunk": S.optionalWith(Chunk, { nullable: true })
+}) {}
+
+/**
+ * Response from `QueryCorpus` containing a list of relevant chunks.
+ */
+export class QueryCorpusResponse extends S.Class<QueryCorpusResponse>("QueryCorpusResponse")({
+  /**
+   * The relevant chunks.
+   */
+  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
+}) {}
+
 export class ListDocumentsParams extends S.Struct({
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
   "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A `Document` is a collection of `Chunk`s.
+ * A `Corpus` can have a maximum of 10,000 `Document`s.
+ */
+export class Document extends S.Class<Document>("Document")({
+  /**
+   * Immutable. Identifier. The `Document` resource name. The ID (name excluding the
+   * "corpora/ * /documents/" prefix) can contain up to 40 characters that are
+   * lowercase alphanumeric or dashes (-). The ID cannot start or end with a
+   * dash. If the name is empty on create, a unique name will be derived from
+   * `display_name` along with a 12 character random suffix.
+   * Example: `corpora/{corpus_id}/documents/my-awesome-doc-123a456b789c`
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. The human-readable display name for the `Document`. The display name must
+   * be no more than 512 characters in length, including spaces.
+   * Example: "Semantic Retriever Documentation"
+   */
+  "displayName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. User provided custom metadata stored as key-value pairs used for querying.
+   * A `Document` can have a maximum of 20 `CustomMetadata`.
+   */
+  "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `Document` was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `Document` was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -3810,6 +3414,137 @@ export class ListDocumentsResponse extends S.Class<ListDocumentsResponse>("ListD
    * If this field is omitted, there are no more pages.
    */
   "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class DeleteDocumentParams extends S.Struct({
+  "force": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class UpdateDocumentParams extends S.Struct({
+  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
+}) {}
+
+/**
+ * Request for querying a `Document`.
+ */
+export class QueryDocumentRequest extends S.Class<QueryDocumentRequest>("QueryDocumentRequest")({
+  /**
+   * Required. Query string to perform semantic search.
+   */
+  "query": S.String,
+  /**
+   * Optional. The maximum number of `Chunk`s to return.
+   * The service may return fewer `Chunk`s.
+   *
+   * If unspecified, at most 10 `Chunk`s will be returned.
+   * The maximum specified result count is 100.
+   */
+  "resultsCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. Filter for `Chunk` metadata. Each `MetadataFilter` object should
+   * correspond to a unique key. Multiple `MetadataFilter` objects are joined by
+   * logical "AND"s.
+   *
+   * Note: `Document`-level filtering is not supported for this request because
+   * a `Document` name is already specified.
+   *
+   * Example query:
+   * (year >= 2020 OR year < 2010) AND (genre = drama OR genre = action)
+   *
+   * `MetadataFilter` object list:
+   *  metadata_filters = [
+   *  {key = "chunk.custom_metadata.year"
+   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
+   *                 {int_value = 2010, operation = LESS}},
+   *  {key = "chunk.custom_metadata.genre"
+   *   conditions = [{string_value = "drama", operation = EQUAL},
+   *                 {string_value = "action", operation = EQUAL}}]
+   *
+   * Example query for a numeric range of values:
+   * (year > 2015 AND year <= 2020)
+   *
+   * `MetadataFilter` object list:
+   *  metadata_filters = [
+   *  {key = "chunk.custom_metadata.year"
+   *   conditions = [{int_value = 2015, operation = GREATER}]},
+   *  {key = "chunk.custom_metadata.year"
+   *   conditions = [{int_value = 2020, operation = LESS_EQUAL}]}]
+   *
+   * Note: "AND"s for the same key are only supported for numeric values. String
+   * values only support "OR"s for the same key.
+   */
+  "metadataFilters": S.optionalWith(S.Array(MetadataFilter), { nullable: true })
+}) {}
+
+/**
+ * Response from `QueryDocument` containing a list of relevant chunks.
+ */
+export class QueryDocumentResponse extends S.Class<QueryDocumentResponse>("QueryDocumentResponse")({
+  /**
+   * The returned relevant chunks.
+   */
+  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
+}) {}
+
+export class ListChunksParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Response from `ListChunks` containing a paginated list of `Chunk`s.
+ * The `Chunk`s are sorted by ascending `chunk.create_time`.
+ */
+export class ListChunksResponse extends S.Class<ListChunksResponse>("ListChunksResponse")({
+  /**
+   * The returned `Chunk`s.
+   */
+  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true }),
+  /**
+   * A token, which can be sent as `page_token` to retrieve the next page.
+   * If this field is omitted, there are no more pages.
+   */
+  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Request to create a `Chunk`.
+ */
+export class CreateChunkRequest extends S.Class<CreateChunkRequest>("CreateChunkRequest")({
+  /**
+   * Required. The name of the `Document` where this `Chunk` will be created.
+   * Example: `corpora/my-corpus-123/documents/the-doc-abc`
+   */
+  "parent": S.String,
+  /**
+   * Required. The `Chunk` to create.
+   */
+  "chunk": Chunk
+}) {}
+
+/**
+ * Request to batch create `Chunk`s.
+ */
+export class BatchCreateChunksRequest extends S.Class<BatchCreateChunksRequest>("BatchCreateChunksRequest")({
+  /**
+   * Required. The request messages specifying the `Chunk`s to create.
+   * A maximum of 100 `Chunk`s can be created in a batch.
+   */
+  "requests": S.Array(CreateChunkRequest)
+}) {}
+
+/**
+ * Response from `BatchCreateChunks` containing a list of created `Chunk`s.
+ */
+export class BatchCreateChunksResponse extends S.Class<BatchCreateChunksResponse>("BatchCreateChunksResponse")({
+  /**
+   * `Chunk`s created.
+   */
+  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true })
+}) {}
+
+export class UpdateChunkParams extends S.Struct({
+  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
 }) {}
 
 /**
@@ -3848,12 +3583,281 @@ export class BatchUpdateChunksResponse extends S.Class<BatchUpdateChunksResponse
   "chunks": S.optionalWith(S.Array(Chunk), { nullable: true })
 }) {}
 
-export class DeleteCorpusParams extends S.Struct({
-  "force": S.optionalWith(S.Boolean, { nullable: true })
+/**
+ * Request to delete a `Chunk`.
+ */
+export class DeleteChunkRequest extends S.Class<DeleteChunkRequest>("DeleteChunkRequest")({
+  /**
+   * Required. The resource name of the `Chunk` to delete.
+   * Example: `corpora/my-corpus-123/documents/the-doc-abc/chunks/some-chunk`
+   */
+  "name": S.String
 }) {}
 
-export class UpdateCorpusParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
+/**
+ * Request to batch delete `Chunk`s.
+ */
+export class BatchDeleteChunksRequest extends S.Class<BatchDeleteChunksRequest>("BatchDeleteChunksRequest")({
+  /**
+   * Required. The request messages specifying the `Chunk`s to delete.
+   */
+  "requests": S.Array(DeleteChunkRequest)
+}) {}
+
+/**
+ * Text given to the model as a prompt.
+ *
+ * The Model will use this TextPrompt to Generate a text completion.
+ */
+export class TextPrompt extends S.Class<TextPrompt>("TextPrompt")({
+  /**
+   * Required. The prompt text.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * Request to generate a text completion response from the model.
+ */
+export class GenerateTextRequest extends S.Class<GenerateTextRequest>("GenerateTextRequest")({
+  /**
+   * Required. The free-form input text given to the model as a prompt.
+   *
+   * Given a prompt, the model will generate a TextCompletion response it
+   * predicts as the completion of the input text.
+   */
+  "prompt": TextPrompt,
+  /**
+   * Optional. Controls the randomness of the output.
+   * Note: The default value varies by model, see the `Model.temperature`
+   * attribute of the `Model` returned the `getModel` function.
+   *
+   * Values can range from [0.0,1.0],
+   * inclusive. A value closer to 1.0 will produce responses that are more
+   * varied and creative, while a value closer to 0.0 will typically result in
+   * more straightforward responses from the model.
+   */
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. Number of generated responses to return.
+   *
+   * This value must be between [1, 8], inclusive. If unset, this will default
+   * to 1.
+   */
+  "candidateCount": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. The maximum number of tokens to include in a candidate.
+   *
+   * If unset, this will default to output_token_limit specified in the `Model`
+   * specification.
+   */
+  "maxOutputTokens": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. The maximum cumulative probability of tokens to consider when sampling.
+   *
+   * The model uses combined Top-k and nucleus sampling.
+   *
+   * Tokens are sorted based on their assigned probabilities so that only the
+   * most likely tokens are considered. Top-k sampling directly limits the
+   * maximum number of tokens to consider, while Nucleus sampling limits number
+   * of tokens based on the cumulative probability.
+   *
+   * Note: The default value varies by model, see the `Model.top_p`
+   * attribute of the `Model` returned the `getModel` function.
+   */
+  "topP": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Optional. The maximum number of tokens to consider when sampling.
+   *
+   * The model uses combined Top-k and nucleus sampling.
+   *
+   * Top-k sampling considers the set of `top_k` most probable tokens.
+   * Defaults to 40.
+   *
+   * Note: The default value varies by model, see the `Model.top_k`
+   * attribute of the `Model` returned the `getModel` function.
+   */
+  "topK": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. A list of unique `SafetySetting` instances for blocking unsafe content.
+   *
+   * that will be enforced on the `GenerateTextRequest.prompt` and
+   * `GenerateTextResponse.candidates`. There should not be more than one
+   * setting for each `SafetyCategory` type. The API will block any prompts and
+   * responses that fail to meet the thresholds set by these settings. This list
+   * overrides the default settings for each `SafetyCategory` specified in the
+   * safety_settings. If there is no `SafetySetting` for a given
+   * `SafetyCategory` provided in the list, the API will use the default safety
+   * setting for that category. Harm categories HARM_CATEGORY_DEROGATORY,
+   * HARM_CATEGORY_TOXICITY, HARM_CATEGORY_VIOLENCE, HARM_CATEGORY_SEXUAL,
+   * HARM_CATEGORY_MEDICAL, HARM_CATEGORY_DANGEROUS are supported in text
+   * service.
+   */
+  "safetySettings": S.optionalWith(S.Array(SafetySetting), { nullable: true }),
+  /**
+   * The set of character sequences (up to 5) that will stop output generation.
+   * If specified, the API will stop at the first appearance of a stop
+   * sequence. The stop sequence will not be included as part of the response.
+   */
+  "stopSequences": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+/**
+ * Output text returned from a model.
+ */
+export class TextCompletion extends S.Class<TextCompletion>("TextCompletion")({
+  /**
+   * Output only. The generated text returned from the model.
+   */
+  "output": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Ratings for the safety of a response.
+   *
+   * There is at most one rating per category.
+   */
+  "safetyRatings": S.optionalWith(S.Array(SafetyRating), { nullable: true }),
+  /**
+   * Output only. Citation information for model-generated `output` in this
+   * `TextCompletion`.
+   *
+   * This field may be populated with attribution information for any text
+   * included in the `output`.
+   */
+  "citationMetadata": S.optionalWith(CitationMetadata, { nullable: true })
+}) {}
+
+/**
+ * Safety feedback for an entire request.
+ *
+ * This field is populated if content in the input and/or response is blocked
+ * due to safety settings. SafetyFeedback may not exist for every HarmCategory.
+ * Each SafetyFeedback will return the safety settings used by the request as
+ * well as the lowest HarmProbability that should be allowed in order to return
+ * a result.
+ */
+export class SafetyFeedback extends S.Class<SafetyFeedback>("SafetyFeedback")({
+  /**
+   * Safety rating evaluated from content.
+   */
+  "rating": S.optionalWith(SafetyRating, { nullable: true }),
+  /**
+   * Safety settings applied to the request.
+   */
+  "setting": S.optionalWith(SafetySetting, { nullable: true })
+}) {}
+
+/**
+ * The response from the model, including candidate completions.
+ */
+export class GenerateTextResponse extends S.Class<GenerateTextResponse>("GenerateTextResponse")({
+  /**
+   * Candidate responses from the model.
+   */
+  "candidates": S.optionalWith(S.Array(TextCompletion), { nullable: true }),
+  /**
+   * A set of content filtering metadata for the prompt and response
+   * text.
+   *
+   * This indicates which `SafetyCategory`(s) blocked a
+   * candidate from this response, the lowest `HarmProbability`
+   * that triggered a block, and the HarmThreshold setting for that category.
+   * This indicates the smallest change to the `SafetySettings` that would be
+   * necessary to unblock at least 1 response.
+   *
+   * The blocking is configured by the `SafetySettings` in the request (or the
+   * default `SafetySettings` of the API).
+   */
+  "filters": S.optionalWith(S.Array(ContentFilter), { nullable: true }),
+  /**
+   * Returns any safety feedback related to content filtering.
+   */
+  "safetyFeedback": S.optionalWith(S.Array(SafetyFeedback), { nullable: true })
+}) {}
+
+/**
+ * Request to get a text embedding from the model.
+ */
+export class EmbedTextRequest extends S.Class<EmbedTextRequest>("EmbedTextRequest")({
+  /**
+   * Required. The model name to use with the format model=models/{model}.
+   */
+  "model": S.String,
+  /**
+   * Optional. The free-form input text that the model will turn into an embedding.
+   */
+  "text": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A list of floats representing the embedding.
+ */
+export class Embedding extends S.Class<Embedding>("Embedding")({
+  /**
+   * The embedding values.
+   */
+  "value": S.optionalWith(S.Array(S.Number), { nullable: true })
+}) {}
+
+/**
+ * The response to a EmbedTextRequest.
+ */
+export class EmbedTextResponse extends S.Class<EmbedTextResponse>("EmbedTextResponse")({
+  /**
+   * Output only. The embedding generated from the input text.
+   */
+  "embedding": S.optionalWith(Embedding, { nullable: true })
+}) {}
+
+/**
+ * Batch request to get a text embedding from the model.
+ */
+export class BatchEmbedTextRequest extends S.Class<BatchEmbedTextRequest>("BatchEmbedTextRequest")({
+  /**
+   * Optional. The free-form input texts that the model will turn into an embedding. The
+   * current limit is 100 texts, over which an error will be thrown.
+   */
+  "texts": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Optional. Embed requests for the batch. Only one of `texts` or `requests` can be set.
+   */
+  "requests": S.optionalWith(S.Array(EmbedTextRequest), { nullable: true })
+}) {}
+
+/**
+ * The response to a EmbedTextRequest.
+ */
+export class BatchEmbedTextResponse extends S.Class<BatchEmbedTextResponse>("BatchEmbedTextResponse")({
+  /**
+   * Output only. The embeddings generated from the input text.
+   */
+  "embeddings": S.optionalWith(S.Array(Embedding), { nullable: true })
+}) {}
+
+/**
+ * Counts the number of tokens in the `prompt` sent to a model.
+ *
+ * Models may tokenize text differently, so each model may return a different
+ * `token_count`.
+ */
+export class CountTextTokensRequest extends S.Class<CountTextTokensRequest>("CountTextTokensRequest")({
+  /**
+   * Required. The free-form input text given to the model as a prompt.
+   */
+  "prompt": TextPrompt
+}) {}
+
+/**
+ * A response from `CountTextTokens`.
+ *
+ * It returns the model's `token_count` for the `prompt`.
+ */
+export class CountTextTokensResponse extends S.Class<CountTextTokensResponse>("CountTextTokensResponse")({
+  /**
+   * The number of tokens that the `model` tokenizes the `prompt` into.
+   *
+   * Always non-negative.
+   */
+  "tokenCount": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
 export const make = (
@@ -3899,11 +3903,27 @@ export const make = (
       )
   return {
     httpClient,
-    "Predict": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:predict`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+    "ListOperations": (tunedModel, options) =>
+      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/operations`).pipe(
+        HttpClientRequest.setUrlParams({
+          "filter": options?.["filter"] as any,
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(PredictResponse),
+          "2xx": decodeSuccess(ListOperationsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListOperationsBy": (options) =>
+      HttpClientRequest.get(`/v1beta/batches`).pipe(
+        HttpClientRequest.setUrlParams({
+          "filter": options?.["filter"] as any,
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListOperationsResponse),
           orElse: unexpectedStatus
         }))
       ),
@@ -3926,22 +3946,118 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
-    "ListPermissions": (tunedModel, options) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/permissions`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
+    "GetOperationByGeneratedFileAndOperation": (generatedFile, operation) =>
+      HttpClientRequest.get(`/v1beta/generatedFiles/${generatedFile}/operations/${operation}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListPermissionsResponse),
+          "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
-    "CreatePermission": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}/permissions`).pipe(
+    "GetOperationByGenerateContentBatch": (generateContentBatch) =>
+      HttpClientRequest.get(`/v1beta/batches/${generateContentBatch}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteOperation": (generateContentBatch) =>
+      HttpClientRequest.del(`/v1beta/batches/${generateContentBatch}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetOperationByModelAndOperation": (model, operation) =>
+      HttpClientRequest.get(`/v1beta/models/${model}/operations/${operation}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CancelOperation": (generateContentBatch) =>
+      HttpClientRequest.post(`/v1beta/batches/${generateContentBatch}:cancel`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GenerateContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:generateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Permission),
+          "2xx": decodeSuccess(GenerateContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GenerateContentByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:generateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GenerateContentByDynamicId": (dynamicId, options) =>
+      HttpClientRequest.post(`/v1beta/dynamic/${dynamicId}:generateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GenerateAnswer": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:generateAnswer`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateAnswerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "StreamGenerateContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:streamGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "StreamGenerateContentByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:streamGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "StreamGenerateContentByDynamicId": (dynamicId, options) =>
+      HttpClientRequest.post(`/v1beta/dynamic/${dynamicId}:streamGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "EmbedContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:embedContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(EmbedContentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchEmbedContents": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:batchEmbedContents`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchEmbedContentsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CountTokens": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:countTokens`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CountTokensResponse),
           orElse: unexpectedStatus
         }))
       ),
@@ -3961,396 +4077,6 @@ export const make = (
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CachedContent),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateTextByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:generateText`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateTextResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetOperationByGenerateContentBatch": (generateContentBatch) =>
-      HttpClientRequest.get(`/v1beta/batches/${generateContentBatch}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Operation),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListGeneratedFiles": (options) =>
-      HttpClientRequest.get(`/v1beta/generatedFiles`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListGeneratedFilesResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "EmbedText": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:embedText`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(EmbedTextResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CountTextTokens": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:countTextTokens`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(CountTextTokensResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateContent`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateContentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchEmbedContents": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:batchEmbedContents`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(BatchEmbedContentsResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetFile": (file) =>
-      HttpClientRequest.get(`/v1beta/files/${file}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(File),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeleteFile": (file) =>
-      HttpClientRequest.del(`/v1beta/files/${file}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "QueryCorpus": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}:query`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(QueryCorpusResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateAnswer": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateAnswer`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateAnswerResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateText": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateText`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateTextResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchCreateChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchCreate`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(BatchCreateChunksResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetOperationByModelAndOperation": (model, operation) =>
-      HttpClientRequest.get(`/v1beta/models/${model}/operations/${operation}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Operation),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListOperationsBy": (options) =>
-      HttpClientRequest.get(`/v1beta/batches`).pipe(
-        HttpClientRequest.setUrlParams({
-          "filter": options?.["filter"] as any,
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListOperationsResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListChunks": (corpus, document, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListChunksResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CreateChunk": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Chunk),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListModels": (options) =>
-      HttpClientRequest.get(`/v1beta/models`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListModelsResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchDeleteChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchDelete`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListPermissionsByCorpus": (corpus, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/permissions`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListPermissionsResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CreatePermissionByCorpus": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/permissions`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Permission),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListTunedModels": (options) =>
-      HttpClientRequest.get(`/v1beta/tunedModels`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any,
-          "filter": options?.["filter"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListTunedModelsResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CreateTunedModel": (options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels`).pipe(
-        HttpClientRequest.setUrlParams({ "tunedModelId": options.params?.["tunedModelId"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(CreateTunedModelOperation),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "PredictLongRunning": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:predictLongRunning`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(PredictLongRunningOperation),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetPermission": (tunedModel, permission) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Permission),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeletePermission": (tunedModel, permission) =>
-      HttpClientRequest.del(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdatePermission": (tunedModel, permission, options) =>
-      HttpClientRequest.patch(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Permission),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateContentByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:generateContent`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateContentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "QueryDocument": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}:query`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(QueryDocumentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetGeneratedFile": (generatedFile) =>
-      HttpClientRequest.get(`/v1beta/generatedFiles/${generatedFile}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GeneratedFile),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetTunedModel": (tunedModel) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(TunedModel),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeleteTunedModel": (tunedModel) =>
-      HttpClientRequest.del(`/v1beta/tunedModels/${tunedModel}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdateTunedModel": (tunedModel, options) =>
-      HttpClientRequest.patch(`/v1beta/tunedModels/${tunedModel}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(TunedModel),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchEmbedText": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:batchEmbedText`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(BatchEmbedTextResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CountTokens": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:countTokens`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(CountTokensResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetPermissionByCorpusAndPermission": (corpus, permission) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Permission),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeletePermissionByCorpusAndPermission": (corpus, permission) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdatePermissionByCorpusAndPermission": (corpus, permission, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Permission),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListFiles": (options) =>
-      HttpClientRequest.get(`/v1beta/files`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListFilesResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CreateFile": (options) =>
-      HttpClientRequest.post(`/v1beta/files`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(CreateFileResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetDocument": (corpus, document) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Document),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeleteDocument": (corpus, document, options) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
-        HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdateDocument": (corpus, document, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Document),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetChunk": (corpus, document, chunk) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Chunk),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeleteChunk": (corpus, document, chunk) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdateChunk": (corpus, document, chunk, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Chunk),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetOperationByGeneratedFileAndOperation": (generatedFile, operation) =>
-      HttpClientRequest.get(`/v1beta/generatedFiles/${generatedFile}/operations/${operation}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
@@ -4377,6 +4103,14 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "GenerateMessage": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:generateMessage`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateMessageResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
     "CountMessageTokens": (model, options) =>
       HttpClientRequest.post(`/v1beta/models/${model}:countMessageTokens`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
@@ -4385,31 +4119,231 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
-    "StreamGenerateContentByDynamicId": (dynamicId, options) =>
-      HttpClientRequest.post(`/v1beta/dynamic/${dynamicId}:streamGenerateContent`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateContentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateContentByDynamicId": (dynamicId, options) =>
-      HttpClientRequest.post(`/v1beta/dynamic/${dynamicId}:generateContent`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateContentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListOperations": (tunedModel, options) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/operations`).pipe(
+    "ListFiles": (options) =>
+      HttpClientRequest.get(`/v1beta/files`).pipe(
         HttpClientRequest.setUrlParams({
-          "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
         }),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListOperationsResponse),
+          "2xx": decodeSuccess(ListFilesResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateFile": (options) =>
+      HttpClientRequest.post(`/v1beta/files`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CreateFileResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetFile": (file) =>
+      HttpClientRequest.get(`/v1beta/files/${file}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(File),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteFile": (file) =>
+      HttpClientRequest.del(`/v1beta/files/${file}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DownloadFile": (file) =>
+      HttpClientRequest.get(`/v1beta/files/${file}:download`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DownloadFileResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetGeneratedFile": (generatedFile) =>
+      HttpClientRequest.get(`/v1beta/generatedFiles/${generatedFile}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GeneratedFile),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListGeneratedFiles": (options) =>
+      HttpClientRequest.get(`/v1beta/generatedFiles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListGeneratedFilesResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetModel": (model) =>
+      HttpClientRequest.get(`/v1beta/models/${model}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Model),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListModels": (options) =>
+      HttpClientRequest.get(`/v1beta/models`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListModelsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetTunedModel": (tunedModel) =>
+      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(TunedModel),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteTunedModel": (tunedModel) =>
+      HttpClientRequest.del(`/v1beta/tunedModels/${tunedModel}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdateTunedModel": (tunedModel, options) =>
+      HttpClientRequest.patch(`/v1beta/tunedModels/${tunedModel}`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(TunedModel),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListTunedModels": (options) =>
+      HttpClientRequest.get(`/v1beta/tunedModels`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any,
+          "filter": options?.["filter"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListTunedModelsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateTunedModel": (options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels`).pipe(
+        HttpClientRequest.setUrlParams({ "tunedModelId": options.params?.["tunedModelId"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CreateTunedModelOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListPermissions": (tunedModel, options) =>
+      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/permissions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListPermissionsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreatePermission": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}/permissions`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Permission),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListPermissionsByCorpus": (corpus, options) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/permissions`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListPermissionsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreatePermissionByCorpus": (corpus, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/permissions`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Permission),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetPermission": (tunedModel, permission) =>
+      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Permission),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeletePermission": (tunedModel, permission) =>
+      HttpClientRequest.del(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdatePermission": (tunedModel, permission, options) =>
+      HttpClientRequest.patch(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Permission),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetPermissionByCorpusAndPermission": (corpus, permission) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Permission),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeletePermissionByCorpusAndPermission": (corpus, permission) =>
+      HttpClientRequest.del(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdatePermissionByCorpusAndPermission": (corpus, permission, options) =>
+      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Permission),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "TransferOwnership": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:transferOwnership`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(TransferOwnershipResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "Predict": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:predict`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(PredictResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "PredictLongRunning": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:predictLongRunning`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(PredictLongRunningOperation),
           orElse: unexpectedStatus
         }))
       ),
@@ -4429,86 +4363,6 @@ export const make = (
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Corpus),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "StreamGenerateContentByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:streamGenerateContent`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateContentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GenerateMessage": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateMessage`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateMessageResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CancelOperation": (generateContentBatch) =>
-      HttpClientRequest.post(`/v1beta/batches/${generateContentBatch}:cancel`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DownloadFile": (file) =>
-      HttpClientRequest.get(`/v1beta/files/${file}:download`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(DownloadFileResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetModel": (model) =>
-      HttpClientRequest.get(`/v1beta/models/${model}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Model),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "EmbedContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:embedContent`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(EmbedContentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "TransferOwnership": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:transferOwnership`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(TransferOwnershipResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListDocuments": (corpus, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListDocumentsResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CreateDocument": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Document),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchUpdateChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchUpdate`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(BatchUpdateChunksResponse),
           orElse: unexpectedStatus
         }))
       ),
@@ -4536,11 +4390,168 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
-    "StreamGenerateContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:streamGenerateContent`).pipe(
+    "QueryCorpus": (corpus, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}:query`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GenerateContentResponse),
+          "2xx": decodeSuccess(QueryCorpusResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListDocuments": (corpus, options) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListDocumentsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateDocument": (corpus, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Document),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetDocument": (corpus, document) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Document),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteDocument": (corpus, document, options) =>
+      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
+        HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdateDocument": (corpus, document, options) =>
+      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Document),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "QueryDocument": (corpus, document, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}:query`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(QueryDocumentResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListChunks": (corpus, document, options) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListChunksResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateChunk": (corpus, document, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Chunk),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchCreateChunks": (corpus, document, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchCreate`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchCreateChunksResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetChunk": (corpus, document, chunk) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Chunk),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteChunk": (corpus, document, chunk) =>
+      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdateChunk": (corpus, document, chunk, options) =>
+      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Chunk),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchUpdateChunks": (corpus, document, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchUpdate`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchUpdateChunksResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchDeleteChunks": (corpus, document, options) =>
+      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchDelete`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GenerateText": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:generateText`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateTextResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GenerateTextByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:generateText`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateTextResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "EmbedText": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:embedText`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(EmbedTextResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchEmbedText": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:batchEmbedText`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchEmbedTextResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CountTextTokens": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:countTextTokens`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CountTextTokensResponse),
           orElse: unexpectedStatus
         }))
       )
@@ -4550,12 +4561,20 @@ export const make = (
 export interface Client {
   readonly httpClient: HttpClient.HttpClient
   /**
-   * Performs a prediction request.
+   * Lists operations that match the specified filter in the request. If the
+   * server doesn't support this method, it returns `UNIMPLEMENTED`.
    */
-  readonly "Predict": (
-    model: string,
-    options: typeof PredictRequest.Encoded
-  ) => Effect.Effect<typeof PredictResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "ListOperations": (
+    tunedModel: string,
+    options?: typeof ListOperationsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListOperationsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists operations that match the specified filter in the request. If the
+   * server doesn't support this method, it returns `UNIMPLEMENTED`.
+   */
+  readonly "ListOperationsBy": (
+    options?: typeof ListOperationsByParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListOperationsResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Lists operations that match the specified filter in the request. If the
    * server doesn't support this method, it returns `UNIMPLEMENTED`.
@@ -4574,38 +4593,14 @@ export interface Client {
     operation: string
   ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Lists permissions for the specific resource.
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
    */
-  readonly "ListPermissions": (
-    tunedModel: string,
-    options?: typeof ListPermissionsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListPermissionsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Create a permission to a specific resource.
-   */
-  readonly "CreatePermission": (
-    tunedModel: string,
-    options: typeof Permission.Encoded
-  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists CachedContents.
-   */
-  readonly "ListCachedContents": (
-    options?: typeof ListCachedContentsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListCachedContentsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates CachedContent resource.
-   */
-  readonly "CreateCachedContent": (
-    options: typeof CachedContent.Encoded
-  ) => Effect.Effect<typeof CachedContent.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a response from the model given an input message.
-   */
-  readonly "GenerateTextByTunedModel": (
-    tunedModel: string,
-    options: typeof GenerateTextRequest.Encoded
-  ) => Effect.Effect<typeof GenerateTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "GetOperationByGeneratedFileAndOperation": (
+    generatedFile: string,
+    operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets the latest state of a long-running operation.  Clients can use this
    * method to poll the operation result at intervals as recommended by the API
@@ -4615,25 +4610,38 @@ export interface Client {
     generateContentBatch: string
   ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Lists the generated files owned by the requesting project.
+   * Deletes a long-running operation. This method indicates that the client is
+   * no longer interested in the operation result. It does not cancel the
+   * operation. If the server doesn't support this method, it returns
+   * `google.rpc.Code.UNIMPLEMENTED`.
    */
-  readonly "ListGeneratedFiles": (
-    options?: typeof ListGeneratedFilesParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListGeneratedFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "DeleteOperation": (
+    generateContentBatch: string
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Generates an embedding from the model given an input message.
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
    */
-  readonly "EmbedText": (
+  readonly "GetOperationByModelAndOperation": (
     model: string,
-    options: typeof EmbedTextRequest.Encoded
-  ) => Effect.Effect<typeof EmbedTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+    operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Runs a model's tokenizer on a text and returns the token count.
+   * Starts asynchronous cancellation on a long-running operation.  The server
+   * makes a best effort to cancel the operation, but success is not
+   * guaranteed.  If the server doesn't support this method, it returns
+   * `google.rpc.Code.UNIMPLEMENTED`.  Clients can use
+   * Operations.GetOperation or
+   * other methods to check whether the cancellation succeeded or whether the
+   * operation completed despite cancellation. On successful cancellation,
+   * the operation is not deleted; instead, it becomes an operation with
+   * an Operation.error value with a google.rpc.Status.code of `1`,
+   * corresponding to `Code.CANCELLED`.
    */
-  readonly "CountTextTokens": (
-    model: string,
-    options: typeof CountTextTokensRequest.Encoded
-  ) => Effect.Effect<typeof CountTextTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "CancelOperation": (
+    generateContentBatch: string
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Generates a model response given an input `GenerateContentRequest`.
    * Refer to the [text generation
@@ -4648,166 +4656,6 @@ export interface Client {
     options: typeof GenerateContentRequest.Encoded
   ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Generates multiple embedding vectors from the input `Content` which
-   * consists of a batch of strings represented as `EmbedContentRequest`
-   * objects.
-   */
-  readonly "BatchEmbedContents": (
-    model: string,
-    options: typeof BatchEmbedContentsRequest.Encoded
-  ) => Effect.Effect<typeof BatchEmbedContentsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Gets the metadata for the given `File`.
-   */
-  readonly "GetFile": (file: string) => Effect.Effect<typeof File.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Deletes the `File`.
-   */
-  readonly "DeleteFile": (
-    file: string
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Performs semantic search over a `Corpus`.
-   */
-  readonly "QueryCorpus": (
-    corpus: string,
-    options: typeof QueryCorpusRequest.Encoded
-  ) => Effect.Effect<typeof QueryCorpusResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a grounded answer from the model given an input
-   * `GenerateAnswerRequest`.
-   */
-  readonly "GenerateAnswer": (
-    model: string,
-    options: typeof GenerateAnswerRequest.Encoded
-  ) => Effect.Effect<typeof GenerateAnswerResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a response from the model given an input message.
-   */
-  readonly "GenerateText": (
-    model: string,
-    options: typeof GenerateTextRequest.Encoded
-  ) => Effect.Effect<typeof GenerateTextResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Batch create `Chunk`s.
-   */
-  readonly "BatchCreateChunks": (
-    corpus: string,
-    document: string,
-    options: typeof BatchCreateChunksRequest.Encoded
-  ) => Effect.Effect<typeof BatchCreateChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Gets the latest state of a long-running operation.  Clients can use this
-   * method to poll the operation result at intervals as recommended by the API
-   * service.
-   */
-  readonly "GetOperationByModelAndOperation": (
-    model: string,
-    operation: string
-  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists operations that match the specified filter in the request. If the
-   * server doesn't support this method, it returns `UNIMPLEMENTED`.
-   */
-  readonly "ListOperationsBy": (
-    options?: typeof ListOperationsByParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListOperationsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists all `Chunk`s in a `Document`.
-   */
-  readonly "ListChunks": (
-    corpus: string,
-    document: string,
-    options?: typeof ListChunksParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates a `Chunk`.
-   */
-  readonly "CreateChunk": (
-    corpus: string,
-    document: string,
-    options: typeof Chunk.Encoded
-  ) => Effect.Effect<typeof Chunk.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists the [`Model`s](https://ai.google.dev/gemini-api/docs/models/gemini)
-   * available through the Gemini API.
-   */
-  readonly "ListModels": (
-    options?: typeof ListModelsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListModelsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Batch delete `Chunk`s.
-   */
-  readonly "BatchDeleteChunks": (
-    corpus: string,
-    document: string,
-    options: typeof BatchDeleteChunksRequest.Encoded
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists permissions for the specific resource.
-   */
-  readonly "ListPermissionsByCorpus": (
-    corpus: string,
-    options?: typeof ListPermissionsByCorpusParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListPermissionsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Create a permission to a specific resource.
-   */
-  readonly "CreatePermissionByCorpus": (
-    corpus: string,
-    options: typeof Permission.Encoded
-  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists created tuned models.
-   */
-  readonly "ListTunedModels": (
-    options?: typeof ListTunedModelsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListTunedModelsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates a tuned model.
-   * Check intermediate tuning progress (if any) through the
-   * [google.longrunning.Operations] service.
-   *
-   * Access status and results through the Operations service.
-   * Example:
-   *   GET /v1/tunedModels/az2mb0bpw6i/operations/000-111-222
-   */
-  readonly "CreateTunedModel": (
-    options: {
-      readonly params?: typeof CreateTunedModelParams.Encoded | undefined
-      readonly payload: typeof TunedModel.Encoded
-    }
-  ) => Effect.Effect<typeof CreateTunedModelOperation.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Same as Predict but returns an LRO.
-   */
-  readonly "PredictLongRunning": (
-    model: string,
-    options: typeof PredictLongRunningRequest.Encoded
-  ) => Effect.Effect<typeof PredictLongRunningOperation.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Gets information about a specific Permission.
-   */
-  readonly "GetPermission": (
-    tunedModel: string,
-    permission: string
-  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Deletes the permission.
-   */
-  readonly "DeletePermission": (
-    tunedModel: string,
-    permission: string
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Updates the permission.
-   */
-  readonly "UpdatePermission": (
-    tunedModel: string,
-    permission: string,
-    options: { readonly params: typeof UpdatePermissionParams.Encoded; readonly payload: typeof Permission.Encoded }
-  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
-  /**
    * Generates a model response given an input `GenerateContentRequest`.
    * Refer to the [text generation
    * guide](https://ai.google.dev/gemini-api/docs/text-generation) for detailed
@@ -4821,13 +4669,156 @@ export interface Client {
     options: typeof GenerateContentRequest.Encoded
   ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Performs semantic search over a `Document`.
+   * Generates a model response given an input `GenerateContentRequest`.
+   * Refer to the [text generation
+   * guide](https://ai.google.dev/gemini-api/docs/text-generation) for detailed
+   * usage information. Input capabilities differ between models, including
+   * tuned models. Refer to the [model
+   * guide](https://ai.google.dev/gemini-api/docs/models/gemini) and [tuning
+   * guide](https://ai.google.dev/gemini-api/docs/model-tuning) for details.
    */
-  readonly "QueryDocument": (
-    corpus: string,
-    document: string,
-    options: typeof QueryDocumentRequest.Encoded
-  ) => Effect.Effect<typeof QueryDocumentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "GenerateContentByDynamicId": (
+    dynamicId: string,
+    options: typeof GenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a grounded answer from the model given an input
+   * `GenerateAnswerRequest`.
+   */
+  readonly "GenerateAnswer": (
+    model: string,
+    options: typeof GenerateAnswerRequest.Encoded
+  ) => Effect.Effect<typeof GenerateAnswerResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a [streamed
+   * response](https://ai.google.dev/gemini-api/docs/text-generation?lang=python#generate-a-text-stream)
+   * from the model given an input `GenerateContentRequest`.
+   */
+  readonly "StreamGenerateContent": (
+    model: string,
+    options: typeof GenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a [streamed
+   * response](https://ai.google.dev/gemini-api/docs/text-generation?lang=python#generate-a-text-stream)
+   * from the model given an input `GenerateContentRequest`.
+   */
+  readonly "StreamGenerateContentByTunedModel": (
+    tunedModel: string,
+    options: typeof GenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a [streamed
+   * response](https://ai.google.dev/gemini-api/docs/text-generation?lang=python#generate-a-text-stream)
+   * from the model given an input `GenerateContentRequest`.
+   */
+  readonly "StreamGenerateContentByDynamicId": (
+    dynamicId: string,
+    options: typeof GenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a text embedding vector from the input `Content` using the
+   * specified [Gemini Embedding
+   * model](https://ai.google.dev/gemini-api/docs/models/gemini#text-embedding).
+   */
+  readonly "EmbedContent": (
+    model: string,
+    options: typeof EmbedContentRequest.Encoded
+  ) => Effect.Effect<typeof EmbedContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates multiple embedding vectors from the input `Content` which
+   * consists of a batch of strings represented as `EmbedContentRequest`
+   * objects.
+   */
+  readonly "BatchEmbedContents": (
+    model: string,
+    options: typeof BatchEmbedContentsRequest.Encoded
+  ) => Effect.Effect<typeof BatchEmbedContentsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Runs a model's tokenizer on input `Content` and returns the token count.
+   * Refer to the [tokens guide](https://ai.google.dev/gemini-api/docs/tokens)
+   * to learn more about tokens.
+   */
+  readonly "CountTokens": (
+    model: string,
+    options: typeof CountTokensRequest.Encoded
+  ) => Effect.Effect<typeof CountTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists CachedContents.
+   */
+  readonly "ListCachedContents": (
+    options?: typeof ListCachedContentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListCachedContentsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates CachedContent resource.
+   */
+  readonly "CreateCachedContent": (
+    options: typeof CachedContent.Encoded
+  ) => Effect.Effect<typeof CachedContent.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Reads CachedContent resource.
+   */
+  readonly "GetCachedContent": (
+    id: string
+  ) => Effect.Effect<typeof CachedContent.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes CachedContent resource.
+   */
+  readonly "DeleteCachedContent": (
+    id: string
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates CachedContent resource (only expiration is updatable).
+   */
+  readonly "UpdateCachedContent": (
+    id: string,
+    options: {
+      readonly params?: typeof UpdateCachedContentParams.Encoded | undefined
+      readonly payload: typeof CachedContent.Encoded
+    }
+  ) => Effect.Effect<typeof CachedContent.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a response from the model given an input `MessagePrompt`.
+   */
+  readonly "GenerateMessage": (
+    model: string,
+    options: typeof GenerateMessageRequest.Encoded
+  ) => Effect.Effect<typeof GenerateMessageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Runs a model's tokenizer on a string and returns the token count.
+   */
+  readonly "CountMessageTokens": (
+    model: string,
+    options: typeof CountMessageTokensRequest.Encoded
+  ) => Effect.Effect<typeof CountMessageTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the metadata for `File`s owned by the requesting project.
+   */
+  readonly "ListFiles": (
+    options?: typeof ListFilesParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates a `File`.
+   */
+  readonly "CreateFile": (
+    options: typeof CreateFileRequest.Encoded
+  ) => Effect.Effect<typeof CreateFileResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets the metadata for the given `File`.
+   */
+  readonly "GetFile": (file: string) => Effect.Effect<typeof File.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes the `File`.
+   */
+  readonly "DeleteFile": (
+    file: string
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Download the `File`.
+   */
+  readonly "DownloadFile": (
+    file: string
+  ) => Effect.Effect<typeof DownloadFileResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets a generated file. When calling this method via REST, only the metadata
    * of the generated file is returned. To retrieve the file content via REST,
@@ -4836,6 +4827,28 @@ export interface Client {
   readonly "GetGeneratedFile": (
     generatedFile: string
   ) => Effect.Effect<typeof GeneratedFile.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the generated files owned by the requesting project.
+   */
+  readonly "ListGeneratedFiles": (
+    options?: typeof ListGeneratedFilesParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListGeneratedFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets information about a specific `Model` such as its version number, token
+   * limits,
+   * [parameters](https://ai.google.dev/gemini-api/docs/models/generative-models#model-parameters)
+   * and other metadata. Refer to the [Gemini models
+   * guide](https://ai.google.dev/gemini-api/docs/models/gemini) for detailed
+   * model information.
+   */
+  readonly "GetModel": (model: string) => Effect.Effect<typeof Model.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the [`Model`s](https://ai.google.dev/gemini-api/docs/models/gemini)
+   * available through the Gemini API.
+   */
+  readonly "ListModels": (
+    options?: typeof ListModelsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListModelsResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets information about a specific TunedModel.
    */
@@ -4859,22 +4872,76 @@ export interface Client {
     }
   ) => Effect.Effect<typeof TunedModel.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Generates multiple embeddings from the model given input text in a
-   * synchronous call.
+   * Lists created tuned models.
    */
-  readonly "BatchEmbedText": (
-    model: string,
-    options: typeof BatchEmbedTextRequest.Encoded
-  ) => Effect.Effect<typeof BatchEmbedTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "ListTunedModels": (
+    options?: typeof ListTunedModelsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListTunedModelsResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Runs a model's tokenizer on input `Content` and returns the token count.
-   * Refer to the [tokens guide](https://ai.google.dev/gemini-api/docs/tokens)
-   * to learn more about tokens.
+   * Creates a tuned model.
+   * Check intermediate tuning progress (if any) through the
+   * [google.longrunning.Operations] service.
+   *
+   * Access status and results through the Operations service.
+   * Example:
+   *   GET /v1/tunedModels/az2mb0bpw6i/operations/000-111-222
    */
-  readonly "CountTokens": (
-    model: string,
-    options: typeof CountTokensRequest.Encoded
-  ) => Effect.Effect<typeof CountTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "CreateTunedModel": (
+    options: {
+      readonly params?: typeof CreateTunedModelParams.Encoded | undefined
+      readonly payload: typeof TunedModel.Encoded
+    }
+  ) => Effect.Effect<typeof CreateTunedModelOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists permissions for the specific resource.
+   */
+  readonly "ListPermissions": (
+    tunedModel: string,
+    options?: typeof ListPermissionsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListPermissionsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a permission to a specific resource.
+   */
+  readonly "CreatePermission": (
+    tunedModel: string,
+    options: typeof Permission.Encoded
+  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists permissions for the specific resource.
+   */
+  readonly "ListPermissionsByCorpus": (
+    corpus: string,
+    options?: typeof ListPermissionsByCorpusParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListPermissionsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a permission to a specific resource.
+   */
+  readonly "CreatePermissionByCorpus": (
+    corpus: string,
+    options: typeof Permission.Encoded
+  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets information about a specific Permission.
+   */
+  readonly "GetPermission": (
+    tunedModel: string,
+    permission: string
+  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes the permission.
+   */
+  readonly "DeletePermission": (
+    tunedModel: string,
+    permission: string
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates the permission.
+   */
+  readonly "UpdatePermission": (
+    tunedModel: string,
+    permission: string,
+    options: { readonly params: typeof UpdatePermissionParams.Encoded; readonly payload: typeof Permission.Encoded }
+  ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets information about a specific Permission.
    */
@@ -4901,17 +4968,81 @@ export interface Client {
     }
   ) => Effect.Effect<typeof Permission.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Lists the metadata for `File`s owned by the requesting project.
+   * Transfers ownership of the tuned model.
+   * This is the only way to change ownership of the tuned model.
+   * The current owner will be downgraded to writer role.
    */
-  readonly "ListFiles": (
-    options?: typeof ListFilesParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "TransferOwnership": (
+    tunedModel: string,
+    options: typeof TransferOwnershipRequest.Encoded
+  ) => Effect.Effect<typeof TransferOwnershipResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Creates a `File`.
+   * Performs a prediction request.
    */
-  readonly "CreateFile": (
-    options: typeof CreateFileRequest.Encoded
-  ) => Effect.Effect<typeof CreateFileResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "Predict": (
+    model: string,
+    options: typeof PredictRequest.Encoded
+  ) => Effect.Effect<typeof PredictResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Same as Predict but returns an LRO.
+   */
+  readonly "PredictLongRunning": (
+    model: string,
+    options: typeof PredictLongRunningRequest.Encoded
+  ) => Effect.Effect<typeof PredictLongRunningOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists all `Corpora` owned by the user.
+   */
+  readonly "ListCorpora": (
+    options?: typeof ListCorporaParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListCorporaResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates an empty `Corpus`.
+   */
+  readonly "CreateCorpus": (
+    options: typeof Corpus.Encoded
+  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets information about a specific `Corpus`.
+   */
+  readonly "GetCorpus": (
+    corpus: string
+  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes a `Corpus`.
+   */
+  readonly "DeleteCorpus": (
+    corpus: string,
+    options?: typeof DeleteCorpusParams.Encoded | undefined
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates a `Corpus`.
+   */
+  readonly "UpdateCorpus": (
+    corpus: string,
+    options: { readonly params: typeof UpdateCorpusParams.Encoded; readonly payload: typeof Corpus.Encoded }
+  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Performs semantic search over a `Corpus`.
+   */
+  readonly "QueryCorpus": (
+    corpus: string,
+    options: typeof QueryCorpusRequest.Encoded
+  ) => Effect.Effect<typeof QueryCorpusResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists all `Document`s in a `Corpus`.
+   */
+  readonly "ListDocuments": (
+    corpus: string,
+    options?: typeof ListDocumentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListDocumentsResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates an empty `Document`.
+   */
+  readonly "CreateDocument": (
+    corpus: string,
+    options: typeof Document.Encoded
+  ) => Effect.Effect<typeof Document.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets information about a specific `Document`.
    */
@@ -4935,6 +5066,38 @@ export interface Client {
     document: string,
     options: { readonly params: typeof UpdateDocumentParams.Encoded; readonly payload: typeof Document.Encoded }
   ) => Effect.Effect<typeof Document.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Performs semantic search over a `Document`.
+   */
+  readonly "QueryDocument": (
+    corpus: string,
+    document: string,
+    options: typeof QueryDocumentRequest.Encoded
+  ) => Effect.Effect<typeof QueryDocumentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists all `Chunk`s in a `Document`.
+   */
+  readonly "ListChunks": (
+    corpus: string,
+    document: string,
+    options?: typeof ListChunksParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates a `Chunk`.
+   */
+  readonly "CreateChunk": (
+    corpus: string,
+    document: string,
+    options: typeof Chunk.Encoded
+  ) => Effect.Effect<typeof Chunk.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Batch create `Chunk`s.
+   */
+  readonly "BatchCreateChunks": (
+    corpus: string,
+    document: string,
+    options: typeof BatchCreateChunksRequest.Encoded
+  ) => Effect.Effect<typeof BatchCreateChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets information about a specific `Chunk`.
    */
@@ -4961,164 +5124,6 @@ export interface Client {
     options: { readonly params: typeof UpdateChunkParams.Encoded; readonly payload: typeof Chunk.Encoded }
   ) => Effect.Effect<typeof Chunk.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Gets the latest state of a long-running operation.  Clients can use this
-   * method to poll the operation result at intervals as recommended by the API
-   * service.
-   */
-  readonly "GetOperationByGeneratedFileAndOperation": (
-    generatedFile: string,
-    operation: string
-  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Reads CachedContent resource.
-   */
-  readonly "GetCachedContent": (
-    id: string
-  ) => Effect.Effect<typeof CachedContent.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Deletes CachedContent resource.
-   */
-  readonly "DeleteCachedContent": (
-    id: string
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Updates CachedContent resource (only expiration is updatable).
-   */
-  readonly "UpdateCachedContent": (
-    id: string,
-    options: {
-      readonly params?: typeof UpdateCachedContentParams.Encoded | undefined
-      readonly payload: typeof CachedContent.Encoded
-    }
-  ) => Effect.Effect<typeof CachedContent.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Runs a model's tokenizer on a string and returns the token count.
-   */
-  readonly "CountMessageTokens": (
-    model: string,
-    options: typeof CountMessageTokensRequest.Encoded
-  ) => Effect.Effect<typeof CountMessageTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a [streamed
-   * response](https://ai.google.dev/gemini-api/docs/text-generation?lang=python#generate-a-text-stream)
-   * from the model given an input `GenerateContentRequest`.
-   */
-  readonly "StreamGenerateContentByDynamicId": (
-    dynamicId: string,
-    options: typeof GenerateContentRequest.Encoded
-  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a model response given an input `GenerateContentRequest`.
-   * Refer to the [text generation
-   * guide](https://ai.google.dev/gemini-api/docs/text-generation) for detailed
-   * usage information. Input capabilities differ between models, including
-   * tuned models. Refer to the [model
-   * guide](https://ai.google.dev/gemini-api/docs/models/gemini) and [tuning
-   * guide](https://ai.google.dev/gemini-api/docs/model-tuning) for details.
-   */
-  readonly "GenerateContentByDynamicId": (
-    dynamicId: string,
-    options: typeof GenerateContentRequest.Encoded
-  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists operations that match the specified filter in the request. If the
-   * server doesn't support this method, it returns `UNIMPLEMENTED`.
-   */
-  readonly "ListOperations": (
-    tunedModel: string,
-    options?: typeof ListOperationsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListOperationsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists all `Corpora` owned by the user.
-   */
-  readonly "ListCorpora": (
-    options?: typeof ListCorporaParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListCorporaResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates an empty `Corpus`.
-   */
-  readonly "CreateCorpus": (
-    options: typeof Corpus.Encoded
-  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a [streamed
-   * response](https://ai.google.dev/gemini-api/docs/text-generation?lang=python#generate-a-text-stream)
-   * from the model given an input `GenerateContentRequest`.
-   */
-  readonly "StreamGenerateContentByTunedModel": (
-    tunedModel: string,
-    options: typeof GenerateContentRequest.Encoded
-  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a response from the model given an input `MessagePrompt`.
-   */
-  readonly "GenerateMessage": (
-    model: string,
-    options: typeof GenerateMessageRequest.Encoded
-  ) => Effect.Effect<typeof GenerateMessageResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Starts asynchronous cancellation on a long-running operation.  The server
-   * makes a best effort to cancel the operation, but success is not
-   * guaranteed.  If the server doesn't support this method, it returns
-   * `google.rpc.Code.UNIMPLEMENTED`.  Clients can use
-   * Operations.GetOperation or
-   * other methods to check whether the cancellation succeeded or whether the
-   * operation completed despite cancellation. On successful cancellation,
-   * the operation is not deleted; instead, it becomes an operation with
-   * an Operation.error value with a google.rpc.Status.code of `1`,
-   * corresponding to `Code.CANCELLED`.
-   */
-  readonly "CancelOperation": (
-    generateContentBatch: string
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Download the `File`.
-   */
-  readonly "DownloadFile": (
-    file: string
-  ) => Effect.Effect<typeof DownloadFileResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Gets information about a specific `Model` such as its version number, token
-   * limits,
-   * [parameters](https://ai.google.dev/gemini-api/docs/models/generative-models#model-parameters)
-   * and other metadata. Refer to the [Gemini models
-   * guide](https://ai.google.dev/gemini-api/docs/models/gemini) for detailed
-   * model information.
-   */
-  readonly "GetModel": (model: string) => Effect.Effect<typeof Model.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a text embedding vector from the input `Content` using the
-   * specified [Gemini Embedding
-   * model](https://ai.google.dev/gemini-api/docs/models/gemini#text-embedding).
-   */
-  readonly "EmbedContent": (
-    model: string,
-    options: typeof EmbedContentRequest.Encoded
-  ) => Effect.Effect<typeof EmbedContentResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Transfers ownership of the tuned model.
-   * This is the only way to change ownership of the tuned model.
-   * The current owner will be downgraded to writer role.
-   */
-  readonly "TransferOwnership": (
-    tunedModel: string,
-    options: typeof TransferOwnershipRequest.Encoded
-  ) => Effect.Effect<typeof TransferOwnershipResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists all `Document`s in a `Corpus`.
-   */
-  readonly "ListDocuments": (
-    corpus: string,
-    options?: typeof ListDocumentsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListDocumentsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates an empty `Document`.
-   */
-  readonly "CreateDocument": (
-    corpus: string,
-    options: typeof Document.Encoded
-  ) => Effect.Effect<typeof Document.Type, HttpClientError.HttpClientError | ParseError>
-  /**
    * Batch update `Chunk`s.
    */
   readonly "BatchUpdateChunks": (
@@ -5127,34 +5132,49 @@ export interface Client {
     options: typeof BatchUpdateChunksRequest.Encoded
   ) => Effect.Effect<typeof BatchUpdateChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Gets information about a specific `Corpus`.
+   * Batch delete `Chunk`s.
    */
-  readonly "GetCorpus": (
-    corpus: string
-  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Deletes a `Corpus`.
-   */
-  readonly "DeleteCorpus": (
+  readonly "BatchDeleteChunks": (
     corpus: string,
-    options?: typeof DeleteCorpusParams.Encoded | undefined
+    document: string,
+    options: typeof BatchDeleteChunksRequest.Encoded
   ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Updates a `Corpus`.
+   * Generates a response from the model given an input message.
    */
-  readonly "UpdateCorpus": (
-    corpus: string,
-    options: { readonly params: typeof UpdateCorpusParams.Encoded; readonly payload: typeof Corpus.Encoded }
-  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Generates a [streamed
-   * response](https://ai.google.dev/gemini-api/docs/text-generation?lang=python#generate-a-text-stream)
-   * from the model given an input `GenerateContentRequest`.
-   */
-  readonly "StreamGenerateContent": (
+  readonly "GenerateText": (
     model: string,
-    options: typeof GenerateContentRequest.Encoded
-  ) => Effect.Effect<typeof GenerateContentResponse.Type, HttpClientError.HttpClientError | ParseError>
+    options: typeof GenerateTextRequest.Encoded
+  ) => Effect.Effect<typeof GenerateTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates a response from the model given an input message.
+   */
+  readonly "GenerateTextByTunedModel": (
+    tunedModel: string,
+    options: typeof GenerateTextRequest.Encoded
+  ) => Effect.Effect<typeof GenerateTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates an embedding from the model given an input message.
+   */
+  readonly "EmbedText": (
+    model: string,
+    options: typeof EmbedTextRequest.Encoded
+  ) => Effect.Effect<typeof EmbedTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Generates multiple embeddings from the model given input text in a
+   * synchronous call.
+   */
+  readonly "BatchEmbedText": (
+    model: string,
+    options: typeof BatchEmbedTextRequest.Encoded
+  ) => Effect.Effect<typeof BatchEmbedTextResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Runs a model's tokenizer on a text and returns the token count.
+   */
+  readonly "CountTextTokens": (
+    model: string,
+    options: typeof CountTextTokensRequest.Encoded
+  ) => Effect.Effect<typeof CountTextTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
 }
 
 export interface ClientError<Tag extends string, E> {

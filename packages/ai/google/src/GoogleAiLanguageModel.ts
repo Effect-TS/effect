@@ -1,19 +1,28 @@
 /**
  * @since 1.0.0
  */
-import type * as AiInput from "@effect/ai/AiInput"
+import { AiError } from "@effect/ai/AiError"
+import * as AiInput from "@effect/ai/AiInput"
 import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
+import * as AiResponse from "@effect/ai/AiResponse"
+import { addGenAIAnnotations } from "@effect/ai/AiTelemetry"
+import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as JsonSchema from "effect/JSONSchema"
+import * as Encoding from "effect/Encoding"
+import { constUndefined } from "effect/Function"
 import * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import type { Simplify } from "effect/Types"
+import * as Stream from "effect/Stream"
+import type { Span } from "effect/Tracer"
+import type { Mutable, Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import { GoogleAiClient } from "./GoogleAiClient.js"
 import * as InternalUtilities from "./internal/utilities.js"
+
+const constDisableValidation = { disableValidation: true }
 
 /**
  * @since 1.0.0
@@ -66,7 +75,8 @@ export declare namespace Config {
           }>
         }
       >
-    > { }
+    >
+  {}
 }
 
 // =============================================================================
@@ -80,7 +90,7 @@ export declare namespace Config {
 export class ProviderMetadata extends Context.Tag(InternalUtilities.ProviderMetadataKey)<
   ProviderMetadata,
   ProviderMetadata.Service
->() { }
+>() {}
 
 /**
  * @since 1.0.0
@@ -133,23 +143,20 @@ export const model = (
  * @since 1.0.0
  * @category Constructors
  */
-export const make = Effect.fnUntraced(function* (options: {
+export const make = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
 }) {
   const client = yield* GoogleAiClient
 
   const makeRequest = Effect.fnUntraced(
-    function* (method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
+    function*(method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
       const context = yield* Effect.context<never>()
       const perRequestConfig = context.unsafeMap.get(Config.key) as Config.Service | undefined
       const useStructured = tools.length === 1 && tools[0].structured
       const responseMimeType = useStructured
         ? "application/json"
         : (options.config?.generationConfig?.responseMimeType ?? perRequestConfig?.generationConfig?.responseMimeType)
-      const responseSchema = useStructured
-        ? convertJsonSchemaToOpenAPISchema(tools[0].parameters)
-        : undefined
       let toolConfig: typeof Generated.ToolConfig.Encoded | undefined = options.config?.toolConfig
       if (Predicate.isNotUndefined(toolChoice) && !useStructured && tools.length > 0) {
         if (toolChoice === "none") {
@@ -162,18 +169,22 @@ export const make = Effect.fnUntraced(function* (options: {
           toolConfig = { functionCallingConfig: { allowedFunctionNames: [toolChoice.tool], mode: "ANY" } }
         }
       }
-      const content = makeContent(method, system, prompt)
+      const contents = yield* makeContents(method, prompt)
       return {
         model: options.model,
         ...options.config,
         ...perRequestConfig,
+        systemInstruction: Option.match(system, {
+          onNone: constUndefined,
+          onSome: (text) => ({ parts: [{ text }] })
+        }),
+        contents,
         generationConfig: {
           ...options.config?.generationConfig,
           ...perRequestConfig?.generationConfig,
           responseMimeType,
-          responseSchema
-        },
-        content,
+          responseJsonSchema: useStructured ? tools[0].parameters : undefined
+        } as any,
         tools: !useStructured && tools.length > 0
           ? [{ functionDeclarations: convertTools(tools) }]
           : undefined,
@@ -181,6 +192,47 @@ export const make = Effect.fnUntraced(function* (options: {
       } satisfies typeof Generated.GenerateContentRequest.Encoded
     }
   )
+
+  return yield* AiLanguageModel.make({
+    generateText: Effect.fnUntraced(
+      function*(_options) {
+        const request = yield* makeRequest("generateText", _options)
+        annotateRequest(_options.span, request)
+        const rawResponse = yield* client.client.GenerateContent(request.model, request)
+        annotateChatResponse(_options.span, rawResponse)
+        return yield* makeResponse(rawResponse)
+      },
+      Effect.catchAll((cause) =>
+        AiError.is(cause) ? cause : new AiError({
+          module: "AmazonBedrockLanguageModel",
+          method: "generateText",
+          description: "An error occurred",
+          cause
+        })
+      )
+    ),
+    streamText(_options) {
+      return makeRequest("streamText", _options).pipe(
+        Effect.tap((request) => annotateRequest(_options.span, request)),
+        Effect.map(client.stream),
+        Stream.unwrap,
+        Stream.map((response) => {
+          annotateStreamResponse(_options.span, response)
+          return response
+        }),
+        Stream.catchAll((cause) =>
+          AiError.is(cause) ? Effect.fail(cause) : Effect.fail(
+            new AiError({
+              module: "AmazonBedrockLanguageModel",
+              method: "streamText",
+              description: "An error occurred",
+              cause
+            })
+          )
+        )
+      )
+    }
+  })
 })
 
 /**
@@ -193,151 +245,281 @@ export const layer = (options: {
 }): Layer.Layer<AiLanguageModel.AiLanguageModel, never, GoogleAiClient> =>
   Layer.effect(AiLanguageModel.AiLanguageModel, make({ model: options.model, config: options.config }))
 
-const makeContent = Effect.fnUntraced(function* (
-  method: string,
-  system: Option.Option<string>,
+const makeContents = Effect.fnUntraced(function*(
+  _method: string,
   prompt: AiInput.AiInput
 ) {
+  const contents: Array<typeof Generated.Content.Encoded> = []
+
+  for (const message of prompt.messages) {
+    switch (message._tag) {
+      case "AssistantMessage": {
+        const parts: Array<typeof Generated.Part.Encoded> = []
+        for (const part of message.parts) {
+          switch (part._tag) {
+            case "TextPart": {
+              parts.push({ text: part.text })
+              break
+            }
+            case "ReasoningPart": {
+              parts.push({
+                thought: true,
+                text: part.reasoningText,
+                thoughtSignature: part.signature
+              })
+              break
+            }
+            case "RedactedReasoningPart": {
+              // Doesn't seem to be supported
+              break
+            }
+            case "ToolCallPart": {
+              parts.push({
+                functionCall: {
+                  id: part.id,
+                  name: part.name,
+                  args: part.params as any
+                }
+              })
+              break
+            }
+          }
+        }
+        contents.push({ role: "model", parts })
+        break
+      }
+      case "UserMessage": {
+        const parts: Array<typeof Generated.Part.Encoded> = []
+        for (const part of message.parts) {
+          switch (part._tag) {
+            case "TextPart": {
+              parts.push({ text: part.text })
+              break
+            }
+            case "FilePart":
+            case "ImagePart": {
+              parts.push({
+                inlineData: {
+                  mimeType: part.mediaType,
+                  data: Encoding.encodeBase64(part.data)
+                }
+              })
+              break
+            }
+            case "ImageUrlPart":
+            case "FileUrlPart": {
+              parts.push({ fileData: { fileUri: part.url.toString() } })
+              break
+            }
+          }
+        }
+        contents.push({ role: "user", parts })
+        break
+      }
+      case "ToolMessage": {
+        const parts: Array<typeof Generated.Part.Encoded> = []
+        for (const part of message.parts) {
+          // Always a tool call result
+          parts.push({
+            functionResponse: {
+              id: part.id,
+              name: part.name,
+              response: part.result as any
+            }
+          })
+        }
+        contents.push({ role: "user", parts })
+        break
+      }
+    }
+  }
+
+  return contents
 })
 
-const convertTools = (
-  tools: AiLanguageModel.AiLanguageModelOptions["tools"]
-): ReadonlyArray<typeof Generated.FunctionDeclaration.Encoded> => {
-  const converted: Array<typeof Generated.FunctionDeclaration.Encoded> = []
-  for (const tool of tools) {
-    converted.push({
-      name: tool.name,
-      description: tool.description,
-      parameters: convertJsonSchemaToOpenAPISchema(tool.parameters)
-    })
-  }
-  return converted
-}
+let toolCallId = 0
+const makeResponse = Effect.fnUntraced(
+  function*(response: typeof Generated.GenerateContentResponse.Type) {
+    const parts: Array<AiResponse.Part> = []
 
-const convertJsonSchemaToOpenAPISchema = (jsonSchema: JsonSchema.JsonSchema7): unknown => {
-  switch (jsonSchema.title)
-  // parameters need to be undefined if they are empty objects:
-  if (isEmptyObjectSchema(jsonSchema)) {
-    return undefined;
-  }
+    parts.push(
+      new AiResponse.MetadataPart({
+        id: response.responseId ?? undefined,
+        model: response.modelVersion ?? ""
+      }, constDisableValidation)
+    )
 
-  if (typeof jsonSchema === 'boolean') {
-    return { type: 'boolean', properties: {} };
-  }
-
-  const {
-    type,
-    description,
-    required,
-    properties,
-    items,
-    allOf,
-    anyOf,
-    oneOf,
-    format,
-    const: constValue,
-    minLength,
-    enum: enumValues,
-  } = jsonSchema;
-
-  const result: Record<string, unknown> = {};
-
-  if (jsonSchema.description) result.description = description
-  if (jsonSchema.title)
-
-    if (description) result.description = description;
-  if (required) result.required = required;
-  if (format) result.format = format;
-
-  if (constValue !== undefined) {
-    result.enum = [constValue];
-  }
-
-  // Handle type
-  if (type) {
-    if (Array.isArray(type)) {
-      if (type.includes('null')) {
-        result.type = type.filter(t => t !== 'null')[0];
-        result.nullable = true;
-      } else {
-        result.type = type;
-      }
-    } else if (type === 'null') {
-      result.type = 'null';
-    } else {
-      result.type = type;
+    const candidate = response.candidates?.[0]
+    if (Predicate.isUndefined(candidate)) {
+      return yield* new AiError({
+        module: "GoogleAiLanguageModel",
+        method: "generateText",
+        description: "Response contained no candidates"
+      })
     }
-  }
+    const content = candidate.content
+    if (Predicate.isUndefined(content)) {
+      return yield* new AiError({
+        module: "GoogleAiLanguageModel",
+        method: "generateText",
+        description: "Response contained no content"
+      })
+    }
 
-  // Handle enum
-  if (enumValues !== undefined) {
-    result.enum = enumValues;
-  }
-
-  if (properties != null) {
-    result.properties = Object.entries(properties).reduce(
-      (acc, [key, value]) => {
-        acc[key] = convertJSONSchemaToOpenAPISchema(value);
-        return acc;
-      },
-      {} as Record<string, unknown>,
-    );
-  }
-
-  if (items) {
-    result.items = Array.isArray(items)
-      ? items.map(convertJSONSchemaToOpenAPISchema)
-      : convertJSONSchemaToOpenAPISchema(items);
-  }
-
-  if (allOf) {
-    result.allOf = allOf.map(convertJSONSchemaToOpenAPISchema);
-  }
-  if (anyOf) {
-    // Handle cases where anyOf includes a null type
+    const metadata: Mutable<ProviderMetadata.Service> = {} as any
     if (
-      anyOf.some(
-        schema => typeof schema === 'object' && schema?.type === 'null',
-      )
+      Predicate.isNotUndefined(candidate.citationMetadata) &&
+      Predicate.isNotUndefined(candidate.citationMetadata.citationSources)
     ) {
-      const nonNullSchemas = anyOf.filter(
-        schema => !(typeof schema === 'object' && schema?.type === 'null'),
-      );
-
-      if (nonNullSchemas.length === 1) {
-        // If there's only one non-null schema, convert it and make it nullable
-        const converted = convertJSONSchemaToOpenAPISchema(nonNullSchemas[0]);
-        if (typeof converted === 'object') {
-          result.nullable = true;
-          Object.assign(result, converted);
-        }
-      } else {
-        // If there are multiple non-null schemas, keep them in anyOf
-        result.anyOf = nonNullSchemas.map(convertJSONSchemaToOpenAPISchema);
-        result.nullable = true;
-      }
-    } else {
-      result.anyOf = anyOf.map(convertJSONSchemaToOpenAPISchema);
+      metadata.citationSources = Predicate.isUndefined(metadata.citationSources)
+        ? candidate.citationMetadata.citationSources
+        : metadata.citationSources.concat(candidate.citationMetadata.citationSources)
     }
-  }
-  if (oneOf) {
-    result.oneOf = oneOf.map(convertJSONSchemaToOpenAPISchema);
-  }
+    if (Predicate.isNotUndefined(candidate.groundingMetadata)) {
+      metadata.groundingMetadata = Predicate.isUndefined(metadata.groundingMetadata)
+        ? [candidate.groundingMetadata]
+        : metadata.groundingMetadata.concat(candidate.groundingMetadata)
+    }
+    if (Predicate.isNotUndefined(candidate.groundingAttributions)) {
+      metadata.groundingAttributions = Predicate.isUndefined(metadata.groundingAttributions)
+        ? candidate.groundingAttributions
+        : metadata.groundingAttributions.concat(candidate.groundingAttributions)
+    }
+    if (Predicate.isNotUndefined(candidate.safetyRatings)) {
+      metadata.safetyRatings = Predicate.isUndefined(metadata.safetyRatings)
+        ? candidate.safetyRatings
+        : metadata.safetyRatings.concat(candidate.safetyRatings)
+    }
+    if (
+      Predicate.isNotUndefined(candidate.urlContextMetadata) &&
+      Predicate.isNotUndefined(candidate.urlContextMetadata.urlMetadata)
+    ) {
+      metadata.retrievedUrls = Predicate.isUndefined(metadata.retrievedUrls)
+        ? candidate.urlContextMetadata.urlMetadata
+        : metadata.retrievedUrls.concat(candidate.urlContextMetadata.urlMetadata)
+    }
 
-  if (minLength !== undefined) {
-    result.minLength = minLength;
-  }
+    let hasToolCalls = false
+    if (Predicate.isNotUndefined(candidate.content)) {
+      const contentParts = candidate.content.parts ?? []
 
-  return result;
+      for (const part of contentParts) {
+        if ("text" in part && Predicate.isNotUndefined(part.text) && !part.thought) {
+          parts.push(
+            new AiResponse.TextPart({
+              text: part.text
+            }, constDisableValidation)
+          )
+        }
+
+        if ("text" in part && Predicate.isNotUndefined(part.text) && part.thought) {
+          parts.push(
+            new AiResponse.ReasoningPart({
+              reasoningText: part.text,
+              signature: part.thoughtSignature
+            }, constDisableValidation)
+          )
+        }
+
+        if ("functionCall" in part && Predicate.isNotUndefined(part.functionCall)) {
+          hasToolCalls = true
+          parts.push(
+            new AiResponse.ToolCallPart({
+              id: AiInput.ToolCallId.make(
+                part.functionCall.id ?? `${toolCallId++}`,
+                constDisableValidation
+              ),
+              name: part.functionCall.name,
+              params: part.functionCall.args
+            })
+          )
+        }
+      }
+    }
+
+    if (Predicate.isNotUndefined(candidate.finishReason)) {
+      // Google Generative Ai will return a finish reason of `"STOP"`
+      // when the model calls a tool, unlike other providers which will
+      // return a finish reason that indicates a tool is being called
+      const reason = candidate.finishReason === "STOP" && hasToolCalls
+        ? "tool-calls"
+        : InternalUtilities.resolveFinishReason(candidate.finishReason)
+      parts.push(
+        new AiResponse.FinishPart({
+          usage: {
+            inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+            outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+            totalTokens: response.usageMetadata?.totalTokenCount ?? 0,
+            reasoningTokens: response.usageMetadata?.thoughtsTokenCount ?? 0,
+            cacheReadInputTokens: response.usageMetadata?.cachedContentTokenCount ?? 0,
+            cacheWriteInputTokens: 0
+          },
+          reason,
+          providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
+        }, constDisableValidation)
+      )
+    }
+
+    return new AiResponse.AiResponse({
+      parts
+    }, constDisableValidation)
+  }
+)
+
+const annotateRequest = (
+  span: Span,
+  request: typeof Generated.GenerateContentRequest.Encoded
+): void => {
+  addGenAIAnnotations(span, {
+    system: "gcp.gemini",
+    operation: { name: "chat" },
+    request: {
+      model: request.model,
+      temperature: request.generationConfig?.temperature,
+      topP: request.generationConfig?.topP,
+      maxTokens: request.generationConfig?.maxOutputTokens,
+      stopSequences: request.generationConfig?.stopSequences ?? []
+    }
+  })
 }
 
-function isEmptyObjectSchema(jsonSchema: JSONSchema7Definition): boolean {
-  return (
-    jsonSchema != null &&
-    typeof jsonSchema === 'object' &&
-    jsonSchema.type === 'object' &&
-    (jsonSchema.properties == null ||
-      Object.keys(jsonSchema.properties).length === 0)
-  );
+const annotateChatResponse = (
+  span: Span,
+  response: typeof Generated.GenerateContentResponse.Type
+): void => {
+  const finishReasons = Predicate.isNotNullable(response.candidates) && response.candidates.length > 0
+    ? Arr.filterMap(response.candidates, (candidate) =>
+      Predicate.isNotNullable(candidate.finishReason)
+        ? Option.some(InternalUtilities.resolveFinishReason(candidate.finishReason))
+        : Option.none())
+    : undefined
+  addGenAIAnnotations(span, {
+    response: {
+      model: response.modelVersion,
+      finishReasons
+    },
+    usage: {
+      inputTokens: response.usageMetadata?.promptTokenCount,
+      outputTokens: response.usageMetadata?.candidatesTokenCount
+    }
+  })
 }
+
+const annotateStreamResponse = (
+  span: Span,
+  response: AiResponse.AiResponse
+) => {
+  const metadataPart = response.parts.find((part) => part._tag === "MetadataPart")
+  const finishPart = response.parts.find((part) => part._tag === "FinishPart")
+  addGenAIAnnotations(span, {
+    response: {
+      id: metadataPart?.id,
+      model: metadataPart?.model,
+      finishReasons: finishPart?.reason ? [finishPart.reason] : undefined
+    },
+    usage: {
+      inputTokens: finishPart?.usage.inputTokens,
+      outputTokens: finishPart?.usage.outputTokens
+    }
+  })
 }
