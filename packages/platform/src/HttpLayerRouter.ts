@@ -130,9 +130,19 @@ export const make = Effect.gen(function*() {
         [TypeId]: TypeId,
         asHttpEffect: this.asHttpEffect,
         prefixed: (newPrefix: string) => this.prefixed(prefixPath(prefix, newPrefix)),
-        addAll: (routes) => this.addAll(routes.map(prefixRoute(prefix))) as any,
+        addAll: (routes) => addAll(routes.map(prefixRoute(prefix))) as any,
         add: (method, path, handler, options) =>
-          this.add(method, prefixPath(prefix, path) as PathInput, handler, options)
+          addAll([
+            makeRoute({
+              method,
+              path: prefixPath(path, prefix) as PathInput,
+              handler: Effect.isEffect(handler)
+                ? handler
+                : Effect.flatMap(HttpServerRequest.HttpServerRequest, handler),
+              uninterruptible: options?.uninterruptible ?? false,
+              prefix: Option.some(prefix)
+            })
+          ])
       })
     },
     addAll,
