@@ -871,11 +871,12 @@ export const reduceWithContext = dual<
 /** @internal */
 export const pretty = <E>(cause: Cause.Cause<E>, options?: {
   readonly renderErrorCause?: boolean | undefined
+  readonly verbose?: boolean
 }): string => {
   if (isInterruptedOnly(cause)) {
     return "All fibers interrupted without errors."
   }
-  return prettyErrors<E>(cause).map(function(e) {
+  return prettyErrors<E>(cause, options?.verbose).map(function(e) {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
@@ -898,14 +899,14 @@ const renderErrorCause = (cause: PrettyError, prefix: string) => {
 /** @internal */
 export class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
-  constructor(originalError: unknown) {
+  constructor(originalError: unknown, readonly verbose: boolean) {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
     const prevLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 1
     super(
       prettyErrorMessage(originalError),
       originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
-        ? { cause: new PrettyError(originalError.cause) }
+        ? { cause: new PrettyError(originalError.cause, verbose) }
         : undefined
     )
     if (this.message === "") {
@@ -929,6 +930,7 @@ export class PrettyError extends globalThis.Error implements Cause.PrettyError {
       originalError instanceof Error && originalError.stack
         ? originalError.stack
         : "",
+      this.verbose,
       this.span
     )
   }
@@ -978,26 +980,30 @@ const locationRegex = /\((.*)\)/g
 /** @internal */
 export const spanToTrace = globalValue("effect/Tracer/spanToTrace", () => new WeakMap())
 
-const prettyErrorStack = (message: string, stack: string, span?: Span | undefined): string => {
+const prettyErrorStack = (message: string, stack: string, verbose: boolean, span?: Span | undefined): string => {
   const out: Array<string> = [message]
   const lines = stack.startsWith(message) ? stack.slice(message.length).split("\n") : stack.split("\n")
 
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].includes(" at new BaseEffectError") || lines[i].includes(" at new YieldableError")) {
-      i++
-      continue
+    if (verbose === true) {
+      out.push(lines[i])
+    } else {
+      if (lines[i].includes(" at new BaseEffectError") || lines[i].includes(" at new YieldableError")) {
+        i++
+        continue
+      }
+      if (lines[i].includes("Generator.next")) {
+        break
+      }
+      if (lines[i].includes("effect_internal_function")) {
+        break
+      }
+      out.push(
+        lines[i]
+          .replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1")
+          .replace(/EffectPrimitive\.\w+/, "<anonymous>")
+      )
     }
-    if (lines[i].includes("Generator.next")) {
-      break
-    }
-    if (lines[i].includes("effect_internal_function")) {
-      break
-    }
-    out.push(
-      lines[i]
-        .replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1")
-        .replace(/EffectPrimitive\.\w+/, "<anonymous>")
-    )
   }
 
   if (span) {
@@ -1035,14 +1041,14 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
 export const spanSymbol = Symbol.for("effect/SpanAnnotation")
 
 /** @internal */
-export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
+export const prettyErrors = <E>(cause: Cause.Cause<E>, verbose = true): Array<PrettyError> =>
   reduceWithContext(cause, void 0, {
     emptyCase: (): Array<PrettyError> => [],
     dieCase: (_, unknownError) => {
-      return [new PrettyError(unknownError)]
+      return [new PrettyError(unknownError, verbose)]
     },
     failCase: (_, error) => {
-      return [new PrettyError(error)]
+      return [new PrettyError(error, verbose)]
     },
     interruptCase: () => [],
     parallelCase: (_, l, r) => [...l, ...r],
