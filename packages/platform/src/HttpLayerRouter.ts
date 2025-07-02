@@ -611,10 +611,10 @@ class MiddlewareImpl<
     const contextKey = `@effect/platform/HttpLayerRouter/Middleware-${++middlewareId}` as const
     this.layer = Layer.scopedContext(Effect.gen(this, function*() {
       const context = yield* Effect.context<Scope.Scope>()
-      const memoMap = yield* Layer.CurrentMemoMap
-      const scope = Context.get(context, Scope.Scope)
       const stack = [context.unsafeMap.get(fnContextKey)]
       if (this.dependencies) {
+        const memoMap = yield* Layer.CurrentMemoMap
+        const scope = Context.get(context, Scope.Scope)
         const depsContext = yield* Layer.buildWithMemoMap(this.dependencies, memoMap, scope)
         // eslint-disable-next-line no-restricted-syntax
         stack.push(...getMiddleware(depsContext))
