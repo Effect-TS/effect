@@ -1,5 +1,17 @@
 # @effect/cluster
 
+## 0.41.6
+
+### Patch Changes
+
+- [#5139](https://github.com/Effect-TS/effect/pull/5139) [`7fdc16b`](https://github.com/Effect-TS/effect/commit/7fdc16bd88b872f5918384e4acda3731aab018da) Thanks @tim-smart! - only register new runners if they are not present in the ShardManager state
+
+- Updated dependencies [[`e82a4fd`](https://github.com/Effect-TS/effect/commit/e82a4fd60f6528d08cef1a4aba0abe0d3ba741ad)]:
+  - @effect/platform@0.87.4
+  - @effect/rpc@0.64.5
+  - @effect/sql@0.40.4
+  - @effect/workflow@0.4.5
+
 ## 0.41.5
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.87.4
+
+### Patch Changes
+
+- [#5137](https://github.com/Effect-TS/effect/pull/5137) [`e82a4fd`](https://github.com/Effect-TS/effect/commit/e82a4fd60f6528d08cef1a4aba0abe0d3ba741ad) Thanks @tim-smart! - move HttpLayerRouter request errors to Layer error channel
+
 ## 0.87.3
 
 ### Patch Changes
