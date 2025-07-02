@@ -4,6 +4,7 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
+  HttpLayerRouter,
   HttpMultiplex,
   HttpPlatform,
   HttpRouter,
@@ -46,6 +47,27 @@ describe("HttpServer", () => {
         ),
         HttpServer.serveEffect()
       )
+      const todo = yield* HttpClient.get("/todos/1").pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
+      )
+      expect(todo).toEqual({ id: 1, title: "test" })
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.scoped("schema HttpLayerRouter", () =>
+    Effect.gen(function*() {
+      const handler = yield* HttpLayerRouter.toHttpEffect(HttpLayerRouter.use(Effect.fnUntraced(function*(router) {
+        yield* router.add(
+          "GET",
+          "/todos/:id",
+          Effect.flatMap(
+            HttpLayerRouter.schemaParams(IdParams),
+            ({ id }) => todoResponse({ id, title: "test" })
+          )
+        )
+      })))
+
+      yield* HttpServer.serveEffect(handler)
+
       const todo = yield* HttpClient.get("/todos/1").pipe(
         Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
@@ -696,4 +718,33 @@ describe("HttpServer", () => {
         maxParamLength: 5
       })
     ))
+
+  it.scoped("HttpLayerRouter prefixed", () =>
+    Effect.gen(function*() {
+      const handler = yield* HttpLayerRouter.toHttpEffect(HttpLayerRouter.use(Effect.fnUntraced(function*(router_) {
+        const router = router_.prefixed("/todos")
+        yield* router.add(
+          "GET",
+          "/:id",
+          Effect.flatMap(
+            HttpLayerRouter.schemaParams(IdParams),
+            ({ id }) => todoResponse({ id, title: "test" })
+          )
+        )
+        yield* router.addAll([
+          HttpLayerRouter.route("GET", "/", Effect.succeed(HttpServerResponse.text("root")))
+        ])
+      })))
+
+      yield* HttpServer.serveEffect(handler)
+
+      const todo = yield* HttpClient.get("/todos/1").pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
+      )
+      expect(todo).toEqual({ id: 1, title: "test" })
+      const root = yield* HttpClient.get("/todos").pipe(
+        Effect.flatMap((r) => r.text)
+      )
+      expect(root).toEqual("root")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 })
