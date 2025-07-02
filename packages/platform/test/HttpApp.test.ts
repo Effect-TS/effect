@@ -36,6 +36,28 @@ describe("Http/App", () => {
       strictEqual(await response.text(), "foobar")
     })
 
+    test("stream scope", async () => {
+      let streamFinalized = 0
+      let handlerFinalized = 0
+      const handler = HttpApp.toWebHandler(Effect.gen(function*() {
+        yield* Effect.addFinalizer(() =>
+          Effect.sync(() => {
+            handlerFinalized = Date.now()
+          })
+        )
+        const stream = Stream.make("foo", "bar").pipe(
+          Stream.encodeText,
+          Stream.ensuring(Effect.sync(() => {
+            streamFinalized = Date.now()
+          }))
+        )
+        return HttpServerResponse.stream(stream)
+      }))
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "foobar")
+      strictEqual(streamFinalized < handlerFinalized, true)
+    })
+
     test("stream runtime", async () => {
       const handler = HttpApp.toWebHandlerRuntime(
         Runtime.defaultRuntime.pipe(

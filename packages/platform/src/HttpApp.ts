@@ -4,12 +4,16 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
+import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import { unify } from "effect/Unify"
+import * as HttpBody from "./HttpBody.js"
 import type { HttpMiddleware } from "./HttpMiddleware.js"
 import * as ServerError from "./HttpServerError.js"
 import * as ServerRequest from "./HttpServerRequest.js"
@@ -115,8 +119,56 @@ export const toHandled = <E, R, _, EH, RH>(
       })
   )
 
-  return Effect.uninterruptible(Effect.scoped(withMiddleware)) as any
+  return Effect.uninterruptible(scoped(withMiddleware)) as any
 }
+
+/**
+ * If you want to finalize the http request scope elsewhere, you can use this
+ * function to eject from the default scope closure.
+ *
+ * @since 1.0.0
+ * @category Scope
+ */
+export const ejectDefaultScopeClose = (scope: Scope.Scope): void => {
+  ejectedScopes.add(scope)
+}
+
+/**
+ * @since 1.0.0
+ * @category Scope
+ */
+export const unsafeEjectStreamScope = (
+  response: ServerResponse.HttpServerResponse
+): ServerResponse.HttpServerResponse => {
+  if (response.body._tag !== "Stream") {
+    return response
+  }
+  const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+  const scope = Context.unsafeGet(fiber.currentContext, Scope.Scope) as Scope.CloseableScope
+  ejectDefaultScopeClose(scope)
+  return ServerResponse.setBody(
+    response,
+    HttpBody.stream(
+      Stream.ensuring(response.body.stream, Scope.close(scope, Exit.void)),
+      response.body.contentType,
+      response.body.contentLength
+    )
+  )
+}
+
+const ejectedScopes = GlobalValue.globalValue(
+  "@effect/platform/HttpApp/ejectedScopes",
+  () => new WeakSet<Scope.Scope>()
+)
+
+const scoped = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  Effect.flatMap(Scope.make(), (scope) =>
+    Effect.onExit(Scope.extend(effect, scope), (exit) => {
+      if (ejectedScopes.has(scope)) {
+        return Effect.void
+      }
+      return Scope.close(scope, exit)
+    }))
 
 /**
  * @since 1.0.0
@@ -156,6 +208,7 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
   return <E>(self: Default<E, R | Scope.Scope>, middleware?: HttpMiddleware | undefined) => {
     const resolveSymbol = Symbol.for("@effect/platform/HttpApp/resolve")
     const httpApp = toHandled(self, (request, response) => {
+      response = unsafeEjectStreamScope(response)
       ;(request as any)[resolveSymbol](
         ServerResponse.toWeb(response, { withoutBody: request.method === "HEAD", runtime })
       )

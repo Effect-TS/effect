@@ -238,8 +238,7 @@ export interface Stream extends HttpBody.Proto {
 export const stream: (
   body: Stream_.Stream<globalThis.Uint8Array, unknown>,
   contentType?: string,
-  contentLength?: number,
-  etag?: string
+  contentLength?: number
 ) => Stream = internal.stream
 
 /**

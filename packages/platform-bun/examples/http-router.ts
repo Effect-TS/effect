@@ -42,6 +42,18 @@ const HttpLive = HttpRouter.empty.pipe(
     })
   ),
   HttpRouter.get(
+    "/stream",
+    Effect.gen(function*() {
+      yield* Effect.addFinalizer(() => Effect.log("handler completed"))
+      const stream = Stream.fromSchedule(Schedule.spaced(1000)).pipe(
+        Stream.map((n) => `Hello World ${n}`),
+        Stream.tap((_) => Effect.log(_)),
+        Stream.encodeText
+      )
+      return HttpServerResponse.stream(stream)
+    })
+  ),
+  HttpRouter.get(
     "/ws",
     Stream.fromSchedule(Schedule.spaced(1000)).pipe(
       Stream.map(JSON.stringify),
