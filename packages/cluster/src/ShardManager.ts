@@ -468,10 +468,6 @@ export const make = Effect.gen(function*() {
   const notifyUnhealthyRunner = Effect.fnUntraced(function*(address: RunnerAddress) {
     if (!MutableHashMap.has(state.allRunners, address)) return
 
-    yield* Metric.increment(
-      Metric.tagged(ClusterMetrics.runnerHealthChecked, "runner_address", address.toString())
-    )
-
     if (!(yield* runnerHealthApi.isAlive(address))) {
       yield* Effect.logWarning(`Runner at address '${address.toString()}' is not alive`)
       yield* unregister(address)
