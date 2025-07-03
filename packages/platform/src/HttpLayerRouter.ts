@@ -12,6 +12,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
+import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
 import * as HttpApi from "./HttpApi.js"
 import * as HttpApiBuilder from "./HttpApiBuilder.js"
@@ -59,16 +60,17 @@ export interface HttpRouter {
     options?: { readonly uninterruptible?: boolean | undefined } | undefined
   ) => Effect.Effect<
     void,
-    Type.From<"Error", E>,
-    Type.From<"Requires", Exclude<R, Provided>>
+    never,
+    Type.From<"Requires", Exclude<R, Provided>> | Type.From<"Error", E>
   >
 
   readonly addAll: <const Routes extends ReadonlyArray<Route<any, any>>>(
     routes: Routes
   ) => Effect.Effect<
     void,
-    Type.From<"Error", Route.Error<Routes[number]>>,
-    Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
+    never,
+    | Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
+    | Type.From<"Error", Route.Error<Routes[number]>>
   >
 
   readonly asHttpEffect: () => Effect.Effect<
@@ -97,8 +99,9 @@ export const make = Effect.gen(function*() {
     routes: Routes
   ): Effect.Effect<
     void,
-    Type.From<"Error", Route.Error<Routes[number]>>,
-    Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
+    never,
+    | Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
+    | Type.From<"Error", Route.Error<Routes[number]>>
   > =>
     Effect.contextWith((context: Context.Context<never>) => {
       const middleware = getMiddleware(context)
@@ -269,7 +272,7 @@ export const toHttpEffect = <A, E, R>(
 ): Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
-    Type.Only<"Error", E> | HttpServerError.RouteNotFound,
+    Type.Only<"Error", R> | HttpServerError.RouteNotFound,
     Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
   >,
   Type.Without<E>,
@@ -466,6 +469,17 @@ export const MiddlewareTypeId: unique symbol = Symbol.for("@effect/platform/Http
  * @category Middleware
  */
 export type MiddlewareTypeId = typeof MiddlewareTypeId
+
+/**
+ * A pseudo-error type that represents an error that should be not handled by
+ * the middleware.
+ *
+ * @since 1.0.0
+ * @category Middleware
+ */
+export interface unhandled {
+  readonly _: unique symbol
+}
 
 /**
  * @since 1.0.0
@@ -686,41 +700,45 @@ export declare namespace middleware {
         (
           effect: Effect.Effect<
             HttpServerResponse.HttpServerResponse,
-            Handles,
-            Provides
+            Types.NoInfer<Handles | unhandled>,
+            Types.NoInfer<Provides>
           >
-        ) => Effect.Effect<
-          HttpServerResponse.HttpServerResponse,
-          E,
-          R
-        >,
+        ) =>
+          & Effect.Effect<
+            HttpServerResponse.HttpServerResponse,
+            E,
+            R
+          >
+          & (unhandled extends E ? unknown : "You must only handle the configured errors"),
         EX,
         RX
       >
     ): Middleware<{
       provides: Provides
       handles: Handles
-      error: E
+      error: Exclude<E, unhandled>
       requires: Exclude<R, Provided>
       layerError: EX
       layerRequires: Exclude<RX, Scope.Scope>
     }>
     <E, R>(
-      middleware: (
-        effect: Effect.Effect<
+      middleware:
+        & ((
+          effect: Effect.Effect<
+            HttpServerResponse.HttpServerResponse,
+            Types.NoInfer<Handles | unhandled>,
+            Types.NoInfer<Provides>
+          >
+        ) => Effect.Effect<
           HttpServerResponse.HttpServerResponse,
-          Handles,
-          Provides
-        >
-      ) => Effect.Effect<
-        HttpServerResponse.HttpServerResponse,
-        E,
-        R
-      >
+          E,
+          R
+        >)
+        & (unhandled extends E ? unknown : "You must only handle the configured errors")
     ): Middleware<{
       provides: Provides
       handles: Handles
-      error: E
+      error: Exclude<E, unhandled>
       requires: Exclude<R, Provided>
       layerError: never
       layerRequires: never
@@ -876,7 +894,7 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
     readonly middleware?: (
       effect: Effect.Effect<
         HttpServerResponse.HttpServerResponse,
-        Type.Only<"Error", E> | HttpServerError.RouteNotFound,
+        Type.Only<"Error", R> | HttpServerError.RouteNotFound,
         Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
       >
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
