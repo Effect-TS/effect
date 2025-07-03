@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.41.7
+
+### Patch Changes
+
+- [#5140](https://github.com/Effect-TS/effect/pull/5140) [`b01d2e0`](https://github.com/Effect-TS/effect/commit/b01d2e0d591418e10e9e362698205d848e97a9b7) Thanks @tim-smart! - remove dynamic cluster metrics that could cause memory leaks
+
 ## 0.41.6
 
 ### Patch Changes
