@@ -2,7 +2,7 @@ import * as SqlKysely from "@effect/sql-kysely/Kysely"
 import { assert, describe, it } from "@effect/vitest"
 import SqliteDB from "better-sqlite3"
 import { Context, Effect, Layer } from "effect"
-import { CamelCasePlugin, type Generated, type Kysely, SqliteDialect } from "kysely"
+import { CamelCasePlugin, type Generated, Kysely, SqliteDialect } from "kysely"
 
 export interface User {
   id: Generated<number>
@@ -14,17 +14,19 @@ interface Database {
   users: User
 }
 
-class KyselyDB extends Context.Tag("KyselyDB")<KyselyDB, Kysely<Database>>() {}
+class KyselyDB extends Context.Tag("KyselyDB")<KyselyDB, SqlKysely.EffectKysely<Database>>() {}
 
 const KyselyDBLive = Layer.sync(KyselyDB, () =>
-  SqlKysely.make({
-    dialect: new SqliteDialect({
-      database: new SqliteDB(":memory:")
-    }),
-    plugins: [
-      new CamelCasePlugin()
-    ]
-  }))
+  SqlKysely.make(
+    new Kysely<Database>({
+      dialect: new SqliteDialect({
+        database: new SqliteDB(":memory:")
+      }),
+      plugins: [
+        new CamelCasePlugin()
+      ]
+    })
+  ))
 
 describe("Kysely", () => {
   it.effect("queries", () =>
@@ -37,12 +39,14 @@ describe("Kysely", () => {
         .addColumn("userName", "text", (c) => c.notNull())
         .addColumn("nickname", "text")
 
-      yield* createTableQuery
+      yield* db.execute(createTableQuery)
 
-      const inserted = yield* db.insertInto("users").values({ userName: "Alice" }).returningAll()
-      const selected = yield* db.selectFrom("users").selectAll()
-      const updated = yield* db.updateTable("users").set({ userName: "Bob", nickname: "The Bobinator" }).returningAll()
-      const deleted = yield* db.deleteFrom("users").returningAll()
+      const inserted = yield* db.execute(db.insertInto("users").values({ userName: "Alice" }).returningAll())
+      const selected = yield* db.execute(db.selectFrom("users").selectAll())
+      const updated = yield* db.execute(
+        db.updateTable("users").set({ userName: "Bob", nickname: "The Bobinator" }).returningAll()
+      )
+      const deleted = yield* db.execute(db.deleteFrom("users").returningAll())
 
       assert.equal(
         createTableQuery.compile().sql,
