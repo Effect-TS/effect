@@ -16,6 +16,7 @@ import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as scheduler_ from "../Scheduler.js"
 import * as scope_ from "../Scope.js"
+import type * as Tracer from "../Tracer.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
@@ -24,7 +25,6 @@ import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as supervisor_ from "./supervisor.js"
-import type * as Tracer from "../Tracer.js"
 
 const makeDual = <Args extends Array<any>, Return>(
   f: (runtime: Runtime.Runtime<never>, effect: Effect.Effect<any, any>, ...args: Args) => Return
@@ -191,112 +191,121 @@ export const isAsyncFiberException = (u: unknown): u is Runtime.AsyncFiberExcept
   Predicate.isTagged(u, "AsyncFiberException") && "fiber" in u
 
 // TODO(dmaretskyi): Move to cause.ts
-const locationRegex = /at (.*)\((.*)\)/;
+const locationRegex = /at (.*)\((.*)\)/
 
 /**
  * Adds effect spans.
  * Removes effect internal functions.
  */
 // TODO(dmaretskyi): Move to cause.ts
-const prettyErrorStack = (error: any, appendStacks: string[] = []): void => {
-  const span = error[InternalCause.spanSymbol];
+const prettyErrorStack = (error: any, appendStacks: Array<string> = []): void => {
+  const span = error[InternalCause.spanSymbol]
 
-  const lines = error.stack.split('\n');
-  const out = [];
+  const lines = error.stack.split("\n")
+  const out = []
 
-  let atStack = false;
+  let atStack = false
   for (let i = 0; i < lines.length; i++) {
-    if (!atStack && !lines[i].startsWith('    at ')) {
-      out.push(lines[i]);
-      continue;
+    if (!atStack && !lines[i].startsWith("    at ")) {
+      out.push(lines[i])
+      continue
     }
-    atStack = true;
+    atStack = true
 
-    if (lines[i].includes(' at new BaseEffectError') || lines[i].includes(' at new YieldableError')) {
-      i++;
-      continue;
+    if (lines[i].includes(" at new BaseEffectError") || lines[i].includes(" at new YieldableError")) {
+      i++
+      continue
     }
-    if (lines[i].includes('Generator.next')) {
-      break;
+    if (lines[i].includes("Generator.next")) {
+      break
     }
-    if (lines[i].includes('effect_internal_function')) {
-      break;
+    if (lines[i].includes("effect_internal_function")) {
+      break
     }
     out.push(
       lines[i]
-        .replace(/at .*effect_instruction_i.*\((.*)\)/, 'at $1')
-        .replace(/EffectPrimitive\.\w+/, '<anonymous>')
-        .replace(/at Arguments\./, 'at '),
-    );
+        .replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1")
+        .replace(/EffectPrimitive\.\w+/, "<anonymous>")
+        .replace(/at Arguments\./, "at ")
+    )
   }
 
   if (span) {
-    let current: Tracer.Span | Tracer.AnySpan | undefined = span;
-    let i = 0;
-    while (current && current._tag === 'Span' && i < 10) {
-      const stackFn = InternalCause.spanToTrace.get(current);
-      if (typeof stackFn === 'function') {
-        const stack = stackFn();
-        if (typeof stack === 'string') {
-          const locationMatchAll = stack.matchAll(locationRegex);
-          let match = false;
+    let current: Tracer.Span | Tracer.AnySpan | undefined = span
+    let i = 0
+    while (current && current._tag === "Span" && i < 10) {
+      const stackFn = InternalCause.spanToTrace.get(current)
+      if (typeof stackFn === "function") {
+        const stack = stackFn()
+        if (typeof stack === "string") {
+          const locationMatchAll = stack.matchAll(locationRegex)
+          let match = false
           for (const [, location] of locationMatchAll) {
-            match = true;
-            out.push(`    at ${current.name} (${location})`);
+            match = true
+            out.push(`    at ${current.name} (${location})`)
           }
           if (!match) {
-            out.push(`    at ${current.name} (${stack.replace(/^at /, '')})`);
+            out.push(`    at ${current.name} (${stack.replace(/^at /, "")})`)
           }
         } else {
-          out.push(`    at ${current.name}`);
+          out.push(`    at ${current.name}`)
         }
       } else {
-        out.push(`    at ${current.name}`);
+        out.push(`    at ${current.name}`)
       }
-      current = Option.getOrUndefined(current.parent);
-      i++;
+      current = Option.getOrUndefined(current.parent)
+      i++
     }
   }
 
-  out.push(...appendStacks);
+  // eslint-disable-next-line no-restricted-syntax
+  out.push(...appendStacks)
 
-  Object.defineProperty(error, 'stack', {
-    value: out.join('\n'),
+  Object.defineProperty(error, "stack", {
+    value: out.join("\n"),
     writable: true,
     enumerable: false,
-    configurable: true,
-  });
-};
+    configurable: true
+  })
+}
 
-
+/**
+ * Rethrow original errors from failures and defects.
+ * Spans are inserted into the stack trace.
+ * Stack frames from the effect runtime internals are removed.
+ * Stack frames from the caller function is appended to the stack trace.
+ *
+ * @internal
+ * @param callerFunction - Function that called `rethrowCauseErrors`. Used to trim the caller stack trace.
+ */
 const rethrowCauseErrors = (cause: Cause.Cause<unknown>, callerFunction: Function | undefined): never => {
   if (InternalCause.isEmpty(cause)) {
     // Can this branch ever be reached?
     // TODO(dmaretskyi): Define a new error type for this.
-    throw new Error('Fiber failed without a cause');
+    throw new Error("Fiber failed without a cause")
   } else if (InternalCause.isInterrupted(cause)) {
     // TODO(dmaretskyi): Define a new error type for this.
-    throw new Error('Fiber was interrupted');
+    throw new Error("Fiber was interrupted")
   } else {
-    const o: { stack: string } = {} as any;
-    Error.captureStackTrace(o, callerFunction);
-    const stackFrames =  o.stack.split('\n').slice(1);
-    const errors: Error[] = [];
+    const o: { stack: string } = {} as any
+    Error.captureStackTrace(o, callerFunction)
+    const stackFrames = o.stack.split("\n").slice(1)
+    const errors: Array<Error> = []
 
-    for(const failure of InternalCause.failures(cause)) {
-      prettyErrorStack(failure, stackFrames);
-      errors.push(failure as Error);
+    for (const failure of InternalCause.failures(cause)) {
+      prettyErrorStack(failure, stackFrames)
+      errors.push(failure as Error)
     }
-    
-    for(const defect of InternalCause.defects(cause)) {
-      prettyErrorStack(defect, stackFrames);
-      errors.push(defect as Error);
+
+    for (const defect of InternalCause.defects(cause)) {
+      prettyErrorStack(defect, stackFrames)
+      errors.push(defect as Error)
     }
 
     if (errors.length === 1) {
-      throw errors[0];
+      throw errors[0]
     } else {
-      throw new AggregateError(errors);
+      throw new AggregateError(errors)
     }
   }
 }

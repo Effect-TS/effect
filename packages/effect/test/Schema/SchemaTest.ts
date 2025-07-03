@@ -1,15 +1,5 @@
 import type { SchemaAST } from "effect"
-import {
-  Arbitrary,
-  Context,
-  Effect,
-  Either,
-  FastCheck,
-  ParseResult,
-  Predicate,
-  Pretty,
-  Schema
-} from "effect"
+import { Arbitrary, Context, Effect, Either, FastCheck, ParseResult, Predicate, Pretty, Schema } from "effect"
 
 // Defines parameters for FastCheck that exclude typed properties
 export type UntypedParameters = Omit<FastCheck.Parameters<any>, "examples" | "reporter" | "asyncReporter">
