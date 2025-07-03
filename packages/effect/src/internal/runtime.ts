@@ -26,7 +26,6 @@ import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
 import * as supervisor_ from "./supervisor.js"
 import type * as Tracer from "../Tracer.js"
-import * as Chunk from "../Chunk.js"
 
 const makeDual = <Args extends Array<any>, Return>(
   f: (runtime: Runtime.Runtime<never>, effect: Effect.Effect<any, any>, ...args: Args) => Return
