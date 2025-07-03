@@ -61,7 +61,6 @@ export interface EntityManager {
 /** @internal */
 export type EntityState = {
   readonly address: EntityAddress
-  readonly mailboxGauge: Metric.Metric.Gauge<bigint>
   readonly activeRequests: Map<bigint, {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
@@ -277,10 +276,6 @@ export const make = Effect.fnUntraced(function*<
 
     const state: EntityState = {
       address,
-      mailboxGauge: ClusterMetrics.mailboxSize.pipe(
-        Metric.tagged("type", entity.type),
-        Metric.tagged("entityId", address.entityId)
-      ),
       write(clientId, message) {
         if (writeRef.state.current._tag !== "Acquired") {
           return Effect.flatMap(writeRef.await, (write) => write(clientId, message))
@@ -325,9 +320,6 @@ export const make = Effect.fnUntraced(function*<
   const gauge = ClusterMetrics.entities.pipe(Metric.tagged("type", entity.type))
   yield* Effect.sync(() => {
     gauge.unsafeUpdate(BigInt(activeServers.size), [])
-    for (const state of activeServers.values()) {
-      state.mailboxGauge.unsafeUpdate(BigInt(state.activeRequests.size), [])
-    }
   }).pipe(
     Effect.andThen(Effect.sleep(1000)),
     Effect.forever,

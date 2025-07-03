@@ -21,14 +21,6 @@ export const entities = Metric.gauge("effect_cluster_entities", {
  * @since 1.0.0
  * @category metrics
  */
-export const mailboxSize = Metric.gauge("effect_cluster_mailbox_size", {
-  bigint: true
-})
-
-/**
- * @since 1.0.0
- * @category metrics
- */
 export const singletons = Metric.gauge("effect_cluster_singletons")
 
 /**
@@ -54,9 +46,3 @@ export const unassignedShards = Metric.gauge("effect_cluster_shards_unassigned")
  * @category metrics
  */
 export const rebalances = Metric.counter("effect_cluster_rebalances")
-
-/**
- * @since 1.0.0
- * @category metrics
- */
-export const runnerHealthChecked = Metric.counter("effect_cluster_runner_health_checked")
