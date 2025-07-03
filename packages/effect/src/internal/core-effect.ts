@@ -237,19 +237,32 @@ export const catchSomeDefect = dual<
 
 /* @internal */
 export const catchTag: {
-  <E, const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>>(
-    ...tags: K
-  ): <A, R>(self: Effect.Effect<A, E, R>) => never
-  <E, const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, A1, E1, R1>(
-    ...args: [...tags: K, f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>]
+  <
+    E,
+    const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>,
+    A1,
+    E1,
+    R1
+  >(
+    ...args: [
+      ...tags: K,
+      f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>
+    ]
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
-  <A, E, R, const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>>(
+  <
+    A,
+    E,
+    R,
+    const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>,
+    A1,
+    E1,
+    R1
+  >(
     self: Effect.Effect<A, E, R>,
-    ...tags: K
-  ): never
-  <A, E, R, const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
-    self: Effect.Effect<A, E, R>,
-    ...args: [...tags: K, f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>]
+    ...args: [
+      ...tags: K,
+      f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>
+    ]
   ): Effect.Effect<A | A1, Exclude<E, { _tag: K[number] }> | E1, R | R1>
 } = dual(
   (args: any) => core.isEffect(args[0]),

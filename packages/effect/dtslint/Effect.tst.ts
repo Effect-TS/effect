@@ -709,6 +709,17 @@ describe("Effect", () => {
         return Effect.succeed(1)
       })
     )).type.toBe<Effect.Effect<number, Error>>()
+
+    expect(pipe(
+      hole<Effect.Effect<number, TestError1 | Error>>(),
+      Effect.catchTag(
+        "TestError1",
+        Effect.fn(function*(e) {
+          expect(e).type.toBe<TestError1>()
+          return 1
+        })
+      )
+    )).type.toBe<Effect.Effect<number, Error>>()
   })
 
   it("catchTags", () => {
