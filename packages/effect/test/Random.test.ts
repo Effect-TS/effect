@@ -57,7 +57,7 @@ describe("Random", () => {
         strictEqual(yield* Random.next, 0.8)
         strictEqual(yield* Random.next, 0.2)
         strictEqual(yield* Random.next, 0.5)
-      }).pipe(Effect.withRandom(Random.fixed([0.2, 0.5, 0.8]))))
+      }).pipe(Effect.withRandomFixed([0.2, 0.5, 0.8])))
 
     it.effect("cycles through boolean values", () =>
       Effect.gen(function*() {
