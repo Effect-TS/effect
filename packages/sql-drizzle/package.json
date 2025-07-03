@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-drizzle",
-  "version": "0.39.5",
+  "version": "0.39.6",
   "type": "module",
   "license": "MIT",
   "description": "Drizzle integration for @effect/sql",

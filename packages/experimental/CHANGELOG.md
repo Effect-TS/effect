@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.51.6
+
+### Patch Changes
+
+- [#5144](https://github.com/Effect-TS/effect/pull/5144) [`96c1292`](https://github.com/Effect-TS/effect/commit/96c129262835410b311a51d0bf7f58b8f6fc9a12) Thanks @tim-smart! - simplify VariantSchema Class types
+
 ## 0.51.5
 
 ### Patch Changes
