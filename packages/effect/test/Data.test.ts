@@ -197,6 +197,7 @@ describe("Data", () => {
     const {
       $is,
       $match,
+      $matchStrict,
       InternalServerError,
       NotFound
     } = Data.taggedEnum<HttpError>()
@@ -222,6 +223,13 @@ describe("Data", () => {
     })
     strictEqual(matcher(a), 0)
     strictEqual(matcher(b), 1)
+
+    const matcherStrict = $matchStrict({
+      NotFound: () => 0,
+      InternalServerError: () => 1
+    })
+    strictEqual(matcherStrict(a), 0)
+    strictEqual(matcherStrict(b), 1)
   })
 
   it("taggedEnum - generics", () => {

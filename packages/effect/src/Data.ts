@@ -371,6 +371,30 @@ export declare namespace TaggedEnum {
           }
         >(value: A, cases: Cases): Unify<ReturnType<Cases[A["_tag"]]>>
       }
+      readonly $matchStrict: {
+        <
+          const Cases extends
+            & { readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any }
+            & { readonly [Tag in Exclude<keyof Cases, A["_tag"]>]: never }
+        >(cases: Cases): (value: A) => Unify<ReturnType<Cases[A["_tag"]]>>
+        <
+          const Cases extends
+            & { readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any }
+            & { readonly [Tag in Exclude<keyof Cases, A["_tag"]>]: never }
+        >(value: A, cases: Cases): Unify<ReturnType<Cases[A["_tag"]]>>
+        <
+          Ret,
+          const Cases extends
+            & { readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => Ret }
+            & { readonly [Tag in Exclude<keyof Cases, A["_tag"]>]: never }
+        >(cases: Cases): (value: A) => Ret
+        <
+          Ret,
+          const Cases extends
+            & { readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => Ret }
+            & { readonly [Tag in Exclude<keyof Cases, A["_tag"]>]: never }
+        >(value: A, cases: Cases): Ret
+      }
     }
   >
 
@@ -508,7 +532,7 @@ export const taggedEnum: {
     get(_target, tag, _receiver) {
       if (tag === "$is") {
         return Predicate.isTagged
-      } else if (tag === "$match") {
+      } else if (tag === "$match" || tag === "$matchStrict") {
         return taggedMatch
       }
       return tagged(tag as string)
