@@ -9,7 +9,6 @@ import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import { dual, pipe } from "../Function.js"
-import * as Inspectable from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
@@ -191,44 +190,6 @@ const asyncFiberException = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.Asy
 export const isAsyncFiberException = (u: unknown): u is Runtime.AsyncFiberException<unknown, unknown> =>
   Predicate.isTagged(u, "AsyncFiberException") && "fiber" in u
 
-/** @internal */
-export const FiberFailureId: Runtime.FiberFailureId = Symbol.for("effect/Runtime/FiberFailure") as any
-/** @internal */
-export const FiberFailureCauseId: Runtime.FiberFailureCauseId = Symbol.for(
-  "effect/Runtime/FiberFailure/Cause"
-) as any
-
-class FiberFailureImpl extends Error implements Runtime.FiberFailure {
-  readonly [FiberFailureId]: Runtime.FiberFailureId
-  readonly [FiberFailureCauseId]: Cause.Cause<unknown>
-  constructor(cause: Cause.Cause<unknown>) {
-    const head = InternalCause.prettyErrors(cause)[0]
-
-    super(head?.message || "An error has occurred")
-    this[FiberFailureId] = FiberFailureId
-    this[FiberFailureCauseId] = cause
-
-    this.name = head ? `(FiberFailure) ${head.name}` : "FiberFailure"
-    if (head?.stack) {
-      this.stack = head.stack
-    }
-  }
-
-  toJSON(): unknown {
-    return {
-      _id: "FiberFailure",
-      cause: this[FiberFailureCauseId].toJSON()
-    }
-  }
-
-  toString(): string {
-    return "(FiberFailure) " + InternalCause.pretty(this[FiberFailureCauseId], { renderErrorCause: true })
-  }
-  [Inspectable.NodeInspectSymbol](): unknown {
-    return this.toString()
-  }
-}
-
 // TODO(dmaretskyi): Move to cause.ts
 const locationRegex = /at (.*)\((.*)\)/;
 
@@ -339,19 +300,6 @@ const rethrowCauseErrors = (cause: Cause.Cause<unknown>, callerFunction: Functio
     }
   }
 }
-
-// TODO(dmaretskyi): Not used anymore.
-/** @internal */
-export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => {
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 0
-  const error = new FiberFailureImpl(cause)
-  Error.stackTraceLimit = limit
-  return error
-}
-
-/** @internal */
-export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure => Predicate.hasProperty(u, FiberFailureId)
 
 const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> | undefined => {
   const op = effect as core.Primitive

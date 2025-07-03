@@ -1,7 +1,6 @@
 import type { SchemaAST } from "effect"
 import {
   Arbitrary,
-  Cause,
   Context,
   Effect,
   Either,
@@ -9,7 +8,6 @@ import {
   ParseResult,
   Predicate,
   Pretty,
-  Runtime,
   Schema
 } from "effect"
 
