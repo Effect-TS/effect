@@ -361,15 +361,20 @@ export declare namespace TaggedEnum {
       readonly $is: <Tag extends A["_tag"]>(tag: Tag) => (u: unknown) => u is Extract<A, { readonly _tag: Tag }>
       readonly $match: {
         <
-          Cases extends {
+          const Cases extends {
             readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
           }
-        >(cases: Cases): (value: A) => Unify<ReturnType<Cases[A["_tag"]]>>
+        >(
+          cases: Cases & { [K in Exclude<keyof Cases, A["_tag"]>]: never }
+        ): (value: A) => Unify<ReturnType<Cases[A["_tag"]]>>
         <
-          Cases extends {
+          const Cases extends {
             readonly [Tag in A["_tag"]]: (args: Extract<A, { readonly _tag: Tag }>) => any
           }
-        >(value: A, cases: Cases): Unify<ReturnType<Cases[A["_tag"]]>>
+        >(
+          value: A,
+          cases: Cases & { [K in Exclude<keyof Cases, A["_tag"]>]: never }
+        ): Unify<ReturnType<Cases[A["_tag"]]>>
       }
     }
   >
@@ -398,7 +403,7 @@ export declare namespace TaggedEnum {
           ) => any
         }
       >(
-        cases: Cases
+        cases: Cases & { [K in Exclude<keyof Cases, Z["taggedEnum"]["_tag"]>]: never }
       ): (self: TaggedEnum.Kind<Z, A, B, C, D>) => Unify<ReturnType<Cases[Z["taggedEnum"]["_tag"]]>>
       <
         A,
@@ -412,7 +417,7 @@ export declare namespace TaggedEnum {
         }
       >(
         self: TaggedEnum.Kind<Z, A, B, C, D>,
-        cases: Cases
+        cases: Cases & { [K in Exclude<keyof Cases, Z["taggedEnum"]["_tag"]>]: never }
       ): Unify<ReturnType<Cases[Z["taggedEnum"]["_tag"]]>>
     }
   }
