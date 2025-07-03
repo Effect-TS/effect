@@ -14,7 +14,7 @@ import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
-import * as HttpApi from "./HttpApi.js"
+import type * as HttpApi from "./HttpApi.js"
 import * as HttpApiBuilder from "./HttpApiBuilder.js"
 import type * as HttpApiGroup from "./HttpApiGroup.js"
 import type * as HttpMethod from "./HttpMethod.js"
@@ -246,7 +246,7 @@ export {
  * const MyRoute = Layer.scopedDiscard(Effect.gen(function*() {
  *   const router = yield* HttpLayerRouter.HttpRouter
  *
- *   // then use `router.add` to add a route
+ *   // then use `yield* router.add(...)` to add a route
  * }))
  * ```
  *
@@ -256,6 +256,68 @@ export {
 export const use = <A, E, R>(
   f: (router: HttpRouter) => Effect.Effect<A, E, R>
 ): Layer.Layer<never, E, HttpRouter | Exclude<R, Scope.Scope>> => Layer.scopedDiscard(Effect.flatMap(HttpRouter, f))
+
+/**
+ * Create a layer that adds a single route to the HTTP router.
+ *
+ * ```ts
+ * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+ * import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+ *
+ * const Route = HttpLayerRouter.add("GET", "/hello", HttpServerResponse.text("Hello, World!"))
+ * ```
+ *
+ * @since 1.0.0
+ * @category HttpRouter
+ */
+export const add = <E, R>(
+  method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
+  path: PathInput,
+  handler:
+    | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
+    | ((request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>),
+  options?: {
+    readonly uninterruptible?: boolean | undefined
+  }
+): Layer.Layer<never, never, HttpRouter | Type.From<"Requires", Exclude<R, Provided>> | Type.From<"Error", E>> =>
+  use((router) => router.add(method, path, handler, options))
+
+/**
+ * Create a layer that adds multiple routes to the HTTP router.
+ *
+ * ```ts
+ * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+ * import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+ *
+ * const Routes = HttpLayerRouter.addAll([
+ *   HttpLayerRouter.route("GET", "/hello", HttpServerResponse.text("Hello, World!"))
+ * ])
+ * ```
+ *
+ * @since 1.0.0
+ * @category HttpRouter
+ */
+export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never, RX = never>(
+  routes: Routes | Effect.Effect<Routes, EX, RX>,
+  options?: {
+    readonly prefix?: string | undefined
+  }
+): Layer.Layer<
+  never,
+  EX,
+  | HttpRouter
+  | Exclude<RX, Scope.Scope>
+  | Type.From<"Requires", Exclude<Route.Context<Routes[number]>, Provided>>
+  | Type.From<"Error", Route.Error<Routes[number]>>
+> =>
+  Layer.scopedDiscard(Effect.gen(function*() {
+    const toAdd = Effect.isEffect(routes) ? yield* routes : routes
+    let router = yield* HttpRouter
+    if (options?.prefix) {
+      router = router.prefixed(options.prefix)
+    }
+    yield* router.addAll(toAdd)
+  }))
 
 /**
  * @since 1.0.0
@@ -772,6 +834,25 @@ export const cors = (
 ): Layer.Layer<never> => middleware(HttpMiddleware.cors(options)).layer
 
 /**
+ * A middleware that disables the logger for some routes.
+ *
+ * ```ts
+ * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+ * import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+ * import * as Layer from "effect/Layer"
+ *
+ * const Route = HttpLayerRouter.add("GET", "/hello", HttpServerResponse.text("Hello, World!")).pipe(
+ *   // disable the logger for this route
+ *   Layer.provide(HttpLayerRouter.disableLogger)
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Middleware
+ */
+export const disableLogger: Layer.Layer<never> = middleware(HttpMiddleware.withLoggerDisabled).layer
+
+/**
  * ```ts
  * import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
  * import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
@@ -837,19 +918,15 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
     readonly openapiPath?: `/${string}` | undefined
   }
 ): Layer.Layer<
-  HttpApi.Api,
+  never,
   never,
   HttpRouter | HttpApiGroup.HttpApiGroup.ToService<Id, Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
 > => {
   const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer
 
   return HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
-    const contextMap = new Map<string, unknown>()
     const router = yield* HttpRouter
     const routes = Arr.empty<Route<any, any>>()
-    const context = yield* Effect.context<never>()
-
-    contextMap.set(HttpApi.Api.key, { api, context })
 
     for (const route of router_.routes) {
       routes.push(makeRoute(route as any))
@@ -861,9 +938,7 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
       const spec = OpenApi.fromApi(api)
       yield* router.add("GET", options.openapiPath, Effect.succeed(HttpServerResponse.unsafeJson(spec)))
     }
-
-    return Context.unsafeMake<any>(contextMap)
-  }, Layer.effectContext)).pipe(
+  }, Layer.effectDiscard)).pipe(
     Layer.provide(ApiMiddleware)
   )
 }
@@ -917,8 +992,8 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
     return middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler)
   }).pipe(
     Layer.unwrapScoped,
-    options?.disableListenLog ? identity : HttpServer.withLogAddress,
     Layer.provide(appLayer),
-    Layer.provide(RouterLayer)
+    Layer.provide(RouterLayer),
+    options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any
 }
