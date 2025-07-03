@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.87.5
+
+### Patch Changes
+
+- [#5142](https://github.com/Effect-TS/effect/pull/5142) [`2fd8676`](https://github.com/Effect-TS/effect/commit/2fd8676c803cd40000dfc3231f5daecaa0e0ebd2) Thanks @tim-smart! - improve type safety of HttpLayerRouter.middleware error handling
+
 ## 0.87.4
 
 ### Patch Changes
