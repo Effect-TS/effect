@@ -105,6 +105,19 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    * The concurrency level for resolving tool calls.
    */
   readonly concurrency?: Concurrency | undefined
+
+  /**
+   * When set to `true`, tool calls requested by the large language model
+   * will not be auto-resolved by the framework.
+   *
+   * This option is useful when:
+   *   1. The user wants to include tool call definitions from an `AiToolki`
+   *      in requests to the large language model so that the model has the
+   *      capability to call tools
+   *   2. The user wants to control the execution of tool call resolvers
+   *      instead of having the framework handle tool call resolution
+   */
+  readonly disableToolCallResolution?: boolean | undefined
 }
 
 /**
@@ -144,8 +157,11 @@ export interface GenerateObjectOptions<A, I extends Record<string, unknown>, R> 
  * @category Utility Types
  */
 export type ExtractSuccess<Options> = Options extends {
-  toolkit: AiToolkit.ToHandler<infer _Tools>
-} ? AiResponse.WithToolCallResults<_Tools>
+  disableToolCallResolution: true
+} ? AiResponse.AiResponse
+  : Options extends {
+    toolkit: AiToolkit.ToHandler<infer _Tools>
+  } ? AiResponse.WithToolCallResults<_Tools>
   : Options extends {
     toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
   } ? AiResponse.WithToolCallResults<_Tools>
@@ -159,8 +175,11 @@ export type ExtractSuccess<Options> = Options extends {
  * @category Utility Types
  */
 export type ExtractError<Options> = Options extends {
-  toolkit: AiToolkit.ToHandler<infer _Tools>
-} ? AiError | AiTool.Failure<_Tools>
+  disableToolCallResolution: true
+} ? AiError
+  : Options extends {
+    toolkit: AiToolkit.ToHandler<infer _Tools>
+  } ? AiError | AiTool.Failure<_Tools>
   : Options extends {
     toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
   } ? AiError | AiTool.Failure<_Tools> | _E
@@ -174,8 +193,11 @@ export type ExtractError<Options> = Options extends {
  * @category Utility Types
  */
 export type ExtractContext<Options> = Options extends {
-  toolkit: AiToolkit.ToHandler<infer _Tools>
-} ? AiTool.Context<_Tools>
+  disableToolCallResolution: true
+} ? never
+  : Options extends {
+    toolkit: AiToolkit.ToHandler<infer _Tools>
+  } ? AiTool.Context<_Tools>
   : Options extends {
     toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
   } ? AiTool.Context<_Tools> | _R
@@ -325,6 +347,9 @@ export const make: <Config>(
         const response = yield* opts.generateText(modelOptions)
         if (Option.isSome(spanTransformer)) {
           spanTransformer.value({ ...modelOptions, response })
+        }
+        if (options.disableToolCallResolution) {
+          return response
         }
         return yield* resolveParts({ response, toolkit: actualToolkit, concurrency, method: "generateText" })
       }, (effect, span) => Effect.withParentSpan(effect, span))
