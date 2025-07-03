@@ -197,7 +197,7 @@ const locationRegex = /at (.*)\((.*)\)/
  * Adds effect spans.
  * Removes effect internal functions.
  */
-// TODO(dmaretskyi): Move to cause.ts
+// TODO(dmaretskyi): Move to cause.ts and unify with existing PrettyError code.
 const prettyErrorStack = (error: any, appendStacks: Array<string> = []): void => {
   const span = error[InternalCause.spanSymbol]
 
