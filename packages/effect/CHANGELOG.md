@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.12
+
+### Patch Changes
+
+- [#5149](https://github.com/Effect-TS/effect/pull/5149) [`905da99`](https://github.com/Effect-TS/effect/commit/905da996aad665057b4ca6dba1a4af44fb8835bd) Thanks @milkyskies! - Fix `$match` to disallow invalid `_tag` keys in `TaggedEnum` handler objects.
+
 ## 3.16.11
 
 ### Patch Changes
