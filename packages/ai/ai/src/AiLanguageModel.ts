@@ -175,8 +175,11 @@ export type ExtractSuccess<Options> = Options extends {
  * @category Utility Types
  */
 export type ExtractError<Options> = Options extends {
-  toolkit: AiToolkit.ToHandler<infer _Tools>
-} ? AiError | AiTool.Failure<_Tools>
+  disableToolCallResolution: true
+} ? AiError
+  : Options extends {
+    toolkit: AiToolkit.ToHandler<infer _Tools>
+  } ? AiError | AiTool.Failure<_Tools>
   : Options extends {
     toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
   } ? AiError | AiTool.Failure<_Tools> | _E
@@ -190,8 +193,11 @@ export type ExtractError<Options> = Options extends {
  * @category Utility Types
  */
 export type ExtractContext<Options> = Options extends {
-  toolkit: AiToolkit.ToHandler<infer _Tools>
-} ? AiTool.Context<_Tools>
+  disableToolCallResolution: true
+} ? never
+  : Options extends {
+    toolkit: AiToolkit.ToHandler<infer _Tools>
+  } ? AiTool.Context<_Tools>
   : Options extends {
     toolkit: Effect.Effect<AiToolkit.ToHandler<infer _Tools>, infer _E, infer _R>
   } ? AiTool.Context<_Tools> | _R
