@@ -179,27 +179,23 @@ export const make: <A>(seed: A) => Random = internal.make
  * ```ts
  * import { Effect, Random } from "effect"
  *
- * const random = Random.fixed([0.2, 0.5, 0.8])
- *
  * Effect.gen(function* () {
- *   console.log(yield* random.next) // 0.2
- *   console.log(yield* random.next) // 0.5
- *   console.log(yield* random.next) // 0.8
- *   console.log(yield* random.next) // 0.2 (cycles back)
- * })
+ *   console.log(yield* Random.next) // 0.2
+ *   console.log(yield* Random.next) // 0.5
+ *   console.log(yield* Random.next) // 0.8
+ *   console.log(yield* Random.next) // 0.2 (cycles back)
+ * }).pipe(Effect.withRandom(Random.fixed([0.2, 0.5, 0.8])))
  * ```
  *
  * @example
  * ```ts
  * import { Effect, Random } from "effect"
  *
- * const random = Random.fixed([true, false, true])
- *
  * Effect.gen(function* () {
- *   console.log(yield* random.nextBoolean) // true
- *   console.log(yield* random.nextBoolean) // false
- *   console.log(yield* random.nextBoolean) // true
- * })
+ *   console.log(yield* Random.nextBoolean) // true
+ *   console.log(yield* Random.nextBoolean) // false
+ *   console.log(yield* Random.nextBoolean) // true
+ * }).pipe(Effect.withRandom(Random.fixed([true, false, true])))
  * ```
  *
  * @since 3.11.0
