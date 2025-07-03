@@ -701,7 +701,7 @@ export declare namespace middleware {
           effect: Effect.Effect<
             HttpServerResponse.HttpServerResponse,
             Types.NoInfer<Handles | unhandled>,
-            Provides
+            Types.NoInfer<Provides>
           >
         ) =>
           & Effect.Effect<
@@ -727,7 +727,7 @@ export declare namespace middleware {
           effect: Effect.Effect<
             HttpServerResponse.HttpServerResponse,
             Types.NoInfer<Handles | unhandled>,
-            Provides
+            Types.NoInfer<Provides>
           >
         ) => Effect.Effect<
           HttpServerResponse.HttpServerResponse,
