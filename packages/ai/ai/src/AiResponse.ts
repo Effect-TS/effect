@@ -69,6 +69,13 @@ export class AiResponse extends Schema.Class<AiResponse>(
   }
 
   /**
+   * Returns all tool calls contained within the response.
+   */
+  get toolCalls(): ReadonlyArray<ToolCallPart> {
+    return this.parts.filter((part) => part._tag === "ToolCallPart")
+  }
+
+  /**
    * Attempts to retrieve provider-specific response metadata.
    */
   getProviderMetadata<I, S>(tag: Context.Tag<I, S>): Option.Option<S> {
