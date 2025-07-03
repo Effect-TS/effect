@@ -109,6 +109,12 @@ describe("UrlParams", () => {
         { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
       )
     })
+
+    it("works with __proto__", () => {
+      const urlParams = UrlParams.fromInput({ ["__proto__"]: "foo" })
+      const result = UrlParams.toRecord(urlParams)
+      deepStrictEqual(result, { ["__proto__"]: "foo" })
+    })
   })
 
   describe("schemaStruct", () => {
