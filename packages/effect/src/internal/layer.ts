@@ -7,7 +7,7 @@ import type * as Exit from "../Exit.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
-import { dual, pipe } from "../Function.js"
+import { constTrue, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
 import type * as ManagedRuntime from "../ManagedRuntime.js"
@@ -637,6 +637,43 @@ export const launch = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): Effect.Ef
       core.never
     )
   )
+
+/** @internal */
+export const mock: {
+  <I, S extends object>(tag: Context.Tag<I, S>): (service: Layer.PartialEffectful<S>) => Layer.Layer<I>
+  <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I>
+} = dual(
+  2,
+  <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I> =>
+    succeed(
+      tag,
+      new Proxy({ ...service as object } as S, {
+        get(target, prop, _receiver) {
+          if (prop in target) {
+            return target[prop as keyof S]
+          }
+          const prevLimit = Error.stackTraceLimit
+          Error.stackTraceLimit = 2
+          const error = new Error(`${tag.key}: Unimplemented method "${prop.toString()}"`)
+          Error.stackTraceLimit = prevLimit
+          error.name = "UnimplementedError"
+          return makeUnimplemented(error)
+        },
+        has: constTrue
+      })
+    )
+)
+
+const makeUnimplemented = (error: Error) => {
+  const dead = core.die(error)
+  function unimplemented() {
+    return dead
+  }
+  // @effect-diagnostics-next-line floatingEffect:off
+  Object.assign(unimplemented, dead)
+  Object.setPrototypeOf(unimplemented, Object.getPrototypeOf(dead))
+  return unimplemented
+}
 
 /** @internal */
 export const map = dual<
