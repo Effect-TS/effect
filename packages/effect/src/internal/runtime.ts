@@ -311,8 +311,11 @@ const prettyErrorStack = (error: any, appendStacks: string[] = []): void => {
 
 const rethrowCauseErrors = (cause: Cause.Cause<unknown>, callerFunction: Function | undefined): never => {
   if (InternalCause.isEmpty(cause)) {
+    // Can this branch ever be reached?
+    // TODO(dmaretskyi): Define a new error type for this.
     throw new Error('Fiber failed without a cause');
   } else if (InternalCause.isInterrupted(cause)) {
+    // TODO(dmaretskyi): Define a new error type for this.
     throw new Error('Fiber was interrupted');
   } else {
     const o: { stack: string } = {} as any;
