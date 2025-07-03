@@ -237,6 +237,7 @@ export const assertions = Effect.gen(function*() {
           const a = await promise
           throw new Error(`Promise didn't reject, got: ${a}`)
         } catch (e: unknown) {
+          // TODO(dmaretskyi): Needs to be updated.
           if (Runtime.isFiberFailure(e) && Cause.isCause(e[Runtime.FiberFailureCauseId])) {
             const cause = e[Runtime.FiberFailureCauseId]
             if (Cause.isFailType(cause) && Predicate.hasProperty(cause.error, "message")) {
