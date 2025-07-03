@@ -249,7 +249,7 @@ export interface Class<
   I,
   R,
   C
-> extends Schema.Schema<Self, Schema.Simplify<I>, R>, Struct<Fields> {
+> extends Schema.Schema<Self, Schema.Simplify<I>, R>, Struct<Schema.Simplify<Fields>> {
   new(
     props: RequiredKeys<C> extends never ? void | Schema.Simplify<C>
       : Schema.Simplify<C>,
@@ -267,10 +267,10 @@ export interface Class<
 
   annotations(
     annotations: Schema.Annotations.Schema<Self>
-  ): Schema.SchemaClass<Self, Schema.Simplify<I>, R>
+  ): Schema.SchemaClass<Self, I, R>
 
   readonly identifier: string
-  readonly fields: SchemaFields
+  readonly fields: Schema.Simplify<SchemaFields>
 }
 
 type ClassFromFields<
@@ -474,7 +474,7 @@ export const make = <
       & ClassFromFields<
         Self,
         Fields,
-        Schema.Simplify<ExtractFields<Default, Fields, true>>
+        ExtractFields<Default, Fields, true>
       >
       & {
         readonly [V in Variants[number]]: Extract<V, Struct<Fields>>
