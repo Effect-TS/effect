@@ -1,4 +1,4 @@
-import * as Arr from "../Array.js"
+import type * as Arr from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
@@ -157,4 +157,5 @@ class FixedRandomImpl implements Random.Random {
   }
 }
 
+/** @internal */
 export const fixed = <T extends Arr.NonEmptyArray<any>>(values: T): Random.Random => new FixedRandomImpl(values)
