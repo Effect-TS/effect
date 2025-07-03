@@ -378,6 +378,10 @@ export class ToolCallResultPart extends Schema.TaggedClass<ToolCallResultPart>(
    */
   id: ToolCallId,
   /**
+   * The name of the tool that was called.
+   */
+  name: Schema.String,
+  /**
    * The result of the tool call as a JSON-serializable object.
    */
   result: Schema.Unknown
@@ -502,6 +506,7 @@ export const make = (input: Raw): AiInput => {
     const assistantMessages = fromResponse(input).messages
     const toolPart = new ToolCallResultPart({
       id: input.id,
+      name: input.name,
       result: input.value
     })
     const toolMessage = new ToolMessage({ parts: [toolPart] })
@@ -510,8 +515,8 @@ export const make = (input: Raw): AiInput => {
   if (AiResponse.hasToolCallResults(input)) {
     const assistantMessages = fromResponse(input).messages
     const toolParts: Array<ToolCallResultPart> = []
-    for (const [id, result] of input.encodedResults) {
-      toolParts.push(new ToolCallResultPart({ id, result }))
+    for (const [id, { name, result }] of input.encodedResults) {
+      toolParts.push(new ToolCallResultPart({ id, name, result }))
     }
     const toolMessage = new ToolMessage({ parts: toolParts })
     return new AiInput({ messages: [...assistantMessages, toolMessage] })
