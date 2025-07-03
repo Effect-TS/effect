@@ -1,5 +1,13 @@
 # @effect/workflow
 
+## 0.4.6
+
+### Patch Changes
+
+- Updated dependencies [[`2fd8676`](https://github.com/Effect-TS/effect/commit/2fd8676c803cd40000dfc3231f5daecaa0e0ebd2)]:
+  - @effect/platform@0.87.5
+  - @effect/rpc@0.64.6
+
 ## 0.4.5
 
 ### Patch Changes
