@@ -275,6 +275,8 @@ const prettyErrorStack = (error: any, appendStacks: Array<string> = []): void =>
  * Stack frames from the effect runtime internals are removed.
  * Stack frames from the caller function is appended to the stack trace.
  *
+ * If cause has multiple failures or defects, they are wrapped in an `AggregateError`.
+ *
  * @internal
  * @param callerFunction - Function that called `rethrowCauseErrors`. Used to trim the caller stack trace.
  */
