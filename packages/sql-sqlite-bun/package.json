@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-bun",
-  "version": "0.41.7",
+  "version": "0.41.8",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
