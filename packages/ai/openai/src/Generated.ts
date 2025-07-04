@@ -3111,7 +3111,7 @@ export class Eval extends S.Class<Eval>("Eval")({
       EvalPythonGrader,
       EvalScoreModelGrader
     )
-  ).pipe(S.propertySignature, S.withConstructorDefault(() => "eval" as const)),
+  ).pipe(S.propertySignature),
   /**
    * The Unix timestamp (in seconds) for when the eval was created.
    */
