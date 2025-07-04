@@ -183,10 +183,18 @@ export const make = Effect.fnUntraced(function*(options: {
           ...options.config?.generationConfig,
           ...perRequestConfig?.generationConfig,
           responseMimeType,
-          responseJsonSchema: useStructured ? tools[0].parameters : undefined
-        } as any,
+          responseSchema: useStructured
+            ? InternalUtilities.jsonSchemaToOpenApi(tools[0].parameters)
+            : undefined
+        },
         tools: !useStructured && tools.length > 0
-          ? [{ functionDeclarations: convertTools(tools) }]
+          ? [{
+            functionDeclarations: tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              parameters: InternalUtilities.jsonSchemaToOpenApi(tool.parameters)
+            }))
+          }]
           : undefined,
         toolConfig
       } satisfies typeof Generated.GenerateContentRequest.Encoded
@@ -337,9 +345,9 @@ const makeContents = Effect.fnUntraced(function*(
   return contents
 })
 
-let toolCallId = 0
 const makeResponse = Effect.fnUntraced(
   function*(response: typeof Generated.GenerateContentResponse.Type) {
+    const generator = yield* AiLanguageModel.CurrentToolCallIdGenerator
     const parts: Array<AiResponse.Part> = []
 
     parts.push(
@@ -423,10 +431,11 @@ const makeResponse = Effect.fnUntraced(
 
         if ("functionCall" in part && Predicate.isNotUndefined(part.functionCall)) {
           hasToolCalls = true
+          const toolCallId = yield* generator.generateId()
           parts.push(
             new AiResponse.ToolCallPart({
               id: AiInput.ToolCallId.make(
-                part.functionCall.id ?? `${toolCallId++}`,
+                toolCallId,
                 constDisableValidation
               ),
               name: part.functionCall.name,
