@@ -49,7 +49,7 @@ import type * as MetricLabel from "./MetricLabel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Random from "./Random.js"
+import * as Random from "./Random.js"
 import type * as Ref from "./Ref.js"
 import * as Request from "./Request.js"
 import type { RequestBlock } from "./RequestBlock.js"
@@ -11578,6 +11578,33 @@ export const withRandom: {
   <X extends Random.Random>(value: X): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
   <X extends Random.Random, A, E, R>(effect: Effect<A, E, R>, value: X): Effect<A, E, R>
 } = defaultServices.withRandom
+
+/**
+ * Executes the specified effect with a `Random` service that cycles through
+ * a provided array of values.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   console.log(yield* Random.next) // 0.2
+ *   console.log(yield* Random.next) // 0.5
+ *   console.log(yield* Random.next) // 0.8
+ * }).pipe(Effect.withRandomFixed([0.2, 0.5, 0.8]))
+ * ```
+ *
+ * @since 3.11.0
+ * @category Random
+ */
+export const withRandomFixed: {
+  <T extends RA.NonEmptyArray<any>>(values: T): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <T extends RA.NonEmptyArray<any>, A, E, R>(effect: Effect<A, E, R>, values: T): Effect<A, E, R>
+} = dual(
+  2,
+  <T extends RA.NonEmptyArray<any>, A, E, R>(effect: Effect<A, E, R>, values: T): Effect<A, E, R> =>
+    withRandom(effect, Random.fixed(values))
+)
 
 /**
  * Sets the implementation of the `Random` service to the specified value and
