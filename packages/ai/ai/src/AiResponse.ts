@@ -836,18 +836,38 @@ const mergeParts = (self: AiResponse, other: AiResponse): ReadonlyArray<Part> =>
   if (self.parts.length === 0) {
     return other.parts
   }
-  const lastPart = self.parts[self.parts.length - 1]
-  const newParts: Array<Part> = []
-  let text = lastPart._tag === "TextPart" ? lastPart.text : ""
-  for (const part of other.parts) {
-    if (part._tag === "TextPart") {
-      text += part.text
+
+  const result: Array<Part> = []
+  let accumulatedText = ""
+
+  const flushText = () => {
+    if (accumulatedText.length > 0) {
+      result.push(new TextPart({ text: accumulatedText }, constDisableValidation))
+      accumulatedText = ""
     }
   }
-  if (text.length > 0) {
-    newParts.push(new TextPart({ text }, constDisableValidation))
+
+  for (const part of self.parts) {
+    if (part._tag === "TextPart") {
+      accumulatedText += part.text
+    } else {
+      flushText()
+      result.push(part)
+    }
   }
-  return newParts.length === 0 ? self.parts : [...self.parts.slice(0, self.parts.length - 1), ...newParts]
+
+  for (const part of other.parts) {
+    if (part._tag === "TextPart") {
+      accumulatedText += part.text
+    } else {
+      flushText()
+      result.push(part)
+    }
+  }
+
+  flushText()
+
+  return result
 }
 
 /**
