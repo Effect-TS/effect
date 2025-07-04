@@ -1,6 +1,9 @@
 /**
  * @since 1.0.0
  */
+import * as Arr from "effect/Array"
+import * as Config from "effect/Config"
+import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
 
 /**
@@ -45,6 +48,64 @@ export const make = (options: {
     attributes: resourceAttributes,
     droppedAttributesCount: 0
   }
+}
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const fromConfig: (
+  options?: {
+    readonly serviceName?: string | undefined
+    readonly serviceVersion?: string | undefined
+    readonly attributes?: Record<string, unknown> | undefined
+  } | undefined
+) => Effect.Effect<Resource> = Effect.fnUntraced(function*(options?: {
+  readonly serviceName?: string | undefined
+  readonly serviceVersion?: string | undefined
+  readonly attributes?: Record<string, unknown> | undefined
+}) {
+  const attributes = yield* Config.string("OTEL_RESOURCE_ATTRIBUTES").pipe(
+    Config.map((s) => {
+      const attrs = s.split(",")
+      return Arr.reduce(attrs, {} as Record<string, string>, (acc, attr) => {
+        const parts = attr.split("=")
+        if (parts.length !== 2) {
+          return acc
+        }
+        acc[parts[0].trim()] = parts[1].trim()
+        return acc
+      })
+    }),
+    Config.withDefault({}),
+    Effect.map((envAttrs) => ({
+      ...envAttrs,
+      ...options?.attributes
+    }))
+  )
+  const serviceName = options?.serviceName ?? attributes["service.name"] as string ??
+    (yield* Config.string("OTEL_SERVICE_NAME"))
+  const serviceVersion = options?.serviceVersion ?? attributes["service.version"] as string ??
+    (yield* Config.string("OTEL_SERVICE_VERSION").pipe(Config.withDefault(undefined)))
+  return make({
+    serviceName,
+    serviceVersion,
+    attributes
+  })
+}, Effect.orDie)
+
+/**
+ * @since 1.0.0
+ * @category Attributes
+ */
+export const unsafeServiceName = (resource: Resource): string => {
+  const serviceNameAttribute = resource.attributes.find(
+    (attr) => attr.key === "service.name"
+  )
+  if (!serviceNameAttribute || !serviceNameAttribute.value.stringValue) {
+    throw new Error("Resource does not contain a service name")
+  }
+  return serviceNameAttribute.value.stringValue
 }
 
 /**
