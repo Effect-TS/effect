@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import { OpenApiJsonSchema } from "@effect/platform"
 import * as _Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as JsonSchema from "effect/JSONSchema"
@@ -531,7 +530,6 @@ const convertTool = <Tool extends AiTool.Any>(tool: Tool) => ({
   name: tool.name,
   description: tool.description ?? getDescription(tool.parametersSchema.ast),
   parameters: makeJsonSchema(tool.parametersSchema.ast),
-  openapi: makeOpenApiSchema(tool.parametersSchema.ast),
   structured: false
 })
 
@@ -555,25 +553,6 @@ const makeJsonSchema = (ast: AST.AST): JsonSchema.JsonSchema7 => {
   const $defs = {}
   const schema = JsonSchema.fromAST(ast, {
     definitions: $defs,
-    topLevelReferenceStrategy: "skip"
-  })
-  if (Object.keys($defs).length === 0) return schema
-  ;(schema as any).$defs = $defs
-  return schema
-}
-
-const makeOpenApiSchema = (ast: AST.AST): OpenApiJsonSchema.JsonSchema => {
-  const props = AST.getPropertySignatures(ast)
-  if (props.length === 0) {
-    return {
-      type: "object",
-      properties: {},
-      required: []
-    }
-  }
-  const $defs = {}
-  const schema = OpenApiJsonSchema.fromAST(ast, {
-    defs: $defs,
     topLevelReferenceStrategy: "skip"
   })
   if (Object.keys($defs).length === 0) return schema
