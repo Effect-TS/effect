@@ -1,11 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as Context from "effect/Context"
+import * as _Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as JsonSchema from "effect/JSONSchema"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import * as Random from "effect/Random"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
@@ -24,9 +25,9 @@ const constDisableValidation = { disableValidation: true }
  * @since 1.0.0
  * @category Context
  */
-export class AiLanguageModel extends Context.Tag("@effect/ai/AiLanguageModel")<
+export class AiLanguageModel extends _Context.Tag("@effect/ai/AiLanguageModel")<
   AiLanguageModel,
-  AiLanguageModel.Service<never>
+  AiLanguageModel.Service
 >() {}
 
 /**
@@ -67,6 +68,42 @@ export interface IdentifiedSchema<A, I, R> extends Schema.Schema<A, I, R> {
 export type ToolChoice<Tool extends AiTool.Any> = "auto" | "none" | "required" | {
   readonly tool: Tool["name"]
 }
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ToolCallIdGenerator {
+  generateId(): Effect.Effect<string>
+}
+
+/**
+ * The default services available for use when constructing an `AiLanguageModel`.
+ *
+ * @since 1.0.0
+ * @category Context
+ */
+export type Context = CurrentToolCallIdGenerator
+
+const ALPHANUMS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+const DefaultToolCallIdGenerator: ToolCallIdGenerator = {
+  generateId: Effect.fnUntraced(function*() {
+    const chars = new Array(32)
+    for (let i = 0; i < 32; i++) {
+      chars[i] = ALPHANUMS[yield* Random.nextIntBetween(0, ALPHANUMS.length - 1)]
+    }
+    return `tool_${chars.join("")}`
+  })
+}
+
+/**
+ * @since 1.0.0
+ * @category Context
+ */
+export class CurrentToolCallIdGenerator extends _Context.Tag("@effect/ai/CurrentToolCallIdGenerator")<
+  CurrentToolCallIdGenerator,
+  ToolCallIdGenerator
+>() {}
 
 /**
  * Options for generating text using a large language model.
@@ -212,7 +249,7 @@ export declare namespace AiLanguageModel {
    * @since 1.0.0
    * @category Models
    */
-  export interface Service<Config> {
+  export interface Service {
     /**
      * Generate text using a large language model for the specified `prompt`.
      *
@@ -227,7 +264,7 @@ export declare namespace AiLanguageModel {
     ) => Effect.Effect<
       ExtractSuccess<Options>,
       ExtractError<Options>,
-      ExtractContext<Options> | Config
+      ExtractContext<Options>
     >
     /**
      * Generate text using a large language model for the specified `prompt`,
@@ -244,7 +281,7 @@ export declare namespace AiLanguageModel {
     ) => Stream.Stream<
       ExtractSuccess<Options>,
       ExtractError<Options>,
-      ExtractContext<Options> | Config
+      ExtractContext<Options>
     >
 
     /**
@@ -253,7 +290,7 @@ export declare namespace AiLanguageModel {
      */
     readonly generateObject: <A, I extends Record<string, unknown>, R>(
       options: GenerateObjectOptions<A, I, R>
-    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config>
+    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
   }
 }
 
@@ -301,20 +338,32 @@ export interface AiLanguageModelOptions {
  * @since 1.0.0
  * @category Constructors
  */
-export const make: <Config>(
+export const make: (
   opts: {
-    readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError, Config>
-    readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError, Config>
+    readonly generateText: (
+      options: AiLanguageModelOptions
+    ) => Effect.Effect<AiResponse.AiResponse, AiError, Context>
+    readonly streamText: (
+      options: AiLanguageModelOptions
+    ) => Stream.Stream<AiResponse.AiResponse, AiError, Context>
   }
 ) => Effect.Effect<
-  AiLanguageModel.Service<Config>
-> = Effect.fnUntraced(function*<Config>(opts: {
-  readonly generateText: (options: AiLanguageModelOptions) => Effect.Effect<AiResponse.AiResponse, AiError, Config>
-  readonly streamText: (options: AiLanguageModelOptions) => Stream.Stream<AiResponse.AiResponse, AiError, Config>
+  AiLanguageModel.Service
+> = Effect.fnUntraced(function*(opts: {
+  readonly generateText: (
+    options: AiLanguageModelOptions
+  ) => Effect.Effect<AiResponse.AiResponse, AiError, Context>
+  readonly streamText: (
+    options: AiLanguageModelOptions
+  ) => Stream.Stream<AiResponse.AiResponse, AiError, Context>
 }) {
   const parentSpanTransformer = yield* Effect.serviceOption(CurrentSpanTransformer)
   const getSpanTransformer = Effect.serviceOption(CurrentSpanTransformer).pipe(
     Effect.map(Option.orElse(() => parentSpanTransformer))
+  )
+
+  const toolCallIdGenerator = yield* Effect.serviceOption(CurrentToolCallIdGenerator).pipe(
+    Effect.map(Option.getOrElse(() => DefaultToolCallIdGenerator))
   )
 
   const generateText = <
@@ -322,37 +371,41 @@ export const make: <Config>(
   >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Effect.Effect<
     ExtractSuccess<Options>,
     ExtractError<Options>,
-    ExtractContext<Options> | Config
+    ExtractContext<Options>
   > =>
     Effect.useSpan(
       "AiLanguageModel.generateText",
       { captureStackTrace: false, attributes: { concurrency, toolChoice } },
-      Effect.fnUntraced(function*(span) {
-        const prompt = AiInput.make(options.prompt)
-        const system = Option.fromNullable(options.system)
-        const spanTransformer = yield* getSpanTransformer
-        const modelOptions: Mutable<AiLanguageModelOptions> = { prompt, system, tools: [], toolChoice: "none", span }
-        if (Predicate.isUndefined(toolkit)) {
+      Effect.fnUntraced(
+        function*(span) {
+          const prompt = AiInput.make(options.prompt)
+          const system = Option.fromNullable(options.system)
+          const spanTransformer = yield* getSpanTransformer
+          const modelOptions: Mutable<AiLanguageModelOptions> = { prompt, system, tools: [], toolChoice: "none", span }
+          if (Predicate.isUndefined(toolkit)) {
+            const response = yield* opts.generateText(modelOptions)
+            if (Option.isSome(spanTransformer)) {
+              spanTransformer.value({ ...modelOptions, response })
+            }
+            return response
+          }
+          modelOptions.toolChoice = toolChoice
+          const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
+          for (const tool of actualToolkit.tools) {
+            modelOptions.tools.push(convertTool(tool))
+          }
           const response = yield* opts.generateText(modelOptions)
           if (Option.isSome(spanTransformer)) {
             spanTransformer.value({ ...modelOptions, response })
           }
-          return response
-        }
-        modelOptions.toolChoice = toolChoice
-        const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
-        for (const tool of actualToolkit.tools) {
-          modelOptions.tools.push(convertTool(tool))
-        }
-        const response = yield* opts.generateText(modelOptions)
-        if (Option.isSome(spanTransformer)) {
-          spanTransformer.value({ ...modelOptions, response })
-        }
-        if (options.disableToolCallResolution) {
-          return response
-        }
-        return yield* resolveParts({ response, toolkit: actualToolkit, concurrency, method: "generateText" })
-      }, (effect, span) => Effect.withParentSpan(effect, span))
+          if (options.disableToolCallResolution) {
+            return response
+          }
+          return yield* resolveParts({ response, toolkit: actualToolkit, concurrency, method: "generateText" })
+        },
+        (effect, span) => Effect.withParentSpan(effect, span),
+        Effect.provideService(CurrentToolCallIdGenerator, toolCallIdGenerator)
+      )
     ) as any
 
   const streamText = Effect.fnUntraced(
@@ -382,7 +435,7 @@ export const make: <Config>(
             (response) => resolveParts({ response, toolkit: actualToolkit, concurrency, method: "streamText" }),
             { concurrency: "unbounded" }
           )
-        ) as Stream.Stream<AiResponse.AiResponse, AiError, Config>,
+        ) as Stream.Stream<AiResponse.AiResponse, AiError, Context>,
         modelOptions
       ] as const
     },
@@ -402,12 +455,13 @@ export const make: <Config>(
         }))
       )
     })),
-    Stream.unwrapScoped
+    Stream.unwrapScoped,
+    Stream.provideService(CurrentToolCallIdGenerator, toolCallIdGenerator)
   )
 
   const generateObject = <A, I extends Record<string, unknown>, R>(
     options: GenerateObjectOptions<A, I, R>
-  ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R | Config> => {
+  ): Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R> => {
     const toolCallId: string = options.toolCallId
       ? options.toolCallId
       : "_tag" in options.schema
@@ -421,47 +475,51 @@ export const make: <Config>(
         captureStackTrace: false,
         attributes: { toolCallId }
       },
-      Effect.fnUntraced(function*(span) {
-        const prompt = AiInput.make(options.prompt)
-        const system = Option.fromNullable(options.system)
-        const spanTransformer = yield* getSpanTransformer
-        const decode = Schema.decodeUnknown(options.schema)
-        const tool = convertStructured(toolCallId, options.schema)
-        const toolChoice = { tool: tool.name } as const
-        const modelOptions: AiLanguageModelOptions = { prompt, system, tools: [tool], toolChoice, span }
-        const response = yield* opts.generateText(modelOptions)
-        if (Option.isSome(spanTransformer)) {
-          spanTransformer.value({ ...modelOptions, response })
-        }
-        const toolCallPart = response.parts.find((part): part is AiResponse.ToolCallPart =>
-          part._tag === "ToolCallPart" && part.name === toolCallId
-        )
-        if (Predicate.isUndefined(toolCallPart)) {
-          return yield* new AiError({
-            module: "AiLanguageModel",
-            method: "generateObject",
-            description: `Tool call '${toolCallId}' not found in model response`
-          })
-        }
-        return yield* Effect.matchEffect(decode(toolCallPart.params), {
-          onFailure: (cause) =>
-            new AiError({
+      Effect.fnUntraced(
+        function*(span) {
+          const prompt = AiInput.make(options.prompt)
+          const system = Option.fromNullable(options.system)
+          const spanTransformer = yield* getSpanTransformer
+          const decode = Schema.decodeUnknown(options.schema)
+          const tool = convertStructured(toolCallId, options.schema)
+          const toolChoice = { tool: tool.name } as const
+          const modelOptions: AiLanguageModelOptions = { prompt, system, tools: [tool], toolChoice, span }
+          const response = yield* opts.generateText(modelOptions)
+          if (Option.isSome(spanTransformer)) {
+            spanTransformer.value({ ...modelOptions, response })
+          }
+          const toolCallPart = response.parts.find((part): part is AiResponse.ToolCallPart =>
+            part._tag === "ToolCallPart" && part.name === toolCallId
+          )
+          if (Predicate.isUndefined(toolCallPart)) {
+            return yield* new AiError({
               module: "AiLanguageModel",
               method: "generateObject",
-              description: `Failed to decode tool call '${toolCallId}' parameters`,
-              cause
-            }),
-          onSuccess: (output) =>
-            Effect.succeed(
-              new AiResponse.WithStructuredOutput({
-                parts: response.parts,
-                id: toolCallPart.id,
-                name: toolCallPart.name,
-                value: output
-              }, constDisableValidation)
-            )
-        })
-      }, (effect, span) => Effect.withParentSpan(effect, span))
+              description: `Tool call '${toolCallId}' not found in model response`
+            })
+          }
+          return yield* Effect.matchEffect(decode(toolCallPart.params), {
+            onFailure: (cause) =>
+              new AiError({
+                module: "AiLanguageModel",
+                method: "generateObject",
+                description: `Failed to decode tool call '${toolCallId}' parameters`,
+                cause
+              }),
+            onSuccess: (output) =>
+              Effect.succeed(
+                new AiResponse.WithStructuredOutput({
+                  parts: response.parts,
+                  id: toolCallPart.id,
+                  name: toolCallPart.name,
+                  value: output
+                }, constDisableValidation)
+              )
+          })
+        },
+        (effect, span) => Effect.withParentSpan(effect, span),
+        Effect.provideService(CurrentToolCallIdGenerator, toolCallIdGenerator)
+      )
     )
   }
 

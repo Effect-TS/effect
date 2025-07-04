@@ -6,6 +6,7 @@
     { "path": "packages/ai/ai/tsconfig.build.json" },
     { "path": "packages/ai/amazon-bedrock/tsconfig.build.json" },
     { "path": "packages/ai/anthropic/tsconfig.build.json" },
+    { "path": "packages/ai/google/tsconfig.build.json" },
     { "path": "packages/ai/openai/tsconfig.build.json" },
     { "path": "packages/cli/tsconfig.build.json" },
     { "path": "packages/cluster/tsconfig.build.json" },
