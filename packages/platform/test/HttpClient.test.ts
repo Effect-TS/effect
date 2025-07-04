@@ -237,3 +237,27 @@ describe("HttpClient", () => {
       Effect.runPromise
     ))
 })
+
+describe("FetchHttpClient.layerWithFetch", () => {
+  it.effect("uses the injected fetch implementation", () =>
+    Effect.gen(function*() {
+      let called = false;
+      // Mock fetch implementation
+      const mockFetch: typeof globalThis.fetch = (input, init) => {
+        called = true;
+        // Return a minimal Response object
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }));
+      };
+      const client = yield* HttpClient.HttpClient;
+      const response = yield* pipe(
+        HttpClient.get("https://mocked-url.com/"),
+        Effect.flatMap((_) => _.json)
+      ).pipe(Effect.provide(FetchHttpClient.layerWithFetch(mockFetch)));
+      deepStrictEqual(response, { ok: true });
+      strictEqual(called, true);
+    })
+  );
+});
