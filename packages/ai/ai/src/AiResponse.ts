@@ -839,13 +839,18 @@ const mergeParts = (self: AiResponse, other: AiResponse): ReadonlyArray<Part> =>
   const lastPart = self.parts[self.parts.length - 1]
   const newParts: Array<Part> = []
   let text = lastPart._tag === "TextPart" ? lastPart.text : ""
+  let mergeTextParts = true
   for (const part of other.parts) {
-    if (part._tag === "TextPart") {
+    if (part._tag === "TextPart" && mergeTextParts) {
       text += part.text
+    } else {
+      if (text.length > 0) {
+        newParts.push(new TextPart({ text }, constDisableValidation))
+        text = ""
+        mergeTextParts = false
+      }
+      newParts.push(part)
     }
-  }
-  if (text.length > 0) {
-    newParts.push(new TextPart({ text }, constDisableValidation))
   }
   return newParts.length === 0 ? self.parts : [...self.parts.slice(0, self.parts.length - 1), ...newParts]
 }
