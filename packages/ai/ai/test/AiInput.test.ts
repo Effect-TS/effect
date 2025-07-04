@@ -73,6 +73,7 @@ describe("AiInput", () => {
             parts: [
               AiInput.ToolCallResultPart.make({
                 id: AiInput.ToolCallId.make("1"),
+                name: "tool",
                 result: {}
               })
             ]
@@ -101,6 +102,7 @@ describe("AiInput", () => {
             parts: [
               AiInput.ToolCallResultPart.make({
                 id: AiInput.ToolCallId.make("1"),
+                name: "tool",
                 result: {}
               })
             ]
@@ -148,8 +150,8 @@ const mockResponse = AiResponse.AiResponse.make({
 
 const mockToolCallsResponse = new AiResponse.WithToolCallResults({
   parts: mockResponse.parts,
-  results: new Map([[AiInput.ToolCallId.make("1"), {} as never]]),
-  encodedResults: new Map([[AiInput.ToolCallId.make("1"), {}]])
+  results: new Map([[AiInput.ToolCallId.make("1"), { name: "tool", result: {} } as never]]),
+  encodedResults: new Map([[AiInput.ToolCallId.make("1"), { name: "tool", result: {} }]])
 })
 
 const mockStructuredResponse = new AiResponse.WithStructuredOutput({

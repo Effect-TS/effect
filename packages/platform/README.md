@@ -4868,8 +4868,14 @@ const GoodbyeRoute = HttpLayerRouter.use(
     )
   })
 )
+// Or use `HttpLayerRouter.add/addAll` for simple routes
+const SimpleRoute = HttpLayerRouter.add(
+  "GET",
+  "/simple",
+  HttpServerResponse.text("Simply fantastic!")
+)
 
-const AllRoutes = Layer.mergeAll(HelloRoute, GoodbyeRoute)
+const AllRoutes = Layer.mergeAll(HelloRoute, GoodbyeRoute, SimpleRoute)
 
 // To start the server, we use `HttpLayerRouter.serve` with the routes layer
 HttpLayerRouter.serve(AllRoutes).pipe(
@@ -4916,19 +4922,14 @@ const SessionMiddleware = HttpLayerRouter.middleware<{
 const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
 // You can also use `HttpLayerRouter.cors()` to create a CORS middleware
 
-const HelloRoute = Layer.effectDiscard(
+const HelloRoute = HttpLayerRouter.add(
+  "GET",
+  "/hello",
   Effect.gen(function* () {
-    const router = yield* HttpLayerRouter.HttpRouter
-    yield* router.add(
-      "GET",
-      "/hello",
-      Effect.gen(function* () {
-        // We can now access the `CurrentSession` service in our route handler
-        const session = yield* CurrentSession
-        return HttpServerResponse.text(
-          `Hello, World! Your session token is: ${session.token}`
-        )
-      })
+    // We can now access the `CurrentSession` service in our route handler
+    const session = yield* CurrentSession
+    return HttpServerResponse.text(
+      `Hello, World! Your session token is: ${session.token}`
     )
   })
 ).pipe(
@@ -4987,18 +4988,13 @@ const LogMiddleware = HttpLayerRouter.middleware(
 // We can then use the .combine method to combine the middlewares
 const LogAndSessionMiddleware = LogMiddleware.combine(SessionMiddleware)
 
-const HelloRoute = Layer.effectDiscard(
+const HelloRoute = HttpLayerRouter.add(
+  "GET",
+  "/hello",
   Effect.gen(function* () {
-    const router = yield* HttpLayerRouter.HttpRouter
-    yield* router.add(
-      "GET",
-      "/hello",
-      Effect.gen(function* () {
-        const session = yield* CurrentSession
-        return HttpServerResponse.text(
-          `Hello, World! Your session token is: ${session.token}`
-        )
-      })
+    const session = yield* CurrentSession
+    return HttpServerResponse.text(
+      `Hello, World! Your session token is: ${session.token}`
     )
   })
 ).pipe(Layer.provide(LogAndSessionMiddleware.layer))

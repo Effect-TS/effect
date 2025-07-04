@@ -25,11 +25,11 @@ import * as OtlpResource from "./OtlpResource.js"
 export const make: (
   options: {
     readonly url: string
-    readonly resource: {
-      readonly serviceName: string
+    readonly resource?: {
+      readonly serviceName?: string | undefined
       readonly serviceVersion?: string | undefined
       readonly attributes?: Record<string, unknown>
-    }
+    } | undefined
     readonly headers?: Headers.Input | undefined
     readonly exportInterval?: Duration.DurationInput | undefined
     readonly maxBatchSize?: number | undefined
@@ -41,9 +41,9 @@ export const make: (
   never,
   HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
-  const otelResource = OtlpResource.make(options.resource)
+  const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: Scope = {
-    name: options.resource.serviceName
+    name: OtlpResource.unsafeServiceName(otelResource)
   }
 
   const exporter = yield* Exporter.make({
@@ -103,11 +103,11 @@ export const make: (
  */
 export const layer = (options: {
   readonly url: string
-  readonly resource: {
-    readonly serviceName: string
+  readonly resource?: {
+    readonly serviceName?: string | undefined
     readonly serviceVersion?: string | undefined
     readonly attributes?: Record<string, unknown>
-  }
+  } | undefined
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly maxBatchSize?: number | undefined

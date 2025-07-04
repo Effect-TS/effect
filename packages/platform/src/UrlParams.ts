@@ -261,7 +261,7 @@ const baseUrl = (): string | undefined => {
  * @category conversions
  */
 export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
-  const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
+  const out: Record<string, string | Arr.NonEmptyArray<string>> = Object.create(null)
   for (const [k, value] of self) {
     const curr = out[k]
     if (curr === undefined) {
@@ -272,7 +272,7 @@ export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyA
       curr.push(value)
     }
   }
-  return out
+  return { ...out }
 }
 
 /**

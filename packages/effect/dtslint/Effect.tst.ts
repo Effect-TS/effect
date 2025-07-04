@@ -1,5 +1,5 @@
 import type { Either, Types } from "effect"
-import { Array as Arr, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
+import { Array as Arr, Context, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, NoSuchElementException, UnknownException } from "effect/Cause"
 import { describe, expect, it, when } from "tstyche"
@@ -10,6 +10,8 @@ class TestError1 {
 class TestError2 {
   readonly _tag = "TestError2"
 }
+
+class TestService extends Context.Tag("TestService")<TestService, {}>() {}
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -1492,6 +1494,32 @@ describe("Effect", () => {
 
     expect(fnGen).type.toBe<
       (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
+    >()
+  })
+
+  it("ensureSuccessType", () => {
+    expect(Effect.succeed(123).pipe(Effect.ensureSuccessType<number>())).type.toBe<
+      Effect.Effect<number, never, never>
+    >()
+  })
+
+  it("ensureErrorType", () => {
+    const withoutError = Effect.succeed("no error")
+    expect(withoutError.pipe(Effect.ensureErrorType<never>())).type.toBe<Effect.Effect<string, never, never>>()
+
+    const withError = Effect.fail(new TestError1())
+    expect(withError.pipe(Effect.ensureErrorType<TestError1>())).type.toBe<Effect.Effect<never, TestError1, never>>()
+  })
+
+  it("ensureRequirementsType", () => {
+    const withoutRequirements = Effect.never
+    expect(withoutRequirements.pipe(Effect.ensureRequirementsType<never>())).type.toBe<
+      Effect.Effect<never, never, never>
+    >()
+
+    const withRequirement = Effect.flatMap(TestService, () => Effect.never)
+    expect(withRequirement.pipe(Effect.ensureRequirementsType<TestService>())).type.toBe<
+      Effect.Effect<never, never, TestService>
     >()
   })
 })
