@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.53.8
+
+### Patch Changes
+
+- [#5161](https://github.com/Effect-TS/effect/pull/5161) [`03f4e8c`](https://github.com/Effect-TS/effect/commit/03f4e8cdb25f43e5ecddf9ba3627105d7e957185) Thanks @tim-smart! - load otel attributes from Config in Otlp modules
+
 ## 0.53.7
 
 ### Patch Changes

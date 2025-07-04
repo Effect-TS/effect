@@ -1,5 +1,15 @@
 # @effect/ai
 
+## 0.21.11
+
+### Patch Changes
+
+- [#5029](https://github.com/Effect-TS/effect/pull/5029) [`d92d12a`](https://github.com/Effect-TS/effect/commit/d92d12acb6097a4fa6c9c918faa3cd5c3fb6c778) Thanks @IMax153! - Add support for generating tool call identifiers when none are returned by the LLM provider
+
+- [#5165](https://github.com/Effect-TS/effect/pull/5165) [`25ca0cf`](https://github.com/Effect-TS/effect/commit/25ca0cf141139cd44ff53081b1c877f8f3ab5e41) Thanks @IMax153! - Ensure that tool call parts are properly merged when combining `AiResponse`s
+
+- [#5029](https://github.com/Effect-TS/effect/pull/5029) [`d92d12a`](https://github.com/Effect-TS/effect/commit/d92d12acb6097a4fa6c9c918faa3cd5c3fb6c778) Thanks @IMax153! - Cleanup AiLanguageModel construction and finish basic support for gemini
+
 ## 0.21.10
 
 ### Patch Changes
