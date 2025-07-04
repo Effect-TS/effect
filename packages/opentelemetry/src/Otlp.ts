@@ -17,8 +17,8 @@ import * as OtlpTracer from "./OtlpTracer.js"
  */
 export const layer = (options: {
   readonly baseUrl: string
-  readonly resource: {
-    readonly serviceName: string
+  readonly resource?: {
+    readonly serviceName?: string | undefined
     readonly serviceVersion?: string | undefined
     readonly attributes?: Record<string, unknown>
   }
