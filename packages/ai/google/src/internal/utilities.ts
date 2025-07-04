@@ -38,13 +38,6 @@ export const resolveFinishReason = (finishReason: typeof CandidateFinishReason.T
   return Predicate.isUndefined(reason) ? "unknown" : reason
 }
 
-interface GeminiFunctionDeclaration {
-  name: string
-  description: string
-  parameters?: typeof Schema.Encoded
-  response?: typeof Schema.Encoded
-}
-
 /**
  * Converts a JsonSchema7 object to a Gemini API compatible Schema object
  *
@@ -169,10 +162,10 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
         // Tuple validation - Gemini doesn't directly support this
         // We'll use the first item type as a simplification
         if (arraySchema.items.length > 0) {
-          result.items = jsonSchema7ToGeminiSchema(arraySchema.items[0])
+          result.items = jsonSchemaToOpenApi(arraySchema.items[0])
         }
       } else {
-        result.items = jsonSchema7ToGeminiSchema(arraySchema.items)
+        result.items = jsonSchemaToOpenApi(arraySchema.items)
       }
     }
 
@@ -196,7 +189,7 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
     const anyOfSchema = schema as JsonSchema7AnyOf
     const result: typeof Schema.Encoded = {
       type: "OBJECT", // Default type for anyOf
-      anyOf: anyOfSchema.anyOf.map((s) => jsonSchema7ToGeminiSchema(s)),
+      anyOf: anyOfSchema.anyOf.map((s) => jsonSchemaToOpenApi(s)),
       ...extractAnnotations(anyOfSchema)
     }
 
@@ -214,7 +207,7 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
     if (objectSchema.properties) {
       result.properties = {}
       for (const [key, value] of Object.entries(objectSchema.properties)) {
-        ;(result.properties as any)[key] = jsonSchema7ToGeminiSchema(value)
+        ;(result.properties as any)[key] = jsonSchemaToOpenApi(value)
       }
     }
 
