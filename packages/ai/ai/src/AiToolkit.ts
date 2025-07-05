@@ -124,21 +124,6 @@ export type HandlersFrom<Tools extends AiTool.Any> = {
  */
 export type Tools<Toolkit> = Toolkit extends AiToolkit<infer Tool> ? string extends Tool["name"] ? never : Tool : never
 
-/**
- * Metadata associated with the tool call that is currently being handled.
- *
- * @since 1.0.0
- * @category Context
- */
-export class ToolCallMeta extends Context.Tag("@effect/ai/AiToolkit/ToolCallMeta")<
-  ToolCallMeta,
-  {
-    readonly id: string
-    readonly name: string
-    readonly params: unknown
-  }
->() {}
-
 const Proto = {
   ...CommitPrototype,
   ...InspectableProto,
@@ -223,12 +208,7 @@ const Proto = {
                 ),
                 Effect.flatMap(Effect.fail)
               )
-            ),
-            Effect.provideService(ToolCallMeta, {
-              id: toolId,
-              name: toolName,
-              params: toolParams
-            })
+            )
           )
           const encodedResult = yield* Effect.mapError(
             schemas.encodeSuccess(result),
