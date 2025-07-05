@@ -606,7 +606,7 @@ const resolveParts = Effect.fnUntraced(function*<Tools extends AiTool.Any>(optio
     const id = part.id as AiResponse.ToolCallId
     const name = part.name as AiTool.Name<Tools>
     const params = part.params as AiTool.Parameters<Tools>
-    const toolCall = options.toolkit.handle(name, params)
+    const toolCall = options.toolkit.handle(id, name, params)
     return Effect.map(toolCall, ({ encodedResult, result }) => {
       results.set(id, { name, result })
       encodedResults.set(id, { name, result: encodedResult })
