@@ -4918,8 +4918,11 @@ const SessionMiddleware = HttpLayerRouter.middleware<{
   })
 )
 
-// And here is a CORS middleware that modifies the HTTP response
-const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors())
+// And here is an example of global middleware, that modifies the HTTP response.
+// Global middleware directly returns a `Layer`.
+const CorsMiddleware = HttpLayerRouter.middleware(HttpMiddleware.cors(), {
+  global: true
+})
 // You can also use `HttpLayerRouter.cors()` to create a CORS middleware
 
 const HelloRoute = HttpLayerRouter.add(
@@ -4936,7 +4939,7 @@ const HelloRoute = HttpLayerRouter.add(
   // We can provide the `SessionMiddleware.layer` to the `HelloRoute` layer
   Layer.provide(SessionMiddleware.layer),
   // And we can also provide the `CorsMiddleware` layer to handle CORS
-  Layer.provide(CorsMiddleware.layer)
+  Layer.provide(CorsMiddleware)
 )
 ```
 
