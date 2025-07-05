@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai-amazon-bedrock",
   "type": "module",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "license": "MIT",
   "description": "Effect modules for working with Amazon Bedrock AI apis",
   "homepage": "https://effect.website",

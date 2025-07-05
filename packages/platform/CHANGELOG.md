@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.87.8
+
+### Patch Changes
+
+- [#5166](https://github.com/Effect-TS/effect/pull/5166) [`4ce4f82`](https://github.com/Effect-TS/effect/commit/4ce4f824f6fdef492be1d35c05a490ffce518c89) Thanks @tim-smart! - add global middleware to HttpLayerRouter
+
 ## 0.87.7
 
 ### Patch Changes

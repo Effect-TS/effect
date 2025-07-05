@@ -1,5 +1,38 @@
 # @effect/platform-node
 
+## 0.89.0
+
+### Minor Changes
+
+- [#5168](https://github.com/Effect-TS/effect/pull/5168) [`2baddac`](https://github.com/Effect-TS/effect/commit/2baddac34760aefec27c530084ac5e47bd5b265f) Thanks @fubhy! - Consistent naming of `ClusterShardManager` options between `Bun` and `Node`.
+
+  If you are currently using `NodeClusterShardManagerHttp`, please rename `options.protocol` to `options.transport`:
+
+  ```ts
+  import * as NodeClusterShardManagerHttp from "@effect/platform-node/NodeClusterShardManagerHttp"
+
+  // Before:
+  const manager = new NodeClusterShardManagerHttp.layer({
+    protocol: "http"
+    // ...
+  })
+
+  // Before:
+  const manager = new NodeClusterShardManagerHttp.layer({
+    transport: "http"
+    // ...
+  })
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`4ce4f82`](https://github.com/Effect-TS/effect/commit/4ce4f824f6fdef492be1d35c05a490ffce518c89)]:
+  - @effect/platform@0.87.8
+  - @effect/cluster@0.41.12
+  - @effect/platform-node-shared@0.42.12
+  - @effect/rpc@0.64.9
+  - @effect/sql@0.40.9
+
 ## 0.88.11
 
 ### Patch Changes
