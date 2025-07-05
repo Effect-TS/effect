@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-do",
-  "version": "0.18.8",
+  "version": "0.18.9",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
