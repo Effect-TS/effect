@@ -43,7 +43,7 @@ export const layerHttpServer: Layer.Layer<
  * @category Layers
  */
 export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
-  readonly protocol: "http" | "websocket"
+  readonly transport: "http" | "websocket"
   readonly serialization?: "msgpack" | "ndjson" | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
   readonly storage?: Storage | undefined
@@ -53,7 +53,7 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
   ServeError | ConfigError | (Storage extends "sql" ? SqlError : never),
   Storage extends "sql" ? SqlClient : never
 > => {
-  const layer: Layer.Layer<any, any, any> = options.protocol === "http" ?
+  const layer: Layer.Layer<any, any, any> = options.transport === "http" ?
     HttpShardManager.layerHttp.pipe(
       Layer.provide([HttpShardManager.layerRunnerHealthHttp, layerHttpServer]),
       Layer.provide(NodeHttpClient.layerUndici)
