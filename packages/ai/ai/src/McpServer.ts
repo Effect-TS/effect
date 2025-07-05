@@ -632,7 +632,7 @@ export const registerToolkit: <Tools extends AiTool.Any>(toolkit: AiToolkit.AiTo
     yield* registry.addTool({
       tool: mcpTool,
       handle(payload) {
-        return built.handle(tool.name as any, payload).pipe(
+        return built.handle("", tool.name as any, payload).pipe(
           Effect.provide(context as Context.Context<any>),
           Effect.match({
             onFailure: (error) =>

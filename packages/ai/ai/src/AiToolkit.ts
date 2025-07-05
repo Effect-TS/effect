@@ -85,7 +85,22 @@ export interface Any {
  */
 export interface ToHandler<in out Tool extends AiTool.Any> {
   readonly tools: ReadonlyArray<Tool>
-  readonly handle: (toolName: AiTool.Name<Tool>, toolParams: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
+  readonly handle: (
+    toolId: string,
+    toolName: AiTool.Name<Tool>,
+    toolParams: AiTool.Parameters<Tool>
+  ) => AiTool.HandlerEffect<Tool>
+}
+
+/**
+ * The metadata associated with the current tool call that is being handled.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ToolCallHandlerMeta {
+  readonly id: string
+  readonly name: string
 }
 
 /**
@@ -95,7 +110,10 @@ export interface ToHandler<in out Tool extends AiTool.Any> {
  * @category Utility Types
  */
 export type HandlersFrom<Tools extends AiTool.Any> = {
-  [Tool in Tools as Tool["name"]]: (params: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
+  [Tool in Tools as Tool["name"]]: (
+    params: AiTool.Parameters<Tool>,
+    meta: ToolCallHandlerMeta
+  ) => AiTool.HandlerEffect<Tool>
 }
 
 /**
@@ -105,6 +123,21 @@ export type HandlersFrom<Tools extends AiTool.Any> = {
  * @category Utility Types
  */
 export type Tools<Toolkit> = Toolkit extends AiToolkit<infer Tool> ? string extends Tool["name"] ? never : Tool : never
+
+/**
+ * Metadata associated with the tool call that is currently being handled.
+ *
+ * @since 1.0.0
+ * @category Context
+ */
+export class ToolCallMeta extends Context.Tag("@effect/ai/AiToolkit/ToolCallMeta")<
+  ToolCallMeta,
+  {
+    readonly id: string
+    readonly name: string
+    readonly params: unknown
+  }
+>() {}
 
 const Proto = {
   ...CommitPrototype,
@@ -132,7 +165,7 @@ const Proto = {
       const tools = this.tools
       const schemasCache = new WeakMap<any, {
         readonly context: Context.Context<never>
-        readonly handler: (params: any) => Effect.Effect<any, any>
+        readonly handler: (params: any, meta: ToolCallHandlerMeta) => Effect.Effect<any, any>
         readonly encodeSuccess: (u: unknown) => Effect.Effect<unknown, ParseError>
         readonly decodeFailure: (u: unknown) => Effect.Effect<AiTool.Failure<any>, ParseError>
         readonly decodeParameters: (u: unknown) => Effect.Effect<AiTool.Parameters<any>, ParseError>
@@ -156,7 +189,7 @@ const Proto = {
         return schemas
       }
       const handle = Effect.fn("AiToolkit.handler", { captureStackTrace: false })(
-        function*(toolName: string, toolParams: unknown) {
+        function*(toolId: string, toolName: string, toolParams: unknown) {
           yield* Effect.annotateCurrentSpan({
             tool: toolName,
             parameters: toolParams
@@ -173,7 +206,10 @@ const Proto = {
                 cause
               })
           )
-          const result = yield* schemas.handler(decodedParams).pipe(
+          const result = yield* schemas.handler(decodedParams, {
+            id: toolId,
+            name: toolName
+          }).pipe(
             Effect.mapInputContext((input) => Context.merge(schemas.context, input)),
             Effect.catchAll((error) =>
               schemas.decodeFailure(error).pipe(
@@ -187,7 +223,12 @@ const Proto = {
                 ),
                 Effect.flatMap(Effect.fail)
               )
-            )
+            ),
+            Effect.provideService(ToolCallMeta, {
+              id: toolId,
+              name: toolName,
+              params: toolParams
+            })
           )
           const encodedResult = yield* Effect.mapError(
             schemas.encodeSuccess(result),
