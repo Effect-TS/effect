@@ -73,6 +73,19 @@ export interface HttpRouter {
     | Type.From<"Error", Route.Error<Routes[number]>>
   >
 
+  readonly addGlobalMiddleware: <E, R>(
+    middleware:
+      & ((
+        effect: Effect.Effect<HttpServerResponse.HttpServerResponse, unhandled>
+      ) => Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>)
+      & (unhandled extends E ? unknown : "You cannot handle any errors")
+  ) => Effect.Effect<
+    void,
+    never,
+    | Type.From<"GlobalRequires", Exclude<R, GlobalProvided>>
+    | Type.From<"GlobalError", Exclude<E, unhandled>>
+  >
+
   readonly asHttpEffect: () => Effect.Effect<
     HttpServerResponse.HttpServerResponse,
     unknown,
@@ -94,6 +107,7 @@ export const HttpRouter: Context.Tag<HttpRouter, HttpRouter> = Context.GenericTa
  */
 export const make = Effect.gen(function*() {
   const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
+  const middleware = new Set<middleware.Fn>()
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
     routes: Routes
@@ -128,8 +142,7 @@ export const make = Effect.gen(function*() {
     [TypeId]: TypeId,
     prefixed(this: HttpRouter, prefix: string) {
       return HttpRouter.of({
-        [TypeId]: TypeId,
-        asHttpEffect: this.asHttpEffect,
+        ...this,
         prefixed: (newPrefix: string) => this.prefixed(prefixPath(prefix, newPrefix)),
         addAll: (routes) => addAll(routes.map(prefixRoute(prefix))) as any,
         add: (method, path, handler, options) =>
@@ -148,8 +161,12 @@ export const make = Effect.gen(function*() {
     },
     addAll,
     add: (method, path, handler, options) => addAll([route(method, path, handler, options)]),
+    addGlobalMiddleware: (middleware_) =>
+      Effect.sync(() => {
+        middleware.add(middleware_ as any)
+      }),
     asHttpEffect() {
-      return Effect.withFiberRuntime((fiber) => {
+      let handler = Effect.withFiberRuntime<HttpServerResponse.HttpServerResponse, unknown>((fiber) => {
         const contextMap = new Map(fiber.currentContext.unsafeMap)
         const request = contextMap.get(HttpServerRequest.HttpServerRequest.key) as HttpServerRequest.HttpServerRequest
         let result = router.find(request.method, request.url)
@@ -185,6 +202,11 @@ export const make = Effect.gen(function*() {
           Context.unsafeMake(contextMap)
         )
       })
+      if (middleware.size === 0) return handler
+      for (const fn of Arr.reverse(middleware)) {
+        handler = fn(handler as any)
+      }
+      return handler
     }
   })
 })
@@ -334,8 +356,8 @@ export const toHttpEffect = <A, E, R>(
 ): Effect.Effect<
   Effect.Effect<
     HttpServerResponse.HttpServerResponse,
-    Type.Only<"Error", R> | HttpServerError.RouteNotFound,
-    Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
+    Type.Only<"Error", R> | Type.Only<"GlobalRequires", R> | HttpServerError.RouteNotFound,
+    Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R> | Type.Only<"GlobalRequires", R>
   >,
   Type.Without<E>,
   Exclude<Type.Without<R>, HttpRouter> | Scope.Scope
@@ -521,6 +543,16 @@ export type Provided =
   | RouteContext
 
 /**
+ * Services provided to global middleware.
+ *
+ * @since 1.0.0
+ * @category Request types
+ */
+export type GlobalProvided =
+  | HttpServerRequest.HttpServerRequest
+  | Scope.Scope
+
+/**
  * @since 1.0.0
  * @category Middleware
  */
@@ -562,7 +594,9 @@ export interface Middleware<
   readonly layer: [Config["requires"]] extends [never] ? Layer.Layer<
       Type.From<"Requires", Config["provides"]>,
       Config["layerError"],
-      Config["layerRequires"] | Type.From<"Requires", Config["requires"]>
+      | Config["layerRequires"]
+      | Type.From<"Requires", Config["requires"]>
+      | Type.From<"Error", Config["error"]>
     >
     : "Need to .combine(middleware) that satisfy the missing request dependencies"
 
@@ -587,6 +621,11 @@ export interface Middleware<
 
 /**
  * Create a middleware layer that can be used to modify requests and responses.
+ *
+ * By default, the middleware only affects the routes that it is provided to.
+ *
+ * If you want to create a middleware that applies globally to all routes, pass
+ * the `global` option as `true`.
  *
  * ```ts
  * import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
@@ -653,15 +692,22 @@ export const middleware:
     if (arguments.length === 0) {
       return makeMiddleware as any
     }
-    return makeMiddleware(arguments[0])
+    return makeMiddleware(arguments[0], arguments[1]) as any
   }
 
-const makeMiddleware = (middleware: any) =>
-  new MiddlewareImpl(
-    Effect.isEffect(middleware) ?
-      Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake(new Map([[fnContextKey, fn]])))) :
-      Layer.succeedContext(Context.unsafeMake(new Map([[fnContextKey, middleware]]))) as any
-  )
+const makeMiddleware = (middleware: any, options?: {
+  readonly global?: boolean | undefined
+}) =>
+  options?.global ?
+    Layer.scopedDiscard(Effect.flatMap(
+      HttpRouter,
+      (router) => router.addGlobalMiddleware(middleware)
+    ))
+    : new MiddlewareImpl(
+      Effect.isEffect(middleware) ?
+        Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake(new Map([[fnContextKey, fn]])))) :
+        Layer.succeedContext(Context.unsafeMake(new Map([[fnContextKey, middleware]]))) as any
+    )
 
 let middlewareId = 0
 const fnContextKey = "@effect/platform/HttpLayerRouter/MiddlewareFn"
@@ -757,7 +803,7 @@ export declare namespace middleware {
    * @category Middleware
    */
   export type Make<Provides = never, Handles = never> = {
-    <E, R, EX, RX>(
+    <E, R, EX, RX, const Global extends boolean = false>(
       middleware: Effect.Effect<
         (
           effect: Effect.Effect<
@@ -774,16 +820,30 @@ export declare namespace middleware {
           & (unhandled extends E ? unknown : "You must only handle the configured errors"),
         EX,
         RX
-      >
-    ): Middleware<{
-      provides: Provides
-      handles: Handles
-      error: Exclude<E, unhandled>
-      requires: Exclude<R, Provided>
-      layerError: EX
-      layerRequires: Exclude<RX, Scope.Scope>
-    }>
-    <E, R>(
+      >,
+      options?: {
+        readonly global?: Global | undefined
+      }
+    ): Global extends true ? Layer.Layer<
+        | Type.From<"Requires", Provides>
+        | Type.From<"Error", Handles>
+        | Type.From<"GlobalRequires", Provides>
+        | Type.From<"GlobalError", Handles>,
+        EX,
+        | HttpRouter
+        | Exclude<RX, Scope.Scope>
+        | Type.From<"GlobalRequires", Exclude<R, GlobalProvided>>
+        | Type.From<"GlobalError", Exclude<E, unhandled>>
+      > :
+      Middleware<{
+        provides: Provides
+        handles: Handles
+        error: Exclude<E, unhandled>
+        requires: Exclude<R, Provided>
+        layerError: EX
+        layerRequires: Exclude<RX, Scope.Scope>
+      }>
+    <E, R, const Global extends boolean = false>(
       middleware:
         & ((
           effect: Effect.Effect<
@@ -796,15 +856,28 @@ export declare namespace middleware {
           E,
           R
         >)
-        & (unhandled extends E ? unknown : "You must only handle the configured errors")
-    ): Middleware<{
-      provides: Provides
-      handles: Handles
-      error: Exclude<E, unhandled>
-      requires: Exclude<R, Provided>
-      layerError: never
-      layerRequires: never
-    }>
+        & (unhandled extends E ? unknown : "You must only handle the configured errors"),
+      options?: {
+        readonly global?: Global | undefined
+      }
+    ): Global extends true ? Layer.Layer<
+        | Type.From<"Requires", Provides>
+        | Type.From<"Error", Handles>
+        | Type.From<"GlobalRequires", Provides>
+        | Type.From<"GlobalError", Handles>,
+        never,
+        | HttpRouter
+        | Type.From<"GlobalRequires", Exclude<R, GlobalProvided>>
+        | Type.From<"GlobalError", Exclude<E, unhandled>>
+      > :
+      Middleware<{
+        provides: Provides
+        handles: Handles
+        error: Exclude<E, unhandled>
+        requires: Exclude<R, Provided>
+        layerError: never
+        layerRequires: never
+      }>
   }
 
   /**
@@ -831,7 +904,7 @@ export const cors = (
     readonly maxAge?: number | undefined
     readonly credentials?: boolean | undefined
   } | undefined
-): Layer.Layer<never> => middleware(HttpMiddleware.cors(options)).layer
+): Layer.Layer<never, never, HttpRouter> => middleware(HttpMiddleware.cors(options), { global: true })
 
 /**
  * A middleware that disables the logger for some routes.
@@ -922,12 +995,10 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
   never,
   HttpRouter | HttpApiGroup.HttpApiGroup.ToService<Id, Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
 > => {
-  const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer
-
+  const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer as Layer.Layer<never>
   return HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
     const router = yield* HttpRouter
     const routes = Arr.empty<Route<any, any>>()
-
     for (const route of router_.routes) {
       routes.push(makeRoute(route as any))
     }
@@ -949,7 +1020,7 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
  * @since 1.0.0
  * @category Server
  */
-export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
+export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R> | Type.Only<"GlobalRequires", R>>(
   appLayer: Layer.Layer<A, E, R>,
   options?: {
     readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
@@ -969,8 +1040,8 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R>>(
     readonly middleware?: (
       effect: Effect.Effect<
         HttpServerResponse.HttpServerResponse,
-        Type.Only<"Error", R> | HttpServerError.RouteNotFound,
-        Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R>
+        Type.Only<"Error", R> | Type.Only<"GlobalError", R> | HttpServerError.RouteNotFound,
+        Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R> | Type.Only<"GlobalRequires", R>
       >
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
