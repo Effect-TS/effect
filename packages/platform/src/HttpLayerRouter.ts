@@ -699,10 +699,11 @@ const makeMiddleware = (middleware: any, options?: {
   readonly global?: boolean | undefined
 }) =>
   options?.global ?
-    Layer.scopedDiscard(Effect.flatMap(
-      HttpRouter,
-      (router) => router.addGlobalMiddleware(middleware)
-    ))
+    Layer.scopedDiscard(Effect.gen(function*() {
+      const router = yield* HttpRouter
+      const fn = Effect.isEffect(middleware) ? yield* middleware : middleware
+      yield* router.addGlobalMiddleware(fn)
+    }))
     : new MiddlewareImpl(
       Effect.isEffect(middleware) ?
         Layer.scopedContext(Effect.map(middleware, (fn) => Context.unsafeMake(new Map([[fnContextKey, fn]])))) :
