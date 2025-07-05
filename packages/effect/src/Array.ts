@@ -1731,8 +1731,8 @@ export const setNonEmptyLast: {
  * ```ts
  * import { Array } from "effect"
  *
- * const result = Array.rotate(['a', 'b', 'c', 'd'], 2)
- * console.log(result) // ['c', 'd', 'a', 'b']
+ * const result = Array.rotate(['a', 'b', 'c', 'd', 'e'], 2)
+ * console.log(result) // [ 'd', 'e', 'a', 'b', 'c' ]
  * ```
  *
  * @since 2.0.0
