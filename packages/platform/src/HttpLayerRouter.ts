@@ -9,20 +9,26 @@ import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { compose, constant, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
+import type * as Etag from "./Etag.js"
+import type { FileSystem } from "./FileSystem.js"
 import type * as HttpApi from "./HttpApi.js"
 import * as HttpApiBuilder from "./HttpApiBuilder.js"
 import type * as HttpApiGroup from "./HttpApiGroup.js"
+import * as HttpApp from "./HttpApp.js"
 import type * as HttpMethod from "./HttpMethod.js"
 import * as HttpMiddleware from "./HttpMiddleware.js"
+import type { HttpPlatform } from "./HttpPlatform.js"
 import { RouteContext, RouteContextTypeId } from "./HttpRouter.js"
 import * as HttpServer from "./HttpServer.js"
 import * as HttpServerError from "./HttpServerError.js"
 import * as OpenApi from "./OpenApi.js"
+import type { Path } from "./Path.js"
 
 /**
  * @since 1.0.0
@@ -994,14 +1000,31 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
 ): Layer.Layer<
   never,
   never,
-  HttpRouter | HttpApiGroup.HttpApiGroup.ToService<Id, Groups> | R | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
+  | Etag.Generator
+  | HttpRouter
+  | FileSystem
+  | HttpPlatform
+  | Path
+  | R
+  | HttpApiGroup.HttpApiGroup.ToService<Id, Groups>
+  | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
 > => {
   const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer as Layer.Layer<never>
   return HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
     const router = yield* HttpRouter
+    const context = yield* Effect.context<
+      | Etag.Generator
+      | HttpRouter
+      | FileSystem
+      | HttpPlatform
+      | Path
+    >()
     const routes = Arr.empty<Route<any, any>>()
     for (const route of router_.routes) {
-      routes.push(makeRoute(route as any))
+      routes.push(makeRoute({
+        ...route as any,
+        handler: Effect.provide(route.handler, context)
+      }))
     }
 
     yield* (router.addAll(routes) as Effect.Effect<void>)
@@ -1049,7 +1072,7 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R> | Type.Only<"Gl
 ): Layer.Layer<
   never,
   Type.Without<E>,
-  HttpServer.HttpServer | Exclude<Type.Without<R> | Exclude<HR, Provided>, HttpRouter>
+  HttpServer.HttpServer | Exclude<Type.Without<R> | Exclude<HR, GlobalProvided>, HttpRouter>
 > => {
   let middleware: any = options?.middleware
   if (options?.disableLogger !== true) {
@@ -1068,4 +1091,76 @@ export const serve = <A, E, R, HE, HR = Type.Only<"Requires", R> | Type.Only<"Gl
     Layer.provide(RouterLayer),
     options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any
+}
+
+/**
+ * @since 1.0.0
+ * @category Server
+ */
+export const toWebHandler = <
+  A,
+  E,
+  R extends
+    | HttpRouter
+    | Type<"Requires", A>
+    | Type<"GlobalRequires", A>
+    | Type<"Error", any>
+    | Type<"GlobalError", any>,
+  HE
+>(
+  appLayer: Layer.Layer<A, E, R>,
+  options?: {
+    readonly memoMap?: Layer.MemoMap | undefined
+    readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined
+    readonly disableLogger?: boolean | undefined
+    /**
+     * Middleware to apply to the HTTP server.
+     *
+     * NOTE: This middleware is applied to the entire HTTP server chain,
+     * including the sending of the response. This means that modifications
+     * to the response **WILL NOT** be reflected in the final response sent to the
+     * client.
+     *
+     * Use HttpLayerRouter.middleware to create middleware that can modify the
+     * response.
+     */
+    readonly middleware?: (
+      effect: Effect.Effect<
+        HttpServerResponse.HttpServerResponse,
+        Type.Only<"Error", R> | Type.Only<"GlobalError", R> | HttpServerError.RouteNotFound,
+        Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R> | Type.Only<"GlobalRequires", R>
+      >
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, Types.NoInfer<A> | GlobalProvided>
+  }
+): {
+  readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
+  readonly dispose: () => Promise<void>
+} => {
+  let middleware: any = options?.middleware
+  if (options?.disableLogger !== true) {
+    middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
+  }
+  const RouterLayer = options?.routerConfig
+    ? Layer.provide(layer, Layer.succeed(RouterConfig, options.routerConfig))
+    : layer
+  const runtime = ManagedRuntime.make(
+    Layer.provideMerge(appLayer, RouterLayer) as any,
+    options?.memoMap
+  )
+  let handlerCached: ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>) | undefined
+  const handlerPromise = Effect.gen(function*() {
+    const router = yield* HttpRouter
+    const effect = router.asHttpEffect()
+    const rt = yield* runtime.runtimeEffect
+    const handler = HttpApp.toWebHandlerRuntime(rt)(middleware ? middleware(effect) : effect)
+    handlerCached = handler
+    return handler
+  }).pipe(runtime.runPromise)
+  function handler(request: Request, context?: Context.Context<never> | undefined): Promise<Response> {
+    if (handlerCached !== undefined) {
+      return handlerCached(request, context)
+    }
+    return handlerPromise.then((handler) => handler(request, context))
+  }
+  return { handler, dispose: runtime.dispose } as const
 }
