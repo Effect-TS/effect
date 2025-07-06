@@ -29,6 +29,7 @@
     { "path": "packages/sql-mssql" },
     { "path": "packages/sql-mysql2" },
     { "path": "packages/sql-pg" },
+    { "path": "packages/sql-pglite" },
     { "path": "packages/sql-sqlite-bun" },
     { "path": "packages/sql-sqlite-do" },
     { "path": "packages/sql-sqlite-node" },
