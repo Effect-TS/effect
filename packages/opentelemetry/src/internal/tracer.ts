@@ -4,6 +4,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type { Exit } from "effect/Exit"
 import { dual } from "effect/Function"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
@@ -236,8 +237,8 @@ export const layerTracer = Layer.effect(
     ([resource, provider]) =>
       Effect.sync(() =>
         provider.getTracer(
-          resource.attributes["service.name"] as string,
-          resource.attributes["service.version"] as string
+          resource.attributes[OtelSemConv.ATTR_SERVICE_NAME] as string,
+          resource.attributes[OtelSemConv.ATTR_SERVICE_VERSION] as string
         )
       )
   )

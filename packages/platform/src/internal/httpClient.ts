@@ -9,6 +9,7 @@ import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import { pipeArguments } from "effect/Pipeable"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
@@ -226,22 +227,22 @@ export const make = (
           nameGenerator(request),
           { kind: "client", captureStackTrace: false },
           (span) => {
-            span.attribute("http.request.method", request.method)
-            span.attribute("server.address", url.origin)
+            span.attribute(OtelSemConv.ATTR_HTTP_REQUEST_METHOD, request.method)
+            span.attribute(OtelSemConv.ATTR_SERVER_ADDRESS, url.origin)
             if (url.port !== "") {
-              span.attribute("server.port", +url.port)
+              span.attribute(OtelSemConv.ATTR_SERVER_PORT, +url.port)
             }
-            span.attribute("url.full", url.toString())
-            span.attribute("url.path", url.pathname)
-            span.attribute("url.scheme", url.protocol.slice(0, -1))
+            span.attribute(OtelSemConv.ATTR_URL_FULL, url.toString())
+            span.attribute(OtelSemConv.ATTR_URL_PATH, url.pathname)
+            span.attribute(OtelSemConv.ATTR_URL_SCHEME, url.protocol.slice(0, -1))
             const query = url.search.slice(1)
             if (query !== "") {
-              span.attribute("url.query", query)
+              span.attribute(OtelSemConv.ATTR_URL_QUERY, query)
             }
             const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
             const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
             for (const name in redactedHeaders) {
-              span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
+              span.attribute(OtelSemConv.ATTR_HTTP_REQUEST_HEADER(name), String(redactedHeaders[name]))
             }
             request = fiber.getFiberRef(currentTracerPropagation)
               ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
@@ -251,10 +252,10 @@ export const make = (
                 Effect.withParentSpan(span),
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {
-                    span.attribute("http.response.status_code", response.status)
+                    span.attribute(OtelSemConv.ATTR_HTTP_RESPONSE_STATUS_CODE, response.status)
                     const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
                     for (const name in redactedHeaders) {
-                      span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
+                      span.attribute(OtelSemConv.ATTR_HTTP_RESPONSE_HEADER(name), String(redactedHeaders[name]))
                     }
                     if (scopedController) return Effect.succeed(response)
                     responseRegistry.register(response, controller)
