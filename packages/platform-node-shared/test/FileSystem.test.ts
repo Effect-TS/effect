@@ -3,6 +3,7 @@ import * as Fs from "@effect/platform/FileSystem"
 import { assert, describe, expect, it } from "@effect/vitest"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as Stream from "effect/Stream"
 
 const runPromise = <E, A>(self: Effect.Effect<A, E, Fs.FileSystem>) =>
@@ -203,4 +204,154 @@ describe("FileSystem", () => {
         Effect.scoped
       )
     })))
+
+  describe("watch", () => {
+    // Simple test to verify watch API accepts recursive option
+    it("should accept recursive option", () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        
+        yield* Effect.scoped(Effect.gen(function*() {
+          const dir = yield* fs.makeTempDirectoryScoped()
+          
+          // Test that watch accepts no options
+          const fiber1 = yield* fs.watch(dir).pipe(
+            Stream.runDrain,
+            Effect.fork
+          )
+          yield* Fiber.interrupt(fiber1)
+          
+          // Test that watch accepts recursive: true
+          const fiber2 = yield* fs.watch(dir, { recursive: true }).pipe(
+            Stream.runDrain,
+            Effect.fork
+          )
+          yield* Fiber.interrupt(fiber2)
+          
+          // Test that watch accepts recursive: false
+          const fiber3 = yield* fs.watch(dir, { recursive: false }).pipe(
+            Stream.runDrain,
+            Effect.fork
+          )
+          yield* Fiber.interrupt(fiber3)
+        }))
+      })))
+
+    it("should watch file changes in a directory", () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.scoped(Effect.gen(function*() {
+          const dir = yield* fs.makeTempDirectoryScoped()
+          let eventCount = 0
+
+          // Start watching the directory
+          const fiber = yield* fs.watch(dir).pipe(
+            Stream.tap((_event) => Effect.sync(() => { eventCount++ })),
+            Stream.runDrain,
+            Effect.fork
+          )
+
+          // Wait for the watcher to initialize
+          yield* Effect.sleep("500 millis")
+
+          // Create a file - this should trigger an event
+          const testFile = `${dir}/test.txt`
+          yield* fs.writeFileString(testFile, "hello")
+          
+          // Wait for event to be processed
+          yield* Effect.sleep("1000 millis")
+
+          // We should have received at least one event
+          expect(eventCount).toBeGreaterThan(0)
+
+          yield* Fiber.interrupt(fiber)
+        }))
+      })))
+
+    it("should watch file changes recursively in subdirectories", () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.scoped(Effect.gen(function*() {
+          const dir = yield* fs.makeTempDirectoryScoped()
+          let eventCount = 0
+
+          // Create a subdirectory
+          const subdir = `${dir}/subdir`
+          yield* fs.makeDirectory(subdir)
+
+          // Start watching with recursive option
+          const fiber = yield* fs.watch(dir, { recursive: true }).pipe(
+            Stream.tap((_event) => Effect.sync(() => { eventCount++ })),
+            Stream.runDrain,
+            Effect.fork
+          )
+
+          // Wait for the watcher to initialize
+          yield* Effect.sleep("500 millis")
+
+          // Create a file in subdirectory - this should trigger an event
+          const testFile = `${subdir}/test.txt`
+          yield* fs.writeFileString(testFile, "hello from subdir")
+          
+          // Wait for event to be processed
+          yield* Effect.sleep("1000 millis")
+
+          // We should have received at least one event
+          expect(eventCount).toBeGreaterThan(0)
+
+          yield* Fiber.interrupt(fiber)
+        }))
+      })))
+
+    it("should not watch subdirectories when recursive is false", () =>
+      runPromise(Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+
+        yield* Effect.scoped(Effect.gen(function*() {
+          const dir = yield* fs.makeTempDirectoryScoped()
+          let rootEventCount = 0
+          let subEventCount = 0
+
+          // Create a subdirectory
+          const subdir = `${dir}/subdir`
+          yield* fs.makeDirectory(subdir)
+
+          // Start watching WITHOUT recursive option (default is false)
+          const fiber = yield* fs.watch(dir, { recursive: false }).pipe(
+            Stream.tap((event) => Effect.sync(() => {
+              if (event.path.includes("root.txt")) {
+                rootEventCount++
+              }
+              if (event.path.includes("sub.txt")) {
+                subEventCount++
+              }
+            })),
+            Stream.runDrain,
+            Effect.fork
+          )
+
+          // Wait for the watcher to initialize
+          yield* Effect.sleep("500 millis")
+
+          // Create a file in root directory - this SHOULD trigger an event
+          const rootFile = `${dir}/root.txt`
+          yield* fs.writeFileString(rootFile, "root file")
+          
+          // Create a file in subdirectory - this should NOT trigger an event
+          const subFile = `${subdir}/sub.txt`
+          yield* fs.writeFileString(subFile, "sub file")
+          
+          // Wait for events to be processed
+          yield* Effect.sleep("1000 millis")
+
+          // We should have received events for root file but not subdirectory file
+          expect(rootEventCount).toBeGreaterThan(0)
+          expect(subEventCount).toBe(0)
+
+          yield* Fiber.interrupt(fiber)
+        }))
+      })))
+  })
 })

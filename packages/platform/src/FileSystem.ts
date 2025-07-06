@@ -230,9 +230,15 @@ export interface FileSystem {
     mtime: Date | number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Watch a directory or file for changes
+   * Watch a directory or file for changes.
+   *
+   * By default, only changes to the direct children of the directory are reported.
+   * Set the `recursive` option to `true` to watch for changes in subdirectories as well.
+   *
+   * Note: The `recursive` option is only supported on macOS and Windows.
+   * On other platforms, it will be ignored.
    */
-  readonly watch: (path: string) => Stream<WatchEvent, PlatformError>
+  readonly watch: (path: string, options?: WatchOptions) => Stream<WatchEvent, PlatformError>
   /**
    * Write data to a file at `path`.
    */
@@ -430,6 +436,17 @@ export interface WriteFileOptions {
 export interface WriteFileStringOptions {
   readonly flag?: OpenFlag
   readonly mode?: number
+}
+
+/**
+ * @since 1.0.0
+ * @category options
+ */
+export interface WatchOptions {
+  /**
+   * When `true`, the watcher will also watch for changes in subdirectories.
+   */
+  readonly recursive?: boolean
 }
 
 /**
