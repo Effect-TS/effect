@@ -5,6 +5,7 @@ import type { SqlStorage } from "@cloudflare/workers-types"
 import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Chunk from "effect/Chunk"
@@ -176,7 +177,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          ["db.system", "sqlite"]
+          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_SQLITE]
         ],
         transformRows
       })) as SqliteClient,

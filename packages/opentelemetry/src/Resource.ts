@@ -3,14 +3,7 @@
  */
 import type * as OtelApi from "@opentelemetry/api"
 import * as Resources from "@opentelemetry/resources"
-import {
-  SEMRESATTRS_SERVICE_NAME,
-  SEMRESATTRS_SERVICE_VERSION,
-  SEMRESATTRS_TELEMETRY_SDK_LANGUAGE,
-  SEMRESATTRS_TELEMETRY_SDK_NAME,
-  TELEMETRYSDKLANGUAGEVALUES_NODEJS,
-  TELEMETRYSDKLANGUAGEVALUES_WEBJS
-} from "@opentelemetry/semantic-conventions"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import { GenericTag } from "effect/Context"
@@ -57,14 +50,14 @@ export const configToAttributes = (options: {
 }): Record<string, string> => {
   const attributes: Record<string, string> = {
     ...(options.attributes ?? undefined),
-    [SEMRESATTRS_SERVICE_NAME]: options.serviceName,
-    [SEMRESATTRS_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
-    [SEMRESATTRS_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
-      ? TELEMETRYSDKLANGUAGEVALUES_NODEJS
-      : TELEMETRYSDKLANGUAGEVALUES_WEBJS
+    [OtelSemConv.ATTR_SERVICE_NAME]: options.serviceName,
+    [OtelSemConv.ATTR_TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
+    [OtelSemConv.ATTR_TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
+      ? OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_NODEJS
+      : OtelSemConv.TELEMETRY_SDK_LANGUAGE_VALUE_WEBJS
   }
   if (options.serviceVersion) {
-    attributes[SEMRESATTRS_SERVICE_VERSION] = options.serviceVersion
+    attributes[OtelSemConv.ATTR_SERVICE_VERSION] = options.serviceVersion
   }
   return attributes
 }
@@ -99,7 +92,7 @@ export const layerFromEnv = (
         Effect.orDie
       )
       if (serviceName._tag === "Some") {
-        attributes[SEMRESATTRS_SERVICE_NAME] = serviceName.value
+        attributes[OtelSemConv.ATTR_SERVICE_NAME] = serviceName.value
       }
       if (additionalAttributes) {
         Object.assign(attributes, additionalAttributes)
