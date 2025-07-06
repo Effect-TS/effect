@@ -1102,11 +1102,12 @@ export const toWebHandler = <
   E,
   R extends
     | HttpRouter
-    | Type<"Requires", A>
-    | Type<"GlobalRequires", A>
+    | Type<"Requires", any>
+    | Type<"GlobalRequires", any>
     | Type<"Error", any>
     | Type<"GlobalError", any>,
-  HE
+  HE,
+  HR = Type.Only<"Requires", R> | Type.Only<"GlobalRequires", R>
 >(
   appLayer: Layer.Layer<A, E, R>,
   options?: {
@@ -1130,10 +1131,12 @@ export const toWebHandler = <
         Type.Only<"Error", R> | Type.Only<"GlobalError", R> | HttpServerError.RouteNotFound,
         Scope.Scope | HttpServerRequest.HttpServerRequest | Type.Only<"Requires", R> | Type.Only<"GlobalRequires", R>
       >
-    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, Types.NoInfer<A> | GlobalProvided>
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
 ): {
-  readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
+  readonly handler: [HR] extends [never]
+    ? ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>)
+    : ((request: Request, context: Context.Context<HR>) => Promise<Response>)
   readonly dispose: () => Promise<void>
 } => {
   let middleware: any = options?.middleware
@@ -1152,7 +1155,7 @@ export const toWebHandler = <
     const router = yield* HttpRouter
     const effect = router.asHttpEffect()
     const rt = yield* runtime.runtimeEffect
-    const handler = HttpApp.toWebHandlerRuntime(rt)(middleware ? middleware(effect) : effect)
+    const handler = HttpApp.toWebHandlerRuntime(rt)(effect, middleware)
     handlerCached = handler
     return handler
   }).pipe(runtime.runPromise)
