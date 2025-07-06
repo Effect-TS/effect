@@ -1141,8 +1141,8 @@ export const toWebHandler = <
   }
 ): {
   readonly handler: [HR] extends [never]
-    ? ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>)
-    : ((request: Request, context: Context.Context<HR>) => Promise<Response>)
+    ? ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
+    : ((request: globalThis.Request, context: Context.Context<HR>) => Promise<Response>)
   readonly dispose: () => Promise<void>
 } => {
   let middleware: any = options?.middleware
@@ -1156,7 +1156,9 @@ export const toWebHandler = <
     Layer.provideMerge(appLayer, RouterLayer) as any,
     options?.memoMap
   )
-  let handlerCached: ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>) | undefined
+  let handlerCached:
+    | ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
+    | undefined
   const handlerPromise = Effect.gen(function*() {
     const router = yield* HttpRouter
     const effect = router.asHttpEffect()
@@ -1165,7 +1167,7 @@ export const toWebHandler = <
     handlerCached = handler
     return handler
   }).pipe(runtime.runPromise)
-  function handler(request: Request, context?: Context.Context<never> | undefined): Promise<Response> {
+  function handler(request: globalThis.Request, context?: Context.Context<never> | undefined): Promise<Response> {
     if (handlerCached !== undefined) {
       return handlerCached(request, context)
     }
