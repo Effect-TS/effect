@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.87.10
+
+### Patch Changes
+
+- [#5175](https://github.com/Effect-TS/effect/pull/5175) [`678318d`](https://github.com/Effect-TS/effect/commit/678318d2e88233156b006acda56c2d138ee3ffa0) Thanks @tim-smart! - rename HttpLayerRouter.Type to Request
+
+- [#5175](https://github.com/Effect-TS/effect/pull/5175) [`678318d`](https://github.com/Effect-TS/effect/commit/678318d2e88233156b006acda56c2d138ee3ffa0) Thanks @tim-smart! - propagate headers to HttpServerResponse.raw(Response)
+
 ## 0.87.9
 
 ### Patch Changes
