@@ -210,24 +210,24 @@ describe("FileSystem", () => {
     it("should accept recursive option", () =>
       runPromise(Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
-        
+
         yield* Effect.scoped(Effect.gen(function*() {
           const dir = yield* fs.makeTempDirectoryScoped()
-          
+
           // Test that watch accepts no options
           const fiber1 = yield* fs.watch(dir).pipe(
             Stream.runDrain,
             Effect.fork
           )
           yield* Fiber.interrupt(fiber1)
-          
+
           // Test that watch accepts recursive: true
           const fiber2 = yield* fs.watch(dir, { recursive: true }).pipe(
             Stream.runDrain,
             Effect.fork
           )
           yield* Fiber.interrupt(fiber2)
-          
+
           // Test that watch accepts recursive: false
           const fiber3 = yield* fs.watch(dir, { recursive: false }).pipe(
             Stream.runDrain,
@@ -247,7 +247,11 @@ describe("FileSystem", () => {
 
           // Start watching the directory
           const fiber = yield* fs.watch(dir).pipe(
-            Stream.tap((_event) => Effect.sync(() => { eventCount++ })),
+            Stream.tap((_event) =>
+              Effect.sync(() => {
+                eventCount++
+              })
+            ),
             Stream.runDrain,
             Effect.fork
           )
@@ -258,7 +262,7 @@ describe("FileSystem", () => {
           // Create a file - this should trigger an event
           const testFile = `${dir}/test.txt`
           yield* fs.writeFileString(testFile, "hello")
-          
+
           // Wait for event to be processed
           yield* Effect.sleep("1000 millis")
 
@@ -283,7 +287,11 @@ describe("FileSystem", () => {
 
           // Start watching with recursive option
           const fiber = yield* fs.watch(dir, { recursive: true }).pipe(
-            Stream.tap((_event) => Effect.sync(() => { eventCount++ })),
+            Stream.tap((_event) =>
+              Effect.sync(() => {
+                eventCount++
+              })
+            ),
             Stream.runDrain,
             Effect.fork
           )
@@ -294,7 +302,7 @@ describe("FileSystem", () => {
           // Create a file in subdirectory - this should trigger an event
           const testFile = `${subdir}/test.txt`
           yield* fs.writeFileString(testFile, "hello from subdir")
-          
+
           // Wait for event to be processed
           yield* Effect.sleep("1000 millis")
 
@@ -320,14 +328,16 @@ describe("FileSystem", () => {
 
           // Start watching WITHOUT recursive option (default is false)
           const fiber = yield* fs.watch(dir, { recursive: false }).pipe(
-            Stream.tap((event) => Effect.sync(() => {
-              if (event.path.includes("root.txt")) {
-                rootEventCount++
-              }
-              if (event.path.includes("sub.txt")) {
-                subEventCount++
-              }
-            })),
+            Stream.tap((event) =>
+              Effect.sync(() => {
+                if (event.path.includes("root.txt")) {
+                  rootEventCount++
+                }
+                if (event.path.includes("sub.txt")) {
+                  subEventCount++
+                }
+              })
+            ),
             Stream.runDrain,
             Effect.fork
           )
@@ -338,11 +348,11 @@ describe("FileSystem", () => {
           // Create a file in root directory - this SHOULD trigger an event
           const rootFile = `${dir}/root.txt`
           yield* fs.writeFileString(rootFile, "root file")
-          
+
           // Create a file in subdirectory - this should NOT trigger an event
           const subFile = `${subdir}/sub.txt`
           yield* fs.writeFileString(subFile, "sub file")
-          
+
           // Wait for events to be processed
           yield* Effect.sleep("1000 millis")
 
