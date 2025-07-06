@@ -5098,3 +5098,36 @@ HttpLayerRouter.serve(RpcRoute).pipe(
   NodeRuntime.runMain
 )
 ```
+
+## Create a web handler
+
+```ts
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
+import * as Effect from "effect/Effect"
+
+const HelloRoute = HttpLayerRouter.use(
+  Effect.fn(function*(router) {
+    yield* router.add(
+      "GET",
+      "/hello",
+      HttpServerResponse.text("Hellow, World!")
+    )
+  })
+)
+
+const { dispose, handler } = HttpLayerRouter.toWebHandler(HelloRoute)
+
+// When the process is interrupted, we want to clean up resources
+process.on("SIGINT", () => {
+  dispose()
+    .then(() => {
+      process.exit(0)
+    }, () => {
+      process.exit(1)
+    })
+})
+
+// Use the handler in your server setup
+export { handler }
+```
