@@ -193,9 +193,7 @@ export const make = <TExtensions extends Extensions = Extensions>(
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_POSTGRESQL],
-          [OtelSemConv.ATTR_DB_NAMESPACE, opts.database ?? options.username ?? "postgres"],
-          [OtelSemConv.ATTR_SERVER_ADDRESS, opts.host ?? "localhost"],
-          [OtelSemConv.ATTR_SERVER_PORT, opts.port ?? 5432]
+          [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? options.username ?? "postgres"],
         ],
         transformRows
       }),
