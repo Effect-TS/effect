@@ -505,7 +505,7 @@ export const prefixRoute: {
  * @since 1.0.0
  * @category Request types
  */
-export interface Type<Kind extends string, T> {
+export interface Request<Kind extends string, T> {
   readonly _: unique symbol
   readonly kind: Kind
   readonly type: T
@@ -520,19 +520,19 @@ export declare namespace Request {
    * @since 1.0.0
    * @category Request types
    */
-  export type From<Kind extends string, R> = R extends infer T ? Type<Kind, T> : never
+  export type From<Kind extends string, R> = R extends infer T ? Request<Kind, T> : never
 
   /**
    * @since 1.0.0
    * @category Request types
    */
-  export type Only<Kind extends string, A> = A extends Type<Kind, infer T> ? T : never
+  export type Only<Kind extends string, A> = A extends Request<Kind, infer T> ? T : never
 
   /**
    * @since 1.0.0
    * @category Request types
    */
-  export type Without<A> = A extends Type<infer _Kind, infer _> ? never : A
+  export type Without<A> = A extends Request<infer _Kind, infer _> ? never : A
 }
 
 /**
@@ -1105,10 +1105,10 @@ export const toWebHandler = <
   E,
   R extends
     | HttpRouter
-    | Type<"Requires", any>
-    | Type<"GlobalRequires", any>
-    | Type<"Error", any>
-    | Type<"GlobalError", any>,
+    | Request<"Requires", any>
+    | Request<"GlobalRequires", any>
+    | Request<"Error", any>
+    | Request<"GlobalError", any>,
   HE,
   HR = Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>
 >(
