@@ -593,6 +593,9 @@ export const toWeb = (response: ServerResponse.HttpServerResponse, options?: {
     case "Uint8Array":
     case "Raw": {
       if (body.body instanceof Response) {
+        for (const [key, value] of headers as any) {
+          body.body.headers.set(key, value)
+        }
         return body.body
       }
       return new Response(body.body as any, {
