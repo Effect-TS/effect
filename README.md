@@ -18,11 +18,10 @@ The Effect monorepo is organized into multiple packages, each extending the core
 | `@effect/ai`                      | AI utilities                                                                                | [README](https://github.com/Effect-TS/effect/blob/main/packages/ai/ai/README.md)                   |
 | `@effect/ai-openai`               | OpenAI utilities                                                                            | [README](https://github.com/Effect-TS/effect/blob/main/packages/ai/openai/README.md)               |
 | `@effect/ai-anthropic`            | Anthropic utilities                                                                         | [README](https://github.com/Effect-TS/effect/blob/main/packages/ai/anthropic/README.md)            |
+| `@effect/ai-amazon-bedrock`       | Effect modules for working with Amazon Bedrock AI apis                                      | [README](https://github.com/Effect-TS/effect/blob/main/packages/ai/amazon-bedrock/README.md)       |
+| `@effect/ai-google`               | Effect modules for working with Google AI apis                                              | [README](https://github.com/Effect-TS/effect/blob/main/packages/ai/google/README.md)               |
 | `@effect/cli`                     | CLI utilities                                                                               | [README](https://github.com/Effect-TS/effect/blob/main/packages/cli/README.md)                     |
 | `@effect/cluster`                 | Distributed computing tools                                                                 | [README](https://github.com/Effect-TS/effect/blob/main/packages/cluster/README.md)                 |
-| `@effect/cluster-browser`         | Cluster utilities for the browser                                                           | [README](https://github.com/Effect-TS/effect/blob/main/packages/cluster-browser/README.md)         |
-| `@effect/cluster-node`            | Cluster utilities for [Node.js](https://nodejs.org)                                         | [README](https://github.com/Effect-TS/effect/blob/main/packages/cluster-node/README.md)            |
-| `@effect/cluster-workflow`        | Workflow management for clusters                                                            | [README](https://github.com/Effect-TS/effect/blob/main/packages/cluster-worflow/README.md)         |
 | `@effect/experimental`            | Experimental features and APIs                                                              | [README](https://github.com/Effect-TS/effect/blob/main/packages/experimental/README.md)            |
 | `@effect/opentelemetry`           | [OpenTelemetry](https://opentelemetry.io/) integration                                      | [README](https://github.com/Effect-TS/effect/blob/main/packages/opentelemetry/README.md)           |
 | `@effect/platform`                | Cross-platform runtime utilities                                                            | [README](https://github.com/Effect-TS/effect/blob/main/packages/platform/README.md)                |
@@ -33,7 +32,6 @@ The Effect monorepo is organized into multiple packages, each extending the core
 | `@effect/printer`                 | General-purpose printing utilities                                                          | [README](https://github.com/Effect-TS/effect/blob/main/packages/printer/README.md)                 |
 | `@effect/printer-ansi`            | ANSI-compatible printing utilities                                                          | [README](https://github.com/Effect-TS/effect/blob/main/packages/printer-ansi/README.md)            |
 | `@effect/rpc`                     | Remote procedure call (RPC) utilities                                                       | [README](https://github.com/Effect-TS/effect/blob/main/packages/rpc/README.md)                     |
-| `@effect/rpc-http`                | HTTP-based RPC utilities                                                                    | [README](https://github.com/Effect-TS/effect/blob/main/packages/rpc-http/README.md)                |
 | `@effect/sql`                     | SQL database utilities                                                                      | [README](https://github.com/Effect-TS/effect/blob/main/packages/sql/README.md)                     |
 | `@effect/sql-clickhouse`          | An `@effect/sql` implementation for [ClickHouse](https://clickhouse.com/).                  | [README](https://github.com/Effect-TS/effect/blob/main/packages/sql-clickhouse/README.md)          |
 | `@effect/sql-d1`                  | An `@effect/sql` implementation for [Cloudflare D1](https://developers.cloudflare.com/d1/). | [README](https://github.com/Effect-TS/effect/blob/main/packages/sql-d1/README.md)                  |
@@ -50,6 +48,7 @@ The Effect monorepo is organized into multiple packages, each extending the core
 | `@effect/sql-sqlite-wasm`         | An `@effect/sql` implementation using the `@sqlite.org/sqlite-wasm` library.                | [README](https://github.com/Effect-TS/effect/blob/main/packages/sql-sqlite-wasm/README.md)         |
 | `@effect/typeclass`               | Functional programming type classes                                                         | [README](https://github.com/Effect-TS/effect/blob/main/packages/typeclass/README.md)               |
 | `@effect/vitest`                  | Testing utilities for [Vitest](https://vitest.dev/)                                         | [README](https://github.com/Effect-TS/effect/blob/main/packages/vitest/README.md)                  |
+| `@effect/workflow`                | Durable workflows for Effect                                                                | [README](https://github.com/Effect-TS/effect/blob/main/packages/workflow/README.md)                |
 
 # Documentation
 
