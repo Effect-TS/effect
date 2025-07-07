@@ -586,7 +586,7 @@ const watch = (
   stat(path).pipe(
     Effect.map((stat) =>
       backend.pipe(
-        Option.flatMap((_) => _.register(path, stat)),
+        Option.flatMap((_) => _.register(path, stat, options)),
         Option.getOrElse(() => watchNode(path, options))
       )
     ),

@@ -644,7 +644,11 @@ export const WatchEventRemove: Data.Case.Constructor<WatchEvent.Remove, "_tag"> 
 export class WatchBackend extends Context.Tag("@effect/platform/FileSystem/WatchBackend")<
   WatchBackend,
   {
-    readonly register: (path: string, stat: File.Info) => Option<Stream<WatchEvent, PlatformError>>
+    readonly register: (
+      path: string,
+      stat: File.Info,
+      options?: WatchOptions
+    ) => Option<Stream<WatchEvent, PlatformError>>
   }
 >() {
 }

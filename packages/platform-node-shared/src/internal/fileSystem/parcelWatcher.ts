@@ -53,7 +53,7 @@ const watchParcel = (path: string) =>
   )
 
 const backend = FileSystem.WatchBackend.of({
-  register(path, stat) {
+  register(path, stat, _options) {
     if (stat.type !== "Directory") {
       return Option.none()
     }
