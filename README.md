@@ -1,3 +1,5 @@
+![npm version](https://img.shields.io/npm/v/effect)
+
 # Effect Monorepo
 
 > An ecosystem of tools to build robust applications in TypeScript
