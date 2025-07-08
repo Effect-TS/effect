@@ -58,6 +58,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "find-my-way-ts": "^0.1.5"
+    "find-my-way-ts": "^0.1.6"
   }
 }
