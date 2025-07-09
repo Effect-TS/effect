@@ -323,9 +323,15 @@ export const make = Effect.fnUntraced(function*(options?: {
           tag: envelope.tag,
           payload: JSON.stringify(envelope.payload),
           headers: JSON.stringify(envelope.headers),
-          trace_id: envelope.traceId,
-          span_id: envelope.spanId,
-          sampled: supportsBooleans ? envelope.sampled : envelope.sampled ? 1 : 0,
+          trace_id: envelope.traceId ?? null,
+          span_id: envelope.spanId ?? null,
+          sampled: envelope.sampled === undefined
+            ? null
+            : supportsBooleans
+            ? envelope.sampled
+            : envelope.sampled
+            ? 1
+            : 0,
           request_id: envelope.requestId,
           reply_id: null,
           deliver_at
@@ -401,8 +407,8 @@ export const make = Effect.fnUntraced(function*(options?: {
             tag: row.tag!,
             payload: JSON.parse(row.payload!),
             headers: JSON.parse(row.headers!),
-            traceId: row.trace_id!,
-            spanId: row.span_id!,
+            traceId: row.trace_id ?? undefined,
+            spanId: row.span_id ?? undefined,
             sampled: !!row.sampled
           },
           lastSentReply: row.reply_reply_id ?
