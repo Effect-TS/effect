@@ -289,31 +289,29 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       const headers = opts?.headers ? Headers.fromInput(opts.headers) : Headers.empty
       const context = opts?.context ?? Context.empty()
       if (!isStream) {
-        const effect = Effect.useSpan(
+        const onRequest = (span: Span | undefined) =>
+          onEffectRequest(
+            rpc,
+            middleware,
+            span,
+            rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
+            headers,
+            context,
+            opts?.discard ?? false
+          )
+        return disableTracing ? onRequest(undefined) : Effect.useSpan(
           `${spanPrefix}.${rpc._tag}`,
           { captureStackTrace: false, attributes: options.spanAttributes },
-          (span) =>
-            onEffectRequest(
-              rpc,
-              middleware,
-              span,
-              rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
-              headers,
-              context,
-              opts?.discard ?? false
-            )
+          onRequest
         )
-        return disableTracing ? Effect.withTracerEnabled(effect, false) : effect
       }
-      const mailbox = Effect.suspend(() =>
-        onStreamRequest(
-          rpc,
-          middleware,
-          rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
-          headers,
-          opts?.streamBufferSize ?? 16,
-          context
-        )
+      const mailbox = onStreamRequest(
+        rpc,
+        middleware,
+        rpc.payloadSchema.make ? rpc.payloadSchema.make(payload) : payload,
+        headers,
+        opts?.streamBufferSize ?? 16,
+        context
       )
       if (opts?.asMailbox) return mailbox
       return Stream.unwrapScoped(Effect.map(mailbox, Mailbox.toStream))
@@ -323,7 +321,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   const onEffectRequest = (
     rpc: Rpc.AnyWithProps,
     middleware: (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>>,
-    span: Span,
+    span: Span | undefined,
     payload: any,
     headers: Headers.Headers,
     context: Context.Context<never>,
@@ -339,9 +337,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         id,
         tag: rpc._tag as Rpc.Tag<Rpcs>,
         payload,
-        traceId: span.traceId,
-        spanId: span.spanId,
-        sampled: span.sampled,
+        traceId: span?.traceId,
+        spanId: span?.spanId,
+        sampled: span?.sampled,
         headers: Headers.merge(parentFiber.getFiberRef(currentHeaders), headers)
       })
       if (discard) {
@@ -382,7 +380,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
                 discard
               })
             ),
-            Effect.withParentSpan(span),
+            span ? Effect.withParentSpan(span) : identity,
             Runtime.runFork(runtime)
           )
           fiber.addObserver((exit) => {
@@ -414,12 +412,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       return yield* Effect.interrupt
     }
 
-    const span = yield* Effect.makeSpanScoped(`${spanPrefix}.${rpc._tag}`, {
+    const span = disableTracing ? undefined : yield* Effect.makeSpanScoped(`${spanPrefix}.${rpc._tag}`, {
       captureStackTrace: false,
       attributes: options.spanAttributes
-    }).pipe(
-      disableTracing ? Effect.withTracerEnabled(false) : identity
-    )
+    })
     const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
     const id = generateRequestId()
 
@@ -452,10 +448,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       _tag: "Request",
       id,
       tag: rpc._tag as Rpc.Tag<Rpcs>,
-      traceId: span.traceId,
+      traceId: span?.traceId,
       payload,
-      spanId: span.spanId,
-      sampled: span.sampled,
+      spanId: span?.spanId,
+      sampled: span?.sampled,
       headers: Headers.merge(fiber.getFiberRef(currentHeaders), headers)
     }).pipe(
       Effect.flatMap(
@@ -466,7 +462,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             discard: false
           })
       ),
-      Effect.withParentSpan(span),
+      span ? Effect.withParentSpan(span) : identity,
       Effect.catchAllCause((error) => mailbox.failCause(error)),
       Effect.interruptible,
       Effect.forkIn(scope)
