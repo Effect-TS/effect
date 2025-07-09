@@ -12,6 +12,7 @@ import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -43,12 +44,31 @@ export const make = Effect.gen(function*() {
     string,
     Entity.Entity<
       string,
-      | Rpc.Rpc<"run", Schema.Struct<{}>, Schema.Schema<Workflow.Result<any, any>>>
+      | Rpc.Rpc<
+        "run",
+        Schema.Struct<{
+          payload: typeof Schema.Unknown
+          parent: Schema.optional<
+            Schema.Struct<{
+              workflowName: typeof Schema.String
+              executionId: typeof Schema.String
+            }>
+          >
+        }>,
+        Schema.Schema<Workflow.Result<any, any>>
+      >
       | Rpc.Rpc<"deferred", Schema.Struct<{ name: typeof Schema.String; exit: typeof ExitUnknown }>, typeof ExitUnknown>
       | Rpc.Rpc<
         "activity",
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
         Schema.Schema<Workflow.Result<any, any>>
+      >
+      | Rpc.Rpc<
+        "resumeParent",
+        Schema.Struct<{
+          workflowName: typeof Schema.String
+          executionId: typeof Schema.String
+        }>
       >
     >
   >()
@@ -188,6 +208,15 @@ export const make = Effect.gen(function*() {
     yield* sharding.pollStorage
   })
 
+  const sendResumeParent = Effect.fnUntraced(function*(options: {
+    readonly workflowName: string
+    readonly executionId: string
+  }) {
+    const instance = yield* WorkflowInstance
+    const client = (yield* RcMap.get(clients, instance.workflow.name))(instance.executionId)
+    return yield* client.resumeParent(options, { discard: true })
+  }, Effect.scoped)
+
   return WorkflowEngine.of({
     register(workflow, execute) {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -204,7 +233,7 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowInstance.initial(workflow, executionId)
-                return execute(request.payload, executionId).pipe(
+                return execute(request.payload.payload, executionId).pipe(
                   Effect.ensuring(Effect.suspend(() => {
                     if (!instance.suspended) {
                       return Effect.void
@@ -224,6 +253,13 @@ export const make = Effect.gen(function*() {
                     )
                   })),
                   Workflow.intoResult,
+                  request.payload.parent ?
+                    Effect.onExit((exit) => {
+                      const isSuspended = exit._tag === "Success" && exit.value._tag === "Suspended"
+                      if (isSuspended) return Effect.void
+                      return ensureSuccess(sendResumeParent(request.payload.parent))
+                    }) :
+                    identity,
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
               },
@@ -260,17 +296,35 @@ export const make = Effect.gen(function*() {
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 yield* ensureSuccess(resume(workflow, executionId))
                 return request.payload.exit
-              })
+              }),
+
+              resumeParent: (request: Entity.Request<any>) =>
+                Effect.suspend(() => {
+                  const options = request.payload as {
+                    workflowName: string
+                    executionId: string
+                  }
+                  const parent = workflows.get(options.workflowName)
+                  if (!parent) {
+                    return Effect.dieMessage(`Parent workflow ${options.workflowName} not found`)
+                  }
+                  return ensureSuccess(resume(parent, options.executionId))
+                })
             }
           })
         ) as Effect.Effect<void>
       })
     },
 
-    execute: ({ discard, executionId, payload, workflow }) => {
+    execute: ({ discard, executionId, parent, payload, workflow }) => {
       ensureEntity(workflow)
       return RcMap.get(clients, workflow.name).pipe(
-        Effect.flatMap((make) => make(executionId).run(payload, { discard })),
+        Effect.flatMap((make) =>
+          make(executionId).run({
+            payload,
+            parent: parent ? { workflowName: parent.workflow.name, executionId: parent.executionId } : undefined
+          }, { discard })
+        ),
         Effect.orDie,
         Effect.scoped
       )
@@ -447,7 +501,13 @@ const ActivityRpc = Rpc.make("activity", {
 const makeWorkflowEntity = (workflow: Workflow.Any) =>
   Entity.make(`Workflow/${workflow.name}`, [
     Rpc.make("run", {
-      payload: workflow.payloadSchema.fields,
+      payload: {
+        payload: workflow.payloadSchema,
+        parent: Schema.optional(Schema.Struct({
+          workflowName: Schema.String,
+          executionId: Schema.String
+        }))
+      },
       primaryKey: () => "",
       success: Workflow.Result({
         success: workflow.successSchema,
@@ -464,6 +524,16 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
       },
       primaryKey: ({ name }) => name,
       success: ExitUnknown
+    })
+      .annotate(ClusterSchema.Persisted, true)
+      .annotate(ClusterSchema.Uninterruptible, true),
+
+    Rpc.make("resumeParent", {
+      payload: {
+        workflowName: Schema.String,
+        executionId: Schema.String
+      },
+      primaryKey: () => ""
     })
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),

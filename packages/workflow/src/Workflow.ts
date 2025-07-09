@@ -8,6 +8,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { constTrue, dual } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -259,14 +260,26 @@ export const make = <
             discard: true
           })
         }
+        const parentInstance = yield* Effect.serviceOption(InstanceTag)
+        const run = engine.execute({
+          workflow: self,
+          executionId,
+          payload,
+          discard: false,
+          parent: Option.getOrUndefined(parentInstance)
+        })
+        if (Option.isSome(parentInstance)) {
+          const result = yield* wrapActivityResult(run, (result) => result._tag === "Suspended")
+          if (result._tag === "Suspended") {
+            parentInstance.value.suspended = true
+            return yield* Effect.interrupt
+          }
+          return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
+        }
+
         let sleep: Effect.Effect<any> | undefined
         while (true) {
-          const result = yield* engine.execute({
-            workflow: self,
-            executionId,
-            payload,
-            discard: false
-          })
+          const result = yield* run
           if (result._tag === "Complete") {
             return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
           }
