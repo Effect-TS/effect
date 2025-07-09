@@ -12,7 +12,6 @@ import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -236,7 +235,9 @@ export const make = Effect.gen(function*() {
                 return execute(request.payload.payload, executionId).pipe(
                   Effect.ensuring(Effect.suspend(() => {
                     if (!instance.suspended) {
-                      return Effect.void
+                      return request.payload.parent
+                        ? ensureSuccess(sendResumeParent(request.payload.parent))
+                        : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeResult) => {
@@ -253,13 +254,6 @@ export const make = Effect.gen(function*() {
                     )
                   })),
                   Workflow.intoResult,
-                  request.payload.parent ?
-                    Effect.onExit((exit) => {
-                      const isSuspended = exit._tag === "Success" && exit.value._tag === "Suspended"
-                      if (isSuspended) return Effect.void
-                      return ensureSuccess(sendResumeParent(request.payload.parent))
-                    }) :
-                    identity,
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
               },
