@@ -17,6 +17,7 @@ import {
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import { assert, describe, it } from "@effect/vitest"
 import { Chunk, Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Stream, Struct } from "effect"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
@@ -308,6 +309,44 @@ describe("HttpApi", () => {
   it("OpenAPI spec", () => {
     const spec = OpenApi.fromApi(Api)
     assert.deepStrictEqual(spec, OpenApiFixture as any)
+  })
+
+  it.effect("error from plain text", () => {
+    class RateLimitError extends Schema.TaggedError<RateLimitError>("RateLimitError")(
+      "RateLimitError",
+      Schema.Struct({ message: Schema.String })
+    ) {}
+
+    const RateLimitErrorSchema = HttpApiSchema.withEncoding(
+      Schema.transform(Schema.String, RateLimitError, {
+        encode: ({ message }) => message,
+        decode: (message) => RateLimitError.make({ message }),
+        strict: true
+      }),
+      { kind: "Text" }
+    ).annotations(HttpApiSchema.annotations({ status: 429 }))
+
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.get("error")`/error`.addError(RateLimitErrorSchema)
+      )
+    )
+    const ApiLive = HttpLayerRouter.addHttpApi(Api).pipe(
+      Layer.provide(
+        HttpApiBuilder.group(
+          Api,
+          "group",
+          (handlers) => handlers.handle("error", () => new RateLimitError({ message: "Rate limit exceeded" }))
+        )
+      ),
+      HttpLayerRouter.serve,
+      Layer.provideMerge(NodeHttpServer.layerTest)
+    )
+    return Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const response = yield* client.group.error().pipe(Effect.flip)
+      assert.deepStrictEqual(response, new RateLimitError({ message: "Rate limit exceeded" }))
+    }).pipe(Effect.provide(ApiLive))
   })
 })
 
