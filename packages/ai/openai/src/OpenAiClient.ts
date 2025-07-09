@@ -255,18 +255,20 @@ export const layer = (options: {
  * @category Layers
  */
 export const layerConfig = (
-  options: Config.Config.Wrap<{
-    readonly apiKey?: Redacted.Redacted | undefined
-    readonly apiUrl?: string | undefined
-    readonly organizationId?: Redacted.Redacted | undefined
-    readonly projectId?: Redacted.Redacted | undefined
+  options: {
+    readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
+    readonly apiUrl?: Config.Config<string> | undefined
+    readonly organizationId?: Config.Config<Redacted.Redacted> | undefined
+    readonly projectId?: Config.Config<Redacted.Redacted> | undefined
     readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
-  }>
-): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> =>
-  Config.unwrap(options).pipe(
-    Effect.flatMap(make),
+  }
+): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> => {
+  const { transformClient, ...configs } = options
+  return Config.all(configs).pipe(
+    Effect.flatMap((configs) => make({ ...configs, transformClient })),
     Layer.effect(OpenAiClient)
   )
+}
 
 interface RawCompletionChunk {
   readonly id: string

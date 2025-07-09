@@ -311,34 +311,28 @@ export const layer = (options: {
   readonly transformClient?: (
     client: HttpClient.HttpClient
   ) => HttpClient.HttpClient
-}): Layer.Layer<
-  AnthropicClient,
-  never,
-  HttpClient.HttpClient
-> => Layer.effect(AnthropicClient, make(options))
+}): Layer.Layer<AnthropicClient, never, HttpClient.HttpClient> => Layer.effect(AnthropicClient, make(options))
 
 /**
  * @since 1.0.0
  * @category Layers
  */
 export const layerConfig = (
-  options: Config.Config.Wrap<{
-    readonly apiKey?: Redacted.Redacted | undefined
-    readonly apiUrl?: string | undefined
-    readonly anthropicVersion?: string
+  options: {
+    readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
+    readonly apiUrl?: Config.Config<string> | undefined
+    readonly anthropicVersion?: Config.Config<string>
     readonly transformClient?: (
       client: HttpClient.HttpClient
     ) => HttpClient.HttpClient
-  }>
-): Layer.Layer<
-  AnthropicClient,
-  ConfigError,
-  HttpClient.HttpClient
-> =>
-  Config.unwrap(options).pipe(
-    Effect.flatMap(make),
+  }
+): Layer.Layer<AnthropicClient, ConfigError, HttpClient.HttpClient> => {
+  const { transformClient, ...configs } = options
+  return Config.all(configs).pipe(
+    Effect.flatMap((configs) => make({ ...configs, transformClient })),
     Layer.effect(AnthropicClient)
   )
+}
 
 /**
  * @since 1.0.0
