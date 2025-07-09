@@ -63,9 +63,9 @@ export interface Request<in out Rpc extends Rpc.Any> {
   readonly tag: Rpc.Tag<Rpc>
   readonly payload: Rpc.Payload<Rpc>
   readonly headers: Headers.Headers
-  readonly traceId: string
-  readonly spanId: string
-  readonly sampled: boolean
+  readonly traceId?: string | undefined
+  readonly spanId?: string | undefined
+  readonly sampled?: boolean | undefined
 }
 
 /**
@@ -140,9 +140,9 @@ export declare namespace Request {
     readonly tag: string
     readonly payload: unknown
     readonly headers: ReadonlyRecord<string, string>
-    readonly traceId: string
-    readonly spanId: string
-    readonly sampled: boolean
+    readonly traceId?: string | undefined
+    readonly spanId?: string | undefined
+    readonly sampled?: boolean | undefined
   }
 
   /**
@@ -156,9 +156,9 @@ export declare namespace Request {
     readonly tag: string
     readonly payload: unknown
     readonly headers: Headers.Headers
-    readonly traceId: string
-    readonly spanId: string
-    readonly sampled: boolean
+    readonly traceId?: string | undefined
+    readonly spanId?: string | undefined
+    readonly sampled?: boolean | undefined
   }
 }
 
@@ -179,9 +179,9 @@ export const makeRequest = <Rpc extends Rpc.Any>(
     readonly tag: Rpc.Tag<Rpc>
     readonly payload: Rpc.Payload<Rpc>
     readonly headers: Headers.Headers
-    readonly traceId: string
-    readonly spanId: string
-    readonly sampled: boolean
+    readonly traceId?: string | undefined
+    readonly spanId?: string | undefined
+    readonly sampled?: boolean | undefined
   }
 ): Request<Rpc> => ({
   [TypeId]: TypeId,
@@ -230,9 +230,9 @@ export const PartialEncodedRequest: Schema.Struct<
     tag: typeof Schema.String
     payload: typeof Schema.Unknown
     headers: Schema.Schema<Headers.Headers, ReadonlyRecord<string, string>>
-    traceId: typeof Schema.String
-    spanId: typeof Schema.String
-    sampled: typeof Schema.Boolean
+    traceId: Schema.optional<typeof Schema.String>
+    spanId: Schema.optional<typeof Schema.String>
+    sampled: Schema.optional<typeof Schema.Boolean>
   }
 > = Schema.Struct({
   _tag: Schema.Literal("Request"),
@@ -241,9 +241,9 @@ export const PartialEncodedRequest: Schema.Struct<
   tag: Schema.String,
   payload: Schema.Unknown,
   headers: Headers.schema,
-  traceId: Schema.String,
-  spanId: Schema.String,
-  sampled: Schema.Boolean
+  traceId: Schema.optional(Schema.String),
+  spanId: Schema.optional(Schema.String),
+  sampled: Schema.optional(Schema.Boolean)
 }) satisfies Schema.Schema<Request.PartialEncoded, Request.Encoded>
 
 /**
@@ -260,9 +260,9 @@ export const PartialEncoded: Schema.Union<
         tag: typeof Schema.String
         payload: typeof Schema.Unknown
         headers: Schema.Schema<Headers.Headers, ReadonlyRecord<string, string>>
-        traceId: typeof Schema.String
-        spanId: typeof Schema.String
-        sampled: typeof Schema.Boolean
+        traceId: Schema.optional<typeof Schema.String>
+        spanId: Schema.optional<typeof Schema.String>
+        sampled: Schema.optional<typeof Schema.Boolean>
       }
     >,
     typeof AckChunk,
@@ -294,9 +294,9 @@ export const PartialEncodedRequestFromSelf: Schema.Struct<
     tag: typeof Schema.String
     payload: typeof Schema.Unknown
     headers: Schema.Schema<Headers.Headers>
-    traceId: typeof Schema.String
-    spanId: typeof Schema.String
-    sampled: typeof Schema.Boolean
+    traceId: Schema.optional<typeof Schema.String>
+    spanId: Schema.optional<typeof Schema.String>
+    sampled: Schema.optional<typeof Schema.Boolean>
   }
 > = Schema.Struct({
   _tag: Schema.Literal("Request"),
@@ -305,9 +305,9 @@ export const PartialEncodedRequestFromSelf: Schema.Struct<
   tag: Schema.String,
   payload: Schema.Unknown,
   headers: Headers.schemaFromSelf,
-  traceId: Schema.String,
-  spanId: Schema.String,
-  sampled: Schema.Boolean
+  traceId: Schema.optional(Schema.String),
+  spanId: Schema.optional(Schema.String),
+  sampled: Schema.optional(Schema.Boolean)
 }) satisfies Schema.Schema<Request.PartialEncoded>
 
 /**
@@ -324,9 +324,9 @@ export const PartialEncodedFromSelf: Schema.Union<
         tag: typeof Schema.String
         payload: typeof Schema.Unknown
         headers: Schema.Schema<Headers.Headers>
-        traceId: typeof Schema.String
-        spanId: typeof Schema.String
-        sampled: typeof Schema.Boolean
+        traceId: Schema.optional<typeof Schema.String>
+        spanId: Schema.optional<typeof Schema.String>
+        sampled: Schema.optional<typeof Schema.Boolean>
       }
     >,
     Schema.Schema<AckChunk>,

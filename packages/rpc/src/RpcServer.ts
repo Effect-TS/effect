@@ -287,12 +287,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
         captureStackTrace: false,
         attributes: options.spanAttributes,
-        parent: enableSpanPropagation ?
+        parent: enableSpanPropagation && request.spanId ?
           {
             _tag: "ExternalSpan",
-            traceId: request.traceId,
+            traceId: request.traceId!,
             spanId: request.spanId,
-            sampled: request.sampled,
+            sampled: request.sampled!,
             context: Context.empty()
           } :
           undefined,
