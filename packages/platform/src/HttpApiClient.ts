@@ -483,18 +483,19 @@ const schemaFromArrayBuffer = (
   if (ast._tag === "Union") {
     return Schema.Union(...ast.types.map((ast) => schemaFromArrayBuffer(ast, HttpApiSchema.getEncoding(ast, encoding))))
   }
+  const schema = Schema.make(ast)
   switch (encoding.kind) {
     case "Json": {
-      return Schema.compose(parseJsonArrayBuffer, Schema.make(ast))
+      return Schema.compose(parseJsonArrayBuffer, schema)
     }
     case "UrlParams": {
-      return Schema.compose(StringFromArrayBuffer, UrlParams.schemaParse(Schema.make(ast) as any)) as any
+      return Schema.compose(StringFromArrayBuffer, UrlParams.schemaParse(schema as any)) as any
     }
     case "Uint8Array": {
-      return Uint8ArrayFromArrayBuffer
+      return Schema.compose(Uint8ArrayFromArrayBuffer, schema)
     }
     case "Text": {
-      return StringFromArrayBuffer
+      return Schema.compose(StringFromArrayBuffer, schema)
     }
   }
 }
