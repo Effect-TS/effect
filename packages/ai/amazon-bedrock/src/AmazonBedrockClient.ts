@@ -300,21 +300,23 @@ export const layer = (options: {
  * @category layers
  */
 export const layerConfig = (
-  options: Config.Config.Wrap<{
-    readonly apiUrl?: string | undefined
-    readonly accessKeyId: string
-    readonly secretAccessKey: Redacted.Redacted<string>
-    readonly sessionToken?: Redacted.Redacted<string> | undefined
-    readonly region?: string | undefined
+  options: {
+    readonly apiUrl?: Config.Config<string> | undefined
+    readonly accessKeyId: Config.Config<string>
+    readonly secretAccessKey: Config.Config<Redacted.Redacted>
+    readonly sessionToken?: Config.Config<Redacted.Redacted> | undefined
+    readonly region?: Config.Config<string> | undefined
     readonly transformClient?: (
       client: HttpClient.HttpClient
     ) => HttpClient.HttpClient
-  }>
-): Layer.Layer<AmazonBedrockClient, ConfigError, HttpClient.HttpClient> =>
-  Config.unwrap(options).pipe(
-    Effect.flatMap(make),
+  }
+): Layer.Layer<AmazonBedrockClient, ConfigError, HttpClient.HttpClient> => {
+  const { transformClient, ...configs } = options
+  return Config.all(configs).pipe(
+    Effect.flatMap((configs) => make({ ...configs, transformClient })),
     Layer.scoped(AmazonBedrockClient)
   )
+}
 
 const makeClient = (
   httpClient: HttpClient.HttpClient,

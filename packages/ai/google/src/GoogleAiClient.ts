@@ -288,31 +288,29 @@ export const layer = (options: {
  * @category Layers
  */
 export const layerConfig = (
-  options: Config.Config.Wrap<{
+  options: {
     /**
      * The API key to use to communicate with the Google Generative AI API.
      */
-    readonly apiKey?: Redacted.Redacted | undefined
+    readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
 
     /**
      * The URL to use to communicate with the Google Generative AI API.
      *
      * Defaults to `"https://generativelanguage.googleapis.com/v1beta"`.
      */
-    readonly apiUrl?: string | undefined
+    readonly apiUrl?: Config.Config<string> | undefined
 
     /**
      * A method which can be used to transform the underlying `HttpClient` which
      * will be used to communicate with the Google Generative AI API.
      */
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-  }>
-): Layer.Layer<
-  GoogleAiClient,
-  ConfigError,
-  HttpClient.HttpClient
-> =>
-  Config.unwrap(options).pipe(
-    Effect.flatMap(make),
+  }
+): Layer.Layer<GoogleAiClient, ConfigError, HttpClient.HttpClient> => {
+  const { transformClient, ...configs } = options
+  return Config.all(configs).pipe(
+    Effect.flatMap((configs) => make({ ...configs, transformClient })),
     Layer.scoped(GoogleAiClient)
   )
+}
