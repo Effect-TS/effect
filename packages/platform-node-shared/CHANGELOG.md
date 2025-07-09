@@ -1,5 +1,15 @@
 # @effect/platform-node-shared
 
+## 0.42.15
+
+### Patch Changes
+
+- Updated dependencies [[`79a1947`](https://github.com/Effect-TS/effect/commit/79a1947359cbd89a47ea315cdd86a3d250f28f43), [`001392b`](https://github.com/Effect-TS/effect/commit/001392ba8bfcad101bb034348a7415012fb12f72), [`7bfb099`](https://github.com/Effect-TS/effect/commit/7bfb099cb5528511b8d63045c4fbb4dc9cb18528)]:
+  - @effect/rpc@0.64.12
+  - @effect/platform@0.87.11
+  - @effect/cluster@0.41.15
+  - @effect/sql@0.40.12
+
 ## 0.42.14
 
 ### Patch Changes

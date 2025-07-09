@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.64.12
+
+### Patch Changes
+
+- [#5183](https://github.com/Effect-TS/effect/pull/5183) [`79a1947`](https://github.com/Effect-TS/effect/commit/79a1947359cbd89a47ea315cdd86a3d250f28f43) Thanks @tim-smart! - allow RpcMessage spans to be missing
+
+- Updated dependencies [[`001392b`](https://github.com/Effect-TS/effect/commit/001392ba8bfcad101bb034348a7415012fb12f72), [`7bfb099`](https://github.com/Effect-TS/effect/commit/7bfb099cb5528511b8d63045c4fbb4dc9cb18528)]:
+  - @effect/platform@0.87.11
+
 ## 0.64.11
 
 ### Patch Changes
