@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.87.11
+
+### Patch Changes
+
+- [#5184](https://github.com/Effect-TS/effect/pull/5184) [`001392b`](https://github.com/Effect-TS/effect/commit/001392ba8bfcad101bb034348a7415012fb12f72) Thanks @tim-smart! - ensure HttpApiClient schemas are composed correctly
+
+- [#5181](https://github.com/Effect-TS/effect/pull/5181) [`7bfb099`](https://github.com/Effect-TS/effect/commit/7bfb099cb5528511b8d63045c4fbb4dc9cb18528) Thanks @tim-smart! - update find-my-way-ts
+
 ## 0.87.10
 
 ### Patch Changes
