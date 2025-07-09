@@ -62,13 +62,7 @@ export const make = Effect.gen(function*() {
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
         Schema.Schema<Workflow.Result<any, any>>
       >
-      | Rpc.Rpc<
-        "resumeParent",
-        Schema.Struct<{
-          workflowName: typeof Schema.String
-          executionId: typeof Schema.String
-        }>
-      >
+      | Rpc.Rpc<"resume">
     >
   >()
   const ensureEntity = (workflow: Workflow.Any) => {
@@ -211,9 +205,8 @@ export const make = Effect.gen(function*() {
     readonly workflowName: string
     readonly executionId: string
   }) {
-    const instance = yield* WorkflowInstance
-    const client = (yield* RcMap.get(clients, instance.workflow.name))(instance.executionId)
-    return yield* client.resumeParent(options, { discard: true })
+    const client = (yield* RcMap.get(clients, options.workflowName))(options.executionId)
+    return yield* client.resume(void 0, { discard: true })
   }, Effect.scoped)
 
   return WorkflowEngine.of({
@@ -292,18 +285,7 @@ export const make = Effect.gen(function*() {
                 return request.payload.exit
               }),
 
-              resumeParent: (request: Entity.Request<any>) =>
-                Effect.suspend(() => {
-                  const options = request.payload as {
-                    workflowName: string
-                    executionId: string
-                  }
-                  const parent = workflows.get(options.workflowName)
-                  if (!parent) {
-                    return Effect.dieMessage(`Parent workflow ${options.workflowName} not found`)
-                  }
-                  return ensureSuccess(resume(parent, options.executionId))
-                })
+              resume: () => ensureSuccess(resume(workflow, executionId))
             }
           })
         ) as Effect.Effect<void>
@@ -522,13 +504,7 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),
 
-    Rpc.make("resumeParent", {
-      payload: {
-        workflowName: Schema.String,
-        executionId: Schema.String
-      },
-      primaryKey: () => ""
-    })
+    Rpc.make("resume")
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),
 
