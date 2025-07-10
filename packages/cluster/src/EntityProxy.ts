@@ -67,7 +67,11 @@ export const toRpcGroup = <Type extends string, Rpcs extends Rpc.Any>(
       error: Schema.Union(parentRpc.errorSchema, ...clientErrors),
       success: parentRpc.successSchema
     }).annotateContext(parentRpc.annotations)
-    rpcs.push(rpc)
+    const rpcDiscard = Rpc.make(`${entity.type}.${parentRpc._tag}Discard`, {
+      payload: payloadSchema,
+      error: Schema.Union(...clientErrors)
+    }).annotateContext(parentRpc.annotations)
+    rpcs.push(rpc, rpcDiscard)
   }
   return RpcGroup.make(...rpcs) as any as RpcGroup.RpcGroup<ConvertRpcs<Rpcs, Type>>
 }
@@ -81,23 +85,38 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
   infer _Success,
   infer _Error,
   infer _Middleware
-> ? Rpc.Rpc<
-    `${Prefix}.${_Tag}`,
-    Schema.Struct<{
-      entityId: typeof Schema.String
-      payload: _Payload
-    }>,
-    _Success,
-    Schema.Schema<
-      _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner,
-      | _Error["Encoded"]
-      | typeof MailboxFull["Encoded"]
-      | typeof AlreadyProcessingMessage["Encoded"]
-      | typeof PersistenceError["Encoded"]
-      | typeof EntityNotManagedByRunner["Encoded"],
-      _Error["Context"]
+> ?
+    | Rpc.Rpc<
+      `${Prefix}.${_Tag}`,
+      Schema.Struct<{
+        entityId: typeof Schema.String
+        payload: _Payload
+      }>,
+      _Success,
+      Schema.Schema<
+        _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner,
+        | _Error["Encoded"]
+        | typeof MailboxFull["Encoded"]
+        | typeof AlreadyProcessingMessage["Encoded"]
+        | typeof PersistenceError["Encoded"]
+        | typeof EntityNotManagedByRunner["Encoded"],
+        _Error["Context"]
+      >
     >
-  >
+    | Rpc.Rpc<
+      `${Prefix}.${_Tag}Discard`,
+      Schema.Struct<{
+        entityId: typeof Schema.String
+        payload: _Payload
+      }>,
+      typeof Schema.Void,
+      Schema.Union<[
+        typeof MailboxFull,
+        typeof AlreadyProcessingMessage,
+        typeof PersistenceError,
+        typeof EntityNotManagedByRunner
+      ]>
+    >
   : never
 
 const entityIdPath = Schema.Struct({
@@ -153,8 +172,13 @@ export const toHttpApiGroup = <const Name extends string, Type extends string, R
       .addSuccess(parentRpc.successSchema)
       .addError(Schema.Union(parentRpc.errorSchema, ...clientErrors))
       .annotateContext(parentRpc.annotations)
+    const endpointDiscard = HttpApiEndpoint.post(parentRpc._tag, `/${tagToPath(parentRpc._tag)}/:entityId/discard`)
+      .setPath(entityIdPath)
+      .setPayload(parentRpc.payloadSchema)
+      .addError(Schema.Union(...clientErrors))
+      .annotateContext(parentRpc.annotations)
 
-    group = group.add(endpoint) as any
+    group = group.add(endpoint).add(endpointDiscard) as any
   }
   return group as any as HttpApiGroup.HttpApiGroup<Name, ConvertHttpApi<Rpcs>>
 }
@@ -174,16 +198,27 @@ export type ConvertHttpApi<Rpcs extends Rpc.Any> = Rpcs extends Rpc.Rpc<
   infer _Success,
   infer _Error,
   infer _Middleware
-> ? HttpApiEndpoint.HttpApiEndpoint<
-    _Tag,
-    "POST",
-    { readonly entityId: string },
-    never,
-    _Payload["Type"],
-    never,
-    _Success["Type"],
-    _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner,
-    _Payload["Context"] | _Success["Context"],
-    _Error["Context"]
-  > :
-  never
+> ?
+    | HttpApiEndpoint.HttpApiEndpoint<
+      _Tag,
+      "POST",
+      { readonly entityId: string },
+      never,
+      _Payload["Type"],
+      never,
+      _Success["Type"],
+      _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner,
+      _Payload["Context"] | _Success["Context"],
+      _Error["Context"]
+    >
+    | HttpApiEndpoint.HttpApiEndpoint<
+      `${_Tag}Discard`,
+      "POST",
+      { readonly entityId: string },
+      never,
+      _Payload["Type"],
+      never,
+      void,
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
+    >
+  : never
