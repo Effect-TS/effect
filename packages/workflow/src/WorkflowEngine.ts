@@ -50,6 +50,14 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<void>
 
     /**
+     * Resume a registered workflow.
+     */
+    readonly resume: (
+      workflow: Workflow.Any,
+      executionId: string
+    ) => Effect.Effect<void>
+
+    /**
      * Execute an activity from a workflow.
      */
     readonly activityExecute: (

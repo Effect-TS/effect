@@ -212,6 +212,19 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("parent-end"))
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("SuspendOnFailure", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      yield* TestClock.adjust(1)
+
+      yield* SuspendOnFailureWorkflow.execute({
+        id: ""
+      }).pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+
+      assert.isTrue(flags.get("suspended"))
+    }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({
@@ -458,11 +471,36 @@ const ChildWorkflowLayer = ChildWorkflow.toLayer(Effect.fnUntraced(function*() {
   flags.set("child-end", true)
 }))
 
+const SuspendOnFailureWorkflow = Workflow.make({
+  name: "SuspendOnFailureWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  idempotencyKey(payload) {
+    return payload.id
+  }
+}).annotate(Workflow.SuspendOnFailure, true)
+
+const SuspendOnFailureWorkflowLayer = SuspendOnFailureWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  const instance = yield* WorkflowInstance
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      flags.set("suspended", instance.suspended)
+    })
+  )
+  yield* Activity.make({
+    name: "fail",
+    execute: Effect.die("boom")
+  })
+}))
+
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
+  Layer.merge(SuspendOnFailureWorkflowLayer),
   Layer.provideMerge(Flags.Default),
   Layer.provideMerge(TestWorkflowEngine)
 )

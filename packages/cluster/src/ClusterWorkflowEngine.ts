@@ -162,6 +162,7 @@ export const make = Effect.gen(function*() {
     Effect.orDie,
     (effect, { activity, attempt, executionId }) =>
       Effect.withSpan(effect, "WorkflowEngine.resetActivityAttempt", {
+        captureStackTrace: false,
         attributes: {
           name: activity.name,
           executionId,
@@ -349,12 +350,24 @@ export const make = Effect.gen(function*() {
       Effect.orDie,
       (effect, workflow, executionId) =>
         Effect.withSpan(effect, "WorkflowEngine.interrupt", {
+          captureStackTrace: false,
           attributes: {
             name: workflow.name,
             executionId
           }
         })
     ),
+
+    resume: (workflow, executionId) =>
+      ensureSuccess(resume(workflow, executionId)).pipe(
+        Effect.withSpan("WorkflowEngine.resume", {
+          captureStackTrace: false,
+          attributes: {
+            name: workflow.name,
+            executionId
+          }
+        })
+      ),
 
     activityExecute: Effect.fnUntraced(
       function*({ activity, attempt }) {
@@ -390,6 +403,7 @@ export const make = Effect.gen(function*() {
       Effect.scoped,
       (effect, { activity, attempt }) =>
         Effect.withSpan(effect, "WorkflowEngine.activityExecute", {
+          captureStackTrace: false,
           attributes: {
             name: activity.name,
             attempt
@@ -421,6 +435,7 @@ export const make = Effect.gen(function*() {
         }),
         Effect.orDie,
         Effect.withSpan("WorkflowEngine.deferredResult", {
+          captureStackTrace: false,
           attributes: {
             name: deferred.name
           }
@@ -440,6 +455,7 @@ export const make = Effect.gen(function*() {
       Effect.scoped,
       (effect, { deferred, executionId }) =>
         Effect.withSpan(effect, "WorkflowEngine.deferredDone", {
+          captureStackTrace: false,
           attributes: {
             name: deferred.name,
             executionId

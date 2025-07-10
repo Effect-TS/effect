@@ -6,7 +6,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { constTrue, dual } from "effect/Function"
+import { constFalse, constTrue, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -87,6 +87,11 @@ export interface Workflow<
    * Interrupt a workflow execution for the given execution ID.
    */
   readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine>
+
+  /**
+   * Manually resume a workflow execution for the given execution ID.
+   */
+  readonly resume: (executionId: string) => Effect.Effect<void, never, WorkflowEngine>
 
   /**
    * Create a layer that registers the workflow and provides an effect to
@@ -302,6 +307,17 @@ export const make = <
           attributes: { executionId }
         })
     ),
+    resume: Effect.fnUntraced(
+      function*(executionId: string) {
+        const engine = yield* EngineTag
+        yield* engine.resume(self, executionId)
+      },
+      (effect, executionId) =>
+        Effect.withSpan(effect, `${options.name}.resume`, {
+          captureStackTrace: false,
+          attributes: { executionId }
+        })
+    ),
     toLayer: (execute) =>
       Layer.effectContext(Effect.gen(function*() {
         const context = yield* Effect.context<WorkflowEngine>()
@@ -475,8 +491,15 @@ export const intoResult = <A, E, R>(
   Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
     const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
+    const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
     return Effect.uninterruptibleMask((restore) =>
       restore(effect).pipe(
+        suspendOnFailure ?
+          Effect.catchAllCause(() => {
+            instance.suspended = true
+            return Effect.interrupt
+          }) :
+          identity,
         Effect.scoped,
         Effect.matchCauseEffect({
           onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
@@ -570,3 +593,19 @@ export const withCompensation: {
 export class CaptureDefects extends Context.Reference<CaptureDefects>()("@effect/workflow/Workflow/CaptureDefects", {
   defaultValue: constTrue
 }) {}
+
+/**
+ * If you set this annotation to `true` for a workflow, it will suspend if it
+ * encounters any kind of error.
+ *
+ * You can then manually resume the workflow later with
+ * `Workflow.resume(executionId)`.
+ *
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class SuspendOnFailure
+  extends Context.Reference<SuspendOnFailure>()("@effect/workflow/Workflow/SuspendOnFailure", {
+    defaultValue: constFalse
+  })
+{}
