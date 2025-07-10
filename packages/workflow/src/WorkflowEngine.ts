@@ -37,6 +37,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
         readonly executionId: string
         readonly payload: object
         readonly discard: Discard
+        readonly parent?: WorkflowInstance["Type"] | undefined
       }
     ) => Effect.Effect<Discard extends true ? void : Workflow.Result<unknown, unknown>>
 

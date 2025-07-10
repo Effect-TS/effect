@@ -185,6 +185,33 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       const result = yield* Fiber.join(fiber)
       expect(result).toEqual("Activity3")
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("nested workflows", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      const sharding = yield* Sharding.Sharding
+      yield* TestClock.adjust(1)
+
+      yield* ParentWorkflow.execute({
+        id: "123"
+      }).pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+
+      assert.isUndefined(flags.get("parent-end"))
+      assert.isUndefined(flags.get("child-end"))
+      assert.isTrue(flags.get("parent-suspended"))
+      const token = flags.get("child-token")
+      assert(typeof token === "string")
+
+      yield* DurableDeferred.done(ChildDeferred, {
+        token: DurableDeferred.Token.make(token),
+        exit: Exit.void
+      })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(5000)
+      assert.isTrue(flags.get("parent-end"))
+      assert.isTrue(flags.get("child-end"))
+    }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({
@@ -221,7 +248,7 @@ const EmailWorkflow = Workflow.make({
 })
 
 class Flags extends Effect.Service<Flags>()("Flags", {
-  sync: () => new Map<string, boolean>()
+  sync: () => new Map<string, boolean | string>()
 }) {}
 
 const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
@@ -334,7 +361,7 @@ const RaceWorkflowLayer = RaceWorkflow.toLayer(Effect.fnUntraced(function*() {
         }))
     })
   ])
-})).pipe(Layer.provideMerge(Flags.Default))
+}))
 
 const DurableRaceWorkflow = Workflow.make({
   name: "DurableRaceWorkflow",
@@ -389,10 +416,53 @@ const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(f
       )
     })
   ])
-})).pipe(Layer.provideMerge(Flags.Default))
+}))
+
+const ParentWorkflow = Workflow.make({
+  name: "ParentWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  idempotencyKey(payload) {
+    return payload.id
+  }
+})
+
+const ChildWorkflow = Workflow.make({
+  name: "ChildWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  idempotencyKey(payload) {
+    return payload.id
+  }
+})
+
+const ParentWorkflowLayer = ParentWorkflow.toLayer(Effect.fnUntraced(function*({ id }) {
+  const flags = yield* Flags
+  const instance = yield* WorkflowInstance
+  yield* Effect.addFinalizer(() =>
+    Effect.sync(() => {
+      flags.set("parent-suspended", instance.suspended)
+    })
+  )
+  yield* ChildWorkflow.execute({ id })
+  flags.set("parent-end", true)
+}))
+
+const ChildDeferred = DurableDeferred.make("ChildDeferred")
+const ChildWorkflowLayer = ChildWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  flags.set("child-token", yield* DurableDeferred.token(ChildDeferred))
+  yield* DurableDeferred.await(ChildDeferred)
+  flags.set("child-end", true)
+}))
 
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
+  Layer.merge(ParentWorkflowLayer),
+  Layer.merge(ChildWorkflowLayer),
+  Layer.provideMerge(Flags.Default),
   Layer.provideMerge(TestWorkflowEngine)
 )
