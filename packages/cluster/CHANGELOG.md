@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.41.17
+
+### Patch Changes
+
+- [#5196](https://github.com/Effect-TS/effect/pull/5196) [`56b33c3`](https://github.com/Effect-TS/effect/commit/56b33c357cfc5f8976486f48e93032058c02d876) Thanks @tim-smart! - add discard methods to cluster EntityProxy's
+
 ## 0.41.16
 
 ### Patch Changes
