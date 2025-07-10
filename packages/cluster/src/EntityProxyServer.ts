@@ -36,11 +36,17 @@ export const layerHttpApi = <
       let handlers = handlers_
       for (const parentRpc_ of entity.protocol.requests.values()) {
         const parentRpc = parentRpc_ as any as Rpc.AnyWithProps
-        handlers = handlers.handle(
-          parentRpc._tag as any,
-          (({ path, payload }: { path: { entityId: string }; payload: any }) =>
-            (client(path.entityId) as any)[parentRpc._tag](payload)) as any
-        ) as any
+        handlers = handlers
+          .handle(
+            parentRpc._tag as any,
+            (({ path, payload }: { path: { entityId: string }; payload: any }) =>
+              (client(path.entityId) as any)[parentRpc._tag](payload)) as any
+          )
+          .handle(
+            `${parentRpc._tag}Discard` as any,
+            (({ path, payload }: { path: { entityId: string }; payload: any }) =>
+              (client(path.entityId) as any)[parentRpc._tag](payload, { discard: true })) as any
+          ) as any
       }
       return handlers as HttpApiBuilder.Handlers<never, never, never>
     })
@@ -67,6 +73,12 @@ export const layerRpcHandlers = <
         tag,
         handler: ({ entityId, payload }: any) => (client(entityId) as any)[parentRpc._tag](payload) as any
       } as any)
+      handlers.set(`${key}Discard`, {
+        context,
+        tag,
+        handler: ({ entityId, payload }: any) =>
+          (client(entityId) as any)[parentRpc._tag](payload, { discard: true }) as any
+      } as any)
     }
     return Context.unsafeMake(handlers)
   }))
@@ -80,5 +92,5 @@ export type RpcHandlers<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
   infer _Success,
   infer _Error,
   infer _Middleware
-> ? Rpc.Handler<`${Prefix}.${_Tag}`>
+> ? Rpc.Handler<`${Prefix}.${_Tag}`> | Rpc.Handler<`${Prefix}.${_Tag}Discard`>
   : never
