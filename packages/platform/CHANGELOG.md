@@ -1,5 +1,33 @@
 # @effect/platform
 
+## 0.87.12
+
+### Patch Changes
+
+- [#5177](https://github.com/Effect-TS/effect/pull/5177) [`32ba77a`](https://github.com/Effect-TS/effect/commit/32ba77ae304d2161362a73e8b61965332626cf2d) Thanks @johtso! - Fix KeyValueStore.make type mismatch
+
+- [#5174](https://github.com/Effect-TS/effect/pull/5174) [`d5e25b2`](https://github.com/Effect-TS/effect/commit/d5e25b237f05670ee42b386cb40b2cb448fc11d7) Thanks @schickling! - feat(platform): add recursive option to FileSystem.watch
+
+  Added a `recursive` option to `FileSystem.watch` that allows watching for changes in subdirectories. When set to `true`, the watcher will monitor changes in all nested directories.
+
+  Note: The recursive option is only supported on macOS and Windows. On other platforms, it will be ignored.
+
+  Example:
+
+  ```ts
+  import { FileSystem } from "@effect/platform"
+  import { Effect, Stream } from "effect"
+
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+
+    // Watch directory and all subdirectories
+    yield* fs
+      .watch("src", { recursive: true })
+      .pipe(Stream.runForEach(console.log))
+  })
+  ```
+
 ## 0.87.11
 
 ### Patch Changes

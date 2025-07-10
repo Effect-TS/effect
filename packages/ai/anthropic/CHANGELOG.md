@@ -1,5 +1,16 @@
 # @effect/ai-anthropic
 
+## 0.11.18
+
+### Patch Changes
+
+- [#5186](https://github.com/Effect-TS/effect/pull/5186) [`e5692ab`](https://github.com/Effect-TS/effect/commit/e5692ab2be157b885f449ffb5c5f022eca04a59e) Thanks @IMax153! - Do not use `Config.Wrap` for AI provider `layerConfig`
+
+- Updated dependencies [[`32ba77a`](https://github.com/Effect-TS/effect/commit/32ba77ae304d2161362a73e8b61965332626cf2d), [`d5e25b2`](https://github.com/Effect-TS/effect/commit/d5e25b237f05670ee42b386cb40b2cb448fc11d7)]:
+  - @effect/platform@0.87.12
+  - @effect/ai@0.21.16
+  - @effect/experimental@0.51.13
+
 ## 0.11.17
 
 ### Patch Changes

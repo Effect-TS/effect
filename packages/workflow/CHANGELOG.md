@@ -1,5 +1,17 @@
 # @effect/workflow
 
+## 0.4.13
+
+### Patch Changes
+
+- [#5191](https://github.com/Effect-TS/effect/pull/5191) [`ad6e968`](https://github.com/Effect-TS/effect/commit/ad6e9688d78db27a80396ad79d376bb7eaf668bf) Thanks @tim-smart! - Support proper suspension of workflows when nesting child workflows
+
+- [#5195](https://github.com/Effect-TS/effect/pull/5195) [`a28efb8`](https://github.com/Effect-TS/effect/commit/a28efb8913d9a7ac65c1cb783b17f382b185f8be) Thanks @tim-smart! - add Workflow.SuspendOnFailure annotation
+
+- Updated dependencies [[`32ba77a`](https://github.com/Effect-TS/effect/commit/32ba77ae304d2161362a73e8b61965332626cf2d), [`d5e25b2`](https://github.com/Effect-TS/effect/commit/d5e25b237f05670ee42b386cb40b2cb448fc11d7)]:
+  - @effect/platform@0.87.12
+  - @effect/rpc@0.64.13
+
 ## 0.4.12
 
 ### Patch Changes
