@@ -455,6 +455,7 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
       case "Stream": {
         nodeResponse.writeHead(response.status, headers)
         return body.stream.pipe(
+          Stream.orDie,
           Stream.runForEachChunk((chunk) =>
             Effect.async<void>((resume) => {
               const array = Chunk.toReadonlyArray(chunk)
@@ -469,8 +470,8 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
             })
           ),
           Effect.interruptible,
-          Effect.matchCause({
-            onSuccess: () => nodeResponse.end(),
+          Effect.matchCauseEffect({
+            onSuccess: () => Effect.sync(() => nodeResponse.end()),
             onFailure: handleCause(nodeResponse)
           })
         )
