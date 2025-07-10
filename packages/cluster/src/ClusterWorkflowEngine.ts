@@ -16,6 +16,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as RcMap from "effect/RcMap"
+import * as Record from "effect/Record"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
@@ -45,15 +46,17 @@ export const make = Effect.gen(function*() {
       string,
       | Rpc.Rpc<
         "run",
-        Schema.Struct<{
-          payload: typeof Schema.Unknown
-          parent: Schema.optional<
-            Schema.Struct<{
-              workflowName: typeof Schema.String
-              executionId: typeof Schema.String
-            }>
+        Schema.Struct<
+          Record<
+            typeof payloadParentKey,
+            Schema.optional<
+              Schema.Struct<{
+                workflowName: typeof Schema.String
+                executionId: typeof Schema.String
+              }>
+            >
           >
-        }>,
+        >,
         Schema.Schema<Workflow.Result<any, any>>
       >
       | Rpc.Rpc<"deferred", Schema.Struct<{ name: typeof Schema.String; exit: typeof ExitUnknown }>, typeof ExitUnknown>
@@ -225,12 +228,16 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowInstance.initial(workflow, executionId)
-                return execute(request.payload.payload, executionId).pipe(
+                let payload = request.payload
+                let parent: { workflowName: string; executionId: string } | undefined
+                if (payload[payloadParentKey]) {
+                  parent = payload[payloadParentKey]
+                  payload = Record.remove(payload, payloadParentKey)
+                }
+                return execute(payload, executionId).pipe(
                   Effect.ensuring(Effect.suspend(() => {
                     if (!instance.suspended) {
-                      return request.payload.parent
-                        ? ensureSuccess(sendResumeParent(request.payload.parent))
-                        : Effect.void
+                      return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeResult) => {
@@ -296,10 +303,15 @@ export const make = Effect.gen(function*() {
       ensureEntity(workflow)
       return RcMap.get(clients, workflow.name).pipe(
         Effect.flatMap((make) =>
-          make(executionId).run({
-            payload,
-            parent: parent ? { workflowName: parent.workflow.name, executionId: parent.executionId } : undefined
-          }, { discard })
+          make(executionId).run(
+            parent ?
+              {
+                ...payload,
+                [payloadParentKey]: { workflowName: parent.workflow.name, executionId: parent.executionId }
+              } :
+              payload,
+            { discard }
+          )
         ),
         Effect.orDie,
         Effect.scoped
@@ -474,12 +486,14 @@ const ActivityRpc = Rpc.make("activity", {
   })
 }).annotate(ClusterSchema.Persisted, true)
 
+const payloadParentKey = "~@effect/workflow/parent" as const
+
 const makeWorkflowEntity = (workflow: Workflow.Any) =>
   Entity.make(`Workflow/${workflow.name}`, [
     Rpc.make("run", {
       payload: {
-        payload: workflow.payloadSchema,
-        parent: Schema.optional(Schema.Struct({
+        ...workflow.payloadSchema.fields,
+        [payloadParentKey]: Schema.optional(Schema.Struct({
           workflowName: Schema.String,
           executionId: Schema.String
         }))
