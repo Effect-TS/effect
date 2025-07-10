@@ -8,7 +8,7 @@ const EnvLive = NodeFileSystem.layer.pipe(Layer.provide(ParcelWatcher.layer))
 Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
 
-  yield* fs.watch("src").pipe(
+  yield* fs.watch("src", { recursive: true }).pipe(
     Stream.runForEach(Console.log)
   )
 }).pipe(Effect.provide(EnvLive), NodeRuntime.runMain)

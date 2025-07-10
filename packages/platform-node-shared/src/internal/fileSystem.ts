@@ -535,11 +535,11 @@ const utimes = (() => {
 
 // == watch
 
-const watchNode = (path: string) =>
+const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
   Stream.asyncScoped<FileSystem.WatchEvent, Error.PlatformError>((emit) =>
     Effect.acquireRelease(
       Effect.sync(() => {
-        const watcher = NFS.watch(path, {}, (event, path) => {
+        const watcher = NFS.watch(path, { recursive: options?.recursive }, (event, path) => {
           if (!path) return
           switch (event) {
             case "rename": {
@@ -578,12 +578,16 @@ const watchNode = (path: string) =>
     )
   )
 
-const watch = (backend: Option.Option<Context.Tag.Service<FileSystem.WatchBackend>>, path: string) =>
+const watch = (
+  backend: Option.Option<Context.Tag.Service<FileSystem.WatchBackend>>,
+  path: string,
+  options?: FileSystem.WatchOptions
+) =>
   stat(path).pipe(
     Effect.map((stat) =>
       backend.pipe(
-        Option.flatMap((_) => _.register(path, stat)),
-        Option.getOrElse(() => watchNode(path))
+        Option.flatMap((_) => _.register(path, stat, options)),
+        Option.getOrElse(() => watchNode(path, options))
       )
     ),
     Stream.unwrap
@@ -634,8 +638,8 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     symlink,
     truncate,
     utimes,
-    watch(path) {
-      return watch(backend, path)
+    watch(path, options) {
+      return watch(backend, path, options)
     },
     writeFile
   }))
