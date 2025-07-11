@@ -423,12 +423,15 @@ export type PartialEffectful<A extends object> = Types.Simplify<
  * **Example**
  *
  * ```ts
- * import { Effect, Layer, pipe } from "effect"
+ * import { Context, Effect, Layer } from "effect"
  *
- * class MyService extends Effect.Tag("MyService")<MyService, {
- *   one: Effect.Effect<number>
- *   two(): Effect.Effect<number>
- * }>() {}
+ * class MyService extends Context.Tag("MyService")<
+ *   MyService,
+ *   {
+ *     one: Effect.Effect<number>
+ *     two(): Effect.Effect<number>
+ *   }
+ * >() {}
  *
  * const MyServiceTest = Layer.mock(MyService, {
  *   two: () => Effect.succeed(2)
