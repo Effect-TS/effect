@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
@@ -30,14 +31,14 @@ export const make = (options: {
     ? entriesToAttributes(Object.entries(options.attributes))
     : []
   resourceAttributes.push({
-    key: "service.name",
+    key: OtelSemConv.ATTR_SERVICE_NAME,
     value: {
       stringValue: options.serviceName
     }
   })
   if (options.serviceVersion) {
     resourceAttributes.push({
-      key: "service.version",
+      key: OtelSemConv.ATTR_SERVICE_VERSION,
       value: {
         stringValue: options.serviceVersion
       }
@@ -83,9 +84,9 @@ export const fromConfig: (
       ...options?.attributes
     }))
   )
-  const serviceName = options?.serviceName ?? attributes["service.name"] as string ??
+  const serviceName = options?.serviceName ?? attributes[OtelSemConv.ATTR_SERVICE_NAME] as string ??
     (yield* Config.string("OTEL_SERVICE_NAME"))
-  const serviceVersion = options?.serviceVersion ?? attributes["service.version"] as string ??
+  const serviceVersion = options?.serviceVersion ?? attributes[OtelSemConv.ATTR_SERVICE_VERSION] as string ??
     (yield* Config.string("OTEL_SERVICE_VERSION").pipe(Config.withDefault(undefined)))
   return make({
     serviceName,
@@ -100,7 +101,7 @@ export const fromConfig: (
  */
 export const unsafeServiceName = (resource: Resource): string => {
   const serviceNameAttribute = resource.attributes.find(
-    (attr) => attr.key === "service.name"
+    (attr) => attr.key === OtelSemConv.ATTR_SERVICE_NAME
   )
   if (!serviceNameAttribute || !serviceNameAttribute.value.stringValue) {
     throw new Error("Resource does not contain a service name")
