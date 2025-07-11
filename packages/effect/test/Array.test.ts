@@ -332,6 +332,44 @@ describe("Array", () => {
       })
     })
 
+    describe("findFirstWithIndex", () => {
+      it("boolean-returning overloads", () => {
+        assertNone(pipe([], Arr.findFirstWithIndex((n) => n % 2 === 0)))
+        assertSome(pipe([1, 2, 3], Arr.findFirstWithIndex((n) => n % 2 === 0)), [2, 1])
+        assertSome(pipe([1, 2, 3, 4], Arr.findFirstWithIndex((n) => n % 2 === 0)), [2, 1])
+
+        assertNone(pipe(new Set<number>(), Arr.findFirstWithIndex((n) => n % 2 === 0)))
+        assertSome(pipe(new Set([1, 2, 3]), Arr.findFirstWithIndex((n) => n % 2 === 0)), [2, 1])
+        assertSome(pipe(new Set([1, 2, 3, 4]), Arr.findFirstWithIndex((n) => n % 2 === 0)), [2, 1])
+      })
+
+      it("Option-returning overloads", () => {
+        assertNone(
+          pipe([], Arr.findFirstWithIndex((n) => n % 2 === 0 ? Option.some(n + 1) : Option.none()))
+        )
+        assertSome(
+          pipe([1, 2, 3], Arr.findFirstWithIndex((n) => n % 2 === 0 ? Option.some(n + 1) : Option.none())),
+          [3, 1]
+        )
+        assertSome(
+          pipe([1, 2, 3, 4], Arr.findFirstWithIndex((n) => n % 2 === 0 ? Option.some(n + 1) : Option.none())),
+          [3, 1]
+        )
+
+        assertNone(
+          pipe(new Set<number>(), Arr.findFirstWithIndex((n) => n % 2 === 0 ? Option.some(n + 1) : Option.none()))
+        )
+        assertSome(
+          pipe(new Set([1, 2, 3]), Arr.findFirstWithIndex((n) => n % 2 === 0 ? Option.some(n + 1) : Option.none())),
+          [3, 1]
+        )
+        assertSome(
+          pipe(new Set([1, 2, 3, 4]), Arr.findFirstWithIndex((n) => n % 2 === 0 ? Option.some(n + 1) : Option.none())),
+          [3, 1]
+        )
+      })
+    })
+
     describe("findLast", () => {
       it("boolean-returning overloads", () => {
         assertNone(pipe([], Arr.findLast((n) => n % 2 === 0)))
