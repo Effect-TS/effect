@@ -211,4 +211,111 @@ describe("Cron", () => {
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
   })
+
+  it("serialize", () => {
+    // Simple cases
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 4 8-14 * *")), "0 0 4 8-14 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 1,15 * 3")), "0 0 0 1,15 * 3")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("23 0-20/2 * * *")), "0 23 0-20/2 * * *")
+
+    // Wildcards
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("* * * * *")), "0 * * * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 0 * * *")), "0 0 0 * * *")
+
+    // Step patterns
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("*/5 * * * *")), "0 */5 * * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 */10 * * *")), "0 0 */10 * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 */2 * *")), "0 0 0 */2 * *")
+
+    // Complex ranges
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 1-5,10-15 * *")), "0 0 0 1-5,10-15 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 1,3,5,7,9 * *")), "0 0 0 1-9/2 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 1-10/2 * *")), "0 0 0 1-9/2 * *")
+
+    // With seconds
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("30 0 0 * * *")), "30 0 0 * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0,30 * * * * *")), "0,30 * * * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("*/15 * * * * *")), "*/15 * * * * *")
+
+    // Months with aliases (parse uses aliases, serialize uses numbers)
+    const janFeb = Cron.unsafeParse("0 0 * JAN,FEB *")
+    deepStrictEqual(Cron.serialize(janFeb), "0 0 0 * 1-2 *")
+
+    // Weekdays with aliases (parse uses aliases, serialize uses numbers)
+    const monFri = Cron.unsafeParse("0 0 * * MON-FRI")
+    deepStrictEqual(Cron.serialize(monFri), "0 0 0 * * 1-5")
+
+    // Round-trip tests
+    const testRoundTrip = (cronString: string) => {
+      const parsed = Cron.unsafeParse(cronString)
+      const serialized = Cron.serialize(parsed)
+      const reparsed = Cron.unsafeParse(serialized)
+      assertTrue(Equal.equals(parsed, reparsed))
+    }
+
+    testRoundTrip("0 0 0 * * *")
+    testRoundTrip("0 0 0 1 * *")
+    testRoundTrip("0 0 0 1-5 * *")
+    testRoundTrip("0 0 0 */2 * *")
+    testRoundTrip("0 0 0 1-10/2 * *")
+    testRoundTrip("0 0 0 1,5,10,15,20,25 * *")
+    testRoundTrip("30 15 10 * * 1-5")
+
+    // Cases where serialize produces a different (but equivalent) string
+    // Test: prefers ranges over individual values
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 1,2,3,4,5 * *")), "0 0 0 1-5 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * * 0,1,2,3,4,5,6")), "0 0 0 * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0,1,2,3 * * *")), "0 0 0-3 * * *")
+
+    // Test: prefers step patterns over individual values
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0,15,30,45 * * * *")), "0 */15 * * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0,10,20,30,40,50 * * * *")), "0 */10 * * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 2,4,6,8,10 * *")), "0 0 0 2-10/2 * *")
+
+    // Test: always includes seconds (0 when not specified)
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * * *")), "0 0 0 * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("30 2 * * *")), "0 30 2 * * *")
+
+    // Test: converts aliases to numbers
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * JAN *")), "0 0 0 * 1 *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * MAR,JUN,SEP,DEC *")), "0 0 0 * 3-12/3 *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * * SUN")), "0 0 0 * * 0")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * * MON,WED,FRI")), "0 0 0 * * 1-5/2")
+
+    // Test: normalizes wildcard representations
+    deepStrictEqual(
+      Cron.serialize(Cron.unsafeParse("0 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 * * *")),
+      "0 0 * * * *"
+    )
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 0 * 1,2,3,4,5,6,7,8,9,10,11,12 *")), "0 0 0 * * *")
+
+    // Test: preserves semantic equivalence
+    const pairs = [
+      ["0 0 1,2,3 * *", "0 0 0 1-3 * *"],
+      ["0,30 * * * *", "0 0,30 * * * *"],
+      ["0 0 * JAN,FEB,MAR *", "0 0 0 * 1-3 *"],
+      ["0 0 * * 1,2,3,4,5", "0 0 0 * * 1-5"],
+      ["*/15 * * * *", "0 */15 * * * *"],
+      ["0,15,30,45 * * * *", "0 */15 * * * *"]
+    ]
+
+    for (const [original, serialized] of pairs) {
+      const cron1 = Cron.unsafeParse(original)
+      const cron2 = Cron.unsafeParse(serialized)
+      assertTrue(Equal.equals(cron1, cron2))
+    }
+
+    // Test: includeSeconds option
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 4 8-14 * *")), "0 0 4 8-14 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 4 8-14 * *"), { includeSeconds: false }), "0 4 8-14 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("0 4 8-14 * *"), { includeSeconds: true }), "0 0 4 8-14 * *")
+
+    // With non-zero seconds
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("30 0 4 8-14 * *")), "30 0 4 8-14 * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("30 0 4 8-14 * *"), { includeSeconds: false }), "0 4 8-14 * *")
+
+    // With step patterns in seconds
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("*/15 * * * * *")), "*/15 * * * * *")
+    deepStrictEqual(Cron.serialize(Cron.unsafeParse("*/15 * * * * *"), { includeSeconds: false }), "* * * * *")
+  })
 })
