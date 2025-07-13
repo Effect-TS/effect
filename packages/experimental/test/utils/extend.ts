@@ -2,7 +2,7 @@ import * as V from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 
-export type API = V.TestAPI<{}>
+export type API = V.API
 
 export const it: API = V.it
 
