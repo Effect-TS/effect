@@ -19,7 +19,43 @@ export * from "vitest"
 /**
  * @since 1.0.0
  */
-export type API = Omit<V.TestAPI<{}>, "scoped"> & { scopedFixtures: V.TestAPI<{}>["scoped"] }
+export type API =
+  & { scopedFixtures: V.TestAPI<{}>["scoped"] }
+  & { [K in keyof V.TestAPI<{}>]: K extends "scoped" ? unknown : V.TestAPI<{}>[K] }
+  & TestCollectorCallable
+
+interface TestCollectorCallable<C = object> {
+  /**
+   * @deprecated Use options as the second argument instead
+   */
+  <ExtraContext extends C>(
+    name: string | Function,
+    fn: V.TestFunction<ExtraContext>,
+    options: TestCollectorOptions
+  ): void
+  <ExtraContext extends C>(
+    name: string | Function,
+    fn?: V.TestFunction<ExtraContext>,
+    options?: number | TestCollectorOptions
+  ): void
+  <ExtraContext extends C>(
+    name: string | Function,
+    options?: TestCollectorOptions,
+    fn?: V.TestFunction<ExtraContext>
+  ): void
+}
+
+type TestCollectorOptions = {
+  concurrent?: boolean
+  sequential?: boolean
+  only?: boolean
+  skip?: boolean
+  todo?: boolean
+  fails?: boolean
+  timeout?: number
+  retry?: number
+  repeats?: number
+}
 
 /**
  * @since 1.0.0
@@ -249,7 +285,7 @@ export const it: Vitest.Methods = Object.assign(V.it, {
 /**
  * @since 1.0.0
  */
-export const makeMethods: (it: V.TestAPI) => Vitest.Methods = internal.makeMethods
+export const makeMethods: (it: API) => Vitest.Methods = internal.makeMethods
 
 /**
  * @since 1.0.0
