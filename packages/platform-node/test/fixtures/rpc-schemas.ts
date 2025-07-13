@@ -26,8 +26,11 @@ class StreamUsers extends Schema.TaggedRequest<StreamUsers>()("StreamUsers", {
 
 class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
+class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {}) {}
+
 class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
   provides: CurrentUser,
+  failure: Unauthorized,
   requiredForClient: true
 }) {}
 
