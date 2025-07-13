@@ -46,7 +46,7 @@ const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A,
         throw errors[0]
       }
     }
-  }).pipe(Effect.runPromise).then((f) => f())
+  }).pipe((effect) => Effect.runPromise(effect, { signal: ctx?.signal })).then((f) => f())
 
 /** @internal */
 const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)

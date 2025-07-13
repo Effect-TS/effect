@@ -12103,7 +12103,7 @@ export const runCallback: <A, E>(
  */
 export const runPromise: <A, E>(
   effect: Effect<A, E, never>,
-  options?: { readonly signal?: AbortSignal } | undefined
+  options?: { readonly signal?: AbortSignal | undefined } | undefined
 ) => Promise<A> = runtime_.unsafeRunPromiseEffect
 
 /**
