@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.90.0
+
+### Patch Changes
+
+- Updated dependencies [[`27206d7`](https://github.com/Effect-TS/effect/commit/27206d7f0558d7fe28de57bf54f1d0cc83acc92e), [`dbabf5e`](https://github.com/Effect-TS/effect/commit/dbabf5e76fa63b050d2b6c466713c7dc59f07d3c)]:
+  - @effect/platform@0.88.0
+  - @effect/cluster@0.42.0
+  - @effect/platform-node-shared@0.43.0
+  - @effect/rpc@0.65.0
+  - @effect/sql@0.41.0
+
 ## 0.89.6
 
 ### Patch Changes

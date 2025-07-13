@@ -1,5 +1,15 @@
 # @effect/platform
 
+## 0.88.0
+
+### Minor Changes
+
+- [#5208](https://github.com/Effect-TS/effect/pull/5208) [`dbabf5e`](https://github.com/Effect-TS/effect/commit/dbabf5e76fa63b050d2b6c466713c7dc59f07d3c) Thanks @tim-smart! - consolidate Http web handler layer apis
+
+### Patch Changes
+
+- [#5206](https://github.com/Effect-TS/effect/pull/5206) [`27206d7`](https://github.com/Effect-TS/effect/commit/27206d7f0558d7fe28de57bf54f1d0cc83acc92e) Thanks @tim-smart! - lazily build HttpLayerRouter web handlers
+
 ## 0.87.13
 
 ### Patch Changes
