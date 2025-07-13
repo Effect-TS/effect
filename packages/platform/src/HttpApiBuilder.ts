@@ -10,7 +10,6 @@ import * as Fiber from "effect/Fiber"
 import { constFalse, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
-import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
@@ -194,25 +193,12 @@ export const toWebHandler = <LA, LE>(
   readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
   readonly dispose: () => Promise<void>
 } => {
-  const runtime = ManagedRuntime.make(
-    Layer.mergeAll(layer, Router.Live, Middleware.layer),
-    options?.memoMap
-  )
-  let handlerCached: ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>) | undefined
-  const handlerPromise = Effect.gen(function*() {
-    const app = yield* httpApp
-    const rt = yield* runtime.runtimeEffect
-    const handler = HttpApp.toWebHandlerRuntime(rt)(options?.middleware ? options.middleware(app as any) as any : app)
-    handlerCached = handler
-    return handler
-  }).pipe(runtime.runPromise)
-  function handler(request: Request, context?: Context.Context<never> | undefined): Promise<Response> {
-    if (handlerCached !== undefined) {
-      return handlerCached(request, context)
-    }
-    return handlerPromise.then((handler) => handler(request, context))
-  }
-  return { handler, dispose: runtime.dispose } as const
+  const layerMerged = Layer.mergeAll(layer, Router.Live, Middleware.layer)
+  return HttpApp.toWebHandlerLayerWith(layerMerged, {
+    memoMap: options?.memoMap,
+    middleware: options?.middleware as any,
+    toHandler: (r) => Effect.provide(httpApp, r)
+  })
 }
 
 /**

@@ -6,7 +6,6 @@ import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import { compose, constant, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -1155,31 +1154,9 @@ export const toWebHandler = <
       ? Layer.provide(layer, Layer.succeed(RouterConfig, options.routerConfig))
       : layer
   ) as any
-  let handlerCached:
-    | ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
-    | undefined
-  const scope = Effect.runSync(Scope.make())
-  let handlerPromise:
-    | Promise<(request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>>
-    | undefined
-  function handler(request: globalThis.Request, context?: Context.Context<never> | undefined): Promise<Response> {
-    if (handlerCached !== undefined) {
-      return handlerCached(request, context)
-    }
-    handlerPromise ??= Effect.gen(function*() {
-      const runtime = options?.memoMap
-        ? yield* Layer.toRuntimeWithMemoMap(RouterLayer, options?.memoMap)
-        : yield* Layer.toRuntime(RouterLayer)
-      const router = Context.get(runtime.context, HttpRouter)
-      return handlerCached = HttpApp.toWebHandler(router.asHttpEffect(), middleware)
-    }).pipe(
-      Scope.extend(scope),
-      Effect.runPromise
-    )
-    return handlerPromise.then((handler) => handler(request, context))
-  }
-  return {
-    handler,
-    dispose: () => Effect.runPromise(Scope.close(scope, Exit.void))
-  } as const
+  return HttpApp.toWebHandlerLayerWith(RouterLayer, {
+    toHandler: (r) => Effect.succeed(Context.get(r.context, HttpRouter).asHttpEffect()),
+    middleware,
+    memoMap: options?.memoMap
+  })
 }

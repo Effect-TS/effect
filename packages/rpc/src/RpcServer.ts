@@ -26,7 +26,6 @@ import * as FiberSet from "effect/FiberSet"
 import { constant, constTrue, constVoid, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
-import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
 import { type ParseError, TreeFormatter } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
@@ -1261,26 +1260,12 @@ export const toWebHandler = <Rpcs extends Rpc.Any, LE>(
 ): {
   readonly handler: (request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>
   readonly dispose: () => Promise<void>
-} => {
-  const runtime = ManagedRuntime.make(Layer.mergeAll(options.layer, Layer.scope), options?.memoMap)
-  let handlerCached:
-    | ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
-    | undefined
-  const handlerPromise = Effect.gen(function*() {
-    const app = yield* toHttpApp(group, options)
-    const rt = yield* runtime.runtimeEffect
-    const handler = HttpApp.toWebHandlerRuntime(rt)(options?.middleware ? options.middleware(app as any) as any : app)
-    handlerCached = handler
-    return handler
-  }).pipe(runtime.runPromise)
-  function handler(request: globalThis.Request, context?: Context.Context<never> | undefined): Promise<Response> {
-    if (handlerCached !== undefined) {
-      return handlerCached(request, context)
-    }
-    return handlerPromise.then((handler) => handler(request, context))
-  }
-  return { handler, dispose: runtime.dispose } as const
-}
+} =>
+  HttpApp.toWebHandlerLayerWith(Layer.mergeAll(options.layer, Layer.scope), {
+    memoMap: options?.memoMap,
+    middleware: options?.middleware as any,
+    toHandler: (r) => Effect.provide(toHttpApp(group, options), r)
+  })
 
 /**
  * Create a protocol that uses the provided `Stream` and `Sink` for communication.

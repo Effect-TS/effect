@@ -251,19 +251,66 @@ export const toWebHandler: <E>(
  * @since 1.0.0
  * @category conversions
  */
-export const toWebHandlerLayer = <E, R, RE>(
-  self: Default<E, R | Scope.Scope>,
+export const toWebHandlerLayerWith = <E, R, RE, EX>(
   layer: Layer.Layer<R, RE>,
-  middleware?: HttpMiddleware | undefined
+  options: {
+    readonly toHandler: (
+      runtime: Runtime.Runtime<R>
+    ) => Effect.Effect<
+      Effect.Effect<ServerResponse.HttpServerResponse, E, R | Scope.Scope | ServerRequest.HttpServerRequest>,
+      EX
+    >
+    readonly middleware?: HttpMiddleware | undefined
+    readonly memoMap?: Layer.MemoMap | undefined
+  }
 ): {
-  readonly close: () => Promise<void>
+  readonly dispose: () => Promise<void>
   readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
 } => {
   const scope = Effect.runSync(Scope.make())
-  const close = () => Effect.runPromise(Scope.close(scope, Exit.void))
-  const build = Effect.map(Layer.toRuntime(layer), (_) => toWebHandlerRuntime(_)(self, middleware))
-  const runner = Effect.runPromise(Scope.extend(build, scope))
-  const handler = (request: Request, context?: Context.Context<never> | undefined): Promise<Response> =>
-    runner.then((handler) => handler(request, context))
-  return { close, handler } as const
+  const dispose = () => Effect.runPromise(Scope.close(scope, Exit.void))
+
+  let handlerCache: ((request: Request, context?: Context.Context<never> | undefined) => Promise<Response>) | undefined
+  let handlerPromise:
+    | Promise<(request: Request, context?: Context.Context<never> | undefined) => Promise<Response>>
+    | undefined
+  function handler(request: Request, context?: Context.Context<never> | undefined): Promise<Response> {
+    if (handlerCache) {
+      return handlerCache(request, context)
+    }
+    handlerPromise ??= Effect.gen(function*() {
+      const runtime = yield* (options.memoMap
+        ? Layer.toRuntimeWithMemoMap(layer, options.memoMap)
+        : Layer.toRuntime(layer))
+      return handlerCache = toWebHandlerRuntime(runtime)(
+        yield* options.toHandler(runtime),
+        options.middleware
+      )
+    }).pipe(
+      Scope.extend(scope),
+      Effect.runPromise
+    )
+    return handlerPromise.then((f) => f(request, context))
+  }
+  return { dispose, handler } as const
 }
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toWebHandlerLayer = <E, R, RE>(
+  self: Default<E, R | Scope.Scope>,
+  layer: Layer.Layer<R, RE>,
+  options?: {
+    readonly memoMap?: Layer.MemoMap | undefined
+    readonly middleware?: HttpMiddleware | undefined
+  }
+): {
+  readonly dispose: () => Promise<void>
+  readonly handler: (request: Request, context?: Context.Context<never> | undefined) => Promise<Response>
+} =>
+  toWebHandlerLayerWith(layer, {
+    ...options,
+    toHandler: () => Effect.succeed(self)
+  })
