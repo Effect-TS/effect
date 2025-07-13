@@ -2,6 +2,7 @@ import { HttpApp, HttpServerResponse } from "@effect/platform"
 import { describe, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Context, Effect, FiberRef, Runtime, Stream } from "effect"
+import * as Layer from "effect/Layer"
 
 describe("Http/App", () => {
   describe("toWebHandler", () => {
@@ -67,6 +68,17 @@ describe("Http/App", () => {
       )(HttpServerResponse.stream(
         FiberRef.get(FiberRef.currentConcurrency).pipe(Stream.map(String), Stream.encodeText)
       ))
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(await response.text(), "420")
+    })
+
+    test("stream layer", async () => {
+      const { handler } = HttpApp.toWebHandlerLayer(
+        HttpServerResponse.stream(
+          FiberRef.get(FiberRef.currentConcurrency).pipe(Stream.map(String), Stream.encodeText)
+        ),
+        Layer.locallyScoped(FiberRef.currentConcurrency, 420)
+      )
       const response = await handler(new Request("http://localhost:3000/"))
       strictEqual(await response.text(), "420")
     })
