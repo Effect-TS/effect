@@ -5,13 +5,14 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as FiberRef from "effect/FiberRef"
+import type * as FiberRef from "effect/FiberRef"
 import * as GlobalValue from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Runtime from "effect/Runtime"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type * as Types from "effect/Types"
 import { unify } from "effect/Unify"
 import * as HttpBody from "./HttpBody.js"
 import type { HttpMiddleware } from "./HttpMiddleware.js"
@@ -204,7 +205,8 @@ export const withPreResponseHandler = internal.withPreResponseHandler
  * @category conversions
  */
 export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
-  const run = Runtime.runFork(runtime)
+  const httpRuntime: Types.Mutable<Runtime.Runtime<R>> = Runtime.make(runtime)
+  const run = Runtime.runFork(httpRuntime)
   return <E>(self: Default<E, R | Scope.Scope>, middleware?: HttpMiddleware | undefined) => {
     const resolveSymbol = Symbol.for("@effect/platform/HttpApp/resolve")
     const httpApp = toHandled(self, (request, response) => {
@@ -225,7 +227,8 @@ export const toWebHandlerRuntime = <R>(runtime: Runtime.Runtime<R>) => {
         const httpServerRequest = ServerRequest.fromWeb(request)
         contextMap.set(ServerRequest.HttpServerRequest.key, httpServerRequest)
         ;(httpServerRequest as any)[resolveSymbol] = resolve
-        const fiber = run(Effect.locally(httpApp as any, FiberRef.currentContext, Context.unsafeMake(contextMap)))
+        httpRuntime.context = Context.unsafeMake(contextMap)
+        const fiber = run(httpApp as any)
         request.signal?.addEventListener("abort", () => {
           fiber.unsafeInterruptAsFork(ServerError.clientAbortFiberId)
         }, { once: true })
