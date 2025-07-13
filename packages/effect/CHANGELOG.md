@@ -1,5 +1,13 @@
 # effect
 
+## 3.16.13
+
+### Patch Changes
+
+- [#5097](https://github.com/Effect-TS/effect/pull/5097) [`c1c05a8`](https://github.com/Effect-TS/effect/commit/c1c05a8242fb5df7445b4a12387a60eac7726eb7) Thanks @tim-smart! - remove completion helper overload from Effect.catchTag, to fix Effect.fn inference
+
+- [#5157](https://github.com/Effect-TS/effect/pull/5157) [`81fe4a2`](https://github.com/Effect-TS/effect/commit/81fe4a2c81d5e30e180a60e68c52016a27b350db) Thanks @cyberixae! - Clarify Array rotate example
+
 ## 3.16.12
 
 ### Patch Changes
