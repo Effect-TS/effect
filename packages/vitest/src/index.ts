@@ -19,7 +19,7 @@ export * from "vitest"
 /**
  * @since 1.0.0
  */
-export type API = V.TestAPI<{}>
+export type API = Omit<V.TestAPI<{}>, "scoped"> & { scopedFixtures: V.TestAPI<{}>["scoped"] }
 
 /**
  * @since 1.0.0
@@ -241,7 +241,10 @@ const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as 
 /**
  * @since 1.0.0
  */
-export const it: Vitest.Methods = Object.assign(V.it, methods)
+export const it: Vitest.Methods = Object.assign(V.it, {
+  ...methods,
+  scopedFixtures: V.it.scoped.bind(V.it)
+})
 
 /**
  * @since 1.0.0
