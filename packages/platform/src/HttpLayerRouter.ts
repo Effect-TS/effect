@@ -6,10 +6,10 @@ import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as FiberRef from "effect/FiberRef"
 import { compose, constant, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as ManagedRuntime from "effect/ManagedRuntime"
 import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
@@ -1149,29 +1149,37 @@ export const toWebHandler = <
   if (options?.disableLogger !== true) {
     middleware = middleware ? compose(middleware, HttpMiddleware.logger) : HttpMiddleware.logger
   }
-  const RouterLayer = options?.routerConfig
-    ? Layer.provide(layer, Layer.succeed(RouterConfig, options.routerConfig))
-    : layer
-  const runtime = ManagedRuntime.make(
-    Layer.provideMerge(appLayer, RouterLayer) as any,
-    options?.memoMap
-  )
+  const RouterLayer: Layer.Layer<HttpRouter | A, E> = Layer.provideMerge(
+    appLayer,
+    options?.routerConfig
+      ? Layer.provide(layer, Layer.succeed(RouterConfig, options.routerConfig))
+      : layer
+  ) as any
   let handlerCached:
     | ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
     | undefined
-  const handlerPromise = Effect.gen(function*() {
-    const router = yield* HttpRouter
-    const effect = router.asHttpEffect()
-    const rt = yield* runtime.runtimeEffect
-    const handler = HttpApp.toWebHandlerRuntime(rt)(effect, middleware)
-    handlerCached = handler
-    return handler
-  }).pipe(runtime.runPromise)
+  const scope = Effect.runSync(Scope.make())
+  let handlerPromise:
+    | Promise<(request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>>
+    | undefined
   function handler(request: globalThis.Request, context?: Context.Context<never> | undefined): Promise<Response> {
     if (handlerCached !== undefined) {
       return handlerCached(request, context)
     }
+    handlerPromise ??= Effect.gen(function*() {
+      const runtime = options?.memoMap
+        ? yield* Layer.toRuntimeWithMemoMap(RouterLayer, options?.memoMap)
+        : yield* Layer.toRuntime(RouterLayer)
+      const router = Context.get(runtime.context, HttpRouter)
+      return handlerCached = HttpApp.toWebHandler(router.asHttpEffect(), middleware)
+    }).pipe(
+      Scope.extend(scope),
+      Effect.runPromise
+    )
     return handlerPromise.then((handler) => handler(request, context))
   }
-  return { handler, dispose: runtime.dispose } as const
+  return {
+    handler,
+    dispose: () => Effect.runPromise(Scope.close(scope, Exit.void))
+  } as const
 }
