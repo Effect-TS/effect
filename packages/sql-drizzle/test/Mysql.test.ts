@@ -23,9 +23,32 @@ describe.sequential("Mysql", () => {
       const db = yield* Mysql.MysqlDrizzle
 
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
-      yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
+      const returningId = yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" }).$returningId()
       const results = yield* db.select().from(users)
+      assert.deepStrictEqual(returningId, [{ id: 1 }])
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
+    }).pipe(
+      Effect.provide(DrizzleMysqlLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), { timeout: 60000 })
+
+  it.effect("transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* Mysql.MysqlDrizzle
+
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
+
+      yield* sql.withTransaction(Effect.gen(function*() {
+        const returningId = yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" }).$returningId()
+        const results = yield* db.select().from(users)
+        assert.deepStrictEqual(returningId, [{ id: 1 }])
+        assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
+        yield* Effect.fail("rollback")
+      })).pipe(Effect.ignore)
+
+      const results = yield* db.select().from(users)
+      assert.deepStrictEqual(results, [])
     }).pipe(
       Effect.provide(DrizzleMysqlLive),
       Effect.catchTag("ContainerError", () => Effect.void)
