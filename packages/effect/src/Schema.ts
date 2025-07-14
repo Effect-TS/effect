@@ -6670,8 +6670,8 @@ export const lessThanOrEqualToDate = <S extends Schema.Any>(
 <A extends Date>(self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>): filter<S> =>
   self.pipe(
     filter((a: Date) => a <= max, {
-      schemaId: LessThanDateSchemaId,
-      [LessThanDateSchemaId]: { max },
+      schemaId: LessThanOrEqualToDateSchemaId,
+      [LessThanOrEqualToDateSchemaId]: { max },
       title: `lessThanOrEqualToDate(${util_.formatDate(max)})`,
       description: `a date before or equal to ${util_.formatDate(max)}`,
       ...annotations
