@@ -292,14 +292,14 @@ export const layerConfig = (
     /**
      * The API key to use to communicate with the Google Generative AI API.
      */
-    readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
+    readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
 
     /**
      * The URL to use to communicate with the Google Generative AI API.
      *
      * Defaults to `"https://generativelanguage.googleapis.com/v1beta"`.
      */
-    readonly apiUrl?: Config.Config<string> | undefined
+    readonly apiUrl?: Config.Config<string | undefined> | undefined
 
     /**
      * A method which can be used to transform the underlying `HttpClient` which
