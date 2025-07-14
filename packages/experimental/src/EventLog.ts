@@ -559,7 +559,7 @@ const make = Effect.gen(function*() {
       const write = journal.withRemoteUncommited(remote.id, (entries) => remote.write(identity, entries))
       yield* Effect.addFinalizer(() => Effect.ignore(write))
       yield* write
-      yield* Queue.takeBetween(yield* journal.changes, 1, Number.MAX_SAFE_INTEGER).pipe(
+      return yield* Queue.takeBetween(yield* journal.changes, 1, Number.MAX_SAFE_INTEGER).pipe(
         Effect.zipRight(Effect.sleep(500)),
         Effect.zipRight(write),
         Effect.catchAllCause(Effect.log),

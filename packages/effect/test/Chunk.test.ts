@@ -312,7 +312,7 @@ describe("Chunk", () => {
     })
 
     describe("Given a singleton Chunk and an index out of bounds", () => {
-      const chunk = pipe(Chunk.make(1))
+      const chunk = Chunk.make(1)
       const index = 4
 
       it("should throw", () => {
@@ -321,7 +321,7 @@ describe("Chunk", () => {
     })
 
     describe("Given an array Chunk and an index out of bounds", () => {
-      const chunk = pipe(Chunk.unsafeFromArray([1, 2]))
+      const chunk = Chunk.unsafeFromArray([1, 2])
       const index = 4
 
       it("should throw", () => {
@@ -357,7 +357,7 @@ describe("Chunk", () => {
     })
 
     describe("Given a singleton Chunk and an index in bounds", () => {
-      const chunk = pipe(Chunk.make(1))
+      const chunk = Chunk.make(1)
       const index = 0
 
       it("should return the value", () => {

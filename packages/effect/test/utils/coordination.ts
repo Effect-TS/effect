@@ -51,7 +51,7 @@ export const chunkCoordination = <A>(
           }
           return [Chunk.unsafeHead(chunk), Chunk.drop(1)(chunk)]
         }),
-        Effect.flatMap((chunks) => pipe(Queue.offerAll(queue, chunks))),
+        Effect.flatMap((chunks) => Queue.offerAll(queue, chunks)),
         Effect.asVoid
       ),
       proceed: pipe(Queue.offer(ps, void 0), Effect.asVoid),

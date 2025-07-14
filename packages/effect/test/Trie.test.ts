@@ -58,7 +58,7 @@ describe("Trie", () => {
   })
 
   it("iterable empty", () => {
-    const trie = pipe(Trie.empty<string>())
+    const trie = Trie.empty<string>()
 
     strictEqual(Trie.size(trie), 0)
     deepStrictEqual(Array.from(trie), [])

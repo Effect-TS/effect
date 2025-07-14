@@ -176,11 +176,7 @@ describe("Stream", () => {
             yield* (Deferred.await(latch2))
             yield* pipe(
               pull,
-              Effect.flatMap((chunk) =>
-                pipe(
-                  Ref.update(ref, Chunk.appendAll(chunk))
-                )
-              ),
+              Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
             const result2 = yield* (Ref.get(ref))
@@ -358,11 +354,7 @@ describe("Stream", () => {
             yield* (Deferred.await(latch2))
             yield* pipe(
               pull,
-              Effect.flatMap((chunk) =>
-                pipe(
-                  Ref.update(ref, Chunk.appendAll(chunk))
-                )
-              ),
+              Effect.flatMap((chunk) => Ref.update(ref, Chunk.appendAll(chunk))),
               Effect.repeatN(7)
             )
             const result2 = yield* (Ref.get(ref))

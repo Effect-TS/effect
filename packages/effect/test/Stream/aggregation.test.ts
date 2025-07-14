@@ -234,7 +234,7 @@ describe("Stream", () => {
           pipe(
             Effect.fail("Boom"),
             Effect.when(() => n === 6),
-            Effect.zipRight(pipe(Queue.offer(queue, n)))
+            Effect.zipRight(Queue.offer(queue, n))
           )
         ),
         Stream.aggregateWithinEither(

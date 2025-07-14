@@ -1772,10 +1772,10 @@ const existsLoop = <A, E, R>(
   if (next.done) {
     return core.succeed(false)
   }
-  return pipe(core.flatMap(
+  return core.flatMap(
     f(next.value, index),
     (b) => b ? core.succeed(b) : existsLoop(iterator, index + 1, f)
-  ))
+  )
 }
 
 /* @internal */

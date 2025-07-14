@@ -227,9 +227,7 @@ describe("HttpClient", () => {
       const defaultClient = yield* HttpClient.HttpClient
       const client = defaultClient.pipe(HttpClient.followRedirects())
 
-      const response = yield* pipe(
-        client.get("https://google.com/")
-      )
+      const response = yield* client.get("https://google.com/")
       strictEqual(response.request.url, "https://www.google.com/")
     }).pipe(
       Effect.provide(FetchHttpClient.layer),

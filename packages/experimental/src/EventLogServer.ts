@@ -97,7 +97,7 @@ export const makeHandler: Effect.Effect<
         case "RequestChanges": {
           return Effect.gen(function*() {
             const changes = yield* storage.changes(request.publicKey, request.startSequence)
-            yield* changes.takeAll.pipe(
+            return yield* changes.takeAll.pipe(
               Effect.flatMap(function([entries]) {
                 const latestEntries: Array<EncryptedRemoteEntry> = []
                 for (const entry of entries) {

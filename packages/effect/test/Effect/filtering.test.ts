@@ -197,9 +197,7 @@ describe("Effect", () => {
         Effect.succeed(0),
         Effect.filterOrFail((n) => n === 0)
       )
-      const goodCaseDataFirst = yield* pipe(
-        Effect.filterOrFail(Effect.succeed(0), (n) => n === 0)
-      )
+      const goodCaseDataFirst = yield* Effect.filterOrFail(Effect.succeed(0), (n) => n === 0)
       const badCase = yield* pipe(
         Effect.succeed(1),
         Effect.filterOrFail((n) => n === 0),

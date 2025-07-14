@@ -44,7 +44,7 @@ describe.sequential("Mysql", () => {
         const results = yield* db.select().from(users)
         assert.deepStrictEqual(returningId, [{ id: 1 }])
         assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
-        yield* Effect.fail("rollback")
+        return yield* Effect.fail("rollback")
       })).pipe(Effect.ignore)
 
       const results = yield* db.select().from(users)

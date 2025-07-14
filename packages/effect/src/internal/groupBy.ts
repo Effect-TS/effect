@@ -467,20 +467,18 @@ export const groupByKey = dual<
           ),
         onFailure: (cause) => core.fromEffect(Queue.offer(outerQueue, take.failCause(cause))),
         onDone: () =>
-          pipe(
-            core.fromEffect(
-              pipe(
-                Effect.forEach(map.entries(), ([_, innerQueue]) =>
-                  pipe(
-                    Queue.offer(innerQueue, take.end),
-                    Effect.catchSomeCause((cause) =>
-                      Cause.isInterruptedOnly(cause) ?
-                        Option.some(Effect.void) :
-                        Option.none()
-                    )
-                  ), { discard: true }),
-                Effect.zipRight(Queue.offer(outerQueue, take.end))
-              )
+          core.fromEffect(
+            pipe(
+              Effect.forEach(map.entries(), ([_, innerQueue]) =>
+                pipe(
+                  Queue.offer(innerQueue, take.end),
+                  Effect.catchSomeCause((cause) =>
+                    Cause.isInterruptedOnly(cause) ?
+                      Option.some(Effect.void) :
+                      Option.none()
+                  )
+                ), { discard: true }),
+              Effect.zipRight(Queue.offer(outerQueue, take.end))
             )
           )
       })

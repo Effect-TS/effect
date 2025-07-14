@@ -272,7 +272,7 @@ describe("Queue", () => {
   it.effect("offerAll with pending takers", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(50)
-      const takers = yield* pipe(Effect.forkAll(Array.makeBy(100, () => Queue.take(queue))))
+      const takers = yield* Effect.forkAll(Array.makeBy(100, () => Queue.take(queue)))
       yield* waitForSize(queue, -100)
       yield* queue.offerAll(Array.makeBy(100, (i) => i + 1))
       const result = yield* Fiber.join(takers)
@@ -283,7 +283,7 @@ describe("Queue", () => {
   it.effect("offerAll with pending takers, check ordering", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(256)
-      const takers = yield* pipe(Effect.forkAll(Array.makeBy(64, () => Queue.take(queue))))
+      const takers = yield* Effect.forkAll(Array.makeBy(64, () => Queue.take(queue)))
       yield* waitForSize(queue, -64)
       yield* Queue.offerAll(queue, Array.makeBy(128, (i) => i + 1))
       const result = yield* Fiber.join(takers)
@@ -294,9 +294,9 @@ describe("Queue", () => {
   it.effect("offerAll with pending takers, check ordering of taker resolution", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(200)
-      const takers = yield* pipe(Effect.forkAll(Array.makeBy(100, () => Queue.take(queue))))
+      const takers = yield* Effect.forkAll(Array.makeBy(100, () => Queue.take(queue)))
       yield* waitForSize(queue, -100)
-      const fiber = yield* pipe(Effect.forkAll(Array.makeBy(100, () => Queue.take(queue))))
+      const fiber = yield* Effect.forkAll(Array.makeBy(100, () => Queue.take(queue)))
       yield* waitForSize(queue, -200)
       yield* Queue.offerAll(queue, Array.makeBy(100, (i) => i + 1))
       const result = yield* Fiber.join(takers)
@@ -557,11 +557,9 @@ describe("Queue", () => {
   it.effect("takeAll does not return more than the queue size", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(4)
-      yield* pipe(
-        [1, 2, 3, 4]
-          .map((n) => Queue.offer(queue, n))
-          .reduce((acc, curr) => pipe(acc, Effect.zipRight(curr)), Effect.succeed(false))
-      )
+      yield* [1, 2, 3, 4]
+        .map((n) => Queue.offer(queue, n))
+        .reduce((acc, curr) => pipe(acc, Effect.zipRight(curr)), Effect.succeed(false))
       yield* pipe(Queue.offer(queue, 5), Effect.fork)
       yield* waitForSize(queue, 5)
       const result1 = yield* Queue.takeAll(queue)
@@ -731,11 +729,9 @@ describe("Queue", () => {
   it.effect("does not return back-pressured offers", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(4)
-      yield* pipe(
-        [1, 2, 3, 4]
-          .map((n) => Queue.offer(queue, n))
-          .reduce((acc, curr) => pipe(acc, Effect.zipRight(curr)), Effect.succeed(false))
-      )
+      yield* [1, 2, 3, 4]
+        .map((n) => Queue.offer(queue, n))
+        .reduce((acc, curr) => pipe(acc, Effect.zipRight(curr)), Effect.succeed(false))
       const fiber = yield* pipe(Queue.offer(queue, 5), Effect.fork)
       yield* waitForSize(queue, 5)
       const result = yield* Queue.takeUpTo(queue, 5)

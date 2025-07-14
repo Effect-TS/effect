@@ -184,7 +184,7 @@ describe("Effect", () => {
         strictEqual(a.n, 1)
         strictEqual(b.n, 0)
       }),
-      Effect.provide(pipe(Context.make(NumberService, { n: 0 })))
+      Effect.provide(Context.make(NumberService, { n: 0 }))
     ))
 
   it.effect("serviceFunctions - expose service functions", () => {

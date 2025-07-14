@@ -201,11 +201,9 @@ describe("Match", () => {
   })
 
   it("discriminator with nullables", () => {
-    const match = pipe(
-      M.type<{ _tag: "A" } | undefined>().pipe(
-        M.tags({ A: (x) => x._tag }),
-        M.orElse(() => null)
-      )
+    const match = M.type<{ _tag: "A" } | undefined>().pipe(
+      M.tags({ A: (x) => x._tag }),
+      M.orElse(() => null)
     )
     doesNotThrow(() => match(undefined))
   })
