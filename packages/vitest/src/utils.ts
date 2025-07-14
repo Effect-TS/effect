@@ -86,6 +86,7 @@ export function assertInstanceOf<C extends abstract new(...args: any) => any>(
   message?: string,
   ..._: Array<never>
 ): asserts value is InstanceType<C> {
+  // @ts-ignore
   vassert.instanceOf(value, constructor, message)
 }
 

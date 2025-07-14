@@ -23,6 +23,8 @@ import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "../index.js"
 
+const defaultApi = Object.assign(V.it, { scopedFixtures: V.it.scoped })
+
 const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
     const exitFiber = yield* Effect.fork(Effect.exit(effect))
@@ -46,7 +48,7 @@ const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A,
         throw errors[0]
       }
     }
-  }).pipe(Effect.runPromise).then((f) => f())
+  }).pipe((effect) => Effect.runPromise(effect, { signal: ctx?.signal })).then((f) => f())
 
 /** @internal */
 const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)
@@ -78,7 +80,7 @@ const testOptions = (timeout?: number | V.TestOptions) => typeof timeout === "nu
 /** @internal */
 const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
-  it: V.TestAPI = V.it
+  it: Vitest.API = defaultApi
 ): Vitest.Vitest.Tester<R> => {
   const run = <A, E, TestArgs extends Array<unknown>>(
     ctx: V.TestContext & object,
@@ -216,7 +218,7 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
     Effect.runSync
   )
 
-  const makeIt = (it: V.TestAPI): Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices> =>
+  const makeIt = (it: Vitest.API): Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices> =>
     Object.assign(it, {
       effect: makeTester<TestServices.TestServices | R>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
@@ -251,7 +253,7 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
       () => runPromise()(Scope.close(scope, Exit.void)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
     )
-    return args[0](makeIt(V.it))
+    return args[0](makeIt(defaultApi))
   }
 
   return V.describe(args[0], () => {
@@ -263,7 +265,7 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
       () => runPromise()(Scope.close(scope, Exit.void)),
       options?.timeout ? Duration.toMillis(options.timeout) : undefined
     )
-    return args[1](makeIt(V.it))
+    return args[1](makeIt(defaultApi))
   })
 }
 
@@ -285,7 +287,7 @@ export const flakyTest = <A, E, R>(
   )
 
 /** @internal */
-export const makeMethods = (it: V.TestAPI): Vitest.Vitest.Methods =>
+export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods =>
   Object.assign(it, {
     effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), it),
     scoped: makeTester<TestServices.TestServices | Scope.Scope>(flow(Effect.scoped, Effect.provide(TestEnv)), it),
@@ -306,8 +308,8 @@ export const {
   scoped,
   /** @internal */
   scopedLive
-} = makeMethods(V.it)
+} = makeMethods(defaultApi)
 
 /** @internal */
 export const describeWrapped = (name: string, f: (it: Vitest.Vitest.Methods) => void): V.SuiteCollector =>
-  V.describe(name, (it) => f(makeMethods(it)))
+  V.describe(name, (it) => f(makeMethods(Object.assign(it, { scopedFixtures: it.scoped }))))
