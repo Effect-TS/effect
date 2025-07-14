@@ -7,11 +7,9 @@ describe("FiberRefs", () => {
     Effect.gen(function*() {
       const fiberRef = yield* FiberRef.make(false)
       const queue = yield* Queue.unbounded<FiberRefs.FiberRefs>()
-      const producer = yield* pipe(
-        FiberRef.set(fiberRef, true).pipe(
-          Effect.zipRight(Effect.getFiberRefs.pipe(Effect.flatMap((a) => Queue.offer(queue, a)))),
-          Effect.fork
-        )
+      const producer = yield* FiberRef.set(fiberRef, true).pipe(
+        Effect.zipRight(Effect.getFiberRefs.pipe(Effect.flatMap((a) => Queue.offer(queue, a)))),
+        Effect.fork
       )
       const consumer = yield* pipe(
         Queue.take(queue),

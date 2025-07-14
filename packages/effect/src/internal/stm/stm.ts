@@ -340,21 +340,19 @@ export const every = dual<
     iterable: Iterable<A>,
     predicate: (a: A) => STM.STM<boolean, E, R>
   ): STM.STM<boolean, E, R> =>
-    pipe(
-      core.flatMap(core.sync(() => iterable[Symbol.iterator]()), (iterator) => {
-        const loop: STM.STM<boolean, E, R> = suspend(() => {
-          const next = iterator.next()
-          if (next.done) {
-            return core.succeed(true)
-          }
-          return pipe(
-            predicate(next.value),
-            core.flatMap((bool) => bool ? loop : core.succeed(bool))
-          )
-        })
-        return loop
+    core.flatMap(core.sync(() => iterable[Symbol.iterator]()), (iterator) => {
+      const loop: STM.STM<boolean, E, R> = suspend(() => {
+        const next = iterator.next()
+        if (next.done) {
+          return core.succeed(true)
+        }
+        return pipe(
+          predicate(next.value),
+          core.flatMap((bool) => bool ? loop : core.succeed(bool))
+        )
       })
-    )
+      return loop
+    })
 )
 
 /** @internal */
@@ -1156,12 +1154,10 @@ export const repeatWhile = dual<
 >(2, (self, predicate) => repeatWhileLoop(self, predicate))
 
 const repeatWhileLoop = <A, E, R>(self: STM.STM<A, E, R>, predicate: Predicate<A>): STM.STM<A, E, R> =>
-  pipe(
-    core.flatMap(self, (a) =>
-      predicate(a) ?
-        repeatWhileLoop(self, predicate) :
-        core.succeed(a))
-  )
+  core.flatMap(self, (a) =>
+    predicate(a) ?
+      repeatWhileLoop(self, predicate) :
+      core.succeed(a))
 
 /** @internal */
 export const replicate = dual<

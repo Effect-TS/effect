@@ -42,7 +42,7 @@ describe("Struct", () => {
 
   it("omit", () => {
     deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.omit("c")), { a: "a", b: 1 })
-    deepStrictEqual(pipe(Struct.omit({ a: "a", b: 1, c: true }, "c")), { a: "a", b: 1 })
+    deepStrictEqual(Struct.omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
 
     const record1: Record<string, number> = {}
     deepStrictEqual(pipe(record1, Struct.omit("a", "c")), {})

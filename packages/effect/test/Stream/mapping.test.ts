@@ -210,7 +210,7 @@ describe("Stream", () => {
       const queue = yield* (Queue.unbounded<number>())
       yield* pipe(
         Stream.range(0, 8),
-        Stream.mapEffect((n) => pipe(Queue.offer(queue, n)), { concurrency: 1 }),
+        Stream.mapEffect((n) => Queue.offer(queue, n), { concurrency: 1 }),
         Stream.runDrain
       )
       const result = yield* (Queue.takeAll(queue))

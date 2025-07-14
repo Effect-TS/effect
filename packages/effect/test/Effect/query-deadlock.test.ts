@@ -27,12 +27,10 @@ const getAllUserNames = Effect.forEach([1, 1], getUserNameById, { batching: true
 describe("Effect", () => {
   it("requests are executed correctly", () =>
     Effect.runPromise(
-      Effect.gen(function*() {
-        yield* pipe(
-          getAllUserNames,
-          Effect.withRequestCaching(true),
-          Effect.withRequestBatching(true)
-        )
-      })
+      Effect.asVoid(pipe(
+        getAllUserNames,
+        Effect.withRequestCaching(true),
+        Effect.withRequestBatching(true)
+      ))
     ))
 })

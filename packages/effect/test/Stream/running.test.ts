@@ -46,12 +46,10 @@ describe("Stream", () => {
       yield* pipe(
         Stream.make(1, 1, 1, 1, 1, 1),
         Stream.runForEachWhile((n) =>
-          pipe(
-            Ref.modify(ref, (sum) =>
-              sum >= expected ?
-                [false, sum] as const :
-                [true, sum + n])
-          )
+          Ref.modify(ref, (sum) =>
+            sum >= expected ?
+              [false, sum] as const :
+              [true, sum + n])
         )
       )
       const result = yield* (Ref.get(ref))

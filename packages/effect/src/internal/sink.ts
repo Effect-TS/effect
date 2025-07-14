@@ -125,19 +125,17 @@ export const collectAllToMap = <In, K>(
   key: (input: In) => K,
   merge: (x: In, y: In) => In
 ): Sink.Sink<HashMap.HashMap<K, In>, In> => {
-  return pipe(
-    foldLeftChunks(HashMap.empty<K, In>(), (map, chunk) =>
-      pipe(
-        chunk,
-        Chunk.reduce(map, (map, input) => {
-          const k: K = key(input)
-          const v: In = pipe(map, HashMap.has(k)) ?
-            merge(pipe(map, HashMap.unsafeGet(k)), input) :
-            input
-          return pipe(map, HashMap.set(k, v))
-        })
-      ))
-  )
+  return foldLeftChunks(HashMap.empty<K, In>(), (map, chunk) =>
+    pipe(
+      chunk,
+      Chunk.reduce(map, (map, input) => {
+        const k: K = key(input)
+        const v: In = pipe(map, HashMap.has(k)) ?
+          merge(pipe(map, HashMap.unsafeGet(k)), input) :
+          input
+        return pipe(map, HashMap.set(k, v))
+      })
+    ))
 }
 
 /** @internal */
@@ -698,7 +696,7 @@ export const contextWithEffect = <R0, A, E, R>(
 export const contextWithSink = <R0, A, In, L, E, R>(
   f: (context: Context.Context<R0>) => Sink.Sink<A, In, L, E, R>
 ): Sink.Sink<A, In, L, E, R0 | R> =>
-  new SinkImpl(channel.unwrap(pipe(Effect.contextWith((context) => toChannel(f(context))))))
+  new SinkImpl(channel.unwrap(Effect.contextWith((context) => toChannel(f(context)))))
 
 /** @internal */
 export const every = <In>(predicate: Predicate<In>): Sink.Sink<boolean, In, In> =>
@@ -1487,7 +1485,7 @@ export const fromQueue = <In>(
         fromQueue
       )
     ) :
-    forEachChunk((input: Chunk.Chunk<In>) => pipe(Queue.offerAll(queue, input)))
+    forEachChunk((input: Chunk.Chunk<In>) => Queue.offerAll(queue, input))
 
 /** @internal */
 export const head = <In>(): Sink.Sink<Option.Option<In>, In, In> =>

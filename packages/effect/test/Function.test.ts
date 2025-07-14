@@ -92,6 +92,7 @@ describe("Function", () => {
 
   it("pipe()", () => {
     const pipe = Function.pipe // this alias is required in order to exclude the `@effect/babel-plugin` compiler and get 100% coverage
+    // @effect-diagnostics-next-line unnecessaryPipe:off
     deepStrictEqual(pipe(2), 2)
     deepStrictEqual(pipe(2, f), 3)
     deepStrictEqual(pipe(2, f, g), 6)

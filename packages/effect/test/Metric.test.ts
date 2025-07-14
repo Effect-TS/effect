@@ -45,11 +45,9 @@ describe("Metric", () => {
       Effect.gen(function*() {
         const id = nextName()
         const counter = Metric.counter(id).pipe(Metric.taggedWithLabels(labels))
-        const result = yield* pipe(
-          Metric.increment(counter).pipe(
-            Effect.zipRight(Metric.increment(counter)),
-            Effect.zipRight(Metric.value(counter))
-          )
+        const result = yield* Metric.increment(counter).pipe(
+          Effect.zipRight(Metric.increment(counter)),
+          Effect.zipRight(Metric.value(counter))
         )
         deepStrictEqual(result, MetricState.counter(2))
       }))

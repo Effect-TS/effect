@@ -2300,8 +2300,8 @@ const toQueueInternal = <Err, Done, Elem>(
         core.fromEffect(Queue.offer(queue, Either.right(elem))),
         () => toQueueInternal(queue)
       ),
-    onFailure: (cause) => core.fromEffect(pipe(Queue.offer(queue, Either.left(Exit.failCause(cause))))),
-    onDone: (done) => core.fromEffect(pipe(Queue.offer(queue, Either.left(Exit.succeed(done)))))
+    onFailure: (cause) => core.fromEffect(Queue.offer(queue, Either.left(Exit.failCause(cause)))),
+    onDone: (done) => core.fromEffect(Queue.offer(queue, Either.left(Exit.succeed(done))))
   })
 }
 

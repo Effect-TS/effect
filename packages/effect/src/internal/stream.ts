@@ -2016,7 +2016,7 @@ export const distributedWith = dual<
                 )
                 return pipe(
                   Deferred.succeed(deferred, (a: A) =>
-                    Effect.map(options.decide(a), (f) => (key: number) => pipe(f(mappings.get(key)!)))),
+                    Effect.map(options.decide(a), (f) => (key: number) => f(mappings.get(key)!))),
                   Effect.as(
                     Array.from(queues) as Types.TupleOf<N, Queue.Dequeue<Exit.Exit<A, Option.Option<E>>>>
                   )
@@ -2143,14 +2143,12 @@ export const distributedWithDynamicCallback = dual<
                     }),
                     Effect.flatMap((ids) => {
                       if (Chunk.isNonEmpty(ids)) {
-                        return pipe(
-                          Ref.update(queuesRef, (map) => {
-                            for (const id of ids) {
-                              map.delete(id)
-                            }
-                            return map
-                          })
-                        )
+                        return Ref.update(queuesRef, (map) => {
+                          for (const id of ids) {
+                            map.delete(id)
+                          }
+                          return map
+                        })
                       }
                       return Effect.void
                     })
@@ -8374,21 +8372,17 @@ export const zipLatestWith: {
                       mergeEither(repeatEffectOption(right)),
                       mapEffectSequential(Either.match({
                         onLeft: (leftChunk) =>
-                          pipe(
-                            Ref.modify(latest, ([_, rightLatest]) =>
-                              [
-                                pipe(leftChunk, Chunk.map((a) => f(a, rightLatest))),
-                                [Chunk.unsafeLast(leftChunk), rightLatest] as const
-                              ] as const)
-                          ),
+                          Ref.modify(latest, ([_, rightLatest]) =>
+                            [
+                              pipe(leftChunk, Chunk.map((a) => f(a, rightLatest))),
+                              [Chunk.unsafeLast(leftChunk), rightLatest] as const
+                            ] as const),
                         onRight: (rightChunk) =>
-                          pipe(
-                            Ref.modify(latest, ([leftLatest, _]) =>
-                              [
-                                pipe(rightChunk, Chunk.map((a2) => f(leftLatest, a2))),
-                                [leftLatest, Chunk.unsafeLast(rightChunk)] as const
-                              ] as const)
-                          )
+                          Ref.modify(latest, ([leftLatest, _]) =>
+                            [
+                              pipe(rightChunk, Chunk.map((a2) => f(leftLatest, a2))),
+                              [leftLatest, Chunk.unsafeLast(rightChunk)] as const
+                            ] as const)
                       })),
                       flatMap(fromChunk)
                     )

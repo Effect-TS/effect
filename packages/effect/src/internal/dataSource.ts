@@ -190,20 +190,18 @@ export const eitherWith = dual<
 ) =>
   new core.RequestResolverImpl<C, R | R2>(
     (batch) =>
-      pipe(
-        core.forEachSequential(batch, (requests) => {
-          const [as, bs] = pipe(
-            requests,
-            RA.partitionMap(f)
-          )
-          return zipWithOptions(
-            self.runAll(Array.of(as)),
-            that.runAll(Array.of(bs)),
-            () => void 0,
-            { concurrent: true }
-          )
-        })
-      ),
+      core.forEachSequential(batch, (requests) => {
+        const [as, bs] = pipe(
+          requests,
+          RA.partitionMap(f)
+        )
+        return zipWithOptions(
+          self.runAll(Array.of(as)),
+          that.runAll(Array.of(bs)),
+          () => void 0,
+          { concurrent: true }
+        )
+      }),
     Chunk.make("EitherWith", self, that, f)
   ))
 

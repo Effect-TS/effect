@@ -97,13 +97,11 @@ describe("Effect", () => {
     Effect.gen(function*() {
       const deferred1 = yield* (Deferred.make<void>())
       const deferred2 = yield* (Deferred.make<void>())
-      const fiber = yield* pipe(
-        Effect.fork(
-          Effect.acquireUseRelease(
-            Effect.void,
-            () => pipe(Deferred.succeed(deferred1, void 0), Effect.zipRight(Effect.never)),
-            () => pipe(Deferred.succeed(deferred2, void 0), Effect.zipRight(Effect.void))
-          )
+      const fiber = yield* Effect.fork(
+        Effect.acquireUseRelease(
+          Effect.void,
+          () => pipe(Deferred.succeed(deferred1, void 0), Effect.zipRight(Effect.never)),
+          () => pipe(Deferred.succeed(deferred2, void 0), Effect.zipRight(Effect.void))
         )
       )
       yield* (Deferred.await(deferred1))

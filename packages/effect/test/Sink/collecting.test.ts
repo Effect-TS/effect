@@ -252,7 +252,7 @@ describe("Sink", () => {
           body: (acc, option) => Option.isSome(option) ? pipe(acc, Chunk.append(option.value)) : acc
         })
       )
-      const stream = pipe(Stream.fromChunk(Chunk.range(1, 100)))
+      const stream = Stream.fromChunk(Chunk.range(1, 100))
       const result = yield* pipe(
         stream,
         Stream.concat(stream),

@@ -239,17 +239,15 @@ export const make = <RD = never>({
         )
       }
 
-      yield* pipe(
-        Effect.forEach(
-          required,
-          ([id, name, effect]) =>
-            Effect.logDebug(`Running migration`).pipe(
-              Effect.zipRight(runMigration(id, name, effect)),
-              Effect.annotateLogs("migration_id", String(id)),
-              Effect.annotateLogs("migration_name", name)
-            ),
-          { discard: true }
-        )
+      yield* Effect.forEach(
+        required,
+        ([id, name, effect]) =>
+          Effect.logDebug(`Running migration`).pipe(
+            Effect.zipRight(runMigration(id, name, effect)),
+            Effect.annotateLogs("migration_id", String(id)),
+            Effect.annotateLogs("migration_name", name)
+          ),
+        { discard: true }
       )
 
       yield* pipe(

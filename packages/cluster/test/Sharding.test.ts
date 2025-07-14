@@ -103,7 +103,7 @@ describe.concurrent("Sharding", () => {
         }, 0)
       }).pipe(
         Effect.provide(TestShardingWithoutRunners.pipe(
-          Layer.provide(Layer.effect(
+          Layer.provide(Layer.scoped(
             Runners.Runners,
             Effect.gen(function*() {
               const runners = yield* Runners.makeNoop
