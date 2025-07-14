@@ -256,10 +256,10 @@ export const layer = (options: {
  */
 export const layerConfig = (
   options: {
-    readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
-    readonly apiUrl?: Config.Config<string> | undefined
-    readonly organizationId?: Config.Config<Redacted.Redacted> | undefined
-    readonly projectId?: Config.Config<Redacted.Redacted> | undefined
+    readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
+    readonly apiUrl?: Config.Config<string | undefined> | undefined
+    readonly organizationId?: Config.Config<Redacted.Redacted | undefined> | undefined
+    readonly projectId?: Config.Config<Redacted.Redacted | undefined> | undefined
     readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
   }
 ): Layer.Layer<OpenAiClient, ConfigError, HttpClient.HttpClient> => {

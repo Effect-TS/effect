@@ -59,12 +59,10 @@ export declare namespace AnthropicClient {
 export const make = (options: {
   readonly apiKey?: Redacted.Redacted | undefined
   readonly apiUrl?: string | undefined
-  readonly anthropicVersion?: string
+  readonly anthropicVersion?: string | undefined
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
-  readonly transformClient?: (
-    client: HttpClient.HttpClient
-  ) => HttpClient.HttpClient
+  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }): Effect.Effect<AnthropicClient.Service, never, HttpClient.HttpClient> =>
   Effect.gen(function*() {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
@@ -307,10 +305,8 @@ export const make = (options: {
 export const layer = (options: {
   readonly apiKey?: Redacted.Redacted | undefined
   readonly apiUrl?: string | undefined
-  readonly anthropicVersion?: string
-  readonly transformClient?: (
-    client: HttpClient.HttpClient
-  ) => HttpClient.HttpClient
+  readonly anthropicVersion?: string | undefined
+  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
 }): Layer.Layer<AnthropicClient, never, HttpClient.HttpClient> => Layer.effect(AnthropicClient, make(options))
 
 /**
@@ -319,12 +315,10 @@ export const layer = (options: {
  */
 export const layerConfig = (
   options: {
-    readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
-    readonly apiUrl?: Config.Config<string> | undefined
-    readonly anthropicVersion?: Config.Config<string>
-    readonly transformClient?: (
-      client: HttpClient.HttpClient
-    ) => HttpClient.HttpClient
+    readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
+    readonly apiUrl?: Config.Config<string | undefined> | undefined
+    readonly anthropicVersion?: Config.Config<string | undefined> | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
   }
 ): Layer.Layer<AnthropicClient, ConfigError, HttpClient.HttpClient> => {
   const { transformClient, ...configs } = options
