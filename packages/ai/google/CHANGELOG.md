@@ -1,5 +1,11 @@
 # @effect/ai-google
 
+## 0.1.1
+
+### Patch Changes
+
+- [#5209](https://github.com/Effect-TS/effect/pull/5209) [`3deaa66`](https://github.com/Effect-TS/effect/commit/3deaa66e022e361a2036ce6bfc9d76f77d9cc948) Thanks @tim-smart! - fix ai layerConfig regression, to allow for conditional Config variables
+
 ## 0.1.0
 
 ### Patch Changes
