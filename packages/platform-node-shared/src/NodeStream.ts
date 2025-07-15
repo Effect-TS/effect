@@ -18,6 +18,8 @@ import * as internal from "./internal/stream.js"
 export interface FromReadableOptions {
   /** Defaults to undefined, which lets Node.js decide the chunk size */
   readonly chunkSize?: SizeInput
+  /** Default to true, which means the stream will be closed when done */
+  readonly closeOnDone?: boolean | undefined
 }
 
 /**
@@ -33,21 +35,21 @@ export interface FromWritableOptions {
  * @category constructors
  * @since 1.0.0
  */
-export const fromReadable: <E, A = Uint8Array>(
+export const fromReadable: <E, A = Uint8Array<ArrayBufferLike>>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
-  { chunkSize }?: FromReadableOptions
+  options?: FromReadableOptions
 ) => Stream.Stream<A, E> = internal.fromReadable
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const fromReadableChannel: <E, A = Uint8Array>(
+export const fromReadableChannel: <E, A = Uint8Array<ArrayBufferLike>>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
-  chunkSize: number | undefined
-) => Channel<Chunk<A>, unknown, E, unknown, void, unknown> = internal.fromReadableChannel
+  options?: FromReadableOptions | undefined
+) => Channel<Chunk<A>, unknown, E> = internal.fromReadableChannel
 
 /**
  * @category constructors
@@ -131,6 +133,6 @@ export const toUint8Array: <E>(
  * @since 1.0.0
  * @category stdio
  */
-export const stdin: Stream.Stream<Uint8Array> = internal.fromReadable(() => process.stdin, (err) => err).pipe(
-  Stream.orDie
-)
+export const stdin: Stream.Stream<Uint8Array> = internal.fromReadable(() => process.stdin, (err) => err, {
+  closeOnDone: false
+}).pipe(Stream.orDie)
