@@ -291,11 +291,7 @@ const unsafeReadableRead = <A, E>(
     while (true) {
       item = readable.read(chunkSize)
       if (item === null) {
-        latch.unsafeClose()
-        return Channel.zipRight(
-          Channel.write(Chunk.unsafeFromArray(arr)),
-          Channel.flatMap(latch.await, loop)
-        )
+        return Channel.flatMap(Channel.write(Chunk.unsafeFromArray(arr)), loop)
       }
       arr.push(item as A)
     }
