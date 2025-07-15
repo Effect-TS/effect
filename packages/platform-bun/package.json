@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-bun",
   "type": "module",
-  "version": "0.73.0",
+  "version": "0.74.0",
   "license": "MIT",
   "description": "Platform specific implementations for the Bun runtime",
   "homepage": "https://effect.website",

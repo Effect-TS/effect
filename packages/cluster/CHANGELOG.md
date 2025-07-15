@@ -1,5 +1,18 @@
 # @effect/cluster
 
+## 0.43.0
+
+### Patch Changes
+
+- [#5211](https://github.com/Effect-TS/effect/pull/5211) [`d25f22b`](https://github.com/Effect-TS/effect/commit/d25f22be7598abe977caf6cdac3b0dd78b438c48) Thanks @mattiamanzati! - Removed some unnecessary single-arg pipe calls
+
+- Updated dependencies [[`f5dfabf`](https://github.com/Effect-TS/effect/commit/f5dfabf51ba481a4468c1509c537314978ef6cec), [`17a5ea8`](https://github.com/Effect-TS/effect/commit/17a5ea8fa29785fe6e4c9480f2a2e9c8c59f3f38), [`d25f22b`](https://github.com/Effect-TS/effect/commit/d25f22be7598abe977caf6cdac3b0dd78b438c48)]:
+  - effect@3.16.14
+  - @effect/sql@0.42.0
+  - @effect/platform@0.88.1
+  - @effect/rpc@0.65.1
+  - @effect/workflow@0.5.1
+
 ## 0.42.0
 
 ### Patch Changes

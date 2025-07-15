@@ -1,5 +1,43 @@
 # @effect/sql-mysql2
 
+## 0.43.0
+
+### Minor Changes
+
+- [#5192](https://github.com/Effect-TS/effect/pull/5192) [`17a5ea8`](https://github.com/Effect-TS/effect/commit/17a5ea8fa29785fe6e4c9480f2a2e9c8c59f3f38) Thanks @nikelborm! - Updated deprecated OTel Resource attributes names and values.
+
+  Many of the attributes have undergone the process of deprecation not once, but twice. Most of the constants holding attribute names have been renamed. These are minor changes.
+
+  Additionally, there were numerous changes to the attribute keys themselves. These changes can be considered major.
+
+  In the `@opentelemetry/semantic-conventions` package, new attributes having ongoing discussion about them are going through a process called incubation, until a consensus about their necessity and form is reached. Otel team [recommends](https://github.com/open-telemetry/opentelemetry-js/blob/main/semantic-conventions/README.md#unstable-semconv) devs to copy them directly into their code. Luckily, it's not necessary because all of the new attribute names and values came out of this process (some of them were changed again) and are now considered stable.
+
+  ## Reasoning for minor version bump
+
+  | Package                    | Major attribute changes                                                       | Major value changes               |
+  | -------------------------- | ----------------------------------------------------------------------------- | --------------------------------- |
+  | Clickhouse client          | `db.system` -> `db.system.name` <br/> `db.name` -> `db.namespace`             |                                   |
+  | MsSQL client               | `db.system` -> `db.system.name` <br/> `db.name` -> `db.namespace`             | `mssql` -> `microsoft.sql_server` |
+  | MySQL client               | `db.system` -> `db.system.name` <br/> `db.name` -> `db.namespace`             |                                   |
+  | Pg client                  | `db.system` -> `db.system.name` <br/> `db.name` -> `db.namespace`             |                                   |
+  | Bun SQLite client          | `db.system` -> `db.system.name`                                               |                                   |
+  | Node SQLite client         | `db.system` -> `db.system.name`                                               |                                   |
+  | React.Native SQLite client | `db.system` -> `db.system.name`                                               |                                   |
+  | Wasm SQLite client         | `db.system` -> `db.system.name`                                               |                                   |
+  | SQLite Do client           | `db.system` -> `db.system.name`                                               |                                   |
+  | LibSQL client              | `db.system` -> `db.system.name`                                               |                                   |
+  | D1 client                  | `db.system` -> `db.system.name`                                               |                                   |
+  | Kysely client              | `db.statement` -> `db.query.text`                                             |                                   |
+  | @effect/sql                | `db.statement` -> `db.query.text` <br/> `db.operation` -> `db.operation.name` |                                   |
+
+### Patch Changes
+
+- Updated dependencies [[`f5dfabf`](https://github.com/Effect-TS/effect/commit/f5dfabf51ba481a4468c1509c537314978ef6cec), [`17a5ea8`](https://github.com/Effect-TS/effect/commit/17a5ea8fa29785fe6e4c9480f2a2e9c8c59f3f38), [`d25f22b`](https://github.com/Effect-TS/effect/commit/d25f22be7598abe977caf6cdac3b0dd78b438c48)]:
+  - effect@3.16.14
+  - @effect/sql@0.42.0
+  - @effect/platform@0.88.1
+  - @effect/experimental@0.52.1
+
 ## 0.42.0
 
 ### Patch Changes
