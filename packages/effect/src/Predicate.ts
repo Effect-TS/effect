@@ -1,4 +1,19 @@
 /**
+ * This module provides a collection of functions for working with predicates and refinements.
+ *
+ * A `Predicate<A>` is a function that takes a value of type `A` and returns a boolean.
+ * It is used to check if a value satisfies a certain condition.
+ *
+ * A `Refinement<A, B>` is a special type of predicate that not only checks a condition
+ * but also provides a type guard, allowing TypeScript to narrow the type of the input
+ * value from `A` to a more specific type `B` within a conditional block.
+ *
+ * The module includes:
+ * - Basic predicates and refinements for common types (e.g., `isString`, `isNumber`).
+ * - Combinators to create new predicates from existing ones (e.g., `and`, `or`, `not`).
+ * - Advanced combinators for working with data structures (e.g., `tuple`, `struct`).
+ * - Type-level utilities for inspecting predicate and refinement types.
+ *
  * @since 2.0.0
  */
 import { dual, isFunction as isFunction_ } from "./Function.js"
@@ -6,6 +21,20 @@ import type { TypeLambda } from "./HKT.js"
 import type { TupleOf, TupleOfAtLeast } from "./Types.js"
 
 /**
+ * Represents a function that takes a value of type `A` and returns `true` if the value
+ * satisfies some condition, `false` otherwise.
+ *
+ * @example
+ * ```ts
+ * import { Predicate } from "effect"
+ * import * as assert from "node:assert"
+ *
+ * const isEven: Predicate.Predicate<number> = (n) => n % 2 === 0
+ *
+ * assert.strictEqual(isEven(2), true)
+ * assert.strictEqual(isEven(3), false)
+ * ```
+ *
  * @category models
  * @since 2.0.0
  */
@@ -14,6 +43,9 @@ export interface Predicate<in A> {
 }
 
 /**
+ * A `TypeLambda` for `Predicate`. This is used to support higher-kinded types
+ * and allows `Predicate` to be used in generic contexts within the `effect` ecosystem.
+ *
  * @category type lambdas
  * @since 2.0.0
  */
@@ -22,6 +54,27 @@ export interface PredicateTypeLambda extends TypeLambda {
 }
 
 /**
+ * Represents a function that serves as a type guard.
+ *
+ * A `Refinement<A, B>` is a function that takes a value of type `A` and returns a
+ * type predicate `a is B`, where `B` is a subtype of `A`. If the function returns
+ * `true`, TypeScript will narrow the type of the input variable to `B`.
+ *
+ * @example
+ * ```ts
+ * import { Predicate } from "effect"
+ * import * as assert from "node:assert"
+ *
+ * const isString: Predicate.Refinement<unknown, string> = (u): u is string => typeof u === "string"
+ *
+ * const value: unknown = "hello"
+ *
+ * if (isString(value)) {
+ *   // value is now known to be a string
+ *   assert.strictEqual(value.toUpperCase(), "HELLO")
+ * }
+ * ```
+ *
  * @category models
  * @since 2.0.0
  */
@@ -30,16 +83,29 @@ export interface Refinement<in A, out B extends A> {
 }
 
 /**
+ * A namespace for type-level utilities for `Predicate`.
+ *
  * @since 3.6.0
  * @category type-level
  */
 export declare namespace Predicate {
   /**
+   * Extracts the input type `A` from a `Predicate<A>`.
+   *
+   * @example
+   * ```ts
+   * import { type Predicate } from "effect"
+   *
+   * type T = Predicate.Predicate.In<Predicate.Predicate<string>> // T is string
+   * ```
+   *
    * @since 3.6.0
    * @category type-level
    */
   export type In<T extends Any> = [T] extends [Predicate<infer _A>] ? _A : never
   /**
+   * A type representing any `Predicate`.
+   *
    * @since 3.6.0
    * @category type-level
    */
@@ -47,21 +113,45 @@ export declare namespace Predicate {
 }
 
 /**
+ * A namespace for type-level utilities for `Refinement`.
+ *
  * @since 3.6.0
  * @category type-level
  */
 export declare namespace Refinement {
   /**
+   * Extracts the input type `A` from a `Refinement<A, B>`.
+   *
+   * @example
+   * ```ts
+   * import { type Predicate } from "effect"
+   *
+   * type IsString = Predicate.Refinement<unknown, string>
+   * type T = Predicate.Refinement.In<IsString> // T is unknown
+   * ```
+   *
    * @since 3.6.0
    * @category type-level
    */
   export type In<T extends Any> = [T] extends [Refinement<infer _A, infer _>] ? _A : never
   /**
+   * Extracts the output (refined) type `B` from a `Refinement<A, B>`.
+   *
+   * @example
+   * ```ts
+   * import { type Predicate } from "effect"
+   *
+   * type IsString = Predicate.Refinement<unknown, string>
+   * type T = Predicate.Refinement.Out<IsString> // T is string
+   * ```
+   *
    * @since 3.6.0
    * @category type-level
    */
   export type Out<T extends Any> = [T] extends [Refinement<infer _, infer _B>] ? _B : never
   /**
+   * A type representing any `Refinement`.
+   *
    * @since 3.6.0
    * @category type-level
    */
@@ -69,19 +159,26 @@ export declare namespace Refinement {
 }
 
 /**
- * Given a `Predicate<A>` returns a `Predicate<B>`
+ * Transforms a `Predicate<A>` into a `Predicate<B>` by applying a function `(b: B) => A`
+ * to the input before passing it to the predicate. This is also known as "contramap" or
+ * "pre-composition".
  *
  * @example
  * ```ts
- * import * as assert from "node:assert"
  * import { Predicate, Number } from "effect"
+ * import * as assert from "node:assert"
  *
- * const minLength3 = Predicate.mapInput(Number.greaterThan(2), (s: string) => s.length)
+ * // A predicate on numbers
+ * const isPositive: Predicate.Predicate<number> = Number.greaterThan(0)
  *
- * assert.deepStrictEqual(minLength3("a"), false)
- * assert.deepStrictEqual(minLength3("aa"), false)
- * assert.deepStrictEqual(minLength3("aaa"), true)
- * assert.deepStrictEqual(minLength3("aaaa"), true)
+ * // A function from `string` to `number`
+ * const stringLength = (s: string): number => s.length
+ *
+ * // Create a new predicate on strings by mapping the input
+ * const hasPositiveLength = Predicate.mapInput(isPositive, stringLength)
+ *
+ * assert.strictEqual(hasPositiveLength("hello"), true)
+ * assert.strictEqual(hasPositiveLength(""), false)
  * ```
  *
  * @category combinators
@@ -93,23 +190,24 @@ export const mapInput: {
 } = dual(2, <A, B>(self: Predicate<A>, f: (b: B) => A): Predicate<B> => (b) => self(f(b)))
 
 /**
- * Determine if an `Array` is a tuple with exactly `N` elements, narrowing down the type to `TupleOf`.
- *
- * An `Array` is considered to be a `TupleOf` if its length is exactly `N`.
+ * A refinement that checks if a `ReadonlyArray<T>` is a tuple with exactly `N` elements.
+ * If the check is successful, the type is narrowed to `TupleOf<N, T>`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isTupleOf } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isTupleOf([1, 2, 3], 3), true);
- * assert.deepStrictEqual(isTupleOf([1, 2, 3], 2), false);
- * assert.deepStrictEqual(isTupleOf([1, 2, 3], 4), false);
+ * const isTupleOf3 = isTupleOf(3)
+ *
+ * assert.strictEqual(isTupleOf3([1, 2, 3]), true);
+ * assert.strictEqual(isTupleOf3([1, 2]), false);
  *
  * const arr: number[] = [1, 2, 3];
  * if (isTupleOf(arr, 3)) {
- *   console.log(arr);
- *   // ^? [number, number, number]
+ *   // The type of arr is now [number, number, number]
+ *   const [a, b, c] = arr;
+ *   assert.deepStrictEqual([a, b, c], [1, 2, 3])
  * }
  * ```
  *
@@ -122,23 +220,25 @@ export const isTupleOf: {
 } = dual(2, <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOf<N, T> => self.length === n)
 
 /**
- * Determine if an `Array` is a tuple with at least `N` elements, narrowing down the type to `TupleOfAtLeast`.
- *
- * An `Array` is considered to be a `TupleOfAtLeast` if its length is at least `N`.
+ * A refinement that checks if a `ReadonlyArray<T>` is a tuple with at least `N` elements.
+ * If the check is successful, the type is narrowed to `TupleOfAtLeast<N, T>`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isTupleOfAtLeast } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 3), true);
- * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 2), true);
- * assert.deepStrictEqual(isTupleOfAtLeast([1, 2, 3], 4), false);
+ * const isTupleOfAtLeast3 = isTupleOfAtLeast(3)
+ *
+ * assert.strictEqual(isTupleOfAtLeast3([1, 2, 3]), true);
+ * assert.strictEqual(isTupleOfAtLeast3([1, 2, 3, 4]), true);
+ * assert.strictEqual(isTupleOfAtLeast3([1, 2]), false);
  *
  * const arr: number[] = [1, 2, 3, 4];
  * if (isTupleOfAtLeast(arr, 3)) {
- *   console.log(arr);
- *   // ^? [number, number, number, ...number[]]
+ *   // The type of arr is now [number, number, number, ...number[]]
+ *   const [a, b, c] = arr;
+ *   assert.deepStrictEqual([a, b, c], [1, 2, 3])
  * }
  * ```
  *
@@ -151,16 +251,22 @@ export const isTupleOfAtLeast: {
 } = dual(2, <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOfAtLeast<N, T> => self.length >= n)
 
 /**
- * Tests if a value is `truthy`.
+ * A predicate that checks if a value is "truthy" in JavaScript.
+ * Fails for `false`, `0`, `-0`, `0n`, `""`, `null`, `undefined`, and `NaN`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isTruthy } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isTruthy(1), true)
- * assert.deepStrictEqual(isTruthy(0), false)
- * assert.deepStrictEqual(isTruthy(""), false)
+ * assert.strictEqual(isTruthy(1), true)
+ * assert.strictEqual(isTruthy("hello"), true)
+ * assert.strictEqual(isTruthy({}), true)
+ *
+ * assert.strictEqual(isTruthy(0), false)
+ * assert.strictEqual(isTruthy(""), false)
+ * assert.strictEqual(isTruthy(null), false)
+ * assert.strictEqual(isTruthy(undefined), false)
  * ```
  *
  * @category guards
@@ -169,18 +275,18 @@ export const isTupleOfAtLeast: {
 export const isTruthy = (input: unknown) => !!input
 
 /**
- * Tests if a value is a `Set`.
+ * A refinement that checks if a value is a `Set`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isSet } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isSet(new Set([1, 2])), true)
- * assert.deepStrictEqual(isSet(new Set()), true)
- * assert.deepStrictEqual(isSet({}), false)
- * assert.deepStrictEqual(isSet(null), false)
- * assert.deepStrictEqual(isSet(undefined), false)
+ * assert.strictEqual(isSet(new Set([1, 2])), true)
+ * assert.strictEqual(isSet(new Set()), true)
+ *
+ * assert.strictEqual(isSet({}), false)
+ * assert.strictEqual(isSet([1, 2]), false)
  * ```
  *
  * @category guards
@@ -189,17 +295,17 @@ export const isTruthy = (input: unknown) => !!input
 export const isSet = (input: unknown): input is Set<unknown> => input instanceof Set
 
 /**
- * Tests if a value is a `Map`.
+ * A refinement that checks if a value is a `Map`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isMap } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isMap(new Map()), true)
- * assert.deepStrictEqual(isMap({}), false)
- * assert.deepStrictEqual(isMap(null), false)
- * assert.deepStrictEqual(isMap(undefined), false)
+ * assert.strictEqual(isMap(new Map()), true)
+ *
+ * assert.strictEqual(isMap({}), false)
+ * assert.strictEqual(isMap(new Set()), false)
  * ```
  *
  * @category guards
@@ -208,16 +314,18 @@ export const isSet = (input: unknown): input is Set<unknown> => input instanceof
 export const isMap = (input: unknown): input is Map<unknown, unknown> => input instanceof Map
 
 /**
- * Tests if a value is a `string`.
+ * A refinement that checks if a value is a `string`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isString } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isString("a"), true)
+ * assert.strictEqual(isString("hello"), true)
+ * assert.strictEqual(isString(""), true)
  *
- * assert.deepStrictEqual(isString(1), false)
+ * assert.strictEqual(isString(123), false)
+ * assert.strictEqual(isString(null), false)
  * ```
  *
  * @category guards
@@ -226,16 +334,20 @@ export const isMap = (input: unknown): input is Map<unknown, unknown> => input i
 export const isString = (input: unknown): input is string => typeof input === "string"
 
 /**
- * Tests if a value is a `number`.
+ * A refinement that checks if a value is a `number`. Note that this
+ * check returns `false` for `NaN`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNumber } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNumber(2), true)
+ * assert.strictEqual(isNumber(123), true)
+ * assert.strictEqual(isNumber(0), true)
+ * assert.strictEqual(isNumber(-1.5), true)
  *
- * assert.deepStrictEqual(isNumber("2"), false)
+ * assert.strictEqual(isNumber("123"), false)
+ * assert.strictEqual(isNumber(NaN), false) // Special case: NaN is a number type but returns false
  * ```
  *
  * @category guards
@@ -244,16 +356,18 @@ export const isString = (input: unknown): input is string => typeof input === "s
 export const isNumber = (input: unknown): input is number => typeof input === "number"
 
 /**
- * Tests if a value is a `boolean`.
+ * A refinement that checks if a value is a `boolean`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isBoolean } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isBoolean(true), true)
+ * assert.strictEqual(isBoolean(true), true)
+ * assert.strictEqual(isBoolean(false), true)
  *
- * assert.deepStrictEqual(isBoolean("true"), false)
+ * assert.strictEqual(isBoolean("true"), false)
+ * assert.strictEqual(isBoolean(0), false)
  * ```
  *
  * @category guards
@@ -262,16 +376,17 @@ export const isNumber = (input: unknown): input is number => typeof input === "n
 export const isBoolean = (input: unknown): input is boolean => typeof input === "boolean"
 
 /**
- * Tests if a value is a `bigint`.
+ * A refinement that checks if a value is a `bigint`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isBigInt } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isBigInt(1n), true)
+ * assert.strictEqual(isBigInt(1n), true)
  *
- * assert.deepStrictEqual(isBigInt(1), false)
+ * assert.strictEqual(isBigInt(1), false)
+ * assert.strictEqual(isBigInt("1"), false)
  * ```
  *
  * @category guards
@@ -280,16 +395,16 @@ export const isBoolean = (input: unknown): input is boolean => typeof input === 
 export const isBigInt = (input: unknown): input is bigint => typeof input === "bigint"
 
 /**
- * Tests if a value is a `symbol`.
+ * A refinement that checks if a value is a `symbol`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isSymbol } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isSymbol(Symbol.for("a")), true)
+ * assert.strictEqual(isSymbol(Symbol.for("a")), true)
  *
- * assert.deepStrictEqual(isSymbol("a"), false)
+ * assert.strictEqual(isSymbol("a"), false)
  * ```
  *
  * @category guards
@@ -298,20 +413,24 @@ export const isBigInt = (input: unknown): input is bigint => typeof input === "b
 export const isSymbol = (input: unknown): input is symbol => typeof input === "symbol"
 
 // TODO: make public
-/** @internal */
+/**
+ * A refinement that checks if a value is a valid `PropertyKey` (a `string`, `number`, or `symbol`).
+ * @internal
+ */
 export const isPropertyKey = (u: unknown): u is PropertyKey => isString(u) || isNumber(u) || isSymbol(u)
 
 /**
- * Tests if a value is a `function`.
+ * A refinement that checks if a value is a `Function`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isFunction } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isFunction(isFunction), true)
+ * assert.strictEqual(isFunction(() => {}), true)
+ * assert.strictEqual(isFunction(isFunction), true)
  *
- * assert.deepStrictEqual(isFunction("function"), false)
+ * assert.strictEqual(isFunction("function"), false)
  * ```
  *
  * @category guards
@@ -320,17 +439,17 @@ export const isPropertyKey = (u: unknown): u is PropertyKey => isString(u) || is
 export const isFunction: (input: unknown) => input is Function = isFunction_
 
 /**
- * Tests if a value is `undefined`.
+ * A refinement that checks if a value is `undefined`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isUndefined } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isUndefined(undefined), true)
+ * assert.strictEqual(isUndefined(undefined), true)
  *
- * assert.deepStrictEqual(isUndefined(null), false)
- * assert.deepStrictEqual(isUndefined("undefined"), false)
+ * assert.strictEqual(isUndefined(null), false)
+ * assert.strictEqual(isUndefined("undefined"), false)
  * ```
  *
  * @category guards
@@ -339,17 +458,17 @@ export const isFunction: (input: unknown) => input is Function = isFunction_
 export const isUndefined = (input: unknown): input is undefined => input === undefined
 
 /**
- * Tests if a value is not `undefined`.
+ * A refinement that checks if a value is not `undefined`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNotUndefined } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNotUndefined(null), true)
- * assert.deepStrictEqual(isNotUndefined("undefined"), true)
+ * assert.strictEqual(isNotUndefined(null), true)
+ * assert.strictEqual(isNotUndefined("value"), true)
  *
- * assert.deepStrictEqual(isNotUndefined(undefined), false)
+ * assert.strictEqual(isNotUndefined(undefined), false)
  * ```
  *
  * @category guards
@@ -358,17 +477,17 @@ export const isUndefined = (input: unknown): input is undefined => input === und
 export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => input !== undefined
 
 /**
- * Tests if a value is `null`.
+ * A refinement that checks if a value is `null`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNull } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNull(null), true)
+ * assert.strictEqual(isNull(null), true)
  *
- * assert.deepStrictEqual(isNull(undefined), false)
- * assert.deepStrictEqual(isNull("null"), false)
+ * assert.strictEqual(isNull(undefined), false)
+ * assert.strictEqual(isNull("null"), false)
  * ```
  *
  * @category guards
@@ -377,17 +496,17 @@ export const isNotUndefined = <A>(input: A): input is Exclude<A, undefined> => i
 export const isNull = (input: unknown): input is null => input === null
 
 /**
- * Tests if a value is not `null`.
+ * A refinement that checks if a value is not `null`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNotNull } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNotNull(undefined), true)
- * assert.deepStrictEqual(isNotNull("null"), true)
+ * assert.strictEqual(isNotNull(undefined), true)
+ * assert.strictEqual(isNotNull("value"), true)
  *
- * assert.deepStrictEqual(isNotNull(null), false)
+ * assert.strictEqual(isNotNull(null), false)
  * ```
  *
  * @category guards
@@ -396,17 +515,16 @@ export const isNull = (input: unknown): input is null => input === null
 export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== null
 
 /**
- * A guard that always fails.
+ * A refinement that always returns `false`. The type is narrowed to `never`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNever } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNever(null), false)
- * assert.deepStrictEqual(isNever(undefined), false)
- * assert.deepStrictEqual(isNever({}), false)
- * assert.deepStrictEqual(isNever([]), false)
+ * assert.strictEqual(isNever(1), false)
+ * assert.strictEqual(isNever(null), false)
+ * assert.strictEqual(isNever({}), false)
  * ```
  *
  * @category guards
@@ -415,18 +533,16 @@ export const isNotNull = <A>(input: A): input is Exclude<A, null> => input !== n
 export const isNever: (input: unknown) => input is never = (_: unknown): _ is never => false
 
 /**
- * A guard that always succeeds.
+ * A refinement that always returns `true`. The type is narrowed to `unknown`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isUnknown } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isUnknown(null), true)
- * assert.deepStrictEqual(isUnknown(undefined), true)
- *
- * assert.deepStrictEqual(isUnknown({}), true)
- * assert.deepStrictEqual(isUnknown([]), true)
+ * assert.strictEqual(isUnknown(1), true)
+ * assert.strictEqual(isUnknown(null), true)
+ * assert.strictEqual(isUnknown({}), true)
  * ```
  *
  * @category guards
@@ -434,32 +550,54 @@ export const isNever: (input: unknown) => input is never = (_: unknown): _ is ne
  */
 export const isUnknown: (input: unknown) => input is unknown = (_): _ is unknown => true
 
-/** @internal */
+/**
+ * Checks if the input is an object or an array.
+ * @internal
+ */
 export const isRecordOrArray = (input: unknown): input is { [x: PropertyKey]: unknown } =>
   typeof input === "object" && input !== null
 
 /**
- * Tests if a value is an `object`.
+ * A refinement that checks if a value is an `object`. Note that in JavaScript,
+ * arrays and functions are also considered objects.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isObject } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isObject({}), true)
- * assert.deepStrictEqual(isObject([]), true)
+ * assert.strictEqual(isObject({}), true)
+ * assert.strictEqual(isObject([]), true)
+ * assert.strictEqual(isObject(() => {}), true)
  *
- * assert.deepStrictEqual(isObject(null), false)
- * assert.deepStrictEqual(isObject(undefined), false)
+ * assert.strictEqual(isObject(null), false)
+ * assert.strictEqual(isObject("hello"), false)
  * ```
  *
  * @category guards
  * @since 2.0.0
+ * @see isRecord to check for plain objects (excluding arrays and functions).
  */
 export const isObject = (input: unknown): input is object => isRecordOrArray(input) || isFunction(input)
 
 /**
- * Checks whether a value is an `object` containing a specified property key.
+ * A refinement that checks if a value is an object-like value and has a specific property key.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { hasProperty } from "effect/Predicate"
+ *
+ * assert.strictEqual(hasProperty({ a: 1 }, "a"), true)
+ * assert.strictEqual(hasProperty({ a: 1 }, "b"), false)
+ *
+ * const value: unknown = { name: "Alice" };
+ * if (hasProperty(value, "name")) {
+ *   // The type of `value` is narrowed to `{ name: unknown }`
+ *   // and we can safely access `value.name`
+ *   console.log(value.name)
+ * }
+ * ```
  *
  * @category guards
  * @since 2.0.0
@@ -474,19 +612,29 @@ export const hasProperty: {
 )
 
 /**
- * Tests if a value is an `object` with a property `_tag` that matches the given tag.
+ * A refinement that checks if a value is an object with a `_tag` property
+ * that matches the given tag. This is a powerful tool for working with
+ * discriminated union types.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isTagged } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isTagged(1, "a"), false)
- * assert.deepStrictEqual(isTagged(null, "a"), false)
- * assert.deepStrictEqual(isTagged({}, "a"), false)
- * assert.deepStrictEqual(isTagged({ a: "a" }, "a"), false)
- * assert.deepStrictEqual(isTagged({ _tag: "a" }, "a"), true)
- * assert.deepStrictEqual(isTagged("a")({ _tag: "a" }), true)
+ * type Shape = { _tag: "circle"; radius: number } | { _tag: "square"; side: number }
+ *
+ * const isCircle = isTagged("circle")
+ *
+ * const shape1: Shape = { _tag: "circle", radius: 10 }
+ * const shape2: Shape = { _tag: "square", side: 5 }
+ *
+ * assert.strictEqual(isCircle(shape1), true)
+ * assert.strictEqual(isCircle(shape2), false)
+ *
+ * if (isCircle(shape1)) {
+ *   // shape1 is now narrowed to { _tag: "circle"; radius: number }
+ *   assert.strictEqual(shape1.radius, 10)
+ * }
  * ```
  *
  * @category guards
@@ -501,57 +649,61 @@ export const isTagged: {
 )
 
 /**
- * A guard that succeeds when the input is `null` or `undefined`.
+ * A refinement that checks if a value is either `null` or `undefined`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNullable } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNullable(null), true)
- * assert.deepStrictEqual(isNullable(undefined), true)
+ * assert.strictEqual(isNullable(null), true)
+ * assert.strictEqual(isNullable(undefined), true)
  *
- * assert.deepStrictEqual(isNullable({}), false)
- * assert.deepStrictEqual(isNullable([]), false)
+ * assert.strictEqual(isNullable(0), false)
+ * assert.strictEqual(isNullable(""), false)
  * ```
  *
  * @category guards
  * @since 2.0.0
+ * @see isNotNullable
  */
 export const isNullable = <A>(input: A): input is Extract<A, null | undefined> => input === null || input === undefined
 
 /**
- * A guard that succeeds when the input is not `null` or `undefined`.
+ * A refinement that checks if a value is neither `null` nor `undefined`.
+ * The type is narrowed to `NonNullable<A>`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isNotNullable } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isNotNullable({}), true)
- * assert.deepStrictEqual(isNotNullable([]), true)
+ * assert.strictEqual(isNotNullable(0), true)
+ * assert.strictEqual(isNotNullable("hello"), true)
  *
- * assert.deepStrictEqual(isNotNullable(null), false)
- * assert.deepStrictEqual(isNotNullable(undefined), false)
+ * assert.strictEqual(isNotNullable(null), false)
+ * assert.strictEqual(isNotNullable(undefined), false)
  * ```
  *
  * @category guards
  * @since 2.0.0
+ * @see isNullable
  */
 export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !== null && input !== undefined
 
 /**
- * A guard that succeeds when the input is an `Error`.
+ * A refinement that checks if a value is an instance of `Error`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isError } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isError(new Error()), true)
+ * assert.strictEqual(isError(new Error("boom")), true)
+ * assert.strictEqual(isError(new TypeError("boom")), true)
  *
- * assert.deepStrictEqual(isError(null), false)
- * assert.deepStrictEqual(isError({}), false)
+ * assert.strictEqual(isError({ message: "boom" }), false)
+ * assert.strictEqual(isError("boom"), false)
  * ```
  *
  * @category guards
@@ -560,17 +712,17 @@ export const isNotNullable = <A>(input: A): input is NonNullable<A> => input !==
 export const isError = (input: unknown): input is Error => input instanceof Error
 
 /**
- * A guard that succeeds when the input is a `Uint8Array`.
+ * A refinement that checks if a value is a `Uint8Array`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isUint8Array } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isUint8Array(new Uint8Array()), true)
+ * assert.strictEqual(isUint8Array(new Uint8Array()), true)
  *
- * assert.deepStrictEqual(isUint8Array(null), false)
- * assert.deepStrictEqual(isUint8Array({}), false)
+ * assert.strictEqual(isUint8Array(new Uint16Array()), false)
+ * assert.strictEqual(isUint8Array([1, 2, 3]), false)
  * ```
  *
  * @category guards
@@ -579,17 +731,17 @@ export const isError = (input: unknown): input is Error => input instanceof Erro
 export const isUint8Array = (input: unknown): input is Uint8Array => input instanceof Uint8Array
 
 /**
- * A guard that succeeds when the input is a `Date`.
+ * A refinement that checks if a value is a `Date` object.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isDate } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isDate(new Date()), true)
+ * assert.strictEqual(isDate(new Date()), true)
  *
- * assert.deepStrictEqual(isDate(null), false)
- * assert.deepStrictEqual(isDate({}), false)
+ * assert.strictEqual(isDate(Date.now()), false) // `Date.now()` returns a number
+ * assert.strictEqual(isDate("2023-01-01"), false)
  * ```
  *
  * @category guards
@@ -598,18 +750,20 @@ export const isUint8Array = (input: unknown): input is Uint8Array => input insta
 export const isDate = (input: unknown): input is Date => input instanceof Date
 
 /**
- * A guard that succeeds when the input is an `Iterable`.
+ * A refinement that checks if a value is an `Iterable`.
+ * Many built-in types are iterable, such as `Array`, `string`, `Map`, and `Set`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isIterable } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isIterable([]), true)
- * assert.deepStrictEqual(isIterable(new Set()), true)
+ * assert.strictEqual(isIterable([]), true)
+ * assert.strictEqual(isIterable("hello"), true)
+ * assert.strictEqual(isIterable(new Set()), true)
  *
- * assert.deepStrictEqual(isIterable(null), false)
- * assert.deepStrictEqual(isIterable({}), false)
+ * assert.strictEqual(isIterable({}), false)
+ * assert.strictEqual(isIterable(123), false)
  * ```
  *
  * @category guards
@@ -618,44 +772,46 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
 export const isIterable = (input: unknown): input is Iterable<unknown> => hasProperty(input, Symbol.iterator)
 
 /**
- * A guard that succeeds when the input is a record.
+ * A refinement that checks if a value is a record (i.e., a plain object).
+ * This check returns `false` for arrays, `null`, and functions.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isRecord } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isRecord({}), true)
- * assert.deepStrictEqual(isRecord({ a: 1 }), true)
+ * assert.strictEqual(isRecord({}), true)
+ * assert.strictEqual(isRecord({ a: 1 }), true)
  *
- * assert.deepStrictEqual(isRecord([]), false)
- * assert.deepStrictEqual(isRecord([1, 2, 3]), false)
- * assert.deepStrictEqual(isRecord(null), false)
- * assert.deepStrictEqual(isRecord(undefined), false)
- * assert.deepStrictEqual(isRecord(() => null), false)
+ * assert.strictEqual(isRecord([]), false)
+ * assert.strictEqual(isRecord(new Date()), false)
+ * assert.strictEqual(isRecord(null), false)
+ * assert.strictEqual(isRecord(() => null), false)
  * ```
  *
  * @category guards
  * @since 2.0.0
+ * @see isObject
  */
 export const isRecord = (input: unknown): input is { [x: string | symbol]: unknown } =>
   isRecordOrArray(input) && !Array.isArray(input)
 
 /**
- * A guard that succeeds when the input is a readonly record.
+ * A refinement that checks if a value is a readonly record (i.e., a plain object).
+ * This check returns `false` for arrays, `null`, and functions.
+ *
+ * This is an alias for `isRecord`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isReadonlyRecord } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isReadonlyRecord({}), true)
- * assert.deepStrictEqual(isReadonlyRecord({ a: 1 }), true)
+ * assert.strictEqual(isReadonlyRecord({}), true)
+ * assert.strictEqual(isReadonlyRecord({ a: 1 }), true)
  *
- * assert.deepStrictEqual(isReadonlyRecord([]), false)
- * assert.deepStrictEqual(isReadonlyRecord([1, 2, 3]), false)
- * assert.deepStrictEqual(isReadonlyRecord(null), false)
- * assert.deepStrictEqual(isReadonlyRecord(undefined), false)
+ * assert.strictEqual(isReadonlyRecord([]), false)
+ * assert.strictEqual(isReadonlyRecord(null), false)
  * ```
  *
  * @category guards
@@ -666,19 +822,24 @@ export const isReadonlyRecord: (
 ) => input is { readonly [x: string | symbol]: unknown } = isRecord
 
 /**
- * A guard that succeeds when the input is a Promise.
+ * A refinement that checks if a value is a `Promise`. It performs a duck-typing check
+ * for `.then` and `.catch` methods.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { isPromise } from "effect/Predicate"
  *
- * assert.deepStrictEqual(isPromise({}), false)
- * assert.deepStrictEqual(isPromise(Promise.resolve("hello")), true)
+ * assert.strictEqual(isPromise(Promise.resolve(1)), true)
+ * assert.strictEqual(isPromise(new Promise(() => {})), true)
+ *
+ * assert.strictEqual(isPromise({ then() {} }), false) // Missing .catch
+ * assert.strictEqual(isPromise({}), false)
  * ```
  *
  * @category guards
  * @since 2.0.0
+ * @see isPromiseLike
  */
 export const isPromise = (
   input: unknown
@@ -686,23 +847,40 @@ export const isPromise = (
   hasProperty(input, "then") && "catch" in input && isFunction(input.then) && isFunction(input.catch)
 
 /**
+ * A refinement that checks if a value is `PromiseLike`. It performs a duck-typing
+ * check for a `.then` method.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { isPromiseLike } from "effect/Predicate"
+ *
+ * assert.strictEqual(isPromiseLike(Promise.resolve(1)), true)
+ * assert.strictEqual(isPromiseLike({ then: () => {} }), true)
+ *
+ * assert.strictEqual(isPromiseLike({}), false)
+ * ```
+ *
  * @category guards
  * @since 2.0.0
+ * @see isPromise
  */
 export const isPromiseLike = (
   input: unknown
 ): input is PromiseLike<unknown> => hasProperty(input, "then") && isFunction(input.then)
 
 /**
- * Tests if a value is a `RegExp`.
+ * A refinement that checks if a value is a `RegExp`.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
- * assert.deepStrictEqual(Predicate.isRegExp(/a/), true)
- * assert.deepStrictEqual(Predicate.isRegExp("a"), false)
+ * assert.strictEqual(Predicate.isRegExp(/a/), true)
+ * assert.strictEqual(Predicate.isRegExp(new RegExp("a")), true)
+ *
+ * assert.strictEqual(Predicate.isRegExp("/a/"), false)
  * ```
  *
  * @category guards
@@ -711,6 +889,33 @@ export const isPromiseLike = (
 export const isRegExp = (input: unknown): input is RegExp => input instanceof RegExp
 
 /**
+ * Composes a `Refinement` with another `Refinement` or `Predicate`.
+ *
+ * This can be used to chain checks. The first refinement is applied, and if it
+ * passes, the second check is applied to the same value, potentially refining
+ * the type further.
+ *
+ * @example
+ * ```ts
+ * import { Predicate } from "effect"
+ * import * as assert from "node:assert"
+ *
+ * const isString = (u: unknown): u is string => typeof u === "string"
+ * const minLength = (n: number) => (s: string): boolean => s.length >= n
+ *
+ * // Create a refinement that checks for a string with a minimum length of 3
+ * const isLongString = Predicate.compose(isString, minLength(3))
+ *
+ * let value: unknown = "hello"
+ *
+ * assert.strictEqual(isLongString(value), true)
+ * if (isLongString(value)) {
+ *   // value is narrowed to string
+ *   assert.strictEqual(value.toUpperCase(), "HELLO")
+ * }
+ * assert.strictEqual(isLongString("hi"), false)
+ * ```
+ *
  * @since 2.0.0
  */
 export const compose: {
@@ -725,6 +930,9 @@ export const compose: {
 )
 
 /**
+ * Combines two predicates to test a tuple of two values. The first predicate tests the
+ * first element of the tuple, and the second predicate tests the second element.
+ *
  * @category combining
  * @since 2.0.0
  */
@@ -733,8 +941,14 @@ export const product =
   ([a, b]) => self(a) && that(b)
 
 /**
+ * Takes an iterable of predicates and returns a new predicate that tests an array of values.
+ * The new predicate returns `true` if each predicate at a given index is satisfied by the
+ * value at the same index in the array. The check stops at the length of the shorter of
+ * the two iterables (predicates or values).
+ *
  * @category combining
  * @since 2.0.0
+ * @see tuple for a more powerful, variadic version.
  */
 export const all = <A>(
   collection: Iterable<Predicate<A>>
@@ -755,6 +969,9 @@ export const all = <A>(
 }
 
 /**
+ * Combines a predicate for a single value and an iterable of predicates for the rest of an array.
+ * Useful for checking the head and tail of an array separately.
+ *
  * @category combining
  * @since 2.0.0
  */
@@ -767,12 +984,33 @@ export const productMany = <A>(
 }
 
 /**
- * Similar to `Promise.all` but operates on `Predicate`s.
+ * Combines an array of predicates into a single predicate that tests an array of values.
+ * This function is highly type-aware and will produce a `Refinement` if any of the provided
+ * predicates are `Refinement`s, allowing for powerful type-narrowing of tuples.
  *
- * ```ts skip-type-checking
- * [Refinement<A, B>, Refinement<C, D>, ...] -> Refinement<[A, C, ...], [B, D, ...]>
- * [Predicate<A>, Predicate<B>, ...] -> Predicate<[A, B, ...]>
- * [Refinement<A, B>, Predicate<C>, ...] -> Refinement<[A, C, ...], [B, C, ...]>
+ * - If all predicates are `Predicate<T>`, the result is `Predicate<[T, T, ...]>`.
+ * - If any predicate is a `Refinement<A, B>`, the result is a `Refinement` that narrows
+ *   the input tuple type to a more specific tuple type.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Predicate } from "effect"
+ *
+ * const isString = (u: unknown): u is string => typeof u === "string"
+ * const isNumber = (u: unknown): u is number => typeof u === "number"
+ *
+ * // Create a refinement for a [string, number] tuple
+ * const isStringNumberTuple = Predicate.tuple(isString, isNumber)
+ *
+ * const value: [unknown, unknown] = ["hello", 123]
+ * if (isStringNumberTuple(value)) {
+ *   // value is narrowed to [string, number]
+ *   const [s, n] = value
+ *   assert.strictEqual(s.toUpperCase(), "HELLO")
+ *   assert.strictEqual(n.toFixed(2), "123.00")
+ * }
+ * assert.strictEqual(isStringNumberTuple(["hello", "123"]), false)
  * ```
  *
  * @since 2.0.0
@@ -788,10 +1026,34 @@ export const tuple: {
 } = (...elements: ReadonlyArray<Predicate.Any>) => all(elements) as any
 
 /**
- * ```ts skip-type-checking
- * { ab: Refinement<A, B>; cd: Refinement<C, D>, ... } -> Refinement<{ ab: A; cd: C; ... }, { ab: B; cd: D; ... }>
- * { a: Predicate<A, B>; b: Predicate<B>, ... } -> Predicate<{ a: A; b: B; ... }>
- * { ab: Refinement<A, B>; c: Predicate<C>, ... } -> Refinement<{ ab: A; c: C; ... }, { ab: B; c: С; ... }>
+ * Combines a record of predicates into a single predicate that tests a record of values.
+ * This function is highly type-aware and will produce a `Refinement` if any of the provided
+ * predicates are `Refinement`s, allowing for powerful type-narrowing of structs.
+ *
+ * - If all predicates are `Predicate<T>`, the result is `Predicate<{ k: T, ... }>`.
+ * - If any predicate is a `Refinement<A, B>`, the result is a `Refinement` that narrows
+ *   the input record type to a more specific record type.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Predicate } from "effect"
+ *
+ * const isString = (u: unknown): u is string => typeof u === "string"
+ * const isNumber = (u: unknown): u is number => typeof u === "number"
+ *
+ * const personPredicate = Predicate.struct({
+ *   name: isString,
+ *   age: isNumber
+ * })
+ *
+ * const value: { name: unknown; age: unknown } = { name: "Alice", age: 30 }
+ * if (personPredicate(value)) {
+ *   // value is narrowed to { name: string; age: number }
+ *   assert.strictEqual(value.name.toUpperCase(), "ALICE")
+ *   assert.strictEqual(value.age.toFixed(0), "30")
+ * }
+ * assert.strictEqual(personPredicate({ name: "Bob", age: "40" }), false)
  * ```
  *
  * @since 2.0.0
@@ -818,18 +1080,21 @@ export const struct: {
 }) as any
 
 /**
- * Negates the result of a given predicate.
+ * Returns a new predicate that is the logical negation of the given predicate.
+ *
+ * **Note**: If the input is a `Refinement`, the resulting predicate will be a
+ * simple `Predicate`, as TypeScript cannot infer the negative type.
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { Predicate, Number } from "effect"
  *
- * const isPositive = Predicate.not(Number.lessThan(0))
+ * const isNonPositive = Predicate.not(Number.greaterThan(0))
  *
- * assert.deepStrictEqual(isPositive(-1), false)
- * assert.deepStrictEqual(isPositive(0), true)
- * assert.deepStrictEqual(isPositive(1), true)
+ * assert.strictEqual(isNonPositive(-1), true)
+ * assert.strictEqual(isNonPositive(0), true)
+ * assert.strictEqual(isNonPositive(1), false)
  * ```
  *
  * @category combinators
@@ -838,18 +1103,31 @@ export const struct: {
 export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
 
 /**
- * Combines two predicates into a new predicate that returns `true` if at least one of the predicates returns `true`.
+ * Combines two predicates with a logical "OR". The resulting predicate returns `true`
+ * if at least one of the predicates returns `true`.
+ *
+ * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+ * union of their target types (`B | C`).
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
- * import { Predicate, Number } from "effect"
+ * import { Predicate } from "effect"
  *
- * const nonZero = Predicate.or(Number.lessThan(0), Number.greaterThan(0))
+ * const isString = (u: unknown): u is string => typeof u === "string"
+ * const isNumber = (u: unknown): u is number => typeof u === "number"
  *
- * assert.deepStrictEqual(nonZero(-1), true)
- * assert.deepStrictEqual(nonZero(0), false)
- * assert.deepStrictEqual(nonZero(1), true)
+ * const isStringOrNumber = Predicate.or(isString, isNumber)
+ *
+ * assert.strictEqual(isStringOrNumber("hello"), true)
+ * assert.strictEqual(isStringOrNumber(123), true)
+ * assert.strictEqual(isStringOrNumber(null), false)
+ *
+ * const value: unknown = "world"
+ * if (isStringOrNumber(value)) {
+ *   // value is narrowed to string | number
+ *   console.log(value)
+ * }
  * ```
  *
  * @category combinators
@@ -863,21 +1141,34 @@ export const or: {
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) || that(a))
 
 /**
- * Combines two predicates into a new predicate that returns `true` if both of the predicates returns `true`.
+ * Combines two predicates with a logical "AND". The resulting predicate returns `true`
+ * only if both of the predicates return `true`.
+ *
+ * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+ * intersection of their target types (`B & C`).
  *
  * @example
  * ```ts
  * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
- * const minLength = (n: number) => (s: string) => s.length >= n
- * const maxLength = (n: number) => (s: string) => s.length <= n
+ * type Person = { name: string }
+ * type Employee = { id: number }
  *
- * const length = (n: number) => Predicate.and(minLength(n), maxLength(n))
+ * const hasName = (u: unknown): u is Person => Predicate.hasProperty(u, "name") && typeof (u as any).name === "string"
+ * const hasId = (u: unknown): u is Employee => Predicate.hasProperty(u, "id") && typeof (u as any).id === "number"
  *
- * assert.deepStrictEqual(length(2)("aa"), true)
- * assert.deepStrictEqual(length(2)("a"), false)
- * assert.deepStrictEqual(length(2)("aaa"), false)
+ * const isPersonAndEmployee = Predicate.and(hasName, hasId)
+ *
+ * const val: unknown = { name: "Alice", id: 123 }
+ * if (isPersonAndEmployee(val)) {
+ *   // val is narrowed to Person & Employee
+ *   assert.strictEqual(val.name, "Alice")
+ *   assert.strictEqual(val.id, 123)
+ * }
+ *
+ * assert.strictEqual(isPersonAndEmployee({ name: "Bob" }), false) // Missing id
+ * assert.strictEqual(isPersonAndEmployee({ id: 456 }), false) // Missing name
  * ```
  *
  * @category combinators
@@ -891,6 +1182,25 @@ export const and: {
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) && that(a))
 
 /**
+ * Combines two predicates with a logical "XOR" (exclusive OR). The resulting predicate
+ * returns `true` if one of the predicates returns `true`, but not both.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Predicate } from "effect"
+ *
+ * const isPositive = (n: number) => n > 0
+ * const isEven = (n: number) => n % 2 === 0
+ *
+ * const isPositiveXorEven = Predicate.xor(isPositive, isEven)
+ *
+ * assert.strictEqual(isPositiveXorEven(4), false)  // both true -> false
+ * assert.strictEqual(isPositiveXorEven(3), true)   // one true -> true
+ * assert.strictEqual(isPositiveXorEven(-2), true)  // one true -> true
+ * assert.strictEqual(isPositiveXorEven(-1), false) // both false -> false
+ * ```
+ *
  * @category combinators
  * @since 2.0.0
  */
@@ -900,6 +1210,25 @@ export const xor: {
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) !== that(a))
 
 /**
+ * Combines two predicates with a logical "EQV" (equivalence). The resulting predicate
+ * returns `true` if both predicates return the same boolean value (both `true` or both `false`).
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Predicate } from "effect"
+ *
+ * const isPositive = (n: number) => n > 0
+ * const isEven = (n: number) => n % 2 === 0
+ *
+ * const isPositiveEqvEven = Predicate.eqv(isPositive, isEven)
+ *
+ * assert.strictEqual(isPositiveEqvEven(4), true)   // both true -> true
+ * assert.strictEqual(isPositiveEqvEven(3), false)  // different -> false
+ * assert.strictEqual(isPositiveEqvEven(-2), false) // different -> false
+ * assert.strictEqual(isPositiveEqvEven(-1), true)  // both false -> true
+ * ```
+ *
  * @category combinators
  * @since 2.0.0
  */
@@ -909,47 +1238,59 @@ export const eqv: {
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) === that(a))
 
 /**
- * Represents the logical implication combinator for predicates. In formal
- * logic, the implication operator `->` denotes that if the first proposition
- * (antecedent) is true, then the second proposition (consequent) must also be
- * true. In simpler terms, `p implies q` can be interpreted as "if p then q". If
- * the first predicate holds, then the second predicate must hold
- * for the given context.
+ * Creates a predicate that represents a logical "if-then" rule.
  *
- * In practical terms within TypeScript, `p implies q` is equivalent to `!p || (p && q)`.
+ * Think of it as a conditional promise: **"If `antecedent` holds true, then I promise `consequent` will also be true."**
  *
- * Note that if the antecedent is `false`, the result is `true` by default
- * because the outcome of the consequent cannot be determined.
+ * This function is invaluable for defining complex validation logic where one condition dictates another.
  *
- * This function is useful in situations where you need to enforce rules or
- * constraints that are contingent on certain conditions.
- * It proves especially helpful in defining property tests.
+ * ### How It Works
  *
- * The example below illustrates the transitive property of order using the
- * `implies` function. In simple terms, if `a <= b` and `b <= c`, then `a <= c`
- * must be true.
+ * The rule only fails (returns `false`) when the "if" part is `true`, but the "then" part is `false`.
+ * In all other cases, the promise is considered kept, and the result is `true`.
+ *
+ * This includes the concept of **"vacuous truth"**: if the "if" part is `false`, the rule doesn't apply,
+ * so the promise isn't broken, and the result is `true`. (e.g., "If it rains, I'll bring an umbrella."
+ * If it doesn't rain, you haven't broken your promise, no matter what).
+ *
+ * ### Key Details
+ *
+ * - **Logical Equivalence**: `implies(p, q)` is the same as `not(p).or(q)`, or simply `!p || q`
+ *   in plain JavaScript. This can be a helpful way to reason about its behavior.
+ *
+ * - **Type-Safety Warning**: This function always returns a `Predicate`, never a type-narrowing
+ *   `Refinement`. A `true` result doesn't guarantee the `consequent` passed (it could be `true`
+ *   simply because the `antecedent` was `false`), so it cannot be used to safely narrow a type.
  *
  * @example
  * ```ts
+ * // Rule: A user can only be an admin if they also belong to the "staff" group.
  * import * as assert from "node:assert"
  * import { Predicate } from "effect"
  *
- * type Triple = {
- *   readonly a: number
- *   readonly b: number
- *   readonly c: number
+ * type User = {
+ *   isStaff: boolean
+ *   isAdmin: boolean
  * }
  *
- * const transitivity = Predicate.implies(
- *   // antecedent
- *   (input: Triple) => input.a <= input.b && input.b <= input.c,
- *   // consequent
- *   (input: Triple) => input.a <= input.c
+ * const isValidUserPermission = Predicate.implies(
+ *   // antecedent: "if" the user is an admin...
+ *   (user: User) => user.isAdmin,
+ *   // consequent: "then" they must be staff.
+ *   (user: User) => user.isStaff
  * )
  *
- * assert.equal(transitivity({ a: 1, b: 2, c: 3 }), true)
- * // antecedent is `false`, so the result is `true`
- * assert.equal(transitivity({ a: 1, b: 0, c: 0 }), true)
+ * // A non-admin who is not staff. Rule doesn't apply (antecedent is false).
+ * assert.strictEqual(isValidUserPermission({ isStaff: false, isAdmin: false }), true)
+ *
+ * // A staff member who is not an admin. Rule doesn't apply (antecedent is false).
+ * assert.strictEqual(isValidUserPermission({ isStaff: true, isAdmin: false }), true)
+ *
+ * // An admin who is also staff. The rule was followed.
+ * assert.strictEqual(isValidUserPermission({ isStaff: true, isAdmin: true }), true)
+ *
+ * // An admin who is NOT staff. The rule was broken!
+ * assert.strictEqual(isValidUserPermission({ isStaff: false, isAdmin: true }), false)
  * ```
  *
  * @category combinators
@@ -964,6 +1305,10 @@ export const implies: {
 )
 
 /**
+ * Combines two predicates with a logical "NOR" (negated OR). The resulting predicate
+ * returns `true` only if both predicates return `false`.
+ * This is equivalent to `not(or(p, q))`.
+ *
  * @category combinators
  * @since 2.0.0
  */
@@ -976,6 +1321,10 @@ export const nor: {
 )
 
 /**
+ * Combines two predicates with a logical "NAND" (negated AND). The resulting predicate
+ * returns `true` if at least one of the predicates returns `false`.
+ * This is equivalent to `not(and(p, q))`.
+ *
  * @category combinators
  * @since 2.0.0
  */
@@ -988,8 +1337,29 @@ export const nand: {
 )
 
 /**
+ * Takes an iterable of predicates and returns a new predicate. The new predicate
+ * returns `true` if all predicates in the collection return `true` for a given value.
+ *
+ * This is like `Array.prototype.every` but for a collection of predicates.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Predicate } from "effect"
+ *
+ * const isPositive = (n: number) => n > 0
+ * const isEven = (n: number) => n % 2 === 0
+ *
+ * const isPositiveAndEven = Predicate.every([isPositive, isEven])
+ *
+ * assert.strictEqual(isPositiveAndEven(4), true)
+ * assert.strictEqual(isPositiveAndEven(3), false)
+ * assert.strictEqual(isPositiveAndEven(-2), false)
+ * ```
+ *
  * @category elements
  * @since 2.0.0
+ * @see some
  */
 export const every = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a: A) => {
   for (const p of collection) {
@@ -1001,8 +1371,29 @@ export const every = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a
 }
 
 /**
+ * Takes an iterable of predicates and returns a new predicate. The new predicate
+ * returns `true` if at least one predicate in the collection returns `true` for a given value.
+ *
+ * This is like `Array.prototype.some` but for a collection of predicates.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Predicate } from "effect"
+ *
+ * const isNegative = (n: number) => n < 0
+ * const isOdd = (n: number) => n % 2 !== 0
+ *
+ * const isNegativeOrOdd = Predicate.some([isNegative, isOdd])
+ *
+ * assert.strictEqual(isNegativeOrOdd(-2), true) // isNegative is true
+ * assert.strictEqual(isNegativeOrOdd(3), true)  // isOdd is true
+ * assert.strictEqual(isNegativeOrOdd(4), false) // both are false
+ * ```
+ *
  * @category elements
  * @since 2.0.0
+ * @see every
  */
 export const some = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a) => {
   for (const p of collection) {
