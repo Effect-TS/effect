@@ -6,7 +6,7 @@ import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
-import * as Otel from "@opentelemetry/semantic-conventions"
+import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -130,10 +130,10 @@ export const make = (
       undefined
     const spanAttributes: ReadonlyArray<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-      [Otel.SEMATTRS_DB_SYSTEM, Otel.DBSYSTEMVALUES_MSSQL],
-      [Otel.SEMATTRS_DB_NAME, options.database ?? "master"],
-      ["server.address", options.server],
-      ["server.port", options.port ?? 1433]
+      [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_MICROSOFT_SQL_SERVER],
+      [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? "master"],
+      [OtelSemConv.ATTR_SERVER_ADDRESS, options.server],
+      [OtelSemConv.ATTR_SERVER_PORT, options.port ?? 1433]
     ]
 
     // eslint-disable-next-line prefer-const
