@@ -96,7 +96,7 @@ export declare namespace Predicate {
    * ```ts
    * import { type Predicate } from "effect"
    *
-   * type T = Predicate.In<Predicate.Predicate<string>> // T is string
+   * type T = Predicate.Predicate.In<Predicate.Predicate<string>> // T is string
    * ```
    *
    * @since 3.6.0
@@ -1003,10 +1003,10 @@ export const productMany = <A>(
  * // Create a refinement for a [string, number] tuple
  * const isStringNumberTuple = Predicate.tuple(isString, isNumber)
  *
- * const val1: unknown = ["hello", 123]
- * if (isStringNumberTuple(val1)) {
- *   // val1 is narrowed to [string, number]
- *   const [s, n] = val1
+ * const value: [unknown, unknown] = ["hello", 123]
+ * if (isStringNumberTuple(value)) {
+ *   // value is narrowed to [string, number]
+ *   const [s, n] = value
  *   assert.strictEqual(s.toUpperCase(), "HELLO")
  *   assert.strictEqual(n.toFixed(2), "123.00")
  * }
@@ -1047,11 +1047,11 @@ export const tuple: {
  *   age: isNumber
  * })
  *
- * const person: unknown = { name: "Alice", age: 30 }
- * if (personPredicate(person)) {
- *   // person is narrowed to { name: string; age: number }
- *   assert.strictEqual(person.name.toUpperCase(), "ALICE")
- *   assert.strictEqual(person.age.toFixed(0), "30")
+ * const value: { name: unknown; age: unknown } = { name: "Alice", age: 30 }
+ * if (personPredicate(value)) {
+ *   // value is narrowed to { name: string; age: number }
+ *   assert.strictEqual(value.name.toUpperCase(), "ALICE")
+ *   assert.strictEqual(value.age.toFixed(0), "30")
  * }
  * assert.strictEqual(personPredicate({ name: "Bob", age: "40" }), false)
  * ```

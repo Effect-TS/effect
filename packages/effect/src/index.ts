@@ -1089,6 +1089,21 @@ export * as Pipeable from "./Pipeable.js"
 export * as Pool from "./Pool.js"
 
 /**
+ * This module provides a collection of functions for working with predicates and refinements.
+ *
+ * A `Predicate<A>` is a function that takes a value of type `A` and returns a boolean.
+ * It is used to check if a value satisfies a certain condition.
+ *
+ * A `Refinement<A, B>` is a special type of predicate that not only checks a condition
+ * but also provides a type guard, allowing TypeScript to narrow the type of the input
+ * value from `A` to a more specific type `B` within a conditional block.
+ *
+ * The module includes:
+ * - Basic predicates and refinements for common types (e.g., `isString`, `isNumber`).
+ * - Combinators to create new predicates from existing ones (e.g., `and`, `or`, `not`).
+ * - Advanced combinators for working with data structures (e.g., `tuple`, `struct`).
+ * - Type-level utilities for inspecting predicate and refinement types.
+ *
  * @since 2.0.0
  */
 export * as Predicate from "./Predicate.js"
