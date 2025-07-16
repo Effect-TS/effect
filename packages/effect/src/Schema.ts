@@ -4085,7 +4085,7 @@ export const attachPropertySignature: {
     value: V,
     annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
   ): <I, R>(
-    schema: SchemaClass<A, I, R>
+    schema: Schema<A, I, R>
   ) => SchemaClass<Simplify<A & { readonly [k in K]: V }>, I, R>
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
