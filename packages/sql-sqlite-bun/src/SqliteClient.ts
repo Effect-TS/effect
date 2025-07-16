@@ -169,7 +169,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_SQLITE]
+          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv."sqlite"]
         ],
         transformRows
       })) as SqliteClient,

@@ -103,7 +103,7 @@ export class RedBlackTreeIterator<in out K, out V> implements Iterator<[K, V]> {
     }
     for (let s = stack.length - 2; s >= 0; --s) {
       if (stack[s + 1] === stack[s]!.right) {
-        ;++idx
+        ++idx
         if (stack[s]!.left != null) {
           idx += stack[s]!.left!.count
         }

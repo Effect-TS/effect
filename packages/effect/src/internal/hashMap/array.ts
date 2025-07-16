@@ -22,7 +22,7 @@ export function arraySpliceOut<A>(mutate: boolean, at: number, arr: Array<A>) {
     out = new Array(newLen)
     while (i < at) out[g++] = arr[i++]!
   }
-  ;++i
+  ++i
   while (i <= newLen) out[g++] = arr[i++]!
   if (mutate) {
     out.length = newLen

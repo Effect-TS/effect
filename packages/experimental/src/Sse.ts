@@ -143,7 +143,7 @@ export function makeParser(onParse: (event: AnyEvent) => void): Parser {
       // @todo but consider multiple chunks etc
       if (discardTrailingNewline) {
         if (buffer[position] === "\n") {
-          ;++position
+          ++position
         }
         discardTrailingNewline = false
       }
