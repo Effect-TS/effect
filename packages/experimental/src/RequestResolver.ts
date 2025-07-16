@@ -2,25 +2,22 @@
  * @since 1.0.0
  */
 import * as Arr from "effect/Array"
-import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
-import * as FiberHandle from "effect/FiberHandle"
+import * as Fiber from "effect/Fiber"
 import { dual, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
+import * as Runtime from "effect/Runtime"
 import type * as Schema from "effect/Schema"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Persistence from "./Persistence.js"
 
 interface DataLoaderItem<A extends Request.Request<any, any>> {
   readonly request: A
-  readonly deferred: Deferred.Deferred<
-    Request.Request.Success<A>,
-    Request.Request.Error<A>
-  >
+  readonly resume: (effect: Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>>) => void
 }
 
 /**
@@ -41,70 +38,71 @@ export const dataLoader = dual<
       readonly maxBatchSize?: number
     }
   ) => Effect.Effect<RequestResolver.RequestResolver<A, never>, never, Scope.Scope>
->(2, <A extends Request.Request<any, any>>(self: RequestResolver.RequestResolver<A, never>, options: {
-  readonly window: Duration.DurationInput
-  readonly maxBatchSize?: number
-}) =>
-  Effect.gen(function*() {
-    const scope = yield* Effect.scope
-    const handle = yield* FiberHandle.make<void, never>()
+>(
+  2,
+  Effect.fnUntraced(function*<
+    A extends Request.Request<any, any>
+  >(self: RequestResolver.RequestResolver<A, never>, options: {
+    readonly window: Duration.DurationInput
+    readonly maxBatchSize?: number
+  }) {
     const maxSize = options.maxBatchSize ?? Infinity
-    let batch = Arr.empty<DataLoaderItem<A>>()
-    const process = (items: ReadonlyArray<DataLoaderItem<A>>) =>
-      Effect.forEach(
-        items,
-        ({ deferred, request }) =>
-          Effect.request(request, self).pipe(
-            Effect.withRequestCaching(false),
-            Effect.exit,
-            Effect.flatMap((exit) => Deferred.done(deferred, exit))
-          ),
-        { batching: true, discard: true }
+    const scope = yield* Effect.scope
+    const runtime = yield* Effect.runtime<never>().pipe(
+      Effect.interruptible
+    )
+    const runFork = Runtime.runFork(runtime)
+
+    let batch = new Set<DataLoaderItem<A>>()
+    const process = (items: Iterable<DataLoaderItem<A>>) =>
+      Effect.withRequestCaching(
+        Effect.forEach(
+          items,
+          ({ request, resume }) =>
+            Effect.request(request, self).pipe(
+              Effect.exit,
+              Effect.map(resume)
+            ),
+          { batching: true, discard: true }
+        ),
+        false
       )
-    const loop: Effect.Effect<void> = Effect.suspend(() => {
-      if (batch.length === 0) {
-        return Effect.void
-      }
-      return Effect.sleep(options.window).pipe(
-        Effect.flatMap(() => {
-          const items = batch
-          batch = []
-          return Effect.forkIn(process(items), scope)
-        }),
-        Effect.zipRight(loop)
-      )
-    }).pipe(Effect.interruptible)
-    const runLoop = FiberHandle.run(handle, loop, { onlyIfMissing: true })
-    const runLoopReset = FiberHandle.run(handle, loop)
-    const run = Effect.suspend(() => {
-      if (batch.length > maxSize) {
-        const items = batch.splice(0, maxSize)
-        return runLoopReset.pipe(
-          Effect.zipRight(process(items)),
-          Effect.interruptible,
-          Effect.forkIn(scope)
-        )
-      }
-      return runLoop
-    }).pipe(Effect.uninterruptible)
-    return RequestResolver.fromEffect((request: A) =>
-      Effect.flatMap(Deferred.make<Request.Request.Success<A>, Request.Request.Error<A>>(), (deferred) => {
-        const item: DataLoaderItem<A> = { request, deferred }
-        batch.push(item)
-        return run.pipe(
-          Effect.zipRight(Deferred.await(deferred)),
-          Effect.onInterrupt(() =>
-            Effect.sync(() => {
-              const index = batch.indexOf(item)
-              if (index >= 0) {
-                batch.splice(index, 1)
-              }
-            })
-          )
-        )
+    const delayedProcess = Effect.sleep(options.window).pipe(
+      Effect.flatMap(() => {
+        const currentBatch = batch
+        batch = new Set()
+        fiber = undefined
+        return process(currentBatch)
       })
     )
-  }))
+
+    let fiber: Fiber.RuntimeFiber<void> | undefined
+    yield* Scope.addFinalizer(scope, Effect.suspend(() => fiber ? Fiber.interrupt(fiber) : Effect.void))
+
+    return RequestResolver.fromEffect((request: A) =>
+      Effect.async<Request.Request.Success<A>, Request.Request.Error<A>>((resume) => {
+        const item: DataLoaderItem<A> = { request, resume }
+        batch.add(item)
+        if (batch.size >= maxSize) {
+          const currentBatch = batch
+          batch = new Set()
+          if (fiber) {
+            const parent = Option.getOrThrow(Fiber.getCurrentFiber())
+            fiber.unsafeInterruptAsFork(parent.id())
+            fiber = undefined
+          }
+          runFork(process(currentBatch))
+        } else if (!fiber) {
+          fiber = runFork(delayedProcess)
+        }
+
+        return Effect.sync(() => {
+          batch.delete(item)
+        })
+      })
+    )
+  })
+)
 
 /**
  * @since 1.0.0
