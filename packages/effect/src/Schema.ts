@@ -4083,24 +4083,24 @@ export const attachPropertySignature: {
   <K extends PropertyKey, V extends AST.LiteralValue | symbol, A>(
     key: K,
     value: V,
-    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
+    annotations?: Annotations.Schema<A & { readonly [k in K]: V }>
   ): <I, R>(
-    schema: SchemaClass<A, I, R>
-  ) => SchemaClass<Simplify<A & { readonly [k in K]: V }>, I, R>
+    schema: Schema<A, I, R>
+  ) => SchemaClass<A & { readonly [k in K]: V }, I, R>
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
-  ): SchemaClass<Simplify<A & { readonly [k in K]: V }>, I, R>
+    annotations?: Annotations.Schema<A & { readonly [k in K]: V }>
+  ): SchemaClass<A & { readonly [k in K]: V }, I, R>
 } = dual(
   (args) => isSchema(args[0]),
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
     value: V,
-    annotations?: Annotations.Schema<Simplify<A & { readonly [k in K]: V }>>
-  ): SchemaClass<Simplify<A & { readonly [k in K]: V }>, I, R> => {
+    annotations?: Annotations.Schema<A & { readonly [k in K]: V }>
+  ): SchemaClass<A & { readonly [k in K]: V }, I, R> => {
     const ast = extend(
       typeSchema(schema),
       Struct({ [key]: Predicate.isSymbol(value) ? UniqueSymbolFromSelf(value) : Literal(value) })

@@ -292,9 +292,9 @@ describe("Schema Context", () => {
 
   it("attachPropertySignature", () => {
     expect(S.Struct({ a: aContext }).pipe(S.attachPropertySignature("_tag", "A")))
-      .type.toBe<S.SchemaClass<{ readonly a: string; readonly _tag: "A" }, { readonly a: string }, "aContext">>()
+      .type.toBe<S.SchemaClass<{ readonly a: string } & { readonly _tag: "A" }, { readonly a: string }, "aContext">>()
     expect(S.attachPropertySignature(S.Struct({ a: aContext }), "_tag", "A"))
-      .type.toBe<S.SchemaClass<{ readonly a: string; readonly _tag: "A" }, { readonly a: string }, "aContext">>()
+      .type.toBe<S.SchemaClass<{ readonly a: string } & { readonly _tag: "A" }, { readonly a: string }, "aContext">>()
   })
 
   it("annotations", () => {
