@@ -1277,6 +1277,7 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
   readonly stdin: Stream.Stream<Uint8Array, EIn, RIn>
   readonly stdout: Sink.Sink<void, Uint8Array | string, unknown, EOut, ROut>
 }) {
+  const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
   const serialization = yield* RpcSerialization.RpcSerialization
 
   return yield* Protocol.make(Effect.fnUntraced(function*(writeRequest) {
@@ -1294,7 +1295,11 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
           step: constVoid
         })
       }),
+      Effect.sandbox,
+      Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
+      Effect.tap(Effect.log("Stdio protocol stdin stream completed")),
+      Effect.ensuring(Fiber.interruptFork(fiber)),
       Effect.forkScoped,
       Effect.interruptible
     )

@@ -6,7 +6,7 @@ import type * as HttpClient from "@effect/platform/HttpClient"
 import type * as Platform from "@effect/platform/HttpPlatform"
 import type * as Server from "@effect/platform/HttpServer"
 import type * as HttpServerError from "@effect/platform/HttpServerError"
-import type { ServeOptions } from "bun"
+import type * as Bun from "bun"
 import type * as Config from "effect/Config"
 import type * as ConfigError from "effect/ConfigError"
 import type * as Effect from "effect/Effect"
@@ -17,25 +17,39 @@ import * as internal from "./internal/httpServer.js"
 
 /**
  * @since 1.0.0
+ * @category Options
+ */
+export type ServeOptions<R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> }> =
+  & (
+    | Omit<Bun.ServeOptions, "fetch" | "error">
+    | Bun.TLSServeOptions
+    | Bun.UnixServeOptions
+    | Bun.UnixTLSServeOptions
+  )
+  & { readonly routes?: R }
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
-export const make: (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const make: <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: ServeOptions<R>
 ) => Effect.Effect<Server.HttpServer, never, Scope.Scope> = internal.make
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layerServer: (options: Omit<ServeOptions, "fetch" | "error">) => Layer.Layer<Server.HttpServer> =
-  internal.layerServer
+export const layerServer: <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: ServeOptions<R>
+) => Layer.Layer<Server.HttpServer> = internal.layerServer
 
 /**
  * @since 1.0.0
  * @category layers
  */
-export const layer: (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const layer: <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: ServeOptions<R>
 ) => Layer.Layer<Server.HttpServer | Platform.HttpPlatform | Etag.Generator | BunContext.BunContext> = internal.layer
 
 /**
@@ -58,8 +72,8 @@ export const layerTest: Layer.Layer<
  * @since 1.0.0
  * @category layers
  */
-export const layerConfig: (
-  options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
+export const layerConfig: <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: Config.Config.Wrap<ServeOptions<R>>
 ) => Layer.Layer<
   Server.HttpServer | Platform.HttpPlatform | Etag.Generator | BunContext.BunContext,
   ConfigError.ConfigError

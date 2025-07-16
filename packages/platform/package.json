@@ -50,7 +50,7 @@
     "@opentelemetry/semantic-conventions": "^1.33.0",
     "find-my-way-ts": "^0.1.6",
     "msgpackr": "^1.11.4",
-    "multipasta": "^0.2.5"
+    "multipasta": "^0.2.7"
   },
   "peerDependencies": {
     "effect": "workspace:^"

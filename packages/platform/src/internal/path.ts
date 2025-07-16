@@ -83,7 +83,7 @@ function normalizeStringPosix(path: string, allowAboveRoot: boolean) {
       lastSlash = i
       dots = 0
     } else if (code === 46 /*.*/ && dots !== -1) {
-      ;++dots
+      ++dots
     } else {
       dots = -1
     }
@@ -361,7 +361,7 @@ const posixImpl = Path.of({
     } else {
       toStart += lastCommonSep
       if (to.charCodeAt(toStart) === 47 /*/*/) {
-        ;++toStart
+        ++toStart
       }
       return to.slice(toStart)
     }

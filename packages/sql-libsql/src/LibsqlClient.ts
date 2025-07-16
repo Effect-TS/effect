@@ -145,7 +145,7 @@ export const make = (
 
     const spanAttributes: Array<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-      [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_SQLITE]
+      [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
     ]
 
     class LibsqlConnectionImpl implements LibsqlConnection {

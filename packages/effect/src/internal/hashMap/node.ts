@@ -34,7 +34,7 @@ export class EmptyNode<out K, out V> {
   ): Node<K, V> {
     const v = f(O.none())
     if (O.isNone(v)) return new EmptyNode()
-    ;++size.value
+    ++size.value
     return new LeafNode(edit, hash, key, v)
   }
 }
@@ -79,7 +79,7 @@ export class LeafNode<out K, out V> {
       const v = f(this.value)
       if (v === this.value) return this
       else if (O.isNone(v)) {
-        ;--size.value
+        --size.value
         return new EmptyNode()
       }
       if (canEditNode(this, edit)) {
@@ -90,7 +90,7 @@ export class LeafNode<out K, out V> {
     }
     const v = f(O.none())
     if (O.isNone(v)) return this
-    ;++size.value
+    ++size.value
     return mergeLeaves(
       edit,
       shift,
@@ -137,7 +137,7 @@ export class CollisionNode<out K, out V> {
     }
     const v = f(O.none())
     if (O.isNone(v)) return this
-    ;++size.value
+    ++size.value
     return mergeLeaves(
       edit,
       shift,
@@ -165,7 +165,7 @@ export class CollisionNode<out K, out V> {
         const newValue = f(value)
         if (newValue === value) return list
         if (O.isNone(newValue)) {
-          ;--size.value
+          --size.value
           return arraySpliceOut(mutate, i, list)
         }
         return arrayUpdate(mutate, i, new LeafNode(edit, hash, key, newValue), list)
@@ -174,7 +174,7 @@ export class CollisionNode<out K, out V> {
 
     const newValue = f(O.none())
     if (O.isNone(newValue)) return list
-    ;++size.value
+    ++size.value
     return arrayUpdate(mutate, len, new LeafNode(edit, hash, key, newValue), list)
   }
 }
@@ -280,11 +280,11 @@ export class ArrayNode<out K, out V> {
     let newChildren
     if (isEmptyNode(child) && !isEmptyNode(newChild)) {
       // add
-      ;++count
+      ++count
       newChildren = arrayUpdate(canEdit, frag, newChild, children)
     } else if (!isEmptyNode(child) && isEmptyNode(newChild)) {
       // remove
-      ;--count
+      --count
       if (count <= MIN_ARRAY_NODE) {
         return pack(edit, count, frag, children)
       }

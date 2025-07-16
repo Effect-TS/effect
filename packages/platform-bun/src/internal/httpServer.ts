@@ -14,7 +14,7 @@ import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
 import * as UrlParams from "@effect/platform/UrlParams"
-import type { ServeOptions, Server as BunServer, ServerWebSocket } from "bun"
+import type { Server as BunServer, ServerWebSocket, WebSocketServeOptions } from "bun"
 import * as Config from "effect/Config"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -29,11 +29,12 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as BunContext from "../BunContext.js"
 import * as Platform from "../BunHttpPlatform.js"
+import type * as BunHttpServer from "../BunHttpServer.js"
 import * as MultipartBun from "./multipart.js"
 
 /** @internal */
-export const make = (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const make = <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: BunHttpServer.ServeOptions<R>
 ): Effect.Effect<Server.HttpServer, never, Scope.Scope> =>
   Effect.gen(function*() {
     const handlerStack: Array<(request: Request, server: BunServer) => Response | Promise<Response>> = [
@@ -41,8 +42,8 @@ export const make = (
         return new Response("not found", { status: 404 })
       }
     ]
-    const server = Bun.serve<WebSocketContext>({
-      ...options,
+    const server = Bun.serve<WebSocketContext, R>({
+      ...options as WebSocketServeOptions<WebSocketContext>,
       fetch: handlerStack[0],
       websocket: {
         open(ws) {
@@ -69,7 +70,7 @@ export const make = (
     )
 
     return Server.make({
-      address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
+      address: { _tag: "TcpAddress", port: server.port!, hostname: server.hostname! },
       serve(httpApp, middleware) {
         return Effect.gen(function*() {
           const runFork = yield* FiberSet.makeRuntime<never>()
@@ -95,12 +96,12 @@ export const make = (
           yield* Effect.acquireRelease(
             Effect.sync(() => {
               handlerStack.push(handler)
-              server.reload({ fetch: handler } as ServeOptions)
+              server.reload({ fetch: handler })
             }),
             () =>
               Effect.sync(() => {
                 handlerStack.pop()
-                server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
+                server.reload({ fetch: handlerStack[handlerStack.length - 1] })
               })
           )
         })
@@ -164,8 +165,8 @@ const makeResponse = (
 }
 
 /** @internal */
-export const layerServer = (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const layerServer = <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: BunHttpServer.ServeOptions<R>
 ) => Layer.scoped(Server.HttpServer, make(options))
 
 /** @internal */
@@ -176,8 +177,8 @@ export const layerContext = Layer.mergeAll(
 )
 
 /** @internal */
-export const layer = (
-  options: Omit<ServeOptions, "fetch" | "error">
+export const layer = <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: BunHttpServer.ServeOptions<R>
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, make(options)),
@@ -193,8 +194,8 @@ export const layerTest = Server.layerTestClient.pipe(
 )
 
 /** @internal */
-export const layerConfig = (
-  options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
+export const layerConfig = <R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<Extract<K, string>> } = {}>(
+  options: Config.Config.Wrap<BunHttpServer.ServeOptions<R>>
 ) =>
   Layer.mergeAll(
     Layer.scoped(Server.HttpServer, Effect.flatMap(Config.unwrap(options), make)),
