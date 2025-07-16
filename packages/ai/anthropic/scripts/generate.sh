@@ -2,16 +2,15 @@
 
 set -euo pipefail
 
-SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 temp_dir=$(mktemp -d)
 
 cleanup() {
-  rm -rf "$temp_dir"
+  rm -rf "${temp_dir}"
 }
 
 trap cleanup EXIT
-
 
 anthropic_stats_url="https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/refs/heads/main/.stats.yml"
 

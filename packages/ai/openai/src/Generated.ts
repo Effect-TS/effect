@@ -1327,7 +1327,7 @@ export class CreateChatCompletionResponse
       /**
        * Log probability information for the choice.
        */
-      "logprobs": S.NullOr(S.Struct({
+      "logprobs": S.optional(S.NullOr(S.Struct({
         /**
          * A list of message content tokens with log probability information.
          */
@@ -1336,7 +1336,7 @@ export class CreateChatCompletionResponse
          * A list of message refusal tokens with log probability information.
          */
         "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
-      }))
+      })))
     })),
     /**
      * The Unix timestamp (in seconds) of when the chat completion was created.
@@ -3111,7 +3111,7 @@ export class Eval extends S.Class<Eval>("Eval")({
       EvalPythonGrader,
       EvalScoreModelGrader
     )
-  ).pipe(S.propertySignature),
+  ),
   /**
    * The Unix timestamp (in seconds) for when the eval was created.
    */
@@ -13332,6 +13332,7 @@ export const make = (
       HttpClientRequest.del(`/responses/${responseId}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "404": decodeError("Error", Error),
+          "200": () => Effect.void,
           orElse: unexpectedStatus
         }))
       ),
