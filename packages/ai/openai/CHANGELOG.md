@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.25.3
+
+### Patch Changes
+
+- [#5227](https://github.com/Effect-TS/effect/pull/5227) [`c639456`](https://github.com/Effect-TS/effect/commit/c6394569196c073c00887caba8882bbc40ce708f) Thanks @IMax153! - Update the generated openapi specification for OpenAI
+
 ## 0.25.2
 
 ### Patch Changes
