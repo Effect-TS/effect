@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.15
+
+### Patch Changes
+
+- [#5222](https://github.com/Effect-TS/effect/pull/5222) [`15df9bf`](https://github.com/Effect-TS/effect/commit/15df9bf0c7a11e775c04e69516e47c5094146d55) Thanks @gcanti! - Schema.attachPropertySignature: simplify signature and fix parameter type to use Schema instead of SchemaClass
+
 ## 3.16.14
 
 ### Patch Changes
@@ -1378,7 +1384,6 @@
   Previously, annotations such as `arbitrary` were lost when calling `Schema.typeSchema` on a transformation. This update ensures that certain annotations, which depend only on the "to" side of the transformation, are preserved.
 
   Annotations that are now retained:
-
   - `examples`
   - `default`
   - `jsonSchema`
@@ -1720,12 +1725,10 @@
 - [#4540](https://github.com/Effect-TS/effect/pull/4540) [`840cc73`](https://github.com/Effect-TS/effect/commit/840cc7329908db7ca693ef47b07d4f845c29cadd) Thanks @gcanti! - Add `additionalPropertiesStrategy` option to `OpenApi.fromApi`, closes #4531.
 
   This update introduces the `additionalPropertiesStrategy` option in `OpenApi.fromApi`, allowing control over how additional properties are handled in the generated OpenAPI schema.
-
   - When `"strict"` (default), additional properties are disallowed (`"additionalProperties": false`).
   - When `"allow"`, additional properties are allowed (`"additionalProperties": true`), making APIs more flexible.
 
   The `additionalPropertiesStrategy` option has also been added to:
-
   - `JSONSchema.fromAST`
   - `OpenApiJsonSchema.makeWithDefs`
 
@@ -2216,7 +2219,6 @@
   ```
 
   String filters:
-
   - `maxLength`
   - `minLength`
   - `length`
@@ -2232,7 +2234,6 @@
   - `trimmed`
 
   Number filters:
-
   - `finite`
   - `greaterThan`
   - `greaterThanOrEqualTo`
@@ -2248,7 +2249,6 @@
   - `nonNegative`
 
   BigInt filters:
-
   - `greaterThanBigInt`
   - `greaterThanOrEqualToBigInt`
   - `lessThanBigInt`
@@ -2260,7 +2260,6 @@
   - `nonPositiveBigInt`
 
   Duration filters:
-
   - `lessThanDuration`
   - `lessThanOrEqualToDuration`
   - `greaterThanDuration`
@@ -2268,13 +2267,11 @@
   - `betweenDuration`
 
   Array filters:
-
   - `minItems`
   - `maxItems`
   - `itemsCount`
 
   Date filters:
-
   - `validDate`
   - `lessThanDate`
   - `lessThanOrEqualToDate`
@@ -2283,7 +2280,6 @@
   - `betweenDate`
 
   BigDecimal filters:
-
   - `greaterThanBigDecimal`
   - `greaterThanOrEqualToBigDecimal`
   - `lessThanBigDecimal`
@@ -2331,7 +2327,6 @@
   ```
 
 - [#4509](https://github.com/Effect-TS/effect/pull/4509) [`fb798eb`](https://github.com/Effect-TS/effect/commit/fb798eb9061f1191badc017d1aa649360254da20) Thanks @gcanti! - Schema: More Accurate Return Types for:
-
   - `transformLiteral`
   - `clamp`
   - `clampBigInt`
@@ -2442,7 +2437,6 @@
   This update improves how records are represented in JSON Schema by replacing `patternProperties` with `additionalProperties`, resolving issues in OpenAPI schema generation.
 
   **Why the change?**
-
   - **Fixes OpenAPI issues** – Previously, records were represented using `patternProperties`, which caused problems with OpenAPI tools.
   - **Better schema compatibility** – Some tools, like `openapi-ts`, struggled with `patternProperties`, generating `Record<string, never>` instead of the correct type.
   - **Fixes missing example values** – When using `patternProperties`, OpenAPI failed to generate proper response examples, displaying only `{}`.
@@ -2509,7 +2503,6 @@
   ```
 
 - [#4487](https://github.com/Effect-TS/effect/pull/4487) [`2c639ec`](https://github.com/Effect-TS/effect/commit/2c639ecee332de4266e36022c989c35ae4e02105) Thanks @gcanti! - Schema: more precise return types when transformations are involved.
-
   - `Chunk`
   - `NonEmptyChunk`
   - `Redacted`
@@ -2898,7 +2891,6 @@
 ### Patch Changes
 
 - [#4341](https://github.com/Effect-TS/effect/pull/4341) [`766113c`](https://github.com/Effect-TS/effect/commit/766113c0ea3512cdb887650ead8ba314236e22ee) Thanks @fubhy! - Improve `Duration.decode` Handling of High-Resolution Time
-
   - **Ensured Immutability**: Added the `readonly` modifier to `[seconds: number, nanos: number]` in `DurationInput` to prevent accidental modifications.
   - **Better Edge Case Handling**: Now correctly processes special values like `-Infinity` and `NaN` when they appear in the tuple representation of duration.
 
@@ -2934,7 +2926,6 @@
   **Rationale**
 
   The `Duration` schema is primarily used to encode durations for transmission. The new tagged union format ensures clear and precise encoding for:
-
   - Finite durations, such as milliseconds.
   - Infinite durations, such as `Duration.infinity`.
   - Nanosecond durations.
@@ -3443,7 +3434,6 @@
   ```
 
 - [#4175](https://github.com/Effect-TS/effect/pull/4175) [`199214e`](https://github.com/Effect-TS/effect/commit/199214e21c616d8a0ccd7ed5f92e944e6c580193) Thanks @gcanti! - Schema: refactor annotations:
-
   - Export internal `Uint8` schema
   - Export internal `NonNegativeInt` schema
   - Remove title annotations that are identical to identifiers
@@ -3476,7 +3466,6 @@
     ```
 
     After
-
     - `toString` now combines all refinements with `" & "` instead of showing only the last one.
     - The last message (`"Expected ..."`) now uses the extended description to make the error message clearer.
 
@@ -3887,7 +3876,6 @@
 ### Patch Changes
 
 - [#4019](https://github.com/Effect-TS/effect/pull/4019) [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8) Thanks @gcanti! - Add missing `jsonSchema` annotations to the following filters:
-
   - `lowercased`
   - `capitalized`
   - `uncapitalized`
@@ -4475,7 +4463,6 @@
 ### Patch Changes
 
 - [#4063](https://github.com/Effect-TS/effect/pull/4063) [`01cee56`](https://github.com/Effect-TS/effect/commit/01cee560b58d94b24cc20e98083251b73e658b41) Thanks @tim-smart! - Micro adjustments
-
   - rename Fiber to MicroFiber
   - add Micro.fiberJoin api
   - adjust output when inspecting Micro data types
@@ -4520,7 +4507,6 @@
 - [#3835](https://github.com/Effect-TS/effect/pull/3835) [`251d189`](https://github.com/Effect-TS/effect/commit/251d189420bbba71990574e91098c499065f9a9b) Thanks @KhraksMamtsov! - `Config.url` constructor has been added, which parses a string using `new URL()`
 
 - [#3835](https://github.com/Effect-TS/effect/pull/3835) [`5a259f3`](https://github.com/Effect-TS/effect/commit/5a259f3711b4369f55d885b568bdb21136155261) Thanks @tim-smart! - use fiber based runtime for Micro module
-
   - Improved performance
   - Improved interruption model
   - Consistency with the Effect data type
@@ -4538,7 +4524,6 @@
   could cause `OutOfMemory` errors when formatting.
 
 - [#3835](https://github.com/Effect-TS/effect/pull/3835) [`1e2747c`](https://github.com/Effect-TS/effect/commit/1e2747c63a4820d1459cbbc88c71212983bd68bd) Thanks @KhraksMamtsov! - - JSONSchema module
-
   - add `format?: string` optional field to `JsonSchema7String` interface
   - Schema module
     - add custom json schema annotation to `UUID` schema including `format: "uuid"`
@@ -5285,7 +5270,6 @@
 - [#3541](https://github.com/Effect-TS/effect/pull/3541) [`aa1fa53`](https://github.com/Effect-TS/effect/commit/aa1fa5301e886b9657c8eb0d38cb87cef92a8305) Thanks @vinassefranche! - Add Number.round
 
 - [#3541](https://github.com/Effect-TS/effect/pull/3541) [`02f6b06`](https://github.com/Effect-TS/effect/commit/02f6b0660e12bee1069532a9cc18d3ab855257be) Thanks @fubhy! - Add additional `Duration` conversion apis
-
   - `Duration.toMinutes`
   - `Duration.toHours`
   - `Duration.toDays`
@@ -6012,7 +5996,6 @@
 - [#3096](https://github.com/Effect-TS/effect/pull/3096) [`5c0ceb0`](https://github.com/Effect-TS/effect/commit/5c0ceb00826cce9e50bf9d41d83e191d5352c030) Thanks @gcanti! - Micro: align with `Effect` module (renamings and new combinators).
 
   General naming convention rule: `<reference module (start with lowercase)><api (start with Uppercase)>`.
-
   - `Failure` -> `MicroCause`
     - `Failure.Expected<E>` -> `MicroCause.Fail<E>`
     - `Failure.Unexpected` -> `MicroCause.Die`
@@ -6707,7 +6690,6 @@
 - [#2207](https://github.com/Effect-TS/effect/pull/2207) [`1b5f0c7`](https://github.com/Effect-TS/effect/commit/1b5f0c77e7fd477a0026071e82129a948227f4b3) Thanks [@github-actions](https://github.com/apps/github-actions)! - add FiberMap.has/unsafeHas api
 
 - [#2104](https://github.com/Effect-TS/effect/pull/2104) [`1499974`](https://github.com/Effect-TS/effect/commit/14999741d2e19c1747f6a7e19d68977f6429cdb8) Thanks [@IMax153](https://github.com/IMax153)! - add String casing transformation apis
-
   - `snakeToCamel`
   - `snakeToPascal`
   - `snakeToKebab`
@@ -6755,7 +6737,6 @@
   Subscribable represents a resource that has a current value and can be subscribed to for updates.
 
   The following data types are subscribable:
-
   - A `SubscriptionRef`
   - An `Actor` from the experimental `Machine` module
 
@@ -6852,7 +6833,6 @@
 - [#2438](https://github.com/Effect-TS/effect/pull/2438) [`7ddd654`](https://github.com/Effect-TS/effect/commit/7ddd65415b65ccb654ad04f4dbefe39402f15117) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Support Heterogeneous Effects in Effect Iterable apis
 
   Including:
-
   - `Effect.allSuccesses`
   - `Effect.firstSuccessOf`
   - `Effect.mergeAll`
@@ -7147,7 +7127,6 @@
 - [#2238](https://github.com/Effect-TS/effect/pull/2238) [`6137533`](https://github.com/Effect-TS/effect/commit/613753300c7705518ab1fea2f370b032851c2750) Thanks [@JJayet](https://github.com/JJayet)! - Request: swap Success and Error params
 
 - [#2270](https://github.com/Effect-TS/effect/pull/2270) [`f373529`](https://github.com/Effect-TS/effect/commit/f373529999f4b8bc92b634f6ea14f19271388eed) Thanks [@tim-smart](https://github.com/tim-smart)! - add structured logging apis
-
   - Logger.json / Logger.jsonLogger
   - Logger.structured / Logger.structuredLogger
 
@@ -7248,7 +7227,6 @@
 - [#2101](https://github.com/Effect-TS/effect/pull/2101) [`5de7be5`](https://github.com/Effect-TS/effect/commit/5de7be5beca2e963b503e6029dcc3217848187d2) Thanks [@github-actions](https://github.com/apps/github-actions)! - remove ReadonlyRecord.fromIterable (duplicate of fromEntries)
 
 - [#2101](https://github.com/Effect-TS/effect/pull/2101) [`489fcf3`](https://github.com/Effect-TS/effect/commit/489fcf363ff2b2a953166b740cb9a62d7fc2a101) Thanks [@github-actions](https://github.com/apps/github-actions)! - - swap `Schedule` type parameters from `Schedule<out Env, in In, out Out>` to `Schedule<out Out, in In = unknown, out R = never>`, closes #2154
-
   - swap `ScheduleDriver` type parameters from `ScheduleDriver<out Env, in In, out Out>` to `ScheduleDriver<out Out, in In = unknown, out R = never>`
 
 - [#2101](https://github.com/Effect-TS/effect/pull/2101) [`7d9c3bf`](https://github.com/Effect-TS/effect/commit/7d9c3bff6c18d451e0e4781042945ec5c7be1b9f) Thanks [@github-actions](https://github.com/apps/github-actions)! - Consolidate `Effect.asyncOption`, `Effect.asyncEither`, `Stream.asyncOption`, `Stream.asyncEither`, and `Stream.asyncInterrupt`
@@ -7622,7 +7600,6 @@
 - [#2096](https://github.com/Effect-TS/effect/pull/2096) [`6654f5f`](https://github.com/Effect-TS/effect/commit/6654f5f0f6b9d97165ede5e04ca16776e2599328) Thanks [@tim-smart](https://github.com/tim-smart)! - default to `never` for Runtime returning functions
 
   This includes:
-
   - Effect.runtime
   - FiberSet.makeRuntime
 
@@ -7815,7 +7792,6 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`5127afe`](https://github.com/Effect-TS/effect/commit/5127afec1c519e0a3d7460844a9101a96272f29e) Thanks [@github-actions](https://github.com/apps/github-actions)! - Rename ReadonlyRecord.update to .replace
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`8ee2931`](https://github.com/Effect-TS/effect/commit/8ee293159b4f7cb7af8558287a0a047f3a69743d) Thanks [@github-actions](https://github.com/apps/github-actions)! - enhance DX by swapping type parameters and adding defaults to:
-
   - Effect
     - async
     - asyncOption
@@ -7903,7 +7879,6 @@
 - [#2075](https://github.com/Effect-TS/effect/pull/2075) [`3ddfdbf`](https://github.com/Effect-TS/effect/commit/3ddfdbf914edea536aef207cec6695f33496258c) Thanks [@tim-smart](https://github.com/tim-smart)! - add apis for manipulating context to the Runtime module
 
   These include:
-
   - `Runtime.updateContext` for modifying the `Context` directly
   - `Runtime.provideService` for adding services to an existing Runtime
 
@@ -7925,7 +7900,6 @@
 - [#2075](https://github.com/Effect-TS/effect/pull/2075) [`3ddfdbf`](https://github.com/Effect-TS/effect/commit/3ddfdbf914edea536aef207cec6695f33496258c) Thanks [@tim-smart](https://github.com/tim-smart)! - add apis for patching runtime flags to the Runtime module
 
   The apis include:
-
   - `Runtime.updateRuntimeFlags` for updating all the flags at once
   - `Runtime.enableRuntimeFlag` for enabling a single runtime flag
   - `Runtime.disableRuntimeFlag` for disabling a single runtime flag
@@ -8593,7 +8567,6 @@
 - [#1537](https://github.com/Effect-TS/effect/pull/1537) [`9bd70154b`](https://github.com/Effect-TS/effect/commit/9bd70154b62c2f101b85a8d509e480d5281abe4b) Thanks [@patroza](https://github.com/patroza)! - fix: Either/Option gen when no yield executes, just a plain return
 
 - [#1526](https://github.com/Effect-TS/effect/pull/1526) [`656955944`](https://github.com/Effect-TS/effect/commit/6569559440e8304c596edaaa21bcae4c8dba2568) Thanks [@gcanti](https://github.com/gcanti)! - ReadonlyRecord: add missing APIs:
-
   - keys
   - values
   - upsert
