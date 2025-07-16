@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.52.2
+
+### Patch Changes
+
+- [#5219](https://github.com/Effect-TS/effect/pull/5219) [`d720f10`](https://github.com/Effect-TS/effect/commit/d720f1072770fa08ff81990e4f938f75a2399337) Thanks @tim-smart! - optimize experimental dataLoader
+
 ## 0.52.1
 
 ### Patch Changes
@@ -2745,7 +2751,6 @@
   Subscribable represents a resource that has a current value and can be subscribed to for updates.
 
   The following data types are subscribable:
-
   - A `SubscriptionRef`
   - An `Actor` from the experimental `Machine` module
 
@@ -3460,7 +3465,6 @@
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`1a77f72`](https://github.com/Effect-TS/effect/commit/1a77f72cdaf43d6cdc91b6060f82832edcdbbcb3) Thanks [@github-actions](https://github.com/apps/github-actions)! - change `Effect` type parameters order from `Effect<R, E, A>` to `Effect<A, E = never, R = never>`
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`a34dbdc`](https://github.com/Effect-TS/effect/commit/a34dbdc1552c73c1b612676f262a0c735ce444a7) Thanks [@github-actions](https://github.com/apps/github-actions)! - - Schema: change type parameters order from `Schema<R, I, A>` to `Schema<A, I = A, R = never>`
-
   - Serializable: change type parameters order from `Serializable<R, I, A>` to `Serializable<A, I, R>`
   - Class: change type parameters order from `Class<R, I, A, C, Self, Inherited>` to `Class<A, I, R, C, Self, Inherited>`
   - PropertySignature: change type parameters order from `PropertySignature<R, From, FromIsOptional, To, ToIsOptional>` to `PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>`
@@ -3727,7 +3731,6 @@
 ### Minor Changes
 
 - [#1842](https://github.com/Effect-TS/effect/pull/1842) [`7b2f874`](https://github.com/Effect-TS/effect/commit/7b2f8743d96753c3e24ac4cc6715a4a7f4a2ca0c) Thanks [@fubhy](https://github.com/fubhy)! - Schema: refactor `ParseResult` module:
-
   - add `Union` issue, and replace `UnionMember` with `Union`
   - add `Tuple` issue, and replace `Index` with `Tuple`
   - add `TypeLiteral` issue
