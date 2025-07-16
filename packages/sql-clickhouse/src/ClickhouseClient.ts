@@ -237,7 +237,7 @@ export const make = (
         compiler,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_CLICKHOUSE],
+          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "clickhouse"],
           [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? "default"]
         ],
         beginTransaction: "BEGIN TRANSACTION",
