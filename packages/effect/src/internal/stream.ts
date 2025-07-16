@@ -7348,6 +7348,7 @@ export const toAsyncIterableRuntime = dual<
         let currentReject: ((reason: any) => void) | undefined = undefined
         let fiber: Fiber.RuntimeFiber<void, E> | undefined = undefined
         const latch = Effect.unsafeMakeLatch(false)
+        let returned = false
         return {
           next() {
             if (!fiber) {
@@ -7358,6 +7359,7 @@ export const toAsyncIterableRuntime = dual<
                   currentResolve = currentReject = undefined
                 }))))
               fiber.addObserver((exit) => {
+                if (returned) return
                 fiber = Effect.runFork(latch.whenOpen(Effect.sync(() => {
                   if (exit._tag === "Failure") {
                     currentReject!(Cause.squash(exit.cause))
@@ -7375,6 +7377,7 @@ export const toAsyncIterableRuntime = dual<
             })
           },
           return() {
+            returned = true
             if (!fiber) return Promise.resolve({ done: true, value: void 0 })
             return Effect.runPromise(Effect.as(Fiber.interrupt(fiber), { done: true, value: void 0 }))
           }
