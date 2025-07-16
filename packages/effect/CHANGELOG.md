@@ -1,5 +1,11 @@
 # effect
 
+## 3.16.16
+
+### Patch Changes
+
+- [#5224](https://github.com/Effect-TS/effect/pull/5224) [`127e602`](https://github.com/Effect-TS/effect/commit/127e602ee647839198f44d19cff7d11f6e4b473b) Thanks @tim-smart! - prevent fiber leak when Stream.toAsyncIterable returns early
+
 ## 3.16.15
 
 ### Patch Changes
