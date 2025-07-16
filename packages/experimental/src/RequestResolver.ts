@@ -71,6 +71,7 @@ export const dataLoader = dual<
       Effect.flatMap(() => {
         const currentBatch = batch
         batch = new Set()
+        fiber = undefined
         return process(currentBatch)
       })
     )
