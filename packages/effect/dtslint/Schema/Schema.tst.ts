@@ -1888,7 +1888,7 @@ describe("Schema", () => {
       pipe(S.Struct({ radius: S.Number }), S.attachPropertySignature("kind", "circle"))
     ).type.toBe<
       S.SchemaClass<
-        { readonly radius: number; readonly kind: "circle" },
+        { readonly radius: number } & { readonly kind: "circle" },
         { readonly radius: number },
         never
       >
@@ -1897,7 +1897,7 @@ describe("Schema", () => {
       pipe(S.Struct({ radius: S.NumberFromString }), S.attachPropertySignature("kind", "circle"))
     ).type.toBe<
       S.SchemaClass<
-        { readonly radius: number; readonly kind: "circle" },
+        { readonly radius: number } & { readonly kind: "circle" },
         { readonly radius: string },
         never
       >
@@ -1905,7 +1905,7 @@ describe("Schema", () => {
     expect(S.attachPropertySignature(S.Struct({ radius: S.Number }), "kind", "circle"))
       .type.toBe<
       S.SchemaClass<
-        { readonly radius: number; readonly kind: "circle" },
+        { readonly radius: number } & { readonly kind: "circle" },
         { readonly radius: number },
         never
       >
@@ -1913,7 +1913,7 @@ describe("Schema", () => {
     expect(S.attachPropertySignature(S.Struct({ radius: S.NumberFromString }), "kind", "circle"))
       .type.toBe<
       S.SchemaClass<
-        { readonly radius: number; readonly kind: "circle" },
+        { readonly radius: number } & { readonly kind: "circle" },
         { readonly radius: string },
         never
       >
@@ -1925,11 +1925,24 @@ describe("Schema", () => {
     expect(taggedStruct("A", { a: S.String }))
       .type.toBe<
       S.SchemaClass<
-        { readonly a: string; readonly _tag: "A" },
+        { readonly a: string } & { readonly _tag: "A" },
         { readonly a: string },
         never
       >
     >()
+    // should work with generic code
+    const _f = <A, I, R>(B: S.Schema<A, I, R>, input: unknown) => {
+      const union = S.Union(
+        S.Struct({ code: S.Number }).pipe(S.attachPropertySignature("ok", false)),
+        B.pipe(S.attachPropertySignature("ok", true))
+      )
+      S.decodeUnknown(union)(input).pipe(Effect.flatMap((data) => {
+        if (!data.ok) {
+          expect(data.code).type.toBe<number>()
+        }
+        return Effect.succeed(data)
+      }))
+    }
   })
 
   it("filterEffect", () => {
