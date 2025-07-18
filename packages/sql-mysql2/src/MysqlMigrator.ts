@@ -42,19 +42,17 @@ export const run: <R2 = never>(
         const dump = yield* pipe(
           Command.make(
             "mysqldump",
+            ...(sql.config.host ? ["-h", sql.config.host] : []),
+            ...(sql.config.port ? ["-P", sql.config.port.toString()] : []),
             ...(sql.config.username ? ["-u", sql.config.username] : []),
+            ...(sql.config.password ? [`-p${Redacted.value(sql.config.password)}`] : []),
             ...(sql.config.database ? [sql.config.database] : []),
             "--skip-comments",
             "--compact",
             ...args
           ),
           Command.env({
-            PATH: (globalThis as any).process?.env.PATH,
-            MYSQL_HOST: sql.config.host,
-            MYSQL_TCP_PORT: sql.config.port?.toString(),
-            MYSQL_PWD: sql.config.password
-              ? Redacted.value(sql.config.password)
-              : undefined
+            PATH: (globalThis as any).process?.env.PATH
           }),
           Command.string
         )
