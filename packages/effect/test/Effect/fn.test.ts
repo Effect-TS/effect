@@ -76,6 +76,19 @@ describe("Effect.fn", () => {
     strictEqual(fn2.length, 1)
     strictEqual(Effect.runSync(fn2(2)), 2)
   })
+
+  it.effect("re-evaluates generator each time", () =>
+    Effect.gen(function*() {
+      let invocations = 0
+      const fn = Effect.fn(function*(n: number) {
+        invocations++
+        return n
+      })
+      const eff = fn(1)
+      yield* eff
+      yield* eff
+      assertEquals(invocations, 2)
+    }))
 })
 
 describe("Effect.fnUntraced", () => {
