@@ -470,7 +470,7 @@ export const makeRpc: Effect.Effect<
         makeClientProtocol(address),
         (protocol) => Effect.provideService(makeRpcClient, RpcClient_.Protocol, protocol)
       ),
-    idleTimeToLive: "1 minute"
+    idleTimeToLive: "2 minutes"
   })
 
   return yield* make({
