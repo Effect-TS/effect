@@ -53,7 +53,11 @@ export const make: Effect.Effect<
   const runners = yield* Runners.Runners
 
   function isAlive(address: RunnerAddress): Effect.Effect<boolean> {
-    return Effect.isSuccess(Effect.timeout(runners.ping(address), 3000))
+    return runners.ping(address).pipe(
+      Effect.timeout(3000),
+      Effect.retry({ times: 3 }),
+      Effect.isSuccess
+    )
   }
 
   return RunnerHealth.of({ isAlive })
