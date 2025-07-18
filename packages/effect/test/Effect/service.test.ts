@@ -181,7 +181,7 @@ describe("Effect.Service", () => {
         accessors: true
       }) {}
 
-      const withUse = yield* Service.foo().pipe(Effect.flip, Effect.provide(Service.Default))
+      const withUse = yield* Service.use((_) => _.foo()).pipe(Effect.flip, Effect.provide(Service.Default))
       deepStrictEqual(
         withUse,
         new Cause.UnknownException(new Error("foo"), "An unknown error occurred in Effect.andThen")
