@@ -1,5 +1,11 @@
 # @effect/sql-mysql2
 
+## 0.43.1
+
+### Patch Changes
+
+- [#5226](https://github.com/Effect-TS/effect/pull/5226) [`9ee1ad4`](https://github.com/Effect-TS/effect/commit/9ee1ad44502d7ac98cab92f680c9370da3b2ffb8) Thanks @andrephilipsson! - Embed database config directly in mysqldump command
+
 ## 0.43.0
 
 ### Minor Changes
