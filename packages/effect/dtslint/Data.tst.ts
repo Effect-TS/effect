@@ -113,7 +113,7 @@ describe("Data", () => {
 
     class Void extends Data.Class {}
     // void constructor
-    expect<ConstructorParameters<typeof Void>>().type.toBe<[args?: void]>()
+    expect<ConstructorParameters<typeof Void>>().type.toBe<[]>()
   })
 
   it("TaggedClass", () => {
@@ -124,7 +124,7 @@ describe("Data", () => {
 
     class Void extends Data.TaggedClass("Void") {}
     // void constructor
-    expect<ConstructorParameters<typeof Void>>().type.toBe<[args?: void]>()
+    expect<ConstructorParameters<typeof Void>>().type.toBe<[]>()
   })
 
   it("Error", () => {
@@ -141,7 +141,7 @@ describe("Data", () => {
 
     class Void extends Data.Error {}
     // void constructor
-    expect<ConstructorParameters<typeof Void>>().type.toBe<[args?: void]>()
+    expect<ConstructorParameters<typeof Void>>().type.toBe<[]>()
   })
 
   it("TaggedError", () => {
@@ -159,6 +159,6 @@ describe("Data", () => {
 
     class Void extends Data.TaggedError("Foo") {}
     // void constructor
-    expect<ConstructorParameters<typeof Void>>().type.toBe<[args?: void]>()
+    expect<ConstructorParameters<typeof Void>>().type.toBe<[]>()
   })
 })
