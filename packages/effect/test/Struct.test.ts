@@ -120,4 +120,8 @@ describe("Struct", () => {
     strictEqual(pipe({ a: 1 }, Struct.get("a")), 1)
     strictEqual(pipe({}, Struct.get("a")), undefined)
   })
+
+  it("entries", () => {
+    deepStrictEqual(Struct.entries({ a: 1, b: 2 }), [["a", 1], ["b", 2]])
+  })
 })
