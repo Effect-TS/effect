@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.88.2
+
+### Patch Changes
+
+- [#5234](https://github.com/Effect-TS/effect/pull/5234) [`de513d9`](https://github.com/Effect-TS/effect/commit/de513d9abb8311998ca7016635f53be0ac766472) Thanks @tim-smart! - ensure duplicate paths are a defect in HttpApi
+
 ## 0.88.1
 
 ### Patch Changes
@@ -610,7 +616,6 @@
 - [#4592](https://github.com/Effect-TS/effect/pull/4592) [`5662363`](https://github.com/Effect-TS/effect/commit/566236361e270e575ef1cbf308ad1967c82a362c) Thanks @tim-smart! - support nested records in UrlParams module
 
 - [#4615](https://github.com/Effect-TS/effect/pull/4615) [`5f1fd15`](https://github.com/Effect-TS/effect/commit/5f1fd15308ab154791580059b89877d19a2055c2) Thanks @KhraksMamtsov! - - Relax `Url.setPort` constraint
-
   - Use `URL | ...` for `baseUrl` in `HttpApiClient.make`
 
 - [#4614](https://github.com/Effect-TS/effect/pull/4614) [`8bb1460`](https://github.com/Effect-TS/effect/commit/8bb1460c824f66f0f25ebd899c5e74e388089c37) Thanks @gcanti! - HttpApiEndpoint: add missing `head` and `options` constructors, closes #4613.
@@ -695,12 +700,10 @@
 - [#4540](https://github.com/Effect-TS/effect/pull/4540) [`840cc73`](https://github.com/Effect-TS/effect/commit/840cc7329908db7ca693ef47b07d4f845c29cadd) Thanks @gcanti! - Add `additionalPropertiesStrategy` option to `OpenApi.fromApi`, closes #4531.
 
   This update introduces the `additionalPropertiesStrategy` option in `OpenApi.fromApi`, allowing control over how additional properties are handled in the generated OpenAPI schema.
-
   - When `"strict"` (default), additional properties are disallowed (`"additionalProperties": false`).
   - When `"allow"`, additional properties are allowed (`"additionalProperties": true`), making APIs more flexible.
 
   The `additionalPropertiesStrategy` option has also been added to:
-
   - `JSONSchema.fromAST`
   - `OpenApiJsonSchema.makeWithDefs`
 
@@ -1148,7 +1151,6 @@
 ### Patch Changes
 
 - [#4177](https://github.com/Effect-TS/effect/pull/4177) [`8cd7319`](https://github.com/Effect-TS/effect/commit/8cd7319b6568bfc7a30ca16c104d189e37eac3a0) Thanks @KhraksMamtsov! - `Url` module has been introduced:
-
   - immutable setters with dual-function api
   - integration with `UrlParams`
 
@@ -2212,7 +2214,6 @@
 ### Patch Changes
 
 - [#4064](https://github.com/Effect-TS/effect/pull/4064) [`c2249ea`](https://github.com/Effect-TS/effect/commit/c2249ea13fd98ab7d9aa628787931356d8ec2860) Thanks @tim-smart! - HttpApi OpenApi adjustments
-
   - Allow using transform annotation on endpoints & groups
   - Preserve descriptions for "empty" schemas
 
@@ -2605,7 +2606,6 @@
 ### Minor Changes
 
 - [#3764](https://github.com/Effect-TS/effect/pull/3764) [`6d9de6b`](https://github.com/Effect-TS/effect/commit/6d9de6b871c5c08e6509a4e830c3d74758faa198) Thanks @tim-smart! - HttpApi second revision
-
   - `HttpApi`, `HttpApiGroup` & `HttpApiEndpoint` now use a chainable api instead
     of a pipeable api.
   - `HttpApiMiddleware` module has been added, with a updated way of defining
@@ -4993,7 +4993,6 @@
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`a34dbdc`](https://github.com/Effect-TS/effect/commit/a34dbdc1552c73c1b612676f262a0c735ce444a7) Thanks [@github-actions](https://github.com/apps/github-actions)! - - Schema: change type parameters order from `Schema<R, I, A>` to `Schema<A, I = A, R = never>`
-
   - Serializable: change type parameters order from `Serializable<R, I, A>` to `Serializable<A, I, R>`
   - Class: change type parameters order from `Class<R, I, A, C, Self, Inherited>` to `Class<A, I, R, C, Self, Inherited>`
   - PropertySignature: change type parameters order from `PropertySignature<R, From, FromIsOptional, To, ToIsOptional>` to `PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>`
