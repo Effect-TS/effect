@@ -831,3 +831,10 @@ export const Tag: <const Name extends string>(
  * @category tags
  */
 export class Default extends Tag("@effect/platform/HttpRouter/Default")<Default>() {}
+
+/**
+ * @since 1.0.0
+ * @category utils
+ */
+export const toHttpApp: <E, R>(self: HttpRouter<E, R>) => Effect.Effect<App.Default<E | Error.RouteNotFound, R>> =
+  internal.toHttpApp

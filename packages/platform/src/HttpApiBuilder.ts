@@ -106,7 +106,7 @@ export const httpApp: Effect.Effect<
 > = Effect.gen(function*() {
   const { api, context } = yield* HttpApi.Api
   const middleware = makeMiddlewareMap(api.middlewares, context)
-  const router = applyMiddleware(middleware, yield* Router.router)
+  const router = applyMiddleware(middleware, yield* HttpRouter.toHttpApp(yield* Router.router))
   const apiMiddlewareService = yield* Middleware
   const apiMiddleware = yield* apiMiddlewareService.retrieve
   const errorSchema = makeErrorSchema(api as any)

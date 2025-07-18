@@ -179,8 +179,8 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
   ) {
     super()
     this[TypeId] = TypeId
-    this.httpApp = FiberRef.get(currentRouterConfig).pipe(
-      Effect.flatMap((config) => this.httpApp = toHttpApp(this, config) as any)
+    this.httpApp = toHttpApp(this).pipe(
+      Effect.flatMap((app) => this.httpApp = app as any)
     ) as any
   }
   private httpApp: Effect.Effect<
@@ -206,95 +206,96 @@ class RouterImpl<E = never, R = never> extends Effectable.StructuralClass<
   }
 }
 
-const toHttpApp = <E, R>(
-  self: Router.HttpRouter<E, R>,
-  config: Partial<FindMyWay.RouterConfig>
-): App.Default<E | Error.RouteNotFound, R> => {
-  const router = FindMyWay.make<Router.Route<E, R>>(config)
-  const mounts = Chunk.toReadonlyArray(self.mounts).map(([path, app, options]) =>
-    [
-      path,
-      new RouteContextImpl(
-        new RouteImpl(
-          "*",
-          options?.includePrefix ? `${path}/*` as Router.PathInput : "/*",
-          app,
-          options?.includePrefix ? Option.none() : Option.some(path),
-          false
+/** @internal */
+export const toHttpApp = <E, R>(
+  self: Router.HttpRouter<E, R>
+): Effect.Effect<App.Default<E | Error.RouteNotFound, R>> =>
+  Effect.map(FiberRef.get(currentRouterConfig), (config) => {
+    const router = FindMyWay.make<Router.Route<E, R>>(config)
+    const mounts = Chunk.toReadonlyArray(self.mounts).map(([path, app, options]) =>
+      [
+        path,
+        new RouteContextImpl(
+          new RouteImpl(
+            "*",
+            options?.includePrefix ? `${path}/*` as Router.PathInput : "/*",
+            app,
+            options?.includePrefix ? Option.none() : Option.some(path),
+            false
+          ),
+          {}
         ),
-        {}
-      ),
-      options
-    ] as const
-  )
-  const mountsLen = mounts.length
-  Chunk.forEach(self.routes, (route) => {
-    if (route.method === "*") {
-      router.all(route.path, route)
-    } else {
-      router.on(route.method, route.path, route)
-    }
-  })
-  return Effect.withFiberRuntime<
-    ServerResponse.HttpServerResponse,
-    E | Error.RouteNotFound,
-    R | ServerRequest.HttpServerRequest
-  >((fiber) => {
-    const context = Context.unsafeMake(new Map(fiber.getFiberRef(FiberRef.currentContext).unsafeMap))
-    const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
-    if (mountsLen > 0) {
-      const searchIndex = request.url.indexOf("?")
-      const pathname = searchIndex === -1 ? request.url : request.url.slice(0, searchIndex)
+        options
+      ] as const
+    )
+    const mountsLen = mounts.length
+    Chunk.forEach(self.routes, (route) => {
+      if (route.method === "*") {
+        router.all(route.path, route)
+      } else {
+        router.on(route.method, route.path, route)
+      }
+    })
+    return Effect.withFiberRuntime<
+      ServerResponse.HttpServerResponse,
+      E | Error.RouteNotFound,
+      R | ServerRequest.HttpServerRequest
+    >((fiber) => {
+      const context = Context.unsafeMake(new Map(fiber.getFiberRef(FiberRef.currentContext).unsafeMap))
+      const request = Context.unsafeGet(context, ServerRequest.HttpServerRequest)
+      if (mountsLen > 0) {
+        const searchIndex = request.url.indexOf("?")
+        const pathname = searchIndex === -1 ? request.url : request.url.slice(0, searchIndex)
 
-      for (let i = 0; i < mountsLen; i++) {
-        const [path, routeContext, options] = mounts[i]
-        if (pathname === path || pathname.startsWith(path + "/")) {
-          context.unsafeMap.set(RouteContext.key, routeContext)
-          if (options?.includePrefix !== true) {
-            context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
+        for (let i = 0; i < mountsLen; i++) {
+          const [path, routeContext, options] = mounts[i]
+          if (pathname === path || pathname.startsWith(path + "/")) {
+            context.unsafeMap.set(RouteContext.key, routeContext)
+            if (options?.includePrefix !== true) {
+              context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, path))
+            }
+            return Effect.locally(
+              Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
+              FiberRef.currentContext,
+              context
+            )
           }
-          return Effect.locally(
-            Effect.flatMap(routeContext.route.handler, Respondable.toResponse) as App.Default<E, R>,
-            FiberRef.currentContext,
-            context
-          )
         }
       }
-    }
 
-    let result = router.find(request.method, request.url)
-    if (result === undefined && request.method === "HEAD") {
-      result = router.find("GET", request.url)
-    }
-    if (result === undefined) {
-      return Effect.fail(new Error.RouteNotFound({ request }))
-    }
-    const route = result.handler
-    if (route.prefix._tag === "Some") {
-      context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, route.prefix.value))
-    }
-    context.unsafeMap.set(ServerRequest.ParsedSearchParams.key, result.searchParams)
-    context.unsafeMap.set(RouteContext.key, new RouteContextImpl(route, result.params))
+      let result = router.find(request.method, request.url)
+      if (result === undefined && request.method === "HEAD") {
+        result = router.find("GET", request.url)
+      }
+      if (result === undefined) {
+        return Effect.fail(new Error.RouteNotFound({ request }))
+      }
+      const route = result.handler
+      if (route.prefix._tag === "Some") {
+        context.unsafeMap.set(ServerRequest.HttpServerRequest.key, sliceRequestUrl(request, route.prefix.value))
+      }
+      context.unsafeMap.set(ServerRequest.ParsedSearchParams.key, result.searchParams)
+      context.unsafeMap.set(RouteContext.key, new RouteContextImpl(route, result.params))
 
-    const span = Context.getOption(context, Tracer.ParentSpan)
-    if (span._tag === "Some" && span.value._tag === "Span") {
-      span.value.attribute("http.route", route.path)
-    }
+      const span = Context.getOption(context, Tracer.ParentSpan)
+      if (span._tag === "Some" && span.value._tag === "Span") {
+        span.value.attribute("http.route", route.path)
+      }
 
-    const handlerResponse = Effect.flatMap(route.handler, Respondable.toResponse)
-    return Effect.locally(
-      (route.uninterruptible ?
-        handlerResponse :
-        Effect.interruptible(handlerResponse)) as Effect.Effect<
-          ServerResponse.HttpServerResponse,
-          E,
-          Router.HttpRouter.ExcludeProvided<R>
-        >,
-      FiberRef.currentContext,
-      context
-    )
+      const handlerResponse = Effect.flatMap(route.handler, Respondable.toResponse)
+      return Effect.locally(
+        (route.uninterruptible ?
+          handlerResponse :
+          Effect.interruptible(handlerResponse)) as Effect.Effect<
+            ServerResponse.HttpServerResponse,
+            E,
+            Router.HttpRouter.ExcludeProvided<R>
+          >,
+        FiberRef.currentContext,
+        context
+      )
+    })
   })
-}
 
 function sliceRequestUrl(request: ServerRequest.HttpServerRequest, prefix: string) {
   const prefexLen = prefix.length
