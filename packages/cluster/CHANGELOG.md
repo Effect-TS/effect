@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.43.1
+
+### Patch Changes
+
+- [#5232](https://github.com/Effect-TS/effect/pull/5232) [`4ffbd67`](https://github.com/Effect-TS/effect/commit/4ffbd674af526059f983e20f2f00ee6699c7b956) Thanks @tim-smart! - retry RunnerHealth ping to relax down conditions
+
 ## 0.43.0
 
 ### Patch Changes
