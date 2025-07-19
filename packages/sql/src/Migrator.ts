@@ -185,7 +185,7 @@ export const make = <RD = never>({
         new MigrationError({
           cause: error,
           reason: "failed",
-          message: `Migration "${id}_${name}" failed: ${JSON.stringify(error)}`
+          message: `Migration "${id}_${name}" failed`
         }))
 
     // === run
