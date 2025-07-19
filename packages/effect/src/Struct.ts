@@ -241,4 +241,3 @@ export const keys = <T extends {}>(o: T): Array<(keyof T) & string> => Object.ke
  */
 export const entries = <const R>(obj: R): Array<[keyof R & string, R[keyof R & string]]> =>
   Object.entries(obj as any) as any
-
