@@ -56,6 +56,7 @@ export interface Migration {
  */
 export class MigrationError extends Data.TaggedError("MigrationError")<{
   readonly _tag: "MigrationError"
+  readonly cause?: unknown
   readonly reason:
     | "bad-state"
     | "import-error"
@@ -180,10 +181,11 @@ export const make = <RD = never>({
       name: string,
       effect: Effect.Effect<unknown>
     ) =>
-      Effect.orDieWith(effect, (_) =>
+      Effect.orDieWith(effect, (error: unknown) =>
         new MigrationError({
+          cause: error,
           reason: "failed",
-          message: `Migration "${id}_${name}" failed: ${JSON.stringify(_)}`
+          message: `Migration "${id}_${name}" failed`
         }))
 
     // === run
