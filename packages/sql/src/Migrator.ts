@@ -181,7 +181,7 @@ export const make = <RD = never>({
       name: string,
       effect: Effect.Effect<unknown>
     ) =>
-      Effect.orDieWith(effect, (error:unknown) =>
+      Effect.orDieWith(effect, (error: unknown) =>
         new MigrationError({
           cause: error,
           reason: "failed",
