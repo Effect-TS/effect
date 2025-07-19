@@ -122,6 +122,8 @@ describe("Struct", () => {
   })
 
   it("entries", () => {
-    deepStrictEqual(Struct.entries({ a: 1, b: 2 }), [["a", 1], ["b", 2]])
+    const c = Symbol("c")
+    // should not include symbol keys
+    deepStrictEqual(Struct.entries({ a: "a", b: 1, [c]: 2 }), [["a", "a"], ["b", 1]])
   })
 })
