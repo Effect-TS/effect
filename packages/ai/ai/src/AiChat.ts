@@ -37,7 +37,7 @@ export declare namespace AiChat {
     /**
      * The chat history.
      */
-    readonly history: Effect.Effect<AiInput.AiInput>
+    readonly history: Ref.Ref<AiInput.AiInput>
 
     /**
      * Exports the chat into a structured format.
@@ -123,7 +123,7 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
   const system = options.system
 
   return AiChat.of({
-    history: Ref.get(history),
+    history,
     export: Ref.get(history).pipe(
       Effect.flatMap(Schema.encode(AiInput.AiInput)),
       Effect.orDie
