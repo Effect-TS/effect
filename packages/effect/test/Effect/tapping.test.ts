@@ -31,10 +31,6 @@ describe("Effect", () => {
 
   it("tapExit", async () => {
     let exitValue: Exit.Exit<number, TestError1> = Exit.succeed(1)
-    Exit.match({
-      onFailure: Effect.logError,
-      onSuccess: Effect.log
-    })
 
     await pipe(
       Effect.succeed(11),
