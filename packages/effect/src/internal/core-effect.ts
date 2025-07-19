@@ -1598,11 +1598,11 @@ export const tapError = dual<
 /* @internal */
 export const tapExit = dual<
   <A, E, X, E2, R2>(
-    f: (exit: Exit.Exit<A, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
+    f: (exit: Exit.Exit<Types.NoInfer<A>, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
   ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>,
   <A, E, R, X, E2, R2>(
     self: Effect.Effect<A, E, R>,
-    f: (exit: Exit.Exit<A, E>) => Effect.Effect<X, E2, R2>
+    f: (exit: Exit.Exit<Types.NoInfer<A>, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
   ) => Effect.Effect<A, E | E2, R | R2>
 >(2, (self, f) =>
   core.matchCauseEffect(self, {

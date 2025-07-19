@@ -1,5 +1,5 @@
 import type { Either, Types } from "effect"
-import { Array as Arr, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
+import { Array as Arr, Effect, Exit, hole, Option, pipe, Predicate, Schedule } from "effect"
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, NoSuchElementException, UnknownException } from "effect/Cause"
 import { describe, expect, it, when } from "tstyche"
@@ -562,6 +562,16 @@ describe("Effect", () => {
         onFailure: tacitString,
         onSuccess: tacitString
       })
+    )).type.toBe<Effect.Effect<"a", "a">>()
+  })
+
+  it("tapExit", () => {
+    expect(pipe(
+      Effect.succeed("a" as const) as Effect.Effect<"a", "a">,
+      Effect.tapExit(Exit.match({
+        onFailure: tacitStringCause,
+        onSuccess: tacitString
+      }))
     )).type.toBe<Effect.Effect<"a", "a">>()
   })
 
