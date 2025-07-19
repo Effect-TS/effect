@@ -5,7 +5,7 @@ import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
-import type { Exit } from "../Exit.js"
+import * as Exit from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
@@ -1596,6 +1596,21 @@ export const tapError = dual<
   }))
 
 /* @internal */
+export const tapExit = dual<
+  <A, E, X, E2, R2>(
+    f: (exit: Exit.Exit<Types.NoInfer<A>, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
+  ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>,
+  <A, E, R, X, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    f: (exit: Exit.Exit<Types.NoInfer<A>, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
+  ) => Effect.Effect<A, E | E2, R | R2>
+>(2, (self, f) =>
+  core.matchCauseEffect(self, {
+    onFailure: (cause) => core.zipRight(f(Exit.failCause(cause)), core.failCause(cause)),
+    onSuccess: (value) => core.zipRight(f(Exit.succeed(value)), core.succeed(value))
+  }))
+
+/* @internal */
 export const tapErrorTag = dual<
   <K extends (E extends { _tag: string } ? E["_tag"] : never), E, A1, E1, R1>(
     k: K,
@@ -2162,7 +2177,7 @@ export const spanLinks: Effect.Effect<Chunk.Chunk<Tracer.SpanLink>> = core
   .fiberRefGet(core.currentTracerSpanLinks)
 
 /** @internal */
-export const endSpan = <A, E>(span: Tracer.Span, exit: Exit<A, E>, clock: Clock.Clock, timingEnabled: boolean) =>
+export const endSpan = <A, E>(span: Tracer.Span, exit: Exit.Exit<A, E>, clock: Clock.Clock, timingEnabled: boolean) =>
   core.sync(() => {
     if (span.status._tag === "Ended") {
       return
