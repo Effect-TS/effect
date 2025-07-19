@@ -9750,7 +9750,7 @@ export const tapError: {
  *
  * Effect.runFork(tapping)
  * // Output:
- * // expected error: failed..
+ * // failed..
  * ```
  *
  * @since 2.0.0
