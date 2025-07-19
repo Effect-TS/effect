@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.22.2
+
+### Patch Changes
+
+- [#5240](https://github.com/Effect-TS/effect/pull/5240) [`e43b1fd`](https://github.com/Effect-TS/effect/commit/e43b1fd9c4e0897bbf97037fe7cce90448340c29) Thanks @tim-smart! - expose the AiChat history Ref
+
 ## 0.22.1
 
 ### Patch Changes
