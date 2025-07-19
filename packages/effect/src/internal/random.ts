@@ -1,3 +1,4 @@
+import type * as Arr from "../Array.js"
 import * as Chunk from "../Chunk.js"
 import * as Context from "../Context.js"
 import type * as Effect from "../Effect.js"
@@ -87,3 +88,74 @@ const swap = <A>(buffer: Array<A>, index1: number, index2: number): Array<A> => 
 }
 
 export const make = <A>(seed: A): Random.Random => new RandomImpl(Hash.hash(seed))
+
+/** @internal */
+class FixedRandomImpl implements Random.Random {
+  readonly [RandomTypeId]: Random.RandomTypeId = RandomTypeId
+
+  private index = 0
+
+  constructor(readonly values: Arr.NonEmptyArray<any>) {
+    if (values.length === 0) {
+      throw new Error("Requires at least one value")
+    }
+  }
+
+  private getNextValue(): any {
+    const value = this.values[this.index]
+    this.index = (this.index + 1) % this.values.length
+    return value
+  }
+
+  get next(): Effect.Effect<number> {
+    return core.sync(() => {
+      const value = this.getNextValue()
+      if (typeof value === "number") {
+        return Math.max(0, Math.min(1, value))
+      }
+      return Hash.hash(value) / 2147483647
+    })
+  }
+
+  get nextBoolean(): Effect.Effect<boolean> {
+    return core.sync(() => {
+      const value = this.getNextValue()
+      if (typeof value === "boolean") {
+        return value
+      }
+      return Hash.hash(value) % 2 === 0
+    })
+  }
+
+  get nextInt(): Effect.Effect<number> {
+    return core.sync(() => {
+      const value = this.getNextValue()
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return Math.round(value)
+      }
+      return Math.abs(Hash.hash(value))
+    })
+  }
+
+  nextRange(min: number, max: number): Effect.Effect<number> {
+    return core.map(this.next, (n) => (max - min) * n + min)
+  }
+
+  nextIntBetween(min: number, max: number): Effect.Effect<number> {
+    return core.sync(() => {
+      const value = this.getNextValue()
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return Math.max(min, Math.min(max - 1, Math.round(value)))
+      }
+      const hash = Math.abs(Hash.hash(value))
+      return min + (hash % (max - min))
+    })
+  }
+
+  shuffle<A>(elements: Iterable<A>): Effect.Effect<Chunk.Chunk<A>> {
+    return shuffleWith(elements, (n) => this.nextIntBetween(0, n))
+  }
+}
+
+/** @internal */
+export const fixed = <T extends Arr.NonEmptyArray<any>>(values: T): Random.Random => new FixedRandomImpl(values)

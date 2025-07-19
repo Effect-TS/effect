@@ -139,6 +139,7 @@ describe("Stream", () => {
           elapsed: Duration.zero,
           elapsedSincePrevious: Duration.zero,
           input: undefined,
+          output: undefined,
           now: 0,
           recurrence: 0,
           start: 0
@@ -147,6 +148,7 @@ describe("Stream", () => {
           elapsed: Duration.zero,
           elapsedSincePrevious: Duration.zero,
           input: 1,
+          output: Duration.millis(1000),
           now: 0,
           recurrence: 1,
           start: 0
@@ -155,6 +157,7 @@ describe("Stream", () => {
           elapsed: Duration.seconds(1),
           elapsedSincePrevious: Duration.seconds(1),
           input: 1,
+          output: Duration.millis(2000),
           now: 1000,
           recurrence: 2,
           start: 0
@@ -163,6 +166,7 @@ describe("Stream", () => {
           elapsed: Duration.seconds(3),
           elapsedSincePrevious: Duration.seconds(2),
           input: 1,
+          output: Duration.millis(4000),
           now: 3000,
           recurrence: 3,
           start: 0
