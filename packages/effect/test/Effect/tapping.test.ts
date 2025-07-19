@@ -1,6 +1,7 @@
-import { describe, it } from "@effect/vitest"
+import { describe, it, expect } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 
 class TestError1 {
@@ -27,4 +28,34 @@ describe("Effect", () => {
 
     strictEqual(val, 1)
   })
+
+  it("tapExit", async () => {
+    let exitValue: Exit.Exit<number, TestError1> = Exit.succeed(1)
+
+    await pipe(
+      Effect.succeed(11),
+      Effect.tapExit((exit) =>
+        Effect.sync(() => {
+          exitValue = exit
+        })
+      ),
+      Effect.runPromise
+    )
+
+    expect(exitValue).toEqual(Exit.succeed(11))
+
+    await pipe(
+      Effect.fail(new TestError1()),
+      Effect.tapExit((exit) =>
+        Effect.sync(() => {
+          exitValue = exit
+        })
+      ),
+      Effect.ignore,
+      Effect.runPromise
+    )
+
+    expect(exitValue).toEqual(Exit.fail(new TestError1()))
+  })
+
 })

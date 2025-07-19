@@ -9732,6 +9732,17 @@ export const tapError: {
 } = effect.tapError
 
 /**
+ * Inspect the Exit value of an effect without altering its result.
+ *
+ * @since 2.0.0
+ * @category Sequencing
+ */
+export const tapExit: {
+  <A, E, X, E2, R2>(f: (exit: Exit.Exit<A, NoInfer<E>>) => Effect<X, E2, R2>): <R>(self: Effect<A, E, R>) => Effect<A, E | E2, R | R2>
+  <A, E, R, X, E2, R2>(self: Effect<A, E, R>, f: (exit: Exit.Exit<A, E>) => Effect<X, E2, R2>): Effect<A, E | E2, R | R2>
+} = effect.tapExit
+
+/**
  * Inspect errors matching a specific tag without altering the original effect.
  *
  * **Details**
