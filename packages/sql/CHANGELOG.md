@@ -1,5 +1,11 @@
 # @effect/sql
 
+## 0.42.1
+
+### Patch Changes
+
+- [#5238](https://github.com/Effect-TS/effect/pull/5238) [`9dc9269`](https://github.com/Effect-TS/effect/commit/9dc9269261835056b6d4a4c0df65de397b1db32d) Thanks @ilovedesert001! - Add error cause to the migration phase failure
+
 ## 0.42.0
 
 ### Minor Changes
