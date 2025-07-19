@@ -328,4 +328,15 @@ describe("Struct", () => {
         .type.toBe<{ [x: `a${string}`]: number }>()
     })
   })
+
+  describe("entries", () => {
+    it("excludes symbol keys", () => {
+      const c = Symbol("c")
+      const value = { a: "a", b: 1, [c]: 2 }
+      // should not include symbol keys
+      expect(Struct.entries(value)).type.toBe<Array<["a" | "b", string | number]>>()
+      // when the object is passed as a parameter, the values should be narrowed
+      expect(Struct.entries({ a: "a", b: 1, [c]: 2 })).type.toBe<Array<["a" | "b", "a" | 1]>>()
+    })
+  })
 })
