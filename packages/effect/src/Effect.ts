@@ -9746,7 +9746,7 @@ export const tapError: {
  * const tapping = Effect.tapExit(task, Exit.match({
  *  onFailure: () => Console.log("failed.."),
  *  onSuccess: () => Console.log("success!")
- }))
+ * }))
  *
  * Effect.runFork(tapping)
  * // Output:
