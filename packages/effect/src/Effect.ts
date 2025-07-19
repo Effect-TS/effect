@@ -9729,7 +9729,7 @@ export const tapError: {
     f: (e: NoInfer<E>) => Effect<X, E2, R2>
   ): <A, R>(self: Effect<A, E, R>) => Effect<A, E | E2, R2 | R>
   <A, E, R, X, E2, R2>(self: Effect<A, E, R>, f: (e: E) => Effect<X, E2, R2>): Effect<A, E | E2, R | R2>
-} = effect.tapError 
+} = effect.tapError
 
 /**
  * Inspect the Exit value of an effect without altering its result.
