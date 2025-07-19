@@ -5,6 +5,7 @@ import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
 import * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
+import * as Exit from "../Exit.js"
 import type * as Fiber from "../Fiber.js"
 import type * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
@@ -25,7 +26,6 @@ import type * as Random from "../Random.js"
 import * as Ref from "../Ref.js"
 import type * as runtimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import * as Tracer from "../Tracer.js"
-import * as Exit from "../Exit.js"
 import type * as Types from "../Types.js"
 import type { Unify } from "../Unify.js"
 import { internalCall } from "../Utils.js"
@@ -1597,18 +1597,18 @@ export const tapError = dual<
 
 /* @internal */
 export const tapExit = dual<
-    <A, E, X, E2, R2>(
-        f: (exit: Exit.Exit<A, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
-    ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>,
-    <A, E, R, X, E2, R2>(
-        self: Effect.Effect<A, E, R>,
-        f: (exit: Exit.Exit<A, E>) => Effect.Effect<X, E2, R2>
-    ) => Effect.Effect<A, E | E2, R | R2>
+  <A, E, X, E2, R2>(
+    f: (exit: Exit.Exit<A, Types.NoInfer<E>>) => Effect.Effect<X, E2, R2>
+  ) => <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>,
+  <A, E, R, X, E2, R2>(
+    self: Effect.Effect<A, E, R>,
+    f: (exit: Exit.Exit<A, E>) => Effect.Effect<X, E2, R2>
+  ) => Effect.Effect<A, E | E2, R | R2>
 >(2, (self, f) =>
-    core.matchCauseEffect(self, {
-        onFailure: (cause) => core.zipRight(f(Exit.failCause(cause)), core.failCause(cause)),
-        onSuccess: (value) => core.zipRight(f(Exit.succeed(value)), core.succeed(value)),
-    }))
+  core.matchCauseEffect(self, {
+    onFailure: (cause) => core.zipRight(f(Exit.failCause(cause)), core.failCause(cause)),
+    onSuccess: (value) => core.zipRight(f(Exit.succeed(value)), core.succeed(value))
+  }))
 
 /* @internal */
 export const tapErrorTag = dual<
