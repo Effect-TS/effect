@@ -2177,7 +2177,7 @@ export const spanLinks: Effect.Effect<Chunk.Chunk<Tracer.SpanLink>> = core
   .fiberRefGet(core.currentTracerSpanLinks)
 
 /** @internal */
-export const endSpan = <A, E>(span: Tracer.Span, exit: Exit<A, E>, clock: Clock.Clock, timingEnabled: boolean) =>
+export const endSpan = <A, E>(span: Tracer.Span, exit: Exit.Exit<A, E>, clock: Clock.Clock, timingEnabled: boolean) =>
   core.sync(() => {
     if (span.status._tag === "Ended") {
       return
