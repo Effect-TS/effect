@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@effect/vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -61,5 +61,4 @@ describe("Effect", () => {
 
     expect(exitValue).toEqual(Exit.fail(new TestError1()))
   })
-
 })
