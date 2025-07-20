@@ -3,7 +3,7 @@ import { assertInstanceOf, assertTrue, deepStrictEqual, strictEqual } from "@eff
 import { Cause } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { pipe } from "effect/Function"
+import { flow, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
@@ -228,5 +228,19 @@ describe("Effect.Service", () => {
       strictEqual(x2, 42)
       const x3 = yield* Service.x.pipe(Effect.provide(Service.Default(43)))
       strictEqual(x3, 43)
+    }))
+
+  it.effect("works with flow", () =>
+    Effect.gen(function*() {
+      class Inc extends Effect.Service<Inc>()("Inc", {
+        accessors: true,
+        effect: Effect.gen(function*() {
+          return { inc: (x: number) => Effect.succeed(x + 1) }
+        })
+      }) {}
+
+      const x = flow(Inc.inc, Effect.map((n) => n + 2))
+
+      strictEqual(yield* x(2).pipe(Effect.provide(Inc.Default)), 5)
     }))
 })
