@@ -13417,7 +13417,14 @@ const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>
       const cn = core.andThen(target, (s: any) => s[prop])
       // @effect-diagnostics-next-line floatingEffect:off
       Object.assign(fn, cn)
-      Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+      const apply = fn.apply
+      const bind = fn.bind
+      const call = fn.call
+      const proto = Object.setPrototypeOf({}, Object.getPrototypeOf(cn))
+      proto.apply = apply
+      proto.bind = bind
+      proto.call = call
+      Object.setPrototypeOf(fn, proto)
       cache.set(prop, fn)
       return fn
     }
