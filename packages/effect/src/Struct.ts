@@ -232,7 +232,7 @@ export const keys = <T extends {}>(o: T): Array<(keyof T) & string> => Object.ke
  * const c = Symbol("c")
  * const value = { a: "foo", b: 1, [c]: true }
  *
- * const entries: Array<["a" | "b", number]> = Struct.entries(value)
+ * const entries: Array<["a" | "b", string | number]> = Struct.entries(value)
  *
  * assert.deepStrictEqual(entries, [["a", "foo"], ["b", 1]])
  * ```
