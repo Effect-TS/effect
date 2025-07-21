@@ -219,3 +219,25 @@ export const get =
  * @since 3.6.0
  */
 export const keys = <T extends {}>(o: T): Array<(keyof T) & string> => Object.keys(o) as Array<(keyof T) & string>
+
+/**
+ * Retrieves the entries (key-value pairs) of an object, where keys are strings,
+ * in a type-safe manner. Symbol keys are excluded from the result.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Struct } from "effect"
+ *
+ * const c = Symbol("c")
+ * const value = { a: "foo", b: 1, [c]: true }
+ *
+ * const entries: Array<["a" | "b", string | number]> = Struct.entries(value)
+ *
+ * assert.deepStrictEqual(entries, [["a", "foo"], ["b", 1]])
+ * ```
+ *
+ * @since 3.17.0
+ */
+export const entries = <const R>(obj: R): Array<[keyof R & string, R[keyof R & string]]> =>
+  Object.entries(obj as any) as any
