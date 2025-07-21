@@ -1229,7 +1229,7 @@ export class ChatCompletionTokenLogprob extends S.Class<ChatCompletionTokenLogpr
  *
  *   When this parameter is set, the response body will include the `service_tier` utilized.
  */
-export class ServiceTier extends S.Literal("auto", "default", "flex") {}
+export class ServiceTier extends S.Literal("auto", "default", "flex", "scale") {}
 
 /**
  * The object type, which is always `chat.completion`.

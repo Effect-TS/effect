@@ -1,7 +1,16 @@
 diff --git a/packages/ai/openai/src/Generated.ts b/packages/ai/openai/src/Generated.ts
-index 5e06e0ff8..4d0d42db0 100644
+index 5e06e0ff8..4c7d92bd2 100644
 --- a/packages/ai/openai/src/Generated.ts
 +++ b/packages/ai/openai/src/Generated.ts
+@@ -1229,7 +1229,7 @@ export class ChatCompletionTokenLogprob extends S.Class<ChatCompletionTokenLogpr
+  *
+  *   When this parameter is set, the response body will include the `service_tier` utilized.
+  */
+-export class ServiceTier extends S.Literal("auto", "default", "flex") {}
++export class ServiceTier extends S.Literal("auto", "default", "flex", "scale") {}
+ 
+ /**
+  * The object type, which is always `chat.completion`.
 @@ -1327,7 +1327,7 @@ export class CreateChatCompletionResponse
        /**
         * Log probability information for the choice.
