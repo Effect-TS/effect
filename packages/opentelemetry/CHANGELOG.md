@@ -1,5 +1,13 @@
 # @effect/opentelemetry
 
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
+  - effect@3.17.0
+  - @effect/platform@0.89.0
+
 ## 0.54.1
 
 ### Patch Changes
@@ -1721,7 +1729,6 @@
 ### Patch Changes
 
 - [#2375](https://github.com/Effect-TS/effect/pull/2375) [`9bab1f9`](https://github.com/Effect-TS/effect/commit/9bab1f9fa5b999740755e4e82485cb77c638643a) Thanks [@tim-smart](https://github.com/tim-smart)! - Make @effect/opentelemetry metrics conform to the spec
-
   - Metric labels add new data points instead of completely new metric data
   - Start times are determined from the first occurrence of a metric
 
@@ -2322,7 +2329,6 @@
 ### Minor Changes
 
 - [#18](https://github.com/Effect-TS/opentelemetry/pull/18) [`867195a`](https://github.com/Effect-TS/opentelemetry/commit/867195a3622d2678e684bc84959bbe7e3ada9c3c) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io
-
   - adds support for nanosecond precision in timing
   - add `makeExternalSpan` utility for creating parent spans
 
