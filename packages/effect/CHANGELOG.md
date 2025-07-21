@@ -1,5 +1,54 @@
 # effect
 
+## 3.17.0
+
+### Minor Changes
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9) Thanks @fubhy! - Added `Random.fixed` to create a version of the `Random` service with fixed
+  values for testing.
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104) Thanks @dmaretskyi! - Add `Struct.entries` function
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63) Thanks @f15u! - Add `Layer.mock`
+
+  Creates a mock layer for testing purposes. You can provide a partial
+  implementation of the service, and any methods not provided will
+  throw an `UnimplementedError` defect when called.
+
+  ```ts
+  import { Context, Effect, Layer } from "effect"
+
+  class MyService extends Context.Tag("MyService")<
+    MyService,
+    {
+      one: Effect.Effect<number>
+      two(): Effect.Effect<number>
+    }
+  >() {}
+
+  const MyServiceTest = Layer.mock(MyService, {
+    two: () => Effect.succeed(2)
+  })
+  ```
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c) Thanks @KhraksMamtsov! - Schedule output has been added into `CurrentIterationMetadata`
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989) Thanks @mikearnaldi! - Remove global state index by version, make version mismatch a warning message
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636) Thanks @devinjameson! - Array: add findFirstWithIndex function
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2) Thanks @vinassefranche! - Add HashMap.countBy
+
+  ```ts
+  import { HashMap } from "effect"
+
+  const map = HashMap.make([1, "a"], [2, "b"], [3, "c"])
+  const result = HashMap.countBy(map, (_v, key) => key % 2 === 1)
+  console.log(result) // 2
+  ```
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d) Thanks @tim-smart! - add Effect.ensure{Success,Error,Requirements}Type, for constraining Effect types
+
 ## 3.16.17
 
 ### Patch Changes
