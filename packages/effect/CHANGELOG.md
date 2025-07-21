@@ -1,5 +1,13 @@
 # effect
 
+## 3.16.17
+
+### Patch Changes
+
+- [#5246](https://github.com/Effect-TS/effect/pull/5246) [`aaa6ad0`](https://github.com/Effect-TS/effect/commit/aaa6ad0673f843a27954fd92821961cce33941ad) Thanks @mikearnaldi! - Copy over apply, bind, call into service proxy
+
+- [#5158](https://github.com/Effect-TS/effect/pull/5158) [`5b74ea5`](https://github.com/Effect-TS/effect/commit/5b74ea5e5862742e2fb60feefb765bc8681171f4) Thanks @cyberixae! - Clarify Tuple length requirements
+
 ## 3.16.16
 
 ### Patch Changes
