@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.26.1
+
+### Patch Changes
+
+- [#5251](https://github.com/Effect-TS/effect/pull/5251) [`eb197b2`](https://github.com/Effect-TS/effect/commit/eb197b2cca3debdd17da77715311e1849aaa5d05) Thanks @IMax153! - Add `"scale"` as an option for the OpenAI `service_tier` field
+
 ## 0.26.0
 
 ### Patch Changes
