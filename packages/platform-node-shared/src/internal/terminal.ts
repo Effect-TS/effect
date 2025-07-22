@@ -3,9 +3,10 @@ import * as Terminal from "@effect/platform/Terminal"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Queue from "effect/Queue"
 import * as readline from "node:readline"
 
-const defaultShouldQuit = (input: Terminal.UserInput): boolean =>
+const defaultShouldQuit = (input: Terminal.UserInput) =>
   input.key.ctrl && (input.key.name === "c" || input.key.name === "d")
 
 /** @internal */
@@ -13,106 +14,84 @@ export const make = (
   shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit
 ) =>
   Effect.gen(function*() {
-    const input = yield* Effect.sync(() => globalThis.process.stdin)
-    const output = yield* Effect.sync(() => globalThis.process.stdout)
+    const stdin = yield* Effect.sync(() => process.stdin)
+    const stdout = yield* Effect.sync(() => process.stdout)
 
-    // Acquire a readline interface
-    const acquireReadlineInterface = Effect.sync(() =>
-      readline.createInterface({
-        input,
-        escapeCodeTimeout: 50
-      })
+    // Queue for keypresses + Quit sentinel
+    const eventsQueue = yield* Queue.unbounded<Terminal.UserInput | Terminal.QuitException>()
+
+    // Acquire readline interface with TTY setup/cleanup inside the scope
+    const readlineInterface = yield* Effect.acquireRelease(
+      Effect.sync(() => {
+        const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
+        readline.emitKeypressEvents(stdin, rl)
+
+        if (stdin.isTTY) {
+          stdin.setRawMode(true)
+        }
+        return rl
+      }),
+      (rl) =>
+        Effect.sync(() => {
+          if (stdin.isTTY) {
+            stdin.setRawMode(false)
+          }
+          rl.close()
+        })
     )
 
-    // Uses the readline interface to force `stdin` to emit keypress events
-    const emitKeypressEvents = (rl: readline.Interface): readline.Interface => {
-      readline.emitKeypressEvents(input, rl)
-      if (input.isTTY) {
-        input.setRawMode(true)
-      }
-      return rl
-    }
-
-    // Close the `readline` interface
-    const releaseReadlineInterface = (rl: readline.Interface) =>
+    // Acquire keypress listener with cleanup inside the scope
+    yield* Effect.acquireRelease(
       Effect.sync(() => {
-        if (input.isTTY) {
-          input.setRawMode(false)
-        }
-        rl.close()
-      })
-
-    // Handle the `"keypress"` event emitted by `stdin` (forced by readline)
-    const handleKeypressEvent = (input: typeof globalThis.process.stdin) =>
-      Effect.async<Terminal.UserInput, Terminal.QuitException>((resume) => {
-        const handleKeypress = (input: string | undefined, key: readline.Key) => {
-          const userInput: Terminal.UserInput = {
-            input: Option.fromNullable(input),
-            key: {
-              name: key.name || "",
-              ctrl: key.ctrl || false,
-              meta: key.meta || false,
-              shift: key.shift || false
-            }
+        const handleKeypress = (s: string | undefined, k: readline.Key) => {
+          const userInput = {
+            input: Option.fromNullable(s),
+            key: { name: k.name ?? "", ctrl: !!k.ctrl, meta: !!k.meta, shift: !!k.shift }
           }
           if (shouldQuit(userInput)) {
-            resume(Effect.fail(new Terminal.QuitException()))
+            eventsQueue.unsafeOffer(new Terminal.QuitException())
           } else {
-            resume(Effect.succeed(userInput))
+            eventsQueue.unsafeOffer(userInput)
           }
         }
-        input.once("keypress", handleKeypress)
-        return Effect.sync(() => {
-          input.removeListener("keypress", handleKeypress)
-        })
-      })
-
-    // Handle the `"line"` event emitted by the readline interface
-    const handleLineEvent = (rl: readline.Interface) =>
-      Effect.async<string, Terminal.QuitException, never>((resume) => {
-        const handleLine = (line: string) => {
-          resume(Effect.succeed(line))
-        }
-        rl.on("line", handleLine)
-        return Effect.sync(() => {
-          rl.removeListener("line", handleLine)
-        })
-      })
-
-    const readInput = Effect.acquireUseRelease(
-      acquireReadlineInterface.pipe(Effect.map(emitKeypressEvents)),
-      () => handleKeypressEvent(input),
-      releaseReadlineInterface
+        stdin.on("keypress", handleKeypress)
+        return handleKeypress
+      }),
+      (handleKeypress) => Effect.sync(() => stdin.off("keypress", handleKeypress))
     )
 
-    const readLine = Effect.acquireUseRelease(
-      acquireReadlineInterface,
-      (rl) => handleLineEvent(rl),
-      releaseReadlineInterface
-    )
+    const columns = Effect.sync(() => stdout.columns ?? 0)
 
-    const display = (prompt: string): Effect.Effect<void, Error.PlatformError> =>
+    const readInput = Effect.flatMap(Queue.take(eventsQueue), (ev) =>
+      ev instanceof Terminal.QuitException ? Effect.fail(ev) : Effect.succeed(ev))
+
+    const readLine = Effect.async<string, Terminal.QuitException>((resume) => {
+      const onLine = (line: string) =>
+        resume(Effect.succeed(line))
+      readlineInterface.on("line", onLine)
+      return Effect.sync(() => readlineInterface.off("line", onLine))
+    })
+
+    const display = (prompt: string) =>
       Effect.uninterruptible(
-        Effect.async((resume) => {
-          output.write(prompt, (err) => {
-            if (err) {
-              resume(Effect.fail(
+        Effect.async<void, Error.PlatformError>((resume) => {
+          stdout.write(prompt, (err) =>
+            err
+              ? resume(Effect.fail(
                 new Error.BadArgument({
                   module: "Terminal",
                   method: "display",
-                  description: "Failed to write prompt to output",
+                  description: "Failed to write prompt to stdout",
                   cause: err
                 })
               ))
-            }
-            resume(Effect.void)
-          })
+              : resume(Effect.void))
+          return Effect.void
         })
       )
 
     return Terminal.Terminal.of({
-      // The columns property can be undefined if stdout was redirected
-      columns: Effect.sync(() => output.columns || 0),
+      columns,
       readInput,
       readLine,
       display
@@ -120,7 +99,4 @@ export const make = (
   })
 
 /** @internal */
-export const layer: Layer.Layer<Terminal.Terminal> = Layer.scoped(
-  Terminal.Terminal,
-  make(defaultShouldQuit)
-)
+export const layer: Layer.Layer<Terminal.Terminal> = Layer.scoped(Terminal.Terminal, make(defaultShouldQuit))
