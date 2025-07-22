@@ -658,13 +658,13 @@ export const run: <Output>(self: Prompt<Output>) => Effect<Output, QuitException
  * @since 1.0.0
  * @category constructors
  */
-export const select: <A>(options: Prompt.SelectOptions<A>) => Prompt<A> = InternalSelectPrompt.select
+export const select: <const A>(options: Prompt.SelectOptions<A>) => Prompt<A> = InternalSelectPrompt.select
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const multiSelect: <A>(options: Prompt.SelectOptions<A> & Prompt.MultiSelectOptions) => Prompt<Array<A>> =
+export const multiSelect: <const A>(options: Prompt.SelectOptions<A> & Prompt.MultiSelectOptions) => Prompt<Array<A>> =
   InternalMultiSelectPrompt.multiSelect
 
 /**
