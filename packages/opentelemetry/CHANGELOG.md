@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.56.0
+
+### Patch Changes
+
+- [#5257](https://github.com/Effect-TS/effect/pull/5257) [`d070f2e`](https://github.com/Effect-TS/effect/commit/d070f2e7d51da490ed64ce06652f4ae119fae331) Thanks @jrmdayn! - use URL constructor for joining url's in Otlp.layer
+
+- Updated dependencies [[`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f)]:
+  - @effect/platform@0.90.0
+
 ## 0.55.0
 
 ### Patch Changes

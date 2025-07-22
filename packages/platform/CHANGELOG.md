@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.90.0
+
+### Minor Changes
+
+- [#5258](https://github.com/Effect-TS/effect/pull/5258) [`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f) Thanks @kitlangton! - Changes Terminal.readInput to return a ReadonlyMailbox of events
+
+  This allows for more efficient handling of input events, as well as ensuring
+  events are not lost.
+
 ## 0.89.0
 
 ### Patch Changes
