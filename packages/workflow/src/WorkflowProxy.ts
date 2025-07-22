@@ -6,6 +6,7 @@ import * as HttpApiGroup from "@effect/platform/HttpApiGroup"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import type { NonEmptyReadonlyArray } from "effect/Array"
+import * as Schema from "effect/Schema"
 import type * as Workflow from "./Workflow.js"
 
 /**
@@ -61,7 +62,9 @@ export const toRpcGroup = <
       }).annotateContext(workflow.annotations),
       Rpc.make(`${prefix}${workflow.name}Discard`, {
         payload: workflow.payloadSchema
-      }).annotateContext(workflow.annotations)
+      }).annotateContext(workflow.annotations),
+      Rpc.make(`${prefix}${workflow.name}Resume`, { payload: ResumePayload })
+        .annotateContext(workflow.annotations)
     )
   }
   return RpcGroup.make(...rpcs) as any
@@ -78,6 +81,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
 > ?
     | Rpc.Rpc<`${Prefix}${_Name}`, _Payload, _Success, _Error>
     | Rpc.Rpc<`${Prefix}${_Name}Discard`, _Payload>
+    | Rpc.Rpc<`${Prefix}${_Name}Resume`, typeof ResumePayload>
   : never
 
 /**
@@ -132,6 +136,10 @@ export const toHttpApiGroup = <const Name extends string, const Workflows extend
       HttpApiEndpoint.post(workflow.name + "Discard", `${path}/discard`)
         .setPayload(workflow.payloadSchema)
         .annotateContext(workflow.annotations)
+    ).add(
+      HttpApiEndpoint.post(workflow.name + "Resume", `${path}/resume`)
+        .setPayload(ResumePayload)
+        .annotateContext(workflow.annotations)
     ) as any
   }
   return group as any
@@ -174,5 +182,18 @@ export type ConvertHttpApi<Workflows extends Workflow.Any> = Workflows extends W
       void,
       never,
       _Payload["Context"]
+    >
+    | HttpApiEndpoint.HttpApiEndpoint<
+      `${_Name}Resume`,
+      "POST",
+      never,
+      never,
+      typeof ResumePayload.Type,
+      never,
+      void,
+      never,
+      typeof ResumePayload.Context
     > :
   never
+
+const ResumePayload = Schema.Struct({ executionId: Schema.String })
