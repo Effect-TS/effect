@@ -35,7 +35,7 @@ export const layer = (options: {
   Layer.mergeAll(
     OtlpLogger.layer({
       replaceLogger: options.replaceLogger,
-      url: `${options.baseUrl}/v1/logs`,
+      url: new URL("/v1/logs", options.baseUrl).toString(),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.loggerExportInterval,
@@ -44,14 +44,14 @@ export const layer = (options: {
       excludeLogSpans: options.loggerExcludeLogSpans
     }),
     OtlpMetrics.layer({
-      url: `${options.baseUrl}/v1/metrics`,
+      url: new URL("/v1/metrics", options.baseUrl).toString(),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.metricsExportInterval,
       shutdownTimeout: options.shutdownTimeout
     }),
     OtlpTracer.layer({
-      url: `${options.baseUrl}/v1/traces`,
+      url: new URL("/v1/traces", options.baseUrl).toString(),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.tracerExportInterval,
