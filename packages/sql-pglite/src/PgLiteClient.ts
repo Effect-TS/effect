@@ -161,7 +161,7 @@ export const make = <TExtensions extends Extensions = Extensions>(
       executeValues(sql: string, params: ReadonlyArray<Primitive>) {
         // PGlite doesn't have a values() method like postgres.js
         // We'll just return the regular query results
-        return this.run(this.pg.query(sql, params as any))
+        return this.execute(sql, params, (r) => Object.values(r))
       }
       executeUnprepared(
         sql: string,
@@ -193,7 +193,7 @@ export const make = <TExtensions extends Extensions = Extensions>(
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_POSTGRESQL],
-          [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? options.username ?? "postgres"],
+          [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? options.username ?? "postgres"]
         ],
         transformRows
       }),
