@@ -303,7 +303,7 @@ function handleRender<A>(options: SelectOptions<A>) {
 }
 
 /** @internal */
-export const multiSelect = <A>(
+export const multiSelect = <const A>(
   options: Prompt.Prompt.SelectOptions<A> & Prompt.Prompt.MultiSelectOptions
 ): Prompt.Prompt<Array<A>> => {
   const opts: SelectOptions<A> & MultiSelectOptions = {

@@ -7,7 +7,11 @@ import * as Effect from "effect/Effect"
 const colorPrompt = Prompt.select({
   message: "Pick your favorite color",
   choices: [
-    { title: "Red", value: "#ff0000", description: "This option has a description" },
+    {
+      title: "Red",
+      value: "#ff0000",
+      description: "This option has a description"
+    },
     { title: "Green", value: "#00ff00", description: "So does this one" },
     { title: "Blue", value: "#0000ff", disabled: true }
   ]

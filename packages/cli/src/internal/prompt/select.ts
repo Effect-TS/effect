@@ -220,7 +220,7 @@ function handleProcess<A>(options: SelectOptions<A>) {
 }
 
 /** @internal */
-export const select = <A>(options: Prompt.Prompt.SelectOptions<A>): Prompt.Prompt<A> => {
+export const select = <const A>(options: Prompt.Prompt.SelectOptions<A>): Prompt.Prompt<A> => {
   const opts: SelectOptions<A> = {
     maxPerPage: 10,
     ...options
