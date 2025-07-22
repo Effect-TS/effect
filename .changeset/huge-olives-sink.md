@@ -2,4 +2,4 @@
 "@effect/opentelemetry": patch
 ---
 
-properly form otlp urls
+use URL constructor for joining url's in Otlp.layer
