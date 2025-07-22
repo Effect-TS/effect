@@ -275,6 +275,16 @@ describe("Number", () => {
     expect(Number.sign(a)).type.toBe<-1 | 0 | 1>()
   })
 
+  it("polarity", () => {
+    type DataFirst = typeof Number.polarity
+
+    // test the input type
+    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+
+    // test the output type
+    expect(Number.polarity(a)).type.toBe<-1 | 0 | 1>()
+  })
+
   it("sumAll", () => {
     type DataFirst = typeof Number.sumAll
 

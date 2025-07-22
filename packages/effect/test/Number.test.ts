@@ -86,6 +86,20 @@ describe("Number", () => {
     strictEqual(Number.sign(0.1), 1)
   })
 
+  it("polarity", () => {
+    strictEqual(Number.polarity(-Infinity), -1)
+    strictEqual(Number.polarity(-10), -1)
+    strictEqual(Number.polarity(-0.1), -1)
+    strictEqual(Number.polarity(-0.0), -1)
+    strictEqual(Number.polarity(-0), -1)
+    strictEqual(Number.polarity(NaN), 0)
+    strictEqual(Number.polarity(0), 1)
+    strictEqual(Number.polarity(0.0), 1)
+    strictEqual(Number.polarity(0.1), 1)
+    strictEqual(Number.polarity(10), 1)
+    strictEqual(Number.polarity(Infinity), 1)
+  })
+
   it("remainder", () => {
     strictEqual(Number.remainder(2, 2), 0)
     strictEqual(Number.remainder(3, 2), 1)

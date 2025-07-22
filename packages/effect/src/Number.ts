@@ -23,6 +23,7 @@
  * | math         | {@link module:Number.increment}            | Adds 1 to a number                                      | `number`                       | `number`              |
  * | math         | {@link module:Number.decrement}            | Subtracts 1 from a number                               | `number`                       | `number`              |
  * | math         | {@link module:Number.sign}                 | Determines the sign of a number                         | `number`                       | `Ordering`            |
+ * | math         | {@link module:Number.polarity}             | Determines the polarity of a number                     | `number`                       | `Ordering`            |
  * | math         | {@link module:Number.nextPow2}             | Finds the next power of 2                               | `number`                       | `number`              |
  * | math         | {@link module:Number.round}                | Rounds a number with specified precision                | `number`, `number`             | `number`              |
  * |              |                                            |                                                         |                                |                       |
@@ -939,6 +940,8 @@ export const max: {
 /**
  * Determines the sign of a given `number`.
  *
+ * See also `Number.polarity`
+ *
  * @memberof Number
  * @since 2.0.0
  * @category math
@@ -954,6 +957,41 @@ export const max: {
  * ```
  */
 export const sign = (n: number): Ordering => Order(n, 0)
+
+/**
+ * Determines the polarity of a given `number`. Mainly
+ * useful as a way to differentiate between zero and
+ * negative zero.
+ *
+ * See also `Number.sign`
+ *
+ * @memberof Number
+ * @since 3.18.0
+ * @category math
+ * @example
+ *
+ * ```ts
+ * import * as assert from "node:assert/strict"
+ * import { polarity } from "effect/Number"
+ *
+ * assert.equal(polarity(-Infinity), -1)
+ * assert.equal(polarity(-5), -1)
+ * assert.equal(polarity(-0), -1)
+ * assert.equal(polarity(NaN), 0)
+ * assert.equal(polarity(0), 1)
+ * assert.equal(polarity(5), 1)
+ * assert.equal(polarity(Infinity), 1)
+ * ```
+ */
+export const polarity = (n: number): Ordering => {
+  if (Number.isNaN(n)) {
+    return 0
+  }
+  if (n < 0 || 1 / n < 0) {
+    return -1
+  }
+  return 1
+}
 
 /**
  * Returns the remainder left over when one operand is divided by a second
