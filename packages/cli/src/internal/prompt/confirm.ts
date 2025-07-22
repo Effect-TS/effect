@@ -111,8 +111,11 @@ function handleRender(options: Options) {
 const TRUE_VALUE_REGEX = /^y|t$/
 const FALSE_VALUE_REGEX = /^n|f$/
 
-function handleProcess(input: Terminal.UserInput) {
+function handleProcess(input: Terminal.UserInput, defaultValue: boolean) {
   const value = Option.getOrElse(input.input, () => "")
+  if (input.key.name === "enter" || input.key.name === "return") {
+    return Effect.succeed(Action.Submit({ value: defaultValue }))
+  }
   if (TRUE_VALUE_REGEX.test(value.toLowerCase())) {
     return Effect.succeed(Action.Submit({ value: true }))
   }
@@ -141,7 +144,7 @@ export const confirm = (options: Prompt.Prompt.ConfirmOptions): Prompt.Prompt<bo
   const initialState: State = { value: opts.initial }
   return InternalPrompt.custom(initialState, {
     render: handleRender(opts),
-    process: (input) => handleProcess(input),
+    process: (input) => handleProcess(input, opts.initial),
     clear: () => handleClear(opts)
   })
 }

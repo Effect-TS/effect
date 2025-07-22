@@ -20,7 +20,6 @@ interface Options extends Required<Prompt.Prompt.TextOptions> {
 
 interface State {
   readonly cursor: number
-  readonly offset: number
   readonly value: string
   readonly error: Option.Option<string>
 }
@@ -148,9 +147,10 @@ function renderNextFrame(state: State, options: Options) {
     const trailingSymbol = Doc.annotate(figures.pointerSmall, Ansi.blackBright)
     const promptMsg = renderOutput(state, leadingSymbol, trailingSymbol, options)
     const errorMsg = renderError(state, figures.pointerSmall)
+    const offset = state.cursor - state.value.length
     return promptMsg.pipe(
       Doc.cat(errorMsg),
-      Doc.cat(Doc.cursorMove(state.offset)),
+      Doc.cat(Doc.cursorMove(offset)),
       Optimize.optimize(Optimize.Deep),
       Doc.render({ style: "pretty", options: { lineWidth: columns } })
     )
@@ -181,9 +181,11 @@ function processBackspace(state: State) {
   const afterCursor = state.value.slice(state.cursor)
   const cursor = state.cursor - 1
   const value = `${beforeCursor}${afterCursor}`
-  return Effect.succeed(Action.NextFrame({
-    state: { ...state, cursor, value, error: Option.none() }
-  }))
+  return Effect.succeed(
+    Action.NextFrame({
+      state: { ...state, cursor, value, error: Option.none() }
+    })
+  )
 }
 
 function processCursorLeft(state: State) {
@@ -191,10 +193,11 @@ function processCursorLeft(state: State) {
     return Effect.succeed(Action.Beep())
   }
   const cursor = state.cursor - 1
-  const offset = state.offset - 1
-  return Effect.succeed(Action.NextFrame({
-    state: { ...state, cursor, offset, error: Option.none() }
-  }))
+  return Effect.succeed(
+    Action.NextFrame({
+      state: { ...state, cursor, error: Option.none() }
+    })
+  )
 }
 
 function processCursorRight(state: State) {
@@ -202,10 +205,11 @@ function processCursorRight(state: State) {
     return Effect.succeed(Action.Beep())
   }
   const cursor = Math.min(state.cursor + 1, state.value.length)
-  const offset = Math.min(state.offset + 1, state.value.length)
-  return Effect.succeed(Action.NextFrame({
-    state: { ...state, cursor, offset, error: Option.none() }
-  }))
+  return Effect.succeed(
+    Action.NextFrame({
+      state: { ...state, cursor, error: Option.none() }
+    })
+  )
 }
 
 function processTab(state: State, options: Options) {
@@ -214,24 +218,27 @@ function processTab(state: State, options: Options) {
   }
   const value = getValue(state, options)
   const cursor = value.length
-  return Effect.succeed(Action.NextFrame({
-    state: { ...state, value, cursor, error: Option.none() }
-  }))
+  return Effect.succeed(
+    Action.NextFrame({
+      state: { ...state, value, cursor, error: Option.none() }
+    })
+  )
 }
 
 function defaultProcessor(input: string, state: State) {
   const beforeCursor = state.value.slice(0, state.cursor)
   const afterCursor = state.value.slice(state.cursor)
   const value = `${beforeCursor}${input}${afterCursor}`
-  const cursor = beforeCursor.length + 1
-  return Effect.succeed(Action.NextFrame({
-    state: { ...state, cursor, value, error: Option.none() }
-  }))
+  const cursor = state.cursor + input.length
+  return Effect.succeed(
+    Action.NextFrame({
+      state: { ...state, cursor, value, error: Option.none() }
+    })
+  )
 }
 
 const initialState: State = {
   cursor: 0,
-  offset: 0,
   value: "",
   error: Option.none()
 }
@@ -305,12 +312,16 @@ function basePrompt(
 }
 
 /** @internal */
-export const hidden = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Redacted.Redacted> =>
-  basePrompt(options, "hidden").pipe(InternalPrompt.map(Redacted.make))
+export const hidden = (
+  options: Prompt.Prompt.TextOptions
+): Prompt.Prompt<Redacted.Redacted> => basePrompt(options, "hidden").pipe(InternalPrompt.map(Redacted.make))
 
 /** @internal */
-export const password = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<Redacted.Redacted> =>
-  basePrompt(options, "password").pipe(InternalPrompt.map(Redacted.make))
+export const password = (
+  options: Prompt.Prompt.TextOptions
+): Prompt.Prompt<Redacted.Redacted> => basePrompt(options, "password").pipe(InternalPrompt.map(Redacted.make))
 
 /** @internal */
-export const text = (options: Prompt.Prompt.TextOptions): Prompt.Prompt<string> => basePrompt(options, "text")
+export const text = (
+  options: Prompt.Prompt.TextOptions
+): Prompt.Prompt<string> => basePrompt(options, "text")
