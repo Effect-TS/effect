@@ -1,8 +1,10 @@
 import * as Terminal from "@effect/platform/Terminal"
 import * as Doc from "@effect/printer-ansi/AnsiDoc"
+import type * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
+import type * as Mailbox from "effect/Mailbox"
 import * as Pipeable from "effect/Pipeable"
 import * as Ref from "effect/Ref"
 import type * as Prompt from "../Prompt.js"
@@ -165,70 +167,83 @@ export const flatMap = dual<
 })
 
 /** @internal */
-export const run = <Output>(
+export const run: <Output>(
   self: Prompt.Prompt<Output>
-): Effect.Effect<Output, Terminal.QuitException, Prompt.Prompt.Environment> =>
-  Effect.flatMap(Terminal.Terminal, (terminal) => {
-    const op = self as Primitive
+) => Effect.Effect<
+  Output,
+  Terminal.QuitException,
+  Prompt.Prompt.Environment
+> = Effect.fnUntraced(
+  function*<Output>(self: Prompt.Prompt<Output>) {
+    const terminal = yield* Terminal.Terminal
+    const input = yield* terminal.readInput
+    return yield* runWithInput(self, terminal, input)
+  },
+  Effect.mapError(() => new Terminal.QuitException()),
+  Effect.scoped
+)
+
+const runWithInput = <Output>(
+  prompt: Prompt.Prompt<Output>,
+  terminal: Terminal.Terminal,
+  input: Mailbox.ReadonlyMailbox<Terminal.UserInput>
+): Effect.Effect<Output, Cause.NoSuchElementException, Prompt.Prompt.Environment> =>
+  Effect.suspend(() => {
+    const op = prompt as Primitive
     switch (op._tag) {
       case "Loop": {
-        const makeStateRef = Effect.isEffect(op.initialState)
-          ? op.initialState.pipe(Effect.flatMap(Ref.make))
-          : Ref.make(op.initialState)
-        return makeStateRef.pipe(
-          Effect.flatMap((ref) => {
-            const loop = (
-              action: Exclude<Prompt.Prompt.Action<unknown, unknown>, { _tag: "Submit" }>
-            ): Effect.Effect<any, Terminal.QuitException, Prompt.Prompt.Environment> =>
-              Ref.get(ref).pipe(
-                Effect.flatMap((state) =>
-                  op.render(state, action).pipe(
-                    Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
-                    Effect.zipRight(terminal.readInput),
-                    Effect.flatMap((input) => op.process(input, state)),
-                    Effect.flatMap((action) => {
-                      switch (action._tag) {
-                        case "Beep": {
-                          return loop(action)
-                        }
-                        case "NextFrame": {
-                          return op.clear(state, action).pipe(
-                            Effect.flatMap((clear) => Effect.orDie(terminal.display(clear))),
-                            Effect.zipRight(Ref.set(ref, action.state)),
-                            Effect.zipRight(loop(action))
-                          )
-                        }
-                        case "Submit": {
-                          return op.clear(state, action).pipe(
-                            Effect.flatMap((clear) => Effect.orDie(terminal.display(clear))),
-                            Effect.zipRight(op.render(state, action)),
-                            Effect.flatMap((msg) => Effect.orDie(terminal.display(msg))),
-                            Effect.zipRight(Effect.succeed(action.value))
-                          )
-                        }
-                      }
-                    })
-                  )
-                )
-              )
-            return Ref.get(ref).pipe(
-              Effect.flatMap((state) => loop(Action.NextFrame({ state })))
-            )
-          }),
-          // Always make sure to restore the display of the cursor
-          Effect.ensuring(Effect.orDie(
-            terminal.display(Doc.render(Doc.cursorShow, { style: "pretty" }))
-          ))
-        )
+        return runLoop(op, terminal, input)
       }
       case "OnSuccess": {
-        return Effect.flatMap(run(op.prompt), (a) => run(op.onSuccess(a))) as any
+        return Effect.flatMap(
+          runWithInput(op.prompt, terminal, input),
+          (a) => runWithInput(op.onSuccess(a), terminal, input)
+        ) as any
       }
       case "Succeed": {
         return Effect.succeed(op.value)
       }
     }
   })
+
+const runLoop = Effect.fnUntraced(
+  function*(
+    loop: Loop,
+    terminal: Terminal.Terminal,
+    input: Mailbox.ReadonlyMailbox<Terminal.UserInput>
+  ) {
+    let state = Effect.isEffect(loop.initialState) ? yield* loop.initialState : loop.initialState
+    let action: Prompt.Prompt.Action<unknown, unknown> = Action.NextFrame({ state })
+    while (true) {
+      const msg = yield* loop.render(state, action)
+      yield* Effect.orDie(terminal.display(msg))
+      const event = yield* input.take
+      action = yield* loop.process(event, state)
+      switch (action._tag) {
+        case "Beep":
+          continue
+        case "NextFrame": {
+          yield* Effect.orDie(terminal.display(yield* loop.clear(state, action)))
+          state = action.state
+          continue
+        }
+        case "Submit": {
+          yield* Effect.orDie(terminal.display(yield* loop.clear(state, action)))
+          const msg = yield* loop.render(state, action)
+          yield* Effect.orDie(terminal.display(msg))
+          return action.value
+        }
+      }
+    }
+  },
+  (effect, _, terminal) =>
+    Effect.ensuring(
+      effect,
+      Effect.orDie(
+        terminal.display(Doc.render(Doc.cursorShow, { style: "pretty" }))
+      )
+    )
+)
 
 /** @internal */
 export const succeed = <A>(value: A): Prompt.Prompt<A> => {

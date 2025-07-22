@@ -1,6 +1,8 @@
 ---
-"@effect/platform-node-shared": patch
-"@effect/cli": patch
+"@effect/platform": minor
 ---
 
-Fix prompt pasting issues in CLI.
+Changes Terminal.readInput to return a ReadonlyMailbox of events
+
+This allows for more efficient handling of input events, as well as ensuring
+events are not lost.
