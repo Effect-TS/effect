@@ -6,7 +6,6 @@ import * as Effectable from "effect/Effectable"
 import { dual } from "effect/Function"
 import type * as Mailbox from "effect/Mailbox"
 import * as Pipeable from "effect/Pipeable"
-import * as Ref from "effect/Ref"
 import type * as Prompt from "../Prompt.js"
 import { Action } from "./prompt/action.js"
 
