@@ -373,12 +373,26 @@ export const makeClientRpc: Effect.Effect<
 
   return ShardManagerClient.of({
     register: (address, groups) =>
-      client.Register({ runner: Runner.make({ address, version: config.serverVersion, groups }) }),
-    unregister: (address) => client.Unregister({ address }),
-    notifyUnhealthyRunner: (address) => client.NotifyUnhealthyRunner({ address }),
-    getAssignments: client.GetAssignments(),
-    shardingEvents: client.ShardingEvents(void 0, { asMailbox: true }),
-    getTime: client.GetTime()
+      client.Register({ runner: Runner.make({ address, version: config.serverVersion, groups }) }).pipe(
+        Effect.orDie
+      ),
+    unregister: (address) => Effect.orDie(client.Unregister({ address })),
+    notifyUnhealthyRunner: (address) => Effect.orDie(client.NotifyUnhealthyRunner({ address })),
+    getAssignments: Effect.orDie(client.GetAssignments()),
+    shardingEvents: Mailbox.make<ShardingEvent>().pipe(
+      Effect.tap(Effect.fnUntraced(
+        function*(mailbox) {
+          const events = yield* client.ShardingEvents(void 0, { asMailbox: true })
+          const take = Effect.orDie(events.takeAll)
+          while (true) {
+            mailbox.unsafeOfferAll((yield* take)[0])
+          }
+        },
+        (effect, mb) => Mailbox.into(effect, mb),
+        Effect.forkScoped
+      ))
+    ),
+    getTime: Effect.orDie(client.GetTime())
   })
 })
 

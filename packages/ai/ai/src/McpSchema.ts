@@ -3,6 +3,7 @@
  */
 import * as Rpc from "@effect/rpc/Rpc"
 import type * as RpcClient from "@effect/rpc/RpcClient"
+import type { RpcClientError } from "@effect/rpc/RpcClientError"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as Context from "effect/Context"
@@ -1771,7 +1772,11 @@ export class McpServerClient extends Context.Tag("@effect/ai/McpSchema/McpServer
   McpServerClient,
   {
     readonly clientId: number
-    readonly getClient: Effect.Effect<RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerRequestRpcs>>, never, Scope.Scope>
+    readonly getClient: Effect.Effect<
+      RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerRequestRpcs>, RpcClientError>,
+      never,
+      Scope.Scope
+    >
   }
 >() {}
 
