@@ -506,7 +506,7 @@ export const intoResult = <A, E, R>(
           onFailure: (cause): Effect.Effect<Result<A, E>> =>
             instance.suspended
               ? Effect.succeed(new Suspended())
-              : !captureDefects && Cause.isDie(cause)
+              : Cause.isInterruptedOnly(cause) || (!captureDefects && Cause.isDie(cause))
               ? Effect.failCause(cause as Cause.Cause<never>)
               : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
         })
