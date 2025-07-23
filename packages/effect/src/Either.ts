@@ -11,7 +11,6 @@ import type { Inspectable } from "./Inspectable.js"
 import * as doNotation from "./internal/doNotation.js"
 import * as either from "./internal/either.js"
 import * as option_ from "./internal/option.js"
-import * as Iterable from "./Iterable.js"
 import type { Option } from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
@@ -798,7 +797,7 @@ export const forEach = dual<
   <B, E, S extends Iterable<any>>(
     self: S,
     f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Either<B, E>
-  ): Either<any, E> => all(Iterable.map(self, f))
+  ): Either<any, E> => all(Array.from(self).map(f))
 )
 /**
  * Returns an `Either` that swaps the error/success cases. This allows you to
