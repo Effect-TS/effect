@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.7.1
+
+### Patch Changes
+
+- [#5260](https://github.com/Effect-TS/effect/pull/5260) [`0b17343`](https://github.com/Effect-TS/effect/commit/0b17343e55a191f7621cc9efe98696c4fa2ec11e) Thanks @tim-smart! - don't capture non-suspended interrupts in Workflow.intoResult
+
 ## 0.7.0
 
 ### Patch Changes
