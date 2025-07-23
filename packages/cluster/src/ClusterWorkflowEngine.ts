@@ -246,6 +246,7 @@ export const make = Effect.gen(function*() {
                           return Effect.void
                         }
                         instance.suspended = false
+                        instance.interrupted = true
                         return Effect.zipRight(
                           Effect.ignore(clearClock({ workflow, executionId })),
                           Effect.interrupt

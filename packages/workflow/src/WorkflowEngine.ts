@@ -120,6 +120,11 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
      */
     suspended: boolean
 
+    /**
+     * Whether the workflow has requested to be interrupted.
+     */
+    interrupted: boolean
+
     readonly activityState: {
       count: number
       readonly latch: Effect.Latch
@@ -131,6 +136,7 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
       executionId,
       workflow,
       suspended: false,
+      interrupted: false,
       activityState: {
         count: 0,
         latch: Effect.unsafeMakeLatch()
