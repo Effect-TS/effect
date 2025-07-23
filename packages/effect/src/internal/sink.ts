@@ -1146,7 +1146,6 @@ const foldWeightedDecomposeLoop = <S, In>(
     onInput: (input: Chunk.Chunk<In>) => {
       const [nextS, nextCost, nextDirty, leftovers] = foldWeightedDecomposeFold(
         input,
-        0,
         s,
         cost,
         dirty,
@@ -1170,7 +1169,6 @@ const foldWeightedDecomposeLoop = <S, In>(
 /** @internal */
 const foldWeightedDecomposeFold = <In, S>(
   input: Chunk.Chunk<In>,
-  index: number,
   s: S,
   cost: number,
   dirty: boolean,
@@ -1179,30 +1177,34 @@ const foldWeightedDecomposeFold = <In, S>(
   decompose: (input: In) => Chunk.Chunk<In>,
   f: (s: S, input: In) => S
 ): [S, number, boolean, Chunk.Chunk<In>] => {
-  if (index === input.length) {
-    return [s, cost, dirty, Chunk.empty<In>()]
+  for (let index = 0; index < input.length; index++) {
+    const elem = Chunk.unsafeGet(input, index)
+    const prevCost = cost
+    cost = cost + costFn(s, elem)
+    if (cost <= max) {
+      s = f(s, elem)
+      dirty = true
+      continue
+    }
+    const decomposed = decompose(elem)
+    if (decomposed.length <= 1 && !dirty) {
+      // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
+      // minimize "injury", we only allow this when we haven't added anything else
+      // to the aggregate (dirty = false).
+      return [f(s, elem), cost, true, Chunk.drop(input, index + 1)]
+    }
+    if (decomposed.length <= 1 && dirty) {
+      // If the state is dirty and `elem` cannot be decomposed, we stop folding
+      // and include `elem` in the leftovers.
+      return [s, prevCost, dirty, Chunk.drop(input, index)]
+    }
+    // `elem` got decomposed, so we will recurse with the decomposed elements pushed
+    // into the chunk we're processing and see if we can aggregate further.
+    input = Chunk.appendAll(decomposed, Chunk.drop(input, index + 1))
+    cost = prevCost
+    index = -1
   }
-  const elem = pipe(input, Chunk.unsafeGet(index))
-  const total = cost + costFn(s, elem)
-  if (total <= max) {
-    return foldWeightedDecomposeFold(input, index + 1, f(s, elem), total, true, max, costFn, decompose, f)
-  }
-  const decomposed = decompose(elem)
-  if (decomposed.length <= 1 && !dirty) {
-    // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
-    // minimize "injury", we only allow this when we haven't added anything else
-    // to the aggregate (dirty = false).
-    return [f(s, elem), total, true, pipe(input, Chunk.drop(index + 1))]
-  }
-  if (decomposed.length <= 1 && dirty) {
-    // If the state is dirty and `elem` cannot be decomposed, we stop folding
-    // and include `elem` in the leftovers.
-    return [s, cost, dirty, pipe(input, Chunk.drop(index))]
-  }
-  // `elem` got decomposed, so we will recurse with the decomposed elements pushed
-  // into the chunk we're processing and see if we can aggregate further.
-  const next = pipe(decomposed, Chunk.appendAll(pipe(input, Chunk.drop(index + 1))))
-  return foldWeightedDecomposeFold(next, 0, s, cost, dirty, max, costFn, decompose, f)
+  return [s, cost, dirty, Chunk.empty<In>()]
 }
 
 /** @internal */
