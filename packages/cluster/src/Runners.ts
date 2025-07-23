@@ -3,6 +3,7 @@
  */
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient_ from "@effect/rpc/RpcClient"
+import type { RpcClientError } from "@effect/rpc/RpcClientError"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcSchema from "@effect/rpc/RpcSchema"
 import * as Cause from "effect/Cause"
@@ -440,7 +441,7 @@ export class Rpcs extends RpcGroup.make(
  * @since 1.0.0
  * @category Rpcs
  */
-export interface RpcClient extends RpcClient_.FromGroup<typeof Rpcs> {}
+export interface RpcClient extends RpcClient_.FromGroup<typeof Rpcs, RpcClientError> {}
 
 /**
  * @since 1.0.0
@@ -470,7 +471,7 @@ export const makeRpc: Effect.Effect<
         makeClientProtocol(address),
         (protocol) => Effect.provideService(makeRpcClient, RpcClient_.Protocol, protocol)
       ),
-    idleTimeToLive: "2 minutes"
+    idleTimeToLive: "3 minutes"
   })
 
   return yield* make({
@@ -492,6 +493,7 @@ export const makeRpc: Effect.Effect<
               persisted: isPersisted
             })
           ),
+          Effect.catchTag("RpcClientError", Effect.die),
           Effect.scoped,
           Effect.catchAllDefect(() => Effect.fail(new RunnerUnavailable({ address })))
         )
@@ -507,6 +509,7 @@ export const makeRpc: Effect.Effect<
                   persisted: isPersisted
                 })
               ),
+              Effect.catchTag("RpcClientError", Effect.die),
               Effect.flatMap((reply) =>
                 Schema.decode(Reply.Reply(message.rpc))(reply).pipe(
                   Effect.locally(FiberRef.currentContext, message.context),
@@ -542,6 +545,7 @@ export const makeRpc: Effect.Effect<
                 Effect.flatMap((reply) => Effect.orDie(decode(reply))),
                 Effect.flatMap(message.respond),
                 Effect.forever,
+                Effect.catchTag("RpcClientError", Effect.die),
                 Effect.locally(FiberRef.currentContext, message.context),
                 Effect.catchIf(Cause.isNoSuchElementException, () => Effect.void),
                 Effect.catchAllDefect(() => Effect.fail(new RunnerUnavailable({ address })))

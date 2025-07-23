@@ -318,6 +318,8 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
           data: response.defect
         }
       }
+    case "ClientProtocolError":
+      return {} as never
   }
 }
 

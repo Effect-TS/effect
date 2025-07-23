@@ -7,6 +7,7 @@ import type { Branded } from "effect/Brand"
 import type * as FiberId from "effect/FiberId"
 import * as Schema from "effect/Schema"
 import type * as Rpc from "./Rpc.js"
+import type { RpcClientError } from "./RpcClientError.js"
 
 /**
  * @since 1.0.0
@@ -154,7 +155,12 @@ export type FromServer<A extends Rpc.Any> =
  * @since 1.0.0
  * @category response
  */
-export type FromServerEncoded = ResponseChunkEncoded | ResponseExitEncoded | ResponseDefectEncoded | Pong
+export type FromServerEncoded =
+  | ResponseChunkEncoded
+  | ResponseExitEncoded
+  | ResponseDefectEncoded
+  | Pong
+  | ClientProtocolError
 
 /**
  * @since 1.0.0
@@ -203,6 +209,15 @@ export interface ResponseExitEncoded {
   readonly _tag: "Exit"
   readonly requestId: string
   readonly exit: Schema.ExitEncoded<unknown, unknown, unknown>
+}
+
+/**
+ * @since 1.0.0
+ * @category response
+ */
+export interface ClientProtocolError {
+  readonly _tag: "ClientProtocolError"
+  readonly error: RpcClientError
 }
 
 /**

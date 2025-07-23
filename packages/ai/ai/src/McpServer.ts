@@ -380,6 +380,7 @@ export const run: (
           case "Pong":
           case "Exit":
           case "Chunk":
+          case "ClientProtocolError":
           case "Defect":
             return RcMap.get(clients, clientId).pipe(
               Effect.flatMap(({ write }) => write(request)),
