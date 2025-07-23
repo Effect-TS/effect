@@ -1,5 +1,16 @@
 # @effect/rpc
 
+## 0.68.0
+
+### Minor Changes
+
+- [#5264](https://github.com/Effect-TS/effect/pull/5264) [`e9cbd26`](https://github.com/Effect-TS/effect/commit/e9cbd2673401723aa811b0535202e4f57baf6d2c) Thanks @tim-smart! - add RpcClientError
+
+### Patch Changes
+
+- Updated dependencies [[`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87)]:
+  - effect@3.17.1
+
 ## 0.67.0
 
 ### Patch Changes

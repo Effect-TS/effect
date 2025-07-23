@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.1
+
+### Patch Changes
+
+- [#5262](https://github.com/Effect-TS/effect/pull/5262) [`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87) Thanks @tim-smart! - remove recursion from Sink fold loop
+
 ## 3.17.0
 
 ### Minor Changes
