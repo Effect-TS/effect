@@ -1,5 +1,14 @@
 # @effect/ai-google
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [[`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87)]:
+  - effect@3.17.1
+  - @effect/ai@0.25.0
+  - @effect/experimental@0.54.0
+
 ## 0.3.0
 
 ### Patch Changes
