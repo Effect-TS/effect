@@ -6,7 +6,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { constFalse, constTrue, dual, identity } from "effect/Function"
+import { constTrue, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
@@ -495,9 +495,11 @@ export const intoResult = <A, E, R>(
     return Effect.uninterruptibleMask((restore) =>
       restore(effect).pipe(
         suspendOnFailure ?
-          Effect.catchAllCause(() => {
+          Effect.catchAllCause((cause) => {
             instance.suspended = true
-            return Effect.interrupt
+            return SuspendOnFailure.hasOnFailure(suspendOnFailure) && !Cause.isInterrupted(cause)
+              ? Effect.zipRight(suspendOnFailure.onFailure({ cause, instance }), Effect.interrupt)
+              : Effect.interrupt
           }) :
           identity,
         Effect.scoped,
@@ -606,6 +608,14 @@ export class CaptureDefects extends Context.Reference<CaptureDefects>()("@effect
  */
 export class SuspendOnFailure
   extends Context.Reference<SuspendOnFailure>()("@effect/workflow/Workflow/SuspendOnFailure", {
-    defaultValue: constFalse
+    defaultValue: (): boolean | {
+      onFailure: (_: { cause: Cause.Cause<unknown>; instance: WorkflowInstance["Type"] }) => Effect.Effect<void>
+    } => false
   })
-{}
+{
+  static hasOnFailure = (
+    value: unknown
+  ): value is {
+    onFailure: (_: { cause: Cause.Cause<unknown>; instance: WorkflowInstance["Type"] }) => Effect.Effect<void>
+  } => typeof value === "object" && value !== null && "onFailure" in value
+}
