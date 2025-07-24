@@ -50,7 +50,7 @@ export interface HttpApiGroup<
   readonly identifier: Id
   readonly topLevel: TopLevel
   readonly endpoints: {
-    [K in HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>]: HttpApiEndpoint.HttpApiEndpoint.WithName<Endpoints, K>
+    readonly [K in HttpApiEndpoint.HttpApiEndpoint.Name<Endpoints>]: HttpApiEndpoint.HttpApiEndpoint.WithName<Endpoints, K>
   }
   readonly errorSchema: Schema.Schema<Error, unknown, R>
   readonly annotations: Context.Context<never>

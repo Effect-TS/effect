@@ -53,7 +53,7 @@ export interface HttpApi<
   readonly [TypeId]: TypeId
   readonly identifier: Id
   readonly groups: {
-    [K in HttpApiGroup.HttpApiGroup.Name<Groups>]: HttpApiGroup.HttpApiGroup.WithName<Groups, K>
+    readonly [K in HttpApiGroup.HttpApiGroup.Name<Groups>]: HttpApiGroup.HttpApiGroup.WithName<Groups, K>
   }
   readonly annotations: Context.Context<never>
   readonly errorSchema: Schema.Schema<E, unknown, R>
