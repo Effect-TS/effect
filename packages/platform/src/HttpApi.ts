@@ -52,7 +52,9 @@ export interface HttpApi<
   new(_: never): {}
   readonly [TypeId]: TypeId
   readonly identifier: Id
-  readonly groups: Record.ReadonlyRecord<string, Groups>
+  readonly groups: {
+    [K in HttpApiGroup.HttpApiGroup.Name<Groups>]: HttpApiGroup.HttpApiGroup.WithName<Groups, K>
+  }
   readonly annotations: Context.Context<never>
   readonly errorSchema: Schema.Schema<E, unknown, R>
   readonly middlewares: ReadonlySet<HttpApiMiddleware.TagClassAny>
