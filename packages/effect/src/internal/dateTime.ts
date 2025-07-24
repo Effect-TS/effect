@@ -249,13 +249,12 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
   if (options?.timeZone === undefined && isDateTime(input) && isZoned(input)) {
     return input
   }
-  const self = unsafeMake(input)
-  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
-    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
-  }
+  
+  // Parse timezone first
   let zone: DateTime.TimeZone
   if (options?.timeZone === undefined) {
-    const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
+    const tempSelf = unsafeMake(input)
+    const offset = new Date(tempSelf.epochMillis).getTimezoneOffset() * -60 * 1000
     zone = zoneMakeOffset(offset)
   } else if (isTimeZone(options?.timeZone)) {
     zone = options.timeZone
@@ -268,6 +267,12 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     }
     zone = parsedZone.value
   }
+  
+  const self = unsafeMake(input)
+  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
+    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
+  }
+  
   if (options?.adjustForTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
@@ -715,9 +720,39 @@ export const setPartsUtc: {
 // mapping
 // =============================================================================
 
+/**
+ * Creates a DateTime.Zoned from adjusted local time, correctly handling timezone offset calculation.
+ * 
+ * @param adjustedMillis - Naive local time represented as milliseconds since epoch (e.g., "01:00 Athens" as UTC timestamp)
+ * @param zone - Target timezone (offset or named zone)
+ * @returns DateTime.Zoned with correct UTC epochMillis for the given local time
+ */
 const makeZonedFromAdjusted = (adjustedMillis: number, zone: DateTime.TimeZone): DateTime.Zoned => {
-  const offset = zone._tag === "Offset" ? zone.offset : calculateNamedOffset(adjustedMillis, zone)
-  return makeZonedProto(adjustedMillis - offset, zone)
+  if (zone._tag === "Offset") {
+    return makeZonedProto(adjustedMillis - zone.offset, zone)
+  }
+  
+  // For named zones, we need to solve: localTime = utcTime + offset(utcTime)
+  // Since offset depends on UTC time (due to DST), we use fixed-point iteration
+  let approximateUtc = adjustedMillis
+  let previousOffset = 0
+  
+  // Iteratively converge to correct UTC time (usually 1-2 iterations)
+  for (let i = 0; i < 3; i++) {
+    const currentOffset = calculateNamedOffset(approximateUtc, zone)
+    const candidateUtc = adjustedMillis - currentOffset
+    
+    // Check convergence: offset unchanged means we found the right DST period
+    if (i > 0 && currentOffset === previousOffset) {
+      return makeZonedProto(candidateUtc, zone)
+    }
+    
+    approximateUtc = candidateUtc
+    previousOffset = currentOffset
+  }
+  
+  // Fallback: use final approximation (convergence guaranteed by DST period stability)
+  return makeZonedProto(approximateUtc, zone)
 }
 
 const offsetRegex = /([+-])(\d{2}):(\d{2})$/

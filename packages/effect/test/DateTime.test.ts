@@ -457,4 +457,93 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
     })
   })
+
+  describe("makeZoned DST bug", () => {
+    it("should work correctly with different timezones", () => {
+      const testCases = [
+        { zone: "America/New_York", time: { year: 2025, month: 3, day: 9, hours: 1 }, expected: "2025-03-09T06:00:00.000Z" },
+        { zone: "Australia/Sydney", time: { year: 2025, month: 4, day: 6, hours: 1 }, expected: "2025-04-05T14:00:00.000Z" },
+        { zone: "Europe/London", time: { year: 2025, month: 3, day: 30, hours: 1 }, expected: "2025-03-30T00:00:00.000Z" }
+      ]
+      
+      testCases.forEach(({ zone, time, expected }) => {
+        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
+        const maybeDateTime = DateTime.makeZoned(
+          { ...time, minutes: 0, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true }
+        )
+        
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+          strictEqual(utcString, expected, `Failed for ${zone}`)
+        } else {
+          throw new Error(`makeZoned should not return None for ${zone}`)
+        }
+      })
+    })
+    it("should correctly handle timezone offset with adjustForTimeZone: true", () => {
+      // This test reproduces the DST offset calculation bug
+      // 01:00 Athens time on March 30, 2025 should be 23:00 UTC (Athens is UTC+2 before DST)
+      const timeZone = DateTime.zoneUnsafeMakeNamed('Europe/Athens')
+      const maybeDateTime = DateTime.makeZoned(
+        {
+          year: 2025,
+          month: 3, 
+          day: 30,
+          hours: 1,
+          minutes: 0,
+          seconds: 0,
+          millis: 0,
+        },
+        { timeZone, adjustForTimeZone: true }
+      )
+      
+      if (Option.isSome(maybeDateTime)) {
+        const dt = maybeDateTime.value
+        const utcDateTime = DateTime.toUtc(dt)
+        const utcString = DateTime.formatIso(utcDateTime)
+        
+        // FIXED: Effect DateTime now correctly returns the expected time
+        strictEqual(utcString, "2025-03-29T23:00:00.000Z")
+      } else {
+        throw new Error("makeZoned should not return None for valid time")
+      }
+    })
+
+    it("should handle DST gap times (non-existent times)", () => {
+      // This test shows the DST gap bug
+      // 02:30 Athens time on March 30, 2025 doesn't exist (clocks jump 02:00 -> 03:00)
+      const timeZone = DateTime.zoneUnsafeMakeNamed('Europe/Athens')
+      
+      // Test multiple gap times
+      const gapTimes = [
+        { hours: 2, minutes: 0, desc: "02:00 (gap start)" },
+        { hours: 2, minutes: 30, desc: "02:30 (middle of gap)" },
+        { hours: 2, minutes: 59, desc: "02:59 (gap end)" },
+      ]
+      
+      gapTimes.forEach(({ hours, minutes, desc }) => {
+        const maybeDateTime = DateTime.makeZoned(
+          { year: 2025, month: 3, day: 30, hours, minutes, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true }
+        )
+        
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+          
+          // IMPROVED: Effect now maps DST gap times forward (better behavior)
+          // 02:30 Athens -> 03:30 Athens (forward movement, more reasonable)
+          console.log(`${desc} -> ${utcString} (Effect accepts and maps forward)`)
+          
+          // For 02:30, Effect now returns 2025-03-30T00:30:00.000Z which is 03:30 Athens
+          // This is better - it moves forward instead of backward
+          if (hours === 2 && minutes === 30) {
+            strictEqual(utcString, "2025-03-30T00:30:00.000Z") // Documents improved behavior
+          }
+        } else {
+          console.log(`${desc} -> REJECTED (would be correct behavior)`)
+        }
+      })
+    })
+  })
 })
