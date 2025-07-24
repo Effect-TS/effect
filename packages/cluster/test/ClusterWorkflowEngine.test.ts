@@ -11,6 +11,7 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "@effect/workflow"
 import { WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
+import * as Cause from "effect/Cause"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
@@ -224,6 +225,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* TestClock.adjust(1)
 
       assert.isTrue(flags.get("suspended"))
+      assert.include(flags.get("cause"), "boom")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
@@ -487,6 +489,7 @@ const SuspendOnFailureWorkflowLayer = SuspendOnFailureWorkflow.toLayer(Effect.fn
   yield* Effect.addFinalizer(() =>
     Effect.sync(() => {
       flags.set("suspended", instance.suspended)
+      flags.set("cause", Cause.pretty(instance.cause!))
     })
   )
   yield* Activity.make({

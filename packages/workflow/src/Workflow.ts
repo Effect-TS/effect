@@ -459,7 +459,9 @@ export interface CompleteEncoded<A, E> {
  * @since 1.0.0
  * @category Result
  */
-export class Suspended extends Schema.TaggedClass<Suspended>("@effect/workflow/Workflow/Suspended")("Suspended", {}) {
+export class Suspended extends Schema.TaggedClass<Suspended>("@effect/workflow/Workflow/Suspended")("Suspended", {
+  cause: Schema.optional(Schema.Cause({ error: Schema.Never, defect: Schema.Defect }))
+}) {
   /**
    * @since 1.0.0
    */
@@ -495,8 +497,11 @@ export const intoResult = <A, E, R>(
     return Effect.uninterruptibleMask((restore) =>
       restore(effect).pipe(
         suspendOnFailure ?
-          Effect.catchAllCause(() => {
+          Effect.catchAllCause((cause) => {
             instance.suspended = true
+            if (!Cause.isInterruptedOnly(cause)) {
+              instance.cause = Cause.die(Cause.squash(cause))
+            }
             return Effect.interrupt
           }) :
           identity,
@@ -505,7 +510,7 @@ export const intoResult = <A, E, R>(
           onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
           onFailure: (cause): Effect.Effect<Result<A, E>> =>
             instance.suspended
-              ? Effect.succeed(new Suspended())
+              ? Effect.succeed(new Suspended({ cause: instance.cause }))
               : (!instance.interrupted && Cause.isInterruptedOnly(cause)) || (!captureDefects && Cause.isDie(cause))
               ? Effect.failCause(cause as Cause.Cause<never>)
               : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
@@ -538,6 +543,9 @@ export const wrapActivityResult = <A, E, R>(
     return Effect.onExit(effect, (exit) => {
       state.count--
       const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
+      if (Exit.isSuccess(exit) && isResult(exit.value) && exit.value._tag === "Suspended" && exit.value.cause) {
+        instance.cause = instance.cause ? Cause.sequential(instance.cause, exit.value.cause) : exit.value.cause
+      }
       return state.count === 0 ? state.latch.open : isSuspended ? state.latch.await : Effect.void
     })
   })

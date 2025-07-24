@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
@@ -125,6 +126,12 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
      */
     interrupted: boolean
 
+    /**
+     * When SuspendOnFailure is triggered, the cause of the failure is stored
+     * here.
+     */
+    cause: Cause.Cause<never> | undefined
+
     readonly activityState: {
       count: number
       readonly latch: Effect.Latch
@@ -137,6 +144,7 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
       workflow,
       suspended: false,
       interrupted: false,
+      cause: undefined,
       activityState: {
         count: 0,
         latch: Effect.unsafeMakeLatch()
