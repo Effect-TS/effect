@@ -1,5 +1,13 @@
 # @effect/workflow
 
+## 0.8.1
+
+### Patch Changes
+
+- [#5265](https://github.com/Effect-TS/effect/pull/5265) [`c887902`](https://github.com/Effect-TS/effect/commit/c887902e29350996bb8330097a9cf7fc01d25577) Thanks @jrmdayn! - Add a new endpoint to the Workflow Proxy to resume a workflow that has been suspended
+
+- [#5271](https://github.com/Effect-TS/effect/pull/5271) [`88e219f`](https://github.com/Effect-TS/effect/commit/88e219f8a89058e2a68902aba181ea6929c0813b) Thanks @tim-smart! - track the Cause for workflow SuspendOnFailure
+
 ## 0.8.0
 
 ### Patch Changes
