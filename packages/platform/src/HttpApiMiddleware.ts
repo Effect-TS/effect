@@ -315,3 +315,56 @@ export const Tag = <Self>(): <
   }
   return TagClass as any
 }
+
+/**
+ * @since 1.0.0
+ * @category Middlewares
+ */
+export class HttpApiRateLimiter extends HttpApiMiddleware.Tag<HttpApiRateLimiter>()(
+    "@effect/platform/HttpApiMiddleware/HttpApiRateLimiter",
+    {
+        optional: false,
+        failure: HttpApiError.TooFast,
+    }
+) {
+    /**
+     * @since 1.0.0
+     * @category Layers
+     */
+    public static Live = (
+        options: {
+            failAfterWaitingFor: Duration.DurationInput;
+            keyFn: (request: HttpServerRequest.HttpServerRequest) => string;
+        } & RateLimiter.RateLimiter.Options
+    ): Layer.Layer<HttpApiRateLimiter, never, never> =>
+        Layer.scoped(
+            HttpApiRateLimiter,
+            Effect.gen(function* () {
+                const rcMap = yield* RcMap.make({
+                    capacity: undefined,
+                    lookup: (_key: string) => RateLimiter.make(options),
+                    idleTimeToLive: Duration.sum(options.interval, Duration.seconds(1)),
+                });
+
+                return Effect.gen(function* () {
+                    const request = yield* HttpServerRequest.HttpServerRequest;
+                    const rateLimit = yield* RcMap.get(rcMap, options.keyFn(request));
+                    const failAfterWaitingWith = Effect.timeoutFail({
+                        duration: options.failAfterWaitingFor,
+                        onTimeout: () => new HttpApiError.TooFast(),
+                    });
+
+                    return yield* Effect.void.pipe(rateLimit).pipe(failAfterWaitingWith);
+                });
+            })
+        );
+
+    /**
+     * @since 1.0.0
+     * @category Layers
+     */
+    public static Noop: Layer.Layer<HttpApiRateLimiter, never, never> = Layer.scoped(
+        HttpApiRateLimiter,
+        Effect.succeed(Effect.void)
+    );
+}
