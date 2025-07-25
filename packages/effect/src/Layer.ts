@@ -42,6 +42,7 @@ import type * as Runtime from "./Runtime.js"
 import type * as Schedule from "./Schedule.js"
 import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
+import type * as Stream from "./Stream.js"
 import type * as Tracer from "./Tracer.js"
 import type * as Types from "./Types.js"
 
@@ -402,14 +403,19 @@ export const fresh: <A, E, R>(self: Layer<A, E, R>) => Layer<A, E, R> = internal
 export type PartialEffectful<A extends object> = Types.Simplify<
   & {
     [
-      K in keyof A as A[K] extends Effect.Effect<any, any, any> | ((...args: any) => Effect.Effect<any, any, any>) ? K
+      K in keyof A as A[K] extends
+        | Effect.Effect<any, any, any>
+        | Stream.Stream<any, any, any>
+        | ((...args: any) => Effect.Effect<any, any, any> | Stream.Stream<any, any, any>) ? K
         : never
     ]?: A[K]
   }
   & {
     [
-      K in keyof A as A[K] extends Effect.Effect<any, any, any> | ((...args: any) => Effect.Effect<any, any, any>) ?
-        never
+      K in keyof A as A[K] extends
+        | Effect.Effect<any, any, any>
+        | Stream.Stream<any, any, any>
+        | ((...args: any) => Effect.Effect<any, any, any> | Stream.Stream<any, any, any>) ? never
         : K
     ]: A[K]
   }

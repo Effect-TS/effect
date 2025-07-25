@@ -642,27 +642,31 @@ export const launch = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): Effect.Ef
 export const mock: {
   <I, S extends object>(tag: Context.Tag<I, S>): (service: Layer.PartialEffectful<S>) => Layer.Layer<I>
   <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I>
-} = dual(
-  2,
-  <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I> =>
-    succeed(
-      tag,
-      new Proxy({ ...service as object } as S, {
-        get(target, prop, _receiver) {
-          if (prop in target) {
-            return target[prop as keyof S]
-          }
-          const prevLimit = Error.stackTraceLimit
-          Error.stackTraceLimit = 2
-          const error = new Error(`${tag.key}: Unimplemented method "${prop.toString()}"`)
-          Error.stackTraceLimit = prevLimit
-          error.name = "UnimplementedError"
-          return makeUnimplemented(error)
-        },
-        has: constTrue
-      })
-    )
-)
+} = function() {
+  if (arguments.length === 1) {
+    return (service: Layer.PartialEffectful<any>) => mockImpl(arguments[0], service)
+  }
+  return mockImpl(arguments[0], arguments[1])
+} as any
+
+const mockImpl = <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I> =>
+  succeed(
+    tag,
+    new Proxy({ ...service as object } as S, {
+      get(target, prop, _receiver) {
+        if (prop in target) {
+          return target[prop as keyof S]
+        }
+        const prevLimit = Error.stackTraceLimit
+        Error.stackTraceLimit = 2
+        const error = new Error(`${tag.key}: Unimplemented method "${prop.toString()}"`)
+        Error.stackTraceLimit = prevLimit
+        error.name = "UnimplementedError"
+        return makeUnimplemented(error)
+      },
+      has: constTrue
+    })
+  )
 
 const makeUnimplemented = (error: Error) => {
   const dead = core.die(error)
