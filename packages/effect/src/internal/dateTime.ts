@@ -176,9 +176,7 @@ export const isZoned = (self: DateTime.DateTime): self is DateTime.Zoned => self
 // =============================================================================
 
 /** @internal */
-export const Equivalence: equivalence.Equivalence<DateTime.DateTime> = equivalence.make((a, b) =>
-  a.epochMillis === b.epochMillis
-)
+export const Equivalence: equivalence.Equivalence<DateTime.DateTime> = equivalence.make((a, b) => a.epochMillis === b.epochMillis)
 
 /** @internal */
 export const Order: order.Order<DateTime.DateTime> = order.make((self, that) =>
@@ -187,9 +185,10 @@ export const Order: order.Order<DateTime.DateTime> = order.make((self, that) =>
 
 /** @internal */
 export const clamp: {
-  <Min extends DateTime.DateTime, Max extends DateTime.DateTime>(
-    options: { readonly minimum: Min; readonly maximum: Max }
-  ): <A extends DateTime.DateTime>(self: A) => A | Min | Max
+  <Min extends DateTime.DateTime, Max extends DateTime.DateTime>(options: {
+    readonly minimum: Min
+    readonly maximum: Max
+  }): <A extends DateTime.DateTime>(self: A) => A | Min | Max
   <A extends DateTime.DateTime, Min extends DateTime.DateTime, Max extends DateTime.DateTime>(
     self: A,
     options: { readonly minimum: Min; readonly maximum: Max }
@@ -221,7 +220,9 @@ export const unsafeFromDate = (date: Date): DateTime.Utc => {
 }
 
 /** @internal */
-export const unsafeMake = <A extends DateTime.DateTime.Input>(input: A): DateTime.DateTime.PreserveZone<A> => {
+export const unsafeMake = <A extends DateTime.DateTime.Input>(
+  input: A
+): DateTime.DateTime.PreserveZone<A> => {
   if (isDateTime(input)) {
     return input as DateTime.DateTime.PreserveZone<A>
   } else if (input instanceof Date) {
@@ -238,24 +239,27 @@ export const unsafeMake = <A extends DateTime.DateTime.Input>(input: A): DateTim
 
 const hasZone = (input: string): boolean => /Z|[+-]\d{2}$|[+-]\d{2}:?\d{2}$|\]$/.test(input)
 
-const minEpochMillis = -8640000000000000 + (12 * 60 * 60 * 1000)
-const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
+const minEpochMillis = -8640000000000000 + 12 * 60 * 60 * 1000
+const maxEpochMillis = 8640000000000000 - 14 * 60 * 60 * 1000
 
 /** @internal */
-export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
-  readonly timeZone?: number | string | DateTime.TimeZone | undefined
-  readonly adjustForTimeZone?: boolean | undefined
-}): DateTime.Zoned => {
+export const unsafeMakeZoned = (
+  input: DateTime.DateTime.Input,
+  options?: {
+    readonly timeZone?: number | string | DateTime.TimeZone | undefined
+    readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+  }
+): DateTime.Zoned => {
   if (options?.timeZone === undefined && isDateTime(input) && isZoned(input)) {
     return input
   }
-  const self = unsafeMake(input)
-  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
-    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
-  }
+
+  // Parse timezone first
   let zone: DateTime.TimeZone
   if (options?.timeZone === undefined) {
-    const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
+    const tempSelf = unsafeMake(input)
+    const offset = new Date(tempSelf.epochMillis).getTimezoneOffset() * -60 * 1000
     zone = zoneMakeOffset(offset)
   } else if (isTimeZone(options?.timeZone)) {
     zone = options.timeZone
@@ -268,10 +272,16 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     }
     zone = parsedZone.value
   }
+
+  const self = unsafeMake(input)
+  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
+    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
+  }
+
   if (options?.adjustForTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
-  return makeZonedFromAdjusted(self.epochMillis, zone)
+  return makeZonedFromAdjusted(self.epochMillis, zone, options?.disambiguation)
 }
 
 /** @internal */
@@ -280,6 +290,7 @@ export const makeZoned: (
   options?: {
     readonly timeZone?: number | string | DateTime.TimeZone | undefined
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
   }
 ) => Option.Option<DateTime.Zoned> = Option.liftThrowable(unsafeMakeZoned)
 
@@ -314,36 +325,74 @@ export const unsafeNow: LazyArg<DateTime.Utc> = () => makeUtc(Date.now())
 // =============================================================================
 
 /** @internal */
-export const toUtc = (self: DateTime.DateTime): DateTime.Utc => makeUtc(self.epochMillis)
+export const toUtc = (self: DateTime.DateTime): DateTime.Utc =>
+  makeUtc(self.epochMillis)
 
 /** @internal */
 export const setZone: {
-  (zone: DateTime.TimeZone, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): (self: DateTime.DateTime) => DateTime.Zoned
-  (self: DateTime.DateTime, zone: DateTime.TimeZone, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): DateTime.Zoned
-} = dual(isDateTimeArgs, (self: DateTime.DateTime, zone: DateTime.TimeZone, options?: {
-  readonly adjustForTimeZone?: boolean | undefined
-}): DateTime.Zoned =>
-  options?.adjustForTimeZone === true
-    ? makeZonedFromAdjusted(self.epochMillis, zone)
-    : makeZonedProto(self.epochMillis, zone, self.partsUtc))
+  (
+    zone: DateTime.TimeZone,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): (self: DateTime.DateTime) => DateTime.Zoned
+  (
+    self: DateTime.DateTime,
+    zone: DateTime.TimeZone,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): DateTime.Zoned
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    zone: DateTime.TimeZone,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): DateTime.Zoned =>
+    options?.adjustForTimeZone === true
+      ? makeZonedFromAdjusted(self.epochMillis, zone, options?.disambiguation)
+      : makeZonedProto(self.epochMillis, zone, self.partsUtc)
+)
 
 /** @internal */
 export const setZoneOffset: {
-  (offset: number, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): (self: DateTime.DateTime) => DateTime.Zoned
-  (self: DateTime.DateTime, offset: number, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): DateTime.Zoned
-} = dual(isDateTimeArgs, (self: DateTime.DateTime, offset: number, options?: {
-  readonly adjustForTimeZone?: boolean | undefined
-}): DateTime.Zoned => setZone(self, zoneMakeOffset(offset), options))
+  (
+    offset: number,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): (self: DateTime.DateTime) => DateTime.Zoned
+  (
+    self: DateTime.DateTime,
+    offset: number,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): DateTime.Zoned
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    offset: number,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): DateTime.Zoned => setZone(self, zoneMakeOffset(offset), options)
+)
 
-const validZoneCache = globalValue("effect/DateTime/validZoneCache", () => new Map<string, DateTime.TimeZone.Named>())
+const validZoneCache = globalValue(
+  "effect/DateTime/validZoneCache",
+  () => new Map<string, DateTime.TimeZone.Named>()
+)
 
 const formatOptions: Intl.DateTimeFormatOptions = {
   day: "numeric",
@@ -370,7 +419,9 @@ const zoneMakeIntl = (format: Intl.DateTimeFormat): DateTime.TimeZone.Named => {
 }
 
 /** @internal */
-export const zoneUnsafeMakeNamed = (zoneId: string): DateTime.TimeZone.Named => {
+export const zoneUnsafeMakeNamed = (
+  zoneId: string
+): DateTime.TimeZone.Named => {
   if (validZoneCache.has(zoneId)) {
     return validZoneCache.get(zoneId)!
   }
@@ -394,12 +445,15 @@ export const zoneMakeOffset = (offset: number): DateTime.TimeZone.Offset => {
 }
 
 /** @internal */
-export const zoneMakeNamed: (zoneId: string) => Option.Option<DateTime.TimeZone.Named> = Option.liftThrowable(
-  zoneUnsafeMakeNamed
-)
+export const zoneMakeNamed: (
+  zoneId: string
+) => Option.Option<DateTime.TimeZone.Named> =
+  Option.liftThrowable(zoneUnsafeMakeNamed)
 
 /** @internal */
-export const zoneMakeNamedEffect = (zoneId: string): Effect.Effect<DateTime.TimeZone.Named, IllegalArgumentException> =>
+export const zoneMakeNamedEffect = (
+  zoneId: string
+): Effect.Effect<DateTime.TimeZone.Named, IllegalArgumentException> =>
   internalEffect.try_({
     try: () => zoneUnsafeMakeNamed(zoneId),
     catch: (e) => e as IllegalArgumentException
@@ -412,7 +466,9 @@ export const zoneMakeLocal = (): DateTime.TimeZone.Named =>
 const offsetZoneRegex = /^(?:GMT|[+-])/
 
 /** @internal */
-export const zoneFromString = (zone: string): Option.Option<DateTime.TimeZone> => {
+export const zoneFromString = (
+  zone: string
+): Option.Option<DateTime.TimeZone> => {
   if (offsetZoneRegex.test(zone)) {
     const offset = parseOffset(zone)
     return offset === null ? Option.none() : Option.some(zoneMakeOffset(offset))
@@ -430,30 +486,62 @@ export const zoneToString = (self: DateTime.TimeZone): string => {
 
 /** @internal */
 export const setZoneNamed: {
-  (zoneId: string, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): (self: DateTime.DateTime) => Option.Option<DateTime.Zoned>
-  (self: DateTime.DateTime, zoneId: string, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): Option.Option<DateTime.Zoned>
+  (
+    zoneId: string,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): (self: DateTime.DateTime) => Option.Option<DateTime.Zoned>
+  (
+    self: DateTime.DateTime,
+    zoneId: string,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): Option.Option<DateTime.Zoned>
 } = dual(
   isDateTimeArgs,
-  (self: DateTime.DateTime, zoneId: string, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): Option.Option<DateTime.Zoned> => Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
+  (
+    self: DateTime.DateTime,
+    zoneId: string,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): Option.Option<DateTime.Zoned> =>
+    Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
 )
 
 /** @internal */
 export const unsafeSetZoneNamed: {
-  (zoneId: string, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): (self: DateTime.DateTime) => DateTime.Zoned
-  (self: DateTime.DateTime, zoneId: string, options?: {
-    readonly adjustForTimeZone?: boolean | undefined
-  }): DateTime.Zoned
-} = dual(isDateTimeArgs, (self: DateTime.DateTime, zoneId: string, options?: {
-  readonly adjustForTimeZone?: boolean | undefined
-}): DateTime.Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId), options))
+  (
+    zoneId: string,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): (self: DateTime.DateTime) => DateTime.Zoned
+  (
+    self: DateTime.DateTime,
+    zoneId: string,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): DateTime.Zoned
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    zoneId: string,
+    options?: {
+      readonly adjustForTimeZone?: boolean | undefined
+      readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    }
+  ): DateTime.Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId), options)
+)
 
 // =============================================================================
 // comparisons
@@ -463,15 +551,29 @@ export const unsafeSetZoneNamed: {
 export const distance: {
   (other: DateTime.DateTime): (self: DateTime.DateTime) => number
   (self: DateTime.DateTime, other: DateTime.DateTime): number
-} = dual(2, (self: DateTime.DateTime, other: DateTime.DateTime): number => toEpochMillis(other) - toEpochMillis(self))
+} = dual(
+  2,
+  (self: DateTime.DateTime, other: DateTime.DateTime): number =>
+    toEpochMillis(other) - toEpochMillis(self)
+)
 
 /** @internal */
 export const distanceDurationEither: {
-  (other: DateTime.DateTime): (self: DateTime.DateTime) => Either.Either<Duration.Duration, Duration.Duration>
-  (self: DateTime.DateTime, other: DateTime.DateTime): Either.Either<Duration.Duration, Duration.Duration>
+  (
+    other: DateTime.DateTime
+  ): (
+    self: DateTime.DateTime
+  ) => Either.Either<Duration.Duration, Duration.Duration>
+  (
+    self: DateTime.DateTime,
+    other: DateTime.DateTime
+  ): Either.Either<Duration.Duration, Duration.Duration>
 } = dual(
   2,
-  (self: DateTime.DateTime, other: DateTime.DateTime): Either.Either<Duration.Duration, Duration.Duration> => {
+  (
+    self: DateTime.DateTime,
+    other: DateTime.DateTime
+  ): Either.Either<Duration.Duration, Duration.Duration> => {
     const diffMillis = distance(self, other)
     return diffMillis > 0
       ? Either.right(Duration.millis(diffMillis))
@@ -491,14 +593,24 @@ export const distanceDuration: {
 
 /** @internal */
 export const min: {
-  <That extends DateTime.DateTime>(that: That): <Self extends DateTime.DateTime>(self: Self) => Self | That
-  <Self extends DateTime.DateTime, That extends DateTime.DateTime>(self: Self, that: That): Self | That
+  <That extends DateTime.DateTime>(
+    that: That
+  ): <Self extends DateTime.DateTime>(self: Self) => Self | That
+  <Self extends DateTime.DateTime, That extends DateTime.DateTime>(
+    self: Self,
+    that: That
+  ): Self | That
 } = order.min(Order)
 
 /** @internal */
 export const max: {
-  <That extends DateTime.DateTime>(that: That): <Self extends DateTime.DateTime>(self: Self) => Self | That
-  <Self extends DateTime.DateTime, That extends DateTime.DateTime>(self: Self, that: That): Self | That
+  <That extends DateTime.DateTime>(
+    that: That
+  ): <Self extends DateTime.DateTime>(self: Self) => Self | That
+  <Self extends DateTime.DateTime, That extends DateTime.DateTime>(
+    self: Self,
+    that: That
+  ): Self | That
 } = order.max(Order)
 
 /** @internal */
@@ -527,28 +639,39 @@ export const lessThanOrEqualTo: {
 
 /** @internal */
 export const between: {
-  (options: { minimum: DateTime.DateTime; maximum: DateTime.DateTime }): (self: DateTime.DateTime) => boolean
-  (self: DateTime.DateTime, options: { minimum: DateTime.DateTime; maximum: DateTime.DateTime }): boolean
+  (options: {
+    minimum: DateTime.DateTime
+    maximum: DateTime.DateTime
+  }): (self: DateTime.DateTime) => boolean
+  (
+    self: DateTime.DateTime,
+    options: { minimum: DateTime.DateTime; maximum: DateTime.DateTime }
+  ): boolean
 } = order.between(Order)
 
 /** @internal */
-export const isFuture = (self: DateTime.DateTime): Effect.Effect<boolean> => core.map(now, lessThan(self))
+export const isFuture = (self: DateTime.DateTime): Effect.Effect<boolean> =>
+  core.map(now, lessThan(self))
 
 /** @internal */
-export const unsafeIsFuture = (self: DateTime.DateTime): boolean => lessThan(unsafeNow(), self)
+export const unsafeIsFuture = (self: DateTime.DateTime): boolean =>
+  lessThan(unsafeNow(), self)
 
 /** @internal */
-export const isPast = (self: DateTime.DateTime): Effect.Effect<boolean> => core.map(now, greaterThan(self))
+export const isPast = (self: DateTime.DateTime): Effect.Effect<boolean> =>
+  core.map(now, greaterThan(self))
 
 /** @internal */
-export const unsafeIsPast = (self: DateTime.DateTime): boolean => greaterThan(unsafeNow(), self)
+export const unsafeIsPast = (self: DateTime.DateTime): boolean =>
+  greaterThan(unsafeNow(), self)
 
 // =============================================================================
 // conversions
 // =============================================================================
 
 /** @internal */
-export const toDateUtc = (self: DateTime.DateTime): Date => new Date(self.epochMillis)
+export const toDateUtc = (self: DateTime.DateTime): Date =>
+  new Date(self.epochMillis)
 
 /** @internal */
 export const toDate = (self: DateTime.DateTime): Date => {
@@ -559,7 +682,9 @@ export const toDate = (self: DateTime.DateTime): Date => {
   } else if (self.adjustedEpochMillis !== undefined) {
     return new Date(self.adjustedEpochMillis)
   }
-  const parts = self.zone.format.formatToParts(self.epochMillis).filter((_) => _.type !== "literal")
+  const parts = self.zone.format
+    .formatToParts(self.epochMillis)
+    .filter((_) => _.type !== "literal")
   const date = new Date(0)
   date.setUTCFullYear(
     Number(parts[2].value),
@@ -594,10 +719,12 @@ const offsetToString = (offset: number): string => {
 }
 
 /** @internal */
-export const zonedOffsetIso = (self: DateTime.Zoned): string => offsetToString(zonedOffset(self))
+export const zonedOffsetIso = (self: DateTime.Zoned): string =>
+  offsetToString(zonedOffset(self))
 
 /** @internal */
-export const toEpochMillis = (self: DateTime.DateTime): number => self.epochMillis
+export const toEpochMillis = (self: DateTime.DateTime): number =>
+  self.epochMillis
 
 /** @internal */
 export const removeTime = (self: DateTime.DateTime): DateTime.Utc =>
@@ -622,7 +749,9 @@ const dateToParts = (date: Date): DateTime.DateTime.PartsWithWeekday => ({
 })
 
 /** @internal */
-export const toParts = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWeekday => {
+export const toParts = (
+  self: DateTime.DateTime
+): DateTime.DateTime.PartsWithWeekday => {
   if (self._tag === "Utc") {
     return toPartsUtc(self)
   } else if (self.partsAdjusted !== undefined) {
@@ -633,7 +762,9 @@ export const toParts = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWee
 }
 
 /** @internal */
-export const toPartsUtc = (self: DateTime.DateTime): DateTime.DateTime.PartsWithWeekday => {
+export const toPartsUtc = (
+  self: DateTime.DateTime
+): DateTime.DateTime.PartsWithWeekday => {
   if (self.partsUtc !== undefined) {
     return self.partsUtc
   }
@@ -643,17 +774,42 @@ export const toPartsUtc = (self: DateTime.DateTime): DateTime.DateTime.PartsWith
 
 /** @internal */
 export const getPartUtc: {
-  (part: keyof DateTime.DateTime.PartsWithWeekday): (self: DateTime.DateTime) => number
-  (self: DateTime.DateTime, part: keyof DateTime.DateTime.PartsWithWeekday): number
-} = dual(2, (self: DateTime.DateTime, part: keyof DateTime.DateTime.PartsWithWeekday): number => toPartsUtc(self)[part])
+  (
+    part: keyof DateTime.DateTime.PartsWithWeekday
+  ): (self: DateTime.DateTime) => number
+  (
+    self: DateTime.DateTime,
+    part: keyof DateTime.DateTime.PartsWithWeekday
+  ): number
+} = dual(
+  2,
+  (
+    self: DateTime.DateTime,
+    part: keyof DateTime.DateTime.PartsWithWeekday
+  ): number => toPartsUtc(self)[part]
+)
 
 /** @internal */
 export const getPart: {
-  (part: keyof DateTime.DateTime.PartsWithWeekday): (self: DateTime.DateTime) => number
-  (self: DateTime.DateTime, part: keyof DateTime.DateTime.PartsWithWeekday): number
-} = dual(2, (self: DateTime.DateTime, part: keyof DateTime.DateTime.PartsWithWeekday): number => toParts(self)[part])
+  (
+    part: keyof DateTime.DateTime.PartsWithWeekday
+  ): (self: DateTime.DateTime) => number
+  (
+    self: DateTime.DateTime,
+    part: keyof DateTime.DateTime.PartsWithWeekday
+  ): number
+} = dual(
+  2,
+  (
+    self: DateTime.DateTime,
+    part: keyof DateTime.DateTime.PartsWithWeekday
+  ): number => toParts(self)[part]
+)
 
-const setPartsDate = (date: Date, parts: Partial<DateTime.DateTime.PartsWithWeekday>): void => {
+const setPartsDate = (
+  date: Date,
+  parts: Partial<DateTime.DateTime.PartsWithWeekday>
+): void => {
   if (parts.year !== undefined) {
     date.setUTCFullYear(parts.year)
   }
@@ -692,8 +848,10 @@ export const setParts: {
   ): A
 } = dual(
   2,
-  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsWithWeekday>): DateTime.DateTime =>
-    mutate(self, (date) => setPartsDate(date, parts))
+  (
+    self: DateTime.DateTime,
+    parts: Partial<DateTime.DateTime.PartsWithWeekday>
+  ): DateTime.DateTime => mutate(self, (date) => setPartsDate(date, parts))
 )
 
 /** @internal */
@@ -707,39 +865,284 @@ export const setPartsUtc: {
   ): A
 } = dual(
   2,
-  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsWithWeekday>): DateTime.DateTime =>
-    mutateUtc(self, (date) => setPartsDate(date, parts))
+  (
+    self: DateTime.DateTime,
+    parts: Partial<DateTime.DateTime.PartsWithWeekday>
+  ): DateTime.DateTime => mutateUtc(self, (date) => setPartsDate(date, parts))
 )
 
 // =============================================================================
 // mapping
 // =============================================================================
 
-const makeZonedFromAdjusted = (adjustedMillis: number, zone: DateTime.TimeZone): DateTime.Zoned => {
-  const offset = zone._tag === "Offset" ? zone.offset : calculateNamedOffset(adjustedMillis, zone)
-  return makeZonedProto(adjustedMillis - offset, zone)
+/**
+ * Creates a DateTime.Zoned from adjusted local time with proper DST disambiguation.
+ *
+ * This function handles the conversion from "wall-clock" local time to the correct UTC time,
+ * accounting for DST transitions. For offset timezones, conversion is straightforward.
+ * For named timezones, uses Temporal's disambiguation algorithm.
+ *
+ * @param adjustedMillis - Local time as milliseconds since epoch (timezone-agnostic representation)
+ * @param zone - Target timezone (offset or named zone)
+ * @param disambiguation - Strategy for resolving DST ambiguity (defaults to "earlier" for backward compatibility)
+ * @returns DateTime.Zoned with correct UTC epochMillis for the given local time
+ */
+const makeZonedFromAdjusted = (
+  adjustedMillis: number,
+  zone: DateTime.TimeZone,
+  disambiguation: DateTime.DateTime.Disambiguation = "earlier"
+): DateTime.Zoned => {
+  if (zone._tag === "Offset") {
+    return makeZonedProto(adjustedMillis - zone.offset, zone)
+  }
+
+  // For named zones, use comprehensive disambiguation algorithm
+  return handleTimeZoneDisambiguation(adjustedMillis, zone, disambiguation)
 }
 
+/**
+ * Handle local time to UTC conversion with precise disambiguation for DST transitions.
+ *
+ * Uses Temporal's algorithm to find all possible UTC interpretations
+ * of a local time, then applies the requested disambiguation strategy.
+ *
+ * @param adjustedMillis - Local time as milliseconds since epoch (naive UTC representation)
+ * @param zone - Named timezone for disambiguation
+ * @param disambiguation - Strategy for handling ambiguous/gap times
+ * @returns DateTime.Zoned with correct UTC epochMillis
+ */
+const handleTimeZoneDisambiguation = (
+  adjustedMillis: number,
+  zone: DateTime.TimeZone.Named,
+  disambiguation: DateTime.DateTime.Disambiguation
+): DateTime.Zoned => {
+  // Step 1: Find all possible UTC interpretations using Temporal's precise algorithm
+  const possibleUtcTimes = getPossibleEpochTimes(adjustedMillis, zone)
+
+  // Step 2: Apply disambiguation strategy based on number of interpretations
+  return disambiguatePossibleTimes(
+    possibleUtcTimes,
+    adjustedMillis,
+    zone,
+    disambiguation
+  )
+}
+
+/**
+ * Find possible UTC epoch times for a local time using precise offset sampling.
+ *
+ * This function uses +/-1 day offset sampling to detect DST transitions and
+ * mathematically derives all valid UTC interpretations for a given local time.
+ *
+ * @param adjustedMillis - Local time as milliseconds since epoch
+ * @param zone - Named timezone to resolve against
+ * @returns Array of valid UTC epoch times (0, 1, or 2 interpretations)
+ */
+const getPossibleEpochTimes = (
+  adjustedMillis: number,
+  zone: DateTime.TimeZone.Named
+): Array<number> => {
+  // Convert target local time to "naive UTC" (as if timezone-agnostic)
+  const naiveUtc = adjustedMillis
+
+  // Sample timezone offsets at +/-1 day from target time
+  const dayMillis = 24 * 60 * 60 * 1000
+  const earlierSample = naiveUtc - dayMillis
+  const laterSample = naiveUtc + dayMillis
+
+  const earlierOffset = calculateNamedOffset(earlierSample, zone)
+  const laterOffset = calculateNamedOffset(laterSample, zone)
+
+  // Determine candidate offsets: if same, only one; if different, test both
+  const candidateOffsets =
+    earlierOffset === laterOffset
+      ? [earlierOffset]
+      : [earlierOffset, laterOffset]
+
+  // Test each offset to find valid UTC candidates
+  const validCandidates: Array<number> = []
+
+  for (const offset of candidateOffsets) {
+    const candidateUtc = naiveUtc - offset
+    const resultingLocal =
+      candidateUtc + calculateNamedOffset(candidateUtc, zone)
+
+    // Validate: Does this UTC convert back to our target local time?
+    if (isSameWallClockTime(adjustedMillis, resultingLocal)) {
+      validCandidates.push(candidateUtc)
+    }
+  }
+
+  return validCandidates.sort((a, b) => a - b)
+}
+
+/**
+ * Check if two timestamps represent the same wall-clock time.
+ *
+ * Compares only the calendar date and time components, ignoring timezone offsets.
+ * Used to validate that a candidate UTC time produces the target local time.
+ *
+ * @param time1 - First timestamp in milliseconds
+ * @param time2 - Second timestamp in milliseconds
+ * @returns true if both represent the same year/month/day/hour/minute
+ */
+const isSameWallClockTime = (time1: number, time2: number): boolean => {
+  const date1 = new Date(time1)
+  const date2 = new Date(time2)
+
+  return (
+    date1.getUTCFullYear() === date2.getUTCFullYear() &&
+    date1.getUTCMonth() === date2.getUTCMonth() &&
+    date1.getUTCDate() === date2.getUTCDate() &&
+    date1.getUTCHours() === date2.getUTCHours() &&
+    date1.getUTCMinutes() === date2.getUTCMinutes()
+  )
+}
+
+/**
+ * Apply disambiguation strategy to possible UTC times.
+ *
+ * Handles three cases: normal times (1 interpretation), ambiguous times (2 interpretations),
+ * and gap times (0 interpretations).
+ *
+ * @param possibleUtcTimes - Array of valid UTC interpretations
+ * @param adjustedMillis - Original local time for gap time synthesis
+ * @param zone - Named timezone context
+ * @param disambiguation - Strategy for resolving ambiguity
+ * @returns DateTime.Zoned with selected interpretation
+ */
+const disambiguatePossibleTimes = (
+  possibleUtcTimes: Array<number>,
+  adjustedMillis: number,
+  zone: DateTime.TimeZone.Named,
+  disambiguation: DateTime.DateTime.Disambiguation
+): DateTime.Zoned => {
+  const numInstants = possibleUtcTimes.length
+
+  // Case 1: Normal time (exactly 1 interpretation)
+  if (numInstants === 1) {
+    return makeZonedProto(possibleUtcTimes[0], zone)
+  }
+
+  // Case 2: Ambiguous time (2+ interpretations) - Direct selection
+  if (numInstants > 1) {
+    switch (disambiguation) {
+      case "compatible":
+      case "earlier":
+        return makeZonedProto(possibleUtcTimes[0], zone) // First (earlier) interpretation
+      case "later":
+        return makeZonedProto(possibleUtcTimes[numInstants - 1], zone) // Last (later) interpretation
+      case "reject":
+        throw new IllegalArgumentException(
+          `Ambiguous time occurs twice in timezone ${zone.id}`
+        )
+    }
+  }
+
+  // Case 3: Gap time (0 interpretations) - Synthesize solution using precise offset calculation
+  if (disambiguation === "reject") {
+    throw new IllegalArgumentException(
+      `Gap time: ${new Date(adjustedMillis).toISOString().slice(0, -1)} does not exist in timezone ${zone.id}`
+    )
+  }
+
+  return synthesizeGapTimeSolution(adjustedMillis, zone, disambiguation)
+}
+
+/**
+ * Synthesize a solution for gap times using a precise offset-based approach.
+ *
+ * When a local time doesn't exist due to DST transitions, this function calculates
+ * the offset difference and adjusts the time accordingly, then finds valid epoch
+ * times for the adjusted time.
+ *
+ * @param adjustedMillis - Non-existent local time as "naive UTC"
+ * @param zone - Named timezone context
+ * @param disambiguation - Strategy determining direction (earlier/later)
+ * @returns DateTime.Zoned with synthesized valid time
+ */
+const synthesizeGapTimeSolution = (
+  adjustedMillis: number,
+  zone: DateTime.TimeZone.Named,
+  disambiguation: DateTime.DateTime.Disambiguation
+): DateTime.Zoned => {
+  const naiveUtc = adjustedMillis
+  const dayMillis = 24 * 60 * 60 * 1000
+
+  // Sample offsets at ±1 day from the gap time for precise calculation
+  const dayBefore = naiveUtc - dayMillis
+  const dayAfter = naiveUtc + dayMillis
+  const offsetBefore = calculateNamedOffset(dayBefore, zone)
+  const offsetAfter = calculateNamedOffset(dayAfter, zone)
+  const offsetDifferenceMillis = offsetAfter - offsetBefore
+
+  switch (disambiguation) {
+    case "earlier": {
+      // Move time backward by the offset difference
+      const adjustedTime = adjustedMillis - offsetDifferenceMillis
+      const possibleTimes = getPossibleEpochTimes(adjustedTime, zone)
+      return makeZonedProto(possibleTimes[0], zone)
+    }
+    case "compatible":
+    case "later": {
+      // Move time forward by the offset difference
+      const adjustedTime = adjustedMillis + offsetDifferenceMillis
+      const possibleTimes = getPossibleEpochTimes(adjustedTime, zone)
+      return makeZonedProto(possibleTimes[possibleTimes.length - 1], zone)
+    }
+    default:
+      throw new IllegalArgumentException(
+        `Invalid disambiguation: ${disambiguation}`
+      )
+  }
+}
+
+/**
+ * Regular expression for parsing timezone offset strings (e.g., "+02:00", "-05:00").
+ */
 const offsetRegex = /([+-])(\d{2}):(\d{2})$/
+
+/**
+ * Parse a timezone offset string into milliseconds.
+ *
+ * @param offset - Offset string in format "+HH:MM" or "-HH:MM"
+ * @returns Offset in milliseconds, or null if parsing fails
+ */
 const parseOffset = (offset: string): number | null => {
   const match = offsetRegex.exec(offset)
   if (match === null) {
     return null
   }
   const [, sign, hours, minutes] = match
-  return (sign === "+" ? 1 : -1) * (Number(hours) * 60 + Number(minutes)) * 60 * 1000
+  return (
+    (sign === "+" ? 1 : -1) * (Number(hours) * 60 + Number(minutes)) * 60 * 1000
+  )
 }
 
-const calculateNamedOffset = (adjustedMillis: number, zone: DateTime.TimeZone.Named): number => {
-  const offset = zone.format.formatToParts(adjustedMillis).find((_) => _.type === "timeZoneName")?.value ?? ""
-  if (offset === "GMT") {
+/**
+ * Calculate the timezone offset for a named timezone at a specific UTC time.
+ *
+ * @param utcMillis - UTC time in milliseconds since epoch
+ * @param zone - Named timezone to calculate offset for
+ * @returns Offset in milliseconds (positive for ahead of UTC, negative for behind)
+ */
+const calculateNamedOffset = (
+  utcMillis: number,
+  zone: DateTime.TimeZone.Named
+): number => {
+  const offsetCurrent =
+    zone.format.formatToParts(utcMillis).find((_) => _.type === "timeZoneName")
+      ?.value ?? ""
+  if (offsetCurrent === "GMT") {
     return 0
   }
-  const result = parseOffset(offset)
+
+  const result = parseOffset(offsetCurrent)
   if (result === null) {
     // fallback to using the adjusted date
-    return zonedOffset(makeZonedProto(adjustedMillis, zone))
+    return zonedOffset(makeZonedProto(utcMillis, zone))
   }
+
   return result
 }
 
@@ -747,49 +1150,69 @@ const calculateNamedOffset = (adjustedMillis: number, zone: DateTime.TimeZone.Na
 export const mutate: {
   (f: (date: Date) => void): <A extends DateTime.DateTime>(self: A) => A
   <A extends DateTime.DateTime>(self: A, f: (date: Date) => void): A
-} = dual(2, (self: DateTime.DateTime, f: (date: Date) => void): DateTime.DateTime => {
-  if (self._tag === "Utc") {
-    const date = toDateUtc(self)
-    f(date)
-    return makeUtc(date.getTime())
+} = dual(
+  2,
+  (self: DateTime.DateTime, f: (date: Date) => void): DateTime.DateTime => {
+    if (self._tag === "Utc") {
+      const date = toDateUtc(self)
+      f(date)
+      return makeUtc(date.getTime())
+    }
+    const adjustedDate = toDate(self)
+    const newAdjustedDate = new Date(adjustedDate.getTime())
+    f(newAdjustedDate)
+    return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone)
   }
-  const adjustedDate = toDate(self)
-  const newAdjustedDate = new Date(adjustedDate.getTime())
-  f(newAdjustedDate)
-  return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone)
-})
+)
 
 /** @internal */
 export const mutateUtc: {
   (f: (date: Date) => void): <A extends DateTime.DateTime>(self: A) => A
   <A extends DateTime.DateTime>(self: A, f: (date: Date) => void): A
-} = dual(2, (self: DateTime.DateTime, f: (date: Date) => void): DateTime.DateTime =>
-  mapEpochMillis(self, (millis) => {
-    const date = new Date(millis)
-    f(date)
-    return date.getTime()
-  }))
+} = dual(
+  2,
+  (self: DateTime.DateTime, f: (date: Date) => void): DateTime.DateTime =>
+    mapEpochMillis(self, (millis) => {
+      const date = new Date(millis)
+      f(date)
+      return date.getTime()
+    })
+)
 
 /** @internal */
 export const mapEpochMillis: {
   (f: (millis: number) => number): <A extends DateTime.DateTime>(self: A) => A
   <A extends DateTime.DateTime>(self: A, f: (millis: number) => number): A
-} = dual(2, (self: DateTime.DateTime, f: (millis: number) => number): DateTime.DateTime => {
-  const millis = f(toEpochMillis(self))
-  return self._tag === "Utc" ? makeUtc(millis) : makeZonedProto(millis, self.zone)
-})
+} = dual(
+  2,
+  (
+    self: DateTime.DateTime,
+    f: (millis: number) => number
+  ): DateTime.DateTime => {
+    const millis = f(toEpochMillis(self))
+    return self._tag === "Utc"
+      ? makeUtc(millis)
+      : makeZonedProto(millis, self.zone)
+  }
+)
 
 /** @internal */
 export const withDate: {
   <A>(f: (date: Date) => A): (self: DateTime.DateTime) => A
   <A>(self: DateTime.DateTime, f: (date: Date) => A): A
-} = dual(2, <A>(self: DateTime.DateTime, f: (date: Date) => A): A => f(toDate(self)))
+} = dual(
+  2,
+  <A>(self: DateTime.DateTime, f: (date: Date) => A): A => f(toDate(self))
+)
 
 /** @internal */
 export const withDateUtc: {
   <A>(f: (date: Date) => A): (self: DateTime.DateTime) => A
   <A>(self: DateTime.DateTime, f: (date: Date) => A): A
-} = dual(2, <A>(self: DateTime.DateTime, f: (date: Date) => A): A => f(toDateUtc(self)))
+} = dual(
+  2,
+  <A>(self: DateTime.DateTime, f: (date: Date) => A): A => f(toDateUtc(self))
+)
 
 /** @internal */
 export const match: {
@@ -797,14 +1220,24 @@ export const match: {
     readonly onUtc: (_: DateTime.Utc) => A
     readonly onZoned: (_: DateTime.Zoned) => B
   }): (self: DateTime.DateTime) => A | B
-  <A, B>(self: DateTime.DateTime, options: {
-    readonly onUtc: (_: DateTime.Utc) => A
-    readonly onZoned: (_: DateTime.Zoned) => B
-  }): A | B
-} = dual(2, <A, B>(self: DateTime.DateTime, options: {
-  readonly onUtc: (_: DateTime.Utc) => A
-  readonly onZoned: (_: DateTime.Zoned) => B
-}): A | B => self._tag === "Utc" ? options.onUtc(self) : options.onZoned(self))
+  <A, B>(
+    self: DateTime.DateTime,
+    options: {
+      readonly onUtc: (_: DateTime.Utc) => A
+      readonly onZoned: (_: DateTime.Zoned) => B
+    }
+  ): A | B
+} = dual(
+  2,
+  <A, B>(
+    self: DateTime.DateTime,
+    options: {
+      readonly onUtc: (_: DateTime.Utc) => A
+      readonly onZoned: (_: DateTime.Zoned) => B
+    }
+  ): A | B =>
+    self._tag === "Utc" ? options.onUtc(self) : options.onZoned(self)
+)
 
 // =============================================================================
 // math
@@ -812,21 +1245,31 @@ export const match: {
 
 /** @internal */
 export const addDuration: {
-  (duration: Duration.DurationInput): <A extends DateTime.DateTime>(self: A) => A
+  (
+    duration: Duration.DurationInput
+  ): <A extends DateTime.DateTime>(self: A) => A
   <A extends DateTime.DateTime>(self: A, duration: Duration.DurationInput): A
 } = dual(
   2,
-  (self: DateTime.DateTime, duration: Duration.DurationInput): DateTime.DateTime =>
+  (
+    self: DateTime.DateTime,
+    duration: Duration.DurationInput
+  ): DateTime.DateTime =>
     mapEpochMillis(self, (millis) => millis + Duration.toMillis(duration))
 )
 
 /** @internal */
 export const subtractDuration: {
-  (duration: Duration.DurationInput): <A extends DateTime.DateTime>(self: A) => A
+  (
+    duration: Duration.DurationInput
+  ): <A extends DateTime.DateTime>(self: A) => A
   <A extends DateTime.DateTime>(self: A, duration: Duration.DurationInput): A
 } = dual(
   2,
-  (self: DateTime.DateTime, duration: Duration.DurationInput): DateTime.DateTime =>
+  (
+    self: DateTime.DateTime,
+    duration: Duration.DurationInput
+  ): DateTime.DateTime =>
     mapEpochMillis(self, (millis) => millis - Duration.toMillis(duration))
 )
 
@@ -845,7 +1288,10 @@ export const add: {
   ): A
 } = dual(
   2,
-  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime =>
+  (
+    self: DateTime.DateTime,
+    parts: Partial<DateTime.DateTime.PartsForMath>
+  ): DateTime.DateTime =>
     mutate(self, (date) => {
       if (parts.millis) {
         addMillis(date, parts.millis)
@@ -875,11 +1321,7 @@ export const add: {
       if (parts.years) {
         const day = date.getUTCDate()
         const month = date.getUTCMonth()
-        date.setUTCFullYear(
-          date.getUTCFullYear() + parts.years,
-          month + 1,
-          0
-        )
+        date.setUTCFullYear(date.getUTCFullYear() + parts.years, month + 1, 0)
         if (day < date.getUTCDate()) {
           date.setUTCDate(day)
         }
@@ -896,17 +1338,28 @@ export const subtract: {
     self: A,
     parts: Partial<DateTime.DateTime.PartsForMath>
   ): A
-} = dual(2, (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime => {
-  const newParts = {} as Partial<Mutable<DateTime.DateTime.PartsForMath>>
-  for (const key in parts) {
-    newParts[key as keyof DateTime.DateTime.PartsForMath] = -1 * parts[key as keyof DateTime.DateTime.PartsForMath]!
+} = dual(
+  2,
+  (
+    self: DateTime.DateTime,
+    parts: Partial<DateTime.DateTime.PartsForMath>
+  ): DateTime.DateTime => {
+    const newParts = {} as Partial<Mutable<DateTime.DateTime.PartsForMath>>
+    for (const key in parts) {
+      newParts[key as keyof DateTime.DateTime.PartsForMath] =
+        -1 * parts[key as keyof DateTime.DateTime.PartsForMath]!
+    }
+    return add(self, newParts)
   }
-  return add(self, newParts)
-})
+)
 
-const startOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
-  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}) => {
+const startOfDate = (
+  date: Date,
+  part: DateTime.DateTime.UnitSingular,
+  options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }
+) => {
   switch (part) {
     case "second": {
       date.setUTCMilliseconds(0)
@@ -947,19 +1400,38 @@ const startOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?:
 
 /** @internal */
 export const startOf: {
-  (part: DateTime.DateTime.UnitSingular, options?: {
-    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-  }): <A extends DateTime.DateTime>(self: A) => A
-  <A extends DateTime.DateTime>(self: A, part: DateTime.DateTime.UnitSingular, options?: {
-    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-  }): A
-} = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
-  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime => mutate(self, (date) => startOfDate(date, part, options)))
+  (
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): <A extends DateTime.DateTime>(self: A) => A
+  <A extends DateTime.DateTime>(
+    self: A,
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): A
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): DateTime.DateTime =>
+    mutate(self, (date) => startOfDate(date, part, options))
+)
 
-const endOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
-  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}) => {
+const endOfDate = (
+  date: Date,
+  part: DateTime.DateTime.UnitSingular,
+  options?: {
+    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+  }
+) => {
   switch (part) {
     case "second": {
       date.setUTCMilliseconds(999)
@@ -1000,44 +1472,72 @@ const endOfDate = (date: Date, part: DateTime.DateTime.UnitSingular, options?: {
 
 /** @internal */
 export const endOf: {
-  (part: DateTime.DateTime.UnitSingular, options?: {
-    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-  }): <A extends DateTime.DateTime>(self: A) => A
-  <A extends DateTime.DateTime>(self: A, part: DateTime.DateTime.UnitSingular, options?: {
-    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-  }): A
-} = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
-  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime => mutate(self, (date) => endOfDate(date, part, options)))
+  (
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): <A extends DateTime.DateTime>(self: A) => A
+  <A extends DateTime.DateTime>(
+    self: A,
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): A
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): DateTime.DateTime => mutate(self, (date) => endOfDate(date, part, options))
+)
 
 /** @internal */
 export const nearest: {
-  (part: DateTime.DateTime.UnitSingular, options?: {
-    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-  }): <A extends DateTime.DateTime>(self: A) => A
-  <A extends DateTime.DateTime>(self: A, part: DateTime.DateTime.UnitSingular, options?: {
-    readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-  }): A
-} = dual(isDateTimeArgs, (self: DateTime.DateTime, part: DateTime.DateTime.UnitSingular, options?: {
-  readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
-}): DateTime.DateTime =>
-  mutate(self, (date) => {
-    if (part === "milli") return
-    const millis = date.getTime()
-    const start = new Date(millis)
-    startOfDate(start, part, options)
-    const startMillis = start.getTime()
-    const end = new Date(millis)
-    endOfDate(end, part, options)
-    const endMillis = end.getTime() + 1
-    const diffStart = millis - startMillis
-    const diffEnd = endMillis - millis
-    if (diffStart < diffEnd) {
-      date.setTime(startMillis)
-    } else {
-      date.setTime(endMillis)
+  (
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
     }
-  }))
+  ): <A extends DateTime.DateTime>(self: A) => A
+  <A extends DateTime.DateTime>(
+    self: A,
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): A
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    part: DateTime.DateTime.UnitSingular,
+    options?: {
+      readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
+    }
+  ): DateTime.DateTime =>
+    mutate(self, (date) => {
+      if (part === "milli") return
+      const millis = date.getTime()
+      const start = new Date(millis)
+      startOfDate(start, part, options)
+      const startMillis = start.getTime()
+      const end = new Date(millis)
+      endOfDate(end, part, options)
+      const endMillis = end.getTime() + 1
+      const diffStart = millis - startMillis
+      const diffEnd = endMillis - millis
+      if (diffStart < diffEnd) {
+        date.setTime(startMillis)
+      } else {
+        date.setTime(endMillis)
+      }
+    })
+)
 
 // =============================================================================
 // formatting
@@ -1054,117 +1554,136 @@ const intlTimeZone = (self: DateTime.TimeZone): string => {
 export const format: {
   (
     options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: Intl.LocalesArgument
-      }
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
       | undefined
   ): (self: DateTime.DateTime) => string
   (
     self: DateTime.DateTime,
     options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: Intl.LocalesArgument
-      }
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
       | undefined
   ): string
-} = dual(isDateTimeArgs, (
-  self: DateTime.DateTime,
-  options?:
-    | Intl.DateTimeFormatOptions & {
-      readonly locale?: Intl.LocalesArgument
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    options?:
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
+      | undefined
+  ): string => {
+    try {
+      return new Intl.DateTimeFormat(options?.locale, {
+        timeZone: self._tag === "Utc" ? "UTC" : intlTimeZone(self.zone),
+        ...options
+      }).format(self.epochMillis)
+    } catch {
+      return new Intl.DateTimeFormat(options?.locale, {
+        timeZone: "UTC",
+        ...options
+      }).format(toDate(self))
     }
-    | undefined
-): string => {
-  try {
-    return new Intl.DateTimeFormat(options?.locale, {
-      timeZone: self._tag === "Utc" ? "UTC" : intlTimeZone(self.zone),
-      ...options
-    }).format(self.epochMillis)
-  } catch {
-    return new Intl.DateTimeFormat(options?.locale, {
-      timeZone: "UTC",
-      ...options
-    }).format(toDate(self))
   }
-})
+)
 
 /** @internal */
 export const formatLocal: {
   (
     options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: Intl.LocalesArgument
-      }
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
       | undefined
   ): (self: DateTime.DateTime) => string
   (
     self: DateTime.DateTime,
     options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: Intl.LocalesArgument
-      }
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
       | undefined
   ): string
-} = dual(isDateTimeArgs, (
-  self: DateTime.DateTime,
-  options?:
-    | Intl.DateTimeFormatOptions & {
-      readonly locale?: Intl.LocalesArgument
-    }
-    | undefined
-): string => new Intl.DateTimeFormat(options?.locale, options).format(self.epochMillis))
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    options?:
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
+      | undefined
+  ): string =>
+    new Intl.DateTimeFormat(options?.locale, options).format(self.epochMillis)
+)
 
 /** @internal */
 export const formatUtc: {
   (
     options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: Intl.LocalesArgument
-      }
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
       | undefined
   ): (self: DateTime.DateTime) => string
   (
     self: DateTime.DateTime,
     options?:
-      | Intl.DateTimeFormatOptions & {
-        readonly locale?: Intl.LocalesArgument
-      }
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
       | undefined
   ): string
-} = dual(isDateTimeArgs, (
-  self: DateTime.DateTime,
-  options?:
-    | Intl.DateTimeFormatOptions & {
-      readonly locale?: Intl.LocalesArgument
-    }
-    | undefined
-): string =>
-  new Intl.DateTimeFormat(options?.locale, {
-    ...options,
-    timeZone: "UTC"
-  }).format(self.epochMillis))
+} = dual(
+  isDateTimeArgs,
+  (
+    self: DateTime.DateTime,
+    options?:
+      | (Intl.DateTimeFormatOptions & {
+          readonly locale?: Intl.LocalesArgument
+        })
+      | undefined
+  ): string =>
+    new Intl.DateTimeFormat(options?.locale, {
+      ...options,
+      timeZone: "UTC"
+    }).format(self.epochMillis)
+)
 
 /** @internal */
 export const formatIntl: {
   (format: Intl.DateTimeFormat): (self: DateTime.DateTime) => string
   (self: DateTime.DateTime, format: Intl.DateTimeFormat): string
-} = dual(2, (self: DateTime.DateTime, format: Intl.DateTimeFormat): string => format.format(self.epochMillis))
+} = dual(2, (self: DateTime.DateTime, format: Intl.DateTimeFormat): string =>
+  format.format(self.epochMillis)
+)
 
 /** @internal */
-export const formatIso = (self: DateTime.DateTime): string => toDateUtc(self).toISOString()
+export const formatIso = (self: DateTime.DateTime): string =>
+  toDateUtc(self).toISOString()
 
 /** @internal */
-export const formatIsoDate = (self: DateTime.DateTime): string => toDate(self).toISOString().slice(0, 10)
+export const formatIsoDate = (self: DateTime.DateTime): string =>
+  toDate(self).toISOString().slice(0, 10)
 
 /** @internal */
-export const formatIsoDateUtc = (self: DateTime.DateTime): string => toDateUtc(self).toISOString().slice(0, 10)
+export const formatIsoDateUtc = (self: DateTime.DateTime): string =>
+  toDateUtc(self).toISOString().slice(0, 10)
 
 /** @internal */
 export const formatIsoOffset = (self: DateTime.DateTime): string => {
   const date = toDate(self)
-  return self._tag === "Utc" ? date.toISOString() : `${date.toISOString().slice(0, -1)}${zonedOffsetIso(self)}`
+  return self._tag === "Utc"
+    ? date.toISOString()
+    : `${date.toISOString().slice(0, -1)}${zonedOffsetIso(self)}`
 }
 
 /** @internal */
 export const formatIsoZoned = (self: DateTime.Zoned): string =>
-  self.zone._tag === "Offset" ? formatIsoOffset(self) : `${formatIsoOffset(self)}[${self.zone.id}]`
+  self.zone._tag === "Offset"
+    ? formatIsoOffset(self)
+    : `${formatIsoOffset(self)}[${self.zone.id}]`
