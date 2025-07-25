@@ -145,8 +145,8 @@ export class Gone extends HttpApiSchema.EmptyError<Gone>()({
  * @category empty errors
  */
 export class TooFast extends HttpApiSchema.EmptyError<TooFast>()({
-    tag: "TooFast",
-    status: 429,
+  tag: "TooFast",
+  status: 429
 }) {}
 
 /**

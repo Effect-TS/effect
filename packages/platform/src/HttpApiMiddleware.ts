@@ -2,12 +2,18 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { hasProperty } from "effect/Predicate"
+import * as RateLimiter from "effect/RateLimiter"
+import * as RcMap from "effect/RcMap"
 import * as Schema from "effect/Schema"
 import type { Mutable, Simplify } from "effect/Types"
+import * as HttpApiError from "./HttpApiError.js"
 import type * as HttpApiSecurity from "./HttpApiSecurity.js"
 import type * as HttpRouter from "./HttpRouter.js"
+import * as HttpServerRequest from "./HttpServerRequest.js"
 
 /**
  * @since 1.0.0
@@ -320,51 +326,51 @@ export const Tag = <Self>(): <
  * @since 1.0.0
  * @category Middlewares
  */
-export class HttpApiRateLimiter extends HttpApiMiddleware.Tag<HttpApiRateLimiter>()(
-    "@effect/platform/HttpApiMiddleware/HttpApiRateLimiter",
-    {
-        optional: false,
-        failure: HttpApiError.TooFast,
-    }
+export class HttpApiRateLimiter extends Tag<HttpApiRateLimiter>()(
+  "@effect/platform/HttpApiMiddleware/HttpApiRateLimiter",
+  {
+    optional: false,
+    failure: HttpApiError.TooFast
+  }
 ) {
-    /**
-     * @since 1.0.0
-     * @category Layers
-     */
-    public static Live = (
-        options: {
-            failAfterWaitingFor: Duration.DurationInput;
-            keyFn: (request: HttpServerRequest.HttpServerRequest) => string;
-        } & RateLimiter.RateLimiter.Options
-    ): Layer.Layer<HttpApiRateLimiter, never, never> =>
-        Layer.scoped(
-            HttpApiRateLimiter,
-            Effect.gen(function* () {
-                const rcMap = yield* RcMap.make({
-                    capacity: undefined,
-                    lookup: (_key: string) => RateLimiter.make(options),
-                    idleTimeToLive: Duration.sum(options.interval, Duration.seconds(1)),
-                });
+  /**
+   * @since 1.0.0
+   * @category Layers
+   */
+  public static Live = (
+    options: {
+      failAfterWaitingFor: Duration.DurationInput
+      keyFn: (request: HttpServerRequest.HttpServerRequest) => string
+    } & RateLimiter.RateLimiter.Options
+  ): Layer.Layer<HttpApiRateLimiter, never, never> =>
+    Layer.scoped(
+      HttpApiRateLimiter,
+      Effect.gen(function*() {
+        const rcMap = yield* RcMap.make({
+          capacity: undefined,
+          lookup: (_key: string) => RateLimiter.make(options),
+          idleTimeToLive: Duration.sum(options.interval, Duration.seconds(1))
+        })
 
-                return Effect.gen(function* () {
-                    const request = yield* HttpServerRequest.HttpServerRequest;
-                    const rateLimit = yield* RcMap.get(rcMap, options.keyFn(request));
-                    const failAfterWaitingWith = Effect.timeoutFail({
-                        duration: options.failAfterWaitingFor,
-                        onTimeout: () => new HttpApiError.TooFast(),
-                    });
+        return Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const rateLimit = yield* RcMap.get(rcMap, options.keyFn(request))
+          const failAfterWaitingWith = Effect.timeoutFail({
+            duration: options.failAfterWaitingFor,
+            onTimeout: () => new HttpApiError.TooFast()
+          })
 
-                    return yield* Effect.void.pipe(rateLimit).pipe(failAfterWaitingWith);
-                });
-            })
-        );
+          return yield* Effect.void.pipe(rateLimit).pipe(failAfterWaitingWith)
+        })
+      })
+    )
 
-    /**
-     * @since 1.0.0
-     * @category Layers
-     */
-    public static Noop: Layer.Layer<HttpApiRateLimiter, never, never> = Layer.scoped(
-        HttpApiRateLimiter,
-        Effect.succeed(Effect.void)
-    );
+  /**
+   * @since 1.0.0
+   * @category Layers
+   */
+  public static Noop: Layer.Layer<HttpApiRateLimiter, never, never> = Layer.scoped(
+    HttpApiRateLimiter,
+    Effect.succeed(Effect.void)
+  )
 }
