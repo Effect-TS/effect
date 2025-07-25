@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.2
+
+### Patch Changes
+
+- [#5277](https://github.com/Effect-TS/effect/pull/5277) [`6309e0a`](https://github.com/Effect-TS/effect/commit/6309e0abe16e82da8d0091fff1b9962fd9eeb585) Thanks @tim-smart! - Fix Layer.mock dual detection
+
 ## 3.17.1
 
 ### Patch Changes
