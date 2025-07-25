@@ -14,7 +14,8 @@ import {
   pipe,
   Ref,
   Schedule,
-  Scope
+  Scope,
+  Stream
 } from "effect"
 
 const acquire1 = "Acquiring Module 1"
@@ -678,11 +679,13 @@ describe("Layer", () => {
 
   it.effect("allows passing partial service", () =>
     Effect.gen(function*() {
-      class Service1 extends Effect.Tag("Service1")<Service1, {
-        one: Effect.Effect<number>
-
-        two(): Effect.Effect<number>
-      }>() {}
+      class Service1 extends Effect.Service<Service1>()("Service1", {
+        succeed: {
+          one: Effect.succeed(123),
+          two: () => Effect.succeed(2),
+          stream: Stream.succeed(3)
+        }
+      }) {}
 
       yield* Effect.gen(function*() {
         const service = yield* Service1
@@ -693,8 +696,14 @@ describe("Layer", () => {
           Effect.catchAllDefect(Effect.fail),
           Effect.flip
         )
+        yield* service.stream.pipe(
+          Stream.runDrain,
+          Effect.catchAllDefect(Effect.fail),
+          Effect.flip
+        )
       }).pipe(
         Effect.provide(Layer.mock(Service1, {
+          _tag: "Service1",
           one: Effect.succeed(123)
         }))
       )
