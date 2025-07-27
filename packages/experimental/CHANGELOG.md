@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.54.1
+
+### Patch Changes
+
+- [#5286](https://github.com/Effect-TS/effect/pull/5286) [`ffc17c6`](https://github.com/Effect-TS/effect/commit/ffc17c6d129adb898946d543b772af951b97e08d) Thanks @tim-smart! - add EventLog.layerIdentityKvs
+
 ## 0.54.0
 
 ### Patch Changes
