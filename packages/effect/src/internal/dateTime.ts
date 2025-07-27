@@ -266,12 +266,10 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     }
     zone = parsedZone.value
   }
-
   const self = unsafeMake(input)
   if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
     throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
   }
-
   if (options?.adjustForTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
@@ -439,7 +437,6 @@ export const zoneToString = (self: DateTime.TimeZone): string => {
   return self.id
 }
 
-
 /** @internal */
 export const setZoneNamed: {
   (zoneId: string, options?: {
@@ -462,7 +459,7 @@ export const setZoneNamed: {
 export const unsafeSetZoneNamed: {
   (zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-     readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
   }): (self: DateTime.DateTime) => DateTime.Zoned
   (self: DateTime.DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
@@ -1010,7 +1007,6 @@ export const mapEpochMillis: {
   const millis = f(toEpochMillis(self))
   return self._tag === "Utc" ? makeUtc(millis) : makeZonedProto(millis, self.zone)
 })
-
 
 /** @internal */
 export const withDate: {
