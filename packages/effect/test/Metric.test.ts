@@ -737,7 +737,7 @@ describe("Metric", () => {
       )
       strictEqual(value._tag, "Some")
     }))
-  describe("mapInput", () => {
+  describe("trackSuccessWith", () => {
     it.effect("infers types in Effectful pipes", () => {
       const counter = Metric.counter("counter")
       const frequency = Metric.frequency("frequency")
@@ -755,24 +755,24 @@ describe("Metric", () => {
       })
       return Effect.Do.pipe(
         Effect.let("step1", () => 1),
-        Metric.mapInput(counter, ({ step1 }) => step1),
+        Metric.trackSuccessWith(counter, ({ step1 }) => step1),
         Effect.let("someThingElse", () => ({ a: 3 })),
-        Metric.mapInput(gauge, ({ step1 }) => step1),
-        Metric.mapInput(histogram, ({ step1 }) => step1),
+        Metric.trackSuccessWith(gauge, ({ step1 }) => step1),
+        Metric.trackSuccessWith(histogram, ({ step1 }) => step1),
         Effect.let("anotherPartOfTheState", () => ({ b: "seven" })),
-        Metric.mapInput(summary, ({ step1 }) => step1),
+        Metric.trackSuccessWith(summary, ({ step1 }) => step1),
         Effect.let("step2", () => 4),
         Effect.let("step3", () => "foo"),
-        Metric.mapInput(counter, ({ step2 }) => step2),
+        Metric.trackSuccessWith(counter, ({ step2 }) => step2),
         Effect.let("irrelevant", () => "irrelevant"),
-        Metric.mapInput(gauge, ({ step2 }) => step2),
-        Metric.mapInput(histogram, ({ step2 }) => step2),
+        Metric.trackSuccessWith(gauge, ({ step2 }) => step2),
+        Metric.trackSuccessWith(histogram, ({ step2 }) => step2),
         Effect.let("moreIrrelevant", () => "moreIrrelevant"),
-        Metric.mapInput(summary, ({ step2 }) => step2),
+        Metric.trackSuccessWith(summary, ({ step2 }) => step2),
         Effect.let("otherStuff", () => ({ x: "otherStuff" })),
-        Metric.mapInput(frequency, ({ step3 }) => step3),
+        Metric.trackSuccessWith(frequency, ({ step3 }) => step3),
         Effect.let("step4", () => "bar"),
-        Metric.mapInput(frequency, ({ step4 }) => step4),
+        Metric.trackSuccessWith(frequency, ({ step4 }) => step4),
         Effect.bind("results", () =>
           Effect.all({
             counter: Metric.value(counter),

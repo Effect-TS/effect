@@ -152,10 +152,6 @@ export const make: MetricApply = internal.make
  * @category mapping
  */
 export const mapInput: {
-  <Type, In, Out, In2>(
-    self: Metric<Type, In, Out>,
-    f: (input: In2) => In
-  ): <E, R>(x: Effect.Effect<In2, E, R>) => Effect.Effect<In2, E, R>
   <In, In2>(f: (input: In2) => In): <Type, Out>(self: Metric<Type, In, Out>) => Metric<Type, In2, Out>
   <Type, In, Out, In2>(self: Metric<Type, In, Out>, f: (input: In2) => In): Metric<Type, In2, Out>
 } = internal.mapInput
@@ -681,14 +677,14 @@ export const trackSuccess: {
  * @category aspects
  */
 export const trackSuccessWith: {
-  <Type, In, Out, In2>(
+  <Type, In, Out, A>(
     metric: Metric<Type, In, Out>,
-    f: (value: In2) => In
-  ): <A extends In2, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A extends In2, E, R, Type, In, Out, In2>(
+    f: (value: Types.NoInfer<A>) => In
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
-    f: (value: In2) => In
+    f: (value: A) => In
   ): Effect.Effect<A, E, R>
 } = internal.trackSuccessWith
 
