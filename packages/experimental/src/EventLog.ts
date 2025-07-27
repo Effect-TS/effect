@@ -402,7 +402,36 @@ export class Registry extends Context.Tag("@effect/experimental/EventLog/Registr
 export class Identity extends Context.Tag("@effect/experimental/EventLog/Identity")<Identity, {
   readonly publicKey: string
   readonly privateKey: Redacted.Redacted<Uint8Array>
-}>() {}
+}>() {
+  /**
+   * @since 1.0.0
+   */
+  static makeRandom() {
+    return Identity.of({
+      publicKey: crypto.randomUUID(),
+      privateKey: Redacted.make(crypto.getRandomValues(new Uint8Array(32)))
+    })
+  }
+  /**
+   * @since 1.0.0
+   */
+  static readonly Schema = Schema.Struct({
+    publicKey: Schema.String,
+    privateKey: Schema.Redacted(Schema.Uint8ArrayFromBase64)
+  })
+  /**
+   * @since 1.0.0
+   */
+  static readonly SchemaFromJson = Schema.parseJson(this.Schema)
+  /**
+   * @since 1.0.0
+   */
+  static fromJsonString = (s: string): Identity["Type"] => Schema.decodeSync(Identity.SchemaFromJson)(s)
+  /**
+   * @since 1.0.0
+   */
+  static toJsonString = (identity: Identity["Type"]): string => Schema.encodeSync(Identity.SchemaFromJson)(identity)
+}
 
 /**
  * Generates a random `Identity` and stores it in a `KeyValueStore`.
@@ -416,20 +445,12 @@ export const layerIdentityKvs = (options: {
   Layer.effect(
     Identity,
     Effect.gen(function*() {
-      const store = (yield* KeyValueStore.KeyValueStore).forSchema(
-        Schema.Struct({
-          publicKey: Schema.String,
-          privateKey: Schema.Redacted(Schema.Uint8ArrayFromBase64)
-        })
-      )
+      const store = (yield* KeyValueStore.KeyValueStore).forSchema(Identity.Schema)
       const current = yield* store.get(options.key)
       if (Option.isSome(current)) {
         return current.value
       }
-      const identity = Identity.of({
-        publicKey: crypto.randomUUID(),
-        privateKey: Redacted.make(crypto.getRandomValues(new Uint8Array(32)))
-      })
+      const identity = Identity.makeRandom()
       yield* store.set(options.key, identity)
       return identity
     })
