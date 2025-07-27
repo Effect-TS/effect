@@ -176,7 +176,9 @@ export const isZoned = (self: DateTime.DateTime): self is DateTime.Zoned => self
 // =============================================================================
 
 /** @internal */
-export const Equivalence: equivalence.Equivalence<DateTime.DateTime> = equivalence.make((a, b) => a.epochMillis === b.epochMillis)
+export const Equivalence: equivalence.Equivalence<DateTime.DateTime> = equivalence.make((a, b) =>
+  a.epochMillis === b.epochMillis
+)
 
 /** @internal */
 export const Order: order.Order<DateTime.DateTime> = order.make((self, that) =>
@@ -325,8 +327,7 @@ export const unsafeNow: LazyArg<DateTime.Utc> = () => makeUtc(Date.now())
 // =============================================================================
 
 /** @internal */
-export const toUtc = (self: DateTime.DateTime): DateTime.Utc =>
-  makeUtc(self.epochMillis)
+export const toUtc = (self: DateTime.DateTime): DateTime.Utc => makeUtc(self.epochMillis)
 
 /** @internal */
 export const setZone: {
@@ -447,8 +448,7 @@ export const zoneMakeOffset = (offset: number): DateTime.TimeZone.Offset => {
 /** @internal */
 export const zoneMakeNamed: (
   zoneId: string
-) => Option.Option<DateTime.TimeZone.Named> =
-  Option.liftThrowable(zoneUnsafeMakeNamed)
+) => Option.Option<DateTime.TimeZone.Named> = Option.liftThrowable(zoneUnsafeMakeNamed)
 
 /** @internal */
 export const zoneMakeNamedEffect = (
@@ -510,8 +510,7 @@ export const setZoneNamed: {
       readonly adjustForTimeZone?: boolean | undefined
       readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
     }
-  ): Option.Option<DateTime.Zoned> =>
-    Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
+  ): Option.Option<DateTime.Zoned> => Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
 )
 
 /** @internal */
@@ -553,8 +552,7 @@ export const distance: {
   (self: DateTime.DateTime, other: DateTime.DateTime): number
 } = dual(
   2,
-  (self: DateTime.DateTime, other: DateTime.DateTime): number =>
-    toEpochMillis(other) - toEpochMillis(self)
+  (self: DateTime.DateTime, other: DateTime.DateTime): number => toEpochMillis(other) - toEpochMillis(self)
 )
 
 /** @internal */
@@ -650,28 +648,23 @@ export const between: {
 } = order.between(Order)
 
 /** @internal */
-export const isFuture = (self: DateTime.DateTime): Effect.Effect<boolean> =>
-  core.map(now, lessThan(self))
+export const isFuture = (self: DateTime.DateTime): Effect.Effect<boolean> => core.map(now, lessThan(self))
 
 /** @internal */
-export const unsafeIsFuture = (self: DateTime.DateTime): boolean =>
-  lessThan(unsafeNow(), self)
+export const unsafeIsFuture = (self: DateTime.DateTime): boolean => lessThan(unsafeNow(), self)
 
 /** @internal */
-export const isPast = (self: DateTime.DateTime): Effect.Effect<boolean> =>
-  core.map(now, greaterThan(self))
+export const isPast = (self: DateTime.DateTime): Effect.Effect<boolean> => core.map(now, greaterThan(self))
 
 /** @internal */
-export const unsafeIsPast = (self: DateTime.DateTime): boolean =>
-  greaterThan(unsafeNow(), self)
+export const unsafeIsPast = (self: DateTime.DateTime): boolean => greaterThan(unsafeNow(), self)
 
 // =============================================================================
 // conversions
 // =============================================================================
 
 /** @internal */
-export const toDateUtc = (self: DateTime.DateTime): Date =>
-  new Date(self.epochMillis)
+export const toDateUtc = (self: DateTime.DateTime): Date => new Date(self.epochMillis)
 
 /** @internal */
 export const toDate = (self: DateTime.DateTime): Date => {
@@ -719,12 +712,10 @@ const offsetToString = (offset: number): string => {
 }
 
 /** @internal */
-export const zonedOffsetIso = (self: DateTime.Zoned): string =>
-  offsetToString(zonedOffset(self))
+export const zonedOffsetIso = (self: DateTime.Zoned): string => offsetToString(zonedOffset(self))
 
 /** @internal */
-export const toEpochMillis = (self: DateTime.DateTime): number =>
-  self.epochMillis
+export const toEpochMillis = (self: DateTime.DateTime): number => self.epochMillis
 
 /** @internal */
 export const removeTime = (self: DateTime.DateTime): DateTime.Utc =>
@@ -954,18 +945,16 @@ const getPossibleEpochTimes = (
   const laterOffset = calculateNamedOffset(laterSample, zone)
 
   // Determine candidate offsets: if same, only one; if different, test both
-  const candidateOffsets =
-    earlierOffset === laterOffset
-      ? [earlierOffset]
-      : [earlierOffset, laterOffset]
+  const candidateOffsets = earlierOffset === laterOffset
+    ? [earlierOffset]
+    : [earlierOffset, laterOffset]
 
   // Test each offset to find valid UTC candidates
   const validCandidates: Array<number> = []
 
   for (const offset of candidateOffsets) {
     const candidateUtc = naiveUtc - offset
-    const resultingLocal =
-      candidateUtc + calculateNamedOffset(candidateUtc, zone)
+    const resultingLocal = candidateUtc + calculateNamedOffset(candidateUtc, zone)
 
     // Validate: Does this UTC convert back to our target local time?
     if (isSameWallClockTime(adjustedMillis, resultingLocal)) {
@@ -1130,9 +1119,8 @@ const calculateNamedOffset = (
   utcMillis: number,
   zone: DateTime.TimeZone.Named
 ): number => {
-  const offsetCurrent =
-    zone.format.formatToParts(utcMillis).find((_) => _.type === "timeZoneName")
-      ?.value ?? ""
+  const offsetCurrent = zone.format.formatToParts(utcMillis).find((_) => _.type === "timeZoneName")
+    ?.value ?? ""
   if (offsetCurrent === "GMT") {
     return 0
   }
@@ -1235,8 +1223,7 @@ export const match: {
       readonly onUtc: (_: DateTime.Utc) => A
       readonly onZoned: (_: DateTime.Zoned) => B
     }
-  ): A | B =>
-    self._tag === "Utc" ? options.onUtc(self) : options.onZoned(self)
+  ): A | B => self._tag === "Utc" ? options.onUtc(self) : options.onZoned(self)
 )
 
 // =============================================================================
@@ -1254,8 +1241,7 @@ export const addDuration: {
   (
     self: DateTime.DateTime,
     duration: Duration.DurationInput
-  ): DateTime.DateTime =>
-    mapEpochMillis(self, (millis) => millis + Duration.toMillis(duration))
+  ): DateTime.DateTime => mapEpochMillis(self, (millis) => millis + Duration.toMillis(duration))
 )
 
 /** @internal */
@@ -1269,8 +1255,7 @@ export const subtractDuration: {
   (
     self: DateTime.DateTime,
     duration: Duration.DurationInput
-  ): DateTime.DateTime =>
-    mapEpochMillis(self, (millis) => millis - Duration.toMillis(duration))
+  ): DateTime.DateTime => mapEpochMillis(self, (millis) => millis - Duration.toMillis(duration))
 )
 
 const addMillis = (date: Date, amount: number): void => {
@@ -1346,8 +1331,7 @@ export const subtract: {
   ): DateTime.DateTime => {
     const newParts = {} as Partial<Mutable<DateTime.DateTime.PartsForMath>>
     for (const key in parts) {
-      newParts[key as keyof DateTime.DateTime.PartsForMath] =
-        -1 * parts[key as keyof DateTime.DateTime.PartsForMath]!
+      newParts[key as keyof DateTime.DateTime.PartsForMath] = -1 * parts[key as keyof DateTime.DateTime.PartsForMath]!
     }
     return add(self, newParts)
   }
@@ -1421,8 +1405,7 @@ export const startOf: {
     options?: {
       readonly weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | undefined
     }
-  ): DateTime.DateTime =>
-    mutate(self, (date) => startOfDate(date, part, options))
+  ): DateTime.DateTime => mutate(self, (date) => startOfDate(date, part, options))
 )
 
 const endOfDate = (
@@ -1555,16 +1538,16 @@ export const format: {
   (
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): (self: DateTime.DateTime) => string
   (
     self: DateTime.DateTime,
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): string
 } = dual(
@@ -1573,8 +1556,8 @@ export const format: {
     self: DateTime.DateTime,
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): string => {
     try {
@@ -1596,16 +1579,16 @@ export const formatLocal: {
   (
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): (self: DateTime.DateTime) => string
   (
     self: DateTime.DateTime,
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): string
 } = dual(
@@ -1614,11 +1597,10 @@ export const formatLocal: {
     self: DateTime.DateTime,
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
-  ): string =>
-    new Intl.DateTimeFormat(options?.locale, options).format(self.epochMillis)
+  ): string => new Intl.DateTimeFormat(options?.locale, options).format(self.epochMillis)
 )
 
 /** @internal */
@@ -1626,16 +1608,16 @@ export const formatUtc: {
   (
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): (self: DateTime.DateTime) => string
   (
     self: DateTime.DateTime,
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): string
 } = dual(
@@ -1644,8 +1626,8 @@ export const formatUtc: {
     self: DateTime.DateTime,
     options?:
       | (Intl.DateTimeFormatOptions & {
-          readonly locale?: Intl.LocalesArgument
-        })
+        readonly locale?: Intl.LocalesArgument
+      })
       | undefined
   ): string =>
     new Intl.DateTimeFormat(options?.locale, {
@@ -1658,21 +1640,16 @@ export const formatUtc: {
 export const formatIntl: {
   (format: Intl.DateTimeFormat): (self: DateTime.DateTime) => string
   (self: DateTime.DateTime, format: Intl.DateTimeFormat): string
-} = dual(2, (self: DateTime.DateTime, format: Intl.DateTimeFormat): string =>
-  format.format(self.epochMillis)
-)
+} = dual(2, (self: DateTime.DateTime, format: Intl.DateTimeFormat): string => format.format(self.epochMillis))
 
 /** @internal */
-export const formatIso = (self: DateTime.DateTime): string =>
-  toDateUtc(self).toISOString()
+export const formatIso = (self: DateTime.DateTime): string => toDateUtc(self).toISOString()
 
 /** @internal */
-export const formatIsoDate = (self: DateTime.DateTime): string =>
-  toDate(self).toISOString().slice(0, 10)
+export const formatIsoDate = (self: DateTime.DateTime): string => toDate(self).toISOString().slice(0, 10)
 
 /** @internal */
-export const formatIsoDateUtc = (self: DateTime.DateTime): string =>
-  toDateUtc(self).toISOString().slice(0, 10)
+export const formatIsoDateUtc = (self: DateTime.DateTime): string => toDateUtc(self).toISOString().slice(0, 10)
 
 /** @internal */
 export const formatIsoOffset = (self: DateTime.DateTime): string => {
