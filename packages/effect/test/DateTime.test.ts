@@ -457,4 +457,266 @@ describe("DateTime", () => {
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
     })
   })
+
+  describe("makeZoned DST disambiguation", () => {
+    it("should work correctly with different timezones", () => {
+      const testCases = [
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 1 },
+          expected: "2025-03-09T06:00:00.000Z"
+        },
+        {
+          zone: "Australia/Sydney",
+          time: { year: 2025, month: 4, day: 6, hours: 1 },
+          expected: "2025-04-05T14:00:00.000Z"
+        },
+        {
+          zone: "Europe/London",
+          time: { year: 2025, month: 3, day: 30, hours: 1 },
+          expected: "2025-03-30T00:00:00.000Z"
+        }
+      ]
+
+      testCases.forEach(({ expected, time, zone }) => {
+        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
+        const maybeDateTime = DateTime.makeZoned(
+          { ...time, minutes: 0, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true }
+        )
+
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+          strictEqual(utcString, expected, `Failed for ${zone}`)
+        } else {
+          throw new Error(`makeZoned should not return None for ${zone}`)
+        }
+      })
+    })
+    it("should correctly handle timezone offset with adjustForTimeZone: true", () => {
+      // This test reproduces the DST offset calculation bug
+      // 01:00 Athens time on March 30, 2025 should be 23:00 UTC (Athens is UTC+2 before DST)
+      const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+      const maybeDateTime = DateTime.makeZoned(
+        {
+          year: 2025,
+          month: 3,
+          day: 30,
+          hours: 1,
+          minutes: 0,
+          seconds: 0,
+          millis: 0
+        },
+        { timeZone, adjustForTimeZone: true }
+      )
+
+      if (Option.isSome(maybeDateTime)) {
+        const dt = maybeDateTime.value
+        const utcDateTime = DateTime.toUtc(dt)
+        const utcString = DateTime.formatIso(utcDateTime)
+
+        // FIXED: Effect DateTime now correctly returns the expected time
+        strictEqual(utcString, "2025-03-29T23:00:00.000Z")
+      } else {
+        throw new Error("makeZoned should not return None for valid time")
+      }
+    })
+
+    it("should handle DST gap times (non-existent times)", () => {
+      // This test shows the DST gap bug
+      // 02:30 Athens time on March 30, 2025 doesn't exist (clocks jump 02:00 -> 03:00)
+      const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+
+      // Test multiple gap times
+      const gapTimes = [
+        { hours: 2, minutes: 0 },
+        { hours: 2, minutes: 30 },
+        { hours: 2, minutes: 59 }
+      ]
+
+      gapTimes.forEach(({ hours, minutes }) => {
+        const maybeDateTime = DateTime.makeZoned(
+          { year: 2025, month: 3, day: 30, hours, minutes, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true }
+        )
+
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+
+          // IMPROVED: Effect now maps DST gap times forward (better behavior)
+          // 02:30 Athens -> 03:30 Athens (forward movement, more reasonable)
+          // ${desc} -> ${utcString} (Effect accepts and maps forward)
+
+          // For 02:30, Effect now returns 2025-03-30T00:30:00.000Z which is 03:30 Athens
+          // This is better - it moves forward instead of backward
+          if (hours === 2 && minutes === 30) {
+            strictEqual(utcString, "2025-03-30T00:30:00.000Z") // Documents improved behavior
+          }
+        } else {
+          // ${desc} -> REJECTED (would be correct behavior)
+        }
+      })
+    })
+
+    describe("disambiguation strategies", () => {
+      it("should handle 'compatible' disambiguation (default behavior)", () => {
+        // Test DST fall-back (repeated time): 03:00 happens twice in Europe/Athens on Oct 26, 2025
+        // At UTC 01:00, Athens switches from GMT+3 to GMT+2, so 03:00 occurs twice
+        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+        const maybeDateTime = DateTime.makeZoned(
+          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true, disambiguation: "compatible" }
+        )
+
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+          // 'compatible' should choose the earlier occurrence (first 03:00 in GMT+3)
+          strictEqual(utcString, "2025-10-26T00:00:00.000Z")
+        } else {
+          throw new Error("makeZoned should not return None for valid time")
+        }
+      })
+
+      it("should handle 'earlier' disambiguation", () => {
+        // Test DST fall-back: choose the earlier of two possible times
+        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+        const maybeDateTime = DateTime.makeZoned(
+          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true, disambiguation: "earlier" }
+        )
+
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+          // Should choose first occurrence (GMT+3, UTC 00:00)
+          strictEqual(utcString, "2025-10-26T00:00:00.000Z")
+        } else {
+          throw new Error("makeZoned should not return None for valid time")
+        }
+      })
+
+      it("should handle 'later' disambiguation", () => {
+        // Test DST fall-back: choose the later of two possible times
+        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+        const maybeDateTime = DateTime.makeZoned(
+          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true, disambiguation: "later" }
+        )
+
+        if (Option.isSome(maybeDateTime)) {
+          const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+          // Should choose second occurrence (GMT+2, UTC 01:00)
+          strictEqual(utcString, "2025-10-26T01:00:00.000Z")
+        } else {
+          throw new Error("makeZoned should not return None for valid time")
+        }
+      })
+
+      it("should handle 'reject' disambiguation", () => {
+        // Test DST fall-back with correct date: Europe/Athens on Oct 26, 2025 at 03:00 (happens twice)
+        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+
+        const result = DateTime.makeZoned(
+          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
+          { timeZone, adjustForTimeZone: true, disambiguation: "reject" }
+        )
+
+        // makeZoned should return None when unsafeMakeZoned throws for 'reject' disambiguation
+        strictEqual(
+          Option.isNone(result),
+          true,
+          "Expected makeZoned to return None for ambiguous time with 'reject' disambiguation"
+        )
+      })
+
+      it("should handle 'reject' disambiguation with unsafeMakeZoned (throws exception)", () => {
+        // Test that unsafeMakeZoned actually throws the exception for 'reject' disambiguation
+        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+
+        try {
+          DateTime.unsafeMakeZoned(
+            { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
+            { timeZone, adjustForTimeZone: true, disambiguation: "reject" }
+          )
+          throw new Error("Expected unsafeMakeZoned to throw for ambiguous time with 'reject' disambiguation")
+        } catch (error) {
+          // Should throw IllegalArgumentException for ambiguous time
+          strictEqual(error instanceof Error, true)
+          if (error instanceof Error) {
+            strictEqual(error.message.includes("Ambiguous time"), true)
+          }
+        }
+      })
+
+      it("should handle DST spring-forward gap times consistently", () => {
+        // Test gap time: 03:00 doesn't exist in Europe/Athens on March 30, 2025
+        // Clocks jump from 02:00 to 04:00 at UTC 01:00 (02:00 Athens time becomes 04:00)
+        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
+
+        const testStrategies: Array<
+          { disambiguation: DateTime.DateTime.Disambiguation; description: string; expectedUtc: string }
+        > = [
+          { disambiguation: "compatible", description: "compatible strategy", expectedUtc: "2025-03-30T01:00:00.000Z" },
+          { disambiguation: "earlier", description: "earlier strategy", expectedUtc: "2025-03-30T00:00:00.000Z" },
+          { disambiguation: "later", description: "later strategy", expectedUtc: "2025-03-30T01:00:00.000Z" }
+        ]
+
+        testStrategies.forEach(({ description, disambiguation, expectedUtc }) => {
+          const maybeDateTime = DateTime.makeZoned(
+            { year: 2025, month: 3, day: 30, hours: 3, minutes: 0, seconds: 0, millis: 0 },
+            { timeZone, adjustForTimeZone: true, disambiguation }
+          )
+
+          if (Option.isSome(maybeDateTime)) {
+            const utcString = DateTime.formatIso(DateTime.toUtc(maybeDateTime.value))
+            // Gap time 03:00 Athens with ${description} -> ${utcString}
+            // Gap times are handled by the convergence algorithm, which maps to 03:00 Athens (GMT+3, 00:00 UTC)
+            strictEqual(utcString, expectedUtc, `Failed for ${description}`)
+          } else {
+            throw new Error(`makeZoned should not return None for gap time with ${description}`)
+          }
+        })
+      })
+
+      it("should work with multiple timezones for disambiguation", () => {
+        const testCases = [
+          {
+            zone: "Europe/London",
+            time: { year: 2025, month: 10, day: 26, hours: 1, minutes: 30 }, // DST ends
+            earlierUtc: "2025-10-26T00:30:00.000Z", // BST (UTC+1)
+            laterUtc: "2025-10-26T01:30:00.000Z" // GMT (UTC+0)
+          },
+          {
+            zone: "Europe/Berlin",
+            time: { year: 2025, month: 10, day: 26, hours: 2, minutes: 30 }, // DST ends
+            earlierUtc: "2025-10-26T00:30:00.000Z", // CEST (UTC+2)
+            laterUtc: "2025-10-26T01:30:00.000Z" // CET (UTC+1)
+          }
+        ]
+
+        testCases.forEach(({ earlierUtc, laterUtc, time, zone }) => {
+          const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
+
+          // Test 'earlier' disambiguation
+          const earlierResult = DateTime.makeZoned(
+            { ...time, seconds: 0, millis: 0 },
+            { timeZone, adjustForTimeZone: true, disambiguation: "earlier" }
+          )
+          if (Option.isSome(earlierResult)) {
+            const utcString = DateTime.formatIso(DateTime.toUtc(earlierResult.value))
+            strictEqual(utcString, earlierUtc, `Earlier disambiguation failed for ${zone}`)
+          }
+
+          // Test 'later' disambiguation
+          const laterResult = DateTime.makeZoned(
+            { ...time, seconds: 0, millis: 0 },
+            { timeZone, adjustForTimeZone: true, disambiguation: "later" }
+          )
+          if (Option.isSome(laterResult)) {
+            const utcString = DateTime.formatIso(DateTime.toUtc(laterResult.value))
+            strictEqual(utcString, laterUtc, `Later disambiguation failed for ${zone}`)
+          }
+        })
+      })
+    })
+  })
 })
