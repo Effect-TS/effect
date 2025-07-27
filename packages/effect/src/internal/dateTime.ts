@@ -739,13 +739,13 @@ export const setPartsUtc: {
  *
  * @param adjustedMillis - Local time as milliseconds since epoch (timezone-agnostic representation)
  * @param zone - Target timezone (offset or named zone)
- * @param disambiguation - Strategy for resolving DST ambiguity (defaults to "earlier" for backward compatibility)
+ * @param disambiguation - Strategy for resolving DST ambiguity (defaults to "compatible")
  * @returns DateTime.Zoned with correct UTC epochMillis for the given local time
  */
 const makeZonedFromAdjusted = (
   adjustedMillis: number,
   zone: DateTime.TimeZone,
-  disambiguation: DateTime.DateTime.Disambiguation = "earlier"
+  disambiguation: DateTime.DateTime.Disambiguation = "compatible"
 ): DateTime.Zoned => {
   if (zone._tag === "Offset") {
     return makeZonedProto(adjustedMillis - zone.offset, zone)
@@ -885,7 +885,7 @@ const disambiguatePossibleTimes = (
       case "later":
         return makeZonedProto(possibleUtcTimes[numInstants - 1], zone) // Last (later) interpretation
       case "reject":
-        throw new IllegalArgumentException(
+        throw new RangeError(
           `Ambiguous time occurs twice in timezone ${zone.id}`
         )
     }
@@ -893,7 +893,7 @@ const disambiguatePossibleTimes = (
 
   // Case 3: Gap time (0 interpretations) - Synthesize solution using precise offset calculation
   if (disambiguation === "reject") {
-    throw new IllegalArgumentException(
+    throw new RangeError(
       `Gap time: ${new Date(adjustedMillis).toISOString().slice(0, -1)} does not exist in timezone ${zone.id}`
     )
   }

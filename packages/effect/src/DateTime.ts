@@ -175,11 +175,11 @@ export declare namespace DateTime {
    *
    * **Disambiguation strategies:**
    *
-   * - `"compatible"`: Behavior matching Temporal API and legacy JavaScript Date and moment.js.
+   * - `"compatible"`: (default) Behavior matching Temporal API and legacy JavaScript Date and moment.js.
    *   For repeated times, chooses the earlier occurrence. For gap times, chooses the later interpretation.
    *
-   * - `"earlier"`: **Default behavior** for backward compatibility with previous Effect versions.
-   *   For repeated times, always choose the earlier occurrence. For gap times, choose the time before the gap.
+   * - `"earlier"`: For repeated times, always choose the earlier occurrence.
+   *   For gap times, choose the time before the gap.
    *
    * - `"later"`: For repeated times, always choose the later occurrence.
    *   For gap times, choose the time after the gap.
