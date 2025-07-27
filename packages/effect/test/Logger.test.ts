@@ -477,6 +477,35 @@ describe("jsonLogger", () => {
     )
   })
 
+  it("errors", () => {
+    const date = new Date()
+    vi.setSystemTime(date)
+
+    const error = new Error("something went wrong")
+    const result = Logger.jsonLogger.log({
+      fiberId: FiberId.none,
+      logLevel: logLevelInfo,
+      message: error,
+      cause: Cause.empty,
+      context: FiberRefs.unsafeMake(new Map()),
+      spans: List.empty(),
+      annotations: HashMap.empty(),
+      date
+    })
+
+    strictEqual(
+      result,
+      JSON.stringify({
+        message: { name: "Error", message: "something went wrong" },
+        logLevel: "INFO",
+        timestamp: date.toJSON(),
+        annotations: {},
+        spans: {},
+        fiberId: ""
+      })
+    )
+  })
+
   it("circular objects", () => {
     const date = new Date()
     vi.setSystemTime(date)
