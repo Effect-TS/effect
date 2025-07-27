@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.46.1
+
+### Patch Changes
+
+- [#5283](https://github.com/Effect-TS/effect/pull/5283) [`de92b1c`](https://github.com/Effect-TS/effect/commit/de92b1c46a57761df9dd46e59e42d5a54beb6e34) Thanks @tim-smart! - disable tracing for ClusterCron client to disconnect parent span
+
 ## 0.46.0
 
 ### Patch Changes
