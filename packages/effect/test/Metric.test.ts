@@ -737,4 +737,72 @@ describe("Metric", () => {
       )
       strictEqual(value._tag, "Some")
     }))
+  describe("mapInput", () => {
+    it.effect("infers types in Effectful pipes", () => {
+      const counter = Metric.counter("counter")
+      const frequency = Metric.frequency("frequency")
+      const gauge = Metric.gauge("gauge")
+      const histogram = Metric.histogram(
+        "histogram",
+        MetricBoundaries.linear({ start: 0, width: 10, count: 11 })
+      )
+      const summary = Metric.summary({
+        name: "summary",
+        maxAge: Duration.minutes(1),
+        maxSize: 10,
+        error: 0,
+        quantiles: [0.25, 0.5, 1]
+      })
+      return Effect.Do.pipe(
+        Effect.let("step1", () => 1),
+        Metric.mapInput(counter, ({ step1 }) => step1),
+        Effect.let("someThingElse", () => ({ a: 3 })),
+        Metric.mapInput(gauge, ({ step1 }) => step1),
+        Metric.mapInput(histogram, ({ step1 }) => step1),
+        Effect.let("anotherPartOfTheState", () => ({ b: "seven" })),
+        Metric.mapInput(summary, ({ step1 }) => step1),
+        Effect.let("step2", () => 4),
+        Effect.let("step3", () => "foo"),
+        Metric.mapInput(counter, ({ step2 }) => step2),
+        Effect.let("irrelevant", () => "irrelevant"),
+        Metric.mapInput(gauge, ({ step2 }) => step2),
+        Metric.mapInput(histogram, ({ step2 }) => step2),
+        Effect.let("moreIrrelevant", () => "moreIrrelevant"),
+        Metric.mapInput(summary, ({ step2 }) => step2),
+        Effect.let("otherStuff", () => ({ x: "otherStuff" })),
+        Metric.mapInput(frequency, ({ step3 }) => step3),
+        Effect.let("step4", () => "bar"),
+        Metric.mapInput(frequency, ({ step4 }) => step4),
+        Effect.bind("results", () =>
+          Effect.all({
+            counter: Metric.value(counter),
+            gauge: Metric.value(gauge),
+            histogram: Metric.value(histogram),
+            summary: Metric.value(summary),
+            frequency: Metric.value(frequency)
+          }))
+      ).pipe(
+        Effect.map(({ results }) => {
+          deepStrictEqual(results.counter, MetricState.counter(5))
+          deepStrictEqual(results.gauge, MetricState.gauge(4))
+          strictEqual(results.histogram.count, 2)
+          strictEqual(results.histogram.sum, 5)
+          strictEqual(results.histogram.min, 1)
+          strictEqual(results.histogram.max, 4)
+          strictEqual(results.summary.count, 2)
+          strictEqual(results.summary.sum, 5)
+          strictEqual(results.summary.min, 1)
+          strictEqual(results.summary.max, 4)
+          deepStrictEqual(results.summary.quantiles.map((x) => x[1]).map(Option.getOrNull), [1, 1, 4])
+          deepStrictEqual(
+            results.frequency.occurrences,
+            new Map([
+              ["bar", 1],
+              ["foo", 1]
+            ])
+          )
+        })
+      )
+    })
+  })
 })

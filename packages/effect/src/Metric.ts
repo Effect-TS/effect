@@ -152,6 +152,10 @@ export const make: MetricApply = internal.make
  * @category mapping
  */
 export const mapInput: {
+  <Type, In, Out, In2>(
+    self: Metric<Type, In, Out>,
+    f: (input: In2) => In
+  ): <E, R>(x: Effect.Effect<In2, E, R>) => Effect.Effect<In2, E, R>
   <In, In2>(f: (input: In2) => In): <Type, Out>(self: Metric<Type, In, Out>) => Metric<Type, In2, Out>
   <Type, In, Out, In2>(self: Metric<Type, In, Out>, f: (input: In2) => In): Metric<Type, In2, Out>
 } = internal.mapInput
