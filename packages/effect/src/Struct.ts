@@ -138,7 +138,7 @@ type PartialTransform<O, T> = {
 }
 /**
  * Transforms the values of a Struct provided a transformation function for each key.
- * If no transformation function is provided for a key, it will return the origional value for that key.
+ * If no transformation function is provided for a key, it will return the original value for that key.
  *
  * @example
  * ```ts
