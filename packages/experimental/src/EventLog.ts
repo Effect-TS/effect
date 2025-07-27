@@ -1,6 +1,8 @@
 /**
  * @since 1.0.0
  */
+import type * as Error from "@effect/platform/Error"
+import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -8,11 +10,13 @@ import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import type * as Record from "effect/Record"
-import type * as Redacted from "effect/Redacted"
+import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type { Covariant } from "effect/Types"
@@ -399,6 +403,37 @@ export class Identity extends Context.Tag("@effect/experimental/EventLog/Identit
   readonly publicKey: string
   readonly privateKey: Redacted.Redacted<Uint8Array>
 }>() {}
+
+/**
+ * Generates a random `Identity` and stores it in a `KeyValueStore`.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerIdentityKvs = (options: {
+  readonly key: string
+}): Layer.Layer<Identity, ParseResult.ParseError | Error.PlatformError, KeyValueStore.KeyValueStore> =>
+  Layer.effect(
+    Identity,
+    Effect.gen(function*() {
+      const store = (yield* KeyValueStore.KeyValueStore).forSchema(
+        Schema.Struct({
+          publicKey: Schema.String,
+          privateKey: Schema.Redacted(Schema.Uint8ArrayFromBase64)
+        })
+      )
+      const current = yield* store.get(options.key)
+      if (Option.isSome(current)) {
+        return current.value
+      }
+      const identity = Identity.of({
+        publicKey: crypto.randomUUID(),
+        privateKey: Redacted.make(crypto.getRandomValues(new Uint8Array(32)))
+      })
+      yield* store.set(options.key, identity)
+      return identity
+    })
+  )
 
 /**
  * @since 1.0.0
