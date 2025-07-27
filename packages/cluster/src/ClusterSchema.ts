@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import { constFalse } from "effect/Function"
+import { constFalse, constTrue } from "effect/Function"
 import type { EntityId } from "./EntityId.js"
 
 /**
@@ -30,3 +30,13 @@ export class Uninterruptible
 export class ShardGroup extends Context.Reference<ShardGroup>()("@effect/cluster/ClusterSchema/ShardGroup", {
   defaultValue: (): (entityId: EntityId) => string => (_) => "default"
 }) {}
+
+/**
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class ClientTracingEnabled
+  extends Context.Reference<ClientTracingEnabled>()("@effect/cluster/ClusterSchema/ClientTracingEnabled", {
+    defaultValue: constTrue
+  })
+{}

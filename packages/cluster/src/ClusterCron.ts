@@ -58,7 +58,9 @@ export const make = <E, R>(options: {
     })
       .annotate(Persisted, true)
       .annotate(Uninterruptible, true)
-  ]).annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
+  ])
+    .annotate(ClusterSchema.ShardGroup, () => options.shardGroup ?? "default")
+    .annotate(ClusterSchema.ClientTracingEnabled, false)
 
   const InitialRun = Singleton.make(
     `ClusterCron/${options.name}`,

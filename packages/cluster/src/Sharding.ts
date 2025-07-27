@@ -37,6 +37,7 @@ import {
   RunnerUnavailable
 } from "./ClusterError.js"
 import { Persisted, Uninterruptible } from "./ClusterSchema.js"
+import * as ClusterSchema from "./ClusterSchema.js"
 import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
@@ -950,6 +951,7 @@ const make = Effect.gen(function*() {
   > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<string, any>) {
     const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
       spanPrefix: `${entity.type}.client`,
+      disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
       supportsAck: true,
       generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
       flatten: true,
