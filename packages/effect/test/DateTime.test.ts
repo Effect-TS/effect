@@ -471,12 +471,12 @@ describe("DateTime", () => {
     })
   })
 
-  describe("makeZoned DST disambiguation", () => {
+  describe("Disambiguation", () => {
     it.each<{
       zone: string
       time: Partial<DateTime.DateTime.Parts>
       description: string
-      expectedResults: Record<DateTime.DateTime.Disambiguation, string>
+      expectedResults: Record<DateTime.Disambiguation, string>
     }>(
       [
         {
