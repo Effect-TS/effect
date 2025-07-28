@@ -3,12 +3,13 @@
 ---
 
 improve: Enhance Cause.pretty output with additional error fields, similar to classic throw of Error.
+also allows for printing `bigint` values as string.
 
 code:
 
 ```
 class MyError extends Error {
-  testValue = 1
+  testValue = BigInt(1)
 }
 console.log(Cause.pretty(Cause.die(new MyError("my message")), { renderErrorCause: true }))
 ```
@@ -43,6 +44,6 @@ Error: my message
     at processTicksAndRejections (node:internal/process/task_queues:105:5)
     at async Promise.all (index 0)
     at runSuite (file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:1718:7) {
-      testValue: 1
+      testValue: "1"
     }
 ```
