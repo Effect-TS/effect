@@ -1,8 +1,29 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertRight, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import {
+  assertEquals,
+  assertInclude,
+  assertInstanceOf,
+  assertNone,
+  assertRight,
+  assertSome,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "@effect/vitest/utils"
 import { DateTime, Duration, Effect, Option, TestClock } from "effect"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
+const assertSomeIso = (value: Option.Option<DateTime.DateTime>, expected: string) => {
+  const iso = value.pipe(Option.map((value) => DateTime.formatIso(DateTime.toUtc(value))))
+  assertSome(iso, expected)
+}
+
+interface DisambiguationCase {
+  zone: string
+  time: Partial<DateTime.DateTime.Parts>
+  strategy: DateTime.DateTime.Disambiguation
+  expected: string
+}
 
 describe("DateTime", () => {
   describe("mutate", () => {
@@ -482,10 +503,7 @@ describe("DateTime", () => {
         { timeZone, adjustForTimeZone: true }
       )
 
-      const utcString = maybeDateTime.pipe(
-        Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-      )
-      assertSome(utcString, expected)
+      assertSomeIso(maybeDateTime, expected)
     })
     it("should correctly handle timezone offset with adjustForTimeZone: true", () => {
       // 01:00 Athens time on March 30, 2025 should be 23:00 UTC (Athens is UTC+2 before DST)
@@ -503,34 +521,20 @@ describe("DateTime", () => {
         { timeZone, adjustForTimeZone: true }
       )
 
-      const utcString = maybeDateTime.pipe(
-        Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-      )
-      assertSome(utcString, "2025-03-29T23:00:00.000Z")
+      assertSomeIso(maybeDateTime, "2025-03-29T23:00:00.000Z")
     })
 
-    it.each([
-      { hours: 2, minutes: 0 },
-      { hours: 2, minutes: 30 },
-      { hours: 2, minutes: 59 }
-    ])("should handle DST gap times (non-existent times) for $hours:$minutes", ({ hours, minutes }) => {
+    it("should handle DST gap times (non-existent times)", () => {
       // 02:30 Athens time on March 30, 2025 doesn't exist (clocks jump 02:00 -> 03:00)
       const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
       const maybeDateTime = DateTime.makeZoned(
-        { year: 2025, month: 3, day: 30, hours, minutes, seconds: 0, millis: 0 },
+        { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 },
         { timeZone, adjustForTimeZone: true }
-      )
-
-      const utcString = maybeDateTime.pipe(
-        Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
       )
 
       // 02:30 Athens -> 03:30 Athens (forward movement, more reasonable)
       // For 02:30 it returns 2025-03-30T00:30:00.000Z which is 03:30 Athens
-      if (hours === 2 && minutes === 30) {
-        assertSome(utcString, "2025-03-30T00:30:00.000Z") // Documents improved behavior
-      }
+      assertSomeIso(maybeDateTime, "2025-03-30T00:30:00.000Z")
     })
 
     describe("disambiguation strategies", () => {
@@ -543,11 +547,8 @@ describe("DateTime", () => {
           { timeZone, adjustForTimeZone: true, disambiguation: "compatible" }
         )
 
-        const utcString = maybeDateTime.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
         // 'compatible' should choose the earlier occurrence (first 03:00 in GMT+3)
-        assertSome(utcString, "2025-10-26T00:00:00.000Z")
+        assertSomeIso(maybeDateTime, "2025-10-26T00:00:00.000Z")
       })
 
       it("should handle 'earlier' disambiguation", () => {
@@ -558,11 +559,8 @@ describe("DateTime", () => {
           { timeZone, adjustForTimeZone: true, disambiguation: "earlier" }
         )
 
-        const utcString = maybeDateTime.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
         // Should choose first occurrence (GMT+3, UTC 00:00)
-        assertSome(utcString, "2025-10-26T00:00:00.000Z")
+        assertSomeIso(maybeDateTime, "2025-10-26T00:00:00.000Z")
       })
 
       it("should handle 'later' disambiguation", () => {
@@ -573,17 +571,13 @@ describe("DateTime", () => {
           { timeZone, adjustForTimeZone: true, disambiguation: "later" }
         )
 
-        const utcString = maybeDateTime.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
         // Should choose second occurrence (GMT+2, UTC 01:00)
-        assertSome(utcString, "2025-10-26T01:00:00.000Z")
+        assertSomeIso(maybeDateTime, "2025-10-26T01:00:00.000Z")
       })
 
       it("should handle 'reject' disambiguation", () => {
         // Test DST fall-back with correct date: Europe/Athens on Oct 26, 2025 at 03:00 (happens twice)
         const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
         const result = DateTime.makeZoned(
           { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
           { timeZone, adjustForTimeZone: true, disambiguation: "reject" }
@@ -603,21 +597,18 @@ describe("DateTime", () => {
             { timeZone, adjustForTimeZone: true, disambiguation: "reject" }
           )
         }, (error) => {
-          // Should throw IllegalArgumentException for ambiguous time
-          strictEqual(error instanceof Error, true)
-          if (error instanceof Error) {
-            strictEqual(error.message.includes("Ambiguous time"), true)
-          }
+          assertInstanceOf(error, Error)
+          assertInclude(error.message, "Ambiguous time")
         })
       })
 
-      it.each([
-        { disambiguation: "compatible", description: "compatible strategy", expectedUtc: "2025-03-30T01:00:00.000Z" },
-        { disambiguation: "earlier", description: "earlier strategy", expectedUtc: "2025-03-30T00:00:00.000Z" },
-        { disambiguation: "later", description: "later strategy", expectedUtc: "2025-03-30T01:00:00.000Z" }
-      ] as Array<{ disambiguation: DateTime.DateTime.Disambiguation; description: string; expectedUtc: string }>)(
-        "should handle DST spring-forward gap times with $description",
-        ({ disambiguation, expectedUtc }) => {
+      it.each<{ disambiguation: DateTime.DateTime.Disambiguation; expected: string }>([
+        { disambiguation: "compatible", expected: "2025-03-30T01:00:00.000Z" },
+        { disambiguation: "earlier", expected: "2025-03-30T00:00:00.000Z" },
+        { disambiguation: "later", expected: "2025-03-30T01:00:00.000Z" }
+      ])(
+        "should handle DST spring-forward gap times with $disambiguation strategy",
+        ({ disambiguation, expected }) => {
           // Test gap time: 03:00 doesn't exist in Europe/Athens on March 30, 2025
           // Clocks jump from 02:00 to 04:00 at UTC 01:00 (02:00 Athens time becomes 04:00)
           const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
@@ -627,11 +618,8 @@ describe("DateTime", () => {
             { timeZone, adjustForTimeZone: true, disambiguation }
           )
 
-          const utcString = maybeDateTime.pipe(
-            Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-          )
           // Gap time 03:00 Athens -> Gap times are handled by the convergence algorithm
-          assertSome(utcString, expectedUtc)
+          assertSomeIso(maybeDateTime, expected)
         }
       )
 
@@ -656,22 +644,14 @@ describe("DateTime", () => {
           { ...time, seconds: 0, millis: 0 },
           { timeZone, adjustForTimeZone: true, disambiguation: "earlier" }
         )
-        const earlierUtcString = earlierResult.pipe(
-          Option.map(DateTime.toUtc),
-          Option.map(DateTime.formatIso)
-        )
-        assertSome(earlierUtcString, earlierUtc)
+        assertSomeIso(earlierResult, earlierUtc)
 
         // Test 'later' disambiguation
         const laterResult = DateTime.makeZoned(
           { ...time, seconds: 0, millis: 0 },
           { timeZone, adjustForTimeZone: true, disambiguation: "later" }
         )
-        const laterUtcString = laterResult.pipe(
-          Option.map(DateTime.toUtc),
-          Option.map(DateTime.formatIso)
-        )
-        assertSome(laterUtcString, laterUtc)
+        assertSomeIso(laterResult, laterUtc)
       })
     })
 
@@ -693,15 +673,8 @@ describe("DateTime", () => {
           adjustForTimeZone: true,
           disambiguation: "later"
         })
-
-        const compatibleUtcString = compatibleResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const laterUtcString = laterResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        assertSome(compatibleUtcString, "2025-03-30T00:30:00.000Z")
-        assertSome(laterUtcString, "2025-03-30T00:30:00.000Z")
+        assertSomeIso(compatibleResult, "2025-03-30T00:30:00.000Z")
+        assertSomeIso(laterResult, "2025-03-30T00:30:00.000Z")
 
         // Earlier should choose time before gap
         const earlierResult = DateTime.makeZoned(gapTime, {
@@ -709,11 +682,7 @@ describe("DateTime", () => {
           adjustForTimeZone: true,
           disambiguation: "earlier"
         })
-
-        const earlierUtcString = earlierResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        assertSome(earlierUtcString, "2025-03-30T00:30:00.000Z")
+        assertSomeIso(earlierResult, "2025-03-30T00:30:00.000Z")
 
         // Reject should succeed for gap times
         const rejectResult = DateTime.makeZoned(gapTime, {
@@ -721,11 +690,7 @@ describe("DateTime", () => {
           adjustForTimeZone: true,
           disambiguation: "reject"
         })
-
-        const rejectUtcString = rejectResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        assertSome(rejectUtcString, "2025-03-30T00:30:00.000Z")
+        assertSomeIso(rejectResult, "2025-03-30T00:30:00.000Z")
       })
 
       it("should handle New York spring forward gap times", () => {
@@ -750,21 +715,12 @@ describe("DateTime", () => {
           disambiguation: "later"
         })
 
-        const compatibleUtcString = compatibleResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const earlierUtcString = earlierResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const laterUtcString = laterResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        assertSome(compatibleUtcString, "2025-03-09T07:30:00.000Z")
-        assertSome(earlierUtcString, "2025-03-09T06:30:00.000Z")
-        assertSome(laterUtcString, "2025-03-09T07:30:00.000Z")
+        assertSomeIso(compatibleResult, "2025-03-09T07:30:00.000Z")
+        assertSomeIso(earlierResult, "2025-03-09T06:30:00.000Z")
+        assertSomeIso(laterResult, "2025-03-09T07:30:00.000Z")
       })
 
-      it.each([
+      it.each<DisambiguationCase>([
         {
           zone: "Europe/Athens",
           time: { year: 2025, month: 3, day: 30, hours: 3, minutes: 0 },
@@ -801,7 +757,7 @@ describe("DateTime", () => {
           strategy: "later",
           expected: "2025-03-09T07:00:00.000Z"
         }
-      ] as Array<{ zone: string; time: any; strategy: DateTime.DateTime.Disambiguation; expected: string }>)(
+      ])(
         "should handle gap times consistently for $zone with $strategy strategy",
         ({ expected, strategy, time, zone }) => {
           const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
@@ -813,10 +769,7 @@ describe("DateTime", () => {
             disambiguation: strategy
           })
 
-          const utcString = result.pipe(
-            Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-          )
-          assertSome(utcString, expected)
+          assertSomeIso(result, expected)
         }
       )
     })
@@ -844,20 +797,11 @@ describe("DateTime", () => {
           disambiguation: "later"
         })
 
-        const compatibleUtcString = compatibleResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const earlierUtcString = earlierResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const laterUtcString = laterResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
         // Compatible and earlier should choose the first occurrence
-        assertSome(compatibleUtcString, "2025-10-26T00:00:00.000Z")
-        assertSome(earlierUtcString, "2025-10-26T00:00:00.000Z")
+        assertSomeIso(compatibleResult, "2025-10-26T00:00:00.000Z")
+        assertSomeIso(earlierResult, "2025-10-26T00:00:00.000Z")
         // Later should choose the second occurrence
-        assertSome(laterUtcString, "2025-10-26T01:00:00.000Z")
+        assertSomeIso(laterResult, "2025-10-26T01:00:00.000Z")
 
         // Reject should fail
         const rejectResult = DateTime.makeZoned(ambiguousTime, {
@@ -890,21 +834,12 @@ describe("DateTime", () => {
           disambiguation: "later"
         })
 
-        const compatibleUtcString = compatibleResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const earlierUtcString = earlierResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const laterUtcString = laterResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        assertSome(compatibleUtcString, "2025-11-02T05:30:00.000Z")
-        assertSome(earlierUtcString, "2025-11-02T05:30:00.000Z")
-        assertSome(laterUtcString, "2025-11-02T06:30:00.000Z")
+        assertSomeIso(compatibleResult, "2025-11-02T05:30:00.000Z")
+        assertSomeIso(earlierResult, "2025-11-02T05:30:00.000Z")
+        assertSomeIso(laterResult, "2025-11-02T06:30:00.000Z")
       })
 
-      it.each([
+      it.each<DisambiguationCase>([
         {
           zone: "Europe/London",
           time: { year: 2025, month: 10, day: 26, hours: 1, minutes: 30 },
@@ -941,28 +876,22 @@ describe("DateTime", () => {
           strategy: "later",
           expected: "2025-10-26T01:30:00.000Z"
         }
-      ] as Array<{ zone: string; time: any; strategy: DateTime.DateTime.Disambiguation; expected: string }>)(
-        "should handle ambiguous times for $zone with $strategy strategy",
-        ({ expected, strategy, time, zone }) => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-          const parts = { ...time, seconds: 0, millis: 0 }
+      ])("should handle ambiguous times for $zone with $strategy strategy", ({ expected, strategy, time, zone }) => {
+        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
+        const parts = { ...time, seconds: 0, millis: 0 }
 
-          const result = DateTime.makeZoned(parts, {
-            timeZone,
-            adjustForTimeZone: true,
-            disambiguation: strategy
-          })
+        const result = DateTime.makeZoned(parts, {
+          timeZone,
+          adjustForTimeZone: true,
+          disambiguation: strategy
+        })
 
-          const utcString = result.pipe(
-            Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-          )
-          assertSome(utcString, expected)
-        }
-      )
+        assertSomeIso(result, expected)
+      })
     })
 
     describe("Normal Times (no DST transition)", () => {
-      it.each([
+      it.each<DisambiguationCase>([
         // Europe/Athens - Before DST (safe date)
         {
           zone: "Europe/Athens",
@@ -1088,24 +1017,18 @@ describe("DateTime", () => {
           strategy: "reject",
           expected: "2025-03-29T01:00:00.000Z"
         }
-      ] as Array<{ zone: string; time: any; strategy: DateTime.DateTime.Disambiguation; expected: string }>)(
-        "should handle normal times for $zone with $strategy strategy",
-        ({ expected, strategy, time, zone }) => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-          const parts = { ...time, seconds: 0, millis: 0 }
+      ])("should handle normal times for $zone with $strategy strategy", ({ expected, strategy, time, zone }) => {
+        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
+        const parts = { ...time, seconds: 0, millis: 0 }
 
-          const result = DateTime.makeZoned(parts, {
-            timeZone,
-            adjustForTimeZone: true,
-            disambiguation: strategy
-          })
+        const result = DateTime.makeZoned(parts, {
+          timeZone,
+          adjustForTimeZone: true,
+          disambiguation: strategy
+        })
 
-          const utcString = result.pipe(
-            Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-          )
-          assertSome(utcString, expected)
-        }
-      )
+        assertSomeIso(result, expected)
+      })
     })
 
     describe("Edge Cases and Error Handling", () => {
@@ -1115,10 +1038,7 @@ describe("DateTime", () => {
 
         // Reject is allowed for gap times, only throws for ambiguous times
         const result = DateTime.makeZoned(gapTime, { timeZone, adjustForTimeZone: true, disambiguation: "reject" })
-        const utcString = result.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        assertSome(utcString, "2025-03-30T00:30:00.000Z")
+        assertSomeIso(result, "2025-03-30T00:30:00.000Z")
       })
 
       it("should throw errors for reject disambiguation with ambiguous times", () => {
@@ -1128,37 +1048,29 @@ describe("DateTime", () => {
         throws(() => {
           DateTime.unsafeMakeZoned(ambiguousTime, { timeZone, adjustForTimeZone: true, disambiguation: "reject" })
         }, (error) => {
-          strictEqual(error instanceof RangeError, true)
-          if (error instanceof RangeError) {
-            strictEqual(error.message.includes("Ambiguous time"), true)
-          }
+          assertInstanceOf(error, RangeError)
+          assertInclude(error.message, "Ambiguous time")
         })
       })
 
-      it("should work with different minute values", () => {
+      it.each([
+        { minute: 0, expected: "2025-03-09T07:00:00.000Z" },
+        { minute: 15, expected: "2025-03-09T07:15:00.000Z" },
+        { minute: 30, expected: "2025-03-09T07:30:00.000Z" },
+        { minute: 45, expected: "2025-03-09T07:45:00.000Z" }
+      ])("should work with different minute values ($minute)", ({ expected, minute }) => {
         const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
 
-        // Test different minutes during gap time
-        const minutes = [0, 15, 30, 45]
-        minutes.forEach((minute) => {
-          const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: minute, seconds: 0, millis: 0 }
+        const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: minute, seconds: 0, millis: 0 }
 
-          const result = DateTime.makeZoned(gapTime, {
-            timeZone,
-            adjustForTimeZone: true,
-            disambiguation: "compatible"
-          })
-
-          const utcString = result.pipe(
-            Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-          )
-          // Should consistently handle different minute values within gap
-          utcString.pipe(
-            Option.map((value) => {
-              strictEqual(value.includes("2025-03-09T07:"), true, `Failed for minute ${minute}`)
-            })
-          )
+        const result = DateTime.makeZoned(gapTime, {
+          timeZone,
+          adjustForTimeZone: true,
+          disambiguation: "compatible"
         })
+
+        // Should consistently handle different minute values within gap
+        assertSomeIso(result, expected)
       })
     })
 
@@ -1178,28 +1090,15 @@ describe("DateTime", () => {
           disambiguation: "earlier"
         })
 
-        const defaultUtc = defaultResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-        const explicitUtc = explicitResult.pipe(
-          Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-        )
-
-        // Both should be Some and equal - we can assert on the explicit one and compare
-        const explicitValue = explicitUtc.pipe(Option.getOrElse(() => ""))
-        assertSome(defaultUtc, explicitValue)
+        assertEquals(defaultResult, explicitResult)
       })
     })
 
     describe("Standard DST Conformance", () => {
       describe("Gap Time Validation", () => {
-        it.each([
-          { strategy: "compatible" },
-          { strategy: "earlier" },
-          { strategy: "later" }
-        ] as Array<{ strategy: DateTime.DateTime.Disambiguation }>)(
-          "should handle Athens 02:30 gap time with $strategy strategy",
-          ({ strategy }) => {
+        it.each<DateTime.DateTime.Disambiguation>(["compatible", "earlier", "later"])(
+          "should handle Athens 02:30 gap time with %s strategy",
+          (strategy) => {
             const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
             const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 }
 
@@ -1212,10 +1111,7 @@ describe("DateTime", () => {
               disambiguation: strategy
             })
 
-            const utcResult = result.pipe(
-              Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-            )
-            assertSome(utcResult, expectedResult)
+            assertSomeIso(result, expectedResult)
           }
         )
 
@@ -1223,50 +1119,50 @@ describe("DateTime", () => {
           const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
           const gapTime = { year: 2025, month: 3, day: 30, hours: 3, minutes: 0, seconds: 0, millis: 0 }
 
-          // Expected results for each strategy
-          const expectedResults = {
-            compatible: "2025-03-30T01:00:00.000Z",
-            earlier: "2025-03-30T00:00:00.000Z",
-            later: "2025-03-30T01:00:00.000Z"
-          }
-
-          Object.entries(expectedResults).forEach(([strategy, expected]) => {
-            const result = DateTime.makeZoned(gapTime, {
-              timeZone,
-              adjustForTimeZone: true,
-              disambiguation: strategy as any
-            })
-
-            const utcResult = result.pipe(
-              Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-            )
-            assertSome(utcResult, expected)
+          const compatibleResult = DateTime.makeZoned(gapTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "compatible"
           })
+          const earlierResult = DateTime.makeZoned(gapTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "earlier"
+          })
+          const laterResult = DateTime.makeZoned(gapTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "later"
+          })
+
+          assertSomeIso(compatibleResult, "2025-03-30T01:00:00.000Z")
+          assertSomeIso(earlierResult, "2025-03-30T00:00:00.000Z")
+          assertSomeIso(laterResult, "2025-03-30T01:00:00.000Z")
         })
 
         it("should handle New York 02:30 gap time correctly", () => {
           const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
           const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: 30, seconds: 0, millis: 0 }
 
-          // Expected results
-          const expectedResults = {
-            compatible: "2025-03-09T07:30:00.000Z",
-            earlier: "2025-03-09T06:30:00.000Z",
-            later: "2025-03-09T07:30:00.000Z"
-          }
-
-          Object.entries(expectedResults).forEach(([strategy, expected]) => {
-            const result = DateTime.makeZoned(gapTime, {
-              timeZone,
-              adjustForTimeZone: true,
-              disambiguation: strategy as any
-            })
-
-            const utcResult = result.pipe(
-              Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-            )
-            assertSome(utcResult, expected)
+          const compatibleResult = DateTime.makeZoned(gapTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "compatible"
           })
+          const earlierResult = DateTime.makeZoned(gapTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "earlier"
+          })
+          const laterResult = DateTime.makeZoned(gapTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "later"
+          })
+
+          assertSomeIso(compatibleResult, "2025-03-09T07:30:00.000Z")
+          assertSomeIso(earlierResult, "2025-03-09T06:30:00.000Z")
+          assertSomeIso(laterResult, "2025-03-09T07:30:00.000Z")
         })
       })
 
@@ -1275,25 +1171,25 @@ describe("DateTime", () => {
           const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
           const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
 
-          // Expected results for each strategy
-          const expectedResults = {
-            compatible: "2025-10-26T00:00:00.000Z", // earlier
-            earlier: "2025-10-26T00:00:00.000Z",
-            later: "2025-10-26T01:00:00.000Z"
-          }
-
-          Object.entries(expectedResults).forEach(([strategy, expected]) => {
-            const result = DateTime.makeZoned(ambiguousTime, {
-              timeZone,
-              adjustForTimeZone: true,
-              disambiguation: strategy as any
-            })
-
-            const utcResult = result.pipe(
-              Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-            )
-            assertSome(utcResult, expected)
+          const compatibleResult = DateTime.makeZoned(ambiguousTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "compatible"
           })
+          const earlierResult = DateTime.makeZoned(ambiguousTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "earlier"
+          })
+          const laterResult = DateTime.makeZoned(ambiguousTime, {
+            timeZone,
+            adjustForTimeZone: true,
+            disambiguation: "later"
+          })
+
+          assertSomeIso(compatibleResult, "2025-10-26T00:00:00.000Z")
+          assertSomeIso(earlierResult, "2025-10-26T00:00:00.000Z")
+          assertSomeIso(laterResult, "2025-10-26T01:00:00.000Z")
         })
 
         it("should handle reject strategy properly", () => {
@@ -1307,10 +1203,7 @@ describe("DateTime", () => {
             disambiguation: "reject"
           })
 
-          const gapUtcResult = gapResult.pipe(
-            Option.map((dt) => DateTime.formatIso(DateTime.toUtc(dt)))
-          )
-          assertSome(gapUtcResult, "2025-03-30T00:30:00.000Z")
+          assertSomeIso(gapResult, "2025-03-30T00:30:00.000Z")
 
           // Test ambiguous time with reject (should throw)
           const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
