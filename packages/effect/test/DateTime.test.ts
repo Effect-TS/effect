@@ -497,40 +497,29 @@ describe("DateTime", () => {
         expected: "2025-03-30T01:00:00.000Z"
       }
     ])("should work correctly with timezone $zone", ({ expected, time, zone }) => {
-      const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-      const maybeDateTime = DateTime.makeZoned(
-        { ...time, minutes: 0, seconds: 0, millis: 0 },
-        { timeZone, adjustForTimeZone: true }
-      )
+      const maybeDateTime = DateTime.makeZoned(time, {
+        timeZone: zone,
+        adjustForTimeZone: true
+      })
 
       assertSomeIso(maybeDateTime, expected)
     })
     it("should correctly handle timezone offset with adjustForTimeZone: true", () => {
       // 01:00 Athens time on March 30, 2025 should be 23:00 UTC (Athens is UTC+2 before DST)
-      const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-      const maybeDateTime = DateTime.makeZoned(
-        {
-          year: 2025,
-          month: 3,
-          day: 30,
-          hours: 1,
-          minutes: 0,
-          seconds: 0,
-          millis: 0
-        },
-        { timeZone, adjustForTimeZone: true }
-      )
+      const maybeDateTime = DateTime.makeZoned({ year: 2025, month: 3, day: 30, hours: 1 }, {
+        timeZone: "Europe/Athens",
+        adjustForTimeZone: true
+      })
 
       assertSomeIso(maybeDateTime, "2025-03-29T23:00:00.000Z")
     })
 
     it("should handle DST gap times (non-existent times)", () => {
       // 02:30 Athens time on March 30, 2025 doesn't exist (clocks jump 02:00 -> 03:00)
-      const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-      const maybeDateTime = DateTime.makeZoned(
-        { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 },
-        { timeZone, adjustForTimeZone: true }
-      )
+      const maybeDateTime = DateTime.makeZoned({ year: 2025, month: 3, day: 30, hours: 2, minutes: 30 }, {
+        timeZone: "Europe/Athens",
+        adjustForTimeZone: true
+      })
 
       // 02:30 Athens -> 03:30 Athens (forward movement, more reasonable)
       // For 02:30 it returns 2025-03-30T00:30:00.000Z which is 03:30 Athens
@@ -541,11 +530,11 @@ describe("DateTime", () => {
       it("should handle 'compatible' disambiguation (default behavior)", () => {
         // Test DST fall-back (repeated time): 03:00 happens twice in Europe/Athens on Oct 26, 2025
         // At UTC 01:00, Athens switches from GMT+3 to GMT+2, so 03:00 occurs twice
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const maybeDateTime = DateTime.makeZoned(
-          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
-          { timeZone, adjustForTimeZone: true, disambiguation: "compatible" }
-        )
+        const maybeDateTime = DateTime.makeZoned({ year: 2025, month: 10, day: 26, hours: 3 }, {
+          timeZone: "Europe/Athens",
+          adjustForTimeZone: true,
+          disambiguation: "compatible"
+        })
 
         // 'compatible' should choose the earlier occurrence (first 03:00 in GMT+3)
         assertSomeIso(maybeDateTime, "2025-10-26T00:00:00.000Z")
@@ -553,11 +542,11 @@ describe("DateTime", () => {
 
       it("should handle 'earlier' disambiguation", () => {
         // Test DST fall-back: choose the earlier of two possible times
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const maybeDateTime = DateTime.makeZoned(
-          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
-          { timeZone, adjustForTimeZone: true, disambiguation: "earlier" }
-        )
+        const maybeDateTime = DateTime.makeZoned({ year: 2025, month: 10, day: 26, hours: 3 }, {
+          timeZone: "Europe/Athens",
+          adjustForTimeZone: true,
+          disambiguation: "earlier"
+        })
 
         // Should choose first occurrence (GMT+3, UTC 00:00)
         assertSomeIso(maybeDateTime, "2025-10-26T00:00:00.000Z")
@@ -565,11 +554,11 @@ describe("DateTime", () => {
 
       it("should handle 'later' disambiguation", () => {
         // Test DST fall-back: choose the later of two possible times
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const maybeDateTime = DateTime.makeZoned(
-          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
-          { timeZone, adjustForTimeZone: true, disambiguation: "later" }
-        )
+        const maybeDateTime = DateTime.makeZoned({ year: 2025, month: 10, day: 26, hours: 3 }, {
+          timeZone: "Europe/Athens",
+          adjustForTimeZone: true,
+          disambiguation: "later"
+        })
 
         // Should choose second occurrence (GMT+2, UTC 01:00)
         assertSomeIso(maybeDateTime, "2025-10-26T01:00:00.000Z")
@@ -577,11 +566,11 @@ describe("DateTime", () => {
 
       it("should handle 'reject' disambiguation", () => {
         // Test DST fall-back with correct date: Europe/Athens on Oct 26, 2025 at 03:00 (happens twice)
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const result = DateTime.makeZoned(
-          { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
-          { timeZone, adjustForTimeZone: true, disambiguation: "reject" }
-        )
+        const result = DateTime.makeZoned({ year: 2025, month: 10, day: 26, hours: 3 }, {
+          timeZone: "Europe/Athens",
+          adjustForTimeZone: true,
+          disambiguation: "reject"
+        })
 
         // makeZoned should return None when unsafeMakeZoned throws for 'reject' disambiguation
         assertNone(result)
@@ -589,13 +578,12 @@ describe("DateTime", () => {
 
       it("should handle 'reject' disambiguation with unsafeMakeZoned (throws exception)", () => {
         // Test that unsafeMakeZoned actually throws the exception for 'reject' disambiguation
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
         throws(() => {
-          DateTime.unsafeMakeZoned(
-            { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 },
-            { timeZone, adjustForTimeZone: true, disambiguation: "reject" }
-          )
+          DateTime.unsafeMakeZoned({ year: 2025, month: 10, day: 26, hours: 3 }, {
+            timeZone: "Europe/Athens",
+            adjustForTimeZone: true,
+            disambiguation: "reject"
+          })
         }, (error) => {
           assertInstanceOf(error, Error)
           assertInclude(error.message, "Ambiguous time")
@@ -611,12 +599,11 @@ describe("DateTime", () => {
         ({ disambiguation, expected }) => {
           // Test gap time: 03:00 doesn't exist in Europe/Athens on March 30, 2025
           // Clocks jump from 02:00 to 04:00 at UTC 01:00 (02:00 Athens time becomes 04:00)
-          const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
-          const maybeDateTime = DateTime.makeZoned(
-            { year: 2025, month: 3, day: 30, hours: 3, minutes: 0, seconds: 0, millis: 0 },
-            { timeZone, adjustForTimeZone: true, disambiguation }
-          )
+          const maybeDateTime = DateTime.makeZoned({ year: 2025, month: 3, day: 30, hours: 3 }, {
+            timeZone: "Europe/Athens",
+            adjustForTimeZone: true,
+            disambiguation
+          })
 
           // Gap time 03:00 Athens -> Gap times are handled by the convergence algorithm
           assertSomeIso(maybeDateTime, expected)
@@ -637,39 +624,37 @@ describe("DateTime", () => {
           laterUtc: "2025-10-26T01:30:00.000Z" // CET (UTC+1)
         }
       ])("should work with disambiguation for timezone $zone", ({ earlierUtc, laterUtc, time, zone }) => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-
         // Test 'earlier' disambiguation
-        const earlierResult = DateTime.makeZoned(
-          { ...time, seconds: 0, millis: 0 },
-          { timeZone, adjustForTimeZone: true, disambiguation: "earlier" }
-        )
+        const earlierResult = DateTime.makeZoned(time, {
+          timeZone: zone,
+          adjustForTimeZone: true,
+          disambiguation: "earlier"
+        })
         assertSomeIso(earlierResult, earlierUtc)
 
         // Test 'later' disambiguation
-        const laterResult = DateTime.makeZoned(
-          { ...time, seconds: 0, millis: 0 },
-          { timeZone, adjustForTimeZone: true, disambiguation: "later" }
-        )
+        const laterResult = DateTime.makeZoned(time, {
+          timeZone: zone,
+          adjustForTimeZone: true,
+          disambiguation: "later"
+        })
         assertSomeIso(laterResult, laterUtc)
       })
     })
 
     describe("Spring Forward Gap Times (non-existent times)", () => {
       it("should handle Athens spring forward gap times", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
         // 02:30 on March 30, 2025 doesn't exist (clocks jump 02:00 → 03:00)
-        const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 }
+        const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30 }
 
         // Compatible and later should choose time after gap
         const compatibleResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "compatible"
         })
         const laterResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "later"
         })
@@ -678,7 +663,7 @@ describe("DateTime", () => {
 
         // Earlier should choose time before gap
         const earlierResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "earlier"
         })
@@ -686,7 +671,7 @@ describe("DateTime", () => {
 
         // Reject should succeed for gap times
         const rejectResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "reject"
         })
@@ -694,23 +679,21 @@ describe("DateTime", () => {
       })
 
       it("should handle New York spring forward gap times", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
-
         // 02:30 on March 9, 2025 doesn't exist (clocks jump 02:00 → 03:00)
-        const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: 30, seconds: 0, millis: 0 }
+        const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: 30 }
 
         const compatibleResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "compatible"
         })
         const earlierResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "earlier"
         })
         const laterResult = DateTime.makeZoned(gapTime, {
-          timeZone,
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "later"
         })
@@ -723,48 +706,45 @@ describe("DateTime", () => {
       it.each<DisambiguationCase>([
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 3, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 3 },
           strategy: "compatible",
           expected: "2025-03-30T01:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 3, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 3 },
           strategy: "earlier",
           expected: "2025-03-30T00:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 3, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 3 },
           strategy: "later",
           expected: "2025-03-30T01:00:00.000Z"
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 2 },
           strategy: "compatible",
           expected: "2025-03-09T07:00:00.000Z"
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 2 },
           strategy: "earlier",
           expected: "2025-03-09T06:00:00.000Z"
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 2 },
           strategy: "later",
           expected: "2025-03-09T07:00:00.000Z"
         }
       ])(
         "should handle gap times consistently for $zone with $strategy strategy",
         ({ expected, strategy, time, zone }) => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-          const parts = { ...time, seconds: 0, millis: 0 }
-
-          const result = DateTime.makeZoned(parts, {
-            timeZone,
+          const result = DateTime.makeZoned(time, {
+            timeZone: zone,
             adjustForTimeZone: true,
             disambiguation: strategy
           })
@@ -776,23 +756,21 @@ describe("DateTime", () => {
 
     describe("Fall Back Ambiguous Times (repeated times)", () => {
       it("should handle Athens fall back ambiguous times", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
         // 03:00 on October 26, 2025 happens twice (clocks fall back 03:00 → 02:00)
-        const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
+        const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
 
         const compatibleResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "compatible"
         })
         const earlierResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "earlier"
         })
         const laterResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "later"
         })
@@ -805,7 +783,7 @@ describe("DateTime", () => {
 
         // Reject should fail
         const rejectResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "reject"
         })
@@ -813,23 +791,21 @@ describe("DateTime", () => {
       })
 
       it("should handle New York fall back ambiguous times", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
-
         // 01:30 on November 2, 2025 happens twice
-        const ambiguousTime = { year: 2025, month: 11, day: 2, hours: 1, minutes: 30, seconds: 0, millis: 0 }
+        const ambiguousTime = { year: 2025, month: 11, day: 2, hours: 1, minutes: 30 }
 
         const compatibleResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "compatible"
         })
         const earlierResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "earlier"
         })
         const laterResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "later"
         })
@@ -877,11 +853,8 @@ describe("DateTime", () => {
           expected: "2025-10-26T01:30:00.000Z"
         }
       ])("should handle ambiguous times for $zone with $strategy strategy", ({ expected, strategy, time, zone }) => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-        const parts = { ...time, seconds: 0, millis: 0 }
-
-        const result = DateTime.makeZoned(parts, {
-          timeZone,
+        const result = DateTime.makeZoned(time, {
+          timeZone: zone,
           adjustForTimeZone: true,
           disambiguation: strategy
         })
@@ -895,134 +868,131 @@ describe("DateTime", () => {
         // Europe/Athens - Before DST (safe date)
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 27, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 27, hours: 1 },
           strategy: "compatible",
           expected: "2025-03-26T23:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 27, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 27, hours: 1 },
           strategy: "earlier",
           expected: "2025-03-26T23:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 27, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 27, hours: 1 },
           strategy: "later",
           expected: "2025-03-26T23:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 27, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 27, hours: 1 },
           strategy: "reject",
           expected: "2025-03-26T23:00:00.000Z"
         },
         // Europe/Athens - After DST
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 4, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 4 },
           strategy: "compatible",
           expected: "2025-03-30T01:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 4, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 4 },
           strategy: "earlier",
           expected: "2025-03-30T01:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 4, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 4 },
           strategy: "later",
           expected: "2025-03-30T01:00:00.000Z"
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 4, minutes: 0 },
+          time: { year: 2025, month: 3, day: 30, hours: 4 },
           strategy: "reject",
           expected: "2025-03-30T01:00:00.000Z"
         },
         // America/New_York - Before DST
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 1 },
           strategy: "compatible",
           expected: "2025-03-09T06:00:00.000Z"
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 1 },
           strategy: "earlier",
           expected: "2025-03-09T06:00:00.000Z"
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 1 },
           strategy: "later",
           expected: "2025-03-09T06:00:00.000Z"
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 9, hours: 1 },
           strategy: "reject",
           expected: "2025-03-09T06:00:00.000Z"
         },
         // Australia/Sydney - Before DST ends
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 4, day: 6, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 4, day: 6, hours: 1 },
           strategy: "compatible",
           expected: "2025-04-05T14:00:00.000Z"
         },
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 4, day: 6, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 4, day: 6, hours: 1 },
           strategy: "earlier",
           expected: "2025-04-05T14:00:00.000Z"
         },
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 4, day: 6, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 4, day: 6, hours: 1 },
           strategy: "later",
           expected: "2025-04-05T14:00:00.000Z"
         },
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 4, day: 6, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 4, day: 6, hours: 1 },
           strategy: "reject",
           expected: "2025-04-05T14:00:00.000Z"
         },
         // Europe/London - Day before DST transition
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 3, day: 29, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 29, hours: 1 },
           strategy: "compatible",
           expected: "2025-03-29T01:00:00.000Z"
         },
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 3, day: 29, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 29, hours: 1 },
           strategy: "earlier",
           expected: "2025-03-29T01:00:00.000Z"
         },
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 3, day: 29, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 29, hours: 1 },
           strategy: "later",
           expected: "2025-03-29T01:00:00.000Z"
         },
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 3, day: 29, hours: 1, minutes: 0 },
+          time: { year: 2025, month: 3, day: 29, hours: 1 },
           strategy: "reject",
           expected: "2025-03-29T01:00:00.000Z"
         }
       ])("should handle normal times for $zone with $strategy strategy", ({ expected, strategy, time, zone }) => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed(zone)
-        const parts = { ...time, seconds: 0, millis: 0 }
-
-        const result = DateTime.makeZoned(parts, {
-          timeZone,
+        const result = DateTime.makeZoned(time, {
+          timeZone: zone,
           adjustForTimeZone: true,
           disambiguation: strategy
         })
@@ -1033,20 +1003,23 @@ describe("DateTime", () => {
 
     describe("Edge Cases and Error Handling", () => {
       it("should handle reject disambiguation for gap times correctly", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 }
-
         // Reject is allowed for gap times, only throws for ambiguous times
-        const result = DateTime.makeZoned(gapTime, { timeZone, adjustForTimeZone: true, disambiguation: "reject" })
+        const result = DateTime.makeZoned({ year: 2025, month: 3, day: 30, hours: 2, minutes: 30 }, {
+          timeZone: "Europe/Athens",
+          adjustForTimeZone: true,
+          disambiguation: "reject"
+        })
+
         assertSomeIso(result, "2025-03-30T00:30:00.000Z")
       })
 
       it("should throw errors for reject disambiguation with ambiguous times", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
-
         throws(() => {
-          DateTime.unsafeMakeZoned(ambiguousTime, { timeZone, adjustForTimeZone: true, disambiguation: "reject" })
+          DateTime.unsafeMakeZoned({ year: 2025, month: 10, day: 26, hours: 3 }, {
+            timeZone: "Europe/Athens",
+            adjustForTimeZone: true,
+            disambiguation: "reject"
+          })
         }, (error) => {
           assertInstanceOf(error, RangeError)
           assertInclude(error.message, "Ambiguous time")
@@ -1054,17 +1027,13 @@ describe("DateTime", () => {
       })
 
       it.each([
-        { minute: 0, expected: "2025-03-09T07:00:00.000Z" },
-        { minute: 15, expected: "2025-03-09T07:15:00.000Z" },
-        { minute: 30, expected: "2025-03-09T07:30:00.000Z" },
-        { minute: 45, expected: "2025-03-09T07:45:00.000Z" }
-      ])("should work with different minute values ($minute)", ({ expected, minute }) => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
-
-        const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: minute, seconds: 0, millis: 0 }
-
-        const result = DateTime.makeZoned(gapTime, {
-          timeZone,
+        { minutes: 0, expected: "2025-03-09T07:00:00.000Z" },
+        { minutes: 15, expected: "2025-03-09T07:15:00.000Z" },
+        { minutes: 30, expected: "2025-03-09T07:30:00.000Z" },
+        { minutes: 45, expected: "2025-03-09T07:45:00.000Z" }
+      ])("should work with different minute values ($minutes)", ({ expected, minutes }) => {
+        const result = DateTime.makeZoned({ year: 2025, month: 3, day: 9, hours: 2, minutes }, {
+          timeZone: "America/New_York",
           adjustForTimeZone: true,
           disambiguation: "compatible"
         })
@@ -1076,16 +1045,15 @@ describe("DateTime", () => {
 
     describe("Disambiguation Strategy Defaults", () => {
       it("should use earlier as default disambiguation for backward compatibility", () => {
-        const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-        const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
+        const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
 
         // Without specifying disambiguation, should default to 'earlier' for backward compatibility
         const defaultResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true
         })
         const explicitResult = DateTime.makeZoned(ambiguousTime, {
-          timeZone,
+          timeZone: "Europe/Athens",
           adjustForTimeZone: true,
           disambiguation: "earlier"
         })
@@ -1099,38 +1067,34 @@ describe("DateTime", () => {
         it.each<DateTime.DateTime.Disambiguation>(["compatible", "earlier", "later"])(
           "should handle Athens 02:30 gap time with %s strategy",
           (strategy) => {
-            const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-            const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 }
-
-            // Expected results (all strategies return the same result for this gap time)
-            const expectedResult = "2025-03-30T00:30:00.000Z"
+            const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30 }
 
             const result = DateTime.makeZoned(gapTime, {
-              timeZone,
+              timeZone: "Europe/Athens",
               adjustForTimeZone: true,
               disambiguation: strategy
             })
 
-            assertSomeIso(result, expectedResult)
+            // All strategies should return the same result for this gap time.
+            assertSomeIso(result, "2025-03-30T00:30:00.000Z")
           }
         )
 
         it("should handle Athens 03:00 gap time correctly", () => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-          const gapTime = { year: 2025, month: 3, day: 30, hours: 3, minutes: 0, seconds: 0, millis: 0 }
+          const gapTime = { year: 2025, month: 3, day: 30, hours: 3 }
 
           const compatibleResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "compatible"
           })
           const earlierResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "earlier"
           })
           const laterResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "later"
           })
@@ -1141,21 +1105,20 @@ describe("DateTime", () => {
         })
 
         it("should handle New York 02:30 gap time correctly", () => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
-          const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: 30, seconds: 0, millis: 0 }
+          const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: 30 }
 
           const compatibleResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "America/New_York",
             adjustForTimeZone: true,
             disambiguation: "compatible"
           })
           const earlierResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "America/New_York",
             adjustForTimeZone: true,
             disambiguation: "earlier"
           })
           const laterResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "America/New_York",
             adjustForTimeZone: true,
             disambiguation: "later"
           })
@@ -1168,21 +1131,20 @@ describe("DateTime", () => {
 
       describe("Ambiguous Time Validation", () => {
         it("should handle Athens fall-back transitions correctly", () => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-          const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
+          const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
 
           const compatibleResult = DateTime.makeZoned(ambiguousTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "compatible"
           })
           const earlierResult = DateTime.makeZoned(ambiguousTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "earlier"
           })
           const laterResult = DateTime.makeZoned(ambiguousTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "later"
           })
@@ -1193,26 +1155,22 @@ describe("DateTime", () => {
         })
 
         it("should handle reject strategy properly", () => {
-          const timeZone = DateTime.zoneUnsafeMakeNamed("Europe/Athens")
-
           // Test gap time with reject (should succeed)
-          const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30, seconds: 0, millis: 0 }
+          const gapTime = { year: 2025, month: 3, day: 30, hours: 2, minutes: 30 }
           const gapResult = DateTime.makeZoned(gapTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "reject"
           })
-
           assertSomeIso(gapResult, "2025-03-30T00:30:00.000Z")
 
           // Test ambiguous time with reject (should throw)
-          const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3, minutes: 0, seconds: 0, millis: 0 }
+          const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
           const ambiguousResult = DateTime.makeZoned(ambiguousTime, {
-            timeZone,
+            timeZone: "Europe/Athens",
             adjustForTimeZone: true,
             disambiguation: "reject"
           })
-
           assertNone(ambiguousResult)
         })
       })
