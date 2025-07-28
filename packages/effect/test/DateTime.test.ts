@@ -476,7 +476,7 @@ describe("DateTime", () => {
       zone: string
       time: Partial<DateTime.DateTime.Parts>
       description: string
-      expectedResults: Record<DateTime.Disambiguation, string>
+      expectedResults: Record<"compatible" | "earlier" | "later" | "reject", string>
     }>(
       [
         {
