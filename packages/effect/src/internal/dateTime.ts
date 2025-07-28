@@ -252,7 +252,7 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
   }
   const self = unsafeMake(input)
   if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
-    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
+    throw new RangeError(`Epoch millis out of range: ${self.epochMillis}`)
   }
   let zone: DateTime.TimeZone
   if (options?.timeZone === undefined) {
