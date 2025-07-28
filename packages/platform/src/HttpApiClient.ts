@@ -3,15 +3,19 @@
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { identity } from "effect/Function"
+import * as Function from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import type * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
+import type * as Scope from "effect/Scope"
+import * as Stream from "effect/Stream"
 import type { Simplify } from "effect/Types"
 import * as HttpApi from "./HttpApi.js"
+import * as HttpApiBuilder from "./HttpApiBuilder.js"
 import type { HttpApiEndpoint } from "./HttpApiEndpoint.js"
 import type { HttpApiGroup } from "./HttpApiGroup.js"
 import type * as HttpApiMiddleware from "./HttpApiMiddleware.js"
@@ -22,6 +26,10 @@ import * as HttpClientError from "./HttpClientError.js"
 import * as HttpClientRequest from "./HttpClientRequest.js"
 import * as HttpClientResponse from "./HttpClientResponse.js"
 import * as HttpMethod from "./HttpMethod.js"
+import type * as HttpRouter from "./HttpRouter.js"
+import * as HttpServer from "./HttpServer.js"
+import * as HttpServerRequest from "./HttpServerRequest.js"
+import * as HttpServerResponse from "./HttpServerResponse.js"
 import * as UrlParams from "./UrlParams.js"
 
 /**
@@ -145,7 +153,7 @@ const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Any, ApiEr
     const context = yield* Effect.context<any>()
     const httpClient = options.httpClient.pipe(
       options?.baseUrl === undefined
-        ? identity
+        ? Function.identity
         : HttpClient.mapRequest(
           HttpClientRequest.prependUrl(options.baseUrl.toString())
         )
@@ -297,6 +305,92 @@ export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Any, 
     }
   }).pipe(Effect.map(() => client)) as any
 }
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeMocked = <
+  ApiId extends string,
+  Groups extends HttpApiGroup.Any,
+  ApiError,
+  ApiRequirement,
+  RequirementError,
+  LayerError
+>(
+  api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiRequirement>,
+  apiRequirements: Layer.Layer<
+    ApiRequirement | HttpApiGroup.ErrorContext<Groups>,
+    RequirementError,
+    never
+  >,
+  implementations: Layer.Layer<HttpApiGroup.ToService<ApiId, Groups>, LayerError, never>
+): Effect.Effect<
+  Simplify<Client<Groups, ApiError, never>>,
+  RequirementError | LayerError,
+  | HttpApiMiddleware.HttpApiMiddleware.Without<ApiRequirement | HttpApiGroup.ClientContext<Groups>>
+  | Scope.Scope
+> =>
+  Effect.gen(function*() {
+    const apiLive: Layer.Layer<
+      HttpApi.Api | HttpApiBuilder.Router | HttpApiBuilder.Middleware | HttpRouter.HttpRouter.DefaultServices,
+      LayerError | RequirementError,
+      never
+    > = HttpApiBuilder.api(api)
+      .pipe(Layer.provide(implementations))
+      .pipe(Layer.provide(apiRequirements))
+      .pipe(Layer.merge(HttpServer.layerContext))
+      .pipe(Layer.merge(HttpApiBuilder.Router.Live))
+      .pipe(Layer.merge(HttpApiBuilder.Middleware.layer))
+
+    const apiBuilt = yield* Layer.build(apiLive)
+    const app = Effect.flatMap(HttpApiBuilder.httpApp, Function.identity)
+
+    const handler = (
+      request: HttpServerRequest.HttpServerRequest
+    ): Effect.Effect<HttpServerResponse.HttpServerResponse> => {
+      const requestAsContext = Context.make(HttpServerRequest.HttpServerRequest, request)
+      const mergedContext = Context.merge(apiBuilt, requestAsContext)
+      return Effect.provide(app, mergedContext)
+    }
+
+    const httpClient = HttpClient.make(
+      Effect.fn(function*(request: HttpClientRequest.HttpClientRequest) {
+        let body: RequestInit["body"] = undefined
+        switch (request.body._tag) {
+          case "Raw":
+          case "Uint8Array":
+            body = request.body.body as any
+            break
+          case "FormData":
+            body = request.body.formData
+            break
+          case "Stream":
+            body = yield* Stream.toReadableStreamEffect(request.body.stream)
+            break
+        }
+
+        const webRequest = new Request(request.url, {
+          body,
+          method: request.method,
+          headers: request.headers
+        })
+
+        const httpServerRequest = HttpServerRequest.fromWeb(webRequest)
+        const httpServerResponse = yield* handler(httpServerRequest)
+
+        const webResponse = HttpServerResponse.toWeb(httpServerResponse)
+        const httpClientResponse = HttpClientResponse.fromWeb(request, webResponse)
+        return httpClientResponse
+      })
+    )
+
+    return yield* makeWith(api, {
+      httpClient: httpClient
+        .pipe(HttpClient.withTracerDisabledWhen(Function.constTrue))
+        .pipe(HttpClient.mapRequestInput(HttpClientRequest.prependUrl("https://0.0.0.0/")))
+    })
+  })
 
 /**
  * @since 1.0.0
