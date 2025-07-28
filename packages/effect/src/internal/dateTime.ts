@@ -245,15 +245,18 @@ const maxEpochMillis = 8640000000000000 - (14 * 60 * 60 * 1000)
 export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
   readonly timeZone?: number | string | DateTime.TimeZone | undefined
   readonly adjustForTimeZone?: boolean | undefined
-  readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+  readonly disambiguation?: DateTime.Disambiguation | undefined
 }): DateTime.Zoned => {
   if (options?.timeZone === undefined && isDateTime(input) && isZoned(input)) {
     return input
   }
+  const self = unsafeMake(input)
+  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
+    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
+  }
   let zone: DateTime.TimeZone
   if (options?.timeZone === undefined) {
-    const tempSelf = unsafeMake(input)
-    const offset = new Date(tempSelf.epochMillis).getTimezoneOffset() * -60 * 1000
+    const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
     zone = zoneMakeOffset(offset)
   } else if (isTimeZone(options?.timeZone)) {
     zone = options.timeZone
@@ -266,14 +269,10 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
     }
     zone = parsedZone.value
   }
-  const self = unsafeMake(input)
-  if (self.epochMillis < minEpochMillis || self.epochMillis > maxEpochMillis) {
-    throw new IllegalArgumentException(`Epoch millis out of range: ${self.epochMillis}`)
-  }
   if (options?.adjustForTimeZone !== true) {
     return makeZonedProto(self.epochMillis, zone, self.partsUtc)
   }
-  return makeZonedFromAdjusted(self.epochMillis, zone, options?.disambiguation)
+  return makeZonedFromAdjusted(self.epochMillis, zone, options?.disambiguation ?? "compatible")
 }
 
 /** @internal */
@@ -282,7 +281,7 @@ export const makeZoned: (
   options?: {
     readonly timeZone?: number | string | DateTime.TimeZone | undefined
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }
 ) => Option.Option<DateTime.Zoned> = Option.liftThrowable(unsafeMakeZoned)
 
@@ -323,33 +322,33 @@ export const toUtc = (self: DateTime.DateTime): DateTime.Utc => makeUtc(self.epo
 export const setZone: {
   (zone: DateTime.TimeZone, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): (self: DateTime.DateTime) => DateTime.Zoned
   (self: DateTime.DateTime, zone: DateTime.TimeZone, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): DateTime.Zoned
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, zone: DateTime.TimeZone, options?: {
   readonly adjustForTimeZone?: boolean | undefined
-  readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+  readonly disambiguation?: DateTime.Disambiguation | undefined
 }): DateTime.Zoned =>
   options?.adjustForTimeZone === true
-    ? makeZonedFromAdjusted(self.epochMillis, zone, options?.disambiguation)
+    ? makeZonedFromAdjusted(self.epochMillis, zone, options?.disambiguation ?? "compatible")
     : makeZonedProto(self.epochMillis, zone, self.partsUtc))
 
 /** @internal */
 export const setZoneOffset: {
   (offset: number, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): (self: DateTime.DateTime) => DateTime.Zoned
   (self: DateTime.DateTime, offset: number, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): DateTime.Zoned
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, offset: number, options?: {
   readonly adjustForTimeZone?: boolean | undefined
-  readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+  readonly disambiguation?: DateTime.Disambiguation | undefined
 }): DateTime.Zoned => setZone(self, zoneMakeOffset(offset), options))
 
 const validZoneCache = globalValue("effect/DateTime/validZoneCache", () => new Map<string, DateTime.TimeZone.Named>())
@@ -441,17 +440,17 @@ export const zoneToString = (self: DateTime.TimeZone): string => {
 export const setZoneNamed: {
   (zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): (self: DateTime.DateTime) => Option.Option<DateTime.Zoned>
   (self: DateTime.DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): Option.Option<DateTime.Zoned>
 } = dual(
   isDateTimeArgs,
   (self: DateTime.DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): Option.Option<DateTime.Zoned> => Option.map(zoneMakeNamed(zoneId), (zone) => setZone(self, zone, options))
 )
 
@@ -459,15 +458,15 @@ export const setZoneNamed: {
 export const unsafeSetZoneNamed: {
   (zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): (self: DateTime.DateTime) => DateTime.Zoned
   (self: DateTime.DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
-    readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+    readonly disambiguation?: DateTime.Disambiguation | undefined
   }): DateTime.Zoned
 } = dual(isDateTimeArgs, (self: DateTime.DateTime, zoneId: string, options?: {
   readonly adjustForTimeZone?: boolean | undefined
-  readonly disambiguation?: DateTime.DateTime.Disambiguation | undefined
+  readonly disambiguation?: DateTime.Disambiguation | undefined
 }): DateTime.Zoned => setZone(self, zoneUnsafeMakeNamed(zoneId), options))
 
 // =============================================================================
@@ -730,223 +729,92 @@ export const setPartsUtc: {
 // mapping
 // =============================================================================
 
-/**
- * Creates a DateTime.Zoned from adjusted local time with proper DST disambiguation.
- *
- * This function handles the conversion from "wall-clock" local time to the correct UTC time,
- * accounting for DST transitions. For offset timezones, conversion is straightforward.
- * For named timezones, uses Temporal's disambiguation algorithm.
- *
- * @param adjustedMillis - Local time as milliseconds since epoch (timezone-agnostic representation)
- * @param zone - Target timezone (offset or named zone)
- * @param disambiguation - Strategy for resolving DST ambiguity (defaults to "compatible")
- * @returns DateTime.Zoned with correct UTC epochMillis for the given local time
- */
+const constDayMillis = 24 * 60 * 60 * 1000
+
 const makeZonedFromAdjusted = (
   adjustedMillis: number,
   zone: DateTime.TimeZone,
-  disambiguation: DateTime.DateTime.Disambiguation = "compatible"
+  disambiguation: DateTime.Disambiguation
 ): DateTime.Zoned => {
   if (zone._tag === "Offset") {
     return makeZonedProto(adjustedMillis - zone.offset, zone)
   }
-  // For named zones, use comprehensive disambiguation algorithm
-  return handleTimeZoneDisambiguation(adjustedMillis, zone, disambiguation)
-}
-
-/**
- * Handle local time to UTC conversion with precise disambiguation for DST transitions.
- *
- * Uses Temporal's algorithm to find all possible UTC interpretations
- * of a local time, then applies the requested disambiguation strategy.
- *
- * @param adjustedMillis - Local time as milliseconds since epoch (naive UTC representation)
- * @param zone - Named timezone for disambiguation
- * @param disambiguation - Strategy for handling ambiguous/gap times
- * @returns DateTime.Zoned with correct UTC epochMillis
- */
-const handleTimeZoneDisambiguation = (
-  adjustedMillis: number,
-  zone: DateTime.TimeZone.Named,
-  disambiguation: DateTime.DateTime.Disambiguation
-): DateTime.Zoned => {
-  // Step 1: Find all possible UTC interpretations using Temporal's precise algorithm
-  const possibleUtcTimes = getPossibleEpochTimes(adjustedMillis, zone)
-
-  // Step 2: Apply disambiguation strategy based on number of interpretations
-  return disambiguatePossibleTimes(
-    possibleUtcTimes,
+  const beforeOffset = calculateNamedOffset(
+    adjustedMillis - constDayMillis,
     adjustedMillis,
-    zone,
-    disambiguation
+    zone
   )
-}
-
-/**
- * Find possible UTC epoch times for a local time using precise offset sampling.
- *
- * This function uses +/-1 day offset sampling to detect DST transitions and
- * mathematically derives all valid UTC interpretations for a given local time.
- *
- * @param adjustedMillis - Local time as milliseconds since epoch
- * @param zone - Named timezone to resolve against
- * @returns Array of valid UTC epoch times (0, 1, or 2 interpretations)
- */
-const getPossibleEpochTimes = (
-  adjustedMillis: number,
-  zone: DateTime.TimeZone.Named
-): Array<number> => {
-  // Convert target local time to "naive UTC" (as if timezone-agnostic)
-  const naiveUtc = adjustedMillis
-
-  // Sample timezone offsets at +/-1 day from target time
-  const dayMillis = 24 * 60 * 60 * 1000
-  const earlierSample = naiveUtc - dayMillis
-  const laterSample = naiveUtc + dayMillis
-
-  const earlierOffset = calculateNamedOffset(earlierSample, zone)
-  const laterOffset = calculateNamedOffset(laterSample, zone)
-
-  // Determine candidate offsets: if same, only one; if different, test both
-  const candidateOffsets = earlierOffset === laterOffset
-    ? [earlierOffset]
-    : [earlierOffset, laterOffset]
-
-  // Test each offset to find valid UTC candidates
-  const validCandidates: Array<number> = []
-
-  for (const offset of candidateOffsets) {
-    const candidateUtc = naiveUtc - offset
-    const resultingLocal = candidateUtc + calculateNamedOffset(candidateUtc, zone)
-
-    // Validate: Does this UTC convert back to our target local time?
-    if (isSameWallClockTime(adjustedMillis, resultingLocal)) {
-      validCandidates.push(candidateUtc)
-    }
-  }
-
-  return validCandidates.sort((a, b) => a - b)
-}
-
-/**
- * Check if two timestamps represent the same wall-clock time.
- *
- * Compares only the calendar date and time components, ignoring timezone offsets.
- * Used to validate that a candidate UTC time produces the target local time.
- *
- * @param time1 - First timestamp in milliseconds
- * @param time2 - Second timestamp in milliseconds
- * @returns true if both represent the same year/month/day/hour/minute
- */
-const isSameWallClockTime = (time1: number, time2: number): boolean => {
-  const date1 = new Date(time1)
-  const date2 = new Date(time2)
-
-  return (
-    date1.getUTCFullYear() === date2.getUTCFullYear() &&
-    date1.getUTCMonth() === date2.getUTCMonth() &&
-    date1.getUTCDate() === date2.getUTCDate() &&
-    date1.getUTCHours() === date2.getUTCHours() &&
-    date1.getUTCMinutes() === date2.getUTCMinutes()
+  const afterOffset = calculateNamedOffset(
+    adjustedMillis + constDayMillis,
+    adjustedMillis,
+    zone
   )
-}
-
-/**
- * Apply disambiguation strategy to possible UTC times.
- *
- * Handles three cases: normal times (1 interpretation), ambiguous times (2 interpretations),
- * and gap times (0 interpretations).
- *
- * @param possibleUtcTimes - Array of valid UTC interpretations
- * @param adjustedMillis - Original local time for gap time synthesis
- * @param zone - Named timezone context
- * @param disambiguation - Strategy for resolving ambiguity
- * @returns DateTime.Zoned with selected interpretation
- */
-const disambiguatePossibleTimes = (
-  possibleUtcTimes: Array<number>,
-  adjustedMillis: number,
-  zone: DateTime.TimeZone.Named,
-  disambiguation: DateTime.DateTime.Disambiguation
-): DateTime.Zoned => {
-  const numInstants = possibleUtcTimes.length
-
-  // Case 1: Normal time (exactly 1 interpretation)
-  if (numInstants === 1) {
-    return makeZonedProto(possibleUtcTimes[0], zone)
+  // If there is no transition, we can return early
+  if (beforeOffset === afterOffset) {
+    return makeZonedProto(adjustedMillis - beforeOffset, zone)
   }
-
-  // Case 2: Ambiguous time (2+ interpretations) - Direct selection
-  if (numInstants > 1) {
-    switch (disambiguation) {
-      case "compatible":
-      case "earlier":
-        return makeZonedProto(possibleUtcTimes[0], zone) // First (earlier) interpretation
-      case "later":
-        return makeZonedProto(possibleUtcTimes[numInstants - 1], zone) // Last (later) interpretation
-      case "reject":
-        throw new RangeError(
-          `Ambiguous time occurs twice in timezone ${zone.id}`
-        )
-    }
-  }
-
-  // Case 3: Gap time (0 interpretations) - Synthesize solution using precise offset calculation
-  if (disambiguation === "reject") {
-    throw new RangeError(
-      `Gap time: ${new Date(adjustedMillis).toISOString().slice(0, -1)} does not exist in timezone ${zone.id}`
+  const isForwards = beforeOffset < afterOffset
+  const transitionMillis = beforeOffset - afterOffset
+  // If the transition is forwards, we only need to check if we should move the
+  // local wall clock time forward if it is inside the gap
+  if (isForwards) {
+    const currentAfterOffset = calculateNamedOffset(
+      adjustedMillis - afterOffset,
+      adjustedMillis,
+      zone
     )
+    if (currentAfterOffset === afterOffset) {
+      return makeZonedProto(adjustedMillis - afterOffset, zone)
+    }
+    const before = makeZonedProto(adjustedMillis - beforeOffset, zone)
+    const beforeAdjustedMillis = toDate(before).getTime()
+    // If the wall clock time has changed, we are inside the gap
+    if (adjustedMillis !== beforeAdjustedMillis) {
+      switch (disambiguation) {
+        case "reject": {
+          const formatted = new Date(adjustedMillis).toISOString()
+          throw new RangeError(`Gap time: ${formatted} does not exist in time zone ${zone.id}`)
+        }
+        case "earlier":
+          return makeZonedProto(adjustedMillis - afterOffset, zone)
+
+        case "compatible":
+        case "later":
+          return before
+      }
+    }
+    // The wall clock time is in the earlier offset, so we use that
+    return before
   }
 
-  return synthesizeGapTimeSolution(adjustedMillis, zone, disambiguation)
-}
-
-/**
- * Synthesize a solution for gap times using a precise offset-based approach.
- *
- * When a local time doesn't exist due to DST transitions, this function calculates
- * the offset difference and adjusts the time accordingly, then finds valid epoch
- * times for the adjusted time.
- *
- * @param adjustedMillis - Non-existent local time as "naive UTC"
- * @param zone - Named timezone context
- * @param disambiguation - Strategy determining direction (earlier/later)
- * @returns DateTime.Zoned with synthesized valid time
- */
-const synthesizeGapTimeSolution = (
-  adjustedMillis: number,
-  zone: DateTime.TimeZone.Named,
-  disambiguation: DateTime.DateTime.Disambiguation
-): DateTime.Zoned => {
-  const naiveUtc = adjustedMillis
-  const dayMillis = 24 * 60 * 60 * 1000
-
-  // Sample offsets at ±1 day from the gap time for precise calculation
-  const dayBefore = naiveUtc - dayMillis
-  const dayAfter = naiveUtc + dayMillis
-  const offsetBefore = calculateNamedOffset(dayBefore, zone)
-  const offsetAfter = calculateNamedOffset(dayAfter, zone)
-  const offsetDifferenceMillis = offsetAfter - offsetBefore
-
-  switch (disambiguation) {
-    case "earlier": {
-      // Move time backward by the offset difference
-      const adjustedTime = adjustedMillis - offsetDifferenceMillis
-      const possibleTimes = getPossibleEpochTimes(adjustedTime, zone)
-      return makeZonedProto(possibleTimes[0], zone)
+  const currentBeforeOffset = calculateNamedOffset(
+    adjustedMillis - beforeOffset,
+    adjustedMillis,
+    zone
+  )
+  // The wall clock time is in the earlier offset, so we use that
+  if (currentBeforeOffset === beforeOffset) {
+    if (disambiguation === "earlier" || disambiguation === "compatible") {
+      return makeZonedProto(adjustedMillis - beforeOffset, zone)
     }
-    case "compatible":
-    case "later": {
-      // Move time forward by the offset difference
-      const adjustedTime = adjustedMillis + offsetDifferenceMillis
-      const possibleTimes = getPossibleEpochTimes(adjustedTime, zone)
-      return makeZonedProto(possibleTimes[possibleTimes.length - 1], zone)
+    const laterOffset = calculateNamedOffset(
+      adjustedMillis - beforeOffset + transitionMillis,
+      adjustedMillis + transitionMillis,
+      zone
+    )
+    if (laterOffset === beforeOffset) {
+      return makeZonedProto(adjustedMillis - beforeOffset, zone)
     }
-    default:
-      throw new IllegalArgumentException(
-        `Invalid disambiguation: ${disambiguation}`
-      )
+    // If the offset changed in this period, then we are inside the period where
+    // the wall clock time occurs twice, once in the earlier offset and once in
+    // the later offset.
+    if (disambiguation === "reject") {
+      const formatted = new Date(adjustedMillis).toISOString()
+      throw new RangeError(`Ambiguous time: ${formatted} occurs twice in time zone ${zone.id}`)
+    }
+    // If the disambiguation is "later", we return the later offset below
   }
+  return makeZonedProto(adjustedMillis - afterOffset, zone)
 }
 
 const offsetRegex = /([+-])(\d{2}):(\d{2})$/
@@ -959,7 +827,11 @@ const parseOffset = (offset: string): number | null => {
   return (sign === "+" ? 1 : -1) * (Number(hours) * 60 + Number(minutes)) * 60 * 1000
 }
 
-const calculateNamedOffset = (utcMillis: number, zone: DateTime.TimeZone.Named): number => {
+const calculateNamedOffset = (
+  utcMillis: number,
+  adjustedMillis: number,
+  zone: DateTime.TimeZone.Named
+): number => {
   const offset = zone.format.formatToParts(utcMillis).find((_) => _.type === "timeZoneName")?.value ?? ""
   if (offset === "GMT") {
     return 0
@@ -967,16 +839,22 @@ const calculateNamedOffset = (utcMillis: number, zone: DateTime.TimeZone.Named):
   const result = parseOffset(offset)
   if (result === null) {
     // fallback to using the adjusted date
-    return zonedOffset(makeZonedProto(utcMillis, zone))
+    return zonedOffset(makeZonedProto(adjustedMillis, zone))
   }
   return result
 }
 
 /** @internal */
 export const mutate: {
-  (f: (date: Date) => void): <A extends DateTime.DateTime>(self: A) => A
-  <A extends DateTime.DateTime>(self: A, f: (date: Date) => void): A
-} = dual(2, (self: DateTime.DateTime, f: (date: Date) => void): DateTime.DateTime => {
+  (f: (date: Date) => void, options?: {
+    readonly disambiguation?: DateTime.Disambiguation | undefined
+  }): <A extends DateTime.DateTime>(self: A) => A
+  <A extends DateTime.DateTime>(self: A, f: (date: Date) => void, options?: {
+    readonly disambiguation?: DateTime.Disambiguation | undefined
+  }): A
+} = dual(isDateTimeArgs, (self: DateTime.DateTime, f: (date: Date) => void, options?: {
+  readonly disambiguation?: DateTime.Disambiguation | undefined
+}): DateTime.DateTime => {
   if (self._tag === "Utc") {
     const date = toDateUtc(self)
     f(date)
@@ -985,7 +863,7 @@ export const mutate: {
   const adjustedDate = toDate(self)
   const newAdjustedDate = new Date(adjustedDate.getTime())
   f(newAdjustedDate)
-  return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone)
+  return makeZonedFromAdjusted(newAdjustedDate.getTime(), self.zone, options?.disambiguation ?? "compatible")
 })
 
 /** @internal */
