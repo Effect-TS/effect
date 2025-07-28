@@ -684,7 +684,7 @@ export const trackSuccessWith: {
   <A, E, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
-    f: (value: A) => In
+    f: (value: Types.NoInfer<A>) => In
   ): Effect.Effect<A, E, R>
 } = internal.trackSuccessWith
 
