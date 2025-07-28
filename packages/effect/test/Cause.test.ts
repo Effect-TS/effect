@@ -1080,7 +1080,7 @@ describe("Cause", () => {
               "name: \"[myspan]\",",
               "parent: {},",
               "context: {},",
-              `startTime: "${span.startTime}",`,
+              `startTime: "${(span as any).startTime}",`,
               "kind: \"internal\",",
               "_tag: \"Span\",",
               `spanId: "${span.spanId}",`,
