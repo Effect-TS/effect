@@ -20,7 +20,8 @@ import {
   Hash,
   Inspectable,
   Option,
-  Predicate
+  Predicate,
+  Tracer
 } from "effect"
 import * as internal from "../src/internal/cause.js"
 import { causes, equalCauses, errorCauseFunctions, errors } from "./utils/cause.js"
@@ -43,7 +44,7 @@ describe("Cause", () => {
       if (typeof window === "undefined") {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { inspect } = require("node:util")
-        assertInclude(inspect(ex), "Cause.test.ts:39") // <= reference to the line above
+        assertInclude(inspect(ex), "Cause.test.ts:40") // <= reference to the line above
       }
     })
   })
@@ -1064,8 +1065,9 @@ describe("Cause", () => {
 
         describe("Die", () => {
           it("with span", () => {
+            const span = Effect.runSync(Effect.makeSpan("[myspan]"))
             const exit: any = Effect.die(new Error("my message", { cause: "my cause" })).pipe(
-              Effect.withSpan("[myspan]"),
+              Effect.provideService(Tracer.ParentSpan, span),
               Effect.exit,
               Effect.runSync
             )
@@ -1074,6 +1076,21 @@ describe("Cause", () => {
             deepStrictEqual(simplifyStackTrace(pretty), [
               `Error: my message`,
               "at [myspan]",
+              "span: {",
+              "name: \"[myspan]\",",
+              "parent: {},",
+              "context: {},",
+              `startTime: "${span.startTime}",`,
+              "kind: \"internal\",",
+              "_tag: \"Span\",",
+              `spanId: "${span.spanId}",`,
+              `traceId: "${span.traceId}",`,
+              "sampled: true,",
+              "status: {},",
+              "attributes: {},",
+              "events: [],",
+              "links: []",
+              "},",
               "[cause]: Error: my cause"
             ])
           })

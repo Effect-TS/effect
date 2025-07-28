@@ -879,7 +879,15 @@ export const pretty = <E>(cause: Cause.Cause<E>, options?: {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
-    return `${e.stack} {\n${renderErrorCause(e.cause as PrettyError, "  ")}\n}`
+    const { cause, message: _, name: __, stack, ...rest } = e
+    const json = stringifyCircular(toJSON(rest), 2, 2)
+    return !cause && !!Object.keys(rest).length ?
+      stack :
+      `${stack} {${
+        json.replace(/^[\t ]*"[^:\n\r]+(?<!\\)":/gm, function(match) {
+          return match.replace(/"/g, "")
+        })
+      }${cause ? ",\n" + renderErrorCause(cause as PrettyError, "  ") : ""}\n}`
   }).join("\n")
 }
 
