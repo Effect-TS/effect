@@ -677,14 +677,14 @@ export const trackSuccess: {
  * @category aspects
  */
 export const trackSuccessWith: {
-  <Type, In, Out, In2>(
+  <Type, In, Out, A>(
     metric: Metric<Type, In, Out>,
-    f: (value: In2) => In
-  ): <A extends In2, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A extends In2, E, R, Type, In, Out, In2>(
+    f: (value: Types.NoInfer<A>) => In
+  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  <A, E, R, Type, In, Out>(
     self: Effect.Effect<A, E, R>,
     metric: Metric<Type, In, Out>,
-    f: (value: In2) => In
+    f: (value: Types.NoInfer<A>) => In
   ): Effect.Effect<A, E, R>
 } = internal.trackSuccessWith
 
