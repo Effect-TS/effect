@@ -876,30 +876,43 @@ export const pretty = <E>(cause: Cause.Cause<E>, options?: {
     return "All fibers interrupted without errors."
   }
   return prettyErrors<E>(cause).map(function(e) {
-    if (options?.renderErrorCause !== true || e.cause === undefined) {
+    if (options?.renderErrorCause !== true) {
       return e.stack
     }
-    const { cause, message: _, name: __, stack, ...rest } = e
-    const json = stringifyCircular(toJSON(rest), 2, 2)
-    return !cause && !!Object.keys(rest).length ?
-      stack :
-      `${stack} {${
-        json.replace(/^[\t ]*"[^:\n\r]+(?<!\\)":/gm, function(match) {
-          return match.replace(/"/g, "")
-        })
-      }${cause ? ",\n" + renderErrorCause(cause as PrettyError, "  ") : ""}\n}`
+    return renderErrorCause(e, "")
   }).join("\n")
 }
 
-const renderErrorCause = (cause: PrettyError, prefix: string) => {
-  const lines = cause.stack!.split("\n")
-  let stack = `${prefix}[cause]: ${lines[0]}`
+const renderErrorCause = (e: Cause.PrettyError, prefix: string) => {
+  const lines = e.stack!.split("\n")
+  let stack = `${prefix}${prefix === "" ? "" : "[cause]: "}${lines[0]}`
   for (let i = 1, len = lines.length; i < len; i++) {
     stack += `\n${prefix}${lines[i]}`
   }
-  if (cause.cause) {
-    stack += ` {\n${renderErrorCause(cause.cause as PrettyError, `${prefix}  `)}\n${prefix}}`
+  const { cause, message: _, name: __, stack: ___, ...rest } = e
+  const hasRest = Object.keys(rest).filter((_) => (rest as any)[_] !== undefined).length > 0
+  if (hasRest || cause) {
+    stack += ` {`
   }
+  if (hasRest) {
+    const json = stringifyCircular(toJSON(rest), 2, 2)
+    const bareJson = json.replace(/^[\t ]*"[^:\n\r]+(?<!\\)":/gm, function(match) {
+      return match.replace(/"/g, "")
+    })
+    for (
+      const l of bareJson.substring(2, bareJson.length - 1).split("\n").join("\n").trimEnd().split("\n")
+    ) {
+      stack += `\n${prefix}    ${l}`
+    }
+  }
+
+  if (cause) {
+    stack += "\n    " + renderErrorCause(cause as PrettyError, `${prefix}  `)
+  }
+  if (hasRest || cause) {
+    stack += `\n${prefix}    }`
+  }
+
   return stack
 }
 

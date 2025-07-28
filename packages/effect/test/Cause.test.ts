@@ -1072,8 +1072,13 @@ describe("Cause", () => {
               Effect.runSync
             )
             const cause = exit.cause
-            const pretty = Cause.pretty(cause, { renderErrorCause: true })
-            deepStrictEqual(simplifyStackTrace(pretty), [
+            class MyError extends Error {
+              testValue = 1
+            }
+            const pretty = simplifyStackTrace(Cause.pretty(cause, { renderErrorCause: true }))
+            // const pretty = Cause.pretty(cause, { renderErrorCause: true })
+            // const pretty = Cause.pretty(Cause.die(new MyError("my message")), { renderErrorCause: true })
+            deepStrictEqual(pretty, [
               `Error: my message`,
               "at [myspan]",
               "span: {",
@@ -1090,7 +1095,6 @@ describe("Cause", () => {
               "attributes: {},",
               "events: [],",
               "links: []",
-              "},",
               "[cause]: Error: my cause"
             ])
           })
