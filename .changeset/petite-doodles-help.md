@@ -42,8 +42,7 @@ after:
     at runTest (file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:1574:12)
     at processTicksAndRejections (node:internal/process/task_queues:105:5)
     at async Promise.all (index 0)
-    at runSuite (file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:1718:7)
-{    
+    at runSuite (file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:1718:7) {
       testValue: 1
-}
+    }
 ```
