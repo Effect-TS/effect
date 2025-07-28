@@ -17,7 +17,7 @@ before:
 
 ```
 Error: my message
-    at /pj/effect/effect/packages/effect/test/Cause.test.ts:1081:51
+    at /pj/effect/effect/packages/effect/test/Cause.test.ts:1079:51
     at file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
     at file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
     at file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
@@ -32,8 +32,8 @@ Error: my message
 after:
 
 ```
-"Error: my message
-    at /pj/effect/effect/packages/effect/test/Cause.test.ts:1081:51
+Error: my message
+    at /pj/effect/effect/packages/effect/test/Cause.test.ts:1079:51
     at file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:155:11
     at file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:752:26
     at file:///pj/effect/effect/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:1897:20
