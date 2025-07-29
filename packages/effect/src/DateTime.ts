@@ -215,6 +215,52 @@ export declare namespace TimeZone {
   }
 }
 
+/**
+ * A `Disambiguation` is used to resolve ambiguities when a `DateTime` is
+ * ambiguous, such as during a daylight saving time transition.
+ *
+ * For more information, see the [Temporal documentation](https://tc39.es/proposal-temporal/docs/timezone.html#ambiguity-due-to-dst-or-other-time-zone-offset-changes)
+ *
+ * - `"compatible"`: (default) Behavior matching Temporal API and legacy JavaScript Date and moment.js.
+ *   For repeated times, chooses the earlier occurrence. For gap times, chooses the later interpretation.
+ *
+ * - `"earlier"`: For repeated times, always choose the earlier occurrence.
+ *   For gap times, choose the time before the gap.
+ *
+ * - `"later"`: For repeated times, always choose the later occurrence.
+ *   For gap times, choose the time after the gap.
+ *
+ * - `"reject"`: Throw an `RangeError` when encountering ambiguous or non-existent times.
+ *
+ * @example
+ * ```ts
+ * import { DateTime } from "effect"
+ *
+ * // Fall-back example: 01:30 on Nov 2, 2025 in New York happens twice
+ * const ambiguousTime = { year: 2025, month: 11, day: 2, hours: 1, minutes: 30 }
+ * const timeZone = DateTime.zoneUnsafeMakeNamed("America/New_York")
+ *
+ * DateTime.makeZoned(ambiguousTime, { timeZone, adjustForTimeZone: true, disambiguation: "earlier" })
+ * // Earlier occurrence (DST time): 2025-11-02T05:30:00.000Z
+ *
+ * DateTime.makeZoned(ambiguousTime, { timeZone, adjustForTimeZone: true, disambiguation: "later" })
+ * // Later occurrence (standard time): 2025-11-02T06:30:00.000Z
+ *
+ * // Gap example: 02:30 on Mar 9, 2025 in New York doesn't exist
+ * const gapTime = { year: 2025, month: 3, day: 9, hours: 2, minutes: 30 }
+ *
+ * DateTime.makeZoned(gapTime, { timeZone, adjustForTimeZone: true, disambiguation: "earlier" })
+ * // Time before gap: 2025-03-09T06:30:00.000Z (01:30 EST)
+ *
+ * DateTime.makeZoned(gapTime, { timeZone, adjustForTimeZone: true, disambiguation: "later" })
+ * // Time after gap: 2025-03-09T07:30:00.000Z (03:30 EDT)
+ * ```
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export type Disambiguation = "compatible" | "earlier" | "later" | "reject"
+
 // =============================================================================
 // guards
 // =============================================================================
@@ -332,6 +378,13 @@ export const unsafeMake: <A extends DateTime.Input>(input: A) => DateTime.Preser
  * `adjustForTimeZone` is set to `true`. In that case, the input is treated as
  * already in the time zone.
  *
+ * When `adjustForTimeZone` is true and ambiguous times occur during DST transitions,
+ * the `disambiguation` option controls how to resolve the ambiguity:
+ * - `compatible` (default): Choose earlier time for repeated times, later for gaps
+ * - `earlier`: Always choose the earlier of two possible times
+ * - `later`: Always choose the later of two possible times
+ * - `reject`: Throw an error when ambiguous times are encountered
+ *
  * @since 3.6.0
  * @category constructors
  * @example
@@ -344,12 +397,22 @@ export const unsafeMake: <A extends DateTime.Input>(input: A) => DateTime.Preser
 export const unsafeMakeZoned: (input: DateTime.Input, options?: {
   readonly timeZone?: number | string | TimeZone | undefined
   readonly adjustForTimeZone?: boolean | undefined
+  readonly disambiguation?: Disambiguation | undefined
 }) => Zoned = Internal.unsafeMakeZoned
 
 /**
  * Create a `DateTime.Zoned` using `DateTime.make` and a time zone.
  *
- * The input is treated as UTC and then the time zone is attached.
+ * The input is treated as UTC and then the time zone is attached, unless
+ * `adjustForTimeZone` is set to `true`. In that case, the input is treated as
+ * already in the time zone.
+ *
+ * When `adjustForTimeZone` is true and ambiguous times occur during DST transitions,
+ * the `disambiguation` option controls how to resolve the ambiguity:
+ * - `compatible` (default): Choose earlier time for repeated times, later for gaps
+ * - `earlier`: Always choose the earlier of two possible times
+ * - `later`: Always choose the later of two possible times
+ * - `reject`: Throw an error when ambiguous times are encountered
  *
  * If the date time input or time zone is invalid, `None` will be returned.
  *
@@ -367,6 +430,7 @@ export const makeZoned: (
   options?: {
     readonly timeZone?: number | string | TimeZone | undefined
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }
 ) => Option.Option<Zoned> = Internal.makeZoned
 
@@ -491,9 +555,11 @@ export const toUtc: (self: DateTime) => Utc = Internal.toUtc
 export const setZone: {
   (zone: TimeZone, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): (self: DateTime) => Zoned
   (self: DateTime, zone: TimeZone, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): Zoned
 } = Internal.setZone
 
@@ -519,9 +585,11 @@ export const setZone: {
 export const setZoneOffset: {
   (offset: number, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): (self: DateTime) => Zoned
   (self: DateTime, offset: number, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): Zoned
 } = Internal.setZoneOffset
 
@@ -616,9 +684,11 @@ export const zoneToString: (self: TimeZone) => string = Internal.zoneToString
 export const setZoneNamed: {
   (zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): (self: DateTime) => Option.Option<Zoned>
   (self: DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): Option.Option<Zoned>
 } = Internal.setZoneNamed
 
@@ -642,9 +712,11 @@ export const setZoneNamed: {
 export const unsafeSetZoneNamed: {
   (zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): (self: DateTime) => Zoned
   (self: DateTime, zoneId: string, options?: {
     readonly adjustForTimeZone?: boolean | undefined
+    readonly disambiguation?: Disambiguation | undefined
   }): Zoned
 } = Internal.unsafeSetZoneNamed
 
@@ -1149,12 +1221,25 @@ export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Ef
  * The `Date` will first have the time zone applied if possible, and then be
  * converted back to a `DateTime` within the same time zone.
  *
+ * Supports `disambiguation` when the new wall clock time is ambiguous.
+ *
  * @since 3.6.0
  * @category mapping
  */
 export const mutate: {
-  (f: (date: Date) => void): <A extends DateTime>(self: A) => A
-  <A extends DateTime>(self: A, f: (date: Date) => void): A
+  (
+    f: (date: Date) => void,
+    options?: {
+      readonly disambiguation?: Disambiguation | undefined
+    }
+  ): <A extends DateTime>(self: A) => A
+  <A extends DateTime>(
+    self: A,
+    f: (date: Date) => void,
+    options?: {
+      readonly disambiguation?: Disambiguation | undefined
+    }
+  ): A
 } = Internal.mutate
 
 /**

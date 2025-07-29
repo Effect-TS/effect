@@ -1,8 +1,21 @@
 import { describe, it } from "@effect/vitest"
-import { assertRight, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import {
+  assertInclude,
+  assertInstanceOf,
+  assertNone,
+  assertRight,
+  assertSome,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "@effect/vitest/utils"
 import { DateTime, Duration, Effect, Option, TestClock } from "effect"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
+const assertSomeIso = (value: Option.Option<DateTime.DateTime>, expected: string) => {
+  const iso = value.pipe(Option.map((value) => DateTime.formatIso(DateTime.toUtc(value))))
+  assertSome(iso, expected)
+}
 
 describe("DateTime", () => {
   describe("mutate", () => {
@@ -455,6 +468,501 @@ describe("DateTime", () => {
 
       dt = DateTime.unsafeMake("2020-02-01T11:17:00+1100")
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
+    })
+  })
+
+  describe("Disambiguation", () => {
+    it.each<{
+      zone: string
+      time: Partial<DateTime.DateTime.Parts>
+      description: string
+      expectedResults: Record<DateTime.Disambiguation, string>
+    }>(
+      [
+        {
+          zone: "America/New_York",
+          time: { year: 2024, month: 3, day: 10, hours: 2 },
+          description: "America/New_York 02:00 gap time during leap year (2024)",
+          expectedResults: {
+            compatible: "2024-03-10T07:00:00.000Z",
+            earlier: "2024-03-10T06:00:00.000Z",
+            later: "2024-03-10T07:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2024, month: 11, day: 3, hours: 1, minutes: 30 },
+          description: "America/New_York 01:30 ambiguous time during leap year (2024)",
+          expectedResults: {
+            compatible: "2024-11-03T05:30:00.000Z",
+            earlier: "2024-11-03T05:30:00.000Z",
+            later: "2024-11-03T06:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 1 },
+          description: "America/New_York 01:00 before DST transition",
+          expectedResults: {
+            compatible: "2025-03-09T06:00:00.000Z",
+            earlier: "2025-03-09T06:00:00.000Z",
+            later: "2025-03-09T06:00:00.000Z",
+            reject: "2025-03-09T06:00:00.000Z"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 1, minutes: 59, seconds: 59 },
+          description: "America/New_York 01:59:59 last second before DST gap",
+          expectedResults: {
+            compatible: "2025-03-09T06:59:59.000Z",
+            earlier: "2025-03-09T06:59:59.000Z",
+            later: "2025-03-09T06:59:59.000Z",
+            reject: "2025-03-09T06:59:59.000Z"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 2 },
+          description: "America/New_York 02:00 gap time (DST spring forward)",
+          expectedResults: {
+            compatible: "2025-03-09T07:00:00.000Z",
+            earlier: "2025-03-09T06:00:00.000Z",
+            later: "2025-03-09T07:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 15 },
+          description: "America/New_York 02:15 gap time (DST spring forward)",
+          expectedResults: {
+            compatible: "2025-03-09T07:15:00.000Z",
+            earlier: "2025-03-09T06:15:00.000Z",
+            later: "2025-03-09T07:15:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 30 },
+          description: "America/New_York 02:30 gap time (DST spring forward)",
+          expectedResults: {
+            compatible: "2025-03-09T07:30:00.000Z",
+            earlier: "2025-03-09T06:30:00.000Z",
+            later: "2025-03-09T07:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 45 },
+          description: "America/New_York 02:45 gap time (DST spring forward)",
+          expectedResults: {
+            compatible: "2025-03-09T07:45:00.000Z",
+            earlier: "2025-03-09T06:45:00.000Z",
+            later: "2025-03-09T07:45:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 3, day: 9, hours: 3 },
+          description: "America/New_York 03:00 first valid time after DST gap",
+          expectedResults: {
+            compatible: "2025-03-09T07:00:00.000Z",
+            earlier: "2025-03-09T07:00:00.000Z",
+            later: "2025-03-09T07:00:00.000Z",
+            reject: "2025-03-09T07:00:00.000Z"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 11, day: 2, hours: 1, minutes: 0, seconds: 0 },
+          description: "America/New_York 01:00:00 exact start of ambiguous period",
+          expectedResults: {
+            compatible: "2025-11-02T05:00:00.000Z",
+            earlier: "2025-11-02T05:00:00.000Z",
+            later: "2025-11-02T06:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 11, day: 2, hours: 1, minutes: 30 },
+          description: "America/New_York 01:30 ambiguous time (DST fall back)",
+          expectedResults: {
+            compatible: "2025-11-02T05:30:00.000Z",
+            earlier: "2025-11-02T05:30:00.000Z",
+            later: "2025-11-02T06:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "America/New_York",
+          time: { year: 2025, month: 11, day: 2, hours: 1, minutes: 59, seconds: 59 },
+          description: "America/New_York 01:59:59 last second of ambiguous period",
+          expectedResults: {
+            compatible: "2025-11-02T05:59:59.000Z",
+            earlier: "2025-11-02T05:59:59.000Z",
+            later: "2025-11-02T06:59:59.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Asia/Kathmandu",
+          time: { year: 2025, month: 6, day: 15, hours: 12 },
+          description: "Asia/Kathmandu 12:00 unusual offset (UTC+05:45)",
+          expectedResults: {
+            compatible: "2025-06-15T06:15:00.000Z",
+            earlier: "2025-06-15T06:15:00.000Z",
+            later: "2025-06-15T06:15:00.000Z",
+            reject: "2025-06-15T06:15:00.000Z"
+          }
+        },
+        {
+          zone: "Australia/Melbourne",
+          time: { year: 2025, month: 10, day: 5, hours: 2 },
+          description: "Australia/Melbourne 02:00 gap time (DST starts, spring forward)",
+          expectedResults: {
+            compatible: "2025-10-04T16:00:00.000Z",
+            earlier: "2025-10-04T15:00:00.000Z",
+            later: "2025-10-04T16:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Australia/Sydney",
+          time: { year: 2025, month: 4, day: 6, hours: 1 },
+          description: "Australia/Sydney 01:00 normal timezone conversion",
+          expectedResults: {
+            compatible: "2025-04-05T14:00:00.000Z",
+            earlier: "2025-04-05T14:00:00.000Z",
+            later: "2025-04-05T14:00:00.000Z",
+            reject: "2025-04-05T14:00:00.000Z"
+          }
+        },
+        {
+          zone: "Australia/Sydney",
+          time: { year: 2025, month: 4, day: 6, hours: 2, minutes: 30 },
+          description: "Australia/Sydney 02:30 ambiguous time (DST ends, fall back)",
+          expectedResults: {
+            compatible: "2025-04-05T15:30:00.000Z",
+            earlier: "2025-04-05T15:30:00.000Z",
+            later: "2025-04-05T16:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Australia/Sydney",
+          time: { year: 2025, month: 10, day: 5, hours: 2, minutes: 30 },
+          description: "Australia/Sydney 02:30 gap time (DST starts, spring forward)",
+          expectedResults: {
+            compatible: "2025-10-04T16:30:00.000Z",
+            earlier: "2025-10-04T15:30:00.000Z",
+            later: "2025-10-04T16:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2024, month: 10, day: 27, hours: 3 },
+          description: "Europe/Athens 03:00 ambiguous time during leap year (2024)",
+          expectedResults: {
+            compatible: "2024-10-27T00:00:00.000Z",
+            earlier: "2024-10-27T00:00:00.000Z",
+            later: "2024-10-27T01:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2025, month: 3, day: 27, hours: 1 },
+          description: "Europe/Athens 01:00 normal time before DST",
+          expectedResults: {
+            compatible: "2025-03-26T23:00:00.000Z",
+            earlier: "2025-03-26T23:00:00.000Z",
+            later: "2025-03-26T23:00:00.000Z",
+            reject: "2025-03-26T23:00:00.000Z"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2025, month: 3, day: 30, hours: 1 },
+          description: "Europe/Athens 01:00 before DST transition (UTC+2)",
+          expectedResults: {
+            compatible: "2025-03-29T23:00:00.000Z",
+            earlier: "2025-03-29T23:00:00.000Z",
+            later: "2025-03-29T23:00:00.000Z",
+            reject: "2025-03-29T23:00:00.000Z"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2025, month: 3, day: 30, hours: 2, minutes: 30 },
+          description: "Europe/Athens 02:30 normal time before DST transition",
+          expectedResults: {
+            compatible: "2025-03-30T00:30:00.000Z",
+            earlier: "2025-03-30T00:30:00.000Z",
+            later: "2025-03-30T00:30:00.000Z",
+            reject: "2025-03-30T00:30:00.000Z"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2025, month: 3, day: 30, hours: 3 },
+          description: "Europe/Athens 03:00 gap time (DST spring forward)",
+          expectedResults: {
+            compatible: "2025-03-30T01:00:00.000Z",
+            earlier: "2025-03-30T00:00:00.000Z",
+            later: "2025-03-30T01:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2025, month: 3, day: 30, hours: 4 },
+          description: "Europe/Athens 04:00 normal time after DST transition",
+          expectedResults: {
+            compatible: "2025-03-30T01:00:00.000Z",
+            earlier: "2025-03-30T01:00:00.000Z",
+            later: "2025-03-30T01:00:00.000Z",
+            reject: "2025-03-30T01:00:00.000Z"
+          }
+        },
+        {
+          zone: "Europe/Athens",
+          time: { year: 2025, month: 10, day: 26, hours: 3 },
+          description: "Europe/Athens 03:00 ambiguous time (DST fall back)",
+          expectedResults: {
+            compatible: "2025-10-26T00:00:00.000Z",
+            earlier: "2025-10-26T00:00:00.000Z",
+            later: "2025-10-26T01:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/Berlin",
+          time: { year: 2025, month: 10, day: 26, hours: 2, minutes: 30 },
+          description: "Europe/Berlin 02:30 ambiguous time (DST fall back)",
+          expectedResults: {
+            compatible: "2025-10-26T00:30:00.000Z",
+            earlier: "2025-10-26T00:30:00.000Z",
+            later: "2025-10-26T01:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/London",
+          time: { year: 2024, month: 3, day: 31, hours: 1 },
+          description: "Europe/London 01:00 gap time during leap year (2024)",
+          expectedResults: {
+            compatible: "2024-03-31T01:00:00.000Z",
+            earlier: "2024-03-31T00:00:00.000Z",
+            later: "2024-03-31T01:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/London",
+          time: { year: 2025, month: 3, day: 29, hours: 1 },
+          description: "Europe/London 01:00 normal time day before DST",
+          expectedResults: {
+            compatible: "2025-03-29T01:00:00.000Z",
+            earlier: "2025-03-29T01:00:00.000Z",
+            later: "2025-03-29T01:00:00.000Z",
+            reject: "2025-03-29T01:00:00.000Z"
+          }
+        },
+        {
+          zone: "Europe/London",
+          time: { year: 2025, month: 3, day: 30, hours: 1 },
+          description: "Europe/London 01:00 gap time (DST spring forward)",
+          expectedResults: {
+            compatible: "2025-03-30T01:00:00.000Z",
+            earlier: "2025-03-30T00:00:00.000Z",
+            later: "2025-03-30T01:00:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Europe/London",
+          time: { year: 2025, month: 10, day: 26, hours: 1, minutes: 30 },
+          description: "Europe/London 01:30 ambiguous time (DST fall back)",
+          expectedResults: {
+            compatible: "2025-10-26T00:30:00.000Z",
+            earlier: "2025-10-26T00:30:00.000Z",
+            later: "2025-10-26T01:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 1, day: 15, hours: 12 },
+          description: "Pacific/Auckland 12:00 during DST period (NZDT, UTC+13)",
+          expectedResults: {
+            compatible: "2025-01-14T23:00:00.000Z",
+            earlier: "2025-01-14T23:00:00.000Z",
+            later: "2025-01-14T23:00:00.000Z",
+            reject: "2025-01-14T23:00:00.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 4, day: 6, hours: 1, minutes: 59 },
+          description: "Pacific/Auckland 01:59 last minute before DST ends",
+          expectedResults: {
+            compatible: "2025-04-05T12:59:00.000Z",
+            earlier: "2025-04-05T12:59:00.000Z",
+            later: "2025-04-05T12:59:00.000Z",
+            reject: "2025-04-05T12:59:00.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 4, day: 6, hours: 2, minutes: 30 },
+          description: "Pacific/Auckland 02:30 ambiguous time (DST ends, fall back)",
+          expectedResults: {
+            compatible: "2025-04-05T13:30:00.000Z",
+            earlier: "2025-04-05T13:30:00.000Z",
+            later: "2025-04-05T14:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 4, day: 6, hours: 3 },
+          description: "Pacific/Auckland 03:00 normal time after DST ends",
+          expectedResults: {
+            compatible: "2025-04-05T15:00:00.000Z",
+            earlier: "2025-04-05T15:00:00.000Z",
+            later: "2025-04-05T15:00:00.000Z",
+            reject: "2025-04-05T15:00:00.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 7, day: 15, hours: 12 },
+          description: "Pacific/Auckland 12:00 during standard time (NZST, UTC+12)",
+          expectedResults: {
+            compatible: "2025-07-15T00:00:00.000Z",
+            earlier: "2025-07-15T00:00:00.000Z",
+            later: "2025-07-15T00:00:00.000Z",
+            reject: "2025-07-15T00:00:00.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 9, day: 28, hours: 1, minutes: 59, seconds: 59 },
+          description: "Pacific/Auckland 01:59:59 last second before DST starts",
+          expectedResults: {
+            compatible: "2025-09-27T13:59:59.000Z",
+            earlier: "2025-09-27T13:59:59.000Z",
+            later: "2025-09-27T13:59:59.000Z",
+            reject: "2025-09-27T13:59:59.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 9, day: 28, hours: 2, minutes: 30 },
+          description: "Pacific/Auckland 02:30 gap time (DST starts, spring forward)",
+          expectedResults: {
+            compatible: "2025-09-27T14:30:00.000Z",
+            earlier: "2025-09-27T13:30:00.000Z",
+            later: "2025-09-27T14:30:00.000Z",
+            reject: "REJECT"
+          }
+        },
+        {
+          zone: "Pacific/Auckland",
+          time: { year: 2025, month: 9, day: 28, hours: 3 },
+          description: "Pacific/Auckland 03:00 first valid time after DST gap",
+          expectedResults: {
+            compatible: "2025-09-27T14:00:00.000Z",
+            earlier: "2025-09-27T14:00:00.000Z",
+            later: "2025-09-27T14:00:00.000Z",
+            reject: "2025-09-27T14:00:00.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Kiritimati",
+          time: { year: 2025, month: 6, day: 15, hours: 12 },
+          description: "Pacific/Kiritimati 12:00 extreme positive offset (UTC+14)",
+          expectedResults: {
+            compatible: "2025-06-14T22:00:00.000Z",
+            earlier: "2025-06-14T22:00:00.000Z",
+            later: "2025-06-14T22:00:00.000Z",
+            reject: "2025-06-14T22:00:00.000Z"
+          }
+        },
+        {
+          zone: "Pacific/Marquesas",
+          time: { year: 2025, month: 6, day: 15, hours: 12 },
+          description: "Pacific/Marquesas 12:00 unusual negative offset (UTC-09:30)",
+          expectedResults: {
+            compatible: "2025-06-15T21:30:00.000Z",
+            earlier: "2025-06-15T21:30:00.000Z",
+            later: "2025-06-15T21:30:00.000Z",
+            reject: "2025-06-15T21:30:00.000Z"
+          }
+        }
+      ]
+    )(
+      "should handle $description",
+      ({ expectedResults, time, zone }) => {
+        // Test normal strategies
+        for (const strategy of ["compatible", "earlier", "later"] as const) {
+          const result = DateTime.makeZoned(time, {
+            timeZone: zone,
+            adjustForTimeZone: true,
+            disambiguation: strategy
+          })
+          assertSomeIso(result, expectedResults[strategy])
+        }
+
+        // Test reject strategy
+        const rejectResult = DateTime.makeZoned(time, {
+          timeZone: zone,
+          adjustForTimeZone: true,
+          disambiguation: "reject"
+        })
+
+        if (expectedResults.reject === "REJECT") {
+          assertNone(rejectResult)
+        } else {
+          assertSomeIso(rejectResult, expectedResults.reject)
+        }
+      }
+    )
+
+    it("should use 'earlier' as default disambiguation for backward compatibility", () => {
+      const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
+
+      // Test default behavior (no disambiguation specified)
+      const defaultResult = DateTime.makeZoned(ambiguousTime, {
+        timeZone: "Europe/Athens",
+        adjustForTimeZone: true
+      })
+
+      // Should produce the 'earlier' result
+      assertSomeIso(defaultResult, "2025-10-26T00:00:00.000Z")
+    })
+
+    it("should throw RangeError with 'reject' disambiguation for ambiguous times", () => {
+      const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
+
+      throws(() => {
+        DateTime.unsafeMakeZoned(ambiguousTime, {
+          timeZone: "Europe/Athens",
+          adjustForTimeZone: true,
+          disambiguation: "reject"
+        })
+      }, (error) => {
+        assertInstanceOf(error, RangeError)
+        assertInclude(error.message, "Ambiguous time")
+      })
     })
   })
 })
