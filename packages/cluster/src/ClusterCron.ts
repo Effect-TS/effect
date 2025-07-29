@@ -101,11 +101,17 @@ export const make = <E, R>(options: {
               options.calculateNextRunFromPrevious ? request.payload.dateTime : now
             ))
             const client = makeClient(DateTime.formatIso(next))
-            return yield* client.run({ dateTime: next }, { discard: true })
+            return yield* client.run({ dateTime: next }, { discard: true }).pipe(
+              Effect.sandbox,
+              Effect.retry(retryPolicy)
+            )
           }).pipe(
-            Effect.sandbox,
-            Effect.retry(retryPolicy),
-            Effect.orDie
+            Effect.catchAllCause(Effect.logWarning),
+            Effect.annotateLogs({
+              module: "ClusterCron",
+              name: options.name,
+              dateTime: request.payload.dateTime
+            })
           )
         )
       }
