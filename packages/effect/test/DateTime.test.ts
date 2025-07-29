@@ -922,6 +922,13 @@ describe("DateTime", () => {
           assertSomeIso(result, expectedResults[strategy])
         }
 
+        // Test default behavior ("compatible")
+        const defaultResult = DateTime.makeZoned(time, {
+          timeZone: zone,
+          adjustForTimeZone: true
+        })
+        assertSomeIso(defaultResult, expectedResults.compatible)
+
         // Test reject strategy
         const rejectResult = DateTime.makeZoned(time, {
           timeZone: zone,
