@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.46.2
+
+### Patch Changes
+
+- [#5297](https://github.com/Effect-TS/effect/pull/5297) [`eedbab5`](https://github.com/Effect-TS/effect/commit/eedbab5a02f6752acbd835bfeff338b1fd7c0deb) Thanks @tim-smart! - Remove retry from ClusterCron in favour of user supplied retry
+
 ## 0.46.1
 
 ### Patch Changes
