@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 add DateTime.Disambiguation for handling DST edge cases
