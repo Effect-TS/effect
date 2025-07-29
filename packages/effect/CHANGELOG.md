@@ -1,5 +1,21 @@
 # effect
 
+## 3.17.3
+
+### Patch Changes
+
+- [#5275](https://github.com/Effect-TS/effect/pull/5275) [`3504555`](https://github.com/Effect-TS/effect/commit/35045558e7cac19c888fe677dda93c4741c7f8a8) Thanks @taylornz! - fix DateTime.makeZoned handling of DST transitions
+
+- [#5282](https://github.com/Effect-TS/effect/pull/5282) [`f6c7ca7`](https://github.com/Effect-TS/effect/commit/f6c7ca752fc9de5f7a2a6c439bbc6cca06566357) Thanks @beezee! - Improve inference on Metric.trackSuccessWith for use in Effect.pipe(...)
+
+- [#5275](https://github.com/Effect-TS/effect/pull/5275) [`3504555`](https://github.com/Effect-TS/effect/commit/35045558e7cac19c888fe677dda93c4741c7f8a8) Thanks @taylornz! - add DateTime.Disambiguation for handling DST edge cases
+
+  Added four disambiguation strategies to `DateTime.Zoned` constructors for handling DST edge cases:
+  - `'compatible'` - Maintains backward compatibility
+  - `'earlier'` - Choose earlier time during ambiguous periods (default)
+  - `'later'` - Choose later time during ambiguous periods
+  - `'reject'` - Throw error for ambiguous times
+
 ## 3.17.2
 
 ### Patch Changes
