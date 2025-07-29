@@ -1,14 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import {
-  assertInclude,
-  assertInstanceOf,
-  assertNone,
-  assertRight,
-  assertSome,
-  deepStrictEqual,
-  strictEqual,
-  throws
-} from "@effect/vitest/utils"
+import { assertNone, assertRight, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { DateTime, Duration, Effect, Option, TestClock } from "effect"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
@@ -922,6 +913,13 @@ describe("DateTime", () => {
           assertSomeIso(result, expectedResults[strategy])
         }
 
+        // Test default behavior ("compatible")
+        const defaultResult = DateTime.makeZoned(time, {
+          timeZone: zone,
+          adjustForTimeZone: true
+        })
+        assertSomeIso(defaultResult, expectedResults.compatible)
+
         // Test reject strategy
         const rejectResult = DateTime.makeZoned(time, {
           timeZone: zone,
@@ -936,33 +934,5 @@ describe("DateTime", () => {
         }
       }
     )
-
-    it("should use 'earlier' as default disambiguation for backward compatibility", () => {
-      const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
-
-      // Test default behavior (no disambiguation specified)
-      const defaultResult = DateTime.makeZoned(ambiguousTime, {
-        timeZone: "Europe/Athens",
-        adjustForTimeZone: true
-      })
-
-      // Should produce the 'earlier' result
-      assertSomeIso(defaultResult, "2025-10-26T00:00:00.000Z")
-    })
-
-    it("should throw RangeError with 'reject' disambiguation for ambiguous times", () => {
-      const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
-
-      throws(() => {
-        DateTime.unsafeMakeZoned(ambiguousTime, {
-          timeZone: "Europe/Athens",
-          adjustForTimeZone: true,
-          disambiguation: "reject"
-        })
-      }, (error) => {
-        assertInstanceOf(error, RangeError)
-        assertInclude(error.message, "Ambiguous time")
-      })
-    })
   })
 })
