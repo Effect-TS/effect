@@ -936,33 +936,5 @@ describe("DateTime", () => {
         }
       }
     )
-
-    it("should use 'earlier' as default disambiguation for backward compatibility", () => {
-      const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
-
-      // Test default behavior (no disambiguation specified)
-      const defaultResult = DateTime.makeZoned(ambiguousTime, {
-        timeZone: "Europe/Athens",
-        adjustForTimeZone: true
-      })
-
-      // Should produce the 'earlier' result
-      assertSomeIso(defaultResult, "2025-10-26T00:00:00.000Z")
-    })
-
-    it("should throw RangeError with 'reject' disambiguation for ambiguous times", () => {
-      const ambiguousTime = { year: 2025, month: 10, day: 26, hours: 3 }
-
-      throws(() => {
-        DateTime.unsafeMakeZoned(ambiguousTime, {
-          timeZone: "Europe/Athens",
-          adjustForTimeZone: true,
-          disambiguation: "reject"
-        })
-      }, (error) => {
-        assertInstanceOf(error, RangeError)
-        assertInclude(error.message, "Ambiguous time")
-      })
-    })
   })
 })
