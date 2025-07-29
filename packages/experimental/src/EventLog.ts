@@ -422,15 +422,18 @@ export class Identity extends Context.Tag("@effect/experimental/EventLog/Identit
   /**
    * @since 1.0.0
    */
-  static readonly SchemaFromJson = Schema.parseJson(this.Schema)
+  static readonly SchemaFromString = Schema.StringFromBase64Url.pipe(
+    Schema.compose(Schema.parseJson(this.Schema))
+  )
+
   /**
    * @since 1.0.0
    */
-  static fromJsonString = (s: string): Identity["Type"] => Schema.decodeSync(Identity.SchemaFromJson)(s)
+  static decodeString = (s: string): Identity["Type"] => Schema.decodeSync(Identity.SchemaFromString)(s)
   /**
    * @since 1.0.0
    */
-  static toJsonString = (identity: Identity["Type"]): string => Schema.encodeSync(Identity.SchemaFromJson)(identity)
+  static encodeString = (identity: Identity["Type"]): string => Schema.encodeSync(Identity.SchemaFromString)(identity)
 }
 
 /**
