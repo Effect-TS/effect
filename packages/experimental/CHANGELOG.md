@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.54.2
+
+### Patch Changes
+
+- [#5299](https://github.com/Effect-TS/effect/pull/5299) [`0138aa5`](https://github.com/Effect-TS/effect/commit/0138aa5fdf1af8bc206809201cebd75a865fa020) Thanks @tim-smart! - use base64 for EventLog.Identity strings
+
 ## 0.54.1
 
 ### Patch Changes
