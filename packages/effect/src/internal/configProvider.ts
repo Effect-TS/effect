@@ -747,6 +747,9 @@ const configPathToString = (path: ReadonlyArray<KeyComponent>): ReadonlyArray<st
         output.push(component.name)
         i += 1
       }
+    } else {
+      output.push(`[${component.index}]`)
+      i += 1
     }
   }
   return output
