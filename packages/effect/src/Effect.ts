@@ -11771,6 +11771,11 @@ export interface Permit {
  */
 export interface Semaphore {
   /**
+   * Adjusts the number of permits available in the semaphore.
+   */
+  resize(permits: number): Effect<void>
+
+  /**
    * Runs an effect with the given number of permits and releases the permits
    * when the effect completes.
    *
