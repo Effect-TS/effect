@@ -111,7 +111,7 @@ export const get: {
  * @since 3.8.0
  * @category combinators
  */
-export const keys: <K, A, E>(self: RcMap<K, A, E>) => Effect.Effect<Array<K>, E> = internal.keys
+export const keys: <K, A, E>(self: RcMap<K, A, E>) => Effect.Effect<Array<K>> = internal.keys
 
 /**
  * @since 3.13.0
