@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import * as D from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -35,9 +35,25 @@ describe("Effect", () => {
 
   it.effect("releaseAll", () =>
     Effect.gen(function*() {
-      const sem = yield* (Effect.makeSemaphore(4))
-      yield* (sem.take(4))
-      yield* (sem.releaseAll)
-      yield* (sem.take(1))
+      const sem = yield* Effect.makeSemaphore(4)
+      yield* sem.take(4)
+      yield* sem.releaseAll
+      yield* sem.take(1)
+    }))
+
+  it.effect("resize", () =>
+    Effect.gen(function*() {
+      const sem = yield* Effect.makeSemaphore(4)
+      yield* sem.take(4)
+      yield* sem.resize(2)
+      const fiber = yield* Effect.fork(sem.take(1))
+      yield* TestClock.adjust(1)
+      assert.isNull(fiber.unsafePoll())
+      yield* sem.release(2)
+      yield* TestClock.adjust(1)
+      assert.isNull(fiber.unsafePoll())
+      yield* sem.release(1)
+      yield* TestClock.adjust(1)
+      assert.isTrue(fiber.unsafePoll() !== null)
     }))
 })
