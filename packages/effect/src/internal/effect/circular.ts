@@ -86,6 +86,9 @@ class Semaphore {
     core.asVoid(
       core.withFiberRuntime((fiber) => {
         this.permits = permits
+        if (this.free < 0) {
+          return core.void
+        }
         return this.updateTakenUnsafe(fiber, (taken) => taken)
       })
     )
