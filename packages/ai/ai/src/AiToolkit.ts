@@ -85,7 +85,22 @@ export interface Any {
  */
 export interface ToHandler<in out Tool extends AiTool.Any> {
   readonly tools: ReadonlyArray<Tool>
-  readonly handle: (toolName: AiTool.Name<Tool>, toolParams: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
+  readonly handle: (
+    toolId: string,
+    toolName: AiTool.Name<Tool>,
+    toolParams: AiTool.Parameters<Tool>
+  ) => AiTool.HandlerEffect<Tool>
+}
+
+/**
+ * The metadata associated with the current tool call that is being handled.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ToolCallHandlerMeta {
+  readonly id: string
+  readonly name: string
 }
 
 /**
@@ -95,7 +110,10 @@ export interface ToHandler<in out Tool extends AiTool.Any> {
  * @category Utility Types
  */
 export type HandlersFrom<Tools extends AiTool.Any> = {
-  [Tool in Tools as Tool["name"]]: (params: AiTool.Parameters<Tool>) => AiTool.HandlerEffect<Tool>
+  [Tool in Tools as Tool["name"]]: (
+    params: AiTool.Parameters<Tool>,
+    meta: ToolCallHandlerMeta
+  ) => AiTool.HandlerEffect<Tool>
 }
 
 /**
@@ -132,7 +150,7 @@ const Proto = {
       const tools = this.tools
       const schemasCache = new WeakMap<any, {
         readonly context: Context.Context<never>
-        readonly handler: (params: any) => Effect.Effect<any, any>
+        readonly handler: (params: any, meta: ToolCallHandlerMeta) => Effect.Effect<any, any>
         readonly encodeSuccess: (u: unknown) => Effect.Effect<unknown, ParseError>
         readonly decodeFailure: (u: unknown) => Effect.Effect<AiTool.Failure<any>, ParseError>
         readonly decodeParameters: (u: unknown) => Effect.Effect<AiTool.Parameters<any>, ParseError>
@@ -156,7 +174,7 @@ const Proto = {
         return schemas
       }
       const handle = Effect.fn("AiToolkit.handler", { captureStackTrace: false })(
-        function*(toolName: string, toolParams: unknown) {
+        function*(toolId: string, toolName: string, toolParams: unknown) {
           yield* Effect.annotateCurrentSpan({
             tool: toolName,
             parameters: toolParams
@@ -173,7 +191,10 @@ const Proto = {
                 cause
               })
           )
-          const result = yield* schemas.handler(decodedParams).pipe(
+          const result = yield* schemas.handler(decodedParams, {
+            id: toolId,
+            name: toolName
+          }).pipe(
             Effect.mapInputContext((input) => Context.merge(schemas.context, input)),
             Effect.catchAll((error) =>
               schemas.decodeFailure(error).pipe(
