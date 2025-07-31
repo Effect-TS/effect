@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.68.1
+
+### Patch Changes
+
+- [#5309](https://github.com/Effect-TS/effect/pull/5309) [`6e4d658`](https://github.com/Effect-TS/effect/commit/6e4d658bfa57fb04505a77ba3eac74ceaaabfc95) Thanks @tim-smart! - add http headers to rpc headers for http protocols
+
 ## 0.68.0
 
 ### Minor Changes
