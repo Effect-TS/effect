@@ -1,5 +1,14 @@
 # @effect/experimental
 
+## 0.54.3
+
+### Patch Changes
+
+- [#5307](https://github.com/Effect-TS/effect/pull/5307) [`1f028e5`](https://github.com/Effect-TS/effect/commit/1f028e5d286fdfdc12357a3da3955c9446ce7a0c) Thanks @tim-smart! - locally provide EventLog service where possible
+
+- Updated dependencies [[`7d7c55d`](https://github.com/Effect-TS/effect/commit/7d7c55dadeea2f9de16e60abff124085733e1953)]:
+  - effect@3.17.4
+
 ## 0.54.2
 
 ### Patch Changes

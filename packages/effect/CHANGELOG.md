@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.4
+
+### Patch Changes
+
+- [#5306](https://github.com/Effect-TS/effect/pull/5306) [`7d7c55d`](https://github.com/Effect-TS/effect/commit/7d7c55dadeea2f9de16e60abff124085733e1953) Thanks @leonitousconforti! - Align RcMap.keys return type with internal signature
+
 ## 3.17.3
 
 ### Patch Changes
