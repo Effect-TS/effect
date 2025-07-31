@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.54.2",
+  "version": "0.54.3",
   "type": "module",
   "license": "MIT",
   "description": "Experimental modules for the Effect ecosystem",
