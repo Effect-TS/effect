@@ -190,16 +190,10 @@ export const xForwardedHeaders = make((httpApp) =>
   Effect.updateService(httpApp, ServerRequest.HttpServerRequest, (request) => {
     const host = request.headers["x-forwarded-host"]
     const remoteAddress = request.headers["x-forwarded-for"]?.split(",")[0].trim()
-    return host
-      ? request.modify({
-        headers: Headers.set(
-          request.headers,
-          "host",
-          host
-        ),
-        remoteAddress
-      })
-      : request
+    return request.modify({
+      headers: host !== undefined ? Headers.set(request.headers, "host", host) : undefined,
+      remoteAddress
+    })
   })
 )
 
