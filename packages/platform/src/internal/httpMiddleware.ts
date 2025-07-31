@@ -187,17 +187,20 @@ export const tracer = make((httpApp) =>
 
 /** @internal */
 export const xForwardedHeaders = make((httpApp) =>
-  Effect.updateService(httpApp, ServerRequest.HttpServerRequest, (request) =>
-    request.headers["x-forwarded-host"]
+  Effect.updateService(httpApp, ServerRequest.HttpServerRequest, (request) => {
+    const host = request.headers["x-forwarded-host"]
+    const remoteAddress = request.headers["x-forwarded-for"]?.split(",")[0].trim()
+    return host
       ? request.modify({
         headers: Headers.set(
           request.headers,
           "host",
-          request.headers["x-forwarded-host"]
+          host
         ),
-        remoteAddress: request.headers["x-forwarded-for"]?.split(",")[0].trim()
+        remoteAddress
       })
-      : request)
+      : request
+  })
 )
 
 /** @internal */
