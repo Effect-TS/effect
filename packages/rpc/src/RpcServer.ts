@@ -36,20 +36,19 @@ import * as Scope from "effect/Scope"
 import type * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+import type * as Types from "effect/Types"
 import { withRun } from "./internal/utils.js"
 import * as Rpc from "./Rpc.js"
 import type * as RpcGroup from "./RpcGroup.js"
-import {
-  constEof,
-  constPong,
-  type FromClient,
-  type FromClientEncoded,
-  type FromServer,
-  type FromServerEncoded,
-  type Request,
-  RequestId,
-  ResponseDefectEncoded
+import type {
+  FromClient,
+  FromClientEncoded,
+  FromServer,
+  FromServerEncoded,
+  Request,
+  RequestEncoded
 } from "./RpcMessage.js"
+import { constEof, constPong, RequestId, ResponseDefectEncoded } from "./RpcMessage.js"
 import type { RpcMiddleware } from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
@@ -824,7 +823,7 @@ export const makeProtocolWithHttpAppWebsocket: Effect.Effect<
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const socket = yield* Effect.orDie(request.upgrade)
-    yield* onSocket(socket)
+    yield* onSocket(socket, Object.entries(request.headers))
     return HttpServerResponse.empty()
   })
 
@@ -933,6 +932,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
+    const requestHeaders = Object.entries(request.headers)
     const data = yield* Effect.orDie(request.arrayBuffer)
     const id = clientId++
     const mailbox = yield* Mailbox.make<Uint8Array | FromServerEncoded>()
@@ -965,6 +965,9 @@ export const makeProtocolWithHttpApp: Effect.Effect<
       for (const message of decoded) {
         if (message._tag === "Request") {
           requestIds.push(RequestId(message.id))
+          ;(message as Types.Mutable<RequestEncoded>).headers = requestHeaders.concat(
+            message.headers
+          )
         }
         yield* writeRequest(id, message)
       }
@@ -1357,7 +1360,7 @@ const makeSocketProtocol = Effect.gen(function*() {
 
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
 
-  const onSocket = function*(socket: Socket.Socket) {
+  const onSocket = function*(socket: Socket.Socket, headers?: ReadonlyArray<[string, string]>) {
     const scope = yield* Effect.scope
     const parser = serialization.unsafeMake()
     const id = clientId++
@@ -1389,7 +1392,13 @@ const makeSocketProtocol = Effect.gen(function*() {
         let i = 0
         return Effect.whileLoop({
           while: () => i < decoded.length,
-          body: () => writeRequest(id, decoded[i++]),
+          body() {
+            const message = decoded[i++]
+            if (message._tag === "Request" && headers) {
+              ;(message as Types.Mutable<RequestEncoded>).headers = headers.concat(message.headers)
+            }
+            return writeRequest(id, message)
+          },
           step: constVoid
         })
       } catch (cause) {
