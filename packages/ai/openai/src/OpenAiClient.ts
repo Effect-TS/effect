@@ -165,18 +165,18 @@ export const make = (options: {
                 inputTokens: chunk.usage.prompt_tokens,
                 outputTokens: chunk.usage.completion_tokens,
                 totalTokens: chunk.usage.prompt_tokens + chunk.usage.completion_tokens,
-                reasoningTokens: chunk.usage.completion_tokens_details.reasoning_tokens,
-                cacheReadInputTokens: chunk.usage.prompt_tokens_details.cached_tokens,
+                reasoningTokens: chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0,
+                cacheReadInputTokens: chunk.usage.prompt_tokens_details?.cached_tokens ?? 0,
                 cacheWriteInputTokens: usage.cacheWriteInputTokens
               }
               metadata = {
                 ...metadata,
                 serviceTier: chunk.service_tier,
                 systemFingerprint: chunk.system_fingerprint,
-                acceptedPredictionTokens: chunk.usage.completion_tokens_details.accepted_prediction_tokens,
-                rejectedPredictionTokens: chunk.usage.completion_tokens_details.rejected_prediction_tokens,
-                inputAudioTokens: chunk.usage.prompt_tokens_details.audio_tokens,
-                outputAudioTokens: chunk.usage.completion_tokens_details.audio_tokens
+                acceptedPredictionTokens: chunk.usage.completion_tokens_details?.accepted_prediction_tokens ?? 0,
+                rejectedPredictionTokens: chunk.usage.completion_tokens_details?.rejected_prediction_tokens ?? 0,
+                inputAudioTokens: chunk.usage.prompt_tokens_details?.audio_tokens ?? 0,
+                outputAudioTokens: chunk.usage.completion_tokens_details?.audio_tokens ?? 0
               }
             }
 
@@ -302,7 +302,7 @@ interface RawUsage {
   readonly prompt_tokens: number
   readonly completion_tokens: number
   readonly total_tokens: number
-  readonly completion_tokens_details: {
+  readonly completion_tokens_details?: {
     readonly accepted_prediction_tokens: number
     readonly audio_tokens: number
     readonly reasoning_tokens: number
