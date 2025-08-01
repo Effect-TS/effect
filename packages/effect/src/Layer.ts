@@ -580,7 +580,7 @@ export const merge: {
  * @since 2.0.0
  * @category zipping
  */
-export const mergeAll: <Layers extends [Layer<never, any, any>, ...Array<Layer<never, any, any>>]>(
+export const mergeAll: <Layers extends readonly [Layer<never, any, any>, ...Array<Layer<never, any, any>>]>(
   ...layers: Layers
 ) => Layer<
   { [k in keyof Layers]: Layer.Success<Layers[k]> }[number],
@@ -900,7 +900,7 @@ export const provide: {
   <RIn, E, ROut>(
     that: Layer<ROut, E, RIn>
   ): <RIn2, E2, ROut2>(self: Layer<ROut2, E2, RIn2>) => Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
-  <const Layers extends [Layer.Any, ...Array<Layer.Any>]>(
+  <const Layers extends readonly [Layer.Any, ...Array<Layer.Any>]>(
     that: Layers
   ): <A, E, R>(
     self: Layer<A, E, R>
@@ -914,7 +914,7 @@ export const provide: {
     self: Layer<ROut2, E2, RIn2>,
     that: Layer<ROut, E, RIn>
   ): Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
-  <A, E, R, const Layers extends [Layer.Any, ...Array<Layer.Any>]>(
+  <A, E, R, const Layers extends readonly [Layer.Any, ...Array<Layer.Any>]>(
     self: Layer<A, E, R>,
     that: Layers
   ): Layer<

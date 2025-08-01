@@ -779,7 +779,9 @@ export const merge = dual<
 >(2, (self, that) => zipWith(self, that, (a, b) => Context.merge(a, b)))
 
 /** @internal */
-export const mergeAll = <Layers extends [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>]>(
+export const mergeAll = <
+  Layers extends readonly [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>]
+>(
   ...layers: Layers
 ): Layer.Layer<
   { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number],
@@ -1085,7 +1087,7 @@ export const provide = dual<
     ): <RIn2, E2, ROut2>(
       self: Layer.Layer<ROut2, E2, RIn2>
     ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
-    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       that: Layers
     ): <A, E, R>(
       self: Layer.Layer<A, E, R>
@@ -1101,7 +1103,7 @@ export const provide = dual<
       self: Layer.Layer<ROut2, E2, RIn2>,
       that: Layer.Layer<ROut, E, RIn>
     ): Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
-    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <A, E, R, const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       self: Layer.Layer<A, E, R>,
       that: Layers
     ): Layer.Layer<
@@ -1366,7 +1368,7 @@ const provideSomeRuntime = dual<
 /** @internal */
 export const effect_provide = dual<
   {
-    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       layers: Layers
     ): <A, E, R>(
       self: Effect.Effect<A, E, R>
@@ -1390,7 +1392,7 @@ export const effect_provide = dual<
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, R2>>
   },
   {
-    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <A, E, R, const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       self: Effect.Effect<A, E, R>,
       layers: Layers
     ): Effect.Effect<
