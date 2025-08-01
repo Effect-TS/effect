@@ -7541,7 +7541,7 @@ export const mapInputContext: {
  * @category Context
  */
 export const provide: {
-  <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+  <const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     layers: Layers
   ): <A, E, R>(
     self: Effect<A, E, R>
@@ -7559,7 +7559,7 @@ export const provide: {
   <E2, R2>(
     managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
-  <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+  <A, E, R, const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     self: Effect<A, E, R>,
     layers: Layers
   ): Effect<
