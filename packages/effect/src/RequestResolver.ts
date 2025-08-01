@@ -77,6 +77,19 @@ export declare namespace RequestResolver {
       readonly _R: Types.Covariant<R>
     }
   }
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type Environment<Res extends RequestResolver<any, any>> = Res extends RequestResolver<infer _A, infer R> ? R
+    : never
+
+  /**
+   * @since 2.0.0
+   * @category models
+   */
+  export type Type<Res extends RequestResolver<any, any>> = Res extends RequestResolver<infer A, infer _R> ? A : never
 }
 
 /**
@@ -346,6 +359,19 @@ export const race: {
     that: RequestResolver<A2, R2>
   ): RequestResolver<A | A2, R | R2>
 } = internal.race
+
+/**
+ * Returns the first result when racing multiple data sources.
+ *
+ * @since 2.0.0
+ * @category combinators
+ */
+export const raceAll: <Res extends RequestResolver<any, any>>(
+  all: Iterable<Res>
+) => RequestResolver<
+  RequestResolver.Type<Res>,
+  RequestResolver.Environment<Res>
+> = internal.raceAll
 
 /**
  * Returns a new data source with a localized FiberRef
