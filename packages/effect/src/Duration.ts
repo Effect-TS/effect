@@ -828,7 +828,15 @@ export const format = (self: DurationInput): string => {
   const fragments = parts(duration)
   const pieces = []
   if (fragments.days !== 0) {
-    pieces.push(`${fragments.days}d`)
+    const one_year_days = 365
+    if (fragments.days > one_year_days) {
+      const years = Math.floor(fragments.days / one_year_days) // approximate number
+      const days = fragments.days - years * one_year_days
+      pieces.push(`≈${years}y`)
+      pieces.push(`${days}d`)
+    } else {
+      pieces.push(`${fragments.days}d`)
+    }
   }
 
   if (fragments.hours !== 0) {
