@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.5
+
+### Patch Changes
+
+- [#5315](https://github.com/Effect-TS/effect/pull/5315) [`5f98388`](https://github.com/Effect-TS/effect/commit/5f983881754fce7dc0e2d752145f3b865af27958) Thanks @patroza! - improve provide/merge apis to support readonly array inputs.
+
 ## 3.17.4
 
 ### Patch Changes
