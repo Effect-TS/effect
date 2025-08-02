@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 Introduce ReadonlyTag as the covariant side of a tag, enables:
