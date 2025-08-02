@@ -331,6 +331,8 @@ describe("Duration", () => {
     strictEqual(Duration.format(Duration.days(2.25)), `2d 6h`)
     strictEqual(Duration.format(Duration.weeks(1)), `7d`)
     strictEqual(Duration.format(Duration.zero), `0`)
+    strictEqual(Duration.format(Duration.days(366)), `≈1y 1d`)
+    strictEqual(Duration.format(Duration.days(900.4)), `≈2y 170d 9h 36m`)
   })
 
   it("format", () => {
