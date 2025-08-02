@@ -414,7 +414,7 @@ const applyMiddleware = <A, E, R>(
   clientId: number,
   payload: A,
   headers: Headers.Headers,
-  handler: Effect.Effect<A, E, R>
+  handler: Effect.Effect<A, E, R | Scope.Scope>
 ) => {
   if (rpc.middlewares.size === 0) {
     return handler
