@@ -54,13 +54,9 @@ export interface RpcMiddlewareWrap<Provides, E> {
  * @since 1.0.0
  * @category models
  */
-export const SuccessValue: unique symbol = Symbol.for("@effect/rpc/RpcMiddleware/SuccessValue")
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type SuccessValue = typeof SuccessValue
+export interface SuccessValue {
+  readonly _: unique symbol
+}
 
 /**
  * @since 1.0.0
