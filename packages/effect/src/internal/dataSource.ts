@@ -325,3 +325,22 @@ export const race = dual<
       that.runAll(requests as Array<Array<Request.Entry<A2>>>)
     )
   ).identified("Race", self, that))
+
+/** @internal */
+export const raceAll = <Res extends RequestResolver.RequestResolver<any, any>>(
+  all: Iterable<Res>
+): RequestResolver.RequestResolver<
+  RequestResolver.RequestResolver.Type<Res>,
+  RequestResolver.RequestResolver.Environment<Res>
+> => {
+  const resolvers = Chunk.fromIterable(all)
+  if (!Chunk.isNonEmpty(resolvers)) {
+    throw new Error("Received an empty collection of resolvers")
+  }
+
+  return new core.RequestResolverImpl((requests) =>
+    Effect.raceAll(
+      Chunk.map(resolvers, (resolver) => resolver.runAll(requests as Array<Array<Request.Entry<any>>>))
+    )
+  ).identified("RaceAll", ...resolvers)
+}
