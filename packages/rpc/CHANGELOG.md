@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.68.2
+
+### Patch Changes
+
+- [#5319](https://github.com/Effect-TS/effect/pull/5319) [`792e4cf`](https://github.com/Effect-TS/effect/commit/792e4cf049262da69651ba407ad2cf63cc68948c) Thanks @tim-smart! - fix Effect.gen compatibility with RpcMiddleware wrap option
+
+- Updated dependencies [[`5f98388`](https://github.com/Effect-TS/effect/commit/5f983881754fce7dc0e2d752145f3b865af27958)]:
+  - effect@3.17.5
+
 ## 0.68.1
 
 ### Patch Changes
