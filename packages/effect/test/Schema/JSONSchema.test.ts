@@ -2134,7 +2134,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           "": { "type": "number" }
         },
         "propertyNames": {
-          "pattern": "^[\\s\\S]*-[\\s\\S]*$",
+          "pattern": "^[\\s\\S]*?-[\\s\\S]*?$",
           "type": "string"
         }
       }
