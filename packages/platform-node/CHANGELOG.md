@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.94.1
+
+### Patch Changes
+
+- [#5325](https://github.com/Effect-TS/effect/pull/5325) [`aed804e`](https://github.com/Effect-TS/effect/commit/aed804e396b96c00b032c3486d5e78189d4284e0) Thanks @tim-smart! - use Dispatcher.destroy() in undici finalizers
+
+- Updated dependencies [[`f187941`](https://github.com/Effect-TS/effect/commit/f187941946c675713b3539fc4d5480123037563a)]:
+  - effect@3.17.6
+
 ## 0.94.0
 
 ### Patch Changes

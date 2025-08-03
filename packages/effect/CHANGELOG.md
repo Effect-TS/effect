@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.6
+
+### Patch Changes
+
+- [#5322](https://github.com/Effect-TS/effect/pull/5322) [`f187941`](https://github.com/Effect-TS/effect/commit/f187941946c675713b3539fc4d5480123037563a) Thanks @beezee! - Use non-greedy matching for Schema.String in Schema.TemplateLiteralParser
+
 ## 3.17.5
 
 ### Patch Changes
