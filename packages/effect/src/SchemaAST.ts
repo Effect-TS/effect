@@ -2098,7 +2098,7 @@ export const annotations = (ast: AST, overrides: Annotations): AST => {
  */
 export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 
-const STRING_KEYWORD_PATTERN = "[\\s\\S]*" // any string, including newlines
+const STRING_KEYWORD_PATTERN = "[\\s\\S]*?" // any string, including newlines
 const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
 
 const getTemplateLiteralSpanTypePattern = (type: TemplateLiteralSpanType, capture: boolean): string => {
