@@ -210,6 +210,30 @@ export declare namespace TagClass {
    * @since 1.0.0
    * @category models
    */
+  export type ExtractProvides<M> = M extends {
+    readonly provides: Context.Tag<infer _I, infer _S>
+  } ? _I :
+    M extends {
+      readonly provides: NonEmptyReadonlyArray<Context.Tag<any, any>>
+    } ? Context.Tag.Identifier<M["provides"][number]> :
+    never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ExtractRequires<M extends TagClassAny> = M extends {
+    readonly requires: Context.Tag<infer _I, infer _S>
+  } ? _I :
+    M extends {
+      readonly requires: NonEmptyReadonlyArray<Context.Tag<any, any>>
+    } ? Context.Tag.Identifier<M["requires"][number]> :
+    never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface Base<Self, Name extends string, Options, Service> extends Context.Tag<Self, Service> {
     new(_: never): Context.TagClassShape<Name, Service>
     readonly [TypeId]: TypeId
