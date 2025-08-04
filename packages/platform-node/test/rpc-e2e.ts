@@ -118,5 +118,12 @@ export const e2eSuite = <E>(
         assert.notEqual(defect, 0)
         assert.notEqual(success, 0)
       }).pipe(Effect.provide(layer)))
+
+    it.effect("supports Context provide", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const context = yield* client.GetContext()
+        assert.deepStrictEqual(context, { Something: "something", SomethingElse: "something-else" })
+      }).pipe(Effect.provide(layer)))
   })
 }
