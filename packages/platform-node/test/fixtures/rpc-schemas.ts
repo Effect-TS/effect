@@ -41,9 +41,10 @@ class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMidd
 
 export class Something extends Context.Tag("Something")<Something, "something">() {}
 export class SomethingElse extends Context.Tag("SomethingElse")<SomethingElse, "something-else">() {}
+export class SomethingElseElse extends Context.Tag("SomethingElseElse")<SomethingElseElse, "something-else-else">() {}
 
 class SomethingMiddleware extends RpcMiddleware.Tag<SomethingMiddleware>()("SomethingMiddleware", {
-  requires: CurrentUser,
+  requires: SomethingElseElse,
   provides: [Something, SomethingElse]
 }) {}
 
@@ -51,6 +52,12 @@ class SomethingWrapMiddleware extends RpcMiddleware.Tag<SomethingWrapMiddleware>
   provides: [Something, SomethingElse],
   wrap: true
 }) {}
+
+class SomethingElseElseMiddleware
+  extends RpcMiddleware.Tag<SomethingElseElseMiddleware>()("SomethingElseElseMiddleware", {
+    provides: SomethingElseElse
+  })
+{}
 
 class GetUser extends Rpc.make("GetUser", {
   success: User,
@@ -94,6 +101,7 @@ export const UserRpcs = RpcGroup.make(
   })
 )
   .middleware(AuthMiddleware)
+  .middleware(SomethingElseElseMiddleware)
 
 const AuthLive = Layer.succeed(
   AuthMiddleware,
@@ -121,13 +129,18 @@ const TimingLive = Layer.succeed(
 const SomethingLive = Layer.succeed(
   SomethingMiddleware,
   SomethingMiddleware.of(() =>
-    CurrentUser.pipe(Effect.map(() =>
+    SomethingElseElse.pipe(Effect.map(() =>
       Context.empty().pipe(
         Context.add(Something, "something"),
         Context.add(SomethingElse, "something-else")
       )
     ))
   )
+).pipe(
+  Layer.merge(Layer.succeed(
+    SomethingElseElseMiddleware,
+    SomethingElseElseMiddleware.of(() => Effect.succeed("something-else-else"))
+  ))
 )
 
 Layer.succeed(
