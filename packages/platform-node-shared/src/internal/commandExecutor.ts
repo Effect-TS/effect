@@ -68,7 +68,8 @@ const runCommand =
                   ],
                   cwd: Option.getOrElse(command.cwd, constUndefined),
                   shell: command.shell,
-                  env: { ...process.env, ...Object.fromEntries(command.env) }
+                  env: { ...process.env, ...Object.fromEntries(command.env) },
+                  detached: process.platform !== "win32"
                 })
                 handle.on("error", (err) => {
                   resume(Effect.fail(toPlatformError("spawn", err, command)))
@@ -97,10 +98,32 @@ const runCommand =
               ([handle, exitCode]) =>
                 Effect.flatMap(Deferred.isDone(exitCode), (done) =>
                   done ? Effect.void : Effect.suspend(() => {
-                    if (handle.kill("SIGTERM")) {
-                      return Deferred.await(exitCode)
-                    }
-                    return Effect.void
+                    const killEffect = process.platform === "win32"
+                      ? Effect.async<void, Error.PlatformError>((resume) => {
+                        ChildProcess.exec(`taskkill /pid ${handle.pid} /T /F`, (error) => {
+                          if (error) {
+                            resume(Effect.fail(toPlatformError("kill", toError(error), command)))
+                          } else {
+                            resume(Effect.void)
+                          }
+                        })
+                      })
+                      : Effect.try({
+                        try: () => process.kill(-handle.pid!, "SIGTERM"),
+                        catch: (error) => toPlatformError("kill", toError(error), command)
+                      })
+
+                    const killFallback = Effect.suspend(() =>
+                      handle.kill("SIGTERM") ? Effect.void : Effect.fail(
+                        toPlatformError("kill", new globalThis.Error("Failed to kill process"), command)
+                      )
+                    )
+
+                    return killEffect.pipe(
+                      Effect.orElse(() => killFallback),
+                      Effect.zipRight(Deferred.await(exitCode)),
+                      Effect.ignore
+                    )
                   }))
             )
           ),
@@ -136,11 +159,33 @@ const runCommand =
             const isRunning = Effect.negate(Deferred.isDone(exitCodeDeferred))
 
             const kill: CommandExecutor.Process["kill"] = (signal = "SIGTERM") =>
-              Effect.suspend(() =>
-                handle.kill(signal)
-                  ? Effect.asVoid(Deferred.await(exitCodeDeferred))
-                  : Effect.fail(toPlatformError("kill", new globalThis.Error("Failed to kill process"), command))
-              )
+              Effect.suspend(() => {
+                const killEffect = process.platform === "win32"
+                  ? Effect.async<void, Error.PlatformError>((resume) => {
+                    ChildProcess.exec(`taskkill /pid ${handle.pid} /T /F`, (error) => {
+                      if (error) {
+                        resume(Effect.fail(toPlatformError("kill", toError(error), command)))
+                      } else {
+                        resume(Effect.void)
+                      }
+                    })
+                  })
+                  : Effect.try({
+                    try: () => process.kill(-handle.pid!, signal),
+                    catch: (error) => toPlatformError("kill", toError(error), command)
+                  })
+
+                const killFallback = Effect.suspend(() =>
+                  handle.kill("SIGTERM") ? Effect.void : Effect.fail(
+                    toPlatformError("kill", new globalThis.Error("Failed to kill process"), command)
+                  )
+                )
+
+                return killEffect.pipe(
+                  Effect.orElse(() => killFallback),
+                  Effect.zipRight(Effect.asVoid(Deferred.await(exitCodeDeferred)))
+                )
+              })
 
             const pid = CommandExecutor.ProcessId(handle.pid!)
             const stderr = fromReadable<Error.PlatformError, Uint8Array>(
