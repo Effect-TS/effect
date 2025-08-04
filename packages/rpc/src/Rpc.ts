@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type { Headers } from "@effect/platform/Headers"
-import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Context_ from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Exit as Exit_ } from "effect/Exit"
@@ -49,7 +48,8 @@ export interface Rpc<
   out Payload extends AnySchema = typeof Schema.Void,
   out Success extends Schema.Schema.Any = typeof Schema.Void,
   out Error extends Schema.Schema.All = typeof Schema.Never,
-  out Middleware extends RpcMiddleware.TagClassAny = never
+  out Middleware extends RpcMiddleware.TagClassAny = never,
+  out Requirements = never
 > extends Pipeable {
   new(_: never): {}
 
@@ -70,7 +70,8 @@ export interface Rpc<
     Payload,
     S,
     Error,
-    Middleware
+    Middleware,
+    Requirements
   >
 
   /**
@@ -81,7 +82,8 @@ export interface Rpc<
     Payload,
     Success,
     E,
-    Middleware
+    Middleware,
+    Requirements
   >
 
   /**
@@ -94,7 +96,8 @@ export interface Rpc<
     P extends Schema.Struct<infer _> ? P : P extends Schema.Struct.Fields ? Schema.Struct<P> : never,
     Success,
     Error,
-    Middleware
+    Middleware,
+    Requirements
   >
 
   /**
@@ -105,7 +108,8 @@ export interface Rpc<
     Payload,
     Success,
     Error,
-    Middleware | M
+    Middleware | M,
+    Exclude<Requirements, RpcMiddleware.TagClass.ExtractProvides<M>> | RpcMiddleware.TagClass.ExtractRequires<M>
   >
 
   /**
@@ -116,7 +120,8 @@ export interface Rpc<
     Payload,
     Success,
     Error,
-    Middleware
+    Middleware,
+    Requirements
   >
 
   /**
@@ -125,14 +130,14 @@ export interface Rpc<
   annotate<I, S>(
     tag: Context_.Tag<I, S>,
     value: S
-  ): Rpc<Tag, Payload, Success, Error, Middleware>
+  ): Rpc<Tag, Payload, Success, Error, Middleware, Requirements>
 
   /**
    * Merge the annotations of the rpc with the provided context.
    */
   annotateContext<I>(
     context: Context_.Context<I>
-  ): Rpc<Tag, Payload, Success, Error, Middleware>
+  ): Rpc<Tag, Payload, Success, Error, Middleware, Requirements>
 }
 
 /**
@@ -182,7 +187,8 @@ export type Tag<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? _Tag
   : never
 
@@ -195,7 +201,8 @@ export type Success<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? _Success["Type"]
   : never
 
@@ -208,7 +215,8 @@ export type SuccessEncoded<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? _Success["Encoded"]
   : never
 
@@ -248,7 +256,8 @@ export type ErrorSchema<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? _Error | _Middleware
   : never
 
@@ -298,7 +307,8 @@ export type PayloadConstructor<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ?
   _Payload extends { readonly fields: Schema.Struct.Fields } ?
     Schema.Simplify<Schema.Struct.Constructor<_Payload["fields"]>>
@@ -314,7 +324,8 @@ export type Payload<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? _Payload["Type"]
   : never
 
@@ -327,7 +338,8 @@ export type Context<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? _Payload["Context"] | _Success["Context"] | _Error["Context"]
   : never
 
@@ -340,7 +352,8 @@ export type Middleware<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? Context_.Tag.Identifier<_Middleware>
   : never
 
@@ -353,7 +366,8 @@ export type MiddlewareClient<R> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ?
   _Middleware extends { readonly requiredForClient: true }
     ? RpcMiddleware.ForClient<Context_.Tag.Identifier<_Middleware>>
@@ -369,13 +383,15 @@ export type AddError<R extends Any, Error extends Schema.Schema.All> = R extends
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? Rpc<
     _Tag,
     _Payload,
     _Success,
     _Error | Error,
-    _Middleware
+    _Middleware,
+    _Requirements
   > :
   never
 
@@ -388,13 +404,16 @@ export type AddMiddleware<R extends Any, Middleware extends RpcMiddleware.TagCla
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? Rpc<
     _Tag,
     _Payload,
     _Success,
     _Error,
-    _Middleware | Middleware
+    _Middleware | Middleware,
+    | Exclude<_Requirements, RpcMiddleware.TagClass.ExtractProvides<Middleware>>
+    | RpcMiddleware.TagClass.ExtractRequires<Middleware>
   > :
   never
 
@@ -407,7 +426,8 @@ export type ToHandler<R extends Any> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? Handler<_Tag> :
   never
 
@@ -425,27 +445,33 @@ export type ToHandlerFn<Current extends Any, R = any> = (
  * @category models
  */
 export type IsStream<R extends Any, Tag extends string> = R extends
-  Rpc<Tag, infer _Payload, RpcSchema.Stream<infer _A, infer _E>, infer _Error, infer _Middleware> ? true : never
+  Rpc<Tag, infer _Payload, RpcSchema.Stream<infer _A, infer _E>, infer _Error, infer _Middleware, infer _Requirements> ?
+  true :
+  never
 
 /**
  * @since 1.0.0
  * @category models
  */
 export type ExtractTag<R extends Any, Tag extends string> = R extends
-  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? R : never
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware, infer _Requirements> ? R : never
 
 /**
  * @since 1.0.0
  * @category models
  */
 export type ExtractProvides<R extends Any, Tag extends string> = R extends
-  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? _Middleware extends {
-    readonly provides: Context_.Tag<infer _I, infer _S>
-  } ? _I :
-  _Middleware extends {
-    readonly provides: NonEmptyReadonlyArray<Context_.Tag<any, any>>
-  } ? Context_.Tag.Identifier<_Middleware["provides"][number]> :
-  never :
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware, infer _Requirements> ?
+  RpcMiddleware.TagClass.ExtractProvides<_Middleware> :
+  never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type ExtractRequires<R extends Any, Tag extends string> = R extends
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware, infer _Requirements> ?
+  RpcMiddleware.TagClass.ExtractRequires<_Middleware> :
   never
 
 /**
@@ -472,7 +498,8 @@ export type ResultFrom<R extends Any, Context> = R extends Rpc<
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? [_Success] extends [RpcSchema.Stream<infer _SA, infer _SE>] ?
       | Stream<
         _SA["Type"],
@@ -500,13 +527,15 @@ export type Prefixed<Rpcs extends Any, Prefix extends string> = Rpcs extends Rpc
   infer _Payload,
   infer _Success,
   infer _Error,
-  infer _Middleware
+  infer _Middleware,
+  infer _Requirements
 > ? Rpc<
     `${Prefix}${_Tag}`,
     _Payload,
     _Success,
     _Error,
-    _Middleware
+    _Middleware,
+    _Requirements
   >
   : never
 
@@ -595,7 +624,8 @@ const makeProto = <
   Payload extends Schema.Schema.Any,
   Success extends Schema.Schema.Any,
   Error extends Schema.Schema.All,
-  Middleware extends RpcMiddleware.TagClassAny
+  Middleware extends RpcMiddleware.TagClassAny,
+  Requirements
 >(options: {
   readonly _tag: Tag
   readonly payloadSchema: Payload
@@ -603,7 +633,7 @@ const makeProto = <
   readonly errorSchema: Error
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
-}): Rpc<Tag, Payload, Success, Error, Middleware> => {
+}): Rpc<Tag, Payload, Success, Error, Middleware, Requirements> => {
   function Rpc() {}
   Object.setPrototypeOf(Rpc, Proto)
   Object.assign(Rpc, options)

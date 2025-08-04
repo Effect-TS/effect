@@ -28,27 +28,27 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface RpcMiddleware<Provides, E> {
+export interface RpcMiddleware<Provides, E, Requires> {
   (options: {
     readonly clientId: number
     readonly rpc: Rpc.AnyWithProps
     readonly payload: unknown
     readonly headers: Headers
-  }): Effect.Effect<Provides, E>
+  }): Effect.Effect<Provides, E, Requires>
 }
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface RpcMiddlewareWrap<Provides, E> {
+export interface RpcMiddlewareWrap<Provides, E, Requires> {
   (options: {
     readonly clientId: number
     readonly rpc: Rpc.AnyWithProps
     readonly payload: unknown
     readonly headers: Headers
     readonly next: Effect.Effect<SuccessValue, E, Provides>
-  }): Effect.Effect<SuccessValue, E>
+  }): Effect.Effect<SuccessValue, E, Requires>
 }
 
 /**
@@ -107,11 +107,13 @@ export interface TagClass<
     Options,
     TagClass.Wrap<Options> extends true ? RpcMiddlewareWrap<
         TagClass.Provides<Options>,
-        TagClass.Failure<Options>
+        TagClass.Failure<Options>,
+        TagClass.Requires<Options>
       > :
       RpcMiddleware<
         TagClass.Service<Options>,
-        TagClass.FailureService<Options>
+        TagClass.FailureService<Options>,
+        TagClass.Requires<Options>
       >
   >
 {}
@@ -133,6 +135,19 @@ export declare namespace TagClass {
       readonly provides: NonEmptyReadonlyArray<Context.Tag<any, any>>
       readonly optional?: false
     } ? Context.Tag.Identifier<Options["provides"][number]>
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Requires<Options> = Options extends {
+    readonly requires: Context.Tag<any, any>
+  } ? Context.Tag.Identifier<Options["requires"]>
+    : Options extends {
+      readonly requires: NonEmptyReadonlyArray<Context.Tag<any, any>>
+      readonly optional?: false
+    } ? Context.Tag.Identifier<Options["requires"][number]>
     : never
 
   /**
@@ -195,6 +210,30 @@ export declare namespace TagClass {
    * @since 1.0.0
    * @category models
    */
+  export type ExtractProvides<M> = M extends {
+    readonly provides: Context.Tag<infer _I, infer _S>
+  } ? _I :
+    M extends {
+      readonly provides: NonEmptyReadonlyArray<Context.Tag<any, any>>
+    } ? Context.Tag.Identifier<M["provides"][number]> :
+    never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ExtractRequires<M extends TagClassAny> = M extends {
+    readonly requires: Context.Tag<infer _I, infer _S>
+  } ? _I :
+    M extends {
+      readonly requires: NonEmptyReadonlyArray<Context.Tag<any, any>>
+    } ? Context.Tag.Identifier<M["requires"][number]> :
+    never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export interface Base<Self, Name extends string, Options, Service> extends Context.Tag<Self, Service> {
     new(_: never): Context.TagClassShape<Name, Service>
     readonly [TypeId]: TypeId
@@ -202,6 +241,9 @@ export declare namespace TagClass {
     readonly failure: FailureSchema<Options>
     readonly provides: Options extends
       { readonly provides: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> } ? Options["provides"]
+      : undefined
+    readonly requires: Options extends
+      { readonly requires: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> } ? Options["requires"]
       : undefined
     readonly requiredForClient: RequiredForClient<Options>
     readonly wrap: Wrap<Options>
@@ -216,6 +258,7 @@ export interface TagClassAny extends Context.Tag<any, any> {
   readonly [TypeId]: TypeId
   readonly optional: boolean
   readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> | undefined
+  readonly requires?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> | undefined
   readonly failure: Schema.Schema.All
   readonly requiredForClient: boolean
   readonly wrap: boolean
@@ -225,10 +268,13 @@ export interface TagClassAny extends Context.Tag<any, any> {
  * @since 1.0.0
  * @category models
  */
-export interface TagClassAnyWithProps extends Context.Tag<any, RpcMiddleware<any, any> | RpcMiddlewareWrap<any, any>> {
+export interface TagClassAnyWithProps
+  extends Context.Tag<any, RpcMiddleware<any, any, any> | RpcMiddlewareWrap<any, any, any>>
+{
   readonly [TypeId]: TypeId
   readonly optional: boolean
   readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> | undefined
+  readonly requires?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> | undefined
   readonly failure: Schema.Schema.All
   readonly requiredForClient: boolean
   readonly wrap: boolean
@@ -245,6 +291,7 @@ export const Tag = <Self>(): <
     readonly optional?: boolean
     readonly failure?: Schema.Schema.All
     readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>>
+    readonly requires?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>>
     readonly requiredForClient?: boolean
   }
 >(
@@ -257,6 +304,7 @@ export const Tag = <Self>(): <
     readonly optional?: boolean
     readonly failure?: Schema.Schema.All
     readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>>
+    readonly requires?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>>
     readonly requiredForClient?: boolean
     readonly wrap?: boolean
   }
@@ -280,6 +328,9 @@ export const Tag = <Self>(): <
   TagClass_.failure = options?.optional === true || options?.failure === undefined ? Schema.Never : options.failure
   if (options?.provides) {
     TagClass_.provides = options.provides
+  }
+  if (options?.requires) {
+    TagClass_.requires = options.requires
   }
   TagClass_.optional = options?.optional ?? false
   TagClass_.requiredForClient = options?.requiredForClient ?? false
