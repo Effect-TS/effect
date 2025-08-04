@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Headers } from "@effect/platform/Headers"
+import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -128,6 +129,10 @@ export declare namespace TagClass {
     readonly provides: Context.Tag<any, any>
     readonly optional?: false
   } ? Context.Tag.Identifier<Options["provides"]>
+    : Options extends {
+      readonly provides: NonEmptyReadonlyArray<Context.Tag<any, any>>
+      readonly optional?: false
+    } ? Context.Tag.Identifier<Options["provides"][number]>
     : never
 
   /**
@@ -136,6 +141,8 @@ export declare namespace TagClass {
    */
   export type Service<Options> = Options extends { readonly provides: Context.Tag<any, any> }
     ? Context.Tag.Service<Options["provides"]>
+    : Options extends { readonly provides: NonEmptyReadonlyArray<Context.Tag<any, any>> } ?
+      Context.Context<Context.Tag.Identifier<Options["provides"][number]>>
     : void
 
   /**
@@ -193,7 +200,8 @@ export declare namespace TagClass {
     readonly [TypeId]: TypeId
     readonly optional: Optional<Options>
     readonly failure: FailureSchema<Options>
-    readonly provides: Options extends { readonly provides: Context.Tag<any, any> } ? Options["provides"]
+    readonly provides: Options extends
+      { readonly provides: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> } ? Options["provides"]
       : undefined
     readonly requiredForClient: RequiredForClient<Options>
     readonly wrap: Wrap<Options>
@@ -207,7 +215,7 @@ export declare namespace TagClass {
 export interface TagClassAny extends Context.Tag<any, any> {
   readonly [TypeId]: TypeId
   readonly optional: boolean
-  readonly provides?: Context.Tag<any, any> | undefined
+  readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> | undefined
   readonly failure: Schema.Schema.All
   readonly requiredForClient: boolean
   readonly wrap: boolean
@@ -220,7 +228,7 @@ export interface TagClassAny extends Context.Tag<any, any> {
 export interface TagClassAnyWithProps extends Context.Tag<any, RpcMiddleware<any, any> | RpcMiddlewareWrap<any, any>> {
   readonly [TypeId]: TypeId
   readonly optional: boolean
-  readonly provides?: Context.Tag<any, any>
+  readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>> | undefined
   readonly failure: Schema.Schema.All
   readonly requiredForClient: boolean
   readonly wrap: boolean
@@ -236,7 +244,7 @@ export const Tag = <Self>(): <
     readonly wrap?: boolean
     readonly optional?: boolean
     readonly failure?: Schema.Schema.All
-    readonly provides?: Context.Tag<any, any>
+    readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>>
     readonly requiredForClient?: boolean
   }
 >(
@@ -248,7 +256,7 @@ export const Tag = <Self>(): <
   options?: {
     readonly optional?: boolean
     readonly failure?: Schema.Schema.All
-    readonly provides?: Context.Tag<any, any>
+    readonly provides?: Context.Tag<any, any> | NonEmptyReadonlyArray<Context.Tag<any, any>>
     readonly requiredForClient?: boolean
     readonly wrap?: boolean
   }
