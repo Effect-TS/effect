@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type { Headers } from "@effect/platform/Headers"
-import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Context_ from "effect/Context"
 import type { Effect } from "effect/Effect"
 import type { Exit as Exit_ } from "effect/Exit"
@@ -445,13 +444,8 @@ export type ExtractTag<R extends Any, Tag extends string> = R extends
  * @category models
  */
 export type ExtractProvides<R extends Any, Tag extends string> = R extends
-  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? _Middleware extends {
-    readonly provides: Context_.Tag<infer _I, infer _S>
-  } ? _I :
-  _Middleware extends {
-    readonly provides: NonEmptyReadonlyArray<Context_.Tag<any, any>>
-  } ? Context_.Tag.Identifier<_Middleware["provides"][number]> :
-  never :
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ?
+  RpcMiddleware.TagClass.ExtractProvides<_Middleware> :
   never
 
 /**
@@ -459,13 +453,8 @@ export type ExtractProvides<R extends Any, Tag extends string> = R extends
  * @category models
  */
 export type ExtractRequires<R extends Any, Tag extends string> = R extends
-  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? _Middleware extends {
-    readonly requires: Context_.Tag<infer _I, infer _S>
-  } ? _I :
-  _Middleware extends {
-    readonly requires: Context_.Context<infer _I>
-  } ? _I :
-  never :
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ?
+  RpcMiddleware.TagClass.ExtractRequires<_Middleware> :
   never
 
 /**
