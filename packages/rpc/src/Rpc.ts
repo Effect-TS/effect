@@ -458,6 +458,20 @@ export type ExtractProvides<R extends Any, Tag extends string> = R extends
  * @since 1.0.0
  * @category models
  */
+export type ExtractRequires<R extends Any, Tag extends string> = R extends
+  Rpc<Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? _Middleware extends {
+    readonly requires: Context_.Tag<infer _I, infer _S>
+  } ? _I :
+  _Middleware extends {
+    readonly requires: Context_.Context<infer _I>
+  } ? _I :
+  never :
+  never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export type ExcludeProvides<Env, R extends Any, Tag extends string> = Exclude<
   Env,
   ExtractProvides<R, Tag>

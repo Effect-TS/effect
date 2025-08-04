@@ -435,7 +435,7 @@ const applyMiddleware = <A, E, R>(
       const middleware = Context.unsafeGet(context, tag)
       handler = middleware({ ...options, next: handler as any })
     } else if (tag.optional) {
-      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
+      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any, any>
       const previous = handler
       handler = Effect.matchEffect(middleware(options), {
         onFailure: () => previous,
@@ -447,7 +447,7 @@ const applyMiddleware = <A, E, R>(
           : (_) => previous
       })
     } else {
-      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
+      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any, any>
       const previous = handler
       handler = tag.provides !== undefined
         ? Array.isArray(tag.provides)
