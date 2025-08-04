@@ -43,6 +43,7 @@ export class Something extends Context.Tag("Something")<Something, "something">(
 export class SomethingElse extends Context.Tag("SomethingElse")<SomethingElse, "something-else">() {}
 
 class SomethingMiddleware extends RpcMiddleware.Tag<SomethingMiddleware>()("SomethingMiddleware", {
+  requires: CurrentUser,
   provides: [Something, SomethingElse]
 }) {}
 
@@ -120,12 +121,12 @@ const TimingLive = Layer.succeed(
 const SomethingLive = Layer.succeed(
   SomethingMiddleware,
   SomethingMiddleware.of(() =>
-    Effect.succeed(
+    CurrentUser.pipe(Effect.map(() =>
       Context.empty().pipe(
         Context.add(Something, "something"),
         Context.add(SomethingElse, "something-else")
       )
-    )
+    ))
   )
 )
 
