@@ -246,7 +246,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
 
     let responded = false
     let effect = Effect.uninterruptible(Effect.matchCauseEffect(
-      Effect.interruptible(applyMiddleware(
+      Effect.interruptible(Effect.scoped(applyMiddleware(
         rpc,
         context,
         client.id,
@@ -255,7 +255,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         isStream
           ? streamEffect(client, request, streamOrEffect)
           : streamOrEffect as Effect.Effect<any>
-      )),
+      ))),
       {
         onSuccess: (value) => {
           responded = true
