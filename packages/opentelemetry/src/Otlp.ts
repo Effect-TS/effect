@@ -31,11 +31,12 @@ export const layer = (options: {
   readonly metricsExportInterval?: Duration.DurationInput | undefined
   readonly tracerExportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient> =>
-  Layer.mergeAll(
+}): Layer.Layer<never, never, HttpClient.HttpClient> => {
+  const baseUrl = options.baseUrl.endsWith('/') ? options.baseUrl : options.baseUrl + '/';
+  return Layer.mergeAll(
     OtlpLogger.layer({
       replaceLogger: options.replaceLogger,
-      url: new URL("/v1/logs", options.baseUrl).toString(),
+      url: new URL("v1/logs", options.baseUrl).toString(),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.loggerExportInterval,
@@ -44,14 +45,14 @@ export const layer = (options: {
       excludeLogSpans: options.loggerExcludeLogSpans
     }),
     OtlpMetrics.layer({
-      url: new URL("/v1/metrics", options.baseUrl).toString(),
+      url: new URL("v1/metrics", options.baseUrl).toString(),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.metricsExportInterval,
       shutdownTimeout: options.shutdownTimeout
     }),
     OtlpTracer.layer({
-      url: new URL("/v1/traces", options.baseUrl).toString(),
+      url: new URL("v1/traces", options.baseUrl).toString(),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.tracerExportInterval,
@@ -60,3 +61,4 @@ export const layer = (options: {
       shutdownTimeout: options.shutdownTimeout
     })
   )
+}
