@@ -273,7 +273,7 @@ const RpcGroupProto = {
   },
   prefix<const Prefix extends string>(this: RpcGroup<any>, prefix: Prefix) {
     const requests = new Map<string, any>()
-    for (const [rpc] of this.requests.values()) {
+    for (const rpc of this.requests.values()) {
       const newRpc = rpc.prefix(prefix)
       requests.set(newRpc._tag, newRpc)
     }
