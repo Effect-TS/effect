@@ -68,6 +68,10 @@ export const make: (
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 
+  const exportFn = (span: SpanImpl) => {
+    exporter.push(makeOtlpSpan(span))
+  }
+
   return Tracer.make({
     span(name, parent, context, links, startTime, kind) {
       return makeSpan({
@@ -82,9 +86,7 @@ export const make: (
         links,
         sampled: true,
         kind,
-        export(span) {
-          exporter.push(makeOtlpSpan(span))
-        }
+        export: exportFn
       })
     },
     context: options.context ?
