@@ -1301,7 +1301,6 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
       Effect.sandbox,
       Effect.tapError(Effect.logError),
       Effect.retry(Schedule.spaced(500)),
-      Effect.tap(Effect.log("Stdio protocol stdin stream completed")),
       Effect.ensuring(Fiber.interruptFork(fiber)),
       Effect.forkScoped,
       Effect.interruptible
