@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.28.1
+
+### Patch Changes
+
+- [#5314](https://github.com/Effect-TS/effect/pull/5314) [`a656185`](https://github.com/Effect-TS/effect/commit/a656185b967fc51632f42b5081ab78e4e41752bd) Thanks @dmaretskyi! - Allow `completion_tokens_details` field to be missing in the generation response for compatibility with Ollama and LMStudio
+
 ## 0.28.0
 
 ### Patch Changes

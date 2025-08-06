@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.56.1
+
+### Patch Changes
+
+- [#5334](https://github.com/Effect-TS/effect/pull/5334) [`6df2620`](https://github.com/Effect-TS/effect/commit/6df262086342cb215877863e85b0562e2780a2d5) Thanks @johtso! - improve baseUrl handling in Otlp constructor
+
 ## 0.56.0
 
 ### Patch Changes
