@@ -1,5 +1,13 @@
 # @effect/rpc
 
+## 0.68.3
+
+### Patch Changes
+
+- [#5338](https://github.com/Effect-TS/effect/pull/5338) [`1628026`](https://github.com/Effect-TS/effect/commit/1628026081ca9a4ec77182037f7cc46e7369de98) Thanks @tim-smart! - remove info log from RpcServer stdio protocol
+
+- [#5335](https://github.com/Effect-TS/effect/pull/5335) [`767e49e`](https://github.com/Effect-TS/effect/commit/767e49e38458d982517ce6d6b6f3f9147af5411a) Thanks @patroza! - fix: RpcGroup.prefix runtime error because of trying to array destructure the rpc object
+
 ## 0.68.2
 
 ### Patch Changes
