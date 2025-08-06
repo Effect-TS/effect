@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# This script spawns child processes to test process group cleanup
+# This script spawns child processes and then exits early
 echo "Parent process started with PID $$"
 
-# Spawn multiple child processes
+# Spawn multiple child processes that will outlive the parent
 for i in {1..3}; do
   (
     # Child process
@@ -14,19 +14,18 @@ for i in {1..3}; do
     (
       grandchild_pid=$BASHPID
       echo "Grandchild of child $i started with PID $grandchild_pid"
-      # Keep running for 60 seconds
-      for j in {1..60}; do
-        sleep 1
-      done
+      # Keep running for 30 seconds
+      sleep 30
     ) &
 
     # Keep the child running
-    for j in {1..60}; do
-      sleep 1
-    done
+    sleep 30
   ) &
 done
 
-# Keep the parent running
-echo "Parent process waiting..."
-wait
+# Give children time to start
+sleep 0.5
+
+# Exit early (simulating a crash or early termination)
+echo "Parent exiting early with status 1..."
+exit 1

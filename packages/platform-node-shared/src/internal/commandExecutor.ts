@@ -86,6 +86,31 @@ const runCommand =
               }
             )
         )
+
+        const killProcessGroup = process.platform === "win32" ?
+          (handle: ChildProcess.ChildProcess, _: NodeJS.Signals) =>
+            Effect.async<void, Error.PlatformError>((resume) => {
+              ChildProcess.exec(`taskkill /pid ${handle.pid} /T /F`, (error) => {
+                if (error) {
+                  resume(Effect.fail(toPlatformError("kill", toError(error), command)))
+                } else {
+                  resume(Effect.void)
+                }
+              })
+            })
+          : (handle: ChildProcess.ChildProcess, signal: NodeJS.Signals) =>
+            Effect.try({
+              try: () => process.kill(-handle.pid!, signal),
+              catch: (error) => toPlatformError("kill", toError(error), command)
+            })
+
+        const killProcess = (handle: ChildProcess.ChildProcess, signal: NodeJS.Signals) =>
+          Effect.suspend(() =>
+            handle.kill(signal) ? Effect.void : Effect.fail(
+              toPlatformError("kill", new globalThis.Error("Failed to kill process"), command)
+            )
+          )
+
         return pipe(
           // Validate that the directory is accessible
           Option.match(command.cwd, {
@@ -96,35 +121,26 @@ const runCommand =
             Effect.acquireRelease(
               spawn,
               ([handle, exitCode]) =>
-                Effect.flatMap(Deferred.isDone(exitCode), (done) =>
-                  done ? Effect.void : Effect.suspend(() => {
-                    const killEffect = process.platform === "win32"
-                      ? Effect.async<void, Error.PlatformError>((resume) => {
-                        ChildProcess.exec(`taskkill /pid ${handle.pid} /T /F`, (error) => {
-                          if (error) {
-                            resume(Effect.fail(toPlatformError("kill", toError(error), command)))
-                          } else {
-                            resume(Effect.void)
-                          }
-                        })
-                      })
-                      : Effect.try({
-                        try: () => process.kill(-handle.pid!, "SIGTERM"),
-                        catch: (error) => toPlatformError("kill", toError(error), command)
-                      })
-
-                    const killFallback = Effect.suspend(() =>
-                      handle.kill("SIGTERM") ? Effect.void : Effect.fail(
-                        toPlatformError("kill", new globalThis.Error("Failed to kill process"), command)
-                      )
-                    )
-
-                    return killEffect.pipe(
-                      Effect.orElse(() => killFallback),
+                Effect.flatMap(Deferred.isDone(exitCode), (done) => {
+                  if (!done) {
+                    // Process is still running, kill it
+                    return killProcessGroup(handle, "SIGTERM").pipe(
+                      Effect.orElse(() => killProcess(handle, "SIGTERM")),
                       Effect.zipRight(Deferred.await(exitCode)),
                       Effect.ignore
                     )
-                  }))
+                  }
+
+                  // Process has already exited, check if we need to clean up children
+                  return Effect.flatMap(Deferred.await(exitCode), ([code]) => {
+                    if (code !== 0 && code !== null) {
+                      // Non-zero exit code, attempt to clean up process group
+                      return killProcessGroup(handle, "SIGTERM").pipe(Effect.ignore)
+                    }
+
+                    return Effect.void
+                  })
+                })
             )
           ),
           Effect.map(([handle, exitCodeDeferred]): CommandExecutor.Process => {
@@ -159,33 +175,10 @@ const runCommand =
             const isRunning = Effect.negate(Deferred.isDone(exitCodeDeferred))
 
             const kill: CommandExecutor.Process["kill"] = (signal = "SIGTERM") =>
-              Effect.suspend(() => {
-                const killEffect = process.platform === "win32"
-                  ? Effect.async<void, Error.PlatformError>((resume) => {
-                    ChildProcess.exec(`taskkill /pid ${handle.pid} /T /F`, (error) => {
-                      if (error) {
-                        resume(Effect.fail(toPlatformError("kill", toError(error), command)))
-                      } else {
-                        resume(Effect.void)
-                      }
-                    })
-                  })
-                  : Effect.try({
-                    try: () => process.kill(-handle.pid!, signal),
-                    catch: (error) => toPlatformError("kill", toError(error), command)
-                  })
-
-                const killFallback = Effect.suspend(() =>
-                  handle.kill("SIGTERM") ? Effect.void : Effect.fail(
-                    toPlatformError("kill", new globalThis.Error("Failed to kill process"), command)
-                  )
-                )
-
-                return killEffect.pipe(
-                  Effect.orElse(() => killFallback),
-                  Effect.zipRight(Effect.asVoid(Deferred.await(exitCodeDeferred)))
-                )
-              })
+              killProcessGroup(handle, signal).pipe(
+                Effect.orElse(() => killProcess(handle, signal)),
+                Effect.zipRight(Effect.asVoid(Deferred.await(exitCodeDeferred)))
+              )
 
             const pid = CommandExecutor.ProcessId(handle.pid!)
             const stderr = fromReadable<Error.PlatformError, Uint8Array>(
