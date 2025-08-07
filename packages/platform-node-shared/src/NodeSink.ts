@@ -45,3 +45,33 @@ export const stdout: Sink.Sink<void, string | Uint8Array, never, PlatformError> 
       cause
     })
 )
+
+/**
+ * @category constructor
+ * @since 1.0.0
+ */
+export const stderr: Sink.Sink<void, string | Uint8Array, never, PlatformError> = fromWritable(
+  () => process.stderr,
+  (cause) =>
+    new SystemError({
+      module: "Stream",
+      method: "stderr",
+      reason: "Unknown",
+      cause
+    })
+)
+
+/**
+ * @category constructor
+ * @since 1.0.0
+ */
+export const stdin: Sink.Sink<void, string | Uint8Array, never, PlatformError> = fromWritable(
+  () => process.stdin,
+  (cause) =>
+    new SystemError({
+      module: "Stream",
+      method: "stdin",
+      reason: "Unknown",
+      cause
+    })
+)
