@@ -1,5 +1,13 @@
 # @effect/platform-node-shared
 
+## 0.47.1
+
+### Patch Changes
+
+- [#5327](https://github.com/Effect-TS/effect/pull/5327) [`695bc1a`](https://github.com/Effect-TS/effect/commit/695bc1ab8612cb5b326ecb57c80bd6e36dfd63ee) Thanks @fubhy! - Improved child process cleanup
+
+- [#5339](https://github.com/Effect-TS/effect/pull/5339) [`f1ad6c5`](https://github.com/Effect-TS/effect/commit/f1ad6c5ffc349d45ce64b285f2d0cf4ea77f9897) Thanks @fubhy! - Added `stderr` and `stdout` as `NodeStream` and `stderr` and `stdin` as `NodeSink`
+
 ## 0.47.0
 
 ### Patch Changes

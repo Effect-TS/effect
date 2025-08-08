@@ -1,5 +1,13 @@
 # @effect/experimental
 
+## 0.54.4
+
+### Patch Changes
+
+- [#5342](https://github.com/Effect-TS/effect/pull/5342) [`a9554ea`](https://github.com/Effect-TS/effect/commit/a9554ea53a4524b773426571338d14f1c1046d18) Thanks @tim-smart! - add Reactivity accessor apis
+
+- [#5344](https://github.com/Effect-TS/effect/pull/5344) [`1765ca8`](https://github.com/Effect-TS/effect/commit/1765ca8dddde47a7602083c46898b07a80c3cd28) Thanks @tim-smart! - add Reactivity.unsafeRegister
+
 ## 0.54.3
 
 ### Patch Changes
