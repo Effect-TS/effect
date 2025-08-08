@@ -366,6 +366,91 @@ describe("Command", () => {
       }).pipe(Effect.scoped)
     ))
 
+  it("should kill all child processes in process group", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const path = yield* Path.Path
+        const command = pipe(
+          Command.make("./spawn-children.sh"),
+          Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
+        )
+
+        // Start the process that spawns children and grandchildren
+        const proc = yield* Command.start(command)
+
+        // Give it time to spawn all processes
+        yield* Effect.sleep(500)
+
+        // Verify the main process is running
+        const isRunningBeforeKill = yield* proc.isRunning
+        expect(isRunningBeforeKill).toBe(true)
+
+        // Count processes before killing - should be at least 7 (1 parent + 3 children + 3 grandchildren)
+        const beforeKill = yield* pipe(
+          Command.string(Command.make("bash", "-c", "ps aux | grep spawn-children.sh | grep -v grep | wc -l")),
+          Effect.map((s) => parseInt(s.trim())),
+          Effect.orElse(() => Effect.succeed(0))
+        )
+        expect(beforeKill).toBeGreaterThanOrEqual(7)
+
+        // Kill the main process
+        yield* proc.kill()
+
+        // Verify the main process is no longer running
+        const isRunningAfterKill = yield* proc.isRunning
+        expect(isRunningAfterKill).toBe(false)
+
+        // Give a moment for cleanup to complete
+        yield* Effect.sleep(500)
+
+        // Check that no processes from the script are still running
+        const afterKill = yield* pipe(
+          Command.string(Command.make("bash", "-c", "ps aux | grep spawn-children.sh | grep -v grep | wc -l")),
+          Effect.map((s) => parseInt(s.trim())),
+          Effect.orElse(() => Effect.succeed(0))
+        )
+        expect(afterKill).toBe(0)
+      }).pipe(Effect.scoped)
+    ))
+
+  it("should cleanup child processes when parent exits with non-zero code", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const path = yield* Path.Path
+        const command = pipe(
+          Command.make("./parent-exits-early.sh"),
+          Command.workingDirectory(path.join(...TEST_BASH_SCRIPTS_PATH))
+        )
+
+        // Count processes before running the command
+        const beforeRun = yield* pipe(
+          Command.string(Command.make("bash", "-c", "ps aux | grep parent-exits-early.sh | grep -v grep | wc -l")),
+          Effect.map((s) => parseInt(s.trim())),
+          Effect.orElse(() => Effect.succeed(0))
+        )
+        expect(beforeRun).toBe(0)
+
+        // Run the command that will spawn children and then exit with error
+        const exitCode = yield* Command.exitCode(command)
+
+        // Verify it exited with code 1
+        expect(exitCode).toBe(1)
+
+        // Give a moment for cleanup to complete
+        yield* Effect.sleep(500)
+
+        // Check that no child processes are still running
+        const afterExit = yield* pipe(
+          Command.string(Command.make("bash", "-c", "ps aux | grep 'sleep 30' | grep -v grep | wc -l")),
+          Effect.map((s) => parseInt(s.trim())),
+          Effect.orElse(() => Effect.succeed(0))
+        )
+
+        // Child processes should be cleaned up after non-zero exit
+        expect(afterExit).toBe(0)
+      }).pipe(Effect.scoped)
+    ))
+
   it("should allow running commands in a shell", () =>
     runPromise(
       Effect.gen(function*(_) {
