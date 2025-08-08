@@ -429,9 +429,9 @@ export const make: (
       for (const tool of actualToolkit.tools) {
         modelOptions.tools.push(convertTool(tool))
       }
-      const stream = opts.streamText(modelOptions);
+      const stream = opts.streamText(modelOptions)
       if (options.disableToolCallResolution) {
-        return [stream, modelOptions];
+        return [stream, modelOptions]
       }
       return [
         stream.pipe(
