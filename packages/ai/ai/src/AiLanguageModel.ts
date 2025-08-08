@@ -429,8 +429,12 @@ export const make: (
       for (const tool of actualToolkit.tools) {
         modelOptions.tools.push(convertTool(tool))
       }
+      const stream = opts.streamText(modelOptions);
+      if (options.disableToolCallResolution) {
+        return [stream, modelOptions];
+      }
       return [
-        opts.streamText(modelOptions).pipe(
+        stream.pipe(
           Stream.mapEffect(
             (response) => resolveParts({ response, toolkit: actualToolkit, concurrency, method: "streamText" }),
             { concurrency: "unbounded" }
