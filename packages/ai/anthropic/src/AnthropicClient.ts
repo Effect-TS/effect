@@ -248,7 +248,7 @@ export const make = (options: {
                   const tool = toolCalls[chunk.index]
                   try {
                     // If the tool call has no parameters, the model sends an empty string.
-                    const inputJson = tool.params === '' ? '{}' : tool.params;
+                    const inputJson = tool.params === "" ? "{}" : tool.params
                     const params = JSON.parse(inputJson)
                     parts.push(
                       new AiResponse.ToolCallPart({
