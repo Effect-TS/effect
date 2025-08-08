@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.46.3
+
+### Patch Changes
+
+- [#5345](https://github.com/Effect-TS/effect/pull/5345) [`58d56d5`](https://github.com/Effect-TS/effect/commit/58d56d549fa49d6d06cfedb975a046872ac44f85) Thanks @tim-smart! - increase size of entity_type on cluster_messages table
+
+- [#5345](https://github.com/Effect-TS/effect/pull/5345) [`58d56d5`](https://github.com/Effect-TS/effect/commit/58d56d549fa49d6d06cfedb975a046872ac44f85) Thanks @tim-smart! - log defects in Entity & Workflow proxy for HttpApi endpoints
+
+- Updated dependencies [[`58d56d5`](https://github.com/Effect-TS/effect/commit/58d56d549fa49d6d06cfedb975a046872ac44f85)]:
+  - @effect/workflow@0.8.2
+
 ## 0.46.2
 
 ### Patch Changes
