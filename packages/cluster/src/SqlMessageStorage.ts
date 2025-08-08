@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Migrator from "@effect/sql/Migrator"
 import * as SqlClient from "@effect/sql/SqlClient"
 import type { Row } from "@effect/sql/SqlConnection"
 import type { SqlError } from "@effect/sql/SqlError"
@@ -32,6 +33,13 @@ export const make = Effect.fnUntraced(function*(options?: {
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
+  yield* Effect.orDie(
+    Migrator.make({})({
+      loader: migrations(options),
+      table: table("migrations")
+    })
+  )
+
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
   const replyKindWithExit = sql.literal(String(replyKind.WithExit))
 
@@ -40,271 +48,6 @@ export const make = Effect.fnUntraced(function*(options?: {
 
   const repliesTable = table("replies")
   const repliesTableSql = sql(repliesTable)
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF OBJECT_ID(N'${messagesTableSql}', N'U') IS NULL
-        CREATE TABLE ${messagesTableSql} (
-          id BIGINT PRIMARY KEY,
-          rowid BIGINT IDENTITY(1,1),
-          message_id VARCHAR(255),
-          shard_id VARCHAR(50) NOT NULL,
-          entity_type VARCHAR(50) NOT NULL,
-          entity_id VARCHAR(255) NOT NULL,
-          kind INT NOT NULL,
-          tag VARCHAR(50),
-          payload TEXT,
-          headers TEXT,
-          trace_id VARCHAR(32),
-          span_id VARCHAR(16),
-          sampled BIT,
-          processed BIT NOT NULL DEFAULT 0,
-          request_id BIGINT NOT NULL,
-          reply_id BIGINT,
-          last_reply_id BIGINT,
-          last_read DATETIME,
-          deliver_at BIGINT,
-          UNIQUE (message_id),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `,
-    mysql: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
-          id BIGINT NOT NULL,
-          rowid BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-          message_id VARCHAR(255),
-          shard_id VARCHAR(50) NOT NULL,
-          entity_type VARCHAR(50) NOT NULL,
-          entity_id VARCHAR(255) NOT NULL,
-          kind INT NOT NULL,
-          tag VARCHAR(50),
-          payload TEXT,
-          headers TEXT,
-          trace_id VARCHAR(32),
-          span_id VARCHAR(16),
-          sampled BOOLEAN,
-          processed BOOLEAN NOT NULL DEFAULT FALSE,
-          request_id BIGINT NOT NULL,
-          reply_id BIGINT,
-          last_reply_id BIGINT,
-          last_read DATETIME,
-          deliver_at BIGINT,
-          UNIQUE (id),
-          UNIQUE (message_id),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `,
-    pg: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
-          id BIGINT PRIMARY KEY,
-          rowid BIGSERIAL,
-          message_id VARCHAR(255),
-          shard_id VARCHAR(50) NOT NULL,
-          entity_type VARCHAR(50) NOT NULL,
-          entity_id VARCHAR(255) NOT NULL,
-          kind INT NOT NULL,
-          tag VARCHAR(50),
-          payload TEXT,
-          headers TEXT,
-          trace_id VARCHAR(32),
-          span_id VARCHAR(16),
-          sampled BOOLEAN,
-          processed BOOLEAN NOT NULL DEFAULT FALSE,
-          request_id BIGINT NOT NULL,
-          reply_id BIGINT,
-          last_reply_id BIGINT,
-          last_read TIMESTAMP,
-          deliver_at BIGINT,
-          UNIQUE (message_id),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `.pipe(Effect.ignore),
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
-          id INTEGER PRIMARY KEY,
-          message_id TEXT,
-          shard_id TEXT NOT NULL,
-          entity_type TEXT NOT NULL,
-          entity_id TEXT NOT NULL,
-          kind INTEGER NOT NULL,
-          tag TEXT,
-          payload TEXT,
-          headers TEXT,
-          trace_id TEXT,
-          span_id TEXT,
-          sampled BOOLEAN,
-          processed BOOLEAN NOT NULL DEFAULT FALSE,
-          request_id INTEGER NOT NULL,
-          reply_id INTEGER,
-          last_reply_id INTEGER,
-          last_read TEXT,
-          deliver_at INTEGER,
-          UNIQUE (message_id),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `
-  })
-
-  // Add message indexes optimized for the specific query patterns
-  const shardLookupIndex = `${messagesTable}_shard_idx`
-  const requestIdLookupIndex = `${messagesTable}_request_id_idx`
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex})
-        CREATE INDEX ${sql(shardLookupIndex)} 
-        ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
-
-        IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex})
-        CREATE INDEX ${sql(requestIdLookupIndex)}
-        ON ${messagesTableSql} (request_id);
-      `,
-    mysql: () =>
-      sql`
-        CREATE INDEX ${sql(shardLookupIndex)}
-        ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
-
-        CREATE INDEX ${sql(requestIdLookupIndex)}
-        ON ${messagesTableSql} (request_id);
-      `.unprepared.pipe(Effect.ignore),
-    pg: () =>
-      sql`
-        CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
-        ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
-
-        CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
-        ON ${messagesTableSql} (request_id);
-      `.pipe(
-        Effect.tapDefect((error) =>
-          Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
-            package: "@effect/cluster",
-            module: "SqlMessageStorage"
-          })
-        ),
-        Effect.retry({
-          schedule: Schedule.spaced(1000)
-        })
-      ),
-    orElse: () =>
-      // sqlite
-      Effect.all([
-        sql`
-          CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
-          ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
-        `,
-        sql`
-          CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
-          ON ${messagesTableSql} (request_id)
-        `
-      ]).pipe(sql.withTransaction)
-  })
-
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF OBJECT_ID(N'${repliesTableSql}', N'U') IS NULL
-        CREATE TABLE ${repliesTableSql} (
-          id BIGINT PRIMARY KEY,
-          rowid BIGINT IDENTITY(1,1),
-          kind INT,
-          request_id BIGINT NOT NULL,
-          payload TEXT NOT NULL,
-          sequence INT,
-          acked BIT NOT NULL DEFAULT 0,
-          CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-          CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `,
-    mysql: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
-          id BIGINT NOT NULL,
-          rowid BIGINT AUTO_INCREMENT PRIMARY KEY,
-          kind INT,
-          request_id BIGINT NOT NULL,
-          payload TEXT NOT NULL,
-          sequence INT,
-          acked BOOLEAN NOT NULL DEFAULT FALSE,
-          UNIQUE (id),
-          UNIQUE (request_id, kind),
-          UNIQUE (request_id, sequence),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `,
-    pg: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
-          id BIGINT PRIMARY KEY,
-          rowid BIGSERIAL,
-          kind INT,
-          request_id BIGINT NOT NULL,
-          payload TEXT NOT NULL,
-          sequence INT,
-          acked BOOLEAN NOT NULL DEFAULT FALSE,
-          UNIQUE (request_id, kind),
-          UNIQUE (request_id, sequence),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `,
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
-          id INTEGER PRIMARY KEY,
-          kind INTEGER,
-          request_id INTEGER NOT NULL,
-          payload TEXT NOT NULL,
-          sequence INTEGER,
-          acked BOOLEAN NOT NULL DEFAULT FALSE,
-          UNIQUE (request_id, kind),
-          UNIQUE (request_id, sequence),
-          FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
-        )
-      `
-  })
-
-  // Add reply indexes optimized for request_id lookups
-  const replyLookupIndex = `${repliesTable}_request_lookup_idx`
-  yield* sql.onDialectOrElse({
-    mssql: () =>
-      sql`
-        IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex})
-        CREATE INDEX ${sql(replyLookupIndex)}
-        ON ${repliesTableSql} (request_id, kind, acked);
-      `,
-    mysql: () =>
-      sql`
-        CREATE INDEX ${sql(replyLookupIndex)}
-        ON ${repliesTableSql} (request_id, kind, acked);
-      `.unprepared.pipe(Effect.ignore),
-    pg: () =>
-      sql`
-        CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
-        ON ${repliesTableSql} (request_id, kind, acked);
-`.pipe(
-        Effect.tapDefect((error) =>
-          Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
-            package: "@effect/cluster",
-            module: "SqlMessageStorage"
-          })
-        ),
-        Effect.retry({
-          schedule: Schedule.spaced(1000)
-        })
-      ),
-    orElse: () =>
-      // sqlite
-      sql`
-        CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
-        ON ${repliesTableSql} (request_id, kind, acked);
-      `
-  })
 
   const envelopeToRow = (
     envelope: Envelope.Envelope.Encoded,
@@ -835,7 +578,7 @@ export const make = Effect.fnUntraced(function*(options?: {
  */
 export const layer: Layer.Layer<
   MessageStorage.MessageStorage,
-  SqlError,
+  never,
   SqlClient.SqlClient | ShardingConfig
 > = Layer.scoped(MessageStorage.MessageStorage, make()).pipe(
   Layer.provide(Snowflake.layerGenerator)
@@ -848,7 +591,7 @@ export const layer: Layer.Layer<
 export const layerWith = (options: {
   readonly prefix?: string | undefined
   readonly replyPollInterval?: DurationInput | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, SqlError, SqlClient.SqlClient | ShardingConfig> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig> =>
   Layer.scoped(MessageStorage.MessageStorage, make(options)).pipe(
     Layer.provide(Snowflake.layerGenerator)
   )
@@ -856,6 +599,311 @@ export const layerWith = (options: {
 // -------------------------------------------------------------------------------------------------
 // internal
 // -------------------------------------------------------------------------------------------------
+
+const migrations = (options?: {
+  readonly prefix?: string | undefined
+}) => {
+  const prefix = options?.prefix ?? "cluster"
+  const table = (name: string) => `${prefix}_${name}`
+  const messagesTable = table("messages")
+  const repliesTable = table("replies")
+
+  return Migrator.fromRecord({
+    "0001_create_tables": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const repliesTableSql = sql(repliesTable)
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF OBJECT_ID(N'${messagesTableSql}', N'U') IS NULL
+            CREATE TABLE ${messagesTableSql} (
+              id BIGINT PRIMARY KEY,
+              rowid BIGINT IDENTITY(1,1),
+              message_id VARCHAR(255),
+              shard_id VARCHAR(50) NOT NULL,
+              entity_type VARCHAR(150) NOT NULL,
+              entity_id VARCHAR(255) NOT NULL,
+              kind INT NOT NULL,
+              tag VARCHAR(50),
+              payload TEXT,
+              headers TEXT,
+              trace_id VARCHAR(32),
+              span_id VARCHAR(16),
+              sampled BIT,
+              processed BIT NOT NULL DEFAULT 0,
+              request_id BIGINT NOT NULL,
+              reply_id BIGINT,
+              last_reply_id BIGINT,
+              last_read DATETIME,
+              deliver_at BIGINT,
+              UNIQUE (message_id),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
+              id BIGINT NOT NULL,
+              rowid BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+              message_id VARCHAR(255),
+              shard_id VARCHAR(50) NOT NULL,
+              entity_type VARCHAR(150) NOT NULL,
+              entity_id VARCHAR(255) NOT NULL,
+              kind INT NOT NULL,
+              tag VARCHAR(50),
+              payload TEXT,
+              headers TEXT,
+              trace_id VARCHAR(32),
+              span_id VARCHAR(16),
+              sampled BOOLEAN,
+              processed BOOLEAN NOT NULL DEFAULT FALSE,
+              request_id BIGINT NOT NULL,
+              reply_id BIGINT,
+              last_reply_id BIGINT,
+              last_read DATETIME,
+              deliver_at BIGINT,
+              UNIQUE (id),
+              UNIQUE (message_id),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `,
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
+              id BIGINT PRIMARY KEY,
+              rowid BIGSERIAL,
+              message_id VARCHAR(255),
+              shard_id VARCHAR(50) NOT NULL,
+              entity_type VARCHAR(150) NOT NULL,
+              entity_id VARCHAR(255) NOT NULL,
+              kind INT NOT NULL,
+              tag VARCHAR(50),
+              payload TEXT,
+              headers TEXT,
+              trace_id VARCHAR(32),
+              span_id VARCHAR(16),
+              sampled BOOLEAN,
+              processed BOOLEAN NOT NULL DEFAULT FALSE,
+              request_id BIGINT NOT NULL,
+              reply_id BIGINT,
+              last_reply_id BIGINT,
+              last_read TIMESTAMP,
+              deliver_at BIGINT,
+              UNIQUE (message_id),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `.pipe(Effect.ignore),
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE TABLE IF NOT EXISTS ${messagesTableSql} (
+              id INTEGER PRIMARY KEY,
+              message_id TEXT,
+              shard_id TEXT NOT NULL,
+              entity_type TEXT NOT NULL,
+              entity_id TEXT NOT NULL,
+              kind INTEGER NOT NULL,
+              tag TEXT,
+              payload TEXT,
+              headers TEXT,
+              trace_id TEXT,
+              span_id TEXT,
+              sampled BOOLEAN,
+              processed BOOLEAN NOT NULL DEFAULT FALSE,
+              request_id INTEGER NOT NULL,
+              reply_id INTEGER,
+              last_reply_id INTEGER,
+              last_read TEXT,
+              deliver_at INTEGER,
+              UNIQUE (message_id),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `
+      })
+
+      // Add message indexes optimized for the specific query patterns
+      const shardLookupIndex = `${messagesTable}_shard_idx`
+      const requestIdLookupIndex = `${messagesTable}_request_id_idx`
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${shardLookupIndex})
+            CREATE INDEX ${sql(shardLookupIndex)} 
+            ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${requestIdLookupIndex})
+            CREATE INDEX ${sql(requestIdLookupIndex)}
+            ON ${messagesTableSql} (request_id);
+          `,
+        mysql: () =>
+          sql`
+            CREATE INDEX ${sql(shardLookupIndex)}
+            ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
+
+            CREATE INDEX ${sql(requestIdLookupIndex)}
+            ON ${messagesTableSql} (request_id);
+          `.unprepared.pipe(Effect.ignore),
+        pg: () =>
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
+            ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at);
+
+            CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
+            ON ${messagesTableSql} (request_id);
+          `.pipe(
+            Effect.tapDefect((error) =>
+              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
+                package: "@effect/cluster",
+                module: "SqlMessageStorage"
+              })
+            ),
+            Effect.retry({
+              schedule: Schedule.spaced(1000)
+            })
+          ),
+        orElse: () =>
+          // sqlite
+          Effect.all([
+            sql`
+              CREATE INDEX IF NOT EXISTS ${sql(shardLookupIndex)}
+              ON ${messagesTableSql} (shard_id, processed, last_read, deliver_at)
+            `,
+            sql`
+              CREATE INDEX IF NOT EXISTS ${sql(requestIdLookupIndex)}
+              ON ${messagesTableSql} (request_id)
+            `
+          ]).pipe(sql.withTransaction)
+      })
+
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF OBJECT_ID(N'${repliesTableSql}', N'U') IS NULL
+            CREATE TABLE ${repliesTableSql} (
+              id BIGINT PRIMARY KEY,
+              rowid BIGINT IDENTITY(1,1),
+              kind INT,
+              request_id BIGINT NOT NULL,
+              payload TEXT NOT NULL,
+              sequence INT,
+              acked BIT NOT NULL DEFAULT 0,
+              CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
+              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `,
+        mysql: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
+              id BIGINT NOT NULL,
+              rowid BIGINT AUTO_INCREMENT PRIMARY KEY,
+              kind INT,
+              request_id BIGINT NOT NULL,
+              payload TEXT NOT NULL,
+              sequence INT,
+              acked BOOLEAN NOT NULL DEFAULT FALSE,
+              UNIQUE (id),
+              UNIQUE (request_id, kind),
+              UNIQUE (request_id, sequence),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `,
+        pg: () =>
+          sql`
+            CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
+              id BIGINT PRIMARY KEY,
+              rowid BIGSERIAL,
+              kind INT,
+              request_id BIGINT NOT NULL,
+              payload TEXT NOT NULL,
+              sequence INT,
+              acked BOOLEAN NOT NULL DEFAULT FALSE,
+              UNIQUE (request_id, kind),
+              UNIQUE (request_id, sequence),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `,
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE TABLE IF NOT EXISTS ${repliesTableSql} (
+              id INTEGER PRIMARY KEY,
+              kind INTEGER,
+              request_id INTEGER NOT NULL,
+              payload TEXT NOT NULL,
+              sequence INTEGER,
+              acked BOOLEAN NOT NULL DEFAULT FALSE,
+              UNIQUE (request_id, kind),
+              UNIQUE (request_id, sequence),
+              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+            )
+          `
+      })
+
+      // Add reply indexes optimized for request_id lookups
+      const replyLookupIndex = `${repliesTable}_request_lookup_idx`
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${replyLookupIndex})
+            CREATE INDEX ${sql(replyLookupIndex)}
+            ON ${repliesTableSql} (request_id, kind, acked);
+          `,
+        mysql: () =>
+          sql`
+            CREATE INDEX ${sql(replyLookupIndex)}
+            ON ${repliesTableSql} (request_id, kind, acked);
+          `.unprepared.pipe(Effect.ignore),
+        pg: () =>
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
+            ON ${repliesTableSql} (request_id, kind, acked);
+          `.pipe(
+            Effect.tapDefect((error) =>
+              Effect.annotateLogs(Effect.logDebug("Failed to create indexes", error), {
+                package: "@effect/cluster",
+                module: "SqlMessageStorage"
+              })
+            ),
+            Effect.retry({
+              schedule: Schedule.spaced(1000)
+            })
+          ),
+        orElse: () =>
+          // sqlite
+          sql`
+            CREATE INDEX IF NOT EXISTS ${sql(replyLookupIndex)}
+            ON ${repliesTableSql} (request_id, kind, acked);
+          `
+      })
+    }),
+    "0002_entity_type_size": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+
+      // resize entity_type to 150 characters
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type VARCHAR(150) NOT NULL;
+          `,
+        mysql: () =>
+          sql`
+            ALTER TABLE ${messagesTableSql} MODIFY entity_type VARCHAR(150) NOT NULL;
+          `.unprepared.pipe(Effect.ignore),
+        pg: () =>
+          sql`
+            ALTER TABLE ${messagesTableSql} ALTER COLUMN entity_type TYPE VARCHAR(150);
+          `,
+        orElse: () =>
+          // sqlite
+          Effect.void
+      })
+    })
+  })
+}
 
 const messageKind = {
   "Request": 0,
