@@ -1,5 +1,15 @@
 # @effect/platform-node-shared
 
+## 0.47.2
+
+### Patch Changes
+
+- [#5347](https://github.com/Effect-TS/effect/pull/5347) [`20f0d69`](https://github.com/Effect-TS/effect/commit/20f0d6978e0e98464f23b6582c37c6ce12319f29) Thanks @tim-smart! - update Cluster layer conditional storage types
+
+- Updated dependencies [[`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14)]:
+  - @effect/cluster@0.46.4
+  - @effect/sql@0.44.1
+
 ## 0.47.1
 
 ### Patch Changes

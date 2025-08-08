@@ -1,5 +1,15 @@
 # @effect/cluster
 
+## 0.46.4
+
+### Patch Changes
+
+- [#5350](https://github.com/Effect-TS/effect/pull/5350) [`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14) Thanks @tim-smart! - add Migrator.fromRecord api
+
+- Updated dependencies [[`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14)]:
+  - @effect/sql@0.44.1
+  - @effect/workflow@0.8.3
+
 ## 0.46.3
 
 ### Patch Changes
