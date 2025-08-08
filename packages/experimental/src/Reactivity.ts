@@ -5,6 +5,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FiberHandle from "effect/FiberHandle"
+import { dual } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
@@ -134,6 +135,73 @@ export const make = Effect.sync(() => {
 
   return Reactivity.of({ mutation, query, stream, unsafeInvalidate, invalidate })
 })
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const mutation: {
+  (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R | Reactivity>
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): Effect.Effect<A, E, R | Reactivity>
+} = dual(2, <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+): Effect.Effect<A, E, R | Reactivity> => Effect.flatMap(Reactivity, (r) => r.mutation(keys, effect)))
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const query: {
+  (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): <A, E, R>(
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope | Reactivity>
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope | Reactivity>
+} = dual(2, <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope | Reactivity> =>
+  Effect.flatMap(Reactivity, (r) => r.query(keys, effect)))
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const stream: {
+  (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream.Stream<A, E, Exclude<R, Scope.Scope> | Reactivity>
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+  ): Stream.Stream<A, E, Exclude<R, Scope.Scope> | Reactivity>
+} = dual(2, <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+): Stream.Stream<A, E, Exclude<R, Scope.Scope> | Reactivity> =>
+  Reactivity.pipe(
+    Effect.flatMap((r) => r.query(keys, effect)),
+    Effect.map(Mailbox.toStream),
+    Stream.unwrapScoped
+  ))
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const invalidate = (
+  keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
+): Effect.Effect<void, never, Reactivity> => Effect.flatMap(Reactivity, (r) => r.invalidate(keys))
 
 /**
  * @since 1.0.0
