@@ -34,15 +34,15 @@ export const layerSocketServer: Layer.Layer<
  * @since 1.0.0
  * @category Layers
  */
-export const layer = <const Storage extends "sql" | "noop" = "noop">(options?: {
+export const layer = <const Storage extends "sql" | "noop" = never>(options?: {
   readonly serialization?: "msgpack" | "ndjson" | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
   readonly storage?: Storage | undefined
   readonly config?: Partial<ShardManager.Config["Type"]> | undefined
 }): Layer.Layer<
   ShardManager.ShardManager,
-  SocketServer.SocketServerError | ConfigError | (Storage extends "sql" ? SqlError : never),
-  Storage extends "sql" ? SqlClient : never
+  SocketServer.SocketServerError | ConfigError | ("sql" extends Storage ? SqlError : never),
+  "sql" extends Storage ? SqlClient : never
 > =>
   SocketShardManager.layer.pipe(
     Layer.provide([
