@@ -32,7 +32,7 @@ export const fromWritableChannel: <IE, OE, A>(
 ) => Channel<Chunk<never>, Chunk<A>, IE | OE, IE, void, unknown> = internal.fromWritableChannel
 
 /**
- * @category constructor
+ * @category stdio
  * @since 1.0.0
  */
 export const stdout: Sink.Sink<void, string | Uint8Array, never, PlatformError> = fromWritable(
@@ -41,6 +41,36 @@ export const stdout: Sink.Sink<void, string | Uint8Array, never, PlatformError> 
     new SystemError({
       module: "Stream",
       method: "stdout",
+      reason: "Unknown",
+      cause
+    })
+)
+
+/**
+ * @category stdio
+ * @since 1.0.0
+ */
+export const stderr: Sink.Sink<void, string | Uint8Array, never, PlatformError> = fromWritable(
+  () => process.stderr,
+  (cause) =>
+    new SystemError({
+      module: "Stream",
+      method: "stderr",
+      reason: "Unknown",
+      cause
+    })
+)
+
+/**
+ * @category stdio
+ * @since 1.0.0
+ */
+export const stdin: Sink.Sink<void, string | Uint8Array, never, PlatformError> = fromWritable(
+  () => process.stdin,
+  (cause) =>
+    new SystemError({
+      module: "Stream",
+      method: "stdin",
       reason: "Unknown",
       cause
     })

@@ -136,3 +136,19 @@ export const toUint8Array: <E>(
 export const stdin: Stream.Stream<Uint8Array> = internal.fromReadable(() => process.stdin, (err) => err, {
   closeOnDone: false
 }).pipe(Stream.orDie)
+
+/**
+ * @since 1.0.0
+ * @category stdio
+ */
+export const stdout: Stream.Stream<Uint8Array> = internal.fromReadable(() => process.stdout, (err) => err, {
+  closeOnDone: false
+}).pipe(Stream.orDie)
+
+/**
+ * @since 1.0.0
+ * @category stdio
+ */
+export const stderr: Stream.Stream<Uint8Array> = internal.fromReadable(() => process.stderr, (err) => err, {
+  closeOnDone: false
+}).pipe(Stream.orDie)
