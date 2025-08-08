@@ -148,11 +148,11 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    * will not be auto-resolved by the framework.
    *
    * This option is useful when:
-   *   1. The user wants to include tool call definitions from an `AiToolki`
+   *   1. The user wants to include tool call definitions from an `AiToolkit`
    *      in requests to the large language model so that the model has the
-   *      capability to call tools
+   *      capability to call tools.
    *   2. The user wants to control the execution of tool call resolvers
-   *      instead of having the framework handle tool call resolution
+   *      instead of having the framework handle tool call resolution.
    */
   readonly disableToolCallResolution?: boolean | undefined
 }
@@ -429,8 +429,12 @@ export const make: (
       for (const tool of actualToolkit.tools) {
         modelOptions.tools.push(convertTool(tool))
       }
+      const stream = opts.streamText(modelOptions)
+      if (options.disableToolCallResolution) {
+        return [stream, modelOptions] as const
+      }
       return [
-        opts.streamText(modelOptions).pipe(
+        stream.pipe(
           Stream.mapEffect(
             (response) => resolveParts({ response, toolkit: actualToolkit, concurrency, method: "streamText" }),
             { concurrency: "unbounded" }
