@@ -32,7 +32,7 @@ import * as NodeSocket from "./NodeSocket.js"
  */
 export const layer = <
   const ClientOnly extends boolean = false,
-  const Storage extends "noop" | "sql" = "noop"
+  const Storage extends "noop" | "sql" = never
 >(options: {
   readonly transport: "http" | "websocket"
   readonly serialization?: "msgpack" | "ndjson" | undefined
@@ -41,13 +41,13 @@ export const layer = <
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
 }): ClientOnly extends true ? Layer.Layer<
     Sharding | Runners.Runners | MessageStorage.MessageStorage,
-    ConfigError | (Storage extends "sql" ? SqlError : never),
-    Storage extends "sql" ? SqlClient : never
+    ConfigError | ("sql" extends Storage ? SqlError : never),
+    "sql" extends Storage ? SqlClient : never
   > :
   Layer.Layer<
     Sharding | Runners.Runners | MessageStorage.MessageStorage,
-    ServeError | ConfigError | (Storage extends "sql" ? SqlError : never),
-    Storage extends "sql" ? SqlClient : never
+    ServeError | ConfigError | ("sql" extends Storage ? SqlError : never),
+    "sql" extends Storage ? SqlClient : never
   > =>
 {
   const layer: Layer.Layer<any, any, any> = options.clientOnly

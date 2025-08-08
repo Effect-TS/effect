@@ -1,4 +1,4 @@
-import { Entity, MessageStorage, RunnerAddress, ShardingConfig, ShardStorage, Singleton } from "@effect/cluster"
+import { Entity, RunnerAddress, Singleton } from "@effect/cluster"
 import { NodeClusterRunnerSocket, NodeRuntime } from "@effect/platform-node"
 import { Rpc } from "@effect/rpc"
 import { Effect, Layer, Logger, LogLevel, Option, Schema } from "effect"
@@ -51,15 +51,12 @@ const SendMessage = Singleton.make(
 )
 
 for (let i = 0; i < 10; i++) {
-  const ShardingLive = NodeClusterRunnerSocket.layer().pipe(
-    Layer.provide([
-      MessageStorage.layerNoop,
-      ShardStorage.layerNoop,
-      ShardingConfig.layerFromEnv({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 50000 + i))
-      })
-    ])
-  )
+  const ShardingLive = NodeClusterRunnerSocket.layer({
+    storage: "noop",
+    shardingConfig: {
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 50000 + i))
+    }
+  })
 
   Layer.mergeAll(
     CounterLive,

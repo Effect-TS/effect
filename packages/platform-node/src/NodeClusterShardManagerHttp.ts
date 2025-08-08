@@ -42,7 +42,7 @@ export const layerHttpServer: Layer.Layer<
  * @since 1.0.0
  * @category Layers
  */
-export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
+export const layer = <const Storage extends "sql" | "noop" = never>(options: {
   readonly transport: "http" | "websocket"
   readonly serialization?: "msgpack" | "ndjson" | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
@@ -50,8 +50,8 @@ export const layer = <const Storage extends "sql" | "noop" = "noop">(options: {
   readonly config?: Partial<ShardManager.Config["Type"]> | undefined
 }): Layer.Layer<
   ShardManager.ShardManager,
-  ServeError | ConfigError | (Storage extends "sql" ? SqlError : never),
-  Storage extends "sql" ? SqlClient : never
+  ServeError | ConfigError | ("sql" extends Storage ? SqlError : never),
+  "sql" extends Storage ? SqlClient : never
 > => {
   const layer: Layer.Layer<any, any, any> = options.transport === "http" ?
     HttpShardManager.layerHttp.pipe(
