@@ -229,6 +229,22 @@ export const removeCookie: {
  * @since 1.0.0
  * @category combinators
  */
+export const expireCookie: {
+  (
+    name: string,
+    options?: Omit<Cookie["options"], "expires" | "maxAge">
+  ) => (self: HttpServerResponse) => HttpServerResponse,
+  (
+    self: HttpServerResponse,
+    name: string,
+    options?: Omit<Cookie["options"], "expires" | "maxAge">
+  ) => HttpServerResponse
+} = internal.expireCookie
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const replaceCookies: {
   (cookies: Cookies): (self: HttpServerResponse) => HttpServerResponse
   (self: HttpServerResponse, cookies: Cookies): HttpServerResponse
