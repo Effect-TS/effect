@@ -42,15 +42,36 @@ export const layerHttpApi = <
         handlers = handlers
           .handle(
             workflow.name as any,
-            ({ payload }: { payload: any }) => workflow.execute(payload)
+            ({ payload }: { payload: any }) =>
+              workflow.execute(payload).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name
+                })
+              )
           )
           .handle(
             workflow.name + "Discard" as any,
-            ({ payload }: { payload: any }) => workflow.execute(payload, { discard: true } as any)
+            ({ payload }: { payload: any }) =>
+              workflow.execute(payload, { discard: true } as any).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name + "Discard"
+                })
+              )
           )
           .handle(
             workflow.name + "Resume" as any,
-            ({ payload }: { payload: any }) => workflow.resume(payload.executionId)
+            ({ payload }: { payload: any }) =>
+              workflow.resume(payload.executionId).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name + "Resume"
+                })
+              )
           )
       }
       return handlers as HttpApiBuilder.Handlers<never, never, never>

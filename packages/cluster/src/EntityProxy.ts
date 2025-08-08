@@ -172,7 +172,10 @@ export const toHttpApiGroup = <const Name extends string, Type extends string, R
       .addSuccess(parentRpc.successSchema)
       .addError(Schema.Union(parentRpc.errorSchema, ...clientErrors))
       .annotateContext(parentRpc.annotations)
-    const endpointDiscard = HttpApiEndpoint.post(parentRpc._tag, `/${tagToPath(parentRpc._tag)}/:entityId/discard`)
+    const endpointDiscard = HttpApiEndpoint.post(
+      `${parentRpc._tag}Discard`,
+      `/${tagToPath(parentRpc._tag)}/:entityId/discard`
+    )
       .setPath(entityIdPath)
       .setPayload(parentRpc.payloadSchema)
       .addError(Schema.Union(...clientErrors))
