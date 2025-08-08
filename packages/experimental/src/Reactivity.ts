@@ -63,12 +63,35 @@ export const make = Effect.sync(() => {
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<A, E, R> => Effect.ensuring(effect, invalidate(keys))
 
+  const unsafeRegister = (
+    keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+    handler: () => void
+  ): () => void => {
+    const resolvedKeys = Array.isArray(keys) ? keys.map(stringOrHash) : recordHashes(keys as any)
+    for (let i = 0; i < resolvedKeys.length; i++) {
+      let set = handlers.get(resolvedKeys[i])
+      if (set === undefined) {
+        set = new Set()
+        handlers.set(resolvedKeys[i], set)
+      }
+      set.add(handler)
+    }
+    return () => {
+      for (let i = 0; i < resolvedKeys.length; i++) {
+        const set = handlers.get(resolvedKeys[i])!
+        set.delete(handler)
+        if (set.size === 0) {
+          handlers.delete(resolvedKeys[i])
+        }
+      }
+    }
+  }
+
   const query = <A, E, R>(
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
     effect: Effect.Effect<A, E, R>
   ): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope> =>
     Effect.gen(function*() {
-      const resolvedKeys = Array.isArray(keys) ? keys.map(stringOrHash) : recordHashes(keys as any)
       const scope = yield* Effect.scope
       const results = yield* Mailbox.make<A, E>()
       const runFork = yield* FiberHandle.makeRuntime<R>()
@@ -98,27 +121,8 @@ export const make = Effect.sync(() => {
         runFork(effect).addObserver(handleExit)
       }
 
-      yield* Scope.addFinalizer(
-        scope,
-        Effect.sync(() => {
-          for (let i = 0; i < resolvedKeys.length; i++) {
-            const set = handlers.get(resolvedKeys[i])!
-            set.delete(run)
-            if (set.size === 0) {
-              handlers.delete(resolvedKeys[i])
-            }
-          }
-        })
-      )
-      for (let i = 0; i < resolvedKeys.length; i++) {
-        let set = handlers.get(resolvedKeys[i])
-        if (set === undefined) {
-          set = new Set()
-          handlers.set(resolvedKeys[i], set)
-        }
-        set.add(run)
-      }
-
+      const cancel = unsafeRegister(keys, run)
+      yield* Scope.addFinalizer(scope, Effect.sync(cancel))
       run()
 
       return results as Mailbox.ReadonlyMailbox<A, E>
@@ -133,7 +137,7 @@ export const make = Effect.sync(() => {
       Stream.unwrapScoped
     )
 
-  return Reactivity.of({ mutation, query, stream, unsafeInvalidate, invalidate })
+  return Reactivity.of({ mutation, query, stream, unsafeInvalidate, invalidate, unsafeRegister })
 })
 
 /**
@@ -220,6 +224,10 @@ export declare namespace Reactivity {
    */
   export interface Service {
     readonly unsafeInvalidate: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) => void
+    readonly unsafeRegister: (
+      keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
+      handler: () => void
+    ) => () => void
     readonly invalidate: (
       keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
     ) => Effect.Effect<void>
