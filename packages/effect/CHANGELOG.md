@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.7
+
+### Patch Changes
+
+- [#5358](https://github.com/Effect-TS/effect/pull/5358) [`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328) Thanks @tim-smart! - expose RcMap.has api
+
 ## 3.17.6
 
 ### Patch Changes
