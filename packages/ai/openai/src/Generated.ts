@@ -374,7 +374,7 @@ export class AssistantSupportedModels extends S.Literal(
  * reasoning effort can result in faster responses and fewer tokens used
  * on reasoning in a response.
  */
-export class ReasoningEffort extends S.Literal("low", "medium", "high") {}
+export class ReasoningEffort extends S.Literal("minimal", "low", "medium", "high") {}
 
 export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
   /**
@@ -2065,6 +2065,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "model": ModelIdsShared,
   "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
   "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
+  /**
+   * Constrains the verbosity of the model's response. Lower values will result
+   * in more concise responseswhile higher values will result in more verbose
+   * responses.
+   */
+  "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true, default: () => "medium" as const }),
   /**
    * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
    */
