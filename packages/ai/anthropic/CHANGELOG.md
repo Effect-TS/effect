@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.15.1
+
+### Patch Changes
+
+- [`4bcf799`](https://github.com/Effect-TS/effect/commit/4bcf799275bfc38932c5c5c5947afc271a283fac) Thanks @dmaretskyi! - Fix tools with no parameters not being called
+
 ## 0.15.0
 
 ### Patch Changes
