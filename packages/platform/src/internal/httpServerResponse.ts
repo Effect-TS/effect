@@ -103,7 +103,7 @@ export const redirect = (
 ): ServerResponse.HttpServerResponse => {
   const headers = Headers.unsafeFromRecord({ location: location.toString() })
   return new ServerResponseImpl(
-    options?.status ?? 301,
+    options?.status ?? 302,
     options?.statusText,
     options?.headers ?
       Headers.merge(
