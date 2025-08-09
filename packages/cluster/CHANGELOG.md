@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.47.0
+
+### Minor Changes
+
+- [#5358](https://github.com/Effect-TS/effect/pull/5358) [`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328) Thanks @tim-smart! - improve RunnerHealth by detecting if Runner is connected to the host
+
+### Patch Changes
+
+- Updated dependencies [[`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328)]:
+  - effect@3.17.7
+
 ## 0.46.4
 
 ### Patch Changes

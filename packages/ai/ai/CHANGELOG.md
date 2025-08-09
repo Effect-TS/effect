@@ -1,5 +1,15 @@
 # @effect/ai
 
+## 0.25.1
+
+### Patch Changes
+
+- [#5351](https://github.com/Effect-TS/effect/pull/5351) [`fd86f93`](https://github.com/Effect-TS/effect/commit/fd86f93217751363c60f3916d391f71c08ec4a72) Thanks @richburdon! - fixes bug where stream currently ignores disableToolCallResolution flag
+
+- Updated dependencies [[`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328)]:
+  - effect@3.17.7
+  - @effect/experimental@0.54.4
+
 ## 0.25.0
 
 ### Patch Changes
