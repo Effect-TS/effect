@@ -108,6 +108,15 @@ export const get: {
 } = internal.get
 
 /**
+ * @since 3.17.7
+ * @category combinators
+ */
+export const has: {
+  <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<boolean>
+  <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<boolean>
+} = internal.has
+
+/**
  * @since 3.8.0
  * @category combinators
  */

@@ -256,6 +256,18 @@ export const invalidate: {
 )
 
 /** @internal */
+export const has: {
+  <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<boolean>
+  <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<boolean>
+} = dual(2, <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K): Effect<boolean> => {
+  const self = self_ as RcMapImpl<K, A, E>
+  return core.sync(() => {
+    if (self.state._tag === "Closed") return false
+    return MutableHashMap.has(self.state.map, key)
+  })
+})
+
+/** @internal */
 export const touch: {
   <K>(key: K): <A, E>(self: RcMap.RcMap<K, A, E>) => Effect<void>
   <K, A, E>(self: RcMap.RcMap<K, A, E>, key: K): Effect<void>

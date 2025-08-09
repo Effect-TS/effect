@@ -57,7 +57,9 @@ export class ShardManager extends Context.Tag("@effect/cluster/ShardManager")<Sh
   /**
    * Get a stream of sharding events emit by the shard manager.
    */
-  readonly shardingEvents: Effect.Effect<Queue.Dequeue<ShardingEvent>, never, Scope>
+  readonly shardingEvents: (
+    address: Option.Option<RunnerAddress>
+  ) => Effect.Effect<Queue.Dequeue<ShardingEvent>, never, Scope>
   /**
    * Register a new runner with the cluster.
    */
@@ -236,7 +238,9 @@ export class ShardManagerClient
     /**
      * Get a stream of sharding events emit by the shard manager.
      */
-    readonly shardingEvents: Effect.Effect<Mailbox.ReadonlyMailbox<ShardingEvent>, never, Scope>
+    readonly shardingEvents: (
+      address: Option.Option<RunnerAddress>
+    ) => Effect.Effect<Mailbox.ReadonlyMailbox<ShardingEvent>, never, Scope>
     /**
      * Get the current time on the shard manager.
      */
@@ -287,6 +291,7 @@ export class Rpcs extends RpcGroup.make(
     success: Schema.Array(Schema.Tuple(ShardId, Schema.Option(RunnerAddress)))
   }),
   Rpc.make("ShardingEvents", {
+    payload: { address: Schema.Option(RunnerAddress) },
     success: ShardingEventSchema,
     stream: true
   }),
@@ -347,7 +352,7 @@ export const makeClientLocal = Effect.gen(function*() {
     unregister: () => Effect.void,
     notifyUnhealthyRunner: () => Effect.void,
     getAssignments: Effect.succeed(shards),
-    shardingEvents: Effect.gen(function*() {
+    shardingEvents: Effect.fnUntraced(function*(_address) {
       const mailbox = yield* Mailbox.make<ShardingEvent>()
       yield* mailbox.offer(ShardingEvent.StreamStarted())
       return mailbox
@@ -379,19 +384,20 @@ export const makeClientRpc: Effect.Effect<
     unregister: (address) => Effect.orDie(client.Unregister({ address })),
     notifyUnhealthyRunner: (address) => Effect.orDie(client.NotifyUnhealthyRunner({ address })),
     getAssignments: Effect.orDie(client.GetAssignments()),
-    shardingEvents: Mailbox.make<ShardingEvent>().pipe(
-      Effect.tap(Effect.fnUntraced(
-        function*(mailbox) {
-          const events = yield* client.ShardingEvents(void 0, { asMailbox: true })
-          const take = Effect.orDie(events.takeAll)
-          while (true) {
-            mailbox.unsafeOfferAll((yield* take)[0])
-          }
-        },
-        (effect, mb) => Mailbox.into(effect, mb),
-        Effect.forkScoped
-      ))
-    ),
+    shardingEvents: (address) =>
+      Mailbox.make<ShardingEvent>().pipe(
+        Effect.tap(Effect.fnUntraced(
+          function*(mailbox) {
+            const events = yield* client.ShardingEvents({ address }, { asMailbox: true })
+            const take = Effect.orDie(events.takeAll)
+            while (true) {
+              mailbox.unsafeOfferAll((yield* take)[0])
+            }
+          },
+          (effect, mb) => Mailbox.into(effect, mb),
+          Effect.forkScoped
+        ))
+      ),
     getTime: Effect.orDie(client.GetTime())
   })
 })
@@ -738,7 +744,11 @@ export const make = Effect.gen(function*() {
 
   return ShardManager.of({
     getAssignments,
-    shardingEvents: PubSub.subscribe(events),
+    shardingEvents: (address) =>
+      Effect.zipRight(
+        Option.isSome(address) ? runnerHealthApi.onConnection(address.value) : Effect.void,
+        PubSub.subscribe(events)
+      ),
     register,
     unregister,
     rebalance,
@@ -773,8 +783,8 @@ export const layerServerHandlers = Rpcs.toLayer(Effect.gen(function*() {
         shardManager.getAssignments,
         (assignments) => Array.from(assignments)
       ),
-    ShardingEvents: Effect.fnUntraced(function*() {
-      const queue = yield* shardManager.shardingEvents
+    ShardingEvents: Effect.fnUntraced(function*({ address }) {
+      const queue = yield* shardManager.shardingEvents(address)
       const mailbox = yield* Mailbox.make<ShardingEvent>()
 
       yield* mailbox.offer(ShardingEvent.StreamStarted())
