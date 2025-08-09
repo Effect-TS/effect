@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.90.1
+
+### Patch Changes
+
+- [#5355](https://github.com/Effect-TS/effect/pull/5355) [`27a4e02`](https://github.com/Effect-TS/effect/commit/27a4e0285226cc0c084d19b5cdc4db1f38227559) Thanks @nounder! - Use `302 Found` status in `HttpServerResponse.redirect` as default
+
 ## 0.90.0
 
 ### Minor Changes
