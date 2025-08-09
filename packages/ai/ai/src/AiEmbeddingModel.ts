@@ -10,6 +10,7 @@ import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Schema from "effect/Schema"
+import type { Concurrency } from "effect/Types"
 import { AiError } from "./AiError.js"
 
 /**
@@ -31,6 +32,12 @@ export declare namespace AiEmbeddingModel {
    */
   export interface Service {
     readonly embed: (input: string) => Effect.Effect<Array<number>, AiError>
+    readonly embedMany: (input: ReadonlyArray<string>, options?: {
+      /**
+       * The concurrency level to use while batching requests.
+       */
+      readonly concurrency?: Concurrency | undefined
+    }) => Effect.Effect<Array<Array<number>>, AiError>
   }
 
   /**
@@ -107,8 +114,17 @@ export const make = (options: {
       }).pipe(Effect.withSpan("AiEmbeddingModel.embed", { captureStackTrace: false }))
     }
 
+    function embedMany(inputs: ReadonlyArray<string>, options?: {
+      readonly concurrency?: Concurrency | undefined
+    }) {
+      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
+        Effect.withSpan("AiEmbeddingModel.embedMany", { captureStackTrace: false })
+      )
+    }
+
     return AiEmbeddingModel.of({
-      embed
+      embed,
+      embedMany
     })
   })
 
@@ -138,7 +154,16 @@ export const makeDataLoader = (options: {
       )
     }
 
+    function embedMany(inputs: ReadonlyArray<string>, options?: {
+      readonly concurrency?: Concurrency | undefined
+    }) {
+      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
+        Effect.withSpan("AiEmbeddingModel.embedMany", { captureStackTrace: false })
+      )
+    }
+
     return AiEmbeddingModel.of({
-      embed
+      embed,
+      embedMany
     })
   })
