@@ -3196,7 +3196,7 @@ export const brand = <S extends Schema.Any, B extends string | symbol>(
   brand: B,
   annotations?: Annotations.Schema<Schema.Type<S> & Brand<B>>
 ) =>
-(self: S): brand<S, B> => {
+<SubS extends S>(self: SubS): brand<SubS, B> => {
   const annotation: AST.BrandAnnotation = option_.match(AST.getBrandAnnotation(self.ast), {
     onNone: () => [brand],
     onSome: (brands) => [...brands, brand]
