@@ -829,7 +829,7 @@ const make = Effect.gen(function*() {
     yield* stopShardManagerTimeout
 
     yield* Effect.logDebug("Subscribing to sharding events")
-    const mailbox = yield* shardManager.shardingEvents
+    const mailbox = yield* shardManager.shardingEvents(config.runnerAddress)
     const startedLatch = yield* Deferred.make<void>()
 
     const eventsFiber = yield* Effect.gen(function*() {

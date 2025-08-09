@@ -4,6 +4,8 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as RcMap from "effect/RcMap"
+import type * as Scope from "effect/Scope"
 import * as MessageStorage from "./MessageStorage.js"
 import type { RunnerAddress } from "./RunnerAddress.js"
 import * as Runners from "./Runners.js"
@@ -22,9 +24,45 @@ import type { ShardingConfig } from "./ShardingConfig.js"
 export class RunnerHealth extends Context.Tag("@effect/cluster/RunnerHealth")<
   RunnerHealth,
   {
+    /**
+     * Used to indicate that a Runner is connected to this host and is healthy,
+     * while the Scope is active.
+     */
+    readonly onConnection: (address: RunnerAddress) => Effect.Effect<void, never, Scope.Scope>
     readonly isAlive: (address: RunnerAddress) => Effect.Effect<boolean>
   }
 >() {}
+
+/**
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const make: (
+  options: { readonly isAlive: (address: RunnerAddress) => Effect.Effect<boolean> }
+) => Effect.Effect<
+  RunnerHealth["Type"],
+  never,
+  Scope.Scope
+> = Effect.fnUntraced(function*(options: {
+  readonly isAlive: (address: RunnerAddress) => Effect.Effect<boolean>
+}) {
+  const connections = yield* RcMap.make({
+    lookup: (_address: RunnerAddress) => Effect.void
+  })
+
+  const onConnection = (address: RunnerAddress) => RcMap.get(connections, address)
+  const isAlive = Effect.fnUntraced(function*(address: RunnerAddress) {
+    if (yield* RcMap.has(connections, address)) {
+      return true
+    }
+    return yield* options.isAlive(address)
+  })
+
+  return RunnerHealth.of({
+    onConnection,
+    isAlive
+  })
+})
 
 /**
  * A layer which will **always** consider a Runner healthy.
@@ -34,9 +72,9 @@ export class RunnerHealth extends Context.Tag("@effect/cluster/RunnerHealth")<
  * @since 1.0.0
  * @category layers
  */
-export const layerNoop = Layer.succeed(
+export const layerNoop = Layer.scoped(
   RunnerHealth,
-  RunnerHealth.of({
+  make({
     isAlive: () => Effect.succeed(true)
   })
 )
@@ -45,10 +83,10 @@ export const layerNoop = Layer.succeed(
  * @since 1.0.0
  * @category Constructors
  */
-export const make: Effect.Effect<
+export const makePing: Effect.Effect<
   RunnerHealth["Type"],
   never,
-  Runners.Runners
+  Runners.Runners | Scope.Scope
 > = Effect.gen(function*() {
   const runners = yield* Runners.Runners
 
@@ -60,7 +98,7 @@ export const make: Effect.Effect<
     )
   }
 
-  return RunnerHealth.of({ isAlive })
+  return yield* make({ isAlive })
 })
 
 /**
@@ -73,7 +111,7 @@ export const layer: Layer.Layer<
   RunnerHealth,
   never,
   Runners.Runners
-> = Layer.effect(RunnerHealth, make)
+> = Layer.scoped(RunnerHealth, makePing)
 
 /**
  * A layer which will ping a Runner directly to check if it is healthy.
