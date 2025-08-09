@@ -1,5 +1,14 @@
 # @effect/ai-openai
 
+## 0.28.2
+
+### Patch Changes
+
+- [#5361](https://github.com/Effect-TS/effect/pull/5361) [`292a7c5`](https://github.com/Effect-TS/effect/commit/292a7c54050e3d06a203130f3545207ec5ac633d) Thanks @IMax153! - Add support for new options related to OpenAi GPT-5
+
+- Updated dependencies [[`292a7c5`](https://github.com/Effect-TS/effect/commit/292a7c54050e3d06a203130f3545207ec5ac633d)]:
+  - @effect/ai@0.25.2
+
 ## 0.28.1
 
 ### Patch Changes

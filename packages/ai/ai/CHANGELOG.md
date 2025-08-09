@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.25.2
+
+### Patch Changes
+
+- [#5361](https://github.com/Effect-TS/effect/pull/5361) [`292a7c5`](https://github.com/Effect-TS/effect/commit/292a7c54050e3d06a203130f3545207ec5ac633d) Thanks @IMax153! - Add `AiEmbeddingModel.embedMany`
+
 ## 0.25.1
 
 ### Patch Changes
