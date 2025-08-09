@@ -524,7 +524,7 @@ export const expireCookie = dual<
     options?: Omit<Cookies.Cookie["options"], "expires" | "maxAge">
   ) => ServerResponse.HttpServerResponse
 >(
-  2,
+  3,
   (self, name, options) =>
     new ServerResponseImpl(
       self.status,
