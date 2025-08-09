@@ -16,4 +16,17 @@ describe("SchemaBrand", () => {
     expect<A1>().type.not.toBeAssignableTo<A2>()
     expect<A2>().type.not.toBeAssignableTo<A1>()
   })
+
+  it("should not override types with any when extracted into a constant", () => {
+    const UserIdBrandSchema = Schema.brand("UserId")
+
+    const UserIdSchema = pipe(Schema.Number, UserIdBrandSchema)
+
+    type IUserId = Schema.Schema.Type<typeof UserIdSchema>
+
+    type IsAny<T> = 0 extends 1 & T ? true : false
+
+    expect<IsAny<IUserId>>().type.toBe<false>()
+    expect<IUserId>().type.toBeAssignableTo<number>()
+  })
 })
