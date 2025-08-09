@@ -247,7 +247,9 @@ export const make = (options: {
                 if (Predicate.isNotUndefined(toolCalls[chunk.index])) {
                   const tool = toolCalls[chunk.index]
                   try {
-                    const params = JSON.parse(tool.params)
+                    // If the tool call has no parameters, the model sends an empty string.
+                    const inputJson = tool.params === "" ? "{}" : tool.params
+                    const params = JSON.parse(inputJson)
                     parts.push(
                       new AiResponse.ToolCallPart({
                         id: AiInput.ToolCallId.make(tool.id, constDisableValidation),
