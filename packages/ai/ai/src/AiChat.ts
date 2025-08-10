@@ -10,8 +10,8 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { NoExcessProperties } from "effect/Types"
 import type { AiError } from "./AiError.js"
-import * as AiInput from "./AiInput.js"
 import * as AiLanguageModel from "./AiLanguageModel.js"
+import * as AiPrompt from "./AiPrompt.js"
 import * as AiResponse from "./AiResponse.js"
 import type * as AiTool from "./AiTool.js"
 
@@ -19,132 +19,119 @@ import type * as AiTool from "./AiTool.js"
  * @since 1.0.0
  * @category Context
  */
-export class AiChat extends Context.Tag("@effect/ai/AiChat")<
-  AiChat,
-  AiChat.Service
->() {}
+export class AiChat extends Context.Tag("@effect/ai/AiChat")<AiChat, Service>() {}
 
 /**
+ * Represents the interface that the `AiChat` service provides.
+ *
  * @since 1.0.0
  * @category Models
  */
-export declare namespace AiChat {
+export interface Service {
   /**
-   * @since 1.0.0
-   * @category Models
+   * The chat history.
    */
-  export interface Service {
-    /**
-     * The chat history.
-     */
-    readonly history: Ref.Ref<AiInput.AiInput>
+  readonly history: Ref.Ref<AiPrompt.AiPrompt>
 
-    /**
-     * Exports the chat into a structured format.
-     */
-    readonly export: Effect.Effect<unknown>
+  /**
+   * Exports the chat into a structured format.
+   */
+  readonly export: Effect.Effect<unknown>
 
-    /**
-     * Exports the chat as a JSON string.
-     */
-    readonly exportJson: Effect.Effect<string>
+  /**
+   * Exports the chat as a JSON string.
+   */
+  readonly exportJson: Effect.Effect<string>
 
-    /**
-     * Generate text using a large language model for the specified `prompt`.
-     *
-     * If a `toolkit` is specified, the large language model will additionally
-     * be able to perform tool calls to augment its response.
-     *
-     * Both input and output messages will be added to the chat history.
-     */
-    readonly generateText: <
-      Tools extends AiTool.Any,
-      Options extends NoExcessProperties<AiLanguageModel.GenerateTextOptions<any>, Options>
-    >(
-      options: Options & Omit<AiLanguageModel.GenerateTextOptions<Tools>, "system">
-    ) => Effect.Effect<
-      AiLanguageModel.ExtractSuccess<Options>,
-      AiLanguageModel.ExtractError<Options>,
-      AiLanguageModel.ExtractContext<Options>
-    >
+  /**
+   * Generate text using a large language model for the specified `prompt`.
+   *
+   * If a `toolkit` is specified, the large language model will additionally
+   * be able to perform tool calls to augment its response.
+   *
+   * Both input and output messages will be added to the chat history.
+   */
+  readonly generateText: <
+    Tools extends Record<string, AiTool.Any>,
+    Options extends NoExcessProperties<AiLanguageModel.GenerateTextOptions<any>, Options>
+  >(
+    options: Options & Omit<AiLanguageModel.GenerateTextOptions<Tools>, "system">
+  ) => Effect.Effect<
+    AiLanguageModel.ExtractSuccess<Options>,
+    AiLanguageModel.ExtractError<Options>,
+    AiLanguageModel.ExtractRequirements<Options>
+  >
 
-    /**
-     * Generate text using a large language model for the specified `prompt`,
-     * streaming output from the model as soon as it is available.
-     *
-     * If a `toolkit` is specified, the large language model will additionally
-     * be able to perform tool calls to augment its response.
-     *
-     * Both input and output messages will be added to the chat history.
-     */
-    readonly streamText: <
-      Tools extends AiTool.Any,
-      Options extends NoExcessProperties<AiLanguageModel.GenerateTextOptions<any>, Options>
-    >(
-      options: Options & Omit<AiLanguageModel.GenerateTextOptions<Tools>, "system">
-    ) => Stream.Stream<
-      AiLanguageModel.ExtractSuccess<Options>,
-      AiLanguageModel.ExtractError<Options>,
-      AiLanguageModel.ExtractContext<Options>
-    >
+  /**
+   * Generate text using a large language model for the specified `prompt`,
+   * streaming output from the model as soon as it is available.
+   *
+   * If a `toolkit` is specified, the large language model will additionally
+   * be able to perform tool calls to augment its response.
+   *
+   * Both input and output messages will be added to the chat history.
+   */
+  readonly streamText: <
+    Tools extends Record<string, AiTool.Any>,
+    Options extends NoExcessProperties<AiLanguageModel.GenerateTextOptions<any>, Options>
+  >(
+    options: Options & Omit<AiLanguageModel.GenerateTextOptions<Tools>, "system">
+  ) => Stream.Stream<
+    AiLanguageModel.ExtractSuccess<Options>,
+    AiLanguageModel.ExtractError<Options>,
+    AiLanguageModel.ExtractRequirements<Options>
+  >
 
-    /**
-     * Generate a structured object for the specified prompt and schema using a
-     * large language model.
-     *
-     * When using a `Schema` that does not have an `identifier` or `_tag`
-     * property, you must specify a `toolCallId` to properly associate the
-     * output of the model.
-     *
-     * Both input and output messages will be added to the chat history.
-     */
-    readonly generateObject: <A, I extends Record<string, unknown>, R>(
-      options: Omit<AiLanguageModel.GenerateObjectOptions<A, I, R>, "system">
-    ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
-  }
+  /**
+   * Generate a structured object for the specified prompt and schema using a
+   * large language model.
+   *
+   * When using a `Schema` that does not have an `identifier` or `_tag`
+   * property, you must specify a `toolCallId` to properly associate the
+   * output of the model.
+   *
+   * Both input and output messages will be added to the chat history.
+   */
+  readonly generateObject: <A, I extends Record<string, unknown>, R>(
+    options: Omit<AiLanguageModel.GenerateObjectOptions<A, I, R>, "system">
+  ) => Effect.Effect<AiResponse.WithStructuredOutput<A>, AiError, R>
 }
 
 /**
  * @since 1.0.0
  * @category Constructors
  */
-export const fromPrompt = Effect.fnUntraced(function*(options: {
-  readonly prompt: AiInput.Raw
-  readonly system?: string
-}) {
+export const fromPrompt = Effect.fnUntraced(function*(
+  prompt: AiPrompt.RawInput
+) {
   const languageModel = yield* AiLanguageModel.AiLanguageModel
   const context = yield* Effect.context<never>()
   const provideContext = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.mapInputContext(effect, (input) => Context.merge(context, input))
   const provideContextStream = <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
     Stream.mapInputContext(stream, (input) => Context.merge(context, input))
-  const history = yield* Ref.make<AiInput.AiInput>(AiInput.make(options.prompt))
+  const history = yield* Ref.make<AiPrompt.AiPrompt>(AiPrompt.make(prompt))
   const semaphore = yield* Effect.makeSemaphore(1)
-  const system = options.system
 
   return AiChat.of({
     history,
     export: Ref.get(history).pipe(
-      Effect.flatMap(Schema.encode(AiInput.AiInput)),
+      Effect.flatMap(Schema.encode(AiPrompt.AiPrompt)),
       Effect.orDie
     ),
     exportJson: Ref.get(history).pipe(
-      Effect.flatMap(Schema.encode(AiInput.FromJson)),
+      Effect.flatMap(Schema.encode(AiPrompt.FromJson)),
       Effect.orDie
     ),
     generateText(options) {
-      const newInput = AiInput.make(options.prompt)
+      const newInput = AiPrompt.make(options.prompt)
       return Ref.get(history).pipe(
         Effect.flatMap((oldInput) => {
-          const input = AiInput.concat(oldInput, newInput)
-          return languageModel.generateText({
-            ...options,
-            system,
-            prompt: input
-          }).pipe(
+          const input = AiPrompt.merge(oldInput, newInput)
+          return languageModel.generateText({ ...options, prompt: input }).pipe(
             Effect.tap((response) => {
-              const modelInput = AiInput.make(response)
-              return Ref.set(history, AiInput.concat(input, modelInput))
+              const modelInput = AiPrompt.make(response)
+              return Ref.set(history, AiPrompt.merge(input, modelInput))
             }),
             provideContext
           )
@@ -159,14 +146,10 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
         return Stream.fromChannel(Channel.acquireUseRelease(
           semaphore.take(1).pipe(
             Effect.zipRight(Ref.get(history)),
-            Effect.map((history) => AiInput.concat(history, AiInput.make(options.prompt)))
+            Effect.map((history) => AiPrompt.merge(history, AiPrompt.make(options.prompt)))
           ),
           (parts) =>
-            languageModel.streamText({
-              ...options,
-              system,
-              prompt: parts
-            }).pipe(
+            languageModel.streamText({ ...options, prompt: parts }).pipe(
               Stream.map((chunk) => {
                 combined = AiResponse.merge(combined, chunk)
                 return chunk
@@ -175,7 +158,7 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
             ),
           (parts) =>
             Effect.zipRight(
-              Ref.set(history, AiInput.concat(parts, AiInput.make(combined))),
+              Ref.set(history, AiPrompt.merge(parts, AiPrompt.make(combined))),
               semaphore.release(1)
             )
         ))
@@ -187,19 +170,15 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
       ) as any
     },
     generateObject(options) {
-      const newInput = AiInput.make(options.prompt)
+      const newInput = AiPrompt.make(options.prompt)
       return Ref.get(history).pipe(
         Effect.flatMap((oldInput) => {
-          const input = AiInput.concat(oldInput, newInput)
-          return languageModel.generateObject({
-            ...options,
-            system,
-            prompt: input
-          } as any).pipe(
+          const prompt = AiPrompt.merge(oldInput, newInput)
+          return languageModel.generateObject({ ...options, prompt }).pipe(
             Effect.flatMap((response) => {
-              const modelInput = AiInput.make(response)
+              const modelInput = AiPrompt.make(response)
               return Effect.as(
-                Ref.set(history, AiInput.concat(input, modelInput)),
+                Ref.set(history, AiPrompt.merge(prompt, modelInput)),
                 response
               )
             })
@@ -223,29 +202,31 @@ export const fromPrompt = Effect.fnUntraced(function*(options: {
 })
 
 /**
+ * Constructs a new `AiChat` with an empty chat history.
+ *
  * @since 1.0.0
  * @category Constructors
  */
-export const empty: Effect.Effect<AiChat.Service, never, AiLanguageModel.AiLanguageModel> = fromPrompt({ prompt: [] })
+export const empty: Effect.Effect<Service, never, AiLanguageModel.AiLanguageModel> = fromPrompt(AiPrompt.empty)
 
-const decodeUnknown = Schema.decodeUnknown(AiInput.AiInput)
+const decodeUnknown = Schema.decodeUnknown(AiPrompt.AiPrompt)
 
 /**
+ * Constructs a new `AiChat` from previously exported chat history.
+ *
  * @since 1.0.0
  * @category Constructors
  */
-export const fromExport = (data: unknown, options?: {
-  readonly system?: string | undefined
-}): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
-  Effect.flatMap(decodeUnknown(data), (prompt) => fromPrompt({ ...options, prompt }))
+export const fromExport = (data: unknown): Effect.Effect<Service, ParseError, AiLanguageModel.AiLanguageModel> =>
+  Effect.flatMap(decodeUnknown(data), fromPrompt)
 
-const decodeJson = Schema.decode(AiInput.FromJson)
+const decodeJson = Schema.decode(AiPrompt.FromJson)
 
 /**
+ * Constructs a new `AiChat` from previously exported chat history in JSON format.
+ *
  * @since 1.0.0
  * @category Constructors
  */
-export const fromJson = (data: string, options?: {
-  readonly system?: string | undefined
-}): Effect.Effect<AiChat.Service, ParseError, AiLanguageModel.AiLanguageModel> =>
-  Effect.flatMap(decodeJson(data), (prompt) => fromPrompt({ ...options, prompt }))
+export const fromJson = (data: string): Effect.Effect<Service, ParseError, AiLanguageModel.AiLanguageModel> =>
+  Effect.flatMap(decodeJson(data), fromPrompt)

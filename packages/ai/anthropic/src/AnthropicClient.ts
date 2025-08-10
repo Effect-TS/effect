@@ -2,13 +2,15 @@
  * @since 1.0.0
  */
 import * as AiError from "@effect/ai/AiError"
-import * as AiInput from "@effect/ai/AiInput"
+import * as AiPrompt from "@effect/ai/AiPrompt"
 import * as AiResponse from "@effect/ai/AiResponse"
 import * as Sse from "@effect/experimental/Sse"
+import * as Headers from "@effect/platform/Headers"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import type * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -18,12 +20,15 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
+import type * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { AnthropicConfig } from "./AnthropicConfig.js"
 import * as Generated from "./Generated.js"
+import { extractCitableDocuments } from "./internal/extract-citable-documents.js"
 import * as InternalUtilities from "./internal/utilities.js"
 
-const constDisableValidation = { disableValidation: true } as const
+const constDisableValidation: Schema.MakeOptions = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
@@ -31,25 +36,86 @@ const constDisableValidation = { disableValidation: true } as const
  */
 export class AnthropicClient extends Context.Tag(
   "@effect/ai-anthropic/AnthropicClient"
-)<AnthropicClient, AnthropicClient.Service>() {}
+)<AnthropicClient, Service>() {}
 
 /**
+ * Represents the interface that the `AnthropicClient` service provides.
+ *
+ * This service abstracts the complexity of communicating with Anthropic's API,
+ * providing both high-level AI completion methods and low-level HTTP access
+ * for advanced use cases.
+ *
  * @since 1.0.0
+ * @category Models
  */
-export declare namespace AnthropicClient {
+export interface Service {
   /**
-   * @since 1.0.0
-   * @category Models
+   * The underlying HTTP client capable of communicating with the Anthropic API.
+   *
+   * This client is pre-configured with authentication, base URL, and standard
+   * headers required for Anthropic API communication. It provides direct access
+   * to the generated Anthropic API client for operations not covered by the
+   * higher-level methods.
+   *
+   * Use this when you need to:
+   * - Access provider-specific API endpoints not available through the AI SDK
+   * - Implement custom request/response handling
+   * - Use Anthropic API features not yet supported by the Effect AI abstractions
+   * - Perform batch operations or non-streaming requests
+   *
+   * The client automatically handles authentication and follows Anthropic's
+   * API conventions for request formatting and error handling.
    */
-  export interface Service {
-    readonly client: Generated.Client
-    readonly streamRequest: <A>(
-      request: HttpClientRequest.HttpClientRequest
-    ) => Stream.Stream<A, HttpClientError.HttpClientError>
-    readonly stream: (
-      request: StreamCompletionRequest
-    ) => Stream.Stream<AiResponse.AiResponse, HttpClientError.HttpClientError>
-  }
+  readonly client: Generated.Client
+
+  /**
+   * Executes the specified HTTP request and streams back the response.
+   *
+   * This low-level streaming method provides direct access to Anthropic's
+   * Server-Sent Events (SSE) streaming protocol. It handles the connection
+   * lifecycle, SSE parsing, and JSON deserialization automatically.
+   *
+   * The stream processes events until receiving a "message_stop" event,
+   * which signals the end of the response. Each streamed item represents
+   * a parsed SSE event from Anthropic's API.
+   *
+   * Use this for:
+   * - Custom streaming implementations
+   * - Non-standard API endpoints that return SSE streams
+   * - Advanced error handling or custom event processing
+   * - Building specialized streaming abstractions
+   *
+   * @template A The type of parsed SSE event data expected from the stream
+   */
+  readonly streamRequest: <A>(
+    request: HttpClientRequest.HttpClientRequest
+  ) => Stream.Stream<A, HttpClientError.HttpClientError>
+
+  /**
+   * Executes the specified stream completion request and streams back the response.
+   *
+   * This high-level method provides a convenient interface for Anthropic's
+   * message streaming API, automatically handling the complex SSE event
+   * processing and converting raw API events into structured `AiResponse`
+   * objects.
+   *
+   * The method processes various event types including:
+   * - Message metadata and usage statistics
+   * - Text content deltas for incremental response building
+   * - Tool call parsing and assembly
+   * - Reasoning content (thinking) when available
+   * - Finish reasons and completion metadata
+   *
+   * Each `AiResponse` in the stream contains one or more parts representing
+   * different aspects of the response (text, tool calls, metadata, etc.).
+   * The stream completes when the API signals the end of the message.
+   *
+   * This is the recommended method for most AI completion use cases as it
+   * provides a unified interface consistent with other Effect AI providers.
+   */
+  readonly stream: (
+    request: StreamCompletionRequest
+  ) => Stream.Stream<AiResponse.AiResponse, HttpClientError.HttpClientError>
 }
 
 /**
@@ -57,14 +123,120 @@ export declare namespace AnthropicClient {
  * @category Constructors
  */
 export const make = (options: {
+  /**
+   * The API key that will be used to authenticate with Anthropic's API.
+   *
+   * The key is wrapped in a `Redacted` type to prevent accidental logging or
+   * exposure in debugging output, helping maintain security best practices.
+   *
+   * The key is automatically included in the `x-api-key` header for all API
+   * requests made through this client, which is automatically redacted in logs
+   * output by Effect loggers.
+   *
+   * Leave `undefined` if authentication will be handled through other means
+   * (e.g., environment-based authentication, proxy authentication, or when
+   * using a mock server that doesn't require authentication).
+   */
   readonly apiKey?: Redacted.Redacted | undefined
+
+  /**
+   * The base URL endpoint used to communicate with Anthropic's API.
+   *
+   * This property determines the HTTP destination for all API requests made by
+   * this client.
+   *
+   * Defaults to `"https://api.anthropic.com"`.
+   *
+   * Override this value when you need to:
+   * - Point to a different Anthropic environment (e.g., staging or sandbox
+   *   servers).
+   * - Use a proxy between your application and Anthropic's API for security,
+   *   caching, or logging.
+   * - Employ a mock server for local development or testing.
+   *
+   * You may leave this property `undefined` to accept the default value.
+   */
   readonly apiUrl?: string | undefined
+
+  /**
+   * The Anthropic API version to use for requests.
+   *
+   * This version string determines which API schema and features are available
+   * for your requests. Different versions may have different capabilities,
+   * request/response formats, or available models.
+   *
+   * Defaults to `"2023-06-01"`.
+   *
+   * You should specify a version that:
+   * - Supports the features and models you need
+   * - Is stable and well-tested for your use case
+   * - Matches your application's integration requirements
+   *
+   * Consult Anthropic's API documentation for available versions and their
+   * differences.
+   */
   readonly anthropicVersion?: string | undefined
+
+  /**
+   * The organization ID to associate with API requests.
+   *
+   * This identifier links requests to a specific organization within your
+   * Anthropic account, enabling proper billing, usage tracking, and access
+   * control at the organizational level.
+   *
+   * Provide this when:
+   * - Your account belongs to multiple organizations
+   * - You need to ensure requests are billed to the correct organization
+   * - Organization-level access policies apply to your use case
+   *
+   * Leave `undefined` if you're using a personal account or the default
+   * organization.
+   */
   readonly organizationId?: Redacted.Redacted | undefined
+
+  /**
+   * The project ID to associate with API requests.
+   *
+   * This identifier scopes requests to a specific project within your
+   * organization, enabling granular resource management, billing allocation,
+   * and access control at the project level.
+   *
+   * Specify this when:
+   * - You have multiple projects and need to separate their API usage
+   * - Project-level billing or quota management is required
+   * - Access policies are configured at the project level
+   *
+   * Leave `undefined` to use the default project or when project-level
+   * scoping is not needed.
+   */
   readonly projectId?: Redacted.Redacted | undefined
+
+  /**
+   * A function to transform the underlying HTTP client before it's used for API requests.
+   *
+   * This transformation function receives the configured HTTP client and returns
+   * a modified version. It's applied after all standard client configuration
+   * (authentication, base URL, headers) but before any requests are made.
+   *
+   * Use this for:
+   * - Adding custom middleware (logging, metrics, caching)
+   * - Modifying request/response processing behavior
+   * - Adding custom retry logic or error handling
+   * - Integrating with monitoring or debugging tools
+   * - Applying organization-specific HTTP client policies
+   *
+   * The transformation is applied once during client initialization and affects
+   * all subsequent API requests made through this client instance.
+   *
+   * Leave `undefined` if no custom HTTP client behavior is needed.
+   */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Effect.Effect<AnthropicClient.Service, never, HttpClient.HttpClient> =>
+}): Effect.Effect<Service, never, HttpClient.HttpClient | Scope.Scope> =>
   Effect.gen(function*() {
+    const apiKeyHeader = "x-api-key"
+
+    yield* Effect.locallyScopedWith(Headers.currentRedactedNames, Arr.append(apiKeyHeader))
+
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
@@ -73,7 +245,7 @@ export const make = (options: {
           ),
           options.apiKey
             ? HttpClientRequest.setHeader(
-              "x-api-key",
+              apiKeyHeader,
               Redacted.value(options.apiKey)
             )
             : identity,
@@ -93,6 +265,7 @@ export const make = (options: {
           Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
         )
     })
+
     const streamRequest = <A = unknown>(
       request: HttpClientRequest.HttpClientRequest
     ) =>
@@ -104,201 +277,203 @@ export const make = (options: {
         Stream.takeUntil((event) => event.event === "message_stop"),
         Stream.map((event) => JSON.parse(event.data) as A)
       )
-    const stream = (request: StreamCompletionRequest) =>
-      Stream.suspend(() => {
-        const toolCalls = {} as Record<number, RawToolCall>
-        let finishReason: AiResponse.FinishReason = "unknown"
-        let reasoning:
-          | {
-            readonly content: Array<string>
-            readonly signature?: string
+
+    const stream = Effect.fn("AnthropicClient.stream")(
+      function*(request: StreamCompletionRequest) {
+        const citableDocuments = extractCitableDocuments(request.messages)
+        Stream.suspend(() => {
+          const toolCalls = {} as Record<number, RawToolCall>
+          let finishReason: AiResponse.FinishReason = "unknown"
+          let reasoning:
+            | {
+              readonly content: Array<string>
+              readonly signature?: string
+            }
+            | undefined = undefined
+          let usage: AiResponse.Usage = {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            reasoningTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheWriteInputTokens: 0
           }
-          | undefined = undefined
-        let usage: AiResponse.Usage = {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          reasoningTokens: 0,
-          cacheReadInputTokens: 0,
-          cacheWriteInputTokens: 0
-        }
-        const metadata: Record<string, unknown> = {}
-        return streamRequest<MessageStreamEvent>(
-          HttpClientRequest.post("/v1/messages", {
-            body: HttpBody.unsafeJson({ ...request, stream: true })
-          })
-        ).pipe(
-          Stream.filterMapEffect((chunk) => {
-            const parts: Array<AiResponse.Part> = []
-            switch (chunk.type) {
-              case "message_start": {
-                usage = {
-                  inputTokens: chunk.message.usage.input_tokens,
-                  outputTokens: chunk.message.usage.output_tokens,
-                  totalTokens: chunk.message.usage.input_tokens +
-                    chunk.message.usage.output_tokens,
-                  reasoningTokens: 0,
-                  cacheWriteInputTokens: chunk.message.usage.cache_creation_input_tokens ?? 0,
-                  cacheReadInputTokens: chunk.message.usage.cache_read_input_tokens ?? 0
-                }
-                parts.push(
-                  new AiResponse.MetadataPart(
-                    {
-                      id: chunk.message.id,
-                      model: chunk.message.model
-                    },
-                    constDisableValidation
-                  )
-                )
-                break
-              }
-              case "message_delta": {
-                usage = {
-                  ...usage,
-                  outputTokens: chunk.usage.output_tokens,
-                  totalTokens: usage.inputTokens + chunk.usage.output_tokens
-                }
-                if (Predicate.isNotNullable(chunk.delta.stop_sequence)) {
-                  metadata.stopSequence = chunk.delta.stop_sequence
-                }
-                finishReason = InternalUtilities.resolveFinishReason(chunk.delta.stop_reason)
-                break
-              }
-              case "message_stop": {
-                parts.push(
-                  new AiResponse.FinishPart({
-                    usage,
-                    reason: finishReason,
-                    providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
-                  }, constDisableValidation)
-                )
-                break
-              }
-              case "content_block_start": {
-                const content = chunk.content_block
-                switch (content.type) {
-                  case "text": {
-                    break
+          const metadata: Record<string, unknown> = {}
+          return streamRequest<MessageStreamEvent>(
+            HttpClientRequest.post("/v1/messages", {
+              body: HttpBody.unsafeJson({ ...request, stream: true })
+            })
+          ).pipe(
+            Stream.filterMapEffect((chunk) => {
+              const parts: Array<AiResponse.Part> = []
+              switch (chunk.type) {
+                case "message_start": {
+                  usage = {
+                    inputTokens: chunk.message.usage.input_tokens,
+                    outputTokens: chunk.message.usage.output_tokens,
+                    totalTokens: chunk.message.usage.input_tokens +
+                      chunk.message.usage.output_tokens,
+                    reasoningTokens: 0,
+                    cacheWriteInputTokens: chunk.message.usage.cache_creation_input_tokens ?? 0,
+                    cacheReadInputTokens: chunk.message.usage.cache_read_input_tokens ?? 0
                   }
-                  case "thinking": {
-                    reasoning = { content: [content.thinking] }
-                    break
-                  }
-                  case "tool_use": {
-                    toolCalls[chunk.index] = {
-                      id: content.id,
-                      name: content.name,
-                      params: ""
-                    }
-                    break
-                  }
-                  case "redacted_thinking": {
-                    parts.push(
-                      new AiResponse.RedactedReasoningPart(
-                        { redactedText: content.data },
-                        constDisableValidation
-                      )
-                    )
-                    break
-                  }
-                }
-                break
-              }
-              case "content_block_delta": {
-                switch (chunk.delta.type) {
-                  case "text_delta": {
-                    parts.push(
-                      new AiResponse.TextPart(
-                        { text: chunk.delta.text },
-                        constDisableValidation
-                      )
-                    )
-                    break
-                  }
-                  case "thinking_delta": {
-                    if (Predicate.isNotUndefined(reasoning)) {
-                      reasoning.content.push(chunk.delta.thinking)
-                    }
-                    break
-                  }
-                  case "signature_delta": {
-                    if (Predicate.isNotUndefined(reasoning)) {
-                      reasoning = {
-                        ...reasoning,
-                        signature: chunk.delta.signature
-                      }
-                    }
-                    break
-                  }
-                  case "input_json_delta": {
-                    const tool = toolCalls[chunk.index]
-                    if (Predicate.isNotUndefined(tool)) {
-                      tool.params += chunk.delta.partial_json
-                    }
-                    break
-                  }
-                  // TODO: add support for citations (?)
-                  case "citations_delta": {
-                    break
-                  }
-                }
-                break
-              }
-              case "content_block_stop": {
-                if (Predicate.isNotUndefined(toolCalls[chunk.index])) {
-                  const tool = toolCalls[chunk.index]
-                  try {
-                    // If the tool call has no parameters, the model sends an empty string.
-                    const inputJson = tool.params === "" ? "{}" : tool.params
-                    const params = JSON.parse(inputJson)
-                    parts.push(
-                      new AiResponse.ToolCallPart({
-                        id: AiInput.ToolCallId.make(tool.id, constDisableValidation),
-                        name: tool.name,
-                        params
-                      }, constDisableValidation)
-                    )
-                    delete toolCalls[chunk.index]
-                    // eslint-disable-next-line no-empty
-                  } catch {}
-                }
-                if (Predicate.isNotUndefined(reasoning)) {
                   parts.push(
-                    new AiResponse.ReasoningPart({
-                      reasoningText: reasoning.content.join(""),
-                      signature: reasoning.signature
+                    new AiResponse.MetadataPart(
+                      {
+                        id: chunk.message.id,
+                        model: chunk.message.model
+                      },
+                      constDisableValidation
+                    )
+                  )
+                  break
+                }
+                case "message_delta": {
+                  usage = {
+                    ...usage,
+                    outputTokens: chunk.usage.output_tokens
+                  }
+                  if (Predicate.isNotNullable(chunk.delta.stop_sequence)) {
+                    metadata.stopSequence = chunk.delta.stop_sequence
+                  }
+                  finishReason = InternalUtilities.resolveFinishReason(chunk.delta.stop_reason)
+                  break
+                }
+                case "message_stop": {
+                  parts.push(
+                    new AiResponse.FinishPart({
+                      usage,
+                      reason: finishReason,
+                      providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
                     }, constDisableValidation)
                   )
-                  reasoning = undefined
+                  break
                 }
-                break
+                case "content_block_start": {
+                  const content = chunk.content_block
+                  switch (content.type) {
+                    case "text": {
+                      break
+                    }
+                    case "thinking": {
+                      reasoning = { content: [content.thinking] }
+                      break
+                    }
+                    case "tool_use": {
+                      toolCalls[chunk.index] = {
+                        id: content.id,
+                        name: content.name,
+                        params: ""
+                      }
+                      break
+                    }
+                    case "redacted_thinking": {
+                      parts.push(
+                        new AiResponse.RedactedReasoningPart(
+                          { redactedText: content.data },
+                          constDisableValidation
+                        )
+                      )
+                      break
+                    }
+                  }
+                  break
+                }
+                case "content_block_delta": {
+                  switch (chunk.delta.type) {
+                    case "text_delta": {
+                      parts.push(
+                        new AiResponse.TextPart(
+                          { text: chunk.delta.text },
+                          constDisableValidation
+                        )
+                      )
+                      break
+                    }
+                    case "thinking_delta": {
+                      if (Predicate.isNotUndefined(reasoning)) {
+                        reasoning.content.push(chunk.delta.thinking)
+                      }
+                      break
+                    }
+                    case "signature_delta": {
+                      if (Predicate.isNotUndefined(reasoning)) {
+                        reasoning = {
+                          ...reasoning,
+                          signature: chunk.delta.signature
+                        }
+                      }
+                      break
+                    }
+                    case "input_json_delta": {
+                      const tool = toolCalls[chunk.index]
+                      if (Predicate.isNotUndefined(tool)) {
+                        tool.params += chunk.delta.partial_json
+                      }
+                      break
+                    }
+                    // TODO: add support for citations (?)
+                    case "citations_delta": {
+                      break
+                    }
+                  }
+                  break
+                }
+                case "content_block_stop": {
+                  if (Predicate.isNotUndefined(toolCalls[chunk.index])) {
+                    const tool = toolCalls[chunk.index]
+                    try {
+                      const params = JSON.parse(tool.params)
+                      parts.push(
+                        new AiResponse.ToolCallPart({
+                          id: AiInput.ToolCallId.make(tool.id, constDisableValidation),
+                          name: tool.name,
+                          params
+                        }, constDisableValidation)
+                      )
+                      delete toolCalls[chunk.index]
+                      // eslint-disable-next-line no-empty
+                    } catch {}
+                  }
+                  if (Predicate.isNotUndefined(reasoning)) {
+                    parts.push(
+                      new AiResponse.ReasoningPart({
+                        reasoningText: reasoning.content.join(""),
+                        signature: reasoning.signature
+                      }, constDisableValidation)
+                    )
+                    reasoning = undefined
+                  }
+                  break
+                }
+                case "error": {
+                  return Option.some(
+                    Effect.die(
+                      new AiError.AiError({
+                        module: "AnthropicClient",
+                        method: "stream",
+                        description: `${chunk.error.type}: ${chunk.error.message}`
+                      })
+                    )
+                  )
+                }
               }
-              case "error": {
-                return Option.some(
-                  Effect.die(
-                    new AiError.AiError({
-                      module: "AnthropicClient",
-                      method: "stream",
-                      description: `${chunk.error.type}: ${chunk.error.message}`
-                    })
+              return parts.length === 0
+                ? Option.none()
+                : Option.some(
+                  Effect.succeed(
+                    AiResponse.AiResponse.make(
+                      { parts },
+                      constDisableValidation
+                    )
                   )
                 )
-              }
-            }
-            return parts.length === 0
-              ? Option.none()
-              : Option.some(
-                Effect.succeed(
-                  AiResponse.AiResponse.make(
-                    { parts },
-                    constDisableValidation
-                  )
-                )
-              )
-          })
-        )
-      })
-    return AnthropicClient.of({ client, streamRequest, stream })
+            })
+          )
+        })
+        return AnthropicClient.of({ client, streamRequest, stream })
+      }
+    )
   })
 
 /**
@@ -306,11 +481,78 @@ export const make = (options: {
  * @category Layers
  */
 export const layer = (options: {
+  /**
+   * The API key that will be used to authenticate with Anthropic's API.
+   *
+   * The key is wrapped in a `Redacted` type to prevent accidental logging or
+   * exposure in debugging output, helping maintain security best practices.
+   *
+   * The key is automatically included in the `x-api-key` header for all API
+   * requests made through this client, which is automatically redacted in logs
+   * output by Effect loggers.
+   *
+   * Leave `undefined` if authentication will be handled through other means
+   * (e.g., environment-based authentication, proxy authentication, or when
+   * using a mock server that doesn't require authentication).
+   */
   readonly apiKey?: Redacted.Redacted | undefined
+  /**
+   * The base URL endpoint used to communicate with Anthropic's API.
+   *
+   * This property determines the HTTP destination for all API requests made by
+   * this client.
+   *
+   * Defaults to `"https://api.anthropic.com"`.
+   *
+   * Override this value when you need to:
+   * - Point to a different Anthropic environment (e.g., staging or sandbox
+   *   servers).
+   * - Use a proxy between your application and Anthropic's API for security,
+   *   caching, or logging.
+   * - Employ a mock server for local development or testing.
+   *
+   * You may leave this property `undefined` to accept the default value.
+   */
   readonly apiUrl?: string | undefined
+  /**
+   * The Anthropic API version to use for requests.
+   *
+   * This version string determines which API schema and features are available
+   * for your requests. Different versions may have different capabilities,
+   * request/response formats, or available models.
+   *
+   * Defaults to `"2023-06-01"`.
+   *
+   * You should specify a version that:
+   * - Supports the features and models you need
+   * - Is stable and well-tested for your use case
+   * - Matches your application's integration requirements
+   *
+   * Consult Anthropic's API documentation for available versions and their
+   * differences.
+   */
   readonly anthropicVersion?: string | undefined
+  /**
+   * A function to transform the underlying HTTP client before it's used for API requests.
+   *
+   * This transformation function receives the configured HTTP client and returns
+   * a modified version. It's applied after all standard client configuration
+   * (authentication, base URL, headers) but before any requests are made.
+   *
+   * Use this for:
+   * - Adding custom middleware (logging, metrics, caching)
+   * - Modifying request/response processing behavior
+   * - Adding custom retry logic or error handling
+   * - Integrating with monitoring or debugging tools
+   * - Applying organization-specific HTTP client policies
+   *
+   * The transformation is applied once during client initialization and affects
+   * all subsequent API requests made through this client instance.
+   *
+   * Leave `undefined` if no custom HTTP client behavior is needed.
+   */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Layer.Layer<AnthropicClient, never, HttpClient.HttpClient> => Layer.effect(AnthropicClient, make(options))
+}): Layer.Layer<AnthropicClient, never, HttpClient.HttpClient> => Layer.scoped(AnthropicClient, make(options))
 
 /**
  * @since 1.0.0
@@ -318,16 +560,83 @@ export const layer = (options: {
  */
 export const layerConfig = (
   options: {
+    /**
+     * The API key that will be used to authenticate with Anthropic's API.
+     *
+     * The key is wrapped in a `Redacted` type to prevent accidental logging or
+     * exposure in debugging output, helping maintain security best practices.
+     *
+     * The key is automatically included in the `x-api-key` header for all API
+     * requests made through this client, which is automatically redacted in logs
+     * output by Effect loggers.
+     *
+     * Leave `undefined` if authentication will be handled through other means
+     * (e.g., environment-based authentication, proxy authentication, or when
+     * using a mock server that doesn't require authentication).
+     */
     readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
+    /**
+     * The base URL endpoint used to communicate with Anthropic's API.
+     *
+     * This property determines the HTTP destination for all API requests made by
+     * this client.
+     *
+     * Defaults to `"https://api.anthropic.com"`.
+     *
+     * Override this value when you need to:
+     * - Point to a different Anthropic environment (e.g., staging or sandbox
+     *   servers).
+     * - Use a proxy between your application and Anthropic's API for security,
+     *   caching, or logging.
+     * - Employ a mock server for local development or testing.
+     *
+     * You may leave this property `undefined` to accept the default value.
+     */
     readonly apiUrl?: Config.Config<string | undefined> | undefined
+    /**
+     * The Anthropic API version to use for requests.
+     *
+     * This version string determines which API schema and features are available
+     * for your requests. Different versions may have different capabilities,
+     * request/response formats, or available models.
+     *
+     * Defaults to `"2023-06-01"`.
+     *
+     * You should specify a version that:
+     * - Supports the features and models you need
+     * - Is stable and well-tested for your use case
+     * - Matches your application's integration requirements
+     *
+     * Consult Anthropic's API documentation for available versions and their
+     * differences.
+     */
     readonly anthropicVersion?: Config.Config<string | undefined> | undefined
+    /**
+     * A function to transform the underlying HTTP client before it's used for API requests.
+     *
+     * This transformation function receives the configured HTTP client and returns
+     * a modified version. It's applied after all standard client configuration
+     * (authentication, base URL, headers) but before any requests are made.
+     *
+     * Use this for:
+     * - Adding custom middleware (logging, metrics, caching)
+     * - Modifying request/response processing behavior
+     * - Adding custom retry logic or error handling
+     * - Integrating with monitoring or debugging tools
+     * - Applying organization-specific HTTP client policies
+     *
+     * The transformation is applied once during client initialization and affects
+     * all subsequent API requests made through this client instance.
+     *
+     * Leave `undefined` if no custom HTTP client behavior is needed.
+     */
     readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
   }
 ): Layer.Layer<AnthropicClient, ConfigError, HttpClient.HttpClient> => {
   const { transformClient, ...configs } = options
   return Config.all(configs).pipe(
     Effect.flatMap((configs) => make({ ...configs, transformClient })),
-    Layer.effect(AnthropicClient)
+    Layer.scoped(AnthropicClient)
   )
 }
 
