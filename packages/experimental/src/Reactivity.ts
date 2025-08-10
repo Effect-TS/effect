@@ -61,7 +61,7 @@ export const make = Effect.sync(() => {
   const mutation = <A, E, R>(
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
     effect: Effect.Effect<A, E, R>
-  ): Effect.Effect<A, E, R> => Effect.ensuring(effect, invalidate(keys))
+  ): Effect.Effect<A, E, R> => Effect.zipLeft(effect, invalidate(keys))
 
   const unsafeRegister = (
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>,
