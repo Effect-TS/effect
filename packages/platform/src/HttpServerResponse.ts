@@ -233,12 +233,12 @@ export const expireCookie: {
   (
     name: string,
     options?: Omit<Cookie["options"], "expires" | "maxAge">
-  ) => (self: HttpServerResponse) => HttpServerResponse,
+  ): (self: HttpServerResponse) => HttpServerResponse
   (
     self: HttpServerResponse,
     name: string,
     options?: Omit<Cookie["options"], "expires" | "maxAge">
-  ) => HttpServerResponse
+  ): HttpServerResponse
 } = internal.expireCookie
 
 /**

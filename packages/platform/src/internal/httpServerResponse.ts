@@ -532,7 +532,7 @@ export const expireCookie = dual<
       self.headers,
       Cookies.unsafeSet(self.cookies, name, "", {
         ...(options ?? {}),
-        maxAge: 0,
+        maxAge: 0
       }),
       self.body
     )
