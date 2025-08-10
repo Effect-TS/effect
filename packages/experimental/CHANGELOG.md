@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.54.5
+
+### Patch Changes
+
+- [#5365](https://github.com/Effect-TS/effect/pull/5365) [`b254747`](https://github.com/Effect-TS/effect/commit/b254747d478d451f3a04dac2f9050bd89176fd19) Thanks @tim-smart! - only trigger Reactivity invalidation on successful mutation
+
 ## 0.54.4
 
 ### Patch Changes
