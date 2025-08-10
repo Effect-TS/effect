@@ -7,7 +7,7 @@ import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
-import type { AiLanguageModelOptions } from "./AiLanguageModel.js"
+import type { ProviderOptions } from "./AiLanguageModel.js"
 import type { AiResponse } from "./AiResponse.js"
 
 /**
@@ -217,7 +217,7 @@ export type AttributesWithPrefix<Attributes extends Record<string, any>, Prefix 
  */
 export type FormatAttributeName<T extends string | number | symbol> = T extends string ?
   T extends `${infer First}${infer Rest}`
-    ? `${First extends Uppercase<First> ? "_" : ""}${Lowercase<First>}${FormatAttributeName<Rest>}`
+  ? `${First extends Uppercase<First> ? "_" : ""}${Lowercase<First>}${FormatAttributeName<Rest>}`
   : T :
   never
 
@@ -229,13 +229,13 @@ export const addSpanAttributes = (
   keyPrefix: string,
   transformKey: (key: string) => string
 ) =>
-<Attributes extends Record<string, any>>(span: Span, attributes: Attributes): void => {
-  for (const [key, value] of Object.entries(attributes)) {
-    if (Predicate.isNotNullable(value)) {
-      span.attribute(`${keyPrefix}.${transformKey(key)}`, value)
+  <Attributes extends Record<string, any>>(span: Span, attributes: Attributes): void => {
+    for (const [key, value] of Object.entries(attributes)) {
+      if (Predicate.isNotNullable(value)) {
+        span.attribute(`${keyPrefix}.${transformKey(key)}`, value)
+      }
     }
   }
-}
 
 const addSpanBaseAttributes = addSpanAttributes("gen_ai", String.camelToSnake)<BaseAttributes>
 const addSpanOperationAttributes = addSpanAttributes("gen_ai.operation", String.camelToSnake)<OperationAttributes>
@@ -288,7 +288,7 @@ export const addGenAIAnnotations: {
  * @category Models
  */
 export interface SpanTransformer {
-  (options: AiLanguageModelOptions & { readonly response: AiResponse }): void
+  (options: ProviderOptions & { readonly response: AiResponse }): void
 }
 
 /**
@@ -298,4 +298,4 @@ export interface SpanTransformer {
 export class CurrentSpanTransformer extends Context.Tag("@effect/ai/AiTelemetry/CurrentSpanTransformer")<
   CurrentSpanTransformer,
   SpanTransformer
->() {}
+>() { }
