@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.90.2
+
+### Patch Changes
+
+- [#5357](https://github.com/Effect-TS/effect/pull/5357) [`99302f4`](https://github.com/Effect-TS/effect/commit/99302f4233029ba3f4446f284d01af501cf1f4d6) Thanks @nounder! - Add `HttpServerResponse.expireCookie`
+
 ## 0.90.1
 
 ### Patch Changes
