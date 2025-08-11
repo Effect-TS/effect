@@ -69,6 +69,8 @@ export type ToolChoice<Tool extends AiTool.Any> = "auto" | "none" | "required" |
   readonly tool: Tool["name"]
 }
 
+export type AllowTools<Tool extends AiTool.Any> = Array<Tool["name"]>
+
 /**
  * @since 1.0.0
  * @category Models
@@ -142,6 +144,14 @@ export interface GenerateTextOptions<Tools extends AiTool.Any> {
    * The concurrency level for resolving tool calls.
    */
   readonly concurrency?: Concurrency | undefined
+
+  /**
+   * Names of tools, which are allowed for model to call.
+   * - undefined (default): All tools from toolkit will be passed to model
+   * - array: Only tools mentioned in array will be passed to model
+   */
+
+  readonly allowTools?: AllowTools<Tools> | undefined
 
   /**
    * When set to `true`, tool calls requested by the large language model
@@ -368,7 +378,7 @@ export const make: (
 
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-  >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options): Effect.Effect<
+  >({ allowTools, concurrency, toolChoice = "auto", toolkit, ...options }: Options): Effect.Effect<
     ExtractSuccess<Options>,
     ExtractError<Options>,
     ExtractContext<Options>
@@ -392,6 +402,9 @@ export const make: (
           modelOptions.toolChoice = toolChoice
           const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
           for (const tool of actualToolkit.tools) {
+            if (allowTools && !allowTools.includes(tool.name)) {
+              continue
+            }
             modelOptions.tools.push(convertTool(tool))
           }
           const response = yield* opts.generateText(modelOptions)
@@ -411,7 +424,7 @@ export const make: (
   const streamText = Effect.fnUntraced(
     function*<
       Options extends NoExcessProperties<GenerateTextOptions<any>, Options>
-    >({ concurrency, toolChoice = "auto", toolkit, ...options }: Options) {
+    >({ allowTools, concurrency, toolChoice = "auto", toolkit, ...options }: Options) {
       const span = yield* Effect.makeSpanScoped("AiLanguageModel.streamText", {
         captureStackTrace: false,
         attributes: { concurrency, toolChoice }
@@ -427,6 +440,9 @@ export const make: (
         ? yield* (toolkit as Effect.Effect<AiToolkit.ToHandler<any>>)
         : toolkit
       for (const tool of actualToolkit.tools) {
+        if (allowTools && !allowTools.includes(tool.name)) {
+          continue
+        }
         modelOptions.tools.push(convertTool(tool))
       }
       const stream = opts.streamText(modelOptions)
