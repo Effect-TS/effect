@@ -30,7 +30,7 @@ export const makeClient: <Rpcs extends Rpc.Any, const Flatten extends boolean = 
       return client.write(response)
     }
   })
-  client = yield* RpcClient.makeNoSerialization<Rpcs, never, Flatten>(group, {
+  client = yield* RpcClient.makeNoSerialization(group, {
     supportsAck: true,
     flatten: options?.flatten,
     onFromClient({ message }) {
