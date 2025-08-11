@@ -351,11 +351,6 @@ export * as Function from "./Function.js"
 export * as GlobalValue from "./GlobalValue.js"
 
 /**
- * The `Graph` module provides a comprehensive graph data structure implementation
- * supporting both directed and undirected graphs with immutable and mutable variants.
- * It includes standard graph algorithms like DFS, BFS, topological sort, shortest path
- * algorithms (Dijkstra, A*, Bellman-Ford), and cycle detection.
- *
  * @since 3.0.0
  */
 export * as Graph from "./Graph.js"
