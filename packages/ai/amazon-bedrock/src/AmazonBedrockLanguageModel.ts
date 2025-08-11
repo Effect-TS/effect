@@ -151,6 +151,15 @@ export const make = Effect.fnUntraced(function*(options: {
       toolConfig.toolChoice = { tool: { name: options.tools[0].name } }
       return toolConfig
     }
+    const hasUnallowedTools = typeof options.toolChoice === "object" && "oneOf" in options.toolChoice
+    if (hasUnallowedTools) {
+      if (options.toolChoice.mode === "required") {
+        toolConfig.toolChoice = { any: {} }
+      } else {
+        toolConfig.toolChoice = { auto: {} }
+      }
+      return toolConfig
+    }
     if (options.toolChoice === "auto") {
       toolConfig.toolChoice = { auto: {} }
     } else if (options.toolChoice === "none") {

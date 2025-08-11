@@ -61,12 +61,15 @@ export interface IdentifiedSchema<A, I, R> extends Schema.Schema<A, I, R> {
  * - `required`: The model **must** call a tool but can decide which tool will be called.
  * - `none`: The model **must not** call a tool.
  * - `{ tool: <tool_name> }`: The model must call the specified tool.
- *
+ * - `{ mode?: "auto" (default) | "required", oneOf: [<tool_names>] }`: The model is restricted to a subset of tools. When `mode` is `"auto"` or omitted, the model can decide whether to call a tool from the allowed subset. When `mode` is `"required"`, the model must call one tool from the allowed subset.
  * @since 1.0.0
  * @category Models
  */
 export type ToolChoice<Tool extends AiTool.Any> = "auto" | "none" | "required" | {
   readonly tool: Tool["name"]
+} | {
+  readonly mode?: "auto" | "required"
+  readonly oneOf: Array<Tool["name"]>
 }
 
 /**
@@ -390,8 +393,12 @@ export const make: (
             return response
           }
           modelOptions.toolChoice = toolChoice
+          const hasUnallowedTools = typeof toolChoice === "object" && "oneOf" in toolChoice
           const actualToolkit = Effect.isEffect(toolkit) ? yield* toolkit : toolkit
           for (const tool of actualToolkit.tools) {
+            if (hasUnallowedTools && !toolChoice.oneOf.includes(tool.name)) {
+              continue
+            }
             modelOptions.tools.push(convertTool(tool))
           }
           const response = yield* opts.generateText(modelOptions)
@@ -426,7 +433,11 @@ export const make: (
       const actualToolkit = Effect.isEffect(toolkit)
         ? yield* (toolkit as Effect.Effect<AiToolkit.ToHandler<any>>)
         : toolkit
+      const hasUnallowedTools = typeof toolChoice === "object" && "oneOf" in toolChoice
       for (const tool of actualToolkit.tools) {
+        if (hasUnallowedTools && !toolChoice.oneOf.includes(tool.name)) {
+          continue
+        }
         modelOptions.tools.push(convertTool(tool))
       }
       const stream = opts.streamText(modelOptions)
