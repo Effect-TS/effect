@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 Add comprehensive Graph module with directed and undirected graph support
