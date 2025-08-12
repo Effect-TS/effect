@@ -24,7 +24,7 @@ describe("DateTimeUtcFromDate", () => {
       null,
       `DateTimeUtcFromDate
 └─ Encoded side transformation failure
-   └─ Expected DateFromSelf, actual null`
+   └─ Expected a Date to be decoded into a DateTime.Utc, actual null`
     )
     await Util.assertions.decoding.fail(
       schema,

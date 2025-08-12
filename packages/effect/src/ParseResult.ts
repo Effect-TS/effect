@@ -1480,7 +1480,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       }
     }
     case "Suspend": {
-      const get = util_.memoizeThunk(() => goMemo(AST.annotations(ast.f(), ast.annotations), isDecoding))
+      const get = util_.memoizeThunk(() => goMemo(ast.f(), isDecoding))
       return (a, options) => get()(a, options)
     }
   }

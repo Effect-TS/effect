@@ -322,33 +322,33 @@ export const fromAST = (ast: AST.AST, options: {
   })
 }
 
-const constNever: JsonSchema7 = {
-  "$id": "/schemas/never",
-  "not": {}
+const constNever: JsonSchema7Never = {
+  $id: "/schemas/never",
+  not: {}
 }
 
-const constAny: JsonSchema7 = {
-  "$id": "/schemas/any"
+const constAny: JsonSchema7Any = {
+  $id: "/schemas/any"
 }
 
-const constUnknown: JsonSchema7 = {
-  "$id": "/schemas/unknown"
+const constUnknown: JsonSchema7Unknown = {
+  $id: "/schemas/unknown"
 }
 
-const constVoid: JsonSchema7 = {
-  "$id": "/schemas/void"
+const constVoid: JsonSchema7Void = {
+  $id: "/schemas/void"
 }
 
-const constAnyObject: JsonSchema7 = {
-  "$id": "/schemas/object",
+const constObject: JsonSchema7object = {
+  $id: "/schemas/object",
   "anyOf": [
     { "type": "object" },
     { "type": "array" }
   ]
 }
 
-const constEmpty: JsonSchema7 = {
-  "$id": "/schemas/%7B%7D",
+const constEmptyStruct: JsonSchema7empty = {
+  $id: "/schemas/%7B%7D",
   "anyOf": [
     { "type": "object" },
     { "type": "array" }
@@ -357,49 +357,97 @@ const constEmpty: JsonSchema7 = {
 
 const $schema = "http://json-schema.org/draft-07/schema#"
 
-const getJsonSchemaAnnotations = (ast: AST.AST, annotated?: AST.Annotated): JsonSchemaAnnotations => {
-  annotated ??= ast
-  const out: JsonSchemaAnnotations = Record.getSomes({
-    description: AST.getDescriptionAnnotation(annotated),
-    title: AST.getTitleAnnotation(annotated),
-    default: AST.getDefaultAnnotation(annotated)
-  })
-  const oexamples = AST.getExamplesAnnotation(annotated)
-  if (Option.isSome(oexamples) && oexamples.value.length > 0) {
-    const getOption = ParseResult.getOption(ast, false)
-    const examples = Arr.filterMap(oexamples.value, (e) => getOption(e))
-    if (examples.length > 0) {
-      out.examples = examples
+function getRawDescription(annotated: AST.Annotated | undefined): string | undefined {
+  if (annotated !== undefined) return Option.getOrUndefined(AST.getDescriptionAnnotation(annotated))
+}
+
+function getRawTitle(annotated: AST.Annotated | undefined): string | undefined {
+  if (annotated !== undefined) return Option.getOrUndefined(AST.getTitleAnnotation(annotated))
+}
+
+function getRawDefault(annotated: AST.Annotated | undefined): Option.Option<unknown> {
+  if (annotated !== undefined) return AST.getDefaultAnnotation(annotated)
+  return Option.none()
+}
+
+function getRawExamples(annotated: AST.Annotated | undefined): ReadonlyArray<unknown> | undefined {
+  if (annotated !== undefined) return Option.getOrUndefined(AST.getExamplesAnnotation(annotated))
+}
+
+function encodeExamples(ast: AST.AST, examples: ReadonlyArray<unknown>): Array<unknown> | undefined {
+  const getOption = ParseResult.getOption(ast, false)
+  const out = Arr.filterMap(examples, (e) => getOption(e))
+  return out.length > 0 ? out : undefined
+}
+
+function filterBuiltIn(ast: AST.AST, annotation: string | undefined, key: symbol): string | undefined {
+  if (annotation !== undefined) {
+    switch (ast._tag) {
+      case "StringKeyword":
+        return annotation !== AST.stringKeyword.annotations[key] ? annotation : undefined
+      case "NumberKeyword":
+        return annotation !== AST.numberKeyword.annotations[key] ? annotation : undefined
+      case "BooleanKeyword":
+        return annotation !== AST.booleanKeyword.annotations[key] ? annotation : undefined
     }
+  }
+  return annotation
+}
+
+function pruneJsonSchemaAnnotations(
+  ast: AST.AST,
+  description: string | undefined,
+  title: string | undefined,
+  def: Option.Option<unknown>,
+  examples: ReadonlyArray<unknown> | undefined
+): JsonSchemaAnnotations | undefined {
+  const out: JsonSchemaAnnotations = {}
+  if (description !== undefined) out.description = description
+  if (title !== undefined) out.title = title
+  if (Option.isSome(def)) out.default = def.value
+  if (examples !== undefined) {
+    const encodedExamples = encodeExamples(ast, examples)
+    if (encodedExamples !== undefined) {
+      out.examples = encodedExamples
+    }
+  }
+  if (Object.keys(out).length === 0) {
+    return undefined
   }
   return out
 }
 
-const removeDefaultJsonSchemaAnnotations = (
-  jsonSchemaAnnotations: JsonSchemaAnnotations,
-  ast: AST.AST
-): JsonSchemaAnnotations => {
-  if (jsonSchemaAnnotations["title"] === ast.annotations[AST.TitleAnnotationId]) {
-    delete jsonSchemaAnnotations["title"]
-  }
-  if (jsonSchemaAnnotations["description"] === ast.annotations[AST.DescriptionAnnotationId]) {
-    delete jsonSchemaAnnotations["description"]
-  }
-  return jsonSchemaAnnotations
+function getContextJsonSchemaAnnotations(ast: AST.AST, annotated: AST.Annotated): JsonSchemaAnnotations | undefined {
+  return pruneJsonSchemaAnnotations(
+    ast,
+    getRawDescription(annotated),
+    getRawTitle(annotated),
+    getRawDefault(annotated),
+    getRawExamples(annotated)
+  )
 }
 
-const getASTJsonSchemaAnnotations = (ast: AST.AST): JsonSchemaAnnotations => {
-  const jsonSchemaAnnotations = getJsonSchemaAnnotations(ast)
-  switch (ast._tag) {
-    case "StringKeyword":
-      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.stringKeyword)
-    case "NumberKeyword":
-      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.numberKeyword)
-    case "BooleanKeyword":
-      return removeDefaultJsonSchemaAnnotations(jsonSchemaAnnotations, AST.booleanKeyword)
-    default:
-      return jsonSchemaAnnotations
+function getJsonSchemaAnnotations(ast: AST.AST): JsonSchemaAnnotations | undefined {
+  return pruneJsonSchemaAnnotations(
+    ast,
+    filterBuiltIn(ast, getRawDescription(ast), AST.DescriptionAnnotationId),
+    filterBuiltIn(ast, getRawTitle(ast), AST.TitleAnnotationId),
+    getRawDefault(ast),
+    getRawExamples(ast)
+  )
+}
+
+function mergeJsonSchemaAnnotations(
+  jsonSchema: JsonSchema7,
+  jsonSchemaAnnotations: JsonSchemaAnnotations | undefined
+): JsonSchema7 {
+  if (jsonSchemaAnnotations) {
+    if ("$ref" in jsonSchema) {
+      return { allOf: [jsonSchema], ...jsonSchemaAnnotations } as any
+    }
+    return { ...jsonSchema, ...jsonSchemaAnnotations }
   }
+  return jsonSchema
 }
 
 const pruneUndefined = (ast: AST.AST): AST.AST | undefined => {
@@ -416,34 +464,8 @@ const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
     ("enum" in jsonSchema) || ("$ref" in jsonSchema)
 }
 
-// Returns true if the schema is an enum with no other properties other than the
-// optional "type". This is used to merge enums together.
-const isMergeableEnum = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Enum => {
-  const len = Object.keys(jsonSchema).length
-  return "enum" in jsonSchema && (len === 1 || ("type" in jsonSchema && len === 2))
-}
-
-// Some validators do not support enums without a type keyword. This function
-// adds a type keyword to the schema if it is missing and the enum values are
-// homogeneous.
-const addEnumType = (jsonSchema: JsonSchema7): JsonSchema7 => {
-  if ("enum" in jsonSchema && !("type" in jsonSchema)) {
-    const type: "string" | "number" | "boolean" | undefined = jsonSchema.enum.every(Predicate.isString) ?
-      "string" :
-      jsonSchema.enum.every(Predicate.isNumber) ?
-      "number" :
-      jsonSchema.enum.every(Predicate.isBoolean) ?
-      "boolean" :
-      undefined
-    if (type !== undefined) {
-      return { type, ...jsonSchema }
-    }
-  }
-  return jsonSchema
-}
-
-const mergeRefinements = (from: any, jsonSchema: any, annotations: any): any => {
-  const out: any = { ...from, ...annotations, ...jsonSchema }
+const mergeRefinements = (from: any, jsonSchema: any, ast: AST.AST): any => {
+  const out: any = { ...from, ...getJsonSchemaAnnotations(ast), ...jsonSchema }
   out.allOf ??= []
 
   const handle = (name: string, filter: (i: any) => boolean) => {
@@ -486,27 +508,6 @@ function isContentSchemaSupported(options: GoOptions): boolean {
   }
 }
 
-function isNullTypeKeywordSupported(options: GoOptions): boolean {
-  switch (options.target) {
-    case "jsonSchema7":
-    case "jsonSchema2019-09":
-      return true
-    case "openApi3.1":
-      return false
-  }
-}
-
-// https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
-function isNullableKeywordSupported(options: GoOptions): boolean {
-  switch (options.target) {
-    case "jsonSchema7":
-    case "jsonSchema2019-09":
-      return false
-    case "openApi3.1":
-      return true
-  }
-}
-
 function getAdditionalProperties(options: GoOptions): boolean {
   switch (options.additionalPropertiesStrategy) {
     case "allow":
@@ -517,31 +518,31 @@ function getAdditionalProperties(options: GoOptions): boolean {
 }
 
 const isNeverJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Never =>
-  "$id" in jsonSchema && jsonSchema.$id === "/schemas/never"
+  Predicate.hasProperty(jsonSchema, "$id") && jsonSchema.$id === constNever.$id
 
-const isAnyJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Any =>
-  "$id" in jsonSchema && jsonSchema.$id === "/schemas/any"
-
-const isUnknownJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Unknown =>
-  "$id" in jsonSchema && jsonSchema.$id === "/schemas/unknown"
-
-const isVoidJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Void =>
-  "$id" in jsonSchema && jsonSchema.$id === "/schemas/void"
-
-const shrink = (members: Array<JsonSchema7>): Array<JsonSchema7> => {
-  let i = members.findIndex(isAnyJSONSchema)
-  if (i !== -1) {
-    members = [members[i]]
+function addAnnotations(jsonSchema: JsonSchema7, ast: AST.AST): JsonSchema7 {
+  const annotations = getJsonSchemaAnnotations(ast)
+  if (annotations) {
+    return { ...jsonSchema, ...annotations }
   }
-  i = members.findIndex(isUnknownJSONSchema)
-  if (i !== -1) {
-    members = [members[i]]
+  return jsonSchema
+}
+
+function getIdentifierAnnotation(ast: AST.AST): string | undefined {
+  const identifier = Option.getOrUndefined(AST.getIdentifierAnnotation(ast))
+  if (identifier === undefined) {
+    if (AST.isSuspend(ast)) {
+      return getIdentifierAnnotation(ast.f())
+    }
+    if (AST.isTransformation(ast) && AST.isTypeLiteral(ast.from) && AST.isDeclaration(ast.to)) {
+      const to = ast.to
+      const surrogate = AST.getSurrogateAnnotation(to)
+      if (Option.isSome(surrogate)) {
+        return getIdentifierAnnotation(to)
+      }
+    }
   }
-  i = members.findIndex(isVoidJSONSchema)
-  if (i !== -1) {
-    members = [members[i]]
-  }
-  return members
+  return identifier
 }
 
 const go = (
@@ -552,14 +553,13 @@ const go = (
   options: GoOptions
 ): JsonSchema7 => {
   if (handleIdentifier) {
-    const identifier = AST.getJSONIdentifier(ast)
-    if (Option.isSome(identifier)) {
-      const id = identifier.value
-      const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")
+    const identifier = getIdentifierAnnotation(ast)
+    if (identifier !== undefined) {
+      const escapedId = identifier.replace(/~/ig, "~0").replace(/\//ig, "~1")
       const out = { $ref: options.getRef(escapedId) }
-      if (!Record.has($defs, id)) {
-        $defs[id] = out
-        $defs[id] = go(ast, $defs, false, path, options)
+      if (!Record.has($defs, identifier)) {
+        $defs[identifier] = out
+        $defs[identifier] = go(ast, $defs, false, path, options)
       }
       return out
     }
@@ -573,14 +573,14 @@ const go = (
         return mergeRefinements(
           go(ast.from, $defs, handleIdentifier, path, options),
           handler,
-          getJsonSchemaAnnotations(ast)
+          ast
         )
       } else if (!isOverrideAnnotation(handler)) {
         return go(t, $defs, handleIdentifier, path, options)
       }
     }
     if (AST.isDeclaration(ast)) {
-      return { ...handler, ...getJsonSchemaAnnotations(ast) }
+      return addAnnotations(handler, ast)
     }
     return handler
   }
@@ -589,66 +589,74 @@ const go = (
     return go(surrogate.value, $defs, handleIdentifier, path, options)
   }
   switch (ast._tag) {
+    // Unsupported
     case "Declaration":
+    case "UndefinedKeyword":
+    case "BigIntKeyword":
+    case "UniqueSymbol":
+    case "SymbolKeyword":
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+    case "Suspend": {
+      if (handleIdentifier) {
+        throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
+      }
+      return go(ast.f(), $defs, false, path, options)
+    }
+    // Primitives
+    case "NeverKeyword":
+      return addAnnotations(constNever, ast)
+    case "VoidKeyword":
+      return addAnnotations(constVoid, ast)
+    case "UnknownKeyword":
+      return addAnnotations(constUnknown, ast)
+    case "AnyKeyword":
+      return addAnnotations(constAny, ast)
+    case "ObjectKeyword":
+      return addAnnotations(constObject, ast)
+    case "StringKeyword":
+      return addAnnotations({ type: "string" }, ast)
+    case "NumberKeyword":
+      return addAnnotations({ type: "number" }, ast)
+    case "BooleanKeyword":
+      return addAnnotations({ type: "boolean" }, ast)
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
-        if (isNullTypeKeywordSupported(options)) {
-          // https://json-schema.org/draft-07/draft-handrews-json-schema-validation-00.pdf
-          // Section 6.1.1
-          return { type: "null", ...getJsonSchemaAnnotations(ast) }
-        } else {
-          // OpenAPI 3.1 does not support the "null" type keyword
-          // https://swagger.io/docs/specification/v3_0/data-models/data-types/#null
-          return {
-            // @ts-expect-error
-            enum: [null],
-            ...getJsonSchemaAnnotations(ast)
-          }
-        }
+        return addAnnotations({ type: "null" }, ast)
       } else if (Predicate.isString(literal)) {
-        return { type: "string", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+        return addAnnotations({ type: "string", enum: [literal] }, ast)
       } else if (Predicate.isNumber(literal)) {
-        return { type: "number", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+        return addAnnotations({ type: "number", enum: [literal] }, ast)
       } else if (Predicate.isBoolean(literal)) {
-        return { type: "boolean", enum: [literal], ...getJsonSchemaAnnotations(ast) }
+        return addAnnotations({ type: "boolean", enum: [literal] }, ast)
       }
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
-    case "UniqueSymbol":
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-    case "UndefinedKeyword":
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-    case "VoidKeyword":
-      return { ...constVoid, ...getJsonSchemaAnnotations(ast) }
-    case "NeverKeyword":
-      return { ...constNever, ...getJsonSchemaAnnotations(ast) }
-    case "UnknownKeyword":
-      return { ...constUnknown, ...getJsonSchemaAnnotations(ast) }
-    case "AnyKeyword":
-      return { ...constAny, ...getJsonSchemaAnnotations(ast) }
-    case "ObjectKeyword":
-      return { ...constAnyObject, ...getJsonSchemaAnnotations(ast) }
-    case "StringKeyword":
-      return { type: "string", ...getASTJsonSchemaAnnotations(ast) }
-    case "NumberKeyword":
-      return { type: "number", ...getASTJsonSchemaAnnotations(ast) }
-    case "BooleanKeyword":
-      return { type: "boolean", ...getASTJsonSchemaAnnotations(ast) }
-    case "BigIntKeyword":
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-    case "SymbolKeyword":
-      throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+    case "Enums": {
+      const anyOf = ast.enums.map((e) => {
+        const type: "string" | "number" = Predicate.isNumber(e[1]) ? "number" : "string"
+        return { type, title: e[0], enum: [e[1]] }
+      })
+      return anyOf.length >= 1 ?
+        addAnnotations({
+          $comment: "/schemas/enums",
+          anyOf
+        }, ast) :
+        addAnnotations(constNever, ast)
+    }
     case "TupleType": {
-      const elements = ast.elements.map((e, i) => ({
-        ...go(e.type, $defs, true, path.concat(i), options),
-        ...getJsonSchemaAnnotations(e.type, e)
-      }))
-      const rest = ast.rest.map((annotatedAST) => ({
-        ...go(annotatedAST.type, $defs, true, path, options),
-        ...getJsonSchemaAnnotations(annotatedAST.type, annotatedAST)
-      }))
+      const elements = ast.elements.map((e, i) =>
+        mergeJsonSchemaAnnotations(
+          go(e.type, $defs, true, path.concat(i), options),
+          getContextJsonSchemaAnnotations(e.type, e)
+        )
+      )
+      const rest = ast.rest.map((type) =>
+        mergeJsonSchemaAnnotations(
+          go(type.type, $defs, true, path, options),
+          getContextJsonSchemaAnnotations(type.type, type)
+        )
+      )
       const output: JsonSchema7Array = { type: "array" }
       // ---------------------------------------------
       // handle elements
@@ -685,11 +693,11 @@ const go = (
         }
       }
 
-      return { ...output, ...getJsonSchemaAnnotations(ast) }
+      return addAnnotations(output, ast)
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return { ...constEmpty, ...getJsonSchemaAnnotations(ast) }
+        return addAnnotations(constEmptyStruct, ast)
       }
       const output: JsonSchema7Object = {
         type: "object",
@@ -737,10 +745,10 @@ const go = (
         if (Predicate.isString(name)) {
           const pruned = pruneUndefined(ps.type)
           const type = pruned ?? ps.type
-          output.properties[name] = {
-            ...go(type, $defs, true, path.concat(ps.name), options),
-            ...getJsonSchemaAnnotations(type, ps)
-          }
+          output.properties[name] = mergeJsonSchemaAnnotations(
+            go(type, $defs, true, path.concat(ps.name), options),
+            getContextJsonSchemaAnnotations(type, ps)
+          )
           // ---------------------------------------------
           // handle optional property signatures
           // ---------------------------------------------
@@ -762,117 +770,30 @@ const go = (
         output.propertyNames = propertyNames
       }
 
-      return { ...output, ...getJsonSchemaAnnotations(ast) }
+      return addAnnotations(output, ast)
     }
     case "Union": {
-      const members: Array<JsonSchema7> = []
-      for (const type of ast.types) {
-        const jsonSchema = go(type, $defs, true, path, options)
-        if (!isNeverJSONSchema(jsonSchema)) {
-          const last = members[members.length - 1]
-          if (isMergeableEnum(jsonSchema) && last !== undefined && isMergeableEnum(last)) {
-            members[members.length - 1] = { enum: last.enum.concat(jsonSchema.enum) }
-          } else {
-            members.push(jsonSchema)
-          }
-        }
+      const members: Array<JsonSchema7> = ast.types.map((t) => go(t, $defs, true, path, options))
+      const anyOf = members.filter((m) => !isNeverJSONSchema(m))
+      switch (anyOf.length) {
+        case 0:
+          return constNever
+        case 1:
+          return anyOf[0]
+        default:
+          return addAnnotations({ anyOf }, ast)
       }
-
-      const anyOf = shrink(members)
-
-      const finalize = (anyOf: Array<JsonSchema7>) => {
-        switch (anyOf.length) {
-          case 0:
-            return {
-              ...constNever,
-              ...getJsonSchemaAnnotations(ast)
-            }
-          case 1: {
-            return {
-              ...addEnumType(anyOf[0]),
-              ...getJsonSchemaAnnotations(ast)
-            }
-          }
-          default:
-            return {
-              anyOf: anyOf.map(addEnumType),
-              ...getJsonSchemaAnnotations(ast)
-            }
-        }
-      }
-
-      if (isNullableKeywordSupported(options)) {
-        let nullable = false
-        const nonNullables: Array<JsonSchema7> = []
-        for (const s of anyOf) {
-          if ("nullable" in s) {
-            nullable = true
-            const nn = { ...s }
-            delete nn.nullable
-            nonNullables.push(nn)
-          } else if (isMergeableEnum(s)) {
-            const nnes = s.enum.filter((e) => e !== null)
-            if (nnes.length < s.enum.length) {
-              nullable = true
-              if (nnes.length === 0) {
-                continue
-              }
-              const nn = { ...s }
-              nn.enum = nnes
-              nonNullables.push(nn)
-            }
-          } else {
-            nonNullables.push(s)
-          }
-        }
-        if (nullable) {
-          const out = finalize(nonNullables)
-          if (!isAnyJSONSchema(out) && !isUnknownJSONSchema(out)) {
-            // @ts-expect-error
-            out.nullable = nullable
-          }
-          return out
-        }
-      }
-
-      return finalize(anyOf)
     }
-    case "Enums": {
-      const anyOf = ast.enums.map((e) => addEnumType({ title: e[0], enum: [e[1]] }))
-      return anyOf.length >= 1 ?
-        {
-          $comment: "/schemas/enums",
-          anyOf,
-          ...getJsonSchemaAnnotations(ast)
-        } :
-        {
-          ...constNever,
-          ...getJsonSchemaAnnotations(ast)
-        }
-    }
-    case "Refinement": {
-      // The jsonSchema annotation is required only if the refinement does not have a transformation
-      if (AST.getTransformationFrom(ast) === undefined) {
-        throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
-      }
+    case "Refinement":
       return go(ast.from, $defs, handleIdentifier, path, options)
-    }
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
-      return {
+      return addAnnotations({
         type: "string",
         title: String(ast),
         description: "a template literal",
-        pattern: regex.source,
-        ...getJsonSchemaAnnotations(ast)
-      }
-    }
-    case "Suspend": {
-      const identifier = Option.orElse(AST.getJSONIdentifier(ast), () => AST.getJSONIdentifier(ast.f()))
-      if (Option.isNone(identifier)) {
-        throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
-      }
-      return go(ast.f(), $defs, handleIdentifier, path, options)
+        pattern: regex.source
+      }, ast)
     }
     case "Transformation": {
       if (isParseJsonTransformation(ast.from)) {
@@ -885,24 +806,7 @@ const go = (
         }
         return out
       }
-      let next = ast.from
-      if (AST.isTypeLiteralTransformation(ast.transformation)) {
-        // Annotations from the transformation are applied unless there are user-defined annotations on the form side,
-        // ensuring that the user's intended annotations are included in the generated schema.
-        const identifier = AST.getIdentifierAnnotation(ast)
-        if (Option.isSome(identifier) && Option.isNone(AST.getIdentifierAnnotation(next))) {
-          next = AST.annotations(next, { [AST.IdentifierAnnotationId]: identifier.value })
-        }
-        const title = AST.getTitleAnnotation(ast)
-        if (Option.isSome(title) && Option.isNone(AST.getTitleAnnotation(next))) {
-          next = AST.annotations(next, { [AST.TitleAnnotationId]: title.value })
-        }
-        const description = AST.getDescriptionAnnotation(ast)
-        if (Option.isSome(description) && Option.isNone(AST.getDescriptionAnnotation(next))) {
-          next = AST.annotations(next, { [AST.DescriptionAnnotationId]: description.value })
-        }
-      }
-      return go(next, $defs, handleIdentifier, path, options)
+      return go(ast.from, $defs, handleIdentifier, path, options)
     }
   }
 }
