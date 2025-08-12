@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.68.4
+
+### Patch Changes
+
+- [#5375](https://github.com/Effect-TS/effect/pull/5375) [`43fc52e`](https://github.com/Effect-TS/effect/commit/43fc52eb851b9272d09a17f38c18679d8d1aa61d) Thanks @patroza! - improve: add flatten option to RpcTest.makeClient
+
 ## 0.68.3
 
 ### Patch Changes
