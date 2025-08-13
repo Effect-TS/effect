@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.56.2
+
+### Patch Changes
+
+- [#5380](https://github.com/Effect-TS/effect/pull/5380) [`1689874`](https://github.com/Effect-TS/effect/commit/168987408de9270b15802e7d6cc0ec42a57452d5) Thanks @tim-smart! - temporarily disable otlp exporter if endpoint can't be reached
+
 ## 0.56.1
 
 ### Patch Changes
