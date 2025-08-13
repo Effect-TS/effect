@@ -1,6 +1,8 @@
 import * as Otlp from "@effect/opentelemetry/Otlp"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import { Effect, Layer, Schedule } from "effect"
+import * as Logger from "effect/Logger"
+import * as LogLevel from "effect/LogLevel"
 
 const Observability = Otlp.layer({
   baseUrl: "http://localhost:4318",
@@ -25,5 +27,6 @@ program.pipe(
   Effect.andThen(failingProgram),
   Effect.provide(Observability),
   Effect.catchAllCause(Effect.logError),
+  Logger.withMinimumLogLevel(LogLevel.All),
   Effect.runFork
 )
