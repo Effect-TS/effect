@@ -15,7 +15,7 @@ class TTLRequest extends Schema.TaggedRequest<TTLRequest>()("TTLRequest", {
   payload: {
     id: Schema.Number
   }
-}) {
+}) implements Persistence.Persistable<typeof User, typeof Schema.String> {
   [PrimaryKey.symbol]() {
     return `TTLRequest:${this.id}`
   }
