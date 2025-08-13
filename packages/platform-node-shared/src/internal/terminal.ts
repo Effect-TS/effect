@@ -50,10 +50,9 @@ export const make = Effect.fnUntraced(function*(
         input: Option.fromNullable(s),
         key: { name: k.name ?? "", ctrl: !!k.ctrl, meta: !!k.meta, shift: !!k.shift }
       }
+      mailbox.unsafeOffer(userInput)
       if (shouldQuit(userInput)) {
         mailbox.unsafeDone(Exit.void)
-      } else {
-        mailbox.unsafeOffer(userInput)
       }
     }
     yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("keypress", handleKeypress)))
