@@ -94,11 +94,9 @@ const makeTester = <R>(
   const skip: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
     it.skip(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
-  const skipIf: Vitest.Vitest.Tester<R>["skipIf"] = (condition) => (name, self, timeout) =>
-    it.skipIf(condition)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+  const skipIf: Vitest.Vitest.Tester<R>["skipIf"] = (condition) => makeTester(mapEffect, it.skipIf(condition) as any)
 
-  const runIf: Vitest.Vitest.Tester<R>["runIf"] = (condition) => (name, self, timeout) =>
-    it.runIf(condition)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+  const runIf: Vitest.Vitest.Tester<R>["runIf"] = (condition) => makeTester(mapEffect, it.runIf(condition) as any)
 
   const only: Vitest.Vitest.Tester<R>["only"] = (name, self, timeout) =>
     it.only(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
