@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.54.6
+
+### Patch Changes
+
+- [#5385](https://github.com/Effect-TS/effect/pull/5385) [`9951993`](https://github.com/Effect-TS/effect/commit/995199396ee7031033bea1a9c890a6db066e870a) Thanks @tim-smart! - add setMany to ResultPersistence
+
 ## 0.54.5
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @effect/platform-node-shared
 
+## 0.48.1
+
+### Patch Changes
+
+- [#5383](https://github.com/Effect-TS/effect/pull/5383) [`5c67e29`](https://github.com/Effect-TS/effect/commit/5c67e29945f3acf7c1146fdf3684966c8740d3b6) Thanks @IMax153! - Ensure that user input is always offered to the terminal input mailbox
+
 ## 0.48.0
 
 ### Patch Changes
