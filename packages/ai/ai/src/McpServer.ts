@@ -367,7 +367,10 @@ export const run: (
               }
               const handler = handlers.unsafeMap.get(request.tag) as Rpc.Handler<string>
               return handler
-                ? handler.handler(request.payload, Headers.fromInput(request.headers)) as Effect.Effect<void>
+                ? handler.handler(request.payload, {
+                  clientId,
+                  headers: Headers.fromInput(request.headers)
+                }) as Effect.Effect<void>
                 : Effect.void
             }
             return f(clientId, request)

@@ -303,8 +303,11 @@ const RpcGroupProto = {
     return Effect.contextWith((parentContext: Context.Context<any>) => {
       const rpc = this.requests.get(tag)!
       const { context, handler } = parentContext.unsafeMap.get(rpc.key) as Rpc.Handler<any>
-      return (payload: Rpc.Payload<any>, headers: Headers) => {
-        const result = handler(payload, headers)
+      return (payload: Rpc.Payload<any>, options: {
+        readonly clientId: number
+        readonly headers: Headers
+      }) => {
+        const result = handler(payload, options)
         const effectOrStream = Rpc.isFork(result) ? result.value : result
         return Effect.isEffect(effectOrStream)
           ? Effect.provide(effectOrStream, context)
