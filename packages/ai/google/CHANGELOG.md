@@ -1,5 +1,13 @@
 # @effect/ai-google
 
+## 0.5.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/ai@0.26.0
+  - @effect/experimental@0.54.6
+
 ## 0.4.0
 
 ### Patch Changes
