@@ -1011,6 +1011,11 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
   const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer as Layer.Layer<never>
   return HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
     const router = yield* HttpRouter
+    let existing = existingRoutesMap.get(router)
+    if (!existing) {
+      existing = new Set()
+      existingRoutesMap.set(router, existing)
+    }
     const context = yield* Effect.context<
       | Etag.Generator
       | HttpRouter
@@ -1020,6 +1025,10 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
     >()
     const routes = Arr.empty<Route<any, any>>()
     for (const route of router_.routes) {
+      if (existing.has(route)) {
+        continue
+      }
+      existing.add(route)
       routes.push(makeRoute({
         ...route as any,
         handler: Effect.provide(route.handler, context)
@@ -1036,6 +1045,8 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
     Layer.provide(ApiMiddleware)
   )
 }
+
+const existingRoutesMap = new WeakMap<HttpRouter, Set<any>>()
 
 /**
  * Serves the provided application layer as an HTTP server.
