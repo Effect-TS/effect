@@ -237,7 +237,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       return Effect.zipRight(write, endClient(client))
     }
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
-    const result = entry.handler(request.payload, request.headers)
+    const result = entry.handler(request.payload, {
+      clientId: client.id,
+      headers: request.headers
+    })
 
     // if the handler requested forking, then we skip the concurrency control
     const isFork = Rpc.isFork(result)
