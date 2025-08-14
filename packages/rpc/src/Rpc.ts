@@ -143,7 +143,10 @@ export interface Rpc<
 export interface Handler<Tag extends string> {
   readonly _: unique symbol
   readonly tag: Tag
-  readonly handler: (request: any, headers: Headers) => Effect<any, any> | Stream<any, any>
+  readonly handler: (request: any, options: {
+    readonly clientId: number
+    readonly headers: Headers
+  }) => Effect<any, any> | Stream<any, any>
   readonly context: Context<never>
 }
 
@@ -416,7 +419,10 @@ export type ToHandler<R extends Any> = R extends Rpc<
  */
 export type ToHandlerFn<Current extends Any, R = any> = (
   payload: Payload<Current>,
-  headers: Headers
+  options: {
+    readonly clientId: number
+    readonly headers: Headers
+  }
 ) => ResultFrom<Current, R> | Fork<ResultFrom<Current, R>>
 
 /**

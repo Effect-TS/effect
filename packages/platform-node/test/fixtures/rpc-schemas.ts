@@ -109,7 +109,7 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
     GetUserOption: Effect.fnUntraced(function*(req) {
       return Option.some(new User({ id: req.id, name: "John" }))
     }),
-    StreamUsers: Effect.fnUntraced(function*(req) {
+    StreamUsers: Effect.fnUntraced(function*(req, _) {
       const mailbox = yield* Mailbox.make<User>(0)
 
       yield* Effect.addFinalizer(() =>
