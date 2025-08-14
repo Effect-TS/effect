@@ -40,6 +40,11 @@ const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A,
     if (Exit.isSuccess(exit)) {
       return () => exit.value
     } else {
+      if (Cause.isInterruptedOnly(exit.cause)) {
+        return () => {
+          throw new Error("All fibers interrupted without errors.")
+        }
+      }
       const errors = Cause.prettyErrors(exit.cause)
       for (let i = 1; i < errors.length; i++) {
         yield* Effect.logError(errors[i])
