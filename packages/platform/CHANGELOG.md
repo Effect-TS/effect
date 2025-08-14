@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.90.3
+
+### Patch Changes
+
+- [#5391](https://github.com/Effect-TS/effect/pull/5391) [`786867b`](https://github.com/Effect-TS/effect/commit/786867b1a443d4965aae4b4fd6391aaa85b6573a) Thanks @tim-smart! - support multiple HttpLayerRouter.addHttpApi
+
 ## 0.90.2
 
 ### Patch Changes
