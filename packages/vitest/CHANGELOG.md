@@ -1,5 +1,11 @@
 # @effect/vitest
 
+## 0.25.1
+
+### Patch Changes
+
+- [#5386](https://github.com/Effect-TS/effect/pull/5386) [`fa0fa16`](https://github.com/Effect-TS/effect/commit/fa0fa16a19499b3c2cd7c13eae81ac2df7889b9b) Thanks @dmaretskyi! - Correct error message when the test was interrupted
+
 ## 0.25.0
 
 ### Patch Changes

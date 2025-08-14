@@ -1,5 +1,13 @@
 # @effect/ai-openai
 
+## 0.29.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/ai@0.26.0
+  - @effect/experimental@0.54.6
+
 ## 0.28.2
 
 ### Patch Changes

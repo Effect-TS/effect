@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.69.0
+
+### Minor Changes
+
+- [#5389](https://github.com/Effect-TS/effect/pull/5389) [`3e163b2`](https://github.com/Effect-TS/effect/commit/3e163b24cc2b647e25566ba29ef25c3f57609042) Thanks @tim-smart! - expose clientId to rpc request handlers
+
 ## 0.68.4
 
 ### Patch Changes
