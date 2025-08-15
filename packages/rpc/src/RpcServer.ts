@@ -440,14 +440,20 @@ const applyMiddleware = <A, E, R>(
       handler = Effect.matchEffect(middleware(options), {
         onFailure: () => previous,
         onSuccess: tag.provides !== undefined
-          ? (value) => Effect.provideService(previous, tag.provides as any, value)
+          ? (value) =>
+            Array.isArray(tag.provides)
+              ? Effect.provide(previous, value) as any
+              : Effect.provideService(previous, tag.provides as any, value)
           : (_) => previous
       })
     } else {
       const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
+      const previous = handler
       handler = tag.provides !== undefined
-        ? Effect.provideServiceEffect(handler, tag.provides as any, middleware(options))
-        : Effect.zipRight(middleware(options), handler)
+        ? Array.isArray(tag.provides)
+          ? middleware(options).pipe(Effect.flatMap((value) => Effect.provide(previous, value))) as any
+          : Effect.provideServiceEffect(previous, tag.provides as any, middleware(options))
+        : Effect.zipRight(middleware(options), previous)
     }
   }
 
