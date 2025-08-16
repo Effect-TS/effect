@@ -83,7 +83,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
       options: {
         readonly workflowName: string
         readonly executionId: string
-        readonly deferred: DurableDeferred.Any
+        readonly deferredName: string
         readonly exit: Schema.ExitEncoded<unknown, unknown, unknown>
       }
     ) => Effect.Effect<void>

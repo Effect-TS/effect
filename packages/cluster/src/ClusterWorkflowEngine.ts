@@ -339,7 +339,7 @@ export const make = Effect.gen(function*() {
         yield* this.deferredDone({
           workflowName: workflow.name,
           executionId,
-          deferred: InterruptSignal,
+          deferredName: InterruptSignal.name,
           exit: { _tag: "Success", value: void 0 }
         })
       },
@@ -444,21 +444,21 @@ export const make = Effect.gen(function*() {
       ),
 
     deferredDone: Effect.fnUntraced(
-      function*({ deferred, executionId, exit, workflowName }) {
+      function*({ deferredName, executionId, exit, workflowName }) {
         const client = yield* RcMap.get(clients, workflowName)
         return yield* Effect.orDie(
           client(executionId).deferred({
-            name: deferred.name,
+            name: deferredName,
             exit
           }, { discard: true })
         )
       },
       Effect.scoped,
-      (effect, { deferred, executionId }) =>
+      (effect, { deferredName, executionId }) =>
         Effect.withSpan(effect, "WorkflowEngine.deferredDone", {
           captureStackTrace: false,
           attributes: {
-            name: deferred.name,
+            name: deferredName,
             executionId
           }
         })
@@ -579,7 +579,7 @@ const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
       return ensureSuccess(engine.deferredDone({
         workflowName: request.payload.workflowName,
         executionId,
-        deferred,
+        deferredName: deferred.name,
         exit: { _tag: "Success", value: void 0 }
       }))
     }
