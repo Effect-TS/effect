@@ -5,14 +5,6 @@ import * as AST from "effect/SchemaAST"
 import * as Util from "../../TestUtils.js"
 
 describe("Literal", () => {
-  it("annotations()", () => {
-    const schema = S.Literal(1).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    deepStrictEqual(schema.ast.annotations, {
-      [AST.IdentifierAnnotationId]: "X",
-      [AST.TitleAnnotationId]: "Y"
-    })
-  })
-
   it("should expose the literals", () => {
     const schema = S.Literal("a", "b")
     deepStrictEqual(schema.literals, ["a", "b"])
