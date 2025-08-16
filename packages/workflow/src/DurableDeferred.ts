@@ -11,6 +11,7 @@ import * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import type * as Activity from "./Activity.js"
 import * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -39,6 +40,7 @@ export interface DurableDeferred<
   readonly successSchema: Success
   readonly errorSchema: Error
   readonly exitSchema: Schema.Exit<Success, Error, typeof Schema.Defect>
+  readonly withActivityAttempt: Effect.Effect<DurableDeferred<Success, Error>>
 }
 
 /**
@@ -61,8 +63,8 @@ export const make = <
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Error extends Schema.Schema.All = typeof Schema.Never
 >(name: string, options?: {
-  readonly success?: Success
-  readonly error?: Error
+  readonly success?: Success | undefined
+  readonly error?: Error | undefined
 }): DurableDeferred<Success, Error> => ({
   [TypeId]: TypeId,
   name,
@@ -72,6 +74,13 @@ export const make = <
     success: options?.success ?? Schema.Void as any,
     failure: options?.error ?? Schema.Never as any,
     defect: Schema.Defect
+  }),
+  withActivityAttempt: Effect.gen(function*() {
+    const attempt = yield* CurrentAttempt
+    return make(`${name}/${attempt}`, {
+      success: options?.success,
+      error: options?.error
+    })
   })
 })
 
@@ -81,6 +90,13 @@ const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>(
 
 const InstanceTag = Context.GenericTag<WorkflowInstance, WorkflowInstance["Type"]>(
   "@effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
+)
+
+const CurrentAttempt = Context.Reference<Activity.CurrentAttempt>()(
+  "@effect/workflow/Activity/CurrentAttempt" satisfies typeof Activity.CurrentAttempt.key,
+  {
+    defaultValue: () => 1
+  }
 )
 
 const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
@@ -152,7 +168,7 @@ export const into: {
         yield* engine.deferredDone({
           workflowName: instance.workflow.name,
           executionId: instance.executionId,
-          deferred: self,
+          deferredName: self.name,
           exit: encodedExit as any
         })
       })
@@ -398,7 +414,7 @@ export const done: {
     yield* engine.deferredDone({
       workflowName: token.workflowName,
       executionId: token.executionId,
-      deferred: self,
+      deferredName: token.deferredName,
       exit: exit as any
     })
   }, Effect.orDie)
