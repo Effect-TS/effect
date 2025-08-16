@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.48.1
+
+### Patch Changes
+
+- [#5394](https://github.com/Effect-TS/effect/pull/5394) [`59547d9`](https://github.com/Effect-TS/effect/commit/59547d94dc625b19da62b5d1f3ddffa59efb0ff2) Thanks @tim-smart! - add DurableDeferred.withActivityAttempt, for scoping it to the current activity run
+
+- Updated dependencies [[`59547d9`](https://github.com/Effect-TS/effect/commit/59547d94dc625b19da62b5d1f3ddffa59efb0ff2)]:
+  - @effect/workflow@0.9.1
+
 ## 0.48.0
 
 ### Patch Changes
