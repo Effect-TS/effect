@@ -262,6 +262,11 @@ export * as SocketServer from "./SocketServer.js"
 /**
  * @since 1.0.0
  */
+export * as UdpSocket from "./UdpSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Template from "./Template.js"
 
 /**
