@@ -8464,8 +8464,11 @@ type RequiredKeys<T> = {
 type ClassAnnotations<Self, A> =
   | Annotations.Schema<Self>
   | readonly [
+    // Annotations for the "to" schema
     Annotations.Schema<Self> | undefined,
+    // Annotations for the "transformation schema
     (Annotations.Schema<Self> | undefined)?,
+    // Annotations for the "from" schema
     Annotations.Schema<A>?
   ]
 

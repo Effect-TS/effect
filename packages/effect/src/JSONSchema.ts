@@ -517,9 +517,6 @@ function getAdditionalProperties(options: GoOptions): boolean {
   }
 }
 
-const isNeverJSONSchema = (jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Never =>
-  Predicate.hasProperty(jsonSchema, "$id") && jsonSchema.$id === constNever.$id
-
 function addAnnotations(jsonSchema: JsonSchema7, ast: AST.AST): JsonSchema7 {
   const annotations = getJsonSchemaAnnotations(ast)
   if (annotations) {
@@ -774,12 +771,12 @@ const go = (
     }
     case "Union": {
       const members: Array<JsonSchema7> = ast.types.map((t) => go(t, $defs, true, path, options))
-      const anyOf = members.filter((m) => !isNeverJSONSchema(m))
+      const anyOf = compactUnion(members)
       switch (anyOf.length) {
         case 0:
           return constNever
         case 1:
-          return anyOf[0]
+          return addAnnotations(anyOf[0], ast)
         default:
           return addAnnotations({ anyOf }, ast)
       }
@@ -806,7 +803,35 @@ const go = (
         }
         return out
       }
-      return go(ast.from, $defs, handleIdentifier, path, options)
+      return addAnnotations(go(ast.from, $defs, handleIdentifier, path, options), ast)
     }
   }
+}
+
+function isJsonSchema7NeverWithoutCustomAnnotations(jsonSchema: JsonSchema7): boolean {
+  return jsonSchema === constNever || (Predicate.hasProperty(jsonSchema, "$id") && jsonSchema.$id === constNever.$id &&
+    Object.keys(jsonSchema).length === 3 && jsonSchema.title === AST.neverKeyword.annotations[AST.TitleAnnotationId])
+}
+
+function isCompactableLiteral(jsonSchema: JsonSchema7 | undefined): jsonSchema is JsonSchema7Enum {
+  return Predicate.hasProperty(jsonSchema, "enum") && "type" in jsonSchema && Object.keys(jsonSchema).length === 2
+}
+
+function compactUnion(members: Array<JsonSchema7>): Array<JsonSchema7> {
+  const out: Array<JsonSchema7> = []
+  for (const m of members) {
+    if (isJsonSchema7NeverWithoutCustomAnnotations(m)) continue
+    if (isCompactableLiteral(m) && out.length > 0) {
+      const last = out[out.length - 1]
+      if (isCompactableLiteral(last) && last.type === m.type) {
+        out[out.length - 1] = {
+          type: last.type,
+          enum: [...last.enum, ...m.enum]
+        } as JsonSchema7Enum
+        continue
+      }
+    }
+    out.push(m)
+  }
+  return out
 }

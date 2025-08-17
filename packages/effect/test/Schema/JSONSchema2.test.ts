@@ -45,23 +45,23 @@ async function assertDraft7<A, I, R>(schema: Schema.Schema<A, I, R>, expected: o
   return jsonSchema
 }
 
-// async function assertDraft202012<S extends Schema.Schema.All>(
-//   schema: S,
-//   expected: object
-// ) {
-//   const definitions = {}
-//   const jsonSchema = JSONSchema.fromAST(schema.ast, {
-//     definitions,
-//     target: "jsonSchema2019-09"
-//   })
-//   deepStrictEqual(jsonSchema, expected)
-//   const valid = ajv2020.validateSchema(jsonSchema)
-//   if (valid instanceof Promise) {
-//     await valid
-//   }
-//   strictEqual(ajvDraft7.errors, null)
-//   return jsonSchema
-// }
+async function assertDraft201909<S extends Schema.Schema.All>(
+  schema: S,
+  expected: object
+) {
+  const definitions = {}
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+    definitions,
+    target: "jsonSchema2019-09"
+  })
+  deepStrictEqual(jsonSchema, expected)
+  const valid = ajv2020.validateSchema(jsonSchema)
+  if (valid instanceof Promise) {
+    await valid
+  }
+  strictEqual(ajvDraft7.errors, null)
+  return jsonSchema
+}
 
 async function assertOpenApi3_1<S extends Schema.Schema.All>(
   schema: S,
@@ -156,26 +156,6 @@ describe("JSONSchema", () => {
     })
   })
 
-  it("handling of a top level `parseJson` should targeting the \"to\" side", async () => {
-    const schema = Schema.parseJson(Schema.Struct({
-      a: Schema.parseJson(Schema.NumberFromString)
-    }))
-    await assertDraft7(
-      schema,
-      {
-        "type": "object",
-        "required": ["a"],
-        "properties": {
-          "a": {
-            "type": "string",
-            "contentMediaType": "application/json"
-          }
-        },
-        "additionalProperties": false
-      }
-    )
-  })
-
   describe("Unsupported schemas", () => {
     it("Tuple with an unsupported component", () => {
       expectError(
@@ -242,7 +222,7 @@ schema (SymbolKeyword): symbol`
       )
     })
 
-    it("Schema.Literal with a bigint literal", () => {
+    it("Literal(bigint)", () => {
       expectError(
         Schema.Literal(1n),
         `Missing annotation
@@ -297,6 +277,131 @@ schema (SymbolKeyword): symbol`
   })
 
   describe("Draft 07", () => {
+    describe("nullable handling", () => {
+      it("Null", async () => {
+        const schema = Schema.Null
+        await assertDraft7(schema, { "type": "null" })
+      })
+
+      it("NullOr(String)", async () => {
+        const schema = Schema.NullOr(Schema.String)
+        await assertDraft7(schema, {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Any)", async () => {
+        const schema = Schema.NullOr(Schema.Any)
+        await assertDraft7(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/any",
+              "title": "any"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Unknown)", async () => {
+        const schema = Schema.NullOr(Schema.Unknown)
+        await assertDraft7(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/unknown",
+              "title": "unknown"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Void)", async () => {
+        const schema = Schema.NullOr(Schema.Void)
+        await assertDraft7(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/void",
+              "title": "void"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("Literal | null", async () => {
+        const schema = Schema.Literal("a", null)
+        await assertDraft7(schema, {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["a"]
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("Literal | null(with description)", async () => {
+        const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+        await assertDraft7(schema, {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["a"]
+            },
+            {
+              "type": "null",
+              "description": "mydescription"
+            }
+          ]
+        })
+      })
+
+      it("Nested nullable unions", async () => {
+        const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
+        await assertDraft7(schema, {
+          "anyOf": [
+            {
+              "anyOf": [
+                { "type": "string" },
+                { "type": "null" }
+              ]
+            },
+            {
+              "anyOf": [
+                { "type": "string", "enum": ["a"] },
+                { "type": "null" }
+              ]
+            }
+          ]
+        })
+      })
+    })
+
+    it("parseJson handling", async () => {
+      const schema = Schema.parseJson(Schema.Struct({
+        a: Schema.parseJson(Schema.NumberFromString)
+      }))
+      await assertDraft7(
+        schema,
+        {
+          "type": "object",
+          "required": ["a"],
+          "properties": {
+            "a": {
+              "type": "string",
+              "contentMediaType": "application/json"
+            }
+          },
+          "additionalProperties": false
+        }
+      )
+    })
+
     describe("primitives", () => {
       it("Never", async () => {
         await assertDraft7(Schema.Never, {
@@ -457,28 +562,22 @@ schema (SymbolKeyword): symbol`
     describe("Literals", () => {
       it("string literals", async () => {
         await assertDraft7(Schema.Literal("a", "b"), {
-          "anyOf": [
-            { "type": "string", "enum": ["a"] },
-            { "type": "string", "enum": ["b"] }
-          ]
+          "type": "string",
+          "enum": ["a", "b"]
         })
       })
 
       it("number literals", async () => {
         await assertDraft7(Schema.Literal(1, 2), {
-          "anyOf": [
-            { "type": "number", "enum": [1] },
-            { "type": "number", "enum": [2] }
-          ]
+          "type": "number",
+          "enum": [1, 2]
         })
       })
 
       it("boolean literals", async () => {
         await assertDraft7(Schema.Literal(true, false), {
-          "anyOf": [
-            { "type": "boolean", "enum": [true] },
-            { "type": "boolean", "enum": [false] }
-          ]
+          "type": "boolean",
+          "enum": [true, false]
         })
       })
 
@@ -492,8 +591,7 @@ schema (SymbolKeyword): symbol`
         })
         await assertDraft7(Schema.Literal("a", "b", 1), {
           "anyOf": [
-            { "type": "string", "enum": ["a"] },
-            { "type": "string", "enum": ["b"] },
+            { "type": "string", "enum": ["a", "b"] },
             { "type": "number", "enum": [1] }
           ]
         })
@@ -598,15 +696,6 @@ schema (SymbolKeyword): symbol`
             { "type": "number", "title": "Cantaloupe", "enum": [3] }
           ]
         })
-      })
-    })
-
-    it("NullOr(String)", async () => {
-      await assertDraft7(Schema.NullOr(Schema.String), {
-        "anyOf": [
-          { "type": "string" },
-          { "type": "null" }
-        ]
       })
     })
 
@@ -1756,7 +1845,7 @@ schema (SymbolKeyword): symbol`
     })
 
     describe("Union", () => {
-      it("should ignore never members", async () => {
+      it("never members", async () => {
         await assertDraft7(Schema.Union(Schema.String, Schema.Never), {
           "type": "string"
         })
@@ -1779,10 +1868,8 @@ schema (SymbolKeyword): symbol`
           await assertDraft7(
             Schema.Union(Schema.Literal(1), Schema.Literal(2)),
             {
-              "anyOf": [
-                { "type": "number", "enum": [1] },
-                { "type": "number", "enum": [2] }
-              ]
+              "type": "number",
+              "enum": [1, 2]
             }
           )
         })
@@ -1828,8 +1915,7 @@ schema (SymbolKeyword): symbol`
         it(`1 | 2 | string`, async () => {
           await assertDraft7(Schema.Union(Schema.Literal(1), Schema.Literal(2), Schema.String), {
             "anyOf": [
-              { "type": "number", "enum": [1] },
-              { "type": "number", "enum": [2] },
+              { "type": "number", "enum": [1, 2] },
               { "type": "string" }
             ]
           })
@@ -1838,12 +1924,7 @@ schema (SymbolKeyword): symbol`
         it(`(1 | 2) | string`, async () => {
           await assertDraft7(Schema.Union(Schema.Literal(1, 2), Schema.String), {
             "anyOf": [
-              {
-                "anyOf": [
-                  { "type": "number", "enum": [1] },
-                  { "type": "number", "enum": [2] }
-                ]
-              },
+              { "type": "number", "enum": [1, 2] },
               { "type": "string" }
             ]
           })
@@ -1858,10 +1939,8 @@ schema (SymbolKeyword): symbol`
             {
               "anyOf": [
                 {
-                  "anyOf": [
-                    { "type": "number", "enum": [1] },
-                    { "type": "number", "enum": [2] }
-                  ],
+                  "type": "number",
+                  "enum": [1, 2],
                   "description": "1-2-description"
                 },
                 { "type": "string" }
@@ -1880,10 +1959,8 @@ schema (SymbolKeyword): symbol`
             {
               "anyOf": [
                 {
-                  "anyOf": [
-                    { "enum": [1], "type": "number" },
-                    { "enum": [2], "type": "number" }
-                  ],
+                  "type": "number",
+                  "enum": [1, 2],
                   "description": "1-2-description"
                 },
                 { "enum": [3], "type": "number" },
@@ -1941,8 +2018,7 @@ schema (SymbolKeyword): symbol`
           await assertDraft7(Schema.Union(Schema.String, Schema.Literal(1), Schema.Literal(2)), {
             "anyOf": [
               { "type": "string" },
-              { "type": "number", "enum": [1] },
-              { "type": "number", "enum": [2] }
+              { "type": "number", "enum": [1, 2] }
             ]
           })
         })
@@ -1951,12 +2027,7 @@ schema (SymbolKeyword): symbol`
           await assertDraft7(Schema.Union(Schema.String, Schema.Literal(1, 2)), {
             "anyOf": [
               { "type": "string" },
-              {
-                "anyOf": [
-                  { "type": "number", "enum": [1] },
-                  { "type": "number", "enum": [2] }
-                ]
-              }
+              { "type": "number", "enum": [1, 2] }
             ]
           })
         })
@@ -2218,10 +2289,8 @@ schema (SymbolKeyword): symbol`
                   "enum": ["operation"]
                 },
                 "operator": {
-                  "anyOf": [
-                    { "type": "string", "enum": ["+"] },
-                    { "type": "string", "enum": ["-"] }
-                  ]
+                  "type": "string",
+                  "enum": ["+", "-"]
                 },
                 "left": {
                   "$ref": "#/$defs/2ad5683a-878f-4e4d-909c-496e59ce62e0"
@@ -2263,8 +2332,83 @@ schema (SymbolKeyword): symbol`
 
     describe("Class", () => {
       it("should use the identifier as JSON Schema identifier", async () => {
-        const input = Schema.Struct({ a: Schema.String })
-        class A extends Schema.Class<A>("A")(input) {}
+        class A extends Schema.Class<A>("A")(Schema.Struct({ a: Schema.String })) {}
+        await assertDraft7(A, {
+          "$defs": {
+            "A": {
+              "type": "object",
+              "required": [
+                "a"
+              ],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "$ref": "#/$defs/A"
+        })
+      })
+
+      it("type side json schema annotation", async () => {
+        class A extends Schema.Class<A>("A")(Schema.Struct({ a: Schema.String }), {
+          identifier: "A2"
+        }) {}
+        await assertDraft7(A, {
+          "$defs": {
+            "A2": {
+              "type": "object",
+              "required": [
+                "a"
+              ],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "$ref": "#/$defs/A2"
+        })
+      })
+
+      it("transformation side json schema annotation", async () => {
+        class A extends Schema.Class<A>("A")(Schema.Struct({ a: Schema.String }), [
+          undefined,
+          {
+            identifier: "A2"
+          }
+        ]) {}
+        await assertDraft7(A, {
+          "$defs": {
+            "A2": {
+              "type": "object",
+              "required": [
+                "a"
+              ],
+              "properties": {
+                "a": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "$ref": "#/$defs/A2"
+        })
+      })
+
+      it("from side json schema annotation", async () => {
+        class A extends Schema.Class<A>("A")(Schema.Struct({ a: Schema.String }), [
+          undefined,
+          undefined,
+          {
+            identifier: "A2"
+          }
+        ]) {}
         await assertDraft7(A, {
           "$defs": {
             "A": {
@@ -2285,8 +2429,7 @@ schema (SymbolKeyword): symbol`
       })
 
       it("should escape special characters in the $ref", async () => {
-        const input = Schema.Struct({ a: Schema.String })
-        class A extends Schema.Class<A>("~package/name")(input) {}
+        class A extends Schema.Class<A>("~package/name")(Schema.Struct({ a: Schema.String })) {}
         await assertDraft7(A, {
           "$defs": {
             "~package/name": {
@@ -2867,16 +3010,1194 @@ schema (SymbolKeyword): symbol`
         "title": "ExitEncoded<number, string, Defect>"
       })
     })
+
+    describe("Schema.encodedBoundSchema / Schema.encodedSchema", () => {
+      describe("Suspend", () => {
+        it("without inner transformations", async () => {
+          interface Category {
+            readonly name: string
+            readonly categories: ReadonlyArray<Category>
+          }
+
+          const schema: Schema.Schema<Category> = Schema.Struct({
+            name: Schema.String,
+            categories: Schema.Array(
+              Schema.suspend(() => schema).annotations({ identifier: "ID" })
+            )
+          })
+
+          await assertDraft7(Schema.encodedBoundSchema(schema), {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/IDEncodedBound"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "IDEncodedBound": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/IDEncodedBound"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          })
+          await assertDraft7(Schema.encodedSchema(schema), {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/IDEncoded"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "IDEncoded": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/IDEncoded"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          })
+        })
+
+        it("with inner transformations", async () => {
+          interface Category {
+            readonly name: number
+            readonly categories: ReadonlyArray<Category>
+          }
+          interface CategoryEncoded {
+            readonly name: string
+            readonly categories: ReadonlyArray<CategoryEncoded>
+          }
+
+          const schema: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
+            name: Schema.NumberFromString,
+            categories: Schema.Array(
+              Schema.suspend(() => schema).annotations({ identifier: "ID" })
+            )
+          })
+
+          await assertDraft7(Schema.encodedBoundSchema(schema), {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "a string to be decoded into a number"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/IDEncodedBound"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "IDEncodedBound": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "a string to be decoded into a number"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/IDEncodedBound"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          })
+          await assertDraft7(Schema.encodedSchema(schema), {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "a string to be decoded into a number"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/IDEncoded"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "IDEncoded": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "a string to be decoded into a number"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/IDEncoded"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          })
+        })
+      })
+    })
+
+    describe("jsonSchema annotation support", () => {
+      describe("Class", () => {
+        it("custom annotation", async () => {
+          class A extends Schema.Class<A>("A")({ a: Schema.String }, {
+            jsonSchema: { "type": "string" }
+          }) {}
+          await assertDraft7(A, {
+            "$defs": {
+              "A": {
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/A"
+          })
+        })
+
+        it("should support typeSchema(Class) with custom annotation", async () => {
+          class A extends Schema.Class<A>("A")({ a: Schema.String }, {
+            jsonSchema: { "type": "string" }
+          }) {}
+          await assertDraft7(Schema.typeSchema(A), {
+            "$defs": {
+              "A": {
+                "type": "string"
+              }
+            },
+            "$ref": "#/$defs/A"
+          })
+        })
+      })
+
+      it("Declaration", async () => {
+        class MyType {}
+        const schema = Schema.declare<MyType>((x) => x instanceof MyType, {
+          jsonSchema: {
+            type: "string",
+            description: "default-description"
+          }
+        })
+        await assertDraft7(schema, {
+          "type": "string",
+          "description": "default-description"
+        })
+        await assertDraft7(
+          schema.annotations({
+            description: "description"
+          }),
+          {
+            "type": "string",
+            "description": "description"
+          }
+        )
+      })
+
+      it("Void", async () => {
+        await assertDraft7(Schema.Void.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Never", async () => {
+        await assertDraft7(Schema.Never.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Literal", async () => {
+        await assertDraft7(Schema.Literal("a").annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("SymbolFromSelf", async () => {
+        await assertDraft7(Schema.SymbolFromSelf.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("UniqueSymbolFromSelf", async () => {
+        await assertDraft7(
+          Schema.UniqueSymbolFromSelf(Symbol.for("effect/schema/test/a")).annotations({
+            jsonSchema: { "type": "string" }
+          }),
+          { "type": "string" }
+        )
+      })
+
+      it("TemplateLiteral", async () => {
+        await assertDraft7(
+          Schema.TemplateLiteral(Schema.Literal("a"), Schema.String, Schema.Literal("b")).annotations({
+            jsonSchema: { "type": "string" }
+          }),
+          { "type": "string" }
+        )
+      })
+
+      it("Undefined", async () => {
+        await assertDraft7(Schema.Undefined.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Unknown", async () => {
+        await assertDraft7(Schema.Unknown.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Any", async () => {
+        await assertDraft7(Schema.Any.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Object", async () => {
+        await assertDraft7(Schema.Object.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("String", async () => {
+        await assertDraft7(
+          Schema.String.annotations({
+            jsonSchema: {
+              "type": "string",
+              "description": "description",
+              "format": "uuid"
+            }
+          }),
+          {
+            "type": "string",
+            "description": "description",
+            "format": "uuid"
+          }
+        )
+        await assertDraft7(
+          Schema.String.annotations({
+            identifier: "630d10c4-7030-45e7-894d-2c0bf5acadcf",
+            jsonSchema: { "type": "string", "description": "description" }
+          }),
+          {
+            "$defs": {
+              "630d10c4-7030-45e7-894d-2c0bf5acadcf": {
+                "type": "string",
+                "description": "description"
+              }
+            },
+            "$ref": "#/$defs/630d10c4-7030-45e7-894d-2c0bf5acadcf"
+          }
+        )
+      })
+
+      it("Number", async () => {
+        await assertDraft7(Schema.Number.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("BigintFromSelf", async () => {
+        await assertDraft7(Schema.BigIntFromSelf.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Boolean", async () => {
+        await assertDraft7(Schema.Boolean.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Enums", async () => {
+        enum Fruits {
+          Apple,
+          Banana
+        }
+        await assertDraft7(Schema.Enums(Fruits).annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("Tuple", async () => {
+        await assertDraft7(
+          Schema.Tuple(Schema.String, Schema.Number).annotations({ jsonSchema: { "type": "string" } }),
+          { "type": "string" }
+        )
+      })
+
+      it("Struct", async () => {
+        await assertDraft7(
+          Schema.Struct({ a: Schema.String, b: Schema.Number }).annotations({
+            jsonSchema: { "type": "string" }
+          }),
+          { "type": "string" }
+        )
+      })
+
+      it("Union", async () => {
+        await assertDraft7(
+          Schema.Union(Schema.String, Schema.Number).annotations({ jsonSchema: { "type": "string" } }),
+          { "type": "string" }
+        )
+      })
+
+      it("UUID", async () => {
+        await assertDraft7(
+          Schema.UUID,
+          {
+            "$defs": {
+              "UUID": {
+                "description": "a Universally Unique Identifier",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "$ref": "#/$defs/UUID"
+          }
+        )
+      })
+
+      it("Suspend", async () => {
+        interface A {
+          readonly a: string
+          readonly as: ReadonlyArray<A>
+        }
+        const schema = Schema.Struct({
+          a: Schema.String,
+          as: Schema.Array(
+            Schema.suspend((): Schema.Schema<A> => schema).annotations({ jsonSchema: { "type": "string" } })
+          )
+        })
+
+        await assertDraft7(schema, {
+          "type": "object",
+          "required": [
+            "a",
+            "as"
+          ],
+          "properties": {
+            "a": {
+              "type": "string"
+            },
+            "as": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        })
+      })
+
+      describe("Refinement", () => {
+        it("Int", async () => {
+          await assertDraft7(Schema.Int.annotations({ jsonSchema: { "type": "string" } }), {
+            "type": "string",
+            "description": "an integer",
+            "title": "int"
+          })
+        })
+
+        it("custom", async () => {
+          await assertDraft7(
+            Schema.String.pipe(Schema.filter(() => true, { jsonSchema: {} })).annotations({
+              identifier: "ID"
+            }),
+            {
+              "$ref": "#/$defs/ID",
+              "$defs": {
+                "ID": {
+                  "type": "string"
+                }
+              }
+            }
+          )
+        })
+      })
+
+      it("Transformation", async () => {
+        await assertDraft7(Schema.NumberFromString.annotations({ jsonSchema: { "type": "string" } }), {
+          "type": "string"
+        })
+      })
+
+      it("refinement of a transformation with an override annotation", async () => {
+        await assertDraft7(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
+          "format": "date-time",
+          "type": "string"
+        })
+        await assertDraft7(
+          Schema.Date.annotations({
+            jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
+          }),
+          {
+            "anyOf": [{ "type": "object" }, { "type": "array" }]
+          }
+        )
+        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "$ref": "x" } }), {
+          "$ref": "x"
+        })
+        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "const": 1 } }), {
+          "const": 1
+        })
+        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "enum": [1] } }), {
+          "enum": [1]
+        })
+      })
+
+      it("refinement of a transformation without an override annotation", async () => {
+        await assertDraft7(Schema.Trim.pipe(Schema.nonEmptyString()), {
+          "type": "string",
+          "description": "a string that will be trimmed"
+        })
+        await assertDraft7(
+          Schema.Trim.pipe(Schema.nonEmptyString({ jsonSchema: { title: "a0ba6c10-091e-4ceb-9773-25fb1466fb1b" } })),
+          {
+            "type": "string",
+            "description": "a string that will be trimmed"
+          }
+        )
+        await assertDraft7(
+          Schema.Trim.pipe(Schema.nonEmptyString()).annotations({
+            jsonSchema: { title: "75f7eb4f-626d-4dc6-af48-c17094418d85" }
+          }),
+          {
+            "type": "string",
+            "description": "a string that will be trimmed"
+          }
+        )
+      })
+    })
+
+    describe("Pruning `undefined` and make the property optional by default", () => {
+      it("Undefined", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.Undefined
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "$id": "/schemas/never",
+                "not": {},
+                "title": "never"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr(Undefined)", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.Undefined)
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "$id": "/schemas/never",
+                "not": {},
+                "title": "never"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("Nested `Undefined`s", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.UndefinedOr(Schema.Undefined))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "$id": "/schemas/never",
+                "not": {},
+                "title": "never"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("Schema.optional", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.optional(Schema.String)
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("Schema.optional + inner annotation", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.optional(Schema.String.annotations({ description: "inner" }))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "inner"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("Schema.optional + outer annotation should override inner annotation", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.optional(Schema.String.annotations({ description: "inner" })).annotations({
+              description: "outer"
+            })
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "outer"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String)
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr + inner annotation", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" }))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "inner"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr + annotation should not override inner annotations", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })).annotations({
+              description: "middle"
+            })
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "inner"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr + propertySignature annotation should override inner and middle annotations", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.propertySignature(
+              Schema.UndefinedOr(Schema.String.annotations({ description: "inner" })).annotations({
+                description: "middle"
+              })
+            ).annotations({ description: "outer" })
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string",
+                "description": "outer"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("UndefinedOr + jsonSchema annotation should keep the property required", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.UndefinedOr(Schema.String).annotations({ jsonSchema: { "type": "string" } })
+          }),
+          {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("Transformation: OptionFromUndefinedOr", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.OptionFromUndefinedOr(Schema.String)
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+
+      it("Suspend", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.suspend(() => Schema.UndefinedOr(Schema.String))
+          }),
+          {
+            "type": "object",
+            "required": [],
+            "properties": {
+              "a": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        )
+      })
+    })
+
+    describe("optionalWith", () => {
+      describe(`{ default: () => ... } option`, () => {
+        it("with transformation description", async () => {
+          await assertDraft7(
+            Schema.Struct({
+              a: Schema.optionalWith(
+                Schema.NonEmptyString.annotations({
+                  description: "inner-description"
+                }),
+                { default: () => "" }
+              ).annotations({
+                description: "middle-description"
+              })
+            }).annotations({
+              description: "outer-description"
+            }),
+            {
+              "type": "object",
+              "description": "outer-description",
+              "required": [],
+              "properties": {
+                "a": {
+                  "type": "string",
+                  "description": "inner-description",
+                  "title": "nonEmptyString",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+      })
+
+      describe(`{ as: "Option" } option`, () => {
+        it("base", async () => {
+          await assertDraft7(
+            Schema.Struct({
+              a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
+            }),
+            {
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "title": "nonEmptyString",
+                  "description": "a non empty string",
+                  "minLength": 1
+                }
+              },
+              "type": "object",
+              "required": [],
+              "properties": {
+                "a": {
+                  "$ref": "#/$defs/NonEmptyString"
+                }
+              },
+              "additionalProperties": false
+            }
+          )
+        })
+
+        it("with transformation identifier annotation", async () => {
+          await assertDraft7(
+            Schema.Struct({
+              a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
+            }).annotations({
+              identifier: "aa6f48cd-03e4-470a-beb7-5f7cc532c676",
+              description: "b964b873-0266-446b-acf4-97dc125e7553",
+              title: "aa67b73c-3161-4640-b1e1-5b5830cfb173"
+            }),
+            {
+              "$ref": "#/$defs/aa6f48cd-03e4-470a-beb7-5f7cc532c676",
+              "$defs": {
+                "NonEmptyString": {
+                  "type": "string",
+                  "title": "nonEmptyString",
+                  "description": "a non empty string",
+                  "minLength": 1
+                },
+                "aa6f48cd-03e4-470a-beb7-5f7cc532c676": {
+                  "type": "object",
+                  "required": [],
+                  "properties": {
+                    "a": {
+                      "$ref": "#/$defs/NonEmptyString"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "description": "b964b873-0266-446b-acf4-97dc125e7553",
+                  "title": "aa67b73c-3161-4640-b1e1-5b5830cfb173"
+                }
+              }
+            }
+          )
+        })
+      })
+    })
+
+    describe("fromKey", () => {
+      it("with transformation identifier annotation", async () => {
+        await assertDraft7(
+          Schema.Struct({
+            a: Schema.NonEmptyString.pipe(Schema.propertySignature, Schema.fromKey("b"))
+          }).annotations({
+            identifier: "ID",
+            description: "struct-description"
+          }),
+          {
+            "$ref": "#/$defs/ID",
+            "$defs": {
+              "NonEmptyString": {
+                "type": "string",
+                "title": "nonEmptyString",
+                "description": "a non empty string",
+                "minLength": 1
+              },
+              "ID": {
+                "type": "object",
+                "required": [
+                  "b"
+                ],
+                "properties": {
+                  "b": {
+                    "$ref": "#/$defs/NonEmptyString"
+                  }
+                },
+                "additionalProperties": false,
+                "description": "struct-description"
+              }
+            }
+          }
+        )
+      })
+    })
+  })
+
+  describe("Draft 2019-09", () => {
+    describe("nullable handling", () => {
+      it("Null", async () => {
+        const schema = Schema.Null
+        await assertDraft201909(schema, { "type": "null" })
+      })
+
+      it("NullOr(String)", async () => {
+        const schema = Schema.NullOr(Schema.String)
+        await assertDraft201909(schema, {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Any)", async () => {
+        const schema = Schema.NullOr(Schema.Any)
+        await assertDraft201909(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/any",
+              "title": "any"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Unknown)", async () => {
+        const schema = Schema.NullOr(Schema.Unknown)
+        await assertDraft201909(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/unknown",
+              "title": "unknown"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Void)", async () => {
+        const schema = Schema.NullOr(Schema.Void)
+        await assertDraft201909(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/void",
+              "title": "void"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("Literal | null", async () => {
+        const schema = Schema.Literal("a", null)
+        await assertDraft201909(schema, {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["a"]
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("Literal | null(with description)", async () => {
+        const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+        await assertDraft201909(schema, {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["a"]
+            },
+            {
+              "type": "null",
+              "description": "mydescription"
+            }
+          ]
+        })
+      })
+
+      it("Nested nullable unions", async () => {
+        const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
+        await assertDraft201909(schema, {
+          "anyOf": [
+            {
+              "anyOf": [
+                { "type": "string" },
+                { "type": "null" }
+              ]
+            },
+            {
+              "anyOf": [
+                { "type": "string", "enum": ["a"] },
+                { "type": "null" }
+              ]
+            }
+          ]
+        })
+      })
+    })
+
+    it("parseJson handling", async () => {
+      const schema = Schema.parseJson(Schema.Struct({
+        a: Schema.parseJson(Schema.NumberFromString)
+      }))
+      await assertDraft201909(
+        schema,
+        {
+          "type": "string",
+          "contentMediaType": "application/json",
+          "contentSchema": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "string",
+                "contentMediaType": "application/json",
+                "contentSchema": {
+                  "$ref": "#/$defs/NumberFromString"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      )
+    })
   })
 
   describe("OpenAPI 3.1", () => {
-    it("NullOr(String)", async () => {
-      await assertOpenApi3_1(Schema.NullOr(Schema.String), {
-        "anyOf": [
-          { "type": "string" },
-          { "type": "null" }
-        ]
+    describe("nullable handling", () => {
+      it("Null", async () => {
+        const schema = Schema.Null
+        await assertOpenApi3_1(schema, { "type": "null" })
       })
+
+      it("NullOr(String)", async () => {
+        const schema = Schema.NullOr(Schema.String)
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Any)", async () => {
+        const schema = Schema.NullOr(Schema.Any)
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/any",
+              "title": "any"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Unknown)", async () => {
+        const schema = Schema.NullOr(Schema.Unknown)
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/unknown",
+              "title": "unknown"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("NullOr(Void)", async () => {
+        const schema = Schema.NullOr(Schema.Void)
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            {
+              "$id": "/schemas/void",
+              "title": "void"
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("Literal | null", async () => {
+        const schema = Schema.Literal("a", null)
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["a"]
+            },
+            { "type": "null" }
+          ]
+        })
+      })
+
+      it("Literal | null(with description)", async () => {
+        const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            {
+              "type": "string",
+              "enum": ["a"]
+            },
+            {
+              "type": "null",
+              "description": "mydescription"
+            }
+          ]
+        })
+      })
+
+      it("Nested nullable unions", async () => {
+        const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
+        await assertOpenApi3_1(schema, {
+          "anyOf": [
+            {
+              "anyOf": [
+                { "type": "string" },
+                { "type": "null" }
+              ]
+            },
+            {
+              "anyOf": [
+                { "type": "string", "enum": ["a"] },
+                { "type": "null" }
+              ]
+            }
+          ]
+        })
+      })
+    })
+
+    it("parseJson handling", async () => {
+      const schema = Schema.parseJson(Schema.Struct({
+        a: Schema.parseJson(Schema.NumberFromString)
+      }))
+      await assertOpenApi3_1(
+        schema,
+        {
+          "type": "string",
+          "contentMediaType": "application/json",
+          "contentSchema": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "string",
+                "contentMediaType": "application/json",
+                "contentSchema": {
+                  "$ref": "#/$defs/NumberFromString"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      )
     })
   })
 })
