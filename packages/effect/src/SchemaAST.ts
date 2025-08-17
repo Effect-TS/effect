@@ -2781,10 +2781,10 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
     }
     case "Suspend": {
       let borrowedAnnotations = undefined
-      const identifier = getIdentifierAnnotation(ast)
+      const identifier = getJSONIdentifier(ast)
       if (Option.isSome(identifier)) {
         const suffix = isBound ? "Bound" : ""
-        borrowedAnnotations = { [IdentifierAnnotationId]: `${identifier.value}Encoded${suffix}` }
+        borrowedAnnotations = { [JSONIdentifierAnnotationId]: `${identifier.value}Encoded${suffix}` }
       }
       return new Suspend(() => encodedAST_(ast.f(), isBound), borrowedAnnotations)
     }

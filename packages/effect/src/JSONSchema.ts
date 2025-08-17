@@ -526,7 +526,7 @@ function addAnnotations(jsonSchema: JsonSchema7, ast: AST.AST): JsonSchema7 {
 }
 
 function getIdentifierAnnotation(ast: AST.AST): string | undefined {
-  const identifier = Option.getOrUndefined(AST.getIdentifierAnnotation(ast))
+  const identifier = Option.getOrUndefined(AST.getJSONIdentifier(ast))
   if (identifier === undefined) {
     if (AST.isSuspend(ast)) {
       return getIdentifierAnnotation(ast.f())

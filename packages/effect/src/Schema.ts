@@ -9317,7 +9317,7 @@ const causeEncoded = <E extends Schema.All, D extends Schema.All>(
     })
   ).annotations({
     title: `CauseEncoded<${format(error)}>`,
-    identifier: `CauseEncoded${causeEncodedId++}`
+    [AST.JSONIdentifierAnnotationId]: `CauseEncoded${causeEncodedId++}`
   })
   return out
 }
