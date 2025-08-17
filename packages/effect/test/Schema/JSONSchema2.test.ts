@@ -3544,6 +3544,35 @@ schema (SymbolKeyword): symbol`
           }
         )
       })
+
+      it("should detect a fragment on a non-refinement schema", async () => {
+        const schema = Schema.UUID.pipe(
+          Schema.compose(Schema.String),
+          Schema.annotations({
+            identifier: "UUID",
+            title: "title",
+            description: "description",
+            jsonSchema: {
+              format: "uuid" // fragment
+            }
+          })
+        )
+        await assertDraft7(
+          schema,
+          {
+            "$defs": {
+              "UUID": {
+                "type": "string",
+                "description": "description",
+                "title": "title",
+                "format": "uuid",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              }
+            },
+            "$ref": "#/$defs/UUID"
+          }
+        )
+      })
     })
 
     describe("Pruning `undefined` and make the property optional by default", () => {

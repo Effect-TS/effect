@@ -547,7 +547,8 @@ const go = (
   $defs: Record<string, JsonSchema7>,
   handleIdentifier: boolean,
   path: ReadonlyArray<PropertyKey>,
-  options: GoOptions
+  options: GoOptions,
+  handleAnnotation: boolean = true
 ): JsonSchema7 => {
   if (handleIdentifier) {
     const identifier = getIdentifierAnnotation(ast)
@@ -561,25 +562,34 @@ const go = (
       return out
     }
   }
-  const hook = AST.getJSONSchemaAnnotation(ast)
-  if (Option.isSome(hook)) {
-    const handler = hook.value as JsonSchema7
-    if (AST.isRefinement(ast)) {
-      const t = AST.getTransformationFrom(ast)
-      if (t === undefined) {
-        return mergeRefinements(
-          go(ast.from, $defs, handleIdentifier, path, options),
-          handler,
-          ast
-        )
-      } else if (!isOverrideAnnotation(handler)) {
-        return go(t, $defs, handleIdentifier, path, options)
+  if (handleAnnotation) {
+    const hook = AST.getJSONSchemaAnnotation(ast)
+    if (Option.isSome(hook)) {
+      const handler = hook.value as JsonSchema7
+      switch (ast._tag) {
+        case "Declaration":
+          return addAnnotations(handler, ast)
+        case "Refinement": {
+          const t = AST.getTransformationFrom(ast)
+          if (t === undefined) {
+            return mergeRefinements(
+              go(ast.from, $defs, handleIdentifier, path, options),
+              handler,
+              ast
+            )
+          } else if (!isOverrideAnnotation(handler)) {
+            return go(t, $defs, handleIdentifier, path, options)
+          }
+        }
       }
+      if (!isOverrideAnnotation(handler)) {
+        return {
+          ...go(ast, $defs, handleIdentifier, path, options, false),
+          ...handler
+        } as any
+      }
+      return handler
     }
-    if (AST.isDeclaration(ast)) {
-      return addAnnotations(handler, ast)
-    }
-    return handler
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
