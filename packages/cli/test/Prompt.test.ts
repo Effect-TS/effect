@@ -428,5 +428,24 @@ describe("Prompt", () => {
 
         expect(result).toEqual(["A"])
       }).pipe(runEffect))
+
+    it("should preselect choices marked with selected: true", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.multiSelect({
+          message: "Select multiple options",
+          choices: [
+            { title: "Option A", value: "A", selected: true },
+            { title: "Option B", value: "B", selected: true },
+            { title: "Option C", value: "C" }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        // Immediately submit without any navigation or toggling
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(["A", "B"])
+      }).pipe(runEffect))
   })
 })

@@ -416,6 +416,10 @@ export declare namespace Prompt {
      * Whether or not this select option is disabled.
      */
     readonly disabled?: boolean
+    /**
+     * Whether this option should be selected by default (only used by MultiSelect).
+     */
+    readonly selected?: boolean
   }
 
   /**
