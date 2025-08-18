@@ -1,7 +1,9 @@
 MIT License
 
-Copyright (c) 2023 Effectful Technologies Inc (original work)
-Copyright (c) 2025 effect-native contributors (modifications and packages-native/)
+Copyright (c) 2025 effect-native contributors
+
+Based on Effect (https://github.com/Effect-TS/effect)
+Copyright (c) 2023 Effectful Technologies Inc
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

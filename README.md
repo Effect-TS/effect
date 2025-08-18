@@ -1,6 +1,8 @@
 ![npm version](https://img.shields.io/npm/v/effect)
 
-# Effect Monorepo
+# Effect Monorepo - effect-native Fork
+
+> **Fork Notice**: This is the effect-native fork of [Effect](https://github.com/Effect-TS/effect). See [NOTICE](./NOTICE) for attribution details and [FORK-WORKFLOW.md](./FORK-WORKFLOW.md) for fork-specific information.
 
 > An ecosystem of tools to build robust applications in TypeScript
 
@@ -217,3 +219,23 @@ Open a pull request against the appropriate branch on the original repository:
 - `next-major` branch: For changes that introduce breaking modifications.
 
 Please be patient! We will do our best to review your pull request as soon as possible.
+
+# Fork Information
+
+## About This Fork
+
+This is the effect-native fork, which maintains:
+- All original Effect packages (in `packages/`)
+- Additional custom packages (in `packages-native/` under `@effect-native` namespace)
+
+## Attribution & Legal
+
+- Original Effect: Copyright (c) 2023 Effectful Technologies Inc
+- This Fork: Copyright (c) 2025 effect-native contributors
+- License: MIT (same as original)
+- See [NOTICE](./NOTICE) for detailed attribution
+- See [TRADEMARK.md](./TRADEMARK.md) for trademark information
+
+## Disclaimer
+
+This fork is not affiliated with or endorsed by Effectful Technologies Inc or the Effect project maintainers. The "Effect" name and branding remain property of Effectful Technologies Inc.

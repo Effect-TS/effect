@@ -1,0 +1,30 @@
+# <type>(<scope>): <subject>
+
+# <body>
+
+# <footer>
+
+# Type: feat, fix, docs, style, refactor, test, chore
+# Scope: effect, platform, cli, cluster, ai, native, etc.
+# Subject: imperative mood, lowercase, no period at end
+# 
+# Body: Explain what and why (not how)
+# 
+# Footer: 
+# - References: "Closes #123", "Fixes #456", "Related to #789"
+# - BREAKING CHANGE: description of breaking changes
+# - DCO Sign-off added automatically with -s flag
+#
+# Examples:
+# feat(native): add new sqlite adapter package
+# fix(effect): correct type inference for Schema.struct
+# docs(platform): update HTTP client examples
+#
+# For upstream contributions:
+# - Follow Effect's contribution guidelines
+# - Reference upstream issues when applicable
+# - Use DCO sign-off: git commit -s
+#
+# For fork packages (packages-native/):
+# - Use "native" or specific package name as scope
+# - Clearly indicate if change affects compatibility

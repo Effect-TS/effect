@@ -1,0 +1,49 @@
+NOTICE - effect-native Fork
+============================
+
+This repository is a fork of Effect (https://github.com/Effect-TS/effect)
+maintained by the effect-native community.
+
+## Original Work
+
+Effect is Copyright (c) 2023 Effectful Technologies Inc
+Original repository: https://github.com/Effect-TS/effect
+License: MIT
+
+## This Fork
+
+This fork (effect-native/effect) contains:
+
+1. All original Effect packages maintained in sync with upstream
+2. Additional packages in packages-native/ created by effect-native contributors
+3. Modifications to support the fork workflow
+
+Fork repository: https://github.com/effect-native/effect
+Fork copyright: Copyright (c) 2025 effect-native contributors
+License: MIT (same as original)
+
+## Attribution
+
+This fork exists to:
+- Maintain custom packages that extend Effect's functionality
+- Contribute improvements back to the original Effect project
+- Provide a stable base for effect-native ecosystem packages
+
+We gratefully acknowledge the work of the Effect team and all contributors
+to the original Effect project. This fork would not exist without their
+excellent foundation.
+
+## Packages
+
+- packages/: Original Effect packages (synced with upstream)
+- packages-native/: Fork-specific packages under @effect-native namespace
+
+## Important Notes
+
+1. The name "Effect" and associated branding remain property of Effectful Technologies Inc
+2. Packages in packages-native/ are not affiliated with or endorsed by Effectful Technologies Inc
+3. All contributions to packages/ are intended to be contributed back upstream when appropriate
+4. The @effect-native npm namespace is maintained separately from @effect
+
+For more information about the relationship between this fork and the original
+Effect project, see FORK-WORKFLOW.md
