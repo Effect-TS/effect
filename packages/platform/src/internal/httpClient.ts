@@ -1,7 +1,6 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
@@ -346,12 +345,12 @@ class InterruptibleResponse implements ClientResponse.HttpClientResponse {
   get stream() {
     return Stream.suspend(() => {
       responseRegistry.unregister(this.original)
-      return Stream.ensuringWith(this.original.stream, (exit) => {
-        if (Exit.isInterrupted(exit)) {
+      return Stream.ensuring(
+        this.original.stream,
+        Effect.sync(() => {
           this.controller.abort()
-        }
-        return Effect.void
-      })
+        })
+      )
     })
   }
 
