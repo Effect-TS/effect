@@ -59,7 +59,7 @@ async function assertDraft201909<S extends Schema.Schema.All>(
   if (valid instanceof Promise) {
     await valid
   }
-  strictEqual(ajvDraft7.errors, null)
+  strictEqual(ajv2020.errors, null)
   return jsonSchema
 }
 
