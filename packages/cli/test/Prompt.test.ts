@@ -340,6 +340,39 @@ describe("Prompt", () => {
 
         expect(result).toEqual(2)
       }).pipe(runEffect))
+
+    it("should honor a single default selected choice", () =>
+      Effect.gen(function*() {
+        const prompt = Prompt.select({
+          message: "Select an option",
+          choices: [
+            { title: "Option 1", value: 1 },
+            { title: "Option 2", value: 2, selected: true },
+            { title: "Option 3", value: 3 }
+          ]
+        })
+
+        const fiber = yield* Effect.fork(prompt)
+        // Immediately submit without navigation
+        yield* MockTerminal.inputKey("enter")
+        const result = yield* Fiber.join(fiber)
+
+        expect(result).toEqual(2)
+      }).pipe(runEffect))
+
+    it("should throw if multiple default selected choices are provided", () =>
+      Effect.gen(function*() {
+        expect(() =>
+          Prompt.select({
+            message: "Select an option",
+            choices: [
+              { title: "Option 1", value: 1, selected: true },
+              { title: "Option 2", value: 2, selected: true },
+              { title: "Option 3", value: 3 }
+            ]
+          })
+        ).toThrow()
+      }).pipe(runEffect))
   })
 
   describe("Prompt.selectMulti", () => {

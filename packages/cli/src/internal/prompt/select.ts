@@ -225,7 +225,22 @@ export const select = <const A>(options: Prompt.Prompt.SelectOptions<A>): Prompt
     maxPerPage: 10,
     ...options
   }
-  return InternalPrompt.custom(0, {
+  // Validate and seed initial index from any choice marked selected: true
+  let initialIndex = 0
+  let seenSelected = -1
+  for (let i = 0; i < opts.choices.length; i++) {
+    const choice = opts.choices[i] as Prompt.Prompt.SelectChoice<A>
+    if (choice.selected === true) {
+      if (seenSelected !== -1) {
+        throw new Error("InvalidArgumentException: only a single choice can be selected by default for Prompt.select")
+      }
+      seenSelected = i
+    }
+  }
+  if (seenSelected !== -1) {
+    initialIndex = seenSelected
+  }
+  return InternalPrompt.custom(initialIndex, {
     render: handleRender(opts),
     process: handleProcess(opts),
     clear: () => handleClear(opts)
