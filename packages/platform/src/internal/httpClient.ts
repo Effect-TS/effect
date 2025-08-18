@@ -336,12 +336,12 @@ class InterruptibleResponse implements ClientResponse.HttpClientResponse {
   get stream() {
     return Stream.suspend(() => {
       responseRegistry.unregister(this.original)
-      return Stream.ensuringWith(this.original.stream, (exit) => {
-        if (Exit.isInterrupted(exit)) {
+      return Stream.ensuring(
+        this.original.stream,
+        Effect.sync(() => {
           this.controller.abort()
-        }
-        return Effect.void
-      })
+        })
+      )
     })
   }
 
