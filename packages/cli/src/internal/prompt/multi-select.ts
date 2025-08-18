@@ -310,7 +310,15 @@ export const multiSelect = <const A>(
     maxPerPage: 10,
     ...options
   }
-  return InternalPrompt.custom({ index: 0, selectedIndices: new Set<number>(), error: Option.none() }, {
+  // Seed initial selection from choices marked as selected: true
+  const initialSelected = new Set<number>()
+  for (let i = 0; i < opts.choices.length; i++) {
+    const choice = opts.choices[i] as Prompt.Prompt.SelectChoice<A>
+    if (choice.selected === true) {
+      initialSelected.add(i)
+    }
+  }
+  return InternalPrompt.custom({ index: 0, selectedIndices: initialSelected, error: Option.none() }, {
     render: handleRender(opts),
     process: handleProcess(opts),
     clear: () => handleClear(opts)
