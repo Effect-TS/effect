@@ -63,7 +63,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20250515.0",
-    "@opentelemetry/semantic-conventions": "^1.33.0"
+    "@cloudflare/workers-types": "^4.20250515.0"
   }
 }

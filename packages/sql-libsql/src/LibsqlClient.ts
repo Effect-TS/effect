@@ -7,7 +7,6 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import * as Libsql from "@libsql/client"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -16,6 +15,8 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
 /**
  * @category type ids
@@ -145,7 +146,7 @@ export const make = (
 
     const spanAttributes: Array<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-      [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
+      [ATTR_DB_SYSTEM_NAME, "sqlite"]
     ]
 
     class LibsqlConnectionImpl implements LibsqlConnection {

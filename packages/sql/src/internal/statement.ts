@@ -1,4 +1,3 @@
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as FiberRef from "effect/FiberRef"
@@ -12,6 +11,9 @@ import type * as Tracer from "effect/Tracer"
 import type * as Connection from "../SqlConnection.js"
 import type * as Error from "../SqlError.js"
 import type * as Statement from "../Statement.js"
+
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_QUERY_TEXT = "db.query.text"
 
 /** @internal */
 export const FragmentId: Statement.FragmentId = Symbol.for(
@@ -121,8 +123,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(OtelSemConv.ATTR_DB_OPERATION_NAME, operation)
-          span.attribute(OtelSemConv.ATTR_DB_QUERY_TEXT, sql)
+          span.attribute(ATTR_DB_OPERATION_NAME, operation)
+          span.attribute(ATTR_DB_QUERY_TEXT, sql)
           return Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
         })
     )
@@ -153,8 +155,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(OtelSemConv.ATTR_DB_OPERATION_NAME, "executeStream")
-          span.attribute(OtelSemConv.ATTR_DB_QUERY_TEXT, sql)
+          span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
+          span.attribute(ATTR_DB_QUERY_TEXT, sql)
           return Effect.map(this.acquirer, (_) => _.executeStream(sql, params, this.transformRows))
         })
     ))

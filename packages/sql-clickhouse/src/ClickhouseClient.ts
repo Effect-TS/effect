@@ -9,7 +9,6 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import type { Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -24,6 +23,9 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Crypto from "node:crypto"
 import type { Readable } from "node:stream"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const ATTR_DB_NAMESPACE = "db.namespace"
 
 /**
  * @category type ids
@@ -237,8 +239,8 @@ export const make = (
         compiler,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "clickhouse"],
-          [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? "default"]
+          [ATTR_DB_SYSTEM_NAME, "clickhouse"],
+          [ATTR_DB_NAMESPACE, options.database ?? "default"]
         ],
         beginTransaction: "BEGIN TRANSACTION",
         transformRows

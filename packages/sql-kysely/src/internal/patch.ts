@@ -1,9 +1,10 @@
 import type * as Client from "@effect/sql/SqlClient"
 import { SqlError } from "@effect/sql/SqlError"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import type { Compilable } from "kysely"
+
+const ATTR_DB_QUERY_TEXT = "db.query.text"
 
 interface Executable extends Compilable {
   execute: () => Promise<ReadonlyArray<unknown>>
@@ -72,7 +73,7 @@ function executeCommit(this: Executable) {
     kind: "client",
     captureStackTrace: false,
     attributes: {
-      [OtelSemConv.ATTR_DB_QUERY_TEXT]: this.compile().sql
+      [ATTR_DB_QUERY_TEXT]: this.compile().sql
     }
   }))
 }
