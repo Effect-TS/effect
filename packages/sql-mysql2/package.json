@@ -59,7 +59,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.33.0",
     "mysql2": "^3.11.0"
   }
 }

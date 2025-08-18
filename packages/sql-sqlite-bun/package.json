@@ -45,9 +45,6 @@
     "test": "vitest",
     "coverage": "vitest --coverage"
   },
-  "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.33.0"
-  },
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",

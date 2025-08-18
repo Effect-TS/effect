@@ -61,7 +61,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "@libsql/client": "^0.12.0",
-    "@opentelemetry/semantic-conventions": "^1.33.0"
+    "@libsql/client": "^0.12.0"
   }
 }

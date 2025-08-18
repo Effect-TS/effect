@@ -7,7 +7,6 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -21,6 +20,11 @@ import * as Stream from "effect/Stream"
 import type * as NodeStream from "node:stream"
 import type { ConnectionOptions } from "node:tls"
 import postgres from "postgres"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const ATTR_DB_NAMESPACE = "db.namespace"
+const ATTR_SERVER_ADDRESS = "server.address"
+const ATTR_SERVER_PORT = "server.port"
 
 /**
  * @category type ids
@@ -281,10 +285,10 @@ export const make = (
         compiler,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_POSTGRESQL],
-          [OtelSemConv.ATTR_DB_NAMESPACE, opts.database ?? options.username ?? "postgres"],
-          [OtelSemConv.ATTR_SERVER_ADDRESS, opts.host ?? "localhost"],
-          [OtelSemConv.ATTR_SERVER_PORT, opts.port ?? 5432]
+          [ATTR_DB_SYSTEM_NAME, "postgresql"],
+          [ATTR_DB_NAMESPACE, opts.database ?? options.username ?? "postgres"],
+          [ATTR_SERVER_ADDRESS, opts.host ?? "localhost"],
+          [ATTR_SERVER_PORT, opts.port ?? 5432]
         ],
         transformRows
       }),
