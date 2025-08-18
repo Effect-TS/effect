@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.69.1
+
+### Patch Changes
+
+- [#5400](https://github.com/Effect-TS/effect/pull/5400) [`0e296f5`](https://github.com/Effect-TS/effect/commit/0e296f532afa7b69a44d9bff88a56976e248cb43) Thanks @kitlangton! - cli: multiSelect supports per-choice default selection via `selected: true`; single select honors one default
+  - Add `selected?: boolean` to `Prompt.SelectChoice`
+  - Seed initial selection in `Prompt.multiSelect` from choices marked `selected: true`
+  - Allow `Prompt.select` to honor a single `selected: true` choice and throw an error if multiple defaults are provided
+  - Add tests covering both behaviors
+
 ## 0.69.0
 
 ### Patch Changes
