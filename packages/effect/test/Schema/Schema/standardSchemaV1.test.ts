@@ -215,7 +215,7 @@ describe("standardSchemaV1", () => {
       const DepString = Schema.transformOrFail(Schema.Number, Schema.Number, {
         strict: true,
         decode: (n) =>
-          Effect.gen(function*(_) {
+          Effect.gen(function*() {
             const magicNumber = yield* MagicNumber
             return n * magicNumber
           }),
@@ -235,7 +235,7 @@ describe("standardSchemaV1", () => {
       const DepString = Schema.transformOrFail(Schema.Number, Schema.Number, {
         strict: true,
         decode: (n) =>
-          Effect.gen(function*(_) {
+          Effect.gen(function*() {
             const magicNumber = yield* MagicNumber
             yield* Effect.sleep("10 millis")
             return n * magicNumber

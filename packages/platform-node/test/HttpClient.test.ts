@@ -18,8 +18,8 @@ const TodoWithoutId = Schema.Struct({
   ...Struct.omit(Todo.fields, "id")
 })
 
-const makeJsonPlaceholder = Effect.gen(function*(_) {
-  const defaultClient = yield* _(HttpClient.HttpClient)
+const makeJsonPlaceholder = Effect.gen(function*() {
+  const defaultClient = yield* HttpClient.HttpClient
   const client = defaultClient.pipe(
     HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
   )
@@ -49,9 +49,8 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 ].forEach(({ layer, name }) => {
   describe(`NodeHttpClient - ${name}`, () => {
     it.effect("google", () =>
-      Effect.gen(function*(_) {
-        const response = yield* _(
-          HttpClient.get("https://www.google.com/"),
+      Effect.gen(function*() {
+        const response = yield* HttpClient.get("https://www.google.com/").pipe(
           Effect.flatMap((_) => _.text)
         )
         expect(response).toContain("Google")

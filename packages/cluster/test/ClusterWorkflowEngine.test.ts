@@ -288,7 +288,7 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
       }
     })
   }).pipe(
-    EmailWorkflow.withCompensation(Effect.fnUntraced(function*(_) {
+    EmailWorkflow.withCompensation(Effect.fnUntraced(function*() {
       flags.set("compensation", true)
     })),
     Activity.retry({ times: 5 })
