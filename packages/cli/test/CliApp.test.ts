@@ -8,8 +8,8 @@ import { describe, expect, it } from "@effect/vitest"
 import { Array, Console, Effect, FiberRef, Layer, LogLevel } from "effect"
 import * as MockConsole from "./services/MockConsole.js"
 
-const MainLive = Effect.gen(function*(_) {
-  const console = yield* _(MockConsole.make)
+const MainLive = Effect.gen(function*() {
+  const console = yield* MockConsole.make
   return Layer.mergeAll(
     Console.setConsole(console),
     NodeContext.layer
