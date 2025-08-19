@@ -15,7 +15,7 @@ Example usage:
 import { Graph } from "effect"
 
 // Create a graph with mutations
-const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
+const graph = Graph.directed<string, number>((mutable) => {
   const nodeA = Graph.addNode(mutable, "Node A")
   const nodeB = Graph.addNode(mutable, "Node B")
   Graph.addEdge(mutable, nodeA, nodeB, 5)
