@@ -353,7 +353,7 @@ export * as GlobalValue from "./GlobalValue.js"
 /**
  * @since 3.0.0
  */
-export * as Graph from "./Graph.js"
+export * as Graph from "./collections/Graph.js"
 
 /**
  * @since 2.0.0
