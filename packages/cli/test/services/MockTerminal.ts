@@ -39,11 +39,11 @@ export const MockTerminal = Context.GenericTag<Terminal.Terminal, MockTerminal>(
 // Constructors
 // =============================================================================
 
-export const make = Effect.gen(function*(_) {
-  const queue = yield* _(Effect.acquireRelease(
+export const make = Effect.gen(function*() {
+  const queue = yield* Effect.acquireRelease(
     Mailbox.make<Terminal.UserInput>(),
     (_) => _.shutdown
-  ))
+  )
 
   const inputText: MockTerminal["inputText"] = (text: string) => {
     const inputs = Array.map(text.split(""), (key) => toUserInput(key))
