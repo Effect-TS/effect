@@ -9511,7 +9511,7 @@ export class Defect extends transform(
         err.stack = "stack" in i && typeof i.stack === "string" ? i.stack : ""
         return err
       }
-      return String(i)
+      return internalCause_.prettyErrorMessage(i)
     },
     encode: (a) => {
       if (a instanceof Error) {
