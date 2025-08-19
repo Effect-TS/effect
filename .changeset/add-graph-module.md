@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
 Add experimental Graph module with comprehensive graph data structure support
