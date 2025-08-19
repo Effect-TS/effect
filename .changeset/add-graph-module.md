@@ -2,30 +2,24 @@
 "effect": patch
 ---
 
-Add comprehensive Graph module with directed and undirected graph support
+Add experimental Graph module with comprehensive graph data structure support
 
-The Graph module provides:
-- Support for both directed and undirected graphs
-- Immutable and mutable graph variants
-- Type-safe node and edge operations with generic data types
-- Graph algorithms:
-  - Traversal: DFS, BFS, topological sort, post-order DFS
-  - Shortest path: Dijkstra, A*, Bellman-Ford, Floyd-Warshall
-  - Analysis: cycle detection, bipartite detection, connected components, strongly connected components
-  - Export: GraphViz DOT format support
+This experimental module provides:
+- Directed and undirected graph support
+- Immutable and mutable graph variants  
+- Type-safe node and edge operations
+- Graph algorithms: DFS, BFS, shortest paths, cycle detection, etc.
 
 Example usage:
 ```typescript
 import { Graph } from "effect"
 
-// Create a directed graph
-const graph = Graph.directed<string, number>()
-  .addNode("A", "Node A")
-  .addNode("B", "Node B")
-  .addNode("C", "Node C")
-  .addEdge("A", "B", 1)
-  .addEdge("B", "C", 2)
+// Create a graph with mutations
+const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
+  const nodeA = Graph.addNode(mutable, "Node A")
+  const nodeB = Graph.addNode(mutable, "Node B")
+  Graph.addEdge(mutable, nodeA, nodeB, 5)
+})
 
-// Find shortest path
-const path = Graph.dijkstra(graph, "A", "C", (edge) => edge)
+console.log(`Nodes: ${Graph.nodeCount(graph)}, Edges: ${Graph.edgeCount(graph)}`)
 ```
