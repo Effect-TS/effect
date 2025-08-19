@@ -31,16 +31,16 @@ export type ExtractProviderMetadata<
 > = Key extends keyof Metadata ? Metadata[Key] : never
 
 export interface BasePart<Key extends ProviderMetadata.AllKeys> {
-  readonly providerMetadata: Record<string, Record<string, unknown>>
-
-  readonly getProviderMetadata: <Identifier, Metadata extends Record<string, any>>(
-    tag: Context.Tag<Identifier, Metadata>
-  ) => Option.Option<ExtractProviderMetadata<Metadata, Key>>
-
-  readonly setProviderMetadata: <Identifier, Metadata extends Record<string, any>>(
-    tag: Context.Tag<Identifier, Metadata>,
-    metadata: ExtractProviderMetadata<Metadata, Key>
-  ) => this
+  // readonly providerMetadata: Record<string, Record<string, unknown>>
+  //
+  // readonly getProviderMetadata: <Identifier, Metadata extends Record<string, any>>(
+  //   tag: Context.Tag<Identifier, Metadata>
+  // ) => Option.Option<ExtractProviderMetadata<Metadata, Key>>
+  //
+  // readonly setProviderMetadata: <Identifier, Metadata extends Record<string, any>>(
+  //   tag: Context.Tag<Identifier, Metadata>,
+  //   metadata: ExtractProviderMetadata<Metadata, Key>
+  // ) => this
 }
 
 export interface TextPart extends BasePart<"@effect/ai/AiResponseStream/TextPart"> {
