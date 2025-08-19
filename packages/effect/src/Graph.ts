@@ -1,6 +1,6 @@
 /**
  * @experimental
- * @since 3.0.0
+ * @since 3.18.0
  */
 
 import * as Data from "./Data.js"
@@ -29,7 +29,7 @@ const getMapSafe = <K, V>(map: Map<K, V>, key: K): Option.Option<V> => {
 /**
  * Unique identifier for Graph instances.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category symbol
  */
 export const TypeId: "~effect/Graph" = "~effect/Graph" as const
@@ -37,7 +37,7 @@ export const TypeId: "~effect/Graph" = "~effect/Graph" as const
 /**
  * Type identifier for Graph instances.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
@@ -45,7 +45,7 @@ export type TypeId = typeof TypeId
 /**
  * Node index for node identification using plain numbers.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type NodeIndex = number
@@ -53,7 +53,7 @@ export type NodeIndex = number
 /**
  * Edge index for edge identification using plain numbers.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type EdgeIndex = number
@@ -61,7 +61,7 @@ export type EdgeIndex = number
 /**
  * Edge data containing source, target, and user data.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export class Edge<E> extends Data.Class<{
@@ -73,7 +73,7 @@ export class Edge<E> extends Data.Class<{
 /**
  * Graph type for distinguishing directed and undirected graphs.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type Kind = "directed" | "undirected"
@@ -81,7 +81,7 @@ export type Kind = "directed" | "undirected"
 /**
  * Graph prototype interface.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface Proto<out N, out E> extends Iterable<readonly [NodeIndex, N]>, Equal.Equal, Pipeable, Inspectable {
@@ -98,7 +98,7 @@ export interface Proto<out N, out E> extends Iterable<readonly [NodeIndex, N]>, 
 /**
  * Immutable graph interface.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface Graph<out N, out E, T extends Kind = "directed"> extends Proto<N, E> {
@@ -109,7 +109,7 @@ export interface Graph<out N, out E, T extends Kind = "directed"> extends Proto<
 /**
  * Mutable graph interface.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface MutableGraph<out N, out E, T extends Kind = "directed"> extends Proto<N, E> {
@@ -120,7 +120,7 @@ export interface MutableGraph<out N, out E, T extends Kind = "directed"> extends
 /**
  * Directed graph type alias.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type DirectedGraph<N, E> = Graph<N, E, "directed">
@@ -128,7 +128,7 @@ export type DirectedGraph<N, E> = Graph<N, E, "directed">
 /**
  * Undirected graph type alias.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type UndirectedGraph<N, E> = Graph<N, E, "undirected">
@@ -136,7 +136,7 @@ export type UndirectedGraph<N, E> = Graph<N, E, "undirected">
 /**
  * Mutable directed graph type alias.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type MutableDirectedGraph<N, E> = MutableGraph<N, E, "directed">
@@ -144,7 +144,7 @@ export type MutableDirectedGraph<N, E> = MutableGraph<N, E, "directed">
 /**
  * Mutable undirected graph type alias.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type MutableUndirectedGraph<N, E> = MutableGraph<N, E, "undirected">
@@ -248,7 +248,7 @@ export const isGraph = (u: unknown): u is Graph<unknown, unknown> => typeof u ==
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category constructors
  */
 export const directed = <N, E>(mutate?: (mutable: MutableDirectedGraph<N, E>) => void): DirectedGraph<N, E> => {
@@ -289,7 +289,7 @@ export const directed = <N, E>(mutate?: (mutable: MutableDirectedGraph<N, E>) =>
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category constructors
  */
 export const undirected = <N, E>(mutate?: (mutable: MutableUndirectedGraph<N, E>) => void): UndirectedGraph<N, E> => {
@@ -329,7 +329,7 @@ export const undirected = <N, E>(mutate?: (mutable: MutableUndirectedGraph<N, E>
  * // Now mutable can be safely modified without affecting original graph
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const beginMutation = <N, E, T extends Kind = "directed">(
@@ -374,7 +374,7 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
  * const newGraph = Graph.endMutation(mutable)
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const endMutation = <N, E, T extends Kind = "directed">(
@@ -408,7 +408,7 @@ export const endMutation = <N, E, T extends Kind = "directed">(
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const mutate: {
@@ -447,7 +447,7 @@ export const mutate: {
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const addNode = <N, E, T extends Kind = "directed">(
@@ -488,7 +488,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const getNode = <N, E, T extends Kind = "directed">(
@@ -516,7 +516,7 @@ export const getNode = <N, E, T extends Kind = "directed">(
  * console.log(notExists) // false
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const hasNode = <N, E, T extends Kind = "directed">(
@@ -543,7 +543,7 @@ export const hasNode = <N, E, T extends Kind = "directed">(
  * console.log(Graph.nodeCount(graphWithNodes)) // 3
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const nodeCount = <N, E, T extends Kind = "directed">(
@@ -570,7 +570,7 @@ export const nodeCount = <N, E, T extends Kind = "directed">(
  * console.log(notFound) // Option.none()
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const findNode = <N, E, T extends Kind = "directed">(
@@ -605,7 +605,7 @@ export const findNode = <N, E, T extends Kind = "directed">(
  * console.log(empty) // []
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const findNodes = <N, E, T extends Kind = "directed">(
@@ -643,7 +643,7 @@ export const findNodes = <N, E, T extends Kind = "directed">(
  * console.log(notFound) // Option.none()
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const findEdge = <N, E, T extends Kind = "directed">(
@@ -681,7 +681,7 @@ export const findEdge = <N, E, T extends Kind = "directed">(
  * console.log(empty) // []
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const findEdges = <N, E, T extends Kind = "directed">(
@@ -714,7 +714,7 @@ export const findEdges = <N, E, T extends Kind = "directed">(
  * console.log(nodeData) // Option.some("NODE A")
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const updateNode = <N, E, T extends Kind = "directed">(
@@ -749,7 +749,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
  * console.log(edgeData) // Option.some({ source: 0, target: 1, data: 20 })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const updateEdge = <N, E, T extends Kind = "directed">(
@@ -787,7 +787,7 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
  * console.log(nodeData) // Option.some("NODE A")
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const mapNodes = <N, E, T extends Kind = "directed">(
@@ -821,7 +821,7 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
  * console.log(edgeData) // Option.some({ source: 0, target: 1, data: 20 })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const mapEdges = <N, E, T extends Kind = "directed">(
@@ -858,7 +858,7 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
  * console.log(edge0) // Option.some({ source: 1, target: 0, data: 1 }) - B -> A
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const reverse = <N, E, T extends Kind = "directed">(
@@ -918,7 +918,7 @@ export const reverse = <N, E, T extends Kind = "directed">(
  * console.log(Graph.nodeCount(graph)) // 2 (only "active" nodes remain)
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const filterMapNodes = <N, E, T extends Kind = "directed">(
@@ -970,7 +970,7 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
  * console.log(Graph.edgeCount(graph)) // 2 (edges with weight 5 removed)
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const filterMapEdges = <N, E, T extends Kind = "directed">(
@@ -1021,7 +1021,7 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
  * console.log(Graph.nodeCount(graph)) // 2 (only "active" nodes remain)
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const filterNodes = <N, E, T extends Kind = "directed">(
@@ -1067,7 +1067,7 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
  * console.log(Graph.edgeCount(graph)) // 2 (edge with weight 5 removed)
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category transformations
  */
 export const filterEdges = <N, E, T extends Kind = "directed">(
@@ -1134,7 +1134,7 @@ const invalidateCycleFlagOnAddition = <N, E, T extends Kind = "directed">(
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const addEdge = <N, E, T extends Kind = "directed">(
@@ -1208,7 +1208,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const removeNode = <N, E, T extends Kind = "directed">(
@@ -1271,7 +1271,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
  * })
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category mutations
  */
 export const removeEdge = <N, E, T extends Kind = "directed">(
@@ -1369,7 +1369,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const getEdge = <N, E, T extends Kind = "directed">(
@@ -1402,7 +1402,7 @@ export const getEdge = <N, E, T extends Kind = "directed">(
  * console.log(hasAC) // false
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const hasEdge = <N, E, T extends Kind = "directed">(
@@ -1448,7 +1448,7 @@ export const hasEdge = <N, E, T extends Kind = "directed">(
  * console.log(Graph.edgeCount(graphWithEdges)) // 3
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const edgeCount = <N, E, T extends Kind = "directed">(
@@ -1481,7 +1481,7 @@ export const edgeCount = <N, E, T extends Kind = "directed">(
  * console.log(neighborsB) // []
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category getters
  */
 export const neighbors = <N, E, T extends Kind = "directed">(
@@ -1527,7 +1527,7 @@ export const neighbors = <N, E, T extends Kind = "directed">(
  * const incoming = Graph.neighborsDirected(graph, nodeB, "incoming")
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category queries
  */
 export const neighborsDirected = <N, E, T extends Kind = "directed">(
@@ -1591,7 +1591,7 @@ export const neighborsDirected = <N, E, T extends Kind = "directed">(
  * // }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category utils
  */
 export const toGraphViz = <N, E, T extends Kind = "directed">(
@@ -1655,7 +1655,7 @@ export const toGraphViz = <N, E, T extends Kind = "directed">(
  * const incomingNodes = Array.from(Graph.indices(Graph.dfs(graph, { startNodes: [1], direction: "incoming" })))
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type Direction = "outgoing" | "incoming"
@@ -1697,7 +1697,7 @@ export type Direction = "outgoing" | "incoming"
  * console.log(Graph.isAcyclic(cyclic)) // false
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const isAcyclic = <N, E, T extends Kind = "directed">(
@@ -1811,7 +1811,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  * console.log(Graph.isBipartite(triangle)) // false
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const isBipartite = <N, E>(
@@ -1909,7 +1909,7 @@ const getUndirectedNeighbors = <N, E>(
  * console.log(components) // [[0, 1], [2, 3]]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const connectedComponents = <N, E>(
@@ -1967,7 +1967,7 @@ export const connectedComponents = <N, E>(
  * console.log(sccs) // [[0, 1, 2]]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const stronglyConnectedComponents = <N, E, T extends Kind = "directed">(
@@ -2070,7 +2070,7 @@ export const stronglyConnectedComponents = <N, E, T extends Kind = "directed">(
 /**
  * Result of a shortest path computation containing the path and total distance.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface PathResult<E> {
@@ -2105,7 +2105,7 @@ export interface PathResult<E> {
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const dijkstra = <N, E, T extends Kind = "directed">(
@@ -2239,7 +2239,7 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
 /**
  * Result of all-pairs shortest path computation.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface AllPairsResult<E> {
@@ -2272,7 +2272,7 @@ export interface AllPairsResult<E> {
  * const pathAToC = result.paths.get(0)?.get(2) // [0, 1, 2]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const floydWarshall = <N, E, T extends Kind = "directed">(
@@ -2416,7 +2416,7 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const astar = <N, E, T extends Kind = "directed">(
@@ -2599,7 +2599,7 @@ export const astar = <N, E, T extends Kind = "directed">(
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category algorithms
  */
 export const bellmanFord = <N, E, T extends Kind = "directed">(
@@ -2764,7 +2764,7 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
  * const nodeEntries = Array.from(Graph.entries(allNodes)) // [[0, "A"], [1, "B"]]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export class Walker<T, N> implements Iterable<[T, N]> {
@@ -2799,7 +2799,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
    * console.log(custom) // [{ id: 0, name: "A" }, { id: 1, name: "B" }]
    * ```
    *
-   * @since 3.0.0
+   * @since 3.18.0
    * @category iterators
    */
   readonly visit: <U>(f: (index: T, data: N) => U) => Iterable<U>
@@ -2833,7 +2833,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
      * console.log(custom) // [{ id: 0, name: "A" }, { id: 1, name: "B" }]
      * ```
      *
-     * @since 3.0.0
+     * @since 3.18.0
      * @category iterators
      */
     visit: <U>(f: (index: T, data: N) => U) => Iterable<U>
@@ -2847,7 +2847,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
  * Type alias for node iteration using Walker.
  * NodeWalker is represented as Walker<NodeIndex, N>.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type NodeWalker<N> = Walker<NodeIndex, N>
@@ -2856,7 +2856,7 @@ export type NodeWalker<N> = Walker<NodeIndex, N>
  * Type alias for edge iteration using Walker.
  * EdgeWalker is represented as Walker<EdgeIndex, Edge<E>>.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
@@ -2879,7 +2879,7 @@ export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
  * console.log(indices) // [0, 1]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category utilities
  */
 export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit((index, _) => index)
@@ -2902,7 +2902,7 @@ export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit
  * console.log(values) // ["A", "B"]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category utilities
  */
 export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit((_, data) => data)
@@ -2925,7 +2925,7 @@ export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit(
  * console.log(entries) // [[0, "A"], [1, "B"]]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category utilities
  */
 export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
@@ -2934,7 +2934,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
 /**
  * Configuration options for DFS iterator.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface DfsConfig {
@@ -2971,7 +2971,7 @@ export interface DfsConfig {
  * // Can be used programmatically
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const dfs = <N, E, T extends Kind = "directed">(
@@ -3030,7 +3030,7 @@ export const dfs = <N, E, T extends Kind = "directed">(
 /**
  * Configuration options for BFS iterator.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface BfsConfig {
@@ -3067,7 +3067,7 @@ export interface BfsConfig {
  * // Can be used programmatically
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const bfs = <N, E, T extends Kind = "directed">(
@@ -3122,7 +3122,7 @@ export const bfs = <N, E, T extends Kind = "directed">(
 /**
  * Configuration options for topological sort iterator.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface TopoConfig {
@@ -3171,7 +3171,7 @@ export interface TopoConfig {
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const topo = <N, E, T extends Kind = "directed">(
@@ -3260,7 +3260,7 @@ export const topo = <N, E, T extends Kind = "directed">(
 /**
  * Configuration options for DFS postorder iterator.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface DfsPostOrderConfig {
@@ -3294,7 +3294,7 @@ export interface DfsPostOrderConfig {
  * }
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const dfsPostOrder = <N, E, T extends Kind = "directed">(
@@ -3385,7 +3385,7 @@ export const dfsPostOrder = <N, E, T extends Kind = "directed">(
  * console.log(indices) // [0, 1, 2]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const nodes = <N, E, T extends Kind = "directed">(
@@ -3431,7 +3431,7 @@ export const nodes = <N, E, T extends Kind = "directed">(
  * console.log(indices) // [0, 1]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const edges = <N, E, T extends Kind = "directed">(
@@ -3458,7 +3458,7 @@ export const edges = <N, E, T extends Kind = "directed">(
 /**
  * Configuration for externals iterator.
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category models
  */
 export interface ExternalsConfig {
@@ -3495,7 +3495,7 @@ export interface ExternalsConfig {
  * console.log(sources) // [0, 3]
  * ```
  *
- * @since 3.0.0
+ * @since 3.18.0
  * @category iterators
  */
 export const externals = <N, E, T extends Kind = "directed">(

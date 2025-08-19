@@ -352,7 +352,7 @@ export * as GlobalValue from "./GlobalValue.js"
 
 /**
  * @experimental
- * @since 3.0.0
+ * @since 3.18.0
  */
 export * as Graph from "./Graph.js"
 
