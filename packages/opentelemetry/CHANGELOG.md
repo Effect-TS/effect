@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.56.4
+
+### Patch Changes
+
+- [#5413](https://github.com/Effect-TS/effect/pull/5413) [`2965aa7`](https://github.com/Effect-TS/effect/commit/2965aa7cff54d7155f291f97b0154486176e81be) Thanks @IMax153! - Remove @opentelemetry/semantic-conventions from Effect-native OTLP modules
+
+- Updated dependencies [[`84bc300`](https://github.com/Effect-TS/effect/commit/84bc3003b42ad51210e9e1248efd04c5d0e3dd1e), [`fef9771`](https://github.com/Effect-TS/effect/commit/fef9771eab24af6415be946df0c9f64eba01cef7)]:
+  - effect@3.17.8
+  - @effect/platform@0.90.5
+
 ## 0.56.3
 
 ### Patch Changes
