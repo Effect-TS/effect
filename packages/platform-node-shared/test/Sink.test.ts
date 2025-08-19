@@ -1,6 +1,7 @@
 import * as NodeSink from "@effect/platform-node-shared/NodeSink"
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
 import { assert, describe, it } from "@effect/vitest"
+import { pipe } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -14,10 +15,10 @@ const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 
 describe("Sink", () => {
   it("should write to a stream", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const items: Array<string> = []
       let destroyed = false
-      yield* _(
+      yield* pipe(
         Stream.make("a", "b", "c"),
         Stream.run(NodeSink.fromWritable(
           () =>
@@ -42,7 +43,7 @@ describe("Sink", () => {
     }).pipe(Effect.runPromise))
 
   it("write error", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const items: Array<string> = []
       let destroyed = false
       const sink = NodeSink.fromWritable(
@@ -62,14 +63,14 @@ describe("Sink", () => {
           }),
         () => "error"
       )
-      const result = yield* _(Stream.fail("a"), Stream.run(sink), Effect.flip)
+      const result = yield* pipe(Stream.fail("a"), Stream.run(sink), Effect.flip)
       assert.deepEqual(items, [])
       assert.strictEqual(result, "a")
       assert.strictEqual(destroyed, true)
     }).pipe(Effect.runPromise))
 
   it("endOnClose false", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const items: Array<string> = []
       let destroyed = false
       const sink = NodeSink.fromWritable(
@@ -90,16 +91,16 @@ describe("Sink", () => {
         () => "error",
         { endOnDone: false }
       )
-      yield* _(Stream.make("a", "b", "c"), Stream.run(sink))
-      yield* _(Effect.sleep(0))
+      yield* pipe(Stream.make("a", "b", "c"), Stream.run(sink))
+      yield* Effect.sleep(0)
       assert.deepEqual(items, ["a", "b", "c"])
       assert.strictEqual(destroyed, false)
     }).pipe(Effect.runPromise))
 
   it("should handle non-compliant node streams", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const stream = NodeStream.fromReadable<"error", Uint8Array>(() => createReadStream(TEST_TARBALL), () => "error")
-      const items = yield* _(
+      const items = yield* pipe(
         entries(stream),
         Stream.flatMap((entry) =>
           NodeStream.fromReadable<TarError, Uint8Array>(
@@ -118,7 +119,8 @@ describe("Sink", () => {
 
 class TarError extends Data.TaggedError("TarError")<{
   readonly error: unknown
-}> {}
+}> {
+}
 
 const entries = <R, E>(
   input: Stream.Stream<Uint8Array, E, R>
