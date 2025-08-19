@@ -3,7 +3,6 @@
  */
 import type * as Headers from "@effect/platform/Headers"
 import type * as HttpClient from "@effect/platform/HttpClient"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cause from "effect/Cause"
 import type * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -18,6 +17,10 @@ import * as Exporter from "./internal/otlpExporter.js"
 import type { KeyValue, Resource } from "./OtlpResource.js"
 import { entriesToAttributes } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
+
+const ATTR_EXCEPTION_TYPE = "exception.type"
+const ATTR_EXCEPTION_MESSAGE = "exception.message"
+const ATTR_EXCEPTION_STACKTRACE = "exception.stacktrace"
 
 /**
  * @since 1.0.0
@@ -227,19 +230,19 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
         droppedAttributesCount: 0,
         attributes: [
           {
-            "key": OtelSemConv.ATTR_EXCEPTION_TYPE,
+            "key": ATTR_EXCEPTION_TYPE,
             "value": {
               "stringValue": firstError.name
             }
           },
           {
-            "key": OtelSemConv.ATTR_EXCEPTION_MESSAGE,
+            "key": ATTR_EXCEPTION_MESSAGE,
             "value": {
               "stringValue": firstError.message
             }
           },
           {
-            "key": OtelSemConv.ATTR_EXCEPTION_STACKTRACE,
+            "key": ATTR_EXCEPTION_STACKTRACE,
             "value": {
               "stringValue": Cause.pretty(status.exit.cause, { renderErrorCause: true })
             }

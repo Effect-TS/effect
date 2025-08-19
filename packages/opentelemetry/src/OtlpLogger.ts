@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import type * as Headers from "@effect/platform/Headers"
 import type * as HttpClient from "@effect/platform/HttpClient"
 import * as Arr from "effect/Array"
