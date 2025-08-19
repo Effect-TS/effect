@@ -16,6 +16,7 @@ import * as InternalListPrompt from "./internal/prompt/list.js"
 import * as InternalMultiSelectPrompt from "./internal/prompt/multi-select.js"
 import * as InternalNumberPrompt from "./internal/prompt/number.js"
 import * as InternalSelectPrompt from "./internal/prompt/select.js"
+import * as InternalSpinner from "./internal/prompt/spinner.js"
 import * as InternalTextPrompt from "./internal/prompt/text.js"
 import * as InternalTogglePrompt from "./internal/prompt/toggle.js"
 import type { Primitive } from "./Primitive.js"
@@ -594,6 +595,38 @@ export const date: (options: Prompt.DateOptions) => Prompt<Date> = InternalDateP
  * @category constructors
  */
 export const file: (options?: Prompt.FileOptions) => Prompt<string> = InternalFilePrompt.file
+
+/**
+ * Displays a spinner while the provided `effect` runs and then renders a
+ * check mark on success or a cross on failure. The error from `effect` is
+ * rethrown unchanged.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import * as Prompt from "@effect/cli/Prompt"
+ * import * as Effect from "effect/Effect"
+ *
+ * const fetchUser = Effect.sleep("500 millis").pipe(Effect.as({ id: 1, name: "Ada" }))
+ *
+ * const program = Prompt.spinner(fetchUser, {
+ *   message: "Fetching user…",
+ *   onSuccess: (user) => `Loaded ${user.name}`
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const spinner: {
+  <A, E, R>(
+    options: InternalSpinner.SpinnerOptions<A, E>
+  ): (effect: Effect<A, E, R>) => Effect<A, E, R | Terminal>
+  <A, E, R>(
+    effect: Effect<A, E, R>,
+    options: InternalSpinner.SpinnerOptions<A, E>
+  ): Effect<A, E, R | Terminal>
+} = InternalSpinner.spinner
 
 /**
  * @since 1.0.0
