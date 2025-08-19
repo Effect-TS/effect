@@ -10,7 +10,7 @@ const findMetric = (metrics: any, name: string) =>
 
 describe("Metrics", () => {
   it.effect("gauge", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const resource = resourceFromAttributes({
         name: "test",
         version: "1.0.0"
@@ -18,11 +18,11 @@ describe("Metrics", () => {
       const producer = new internal.MetricProducerImpl(resource)
       const gauge = Metric.gauge("rps")
 
-      yield* _(Metric.set(gauge, 10), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
-      yield* _(Metric.set(gauge, 10), Effect.tagMetrics("key", "value"))
-      yield* _(Metric.set(gauge, 20), Effect.tagMetrics("key", "value"))
+      yield* Metric.set(gauge, 10).pipe(Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* Metric.set(gauge, 10).pipe(Effect.tagMetrics("key", "value"))
+      yield* Metric.set(gauge, 20).pipe(Effect.tagMetrics("key", "value"))
 
-      const results = yield* _(Effect.promise(() => producer.collect()))
+      const results = yield* Effect.promise(() => producer.collect())
       const object = JSON.parse(JSON.stringify(results))
       assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
         ["name", "test"],
@@ -64,7 +64,7 @@ describe("Metrics", () => {
     }))
 
   it.effect("gauge bigint", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const producer = new internal.MetricProducerImpl(
         resourceFromAttributes({
           name: "test",
@@ -73,11 +73,11 @@ describe("Metrics", () => {
       )
       const gauge = Metric.gauge("rps-bigint", { bigint: true })
 
-      yield* _(Metric.set(gauge, 10n), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
-      yield* _(Metric.set(gauge, 10n), Effect.tagMetrics("key", "value"))
-      yield* _(Metric.set(gauge, 20n), Effect.tagMetrics("key", "value"))
+      yield* Metric.set(gauge, 10n).pipe(Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* Metric.set(gauge, 10n).pipe(Effect.tagMetrics("key", "value"))
+      yield* Metric.set(gauge, 20n).pipe(Effect.tagMetrics("key", "value"))
 
-      const results = yield* _(Effect.promise(() => producer.collect()))
+      const results = yield* Effect.promise(() => producer.collect())
       const object = JSON.parse(JSON.stringify(results))
       assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
         ["name", "test"],
@@ -119,7 +119,7 @@ describe("Metrics", () => {
     }))
 
   it.effect("counter", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const producer = new internal.MetricProducerImpl(
         resourceFromAttributes({
           name: "test",
@@ -128,11 +128,11 @@ describe("Metrics", () => {
       )
       const counter = Metric.counter("counter", { description: "Example" })
 
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"))
 
-      const results = yield* _(Effect.promise(() => producer.collect()))
+      const results = yield* Effect.promise(() => producer.collect())
       const object = JSON.parse(JSON.stringify(results))
       assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
         ["name", "test"],
@@ -175,7 +175,7 @@ describe("Metrics", () => {
     }))
 
   it.effect("counter-inc", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const producer = new internal.MetricProducerImpl(
         resourceFromAttributes({
           name: "test",
@@ -187,11 +187,11 @@ describe("Metrics", () => {
         incremental: true
       })
 
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"))
 
-      const results = yield* _(Effect.promise(() => producer.collect()))
+      const results = yield* Effect.promise(() => producer.collect())
       const object = JSON.parse(JSON.stringify(results))
       assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
         ["name", "test"],
@@ -234,7 +234,7 @@ describe("Metrics", () => {
     }))
 
   it.effect("counter-bigint", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const producer = new internal.MetricProducerImpl(
         resourceFromAttributes({
           name: "test",
@@ -247,11 +247,11 @@ describe("Metrics", () => {
         bigint: true
       })
 
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
-      yield* _(Metric.increment(counter), Effect.tagMetrics("key", "value"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"), Effect.tagMetrics("unit", "requests"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"))
+      yield* Metric.increment(counter).pipe(Effect.tagMetrics("key", "value"))
 
-      const results = yield* _(Effect.promise(() => producer.collect()))
+      const results = yield* Effect.promise(() => producer.collect())
       const object = JSON.parse(JSON.stringify(results))
       assert.deepEqual(object.resourceMetrics.resource._rawAttributes, [
         ["name", "test"],

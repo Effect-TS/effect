@@ -17,8 +17,8 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   GetUserById: (req) => Effect.map(Name, (name) => new User({ id: req.id, name })),
   InitialMessage: (req) => Layer.succeed(Name, req.name),
   GetSpan: (_) =>
-    Effect.gen(function*(_) {
-      const span = yield* _(Effect.currentSpan, Effect.orDie)
+    Effect.gen(function*() {
+      const span = yield* Effect.currentSpan.pipe(Effect.orDie)
       return {
         traceId: span.traceId,
         spanId: span.spanId,
