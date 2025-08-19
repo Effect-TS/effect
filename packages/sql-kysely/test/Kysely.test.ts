@@ -28,7 +28,7 @@ const KyselyDBLive = Layer.sync(KyselyDB, () =>
 
 describe("Kysely", () => {
   it.effect("queries", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const db = yield* KyselyDB
 
       const createTableQuery = db.schema
