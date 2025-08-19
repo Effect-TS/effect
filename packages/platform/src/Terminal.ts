@@ -85,6 +85,13 @@ export class QuitException extends TaggedError("QuitException")<{}> {}
 
 /**
  * @since 1.0.0
+ * @category refinements
+ */
+export const isQuitException = (u: unknown): u is QuitException =>
+  typeof u === "object" && u != null && "_tag" in u && u._tag === "QuitException"
+
+/**
+ * @since 1.0.0
  * @category tag
  */
 export const Terminal: Tag<Terminal, Terminal> = InternalTerminal.tag

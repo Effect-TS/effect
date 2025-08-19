@@ -1,4 +1,4 @@
-import type * as Terminal from "@effect/platform/Terminal"
+import * as Terminal from "@effect/platform/Terminal"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Arr from "effect/Array"
 import * as Console from "effect/Console"
@@ -145,10 +145,6 @@ const splitExecutable = <A>(self: CliApp.CliApp<A>, args: ReadonlyArray<string>)
 
 const printDocs = (error: HelpDoc.HelpDoc): Effect.Effect<void> => Console.error(InternalHelpDoc.toAnsiText(error))
 
-// TODO: move to `/platform`
-const isQuitException = (u: unknown): u is Terminal.QuitException =>
-  typeof u === "object" && u != null && "_tag" in u && u._tag === "QuitException"
-
 const handleBuiltInOption = <R, E, A>(
   self: CliApp.CliApp<A>,
   executable: string,
@@ -283,7 +279,7 @@ const handleBuiltInOption = <R, E, A>(
           }))
         ),
         Effect.catchAll((e) => {
-          if (isQuitException(e)) {
+          if (Terminal.isQuitException(e)) {
             const message = InternalHelpDoc.p(InternalSpan.error("\n\nQuitting wizard mode..."))
             return Console.log(InternalHelpDoc.toAnsiText(message))
           }
