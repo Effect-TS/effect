@@ -25,7 +25,7 @@ const KyselyLive = Layer.effect(SqliteDB, SqliteKysely.make<Database>()).pipe(La
 
 describe("SqliteKysely", () => {
   it.effect("queries", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const db = yield* SqliteDB
 
       yield* db.schema
@@ -53,7 +53,7 @@ describe("SqliteKysely", () => {
     }).pipe(Effect.provide(KyselyLive)))
 
   it.effect("select with resolver", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const db = yield* SqliteDB
 
       yield* db.schema
