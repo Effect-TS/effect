@@ -49,7 +49,6 @@ import type {
   RequestEncoded
 } from "./RpcMessage.js"
 import { constEof, constPong, RequestId, ResponseDefectEncoded } from "./RpcMessage.js"
-import type { RpcMiddleware } from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
 import type { InitialMessage } from "./RpcWorker.js"
@@ -431,30 +430,8 @@ const applyMiddleware = <A, E, R>(
   }
 
   for (const tag of rpc.middlewares) {
-    if (tag.wrap) {
-      const middleware = Context.unsafeGet(context, tag)
-      handler = middleware({ ...options, next: handler as any })
-    } else if (tag.optional) {
-      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any, any>
-      const previous = handler
-      handler = Effect.matchEffect(middleware(options), {
-        onFailure: () => previous,
-        onSuccess: tag.provides !== undefined
-          ? (value) =>
-            Array.isArray(tag.provides)
-              ? Effect.provide(previous, value) as any
-              : Effect.provideService(previous, tag.provides as any, value)
-          : (_) => previous
-      })
-    } else {
-      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any, any>
-      const previous = handler
-      handler = tag.provides !== undefined
-        ? Array.isArray(tag.provides)
-          ? middleware(options).pipe(Effect.flatMap((value) => Effect.provide(previous, value))) as any
-          : Effect.provideServiceEffect(previous, tag.provides as any, middleware(options))
-        : Effect.zipRight(middleware(options), previous)
-    }
+    const middleware = Context.unsafeGet(context, tag)
+    handler = middleware(handler as any, { ...options }) as any
   }
 
   return handler

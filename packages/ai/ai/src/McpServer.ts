@@ -338,15 +338,18 @@ export const run: (
     idleTimeToLive: 10000
   })
 
-  const clientMiddleware = McpServerClientMiddleware.of(({ clientId }) =>
-    Effect.sync(() =>
-      McpServerClient.of({
-        clientId,
-        getClient: RcMap.get(clients, clientId).pipe(
-          Effect.map(({ client }) => client)
-        )
-      })
-    )
+  const clientMiddleware = McpServerClientMiddleware.of(
+    (next, { clientId }) =>
+      Effect.provideService(
+        next,
+        McpServerClient,
+        McpServerClient.of({
+          clientId,
+          getClient: RcMap.get(clients, clientId).pipe(
+            Effect.map(({ client }) => client)
+          )
+        })
+      )
   )
 
   const patchedProtocol = RpcServer.Protocol.of({

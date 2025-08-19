@@ -3,6 +3,4 @@
 "@effect/rpc": minor
 ---
 
-feat: add support for RPC middleware providing multiple services
-`provides: [X, Y]`
-return `Context.make(...)`
+Align RPC middleware api; only the `wrap` variant remains, and `provides` and `requires` are supported as second generic argument <Self, Config>

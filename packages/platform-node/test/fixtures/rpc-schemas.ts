@@ -29,35 +29,31 @@ class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
 class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {}) {}
 
-class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
-  provides: CurrentUser,
+class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware, { provides: CurrentUser }>()("AuthMiddleware", {
   failure: Unauthorized,
   requiredForClient: true
 }) {}
 
-class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware", {
-  wrap: true
-}) {}
+class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware") {}
 
 export class Something extends Context.Tag("Something")<Something, "something">() {}
 export class SomethingElse extends Context.Tag("SomethingElse")<SomethingElse, "something-else">() {}
 export class SomethingElseElse extends Context.Tag("SomethingElseElse")<SomethingElseElse, "something-else-else">() {}
 
-class SomethingMiddleware extends RpcMiddleware.Tag<SomethingMiddleware>()("SomethingMiddleware", {
-  requires: SomethingElseElse,
-  provides: [Something, SomethingElse]
-}) {}
+class SomethingMiddleware extends RpcMiddleware.Tag<
+  SomethingMiddleware,
+  { requires: SomethingElseElse; provides: Something | SomethingElse }
+>()("SomethingMiddleware") {}
 
-class SomethingWrapMiddleware extends RpcMiddleware.Tag<SomethingWrapMiddleware>()("SomethingWrapMiddleware", {
-  provides: [Something, SomethingElse],
-  wrap: true
-}) {}
-
-class SomethingElseElseMiddleware
-  extends RpcMiddleware.Tag<SomethingElseElseMiddleware>()("SomethingElseElseMiddleware", {
-    provides: SomethingElseElse
-  })
+class SomethingWrapMiddleware
+  extends RpcMiddleware.Tag<SomethingWrapMiddleware, { provides: Something | SomethingElse }>()(
+    "SomethingWrapMiddleware"
+  )
 {}
+
+class SomethingElseElseMiddleware extends RpcMiddleware.Tag<SomethingElseElseMiddleware, {
+  provides: SomethingElseElse
+}>()("SomethingElseElseMiddleware") {}
 
 class GetUser extends Rpc.make("GetUser", {
   success: User,
@@ -105,8 +101,10 @@ export const UserRpcs = RpcGroup.make(
 
 const AuthLive = Layer.succeed(
   AuthMiddleware,
-  AuthMiddleware.of((options) =>
-    Effect.succeed(
+  AuthMiddleware.of((next, options) =>
+    Effect.provideService(
+      next,
+      CurrentUser,
       new User({ id: options.headers.userid ?? "1", name: options.headers.name ?? "Fallback name" })
     )
   )
@@ -117,8 +115,8 @@ const rpcDefects = Metric.counter("rpc_middleware_defects")
 const rpcCount = Metric.counter("rpc_middleware_count")
 const TimingLive = Layer.succeed(
   TimingMiddleware,
-  TimingMiddleware.of((options) =>
-    options.next.pipe(
+  TimingMiddleware.of((next) =>
+    next.pipe(
       Effect.tap(Metric.increment(rpcSuccesses)),
       Effect.tapDefect(() => Metric.increment(rpcDefects)),
       Effect.ensuring(Metric.increment(rpcCount))
@@ -128,24 +126,27 @@ const TimingLive = Layer.succeed(
 
 const SomethingLive = Layer.succeed(
   SomethingMiddleware,
-  SomethingMiddleware.of(() =>
-    SomethingElseElse.pipe(Effect.map(() =>
-      Context.empty().pipe(
-        Context.add(Something, "something"),
-        Context.add(SomethingElse, "something-else")
+  SomethingMiddleware.of((next) =>
+    SomethingElseElse.pipe(Effect.flatMap(() =>
+      Effect.provide(
+        next,
+        Context.empty().pipe(
+          Context.add(Something, "something"),
+          Context.add(SomethingElse, "something-else")
+        )
       )
     ))
   )
 ).pipe(
   Layer.merge(Layer.succeed(
     SomethingElseElseMiddleware,
-    SomethingElseElseMiddleware.of(() => Effect.succeed("something-else-else"))
+    SomethingElseElseMiddleware.of(Effect.provideService(SomethingElseElse, "something-else-else"))
   ))
 )
 
 Layer.succeed(
   SomethingWrapMiddleware,
-  SomethingWrapMiddleware.of(({ next }) =>
+  SomethingWrapMiddleware.of((next) =>
     next.pipe(Effect.provide(
       Context.empty().pipe(
         Context.add(Something, "something"),
