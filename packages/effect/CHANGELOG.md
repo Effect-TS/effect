@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.8
+
+### Patch Changes
+
+- [#5407](https://github.com/Effect-TS/effect/pull/5407) [`84bc300`](https://github.com/Effect-TS/effect/commit/84bc3003b42ad51210e9e1248efd04c5d0e3dd1e) Thanks @thewilkybarkid! - Fix Schema.Defect when seeing a null-prototype object
+
 ## 3.17.7
 
 ### Patch Changes

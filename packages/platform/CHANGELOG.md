@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.90.5
+
+### Patch Changes
+
+- [#5410](https://github.com/Effect-TS/effect/pull/5410) [`fef9771`](https://github.com/Effect-TS/effect/commit/fef9771eab24af6415be946df0c9f64eba01cef7) Thanks @beeman! - export isQuitExection function from @effect/platform/Terminal
+
+- Updated dependencies [[`84bc300`](https://github.com/Effect-TS/effect/commit/84bc3003b42ad51210e9e1248efd04c5d0e3dd1e)]:
+  - effect@3.17.8
+
 ## 0.90.4
 
 ### Patch Changes
