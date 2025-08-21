@@ -362,8 +362,29 @@ export const msgPack: RpcSerialization["Type"] = RpcSerialization.of({
     const unpackr = new Msgpackr.Unpackr()
     const packr = new Msgpackr.Packr()
     const encoder = new TextEncoder()
+    let incomplete: Uint8Array | undefined = undefined
     return {
-      decode: (bytes) => unpackr.unpackMultiple(typeof bytes === "string" ? encoder.encode(bytes) : bytes),
+      decode: (bytes) => {
+        let buf = typeof bytes === "string" ? encoder.encode(bytes) : bytes
+        if (incomplete !== undefined) {
+          const prev = buf
+          bytes = new Uint8Array(incomplete.length + buf.length)
+          bytes.set(incomplete)
+          bytes.set(prev, incomplete.length)
+          buf = bytes
+          incomplete = undefined
+        }
+        try {
+          return unpackr.unpackMultiple(buf)
+        } catch (error_) {
+          const error = error_ as any
+          if (error.incomplete) {
+            incomplete = buf.subarray(error.lastPosition)
+            return error.values ?? []
+          }
+          return []
+        }
+      },
       encode: (response) => packr.pack(response)
     }
   }
