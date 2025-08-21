@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.69.1
+
+### Patch Changes
+
+- [#5415](https://github.com/Effect-TS/effect/pull/5415) [`4cb3af5`](https://github.com/Effect-TS/effect/commit/4cb3af5aeae8535a04f84fb0f64c3f2be19e2aed) Thanks @tim-smart! - fix rpc msgpack serialization when chunk contains partial frames
+
 ## 0.69.0
 
 ### Minor Changes

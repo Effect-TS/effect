@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.9.2
+
+### Patch Changes
+
+- [#5415](https://github.com/Effect-TS/effect/pull/5415) [`4cb3af5`](https://github.com/Effect-TS/effect/commit/4cb3af5aeae8535a04f84fb0f64c3f2be19e2aed) Thanks @tim-smart! - fix rpc msgpack serialization when chunk contains partial frames
+
+- Updated dependencies [[`4cb3af5`](https://github.com/Effect-TS/effect/commit/4cb3af5aeae8535a04f84fb0f64c3f2be19e2aed)]:
+  - @effect/rpc@0.69.1
+
 ## 0.9.1
 
 ### Patch Changes
