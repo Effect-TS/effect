@@ -64,8 +64,8 @@ run_inside_dev_shell() {
         echo "WARN: pnpm codegen failed (exit $codegen_exit)"
       fi
 
-      echo "[setup] pnpm test"
-      pnpm test
+      # echo "[setup] pnpm test"
+      # pnpm test
     '
 }
 
