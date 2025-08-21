@@ -43,7 +43,7 @@ run_inside_dev_shell() {
       pnpm --version || true
 
       echo "[setup] pnpm install"
-      pnpm install
+      pnpm install --reporter=append-only --no-color
 
       # allow build/codegen to fail without aborting tests
       set +e
