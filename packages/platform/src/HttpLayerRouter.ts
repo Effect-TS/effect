@@ -1120,7 +1120,7 @@ export const toWebHandler = <
     | Request<"Error", any>
     | Request<"GlobalError", any>,
   HE,
-  HR = Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>
+  HR = Exclude<Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>, A>
 >(
   appLayer: Layer.Layer<A, E, R>,
   options?: {
