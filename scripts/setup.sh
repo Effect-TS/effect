@@ -39,6 +39,7 @@ run_inside_dev_shell() {
     --extra-experimental-features "nix-command flakes" \
     -c bash -lc '
       set -euo pipefail
+      export CI=1  # Force Vitest to run in CI mode (disable watch / interactive UI)
       corepack enable || true
       pnpm --version || true
 
