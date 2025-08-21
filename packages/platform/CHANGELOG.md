@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.90.6
+
+### Patch Changes
+
+- [#5418](https://github.com/Effect-TS/effect/pull/5418) [`7ad7b3c`](https://github.com/Effect-TS/effect/commit/7ad7b3c7de299d8d37bfcbe23b2717b7732d490b) Thanks @tim-smart! - exclude layer services from HttpLayerRouter.toWebHandler request context
+
 ## 0.90.5
 
 ### Patch Changes
