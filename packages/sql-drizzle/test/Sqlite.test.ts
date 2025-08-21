@@ -10,12 +10,12 @@ import { Effect, Layer } from "effect"
 
 const SqlClientLive = Layer.scoped(
   SqlClient.SqlClient,
-  Effect.gen(function*(_) {
-    const fs = yield* _(FileSystem.FileSystem)
-    const dir = yield* _(fs.makeTempDirectoryScoped())
-    return yield* _(SqliteClient.make({
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const dir = yield* fs.makeTempDirectoryScoped()
+    return yield* SqliteClient.make({
       filename: dir + "/test.db"
-    }))
+    })
   })
 ).pipe(
   Layer.provide(NodeFileSystem.layer),
@@ -36,7 +36,7 @@ class ORM extends Effect.Service<ORM>()("ORM", { effect: SqliteDrizzle.make({ sc
 
 describe("SqliteDrizzle", () => {
   it.effect("select", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const db = yield* SqliteDrizzle.SqliteDrizzle
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
@@ -46,7 +46,7 @@ describe("SqliteDrizzle", () => {
     }).pipe(Effect.provide(SqliteDrizzleLive)))
 
   it.effect("orm", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const db = yield* ORM
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
@@ -56,7 +56,7 @@ describe("SqliteDrizzle", () => {
     }).pipe(Effect.provide(ORM.Client)))
 
   it.effect("remote callback", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const db = yield* SqliteDrizzle.SqliteDrizzle
       yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`

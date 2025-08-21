@@ -7,7 +7,6 @@ import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cache from "effect/Cache"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -17,6 +16,8 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
 /**
  * @category type ids
@@ -171,7 +172,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
+          [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
       })) as D1Client,

@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql",
-  "version": "0.44.1",
+  "version": "0.44.2",
   "type": "module",
   "license": "MIT",
   "description": "A SQL toolkit for Effect",
@@ -48,7 +48,6 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.33.0",
     "uuid": "^11.0.3"
   },
   "devDependencies": {

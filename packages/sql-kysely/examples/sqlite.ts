@@ -20,7 +20,7 @@ const SqliteLive = Sqlite.SqliteClient.layer({
 
 const KyselyLive = Layer.effect(SqliteDB, SqliteKysely.make<Database>()).pipe(Layer.provide(SqliteLive))
 
-Effect.gen(function*(_) {
+Effect.gen(function*() {
   const db = yield* SqliteDB
 
   yield* db.schema

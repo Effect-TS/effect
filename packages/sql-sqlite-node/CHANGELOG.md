@@ -1,5 +1,15 @@
 # @effect/sql-sqlite-node
 
+## 0.45.1
+
+### Patch Changes
+
+- [#5397](https://github.com/Effect-TS/effect/pull/5397) [`0e46e24`](https://github.com/Effect-TS/effect/commit/0e46e24c24e9edb8bf2e29835a94013e9c34d034) Thanks @IMax153! - Avoid issues with ESM builds by removing dependency on `@opentelemetry/semantic-conventions`
+
+- Updated dependencies [[`8c7bb52`](https://github.com/Effect-TS/effect/commit/8c7bb52dc78850be72566decba6222870e3733d0), [`0e46e24`](https://github.com/Effect-TS/effect/commit/0e46e24c24e9edb8bf2e29835a94013e9c34d034)]:
+  - @effect/platform@0.90.4
+  - @effect/sql@0.44.2
+
 ## 0.45.0
 
 ### Patch Changes

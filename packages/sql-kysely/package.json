@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-kysely",
-  "version": "0.40.0",
+  "version": "0.40.1",
   "type": "module",
   "license": "MIT",
   "description": "Kysely integration for @effect/sql",
@@ -49,9 +49,6 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage"
-  },
-  "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.33.0"
   },
   "devDependencies": {
     "@effect/sql": "workspace:^",

@@ -20,7 +20,7 @@ const PgLive = Layer.effect(PgDB, PgKysely.make<Database>()).pipe(Layer.provide(
 
 describe("PgKysely", () => {
   it.effect("queries", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const db = yield* PgDB
       yield* db.schema
         .createTable("users")

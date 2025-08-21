@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-react-native
 
+## 0.47.1
+
+### Patch Changes
+
+- [#5397](https://github.com/Effect-TS/effect/pull/5397) [`0e46e24`](https://github.com/Effect-TS/effect/commit/0e46e24c24e9edb8bf2e29835a94013e9c34d034) Thanks @IMax153! - Avoid issues with ESM builds by removing dependency on `@opentelemetry/semantic-conventions`
+
+- Updated dependencies [[`0e46e24`](https://github.com/Effect-TS/effect/commit/0e46e24c24e9edb8bf2e29835a94013e9c34d034)]:
+  - @effect/sql@0.44.2
+
 ## 0.47.0
 
 ### Patch Changes

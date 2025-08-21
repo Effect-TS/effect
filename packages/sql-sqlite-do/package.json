@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-sqlite-do",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "type": "module",
   "license": "MIT",
   "description": "A SQLite toolkit for Effect",
@@ -44,9 +44,6 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage"
-  },
-  "dependencies": {
-    "@opentelemetry/semantic-conventions": "^1.33.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250515.0",

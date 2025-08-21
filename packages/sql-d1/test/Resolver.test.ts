@@ -5,7 +5,7 @@ import { Array, Effect, Option } from "effect"
 import * as Schema from "effect/Schema"
 import { D1Miniflare } from "./utils.js"
 
-const seededClient = Effect.gen(function*(_) {
+const seededClient = Effect.gen(function*() {
   const sql = yield* D1Client.D1Client
   yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
   yield* Effect.forEach(Array.range(1, 100), (id) => sql`INSERT INTO test ${sql.insert({ id, name: `name${id}` })}`)
@@ -15,22 +15,22 @@ const seededClient = Effect.gen(function*(_) {
 describe("Resolver", () => {
   describe("ordered", () => {
     it.scoped("insert", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const batches: Array<Array<string>> = []
-        const sql = yield* _(seededClient)
-        const Insert = yield* _(SqlResolver.ordered("Insert", {
+        const sql = yield* seededClient
+        const Insert = yield* SqlResolver.ordered("Insert", {
           Request: Schema.String,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           execute: (names) => {
             batches.push(names)
             return sql`INSERT INTO test ${sql.insert(names.map((name) => ({ name })))} RETURNING *`
           }
-        }))
+        })
         assert.deepStrictEqual(
-          yield* _(Effect.all({
+          yield* Effect.all({
             one: Insert.execute("one"),
             two: Insert.execute("two")
-          }, { batching: true })),
+          }, { batching: true }),
           {
             one: { id: 101, name: "one" },
             two: { id: 102, name: "two" }
@@ -40,24 +40,23 @@ describe("Resolver", () => {
       }).pipe(Effect.provide(D1Miniflare.ClientLive)))
 
     it.scoped("result length mismatch", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const batches: Array<Array<number>> = []
-        const sql = yield* _(seededClient)
-        const Select = yield* _(SqlResolver.ordered("Select", {
+        const sql = yield* seededClient
+        const Select = yield* SqlResolver.ordered("Select", {
           Request: Schema.Number,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           execute: (ids) => {
             batches.push(ids)
             return sql`SELECT * FROM test WHERE id IN ${sql.in(ids)}`
           }
-        }))
-        const error = yield* _(
-          Effect.all([
-            Select.execute(1),
-            Select.execute(2),
-            Select.execute(3),
-            Select.execute(101)
-          ], { batching: true }),
+        })
+        const error = yield* Effect.all([
+          Select.execute(1),
+          Select.execute(2),
+          Select.execute(3),
+          Select.execute(101)
+        ], { batching: true }).pipe(
           Effect.flip
         )
         assert(error instanceof SqlError.ResultLengthMismatch)
@@ -69,22 +68,22 @@ describe("Resolver", () => {
 
   describe("grouped", () => {
     it.scoped("find by name", () =>
-      Effect.gen(function*(_) {
-        const sql = yield* _(seededClient)
-        const FindByName = yield* _(SqlResolver.grouped("FindByName", {
+      Effect.gen(function*() {
+        const sql = yield* seededClient
+        const FindByName = yield* SqlResolver.grouped("FindByName", {
           Request: Schema.String,
           RequestGroupKey: (name) => name,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           ResultGroupKey: (result) => result.name,
           execute: (names) => sql`SELECT * FROM test WHERE name IN ${sql.in(names)}`
-        }))
-        yield* _(sql`INSERT INTO test ${sql.insert({ name: "name1" })}`)
+        })
+        yield* sql`INSERT INTO test ${sql.insert({ name: "name1" })}`
         assert.deepStrictEqual(
-          yield* _(Effect.all({
+          yield* Effect.all({
             one: FindByName.execute("name1"),
             two: FindByName.execute("name2"),
             three: FindByName.execute("name0")
-          }, { batching: true })),
+          }, { batching: true }),
           {
             one: [{ id: 1, name: "name1" }, { id: 101, name: "name1" }],
             two: [{ id: 2, name: "name2" }],
@@ -94,22 +93,22 @@ describe("Resolver", () => {
       }).pipe(Effect.provide(D1Miniflare.ClientLive)))
 
     it.scoped("using raw rows", () =>
-      Effect.gen(function*(_) {
-        const sql = yield* _(seededClient)
-        const FindByName = yield* _(SqlResolver.grouped("FindByName", {
+      Effect.gen(function*() {
+        const sql = yield* seededClient
+        const FindByName = yield* SqlResolver.grouped("FindByName", {
           Request: Schema.String,
           RequestGroupKey: (name) => name,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           ResultGroupKey: (_, result: any) => result.name,
           execute: (names) => sql`SELECT * FROM test WHERE name IN ${sql.in(names)}`
-        }))
-        yield* _(sql`INSERT INTO test ${sql.insert({ name: "name1" })}`)
+        })
+        yield* sql`INSERT INTO test ${sql.insert({ name: "name1" })}`
         assert.deepStrictEqual(
-          yield* _(Effect.all({
+          yield* Effect.all({
             one: FindByName.execute("name1"),
             two: FindByName.execute("name2"),
             three: FindByName.execute("name0")
-          }, { batching: true })),
+          }, { batching: true }),
           {
             one: [{ id: 1, name: "name1" }, { id: 101, name: "name1" }],
             two: [{ id: 2, name: "name2" }],
@@ -121,20 +120,20 @@ describe("Resolver", () => {
 
   describe("findById", () => {
     it.scoped("find by id", () =>
-      Effect.gen(function*(_) {
-        const sql = yield* _(seededClient)
-        const FindById = yield* _(SqlResolver.findById("FindById", {
+      Effect.gen(function*() {
+        const sql = yield* seededClient
+        const FindById = yield* SqlResolver.findById("FindById", {
           Id: Schema.Number,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           ResultId: (result) => result.id,
           execute: (ids) => sql`SELECT * FROM test WHERE id IN ${sql.in(ids)}`
-        }))
+        })
         assert.deepStrictEqual(
-          yield* _(Effect.all({
+          yield* Effect.all({
             one: FindById.execute(1),
             two: FindById.execute(2),
             three: FindById.execute(101)
-          }, { batching: true })),
+          }, { batching: true }),
           {
             one: Option.some({ id: 1, name: "name1" }),
             two: Option.some({ id: 2, name: "name2" }),
@@ -144,20 +143,20 @@ describe("Resolver", () => {
       }).pipe(Effect.provide(D1Miniflare.ClientLive)))
 
     it.scoped("using raw rows", () =>
-      Effect.gen(function*(_) {
-        const sql = yield* _(seededClient)
-        const FindById = yield* _(SqlResolver.findById("FindById", {
+      Effect.gen(function*() {
+        const sql = yield* seededClient
+        const FindById = yield* SqlResolver.findById("FindById", {
           Id: Schema.Number,
           Result: Schema.Struct({ id: Schema.Number, name: Schema.String }),
           ResultId: (_, result: any) => result.id,
           execute: (ids) => sql`SELECT * FROM test WHERE id IN ${sql.in(ids)}`
-        }))
+        })
         assert.deepStrictEqual(
-          yield* _(Effect.all({
+          yield* Effect.all({
             one: FindById.execute(1),
             two: FindById.execute(2),
             three: FindById.execute(101)
-          }, { batching: true })),
+          }, { batching: true }),
           {
             one: Option.some({ id: 1, name: "name1" }),
             two: Option.some({ id: 2, name: "name2" }),

@@ -5,28 +5,28 @@ import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 
-const makeClient = Effect.gen(function*(_) {
-  const fs = yield* _(FileSystem.FileSystem)
-  const dir = yield* _(fs.makeTempDirectoryScoped())
-  return yield* _(SqliteClient.make({
+const makeClient = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  return yield* SqliteClient.make({
     filename: dir + "/test.db"
-  }))
+  })
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
 describe("Client", () => {
   it.scoped("should work", () =>
-    Effect.gen(function*(_) {
-      const sql = yield* _(makeClient)
+    Effect.gen(function*() {
+      const sql = yield* makeClient
       let response
-      response = yield* _(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`)
+      response = yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
       assert.deepStrictEqual(response, [])
-      response = yield* _(sql`INSERT INTO test (name) VALUES ('hello')`)
+      response = yield* sql`INSERT INTO test (name) VALUES ('hello')`
       assert.deepStrictEqual(response, [])
-      response = yield* _(sql`SELECT * FROM test`)
+      response = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(response, [{ id: 1, name: "hello" }])
-      response = yield* _(sql`INSERT INTO test (name) VALUES ('world')`, sql.withTransaction)
+      response = yield* sql`INSERT INTO test (name) VALUES ('world')`.pipe(sql.withTransaction)
       assert.deepStrictEqual(response, [])
-      response = yield* _(sql`SELECT * FROM test`)
+      response = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(response, [
         { id: 1, name: "hello" },
         { id: 2, name: "world" }
@@ -34,18 +34,18 @@ describe("Client", () => {
     }))
 
   it.scoped("should work with raw", () =>
-    Effect.gen(function*(_) {
-      const sql = yield* _(makeClient)
+    Effect.gen(function*() {
+      const sql = yield* makeClient
       let response
-      response = yield* _(sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`.raw)
+      response = yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`.raw
       assert.deepStrictEqual(response, { changes: 0, lastInsertRowid: 0 })
-      response = yield* _(sql`INSERT INTO test (name) VALUES ('hello')`.raw)
+      response = yield* sql`INSERT INTO test (name) VALUES ('hello')`.raw
       assert.deepStrictEqual(response, { changes: 1, lastInsertRowid: 1 })
-      response = yield* _(sql`SELECT * FROM test`.raw)
+      response = yield* sql`SELECT * FROM test`.raw
       assert.deepStrictEqual(response, [{ id: 1, name: "hello" }])
-      response = yield* _(sql`INSERT INTO test (name) VALUES ('world')`.raw, sql.withTransaction)
+      response = yield* sql`INSERT INTO test (name) VALUES ('world')`.raw.pipe(sql.withTransaction)
       assert.deepStrictEqual(response, { changes: 1, lastInsertRowid: 2 })
-      response = yield* _(sql`SELECT * FROM test`)
+      response = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(response, [
         { id: 1, name: "hello" },
         { id: 2, name: "world" }

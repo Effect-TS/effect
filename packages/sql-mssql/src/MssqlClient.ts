@@ -6,7 +6,6 @@ import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -23,6 +22,11 @@ import type { DataType } from "tedious/lib/data-type.js"
 import type { ParameterOptions } from "tedious/lib/request.js"
 import type { Parameter } from "./Parameter.js"
 import type * as Procedure from "./Procedure.js"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const ATTR_DB_NAMESPACE = "db.namespace"
+const ATTR_SERVER_ADDRESS = "server.address"
+const ATTR_SERVER_PORT = "server.port"
 
 /**
  * @category type ids
@@ -130,10 +134,10 @@ export const make = (
       undefined
     const spanAttributes: ReadonlyArray<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-      [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_MICROSOFT_SQL_SERVER],
-      [OtelSemConv.ATTR_DB_NAMESPACE, options.database ?? "master"],
-      [OtelSemConv.ATTR_SERVER_ADDRESS, options.server],
-      [OtelSemConv.ATTR_SERVER_PORT, options.port ?? 1433]
+      [ATTR_DB_SYSTEM_NAME, "microsoft.sql_server"],
+      [ATTR_DB_NAMESPACE, options.database ?? "master"],
+      [ATTR_SERVER_ADDRESS, options.server],
+      [ATTR_SERVER_PORT, options.port ?? 1433]
     ]
 
     // eslint-disable-next-line prefer-const
