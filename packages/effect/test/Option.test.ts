@@ -1,4 +1,4 @@
-import { assertType, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import {
   assertFalse,
   assertNone,
@@ -473,16 +473,12 @@ describe("Option", () => {
   })
 
   it("all/ tuple", () => {
-    assertType<Option.Option<[number, string]>>(Option.all([Option.some(1), Option.some("hello")]))
     assertSome(Option.all([]), [])
     assertSome(Option.all([Option.some(1), Option.some("hello")]), [1, "hello"])
     assertNone(Option.all([Option.some(1), Option.none()]))
   })
 
   it("all/ iterable", () => {
-    assertType<Option.Option<Array<number>>>(Option.all([Option.some(1), Option.some(2)]))
-    assertType<Option.Option<Array<number>>>(Option.all(new Set([Option.some(1), Option.some(2)])))
-
     assertSome(Option.all([]), [])
     assertNone(Option.all([Option.none()]))
     assertSome(Option.all([Option.some(1), Option.some(2)]), [1, 2])
@@ -491,7 +487,6 @@ describe("Option", () => {
   })
 
   it("all/ struct", () => {
-    assertType<Option.Option<{ a: number; b: string }>>(Option.all({ a: Option.some(1), b: Option.some("hello") }))
     assertSome(
       Option.all({ a: Option.some(1), b: Option.some("hello") }),
       { a: 1, b: "hello" }

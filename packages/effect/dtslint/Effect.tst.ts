@@ -2,6 +2,7 @@ import type { Either, Types } from "effect"
 import { Array as Arr, Context, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, NoSuchElementException, UnknownException } from "effect/Cause"
+import type { Exit } from "effect/Exit"
 import { describe, expect, it, when } from "tstyche"
 
 class TestError1 {
@@ -627,6 +628,20 @@ describe("Effect", () => {
         Effect.tapErrorTag("TestError1", Effect.log)
       )
     ).type.toBe<Effect.Effect<number, TestError1 | TestError2>>()
+  })
+
+  it("catchIf", () => {
+    expect(pipe(
+      Effect.fail<TestError1 | Error>(new TestError1()),
+      Effect.catchIf(
+        (error) => {
+          expect(error).type.toBe<TestError1 | Error>()
+          return true
+        },
+        Effect.succeed
+      ),
+      Effect.exit
+    )).type.toBe<Effect.Effect<Exit<Error | TestError1, Error | TestError1>, never, never>>()
   })
 
   it("catchTag", () => {
