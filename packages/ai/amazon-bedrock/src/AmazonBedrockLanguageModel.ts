@@ -173,7 +173,10 @@ export const make = Effect.fnUntraced(function*(options: {
         ...options.config,
         ...context.unsafeMap.get(Config.key),
         // TODO: re-evaluate a better way to do this
-        system: Option.getOrUndefined(system),
+        system: system.pipe(
+          Option.map((text) => [{ text }]),
+          Option.getOrUndefined
+        ),
         messages,
         toolConfig
       })
