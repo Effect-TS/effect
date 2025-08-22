@@ -19,16 +19,6 @@ export const getKeysForIndexSignature = (
   }
 }
 
-/**
- * JavaScript does not store the insertion order of properties in a way that
- * combines both string and symbol keys. The internal order groups string keys
- * and symbol keys separately. Hence concatenating the keys is fine.
- *
- * @internal
- */
-export const ownKeys = (o: object): Array<PropertyKey> =>
-  (Object.keys(o) as Array<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
-
 /** @internal */
 export const memoizeThunk = <A>(f: () => A): () => A => {
   let done = false
@@ -52,58 +42,94 @@ export const formatDate = (date: Date): string => {
   }
 }
 
+const CIRCULAR = "[Circular]"
+
 /** @internal */
-export const formatUnknown = (u: unknown, checkCircular: boolean = true): string => {
-  if (Array.isArray(u)) {
-    return `[${u.map((i) => formatUnknown(i, checkCircular)).join(",")}]`
-  }
-  if (Predicate.isDate(u)) {
-    return formatDate(u)
-  }
-  if (
-    Predicate.hasProperty(u, "toString")
-    && Predicate.isFunction(u["toString"])
-    && u["toString"] !== Object.prototype.toString
-  ) {
-    return u["toString"]()
-  }
-  if (Predicate.isString(u)) {
-    return JSON.stringify(u)
-  }
-  if (
-    Predicate.isNumber(u)
-    || u == null
-    || Predicate.isBoolean(u)
-    || Predicate.isSymbol(u)
-  ) {
-    return String(u)
-  }
-  if (Predicate.isBigInt(u)) {
-    return String(u) + "n"
-  }
-  if (Predicate.isIterable(u)) {
-    return `${u.constructor.name}(${formatUnknown(Array.from(u), checkCircular)})`
-  }
-  try {
-    if (checkCircular) {
-      JSON.stringify(u) // check for circular references
+export function formatUnknown(input: unknown, whitespace: number | string | undefined = 0): string {
+  const seen = new WeakSet<object>()
+  const gap = !whitespace ? "" : (typeof whitespace === "number" ? " ".repeat(whitespace) : whitespace)
+  const ind = (d: number) => gap.repeat(d)
+
+  const safeToString = (x: any): string => {
+    try {
+      const s = x.toString()
+      return typeof s === "string" ? s : String(s)
+    } catch {
+      return "[toString threw]"
     }
-    const pojo = `{${
-      ownKeys(u).map((k) =>
-        `${Predicate.isString(k) ? JSON.stringify(k) : String(k)}:${formatUnknown((u as any)[k], false)}`
-      )
-        .join(",")
-    }}`
-    const name = u.constructor.name
-    return u.constructor !== Object.prototype.constructor ? `${name}(${pojo})` : pojo
-  } catch {
-    return "<circular structure>"
   }
+
+  const wrap = (v: unknown, body: string): string => {
+    const ctor = (v as any)?.constructor
+    return ctor && ctor !== Object.prototype.constructor && ctor.name ? `${ctor.name}(${body})` : body
+  }
+
+  const ownKeys = (o: object): Array<PropertyKey> => {
+    try {
+      return Reflect.ownKeys(o)
+    } catch {
+      return ["[ownKeys threw]"]
+    }
+  }
+
+  function go(v: unknown, d = 0): string {
+    if (Array.isArray(v)) {
+      if (seen.has(v)) return CIRCULAR
+      seen.add(v)
+      if (!gap || v.length <= 1) return `[${v.map((x) => go(x, d)).join(",")}]`
+      const inner = v.map((x) => go(x, d + 1)).join(",\n" + ind(d + 1))
+      return `[\n${ind(d + 1)}${inner}\n${ind(d)}]`
+    }
+
+    if (Predicate.isDate(v)) return formatDate(v)
+
+    if (
+      Predicate.hasProperty(v, "toString") &&
+      Predicate.isFunction((v as any)["toString"]) &&
+      (v as any)["toString"] !== Object.prototype.toString
+    ) return safeToString(v)
+
+    if (Predicate.isString(v)) return JSON.stringify(v)
+
+    if (
+      Predicate.isNumber(v) ||
+      v == null ||
+      Predicate.isBoolean(v) ||
+      Predicate.isSymbol(v)
+    ) return String(v)
+
+    if (Predicate.isBigInt(v)) return String(v) + "n"
+
+    if (v instanceof Set || v instanceof Map) {
+      if (seen.has(v)) return CIRCULAR
+      seen.add(v)
+      return `${v.constructor.name}(${go(Array.from(v), d)})`
+    }
+
+    if (Predicate.isObject(v)) {
+      if (seen.has(v)) return CIRCULAR
+      seen.add(v)
+      const keys = ownKeys(v)
+      if (!gap || keys.length <= 1) {
+        const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${go((v as any)[k], d)}`).join(",")}}`
+        return wrap(v, body)
+      }
+      const body = `{\n${
+        keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${go((v as any)[k], d + 1)}`).join(",\n")
+      }\n${ind(d)}}`
+      return wrap(v, body)
+    }
+
+    return String(v)
+  }
+
+  return go(input, 0)
 }
 
 /** @internal */
-export const formatPropertyKey = (name: PropertyKey): string =>
-  typeof name === "string" ? JSON.stringify(name) : String(name)
+export function formatPropertyKey(name: PropertyKey): string {
+  return Predicate.isString(name) ? JSON.stringify(name) : String(name)
+}
 
 /** @internal */
 export type SingleOrArray<A> = A | ReadonlyArray<A>
