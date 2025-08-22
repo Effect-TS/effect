@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.9
+
+### Patch Changes
+
+- [#5422](https://github.com/Effect-TS/effect/pull/5422) [`0271f14`](https://github.com/Effect-TS/effect/commit/0271f1450c0c861f589e26ff534a73dea7ea97b7) Thanks @gcanti! - backport `formatUnknown` from v4
+
 ## 3.17.8
 
 ### Patch Changes
