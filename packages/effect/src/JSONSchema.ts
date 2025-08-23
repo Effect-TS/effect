@@ -313,13 +313,21 @@ export const fromAST = (ast: AST.AST, options: {
   const definitionPath = options.definitionPath ?? "#/$defs/"
   const getRef = (id: string) => definitionPath + id
   const target = options.target ?? "jsonSchema7"
-  const handleIdentifier = options.topLevelReferenceStrategy !== "skip"
+  const handleIdentifier = options.topLevelReferenceStrategy !== "skip" ? "handle-identifier" : "ignore-identifier"
   const additionalPropertiesStrategy = options.additionalPropertiesStrategy ?? "strict"
-  return go(ast, options.definitions, handleIdentifier, [], {
-    getRef,
-    target,
-    additionalPropertiesStrategy
-  })
+  return go(
+    ast,
+    options.definitions,
+    handleIdentifier,
+    [],
+    {
+      getRef,
+      target,
+      additionalPropertiesStrategy
+    },
+    "handle-annotation",
+    "handle-errors"
+  )
 }
 
 const constNever: JsonSchema7Never = {
@@ -517,12 +525,18 @@ function getAdditionalProperties(options: GoOptions): boolean {
   }
 }
 
-function addAnnotations(jsonSchema: JsonSchema7, ast: AST.AST): JsonSchema7 {
-  const annotations = getJsonSchemaAnnotations(ast)
-  if (annotations) {
-    return { ...jsonSchema, ...annotations }
+function addASTAnnotations(jsonSchema: JsonSchema7, ast: AST.AST): JsonSchema7 {
+  return addAnnotations(jsonSchema, getJsonSchemaAnnotations(ast))
+}
+
+function addAnnotations(jsonSchema: JsonSchema7, annotations: JsonSchemaAnnotations | undefined): JsonSchema7 {
+  if (annotations === undefined || Object.keys(annotations).length === 0) {
+    return jsonSchema
   }
-  return jsonSchema
+  if ("$ref" in jsonSchema) {
+    return { allOf: [jsonSchema], ...annotations } as any
+  }
+  return { ...jsonSchema, ...annotations }
 }
 
 function getIdentifierAnnotation(ast: AST.AST): string | undefined {
@@ -542,49 +556,50 @@ function getIdentifierAnnotation(ast: AST.AST): string | undefined {
   return identifier
 }
 
-const go = (
+function go(
   ast: AST.AST,
   $defs: Record<string, JsonSchema7>,
-  handleIdentifier: boolean,
+  identifier: "handle-identifier" | "ignore-identifier",
   path: ReadonlyArray<PropertyKey>,
   options: GoOptions,
-  handleAnnotation: boolean = true
-): JsonSchema7 => {
-  if (handleIdentifier) {
-    const identifier = getIdentifierAnnotation(ast)
-    if (identifier !== undefined) {
-      const escapedId = identifier.replace(/~/ig, "~0").replace(/\//ig, "~1")
+  annotation: "handle-annotation" | "ignore-annotation",
+  errors: "handle-errors" | "ignore-errors"
+): JsonSchema7 {
+  if (identifier === "handle-identifier") {
+    const id = getIdentifierAnnotation(ast)
+    if (id !== undefined) {
+      const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")
       const out = { $ref: options.getRef(escapedId) }
-      if (!Record.has($defs, identifier)) {
-        $defs[identifier] = out
-        $defs[identifier] = go(ast, $defs, false, path, options)
+      if (!Record.has($defs, id)) {
+        $defs[id] = out
+        $defs[id] = go(ast, $defs, "ignore-identifier", path, options, "handle-annotation", errors)
       }
       return out
     }
   }
-  if (handleAnnotation) {
+  if (annotation === "handle-annotation") {
     const hook = AST.getJSONSchemaAnnotation(ast)
     if (Option.isSome(hook)) {
       const handler = hook.value as JsonSchema7
       switch (ast._tag) {
         case "Declaration":
-          return addAnnotations(handler, ast)
+          return addASTAnnotations(handler, ast)
         case "Refinement": {
           const t = AST.getTransformationFrom(ast)
           if (t === undefined) {
             return mergeRefinements(
-              go(ast.from, $defs, handleIdentifier, path, options),
+              go(ast.from, $defs, identifier, path, options, "handle-annotation", errors),
               handler,
               ast
             )
           } else if (!isOverrideAnnotation(handler)) {
-            return go(t, $defs, handleIdentifier, path, options)
+            return go(t, $defs, identifier, path, options, "handle-annotation", errors)
           }
         }
       }
       if (!isOverrideAnnotation(handler)) {
         return {
-          ...go(ast, $defs, handleIdentifier, path, options, false),
+          ...go(ast, $defs, identifier, path, options, "ignore-annotation", errors),
           ...handler
         } as any
       }
@@ -593,7 +608,7 @@ const go = (
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
-    return go(surrogate.value, $defs, handleIdentifier, path, options)
+    return go(surrogate.value, $defs, identifier, path, options, "handle-annotation", errors)
   }
   switch (ast._tag) {
     // Unsupported
@@ -601,42 +616,46 @@ const go = (
     case "UndefinedKeyword":
     case "BigIntKeyword":
     case "UniqueSymbol":
-    case "SymbolKeyword":
+    case "SymbolKeyword": {
+      if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
+    }
     case "Suspend": {
-      if (handleIdentifier) {
+      if (identifier === "handle-identifier") {
+        if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
         throw new Error(errors_.getJSONSchemaMissingIdentifierAnnotationErrorMessage(path, ast))
       }
-      return go(ast.f(), $defs, false, path, options)
+      return go(ast.f(), $defs, "ignore-identifier", path, options, "handle-annotation", errors)
     }
     // Primitives
     case "NeverKeyword":
-      return addAnnotations(constNever, ast)
+      return addASTAnnotations(constNever, ast)
     case "VoidKeyword":
-      return addAnnotations(constVoid, ast)
+      return addASTAnnotations(constVoid, ast)
     case "UnknownKeyword":
-      return addAnnotations(constUnknown, ast)
+      return addASTAnnotations(constUnknown, ast)
     case "AnyKeyword":
-      return addAnnotations(constAny, ast)
+      return addASTAnnotations(constAny, ast)
     case "ObjectKeyword":
-      return addAnnotations(constObject, ast)
+      return addASTAnnotations(constObject, ast)
     case "StringKeyword":
-      return addAnnotations({ type: "string" }, ast)
+      return addASTAnnotations({ type: "string" }, ast)
     case "NumberKeyword":
-      return addAnnotations({ type: "number" }, ast)
+      return addASTAnnotations({ type: "number" }, ast)
     case "BooleanKeyword":
-      return addAnnotations({ type: "boolean" }, ast)
+      return addASTAnnotations({ type: "boolean" }, ast)
     case "Literal": {
       const literal = ast.literal
       if (literal === null) {
-        return addAnnotations({ type: "null" }, ast)
+        return addASTAnnotations({ type: "null" }, ast)
       } else if (Predicate.isString(literal)) {
-        return addAnnotations({ type: "string", enum: [literal] }, ast)
+        return addASTAnnotations({ type: "string", enum: [literal] }, ast)
       } else if (Predicate.isNumber(literal)) {
-        return addAnnotations({ type: "number", enum: [literal] }, ast)
+        return addASTAnnotations({ type: "number", enum: [literal] }, ast)
       } else if (Predicate.isBoolean(literal)) {
-        return addAnnotations({ type: "boolean", enum: [literal] }, ast)
+        return addASTAnnotations({ type: "boolean", enum: [literal] }, ast)
       }
+      if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
       throw new Error(errors_.getJSONSchemaMissingAnnotationErrorMessage(path, ast))
     }
     case "Enums": {
@@ -645,22 +664,22 @@ const go = (
         return { type, title: e[0], enum: [e[1]] }
       })
       return anyOf.length >= 1 ?
-        addAnnotations({
+        addASTAnnotations({
           $comment: "/schemas/enums",
           anyOf
         }, ast) :
-        addAnnotations(constNever, ast)
+        addASTAnnotations(constNever, ast)
     }
     case "TupleType": {
       const elements = ast.elements.map((e, i) =>
         mergeJsonSchemaAnnotations(
-          go(e.type, $defs, true, path.concat(i), options),
+          go(e.type, $defs, "handle-identifier", path.concat(i), options, "handle-annotation", errors),
           getContextJsonSchemaAnnotations(e.type, e)
         )
       )
       const rest = ast.rest.map((type) =>
         mergeJsonSchemaAnnotations(
-          go(type.type, $defs, true, path, options),
+          go(type.type, $defs, "handle-identifier", path, options, "handle-annotation", errors),
           getContextJsonSchemaAnnotations(type.type, type)
         )
       )
@@ -690,6 +709,7 @@ const go = (
         // handle post rest elements
         // ---------------------------------------------
         if (restLength > 1) {
+          if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
           throw new Error(errors_.getJSONSchemaUnsupportedPostRestElementsErrorMessage(path))
         }
       } else {
@@ -700,11 +720,11 @@ const go = (
         }
       }
 
-      return addAnnotations(output, ast)
+      return addASTAnnotations(output, ast)
     }
     case "TypeLiteral": {
       if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-        return addAnnotations(constEmptyStruct, ast)
+        return addASTAnnotations(constEmptyStruct, ast)
       }
       const output: JsonSchema7Object = {
         type: "object",
@@ -719,11 +739,19 @@ const go = (
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            output.additionalProperties = go(pruned, $defs, true, path, options)
+            output.additionalProperties = go(
+              pruned,
+              $defs,
+              "handle-identifier",
+              path,
+              options,
+              "handle-annotation",
+              errors
+            )
             break
           }
           case "TemplateLiteral": {
-            patternProperties = go(pruned, $defs, true, path, options)
+            patternProperties = go(pruned, $defs, "handle-identifier", path, options, "handle-annotation", errors)
             propertyNames = {
               type: "string",
               pattern: AST.getTemplateLiteralRegExp(parameter).source
@@ -731,14 +759,30 @@ const go = (
             break
           }
           case "Refinement": {
-            patternProperties = go(pruned, $defs, true, path, options)
-            propertyNames = go(parameter, $defs, true, path, options)
+            patternProperties = go(pruned, $defs, "handle-identifier", path, options, "handle-annotation", errors)
+            propertyNames = go(parameter, $defs, "handle-identifier", path, options, "handle-annotation", errors)
             break
           }
           case "SymbolKeyword": {
             const indexSignaturePath = path.concat("[symbol]")
-            output.additionalProperties = go(pruned, $defs, true, indexSignaturePath, options)
-            propertyNames = go(parameter, $defs, true, indexSignaturePath, options)
+            output.additionalProperties = go(
+              pruned,
+              $defs,
+              "handle-identifier",
+              indexSignaturePath,
+              options,
+              "handle-annotation",
+              errors
+            )
+            propertyNames = go(
+              parameter,
+              $defs,
+              "handle-identifier",
+              indexSignaturePath,
+              options,
+              "handle-annotation",
+              errors
+            )
             break
           }
         }
@@ -753,7 +797,7 @@ const go = (
           const pruned = pruneUndefined(ps.type)
           const type = pruned ?? ps.type
           output.properties[name] = mergeJsonSchemaAnnotations(
-            go(type, $defs, true, path.concat(ps.name), options),
+            go(type, $defs, "handle-identifier", path.concat(ps.name), options, "handle-annotation", errors),
             getContextJsonSchemaAnnotations(type, ps)
           )
           // ---------------------------------------------
@@ -763,6 +807,7 @@ const go = (
             output.required.push(name)
           }
         } else {
+          if (errors === "ignore-errors") return addASTAnnotations(constAny, ast)
           throw new Error(errors_.getJSONSchemaUnsupportedKeyErrorMessage(name, path))
         }
       }
@@ -777,25 +822,27 @@ const go = (
         output.propertyNames = propertyNames
       }
 
-      return addAnnotations(output, ast)
+      return addASTAnnotations(output, ast)
     }
     case "Union": {
-      const members: Array<JsonSchema7> = ast.types.map((t) => go(t, $defs, true, path, options))
+      const members: Array<JsonSchema7> = ast.types.map((t) =>
+        go(t, $defs, "handle-identifier", path, options, "handle-annotation", errors)
+      )
       const anyOf = compactUnion(members)
       switch (anyOf.length) {
         case 0:
           return constNever
         case 1:
-          return addAnnotations(anyOf[0], ast)
+          return addASTAnnotations(anyOf[0], ast)
         default:
-          return addAnnotations({ anyOf }, ast)
+          return addASTAnnotations({ anyOf }, ast)
       }
     }
     case "Refinement":
-      return go(ast.from, $defs, handleIdentifier, path, options)
+      return go(ast.from, $defs, identifier, path, options, "handle-annotation", errors)
     case "TemplateLiteral": {
       const regex = AST.getTemplateLiteralRegExp(ast)
-      return addAnnotations({
+      return addASTAnnotations({
         type: "string",
         title: String(ast),
         description: "a template literal",
@@ -809,13 +856,44 @@ const go = (
           "contentMediaType": "application/json"
         }
         if (isContentSchemaSupported(options)) {
-          out["contentSchema"] = go(ast.to, $defs, handleIdentifier, path, options)
+          out["contentSchema"] = go(ast.to, $defs, identifier, path, options, "handle-annotation", errors)
         }
         return out
       }
-      return addAnnotations(go(ast.from, $defs, handleIdentifier, path, options), ast)
+      const from = go(ast.from, $defs, identifier, path, options, "handle-annotation", errors)
+      if (
+        isJsonSchema7Object(from) &&
+        ast.transformation._tag === "TypeLiteralTransformation"
+      ) {
+        const to = go(ast.to, {}, "ignore-identifier", path, options, "handle-annotation", "ignore-errors")
+        if (isJsonSchema7Object(to)) {
+          for (const t of ast.transformation.propertySignatureTransformations) {
+            const toKey = t.to
+            const fromKey = t.from
+            if (Predicate.isString(toKey) && Predicate.isString(fromKey)) {
+              const toProperty = to.properties[toKey]
+              if (Predicate.isRecord(toProperty)) {
+                const fromProperty = from.properties[fromKey]
+                if (Predicate.isRecord(fromProperty)) {
+                  const annotations: JsonSchemaAnnotations = {}
+                  if (Predicate.isString(toProperty.title)) annotations.title = toProperty.title
+                  if (Predicate.isString(toProperty.description)) annotations.description = toProperty.description
+                  if (Array.isArray(toProperty.examples)) annotations.examples = toProperty.examples
+                  if (Object.hasOwn(toProperty, "default")) annotations.default = toProperty.default
+                  from.properties[fromKey] = addAnnotations(fromProperty, annotations)
+                }
+              }
+            }
+          }
+        }
+      }
+      return addASTAnnotations(from, ast)
     }
   }
+}
+
+function isJsonSchema7Object(jsonSchema: unknown): jsonSchema is JsonSchema7Object {
+  return Predicate.isRecord(jsonSchema) && jsonSchema.type === "object" && Predicate.isRecord(jsonSchema.properties)
 }
 
 function isJsonSchema7NeverWithoutCustomAnnotations(jsonSchema: JsonSchema7): boolean {

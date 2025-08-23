@@ -1513,15 +1513,15 @@ schema (SymbolKeyword): symbol`
         })
       })
 
-      it("exact optional property signatures", async () => {
+      it("optional", async () => {
         const schema = Schema.Struct({
-          a: Schema.optionalWith(Schema.String, { exact: true }),
-          b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), { exact: true }),
-          c: Schema.optionalWith(Schema.String, { exact: true }).annotations({ description: "c-outer" }),
-          d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), { exact: true }).annotations({
+          a: Schema.optional(Schema.String),
+          b: Schema.optional(Schema.String.annotations({ description: "b-inner" })),
+          c: Schema.optional(Schema.String).annotations({ description: "c-outer" }),
+          d: Schema.optional(Schema.String.annotations({ description: "d-inner" })).annotations({
             description: "d-outer"
           }),
-          e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { exact: true })
+          e: Schema.optional(Schema.UndefinedOr(Schema.String))
         })
         await assertDraft7(schema, {
           "type": "object",
@@ -1537,21 +1537,75 @@ schema (SymbolKeyword): symbol`
         })
       })
 
-      it("exact optional property signatures", async () => {
-        const schema = Schema.Struct({
-          a: Schema.String,
-          b: Schema.optional(Schema.String),
-          c: Schema.optional(Schema.UndefinedOr(Schema.String))
+      describe("optionalWith", () => {
+        it("{ exact: true }", async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { exact: true }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), { exact: true }),
+            c: Schema.optionalWith(Schema.String, { exact: true }).annotations({ description: "c-outer" }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), { exact: true }).annotations({
+              description: "d-outer"
+            }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { exact: true })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" },
+              "b": { "type": "string", "description": "b-inner" },
+              "c": { "type": "string", "description": "c-outer" },
+              "d": { "type": "string", "description": "d-outer" },
+              "e": { "type": "string" }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
         })
-        await assertDraft7(schema, {
-          "type": "object",
-          "properties": {
-            "a": { "type": "string" },
-            "b": { "type": "string" },
-            "c": { "type": "string" }
-          },
-          "required": ["a"],
-          "additionalProperties": false
+
+        it("{ default }", async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { default: () => "" }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), { default: () => "" }),
+            c: Schema.optionalWith(Schema.String, { default: () => "" }).annotations({ description: "c-outer" }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), { default: () => "" })
+              .annotations({ description: "d-outer" }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { default: () => "" })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" },
+              "b": { "type": "string", "description": "b-inner" },
+              "c": { "type": "string", "description": "c-outer" },
+              "d": { "type": "string", "description": "d-outer" },
+              "e": { "type": "string" }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
+        })
+
+        it(`{ as: "Option" }`, async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { as: "Option" }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), { as: "Option" }),
+            c: Schema.optionalWith(Schema.String, { as: "Option" }).annotations({ description: "c-outer" }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), { as: "Option" })
+              .annotations({ description: "d-outer" }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { as: "Option" })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" },
+              "b": { "type": "string", "description": "b-inner" },
+              "c": { "type": "string", "description": "c-outer" },
+              "d": { "type": "string", "description": "d-outer" },
+              "e": { "type": "string" }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
         })
       })
 
@@ -3823,104 +3877,6 @@ schema (SymbolKeyword): symbol`
             "additionalProperties": false
           }
         )
-      })
-    })
-
-    describe("optionalWith", () => {
-      describe(`{ default: () => ... } option`, () => {
-        it("with transformation description", async () => {
-          await assertDraft7(
-            Schema.Struct({
-              a: Schema.optionalWith(
-                Schema.NonEmptyString.annotations({
-                  description: "inner-description"
-                }),
-                { default: () => "" }
-              ).annotations({
-                description: "middle-description"
-              })
-            }).annotations({
-              description: "outer-description"
-            }),
-            {
-              "type": "object",
-              "description": "outer-description",
-              "required": [],
-              "properties": {
-                "a": {
-                  "type": "string",
-                  "description": "inner-description",
-                  "title": "nonEmptyString",
-                  "minLength": 1
-                }
-              },
-              "additionalProperties": false
-            }
-          )
-        })
-      })
-
-      describe(`{ as: "Option" } option`, () => {
-        it("base", async () => {
-          await assertDraft7(
-            Schema.Struct({
-              a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
-            }),
-            {
-              "$defs": {
-                "NonEmptyString": {
-                  "type": "string",
-                  "title": "nonEmptyString",
-                  "description": "a non empty string",
-                  "minLength": 1
-                }
-              },
-              "type": "object",
-              "required": [],
-              "properties": {
-                "a": {
-                  "$ref": "#/$defs/NonEmptyString"
-                }
-              },
-              "additionalProperties": false
-            }
-          )
-        })
-
-        it("with transformation identifier annotation", async () => {
-          await assertDraft7(
-            Schema.Struct({
-              a: Schema.optionalWith(Schema.NonEmptyString, { as: "Option" })
-            }).annotations({
-              identifier: "aa6f48cd-03e4-470a-beb7-5f7cc532c676",
-              description: "b964b873-0266-446b-acf4-97dc125e7553",
-              title: "aa67b73c-3161-4640-b1e1-5b5830cfb173"
-            }),
-            {
-              "$ref": "#/$defs/aa6f48cd-03e4-470a-beb7-5f7cc532c676",
-              "$defs": {
-                "NonEmptyString": {
-                  "type": "string",
-                  "title": "nonEmptyString",
-                  "description": "a non empty string",
-                  "minLength": 1
-                },
-                "aa6f48cd-03e4-470a-beb7-5f7cc532c676": {
-                  "type": "object",
-                  "required": [],
-                  "properties": {
-                    "a": {
-                      "$ref": "#/$defs/NonEmptyString"
-                    }
-                  },
-                  "additionalProperties": false,
-                  "description": "b964b873-0266-446b-acf4-97dc125e7553",
-                  "title": "aa67b73c-3161-4640-b1e1-5b5830cfb173"
-                }
-              }
-            }
-          )
-        })
       })
     })
 

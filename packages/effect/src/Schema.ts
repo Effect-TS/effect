@@ -2443,10 +2443,11 @@ const optionalPropertySignatureAST = <A, I, R>(
         ).ast
       }
     } else if (asOption) {
+      const to = OptionFromSelf_(typeSchema(self))
       if (isNullable) {
         return optionalToRequired(
           NullOr(self),
-          OptionFromSelf(typeSchema(self)),
+          to,
           {
             decode: option_.filter(Predicate.isNotNull<A | null>),
             encode: asOptionEncode
@@ -2455,7 +2456,7 @@ const optionalPropertySignatureAST = <A, I, R>(
       } else {
         return optionalToRequired(
           self,
-          OptionFromSelf(typeSchema(self)),
+          to,
           { decode: identity, encode: identity }
         ).ast
       }
@@ -2498,10 +2499,11 @@ const optionalPropertySignatureAST = <A, I, R>(
         ).ast
       }
     } else if (asOption) {
+      const to = OptionFromSelf_(typeSchema(self))
       if (isNullable) {
         return optionalToRequired(
           NullishOr(self),
-          OptionFromSelf(typeSchema(self)),
+          to,
           {
             decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
             encode: asOptionEncode
@@ -2510,7 +2512,7 @@ const optionalPropertySignatureAST = <A, I, R>(
       } else {
         return optionalToRequired(
           UndefinedOr(self),
-          OptionFromSelf(typeSchema(self)),
+          to,
           {
             decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
             encode: asOptionEncode
@@ -7157,11 +7159,7 @@ export interface OptionFromSelf<Value extends Schema.Any> extends
   >
 {}
 
-/**
- * @category Option transformations
- * @since 3.10.0
- */
-export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
+const OptionFromSelf_ = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
   return declare(
     [value],
     {
@@ -7169,12 +7167,19 @@ export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFr
       encode: (value) => optionParse(ParseResult.encodeUnknown(value))
     },
     {
-      description: `Option<${format(value)}>`,
       pretty: optionPretty,
       arbitrary: optionArbitrary,
       equivalence: option_.getEquivalence
     }
   )
+}
+
+/**
+ * @category Option transformations
+ * @since 3.10.0
+ */
+export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
+  return OptionFromSelf_(value).annotations({ description: `Option<${format(value)}>` })
 }
 
 /**
