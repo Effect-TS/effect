@@ -190,14 +190,21 @@ export const fromReadableChannel = <E, A = Uint8Array>(
   unknown,
   E
 > =>
-  Channel.suspend(() =>
-    unsafeReadableRead(
-      evaluate(),
+  Channel.suspend(() => {
+    let readable: Readable | NodeJS.ReadableStream
+    try {
+      readable = evaluate()
+    } catch (error) {
+      return Channel.failSync(() => onError(error))
+    }
+
+    return unsafeReadableRead(
+      readable,
       onError,
       MutableRef.make(undefined),
       options
     )
-  )
+  })
 
 /** @internal */
 export const writeInput = <IE, A>(

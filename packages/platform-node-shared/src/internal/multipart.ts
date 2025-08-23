@@ -116,7 +116,8 @@ class FileImpl extends PartBase implements Multipart.File {
 /** @internal */
 export const fileToReadable = (file: Multipart.File): Readable => (file as FileImpl).file
 
-function convertError(cause: MultipartError): Multipart.MultipartError {
+function convertError(error: MultipartError): Multipart.MultipartError {
+  const cause = (error as { context?: MultipartError })?.context ?? error
   switch (cause._tag) {
     case "ReachedLimit": {
       switch (cause.limit) {
