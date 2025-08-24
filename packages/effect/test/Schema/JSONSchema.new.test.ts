@@ -3651,9 +3651,7 @@ schema (SymbolKeyword): symbol`
       describe("Refinement", () => {
         it("Int", async () => {
           await assertDraft7(Schema.Int.annotations({ jsonSchema: { "type": "string" } }), {
-            "type": "string",
-            "description": "an integer",
-            "title": "int"
+            "type": "string"
           })
         })
 
@@ -3696,10 +3694,12 @@ schema (SymbolKeyword): symbol`
         await assertDraft7(Schema.Date.annotations({ jsonSchema: { "$ref": "x" } }), {
           "$ref": "x"
         })
-        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "const": 1 } }), {
+        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "type": "number", "const": 1 } }), {
+          "type": "number",
           "const": 1
         })
-        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "enum": [1] } }), {
+        await assertDraft7(Schema.Date.annotations({ jsonSchema: { "type": "number", "enum": [1] } }), {
+          "type": "number",
           "enum": [1]
         })
       })

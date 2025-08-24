@@ -3953,16 +3953,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     describe("Refinement", () => {
-      it.todo("Int", () => {
+      it("Int", () => {
         expectJSONSchema(Schema.Int.annotations({ jsonSchema: { "type": "custom" } }), {
-          "$defs": {
-            "Int": {
-              "title": "int",
-              "description": "an integer",
-              "type": "custom"
-            }
-          },
-          "$ref": "#/$defs/Int"
+          "type": "custom"
         })
       })
 

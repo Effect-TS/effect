@@ -4982,7 +4982,7 @@ export const finite =
         schemaId: FiniteSchemaId,
         title: "finite",
         description: "a finite number",
-        jsonSchema: { "type": "number" },
+        jsonSchema: {},
         ...annotations
       })
     )

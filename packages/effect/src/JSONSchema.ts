@@ -4,6 +4,7 @@
 
 import * as Arr from "./Array.js"
 import * as errors_ from "./internal/schema/errors.js"
+import * as schemaId_ from "./internal/schema/schemaId.js"
 import * as Option from "./Option.js"
 import * as ParseResult from "./ParseResult.js"
 import * as Predicate from "./Predicate.js"
@@ -467,9 +468,14 @@ const pruneUndefined = (ast: AST.AST): AST.AST | undefined => {
 const isParseJsonTransformation = (ast: AST.AST): boolean =>
   ast.annotations[AST.SchemaIdAnnotationId] === AST.ParseJsonSchemaId
 
-const isOverrideAnnotation = (jsonSchema: JsonSchema7): boolean => {
-  return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("const" in jsonSchema) ||
-    ("enum" in jsonSchema) || ("$ref" in jsonSchema)
+const isOverrideAnnotation = (ast: AST.AST, jsonSchema: JsonSchema7): boolean => {
+  if (AST.isRefinement(ast)) {
+    const schemaId = ast.annotations[AST.SchemaIdAnnotationId]
+    if (schemaId === schemaId_.IntSchemaId) {
+      return "type" in jsonSchema && jsonSchema.type !== "integer"
+    }
+  }
+  return ("type" in jsonSchema) || ("oneOf" in jsonSchema) || ("anyOf" in jsonSchema) || ("$ref" in jsonSchema)
 }
 
 const mergeRefinements = (from: any, jsonSchema: any, ast: AST.AST): any => {
@@ -581,29 +587,34 @@ function go(
     const hook = AST.getJSONSchemaAnnotation(ast)
     if (Option.isSome(hook)) {
       const handler = hook.value as JsonSchema7
-      switch (ast._tag) {
-        case "Declaration":
-          return addASTAnnotations(handler, ast)
-        case "Refinement": {
-          const t = AST.getTransformationFrom(ast)
-          if (t === undefined) {
-            return mergeRefinements(
-              go(ast.from, $defs, identifier, path, options, "handle-annotation", errors),
-              handler,
-              ast
-            )
-          } else if (!isOverrideAnnotation(handler)) {
-            return go(t, $defs, identifier, path, options, "handle-annotation", errors)
+      if (isOverrideAnnotation(ast, handler)) {
+        switch (ast._tag) {
+          case "Declaration":
+            return addASTAnnotations(handler, ast)
+          default:
+            return handler
+        }
+      } else {
+        switch (ast._tag) {
+          case "Refinement": {
+            const t = AST.getTransformationFrom(ast)
+            if (t === undefined) {
+              return mergeRefinements(
+                go(ast.from, $defs, identifier, path, options, "handle-annotation", errors),
+                handler,
+                ast
+              )
+            } else {
+              return go(t, $defs, identifier, path, options, "handle-annotation", errors)
+            }
           }
+          default:
+            return {
+              ...go(ast, $defs, identifier, path, options, "ignore-annotation", errors),
+              ...handler
+            } as any
         }
       }
-      if (!isOverrideAnnotation(handler)) {
-        return {
-          ...go(ast, $defs, identifier, path, options, "ignore-annotation", errors),
-          ...handler
-        } as any
-      }
-      return handler
     }
   }
   const surrogate = AST.getSurrogateAnnotation(ast)
