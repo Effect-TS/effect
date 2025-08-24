@@ -139,7 +139,7 @@ describe("fromAST", () => {
           })
         })
 
-        it.todo("NullOr(Any)", () => {
+        it("NullOr(Any)", () => {
           const schema = Schema.NullOr(Schema.Any)
           expectJSONSchemaAnnotations(schema, {
             "$id": "/schemas/any",
@@ -147,7 +147,7 @@ describe("fromAST", () => {
           })
         })
 
-        it.todo("NullOr(Unknown)", () => {
+        it("NullOr(Unknown)", () => {
           const schema = Schema.NullOr(Schema.Unknown)
           expectJSONSchemaAnnotations(schema, {
             "$id": "/schemas/unknown",
@@ -155,7 +155,7 @@ describe("fromAST", () => {
           })
         })
 
-        it.todo("NullOr(Void)", () => {
+        it("NullOr(Void)", () => {
           const schema = Schema.NullOr(Schema.Void)
           expectJSONSchemaAnnotations(schema, {
             "$id": "/schemas/void",

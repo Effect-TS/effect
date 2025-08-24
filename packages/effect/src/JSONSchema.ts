@@ -862,8 +862,8 @@ function go(
       }
       const from = go(ast.from, $defs, identifier, path, options, "handle-annotation", errors)
       if (
-        isJsonSchema7Object(from) &&
-        ast.transformation._tag === "TypeLiteralTransformation"
+        ast.transformation._tag === "TypeLiteralTransformation" &&
+        isJsonSchema7Object(from)
       ) {
         const to = go(ast.to, {}, "ignore-identifier", path, options, "handle-annotation", "ignore-errors")
         if (isJsonSchema7Object(to)) {
@@ -896,9 +896,21 @@ function isJsonSchema7Object(jsonSchema: unknown): jsonSchema is JsonSchema7Obje
   return Predicate.isRecord(jsonSchema) && jsonSchema.type === "object" && Predicate.isRecord(jsonSchema.properties)
 }
 
-function isJsonSchema7NeverWithoutCustomAnnotations(jsonSchema: JsonSchema7): boolean {
+function isNeverWithoutCustomAnnotations(jsonSchema: JsonSchema7): boolean {
   return jsonSchema === constNever || (Predicate.hasProperty(jsonSchema, "$id") && jsonSchema.$id === constNever.$id &&
     Object.keys(jsonSchema).length === 3 && jsonSchema.title === AST.neverKeyword.annotations[AST.TitleAnnotationId])
+}
+
+function isAny(jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Any {
+  return "$id" in jsonSchema && jsonSchema.$id === constAny.$id
+}
+
+function isUnknown(jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Unknown {
+  return "$id" in jsonSchema && jsonSchema.$id === constUnknown.$id
+}
+
+function isVoid(jsonSchema: JsonSchema7): jsonSchema is JsonSchema7Void {
+  return "$id" in jsonSchema && jsonSchema.$id === constVoid.$id
 }
 
 function isCompactableLiteral(jsonSchema: JsonSchema7 | undefined): jsonSchema is JsonSchema7Enum {
@@ -908,7 +920,8 @@ function isCompactableLiteral(jsonSchema: JsonSchema7 | undefined): jsonSchema i
 function compactUnion(members: Array<JsonSchema7>): Array<JsonSchema7> {
   const out: Array<JsonSchema7> = []
   for (const m of members) {
-    if (isJsonSchema7NeverWithoutCustomAnnotations(m)) continue
+    if (isNeverWithoutCustomAnnotations(m)) continue
+    if (isAny(m) || isUnknown(m) || isVoid(m)) return [m]
     if (isCompactableLiteral(m) && out.length > 0) {
       const last = out[out.length - 1]
       if (isCompactableLiteral(last) && last.type === m.type) {

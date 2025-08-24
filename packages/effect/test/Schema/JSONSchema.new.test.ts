@@ -296,39 +296,24 @@ schema (SymbolKeyword): symbol`
       it("NullOr(Any)", async () => {
         const schema = Schema.NullOr(Schema.Any)
         await assertDraft7(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/any",
-              "title": "any"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/any",
+          "title": "any"
         })
       })
 
       it("NullOr(Unknown)", async () => {
         const schema = Schema.NullOr(Schema.Unknown)
         await assertDraft7(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/unknown",
-              "title": "unknown"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/unknown",
+          "title": "unknown"
         })
       })
 
       it("NullOr(Void)", async () => {
         const schema = Schema.NullOr(Schema.Void)
         await assertDraft7(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/void",
-              "title": "void"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/void",
+          "title": "void"
         })
       })
 
@@ -1538,6 +1523,37 @@ schema (SymbolKeyword): symbol`
       })
 
       describe("optionalWith", () => {
+        it("{ nullable: true }", async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { nullable: true }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), { nullable: true }),
+            c: Schema.optionalWith(Schema.String, { nullable: true }).annotations({ description: "c-outer" }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), { nullable: true })
+              .annotations({
+                description: "d-outer"
+              }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { nullable: true })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "b": {
+                "anyOf": [{ "type": "string", "description": "b-inner" }, { "type": "null" }],
+                "description": "b-inner"
+              },
+              "c": { "anyOf": [{ "type": "string" }, { "type": "null" }], "description": "c-outer" },
+              "d": {
+                "anyOf": [{ "type": "string", "description": "d-inner" }, { "type": "null" }],
+                "description": "d-outer"
+              },
+              "e": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
+        })
+
         it("{ exact: true }", async () => {
           const schema = Schema.Struct({
             a: Schema.optionalWith(Schema.String, { exact: true }),
@@ -1556,6 +1572,44 @@ schema (SymbolKeyword): symbol`
               "c": { "type": "string", "description": "c-outer" },
               "d": { "type": "string", "description": "d-outer" },
               "e": { "type": "string" }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
+        })
+
+        it("{ exact: true, nullable: true }", async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { exact: true, nullable: true }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), {
+              exact: true,
+              nullable: true
+            }),
+            c: Schema.optionalWith(Schema.String, { exact: true, nullable: true }).annotations({
+              description: "c-outer"
+            }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), {
+              exact: true,
+              nullable: true
+            }).annotations({
+              description: "d-outer"
+            }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { exact: true, nullable: true })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "b": {
+                "anyOf": [{ "type": "string", "description": "b-inner" }, { "type": "null" }],
+                "description": "b-inner"
+              },
+              "c": { "anyOf": [{ "type": "string" }, { "type": "null" }], "description": "c-outer" },
+              "d": {
+                "anyOf": [{ "type": "string", "description": "d-inner" }, { "type": "null" }],
+                "description": "d-outer"
+              },
+              "e": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
             },
             "required": [],
             "additionalProperties": false
@@ -1585,6 +1639,43 @@ schema (SymbolKeyword): symbol`
           })
         })
 
+        it("{ default, nullable: true }", async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { default: () => "", nullable: true }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), {
+              default: () => "",
+              nullable: true
+            }),
+            c: Schema.optionalWith(Schema.String, { default: () => "", nullable: true }).annotations({
+              description: "c-outer"
+            }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), {
+              default: () => "",
+              nullable: true
+            })
+              .annotations({ description: "d-outer" }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { default: () => "", nullable: true })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "b": {
+                "anyOf": [{ "type": "string", "description": "b-inner" }, { "type": "null" }],
+                "description": "b-inner"
+              },
+              "c": { "anyOf": [{ "type": "string" }, { "type": "null" }], "description": "c-outer" },
+              "d": {
+                "anyOf": [{ "type": "string", "description": "d-inner" }, { "type": "null" }],
+                "description": "d-outer"
+              },
+              "e": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
+        })
+
         it(`{ as: "Option" }`, async () => {
           const schema = Schema.Struct({
             a: Schema.optionalWith(Schema.String, { as: "Option" }),
@@ -1602,6 +1693,43 @@ schema (SymbolKeyword): symbol`
               "c": { "type": "string", "description": "c-outer" },
               "d": { "type": "string", "description": "d-outer" },
               "e": { "type": "string" }
+            },
+            "required": [],
+            "additionalProperties": false
+          })
+        })
+
+        it(`{ as: "Option", nullable: true }`, async () => {
+          const schema = Schema.Struct({
+            a: Schema.optionalWith(Schema.String, { as: "Option", nullable: true }),
+            b: Schema.optionalWith(Schema.String.annotations({ description: "b-inner" }), {
+              as: "Option",
+              nullable: true
+            }),
+            c: Schema.optionalWith(Schema.String, { as: "Option", nullable: true }).annotations({
+              description: "c-outer"
+            }),
+            d: Schema.optionalWith(Schema.String.annotations({ description: "d-inner" }), {
+              as: "Option",
+              nullable: true
+            }).annotations({
+              description: "d-outer"
+            }),
+            e: Schema.optionalWith(Schema.UndefinedOr(Schema.String), { as: "Option", nullable: true })
+          })
+          await assertDraft7(schema, {
+            "type": "object",
+            "properties": {
+              "a": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "b": {
+                "anyOf": [{ "type": "string", "description": "b-inner" }, { "type": "null" }]
+              },
+              "c": { "anyOf": [{ "type": "string" }, { "type": "null" }], "description": "c-outer" },
+              "d": {
+                "anyOf": [{ "type": "string", "description": "d-inner" }, { "type": "null" }],
+                "description": "d-outer"
+              },
+              "e": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
             },
             "required": [],
             "additionalProperties": false
@@ -3938,39 +4066,24 @@ schema (SymbolKeyword): symbol`
       it("NullOr(Any)", async () => {
         const schema = Schema.NullOr(Schema.Any)
         await assertDraft201909(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/any",
-              "title": "any"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/any",
+          "title": "any"
         })
       })
 
       it("NullOr(Unknown)", async () => {
         const schema = Schema.NullOr(Schema.Unknown)
         await assertDraft201909(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/unknown",
-              "title": "unknown"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/unknown",
+          "title": "unknown"
         })
       })
 
       it("NullOr(Void)", async () => {
         const schema = Schema.NullOr(Schema.Void)
         await assertDraft201909(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/void",
-              "title": "void"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/void",
+          "title": "void"
         })
       })
 
@@ -4072,39 +4185,24 @@ schema (SymbolKeyword): symbol`
       it("NullOr(Any)", async () => {
         const schema = Schema.NullOr(Schema.Any)
         await assertOpenApi3_1(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/any",
-              "title": "any"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/any",
+          "title": "any"
         })
       })
 
       it("NullOr(Unknown)", async () => {
         const schema = Schema.NullOr(Schema.Unknown)
         await assertOpenApi3_1(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/unknown",
-              "title": "unknown"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/unknown",
+          "title": "unknown"
         })
       })
 
       it("NullOr(Void)", async () => {
         const schema = Schema.NullOr(Schema.Void)
         await assertOpenApi3_1(schema, {
-          "anyOf": [
-            {
-              "$id": "/schemas/void",
-              "title": "void"
-            },
-            { "type": "null" }
-          ]
+          "$id": "/schemas/void",
+          "title": "void"
         })
       })
 
