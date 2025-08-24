@@ -359,7 +359,6 @@ const prettyLoggerTty = (options: {
   readonly formatDate: (date: Date) => string
 }) => {
   const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
-  const isWorkerd = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers"
   const supportsConsoleGroup = !processIsBun && !isWorkerd
   const color = options.colors ? withColor : withColorNoop
   return makeLogger<unknown, void>(
