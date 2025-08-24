@@ -246,7 +246,7 @@ describe("fromAST", () => {
           }, {})
         })
 
-        it.todo("NullOr(Any)", () => {
+        it("NullOr(Any)", () => {
           const schema = Schema.NullOr(Schema.Any)
           expectJSONSchema2019(schema, {
             "$id": "/schemas/any",
@@ -254,7 +254,7 @@ describe("fromAST", () => {
           }, {})
         })
 
-        it.todo("NullOr(Unknown)", () => {
+        it("NullOr(Unknown)", () => {
           const schema = Schema.NullOr(Schema.Unknown)
           expectJSONSchema2019(schema, {
             "$id": "/schemas/unknown",
@@ -262,7 +262,7 @@ describe("fromAST", () => {
           }, {})
         })
 
-        it.todo("NullOr(Void)", () => {
+        it("NullOr(Void)", () => {
           const schema = Schema.NullOr(Schema.Void)
           expectJSONSchema2019(schema, {
             "$id": "/schemas/void",
@@ -352,20 +352,22 @@ describe("fromAST", () => {
 
     describe("openApi3.1", () => {
       describe("nullable handling", () => {
-        it.todo("Null", () => {
+        it("Null", () => {
           const schema = Schema.Null
-          expectJSONSchemaOpenApi31(schema, { "enum": [null] }, {})
+          expectJSONSchemaOpenApi31(schema, { "type": "null" }, {})
         })
 
-        it.todo("NullOr(String)", () => {
+        it("NullOr(String)", () => {
           const schema = Schema.NullOr(Schema.String)
           expectJSONSchemaOpenApi31(schema, {
-            "type": "string",
-            "nullable": true
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Any)", () => {
+        it("NullOr(Any)", () => {
           const schema = Schema.NullOr(Schema.Any)
           expectJSONSchemaOpenApi31(schema, {
             "$id": "/schemas/any",
@@ -373,7 +375,7 @@ describe("fromAST", () => {
           }, {})
         })
 
-        it.todo("NullOr(Unknown)", () => {
+        it("NullOr(Unknown)", () => {
           const schema = Schema.NullOr(Schema.Unknown)
           expectJSONSchemaOpenApi31(schema, {
             "$id": "/schemas/unknown",
@@ -381,7 +383,7 @@ describe("fromAST", () => {
           }, {})
         })
 
-        it.todo("NullOr(Void)", () => {
+        it("NullOr(Void)", () => {
           const schema = Schema.NullOr(Schema.Void)
           expectJSONSchemaOpenApi31(schema, {
             "$id": "/schemas/void",
@@ -389,39 +391,51 @@ describe("fromAST", () => {
           }, {})
         })
 
-        it.todo("NullOr(Object)", () => {
+        it("NullOr(Object)", () => {
           const schema = Schema.NullOr(Schema.Object)
           expectJSONSchemaOpenApi31(schema, {
-            "$id": "/schemas/object",
             "anyOf": [
-              { "type": "object" },
-              { "type": "array" }
-            ],
-            "description": "an object in the TypeScript meaning, i.e. the `object` type",
-            "nullable": true,
-            "title": "object"
+              {
+                "$id": "/schemas/object",
+                "anyOf": [
+                  { "type": "object" },
+                  { "type": "array" }
+                ],
+                "description": "an object in the TypeScript meaning, i.e. the `object` type",
+                "title": "object"
+              },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Struct({}))", () => {
+        it("NullOr(Struct({}))", () => {
           const schema = Schema.NullOr(Schema.Struct({}))
           expectJSONSchemaOpenApi31(schema, {
-            "$id": "/schemas/%7B%7D",
             "anyOf": [
-              { "type": "object" },
-              { "type": "array" }
-            ],
-            "nullable": true
+              {
+                "$id": "/schemas/%7B%7D",
+                "anyOf": [
+                  { "type": "object" },
+                  { "type": "array" }
+                ]
+              },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Ref)", () => {
+        it("NullOr(Ref)", () => {
           const schema = Schema.NullOr(
             Schema.String.annotations({ identifier: "b812aaa1-cfe1-4dda-8c9c-360bfa6cb855" })
           )
           expectJSONSchemaOpenApi31(schema, {
-            "$ref": "#/$defs/b812aaa1-cfe1-4dda-8c9c-360bfa6cb855",
-            "nullable": true
+            "anyOf": [
+              {
+                "$ref": "#/$defs/b812aaa1-cfe1-4dda-8c9c-360bfa6cb855"
+              },
+              { "type": "null" }
+            ]
           }, {
             "b812aaa1-cfe1-4dda-8c9c-360bfa6cb855": {
               "type": "string"
@@ -429,19 +443,25 @@ describe("fromAST", () => {
           })
         })
 
-        it.todo("NullOr(Number)", () => {
+        it("NullOr(Number)", () => {
           const schema = Schema.NullOr(Schema.Number)
           expectJSONSchemaOpenApi31(schema, {
-            "type": "number",
-            "nullable": true
+            "anyOf": [
+              { "type": "number" },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Int)", () => {
+        it("NullOr(Int)", () => {
           const schema = Schema.NullOr(Schema.Int)
           expectJSONSchemaOpenApi31(schema, {
-            "$ref": "#/$defs/Int",
-            "nullable": true
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Int"
+              },
+              { "type": "null" }
+            ]
           }, {
             "Int": {
               "title": "int",
@@ -451,68 +471,84 @@ describe("fromAST", () => {
           })
         })
 
-        it.todo("NullOr(Boolean)", () => {
+        it("NullOr(Boolean)", () => {
           const schema = Schema.NullOr(Schema.Boolean)
           expectJSONSchemaOpenApi31(schema, {
-            "type": "boolean",
-            "nullable": true
+            "anyOf": [
+              { "type": "boolean" },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Array)", () => {
+        it("NullOr(Array)", () => {
           const schema = Schema.NullOr(Schema.Array(Schema.String))
           expectJSONSchemaOpenApi31(schema, {
-            "items": {
-              "type": "string"
-            },
-            "nullable": true,
-            "type": "array"
+            "anyOf": [
+              {
+                "items": { "type": "string" },
+                "type": "array"
+              },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Enum)", () => {
+        it("NullOr(Enum)", () => {
           enum Fruits {
             Apple,
             Banana
           }
           const schema = Schema.NullOr(Schema.Enums(Fruits))
           expectJSONSchemaOpenApi31(schema, {
-            "$comment": "/schemas/enums",
             "anyOf": [
               {
-                "type": "number",
-                "title": "Apple",
-                "enum": [0]
+                "$comment": "/schemas/enums",
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "title": "Apple",
+                    "enum": [0]
+                  },
+                  {
+                    "type": "number",
+                    "title": "Banana",
+                    "enum": [1]
+                  }
+                ]
               },
-              {
-                "type": "number",
-                "title": "Banana",
-                "enum": [1]
-              }
-            ],
-            "nullable": true
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Literal)", () => {
+        it("NullOr(Literal)", () => {
           const schema = Schema.NullOr(Schema.Literal("a"))
           expectJSONSchemaOpenApi31(schema, {
-            "type": "string",
-            "enum": ["a"],
-            "nullable": true
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("Literal | null", () => {
+        it("Literal | null", () => {
           const schema = Schema.Literal("a", null)
           expectJSONSchemaOpenApi31(schema, {
-            "type": "string",
-            "enum": ["a"],
-            "nullable": true
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["a"]
+              },
+              { "type": "null" }
+            ]
           }, {})
         })
 
-        it.todo("Literal | null(with description)", () => {
+        it("Literal | null(with description)", () => {
           const schema = Schema.Union(Schema.Literal("a"), Schema.Null.annotations({ description: "mydescription" }))
           expectJSONSchemaOpenApi31(schema, {
             "anyOf": [
@@ -522,36 +558,44 @@ describe("fromAST", () => {
               },
               {
                 "description": "mydescription",
-                "enum": [null]
+                "type": "null"
               }
             ]
           }, {})
         })
 
-        it.todo("Nested nullable unions", () => {
+        it("Nested nullable unions", () => {
           const schema = Schema.Union(Schema.NullOr(Schema.String), Schema.Literal("a", null))
           expectJSONSchemaOpenApi31(schema, {
             "anyOf": [
-              { "type": "string" },
               {
-                "type": "string",
-                "enum": ["a"]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ]
+              },
+              {
+                "anyOf": [
+                  { "type": "string", "enum": ["a"] },
+                  { "type": "null" }
+                ]
               }
-            ],
-            "nullable": true
+            ]
           }, {})
         })
 
-        it.todo("NullOr(Struct({ a: String }))", () => {
+        it("NullOr(Struct({ a: String }))", () => {
           const schema = Schema.NullOr(Schema.Struct({ a: Schema.String }))
           expectJSONSchemaOpenApi31(schema, {
-            "additionalProperties": false,
-            "nullable": true,
-            "properties": {
-              "a": { "type": "string" }
-            },
-            "required": ["a"],
-            "type": "object"
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": { "a": { "type": "string" } },
+                "required": ["a"],
+                "type": "object"
+              },
+              { "type": "null" }
+            ]
           }, {})
         })
       })
