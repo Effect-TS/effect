@@ -765,15 +765,6 @@ details: Generating a JSON Schema for this schema requires a "jsonSchema" annota
 schema (SymbolKeyword): symbol`
         )
       })
-
-      it.todo("Refinement", () => {
-        expectError(
-          Schema.String.pipe(Schema.filter(() => true)),
-          `Missing annotation
-details: Generating a JSON Schema for this schema requires a "jsonSchema" annotation
-schema (Refinement): { string | filter }`
-        )
-      })
     })
 
     describe("Missing identifier annotation Error", () => {
@@ -3720,6 +3711,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   })
 
   describe("jsonSchema annotation support", () => {
+    it("refinements without a jsonSchema annotation should be ignored rather than raising an error", () => {
+      const schema = Schema.String.pipe(Schema.filter(() => true))
+      expectJSONSchema(schema, {
+        "type": "string"
+      })
+    })
+
     it("should have higher priority than surrogate annotation", () => {
       expectJSONSchema(
         Schema.String.annotations({

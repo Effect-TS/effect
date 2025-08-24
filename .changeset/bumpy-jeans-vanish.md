@@ -3,10 +3,9 @@
 "effect": patch
 ---
 
-## Schema Annotations Behavior
+## Annotation Behavior
 
-With this patch, calling `annotations` on a schema removes any previously defined identifier annotations.
-Identifiers are now strictly tied to the schema's `ast` reference.
+When you call `.annotations` on a schema, any identifier annotations that were previously set will now be removed. Identifiers are now always tied to the schema's `ast` reference (this was the intended behavior).
 
 **Example**
 
@@ -43,8 +42,8 @@ console.log(JSON.stringify(JSONSchema.make(annotated), null, 2))
 
 ## OpenAPI 3.1 Compatibility
 
-This patch fixes the use of `nullable: true`, which is not valid in OpenAPI 3.1.
-Instead, schemas now include `{ "type": "null" }` as a union member.
+OpenAPI 3.1 does not allow `nullable: true`.
+Instead, the schema will now correctly use `{ "type": "null" }` inside a union.
 
 **Example**
 
@@ -79,8 +78,8 @@ console.log(
 
 ## Schema Description Deduplication
 
-This patch fixes the issue where only the description from the first occurrence of a schema (in `$defs`) was included.
-Now, each property keeps its own description.
+Previously, when a schema was reused, only the first description was kept.
+Now, every property keeps its own description, even if the schema is reused.
 
 **Example**
 
@@ -162,3 +161,56 @@ console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
 }
 */
 ```
+
+## Nested Unions
+
+Nested unions are no longer flattened. Instead, they remain as nested `anyOf` arrays.
+This is fine because JSON Schema allows nested `anyOf`.
+
+**Example**
+
+```ts
+import { JSONSchema, Schema } from "effect"
+
+const schema = Schema.Union(
+  Schema.NullOr(Schema.String),
+  Schema.Literal("a", null)
+)
+
+console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+/*
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "a"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  ]
+}
+*/
+```
+
+## Refinements without `jsonSchema` annotation
+
+Refinements that don't provide a `jsonSchema` annotation no longer cause errors.
+They are simply ignored, so you can still generate a JSON Schema even when refinements can't easily be expressed.
