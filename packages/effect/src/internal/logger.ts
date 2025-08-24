@@ -332,7 +332,9 @@ const hasProcessStdout = typeof process === "object" &&
   process.stdout !== null
 const processStdoutIsTTY = hasProcessStdout &&
   process.stdout.isTTY === true
+const isWorkerd = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers"
 const hasProcessStdoutOrDeno = hasProcessStdout || "Deno" in globalThis
+const shouldUseTTYMode = hasProcessStdoutOrDeno || isWorkerd
 
 /** @internal */
 export const prettyLogger = (options?: {
@@ -342,7 +344,7 @@ export const prettyLogger = (options?: {
   readonly mode?: "browser" | "tty" | "auto" | undefined
 }) => {
   const mode_ = options?.mode ?? "auto"
-  const mode = mode_ === "auto" ? (hasProcessStdoutOrDeno ? "tty" : "browser") : mode_
+  const mode = mode_ === "auto" ? (shouldUseTTYMode ? "tty" : "browser") : mode_
   const isBrowser = mode === "browser"
   const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
   const formatDate = options?.formatDate ?? defaultDateFormat
@@ -419,7 +421,6 @@ const prettyLoggerBrowser = (options: {
   readonly formatDate: (date: Date) => string
 }) => {
   const color = options.colors ? "%c" : ""
-  const isWorkerd = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers"
   return makeLogger<unknown, void>(
     ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
       const services = FiberRefs.getOrDefault(context, defaultServices.currentServices)
@@ -457,57 +458,30 @@ const prettyLoggerBrowser = (options: {
         }
       }
 
-      if (isWorkerd) {
-        // In workerd, console.groupCollapsed is a no-op, so we use flat logging
-        console.log(firstLine, ...firstParams)
+      console.groupCollapsed(firstLine, ...firstParams)
 
-        if (!Cause.isEmpty(cause)) {
-          console.error(Cause.pretty(cause, { renderErrorCause: true }))
-        }
-
-        if (messageIndex < message.length) {
-          for (; messageIndex < message.length; messageIndex++) {
-            console.log(Inspectable.redact(message[messageIndex]))
-          }
-        }
-
-        if (HashMap.size(annotations) > 0) {
-          for (const [key, value] of annotations) {
-            const redacted = Inspectable.redact(value)
-            if (options.colors) {
-              console.log(`%c${key}:`, "color:gray", redacted)
-            } else {
-              console.log(`${key}:`, redacted)
-            }
-          }
-        }
-      } else {
-        // Standard browser behavior with grouping
-        console.groupCollapsed(firstLine, ...firstParams)
-
-        if (!Cause.isEmpty(cause)) {
-          console.error(Cause.pretty(cause, { renderErrorCause: true }))
-        }
-
-        if (messageIndex < message.length) {
-          for (; messageIndex < message.length; messageIndex++) {
-            console.log(Inspectable.redact(message[messageIndex]))
-          }
-        }
-
-        if (HashMap.size(annotations) > 0) {
-          for (const [key, value] of annotations) {
-            const redacted = Inspectable.redact(value)
-            if (options.colors) {
-              console.log(`%c${key}:`, "color:gray", redacted)
-            } else {
-              console.log(`${key}:`, redacted)
-            }
-          }
-        }
-
-        console.groupEnd()
+      if (!Cause.isEmpty(cause)) {
+        console.error(Cause.pretty(cause, { renderErrorCause: true }))
       }
+
+      if (messageIndex < message.length) {
+        for (; messageIndex < message.length; messageIndex++) {
+          console.log(Inspectable.redact(message[messageIndex]))
+        }
+      }
+
+      if (HashMap.size(annotations) > 0) {
+        for (const [key, value] of annotations) {
+          const redacted = Inspectable.redact(value)
+          if (options.colors) {
+            console.log(`%c${key}:`, "color:gray", redacted)
+          } else {
+            console.log(`${key}:`, redacted)
+          }
+        }
+      }
+
+      console.groupEnd()
     }
   )
 }
