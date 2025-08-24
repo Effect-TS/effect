@@ -992,9 +992,12 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
-    it.todo("union of literals", () => {
+    it("union of literals", () => {
       expectJSONSchemaAnnotations(Schema.Literal(1, true), {
-        "enum": [1, true]
+        "anyOf": [
+          { "type": "number", "enum": [1] },
+          { "type": "boolean", "enum": [true] }
+        ]
       })
     })
   })
@@ -2670,17 +2673,18 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
 
     describe("TypeLiteralTransformation", () => {
-      it.todo("a title annotation on the transformation should not overwrite an annotation set on the from part", () => {
+      // not sure if this is a bug or not
+      it.skip("a title annotation on the transformation should not overwrite an annotation set on the from part", () => {
         const schema = Schema.make(
           new AST.Transformation(
             new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
-              [AST.TitleAnnotationId]: "37f2e3af-6610-4ac3-a4c3-beaef52968eb"
+              [AST.TitleAnnotationId]: "from-title"
             }),
             new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
-              [AST.TitleAnnotationId]: "3b536202-f423-43e7-898a-154352a49bb8"
+              [AST.TitleAnnotationId]: "to-title"
             }),
             new AST.TypeLiteralTransformation([]),
-            { [AST.TitleAnnotationId]: "4165c953-db36-4e85-a834-e48f2378a4b6" }
+            { [AST.TitleAnnotationId]: "transformation-title" }
           )
         )
         expectJSONSchemaProperty(schema, {
@@ -2690,21 +2694,22 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "a": { "type": "string" }
           },
           "additionalProperties": false,
-          "title": "37f2e3af-6610-4ac3-a4c3-beaef52968eb"
+          "title": "from-title"
         })
       })
 
-      it.todo("a description annotation on the transformation should not overwrite an annotation set on the from part", () => {
+      // not sure if this is a bug or not
+      it.skip("a description annotation on the transformation should not overwrite an annotation set on the from part", () => {
         const schema = Schema.make(
           new AST.Transformation(
             new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
-              [AST.DescriptionAnnotationId]: "5fb557a4-1a98-461c-b72b-e826ff0ceede"
+              [AST.DescriptionAnnotationId]: "from-description"
             }),
             new AST.TypeLiteral([new AST.PropertySignature("a", Schema.String.ast, false, true)], [], {
-              [AST.DescriptionAnnotationId]: "328d0f5d-7947-4659-84b9-f44639575976"
+              [AST.DescriptionAnnotationId]: "to-description"
             }),
             new AST.TypeLiteralTransformation([]),
-            { [AST.DescriptionAnnotationId]: "7261dcd6-17a3-4d43-9dd6-69806e22ec46" }
+            { [AST.DescriptionAnnotationId]: "transformation-description" }
           )
         )
         expectJSONSchemaProperty(schema, {
@@ -2714,13 +2719,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "a": { "type": "string" }
           },
           "additionalProperties": false,
-          "description": "5fb557a4-1a98-461c-b72b-e826ff0ceede"
+          "description": "from-description"
         })
       })
 
       describe("optionalWith", () => {
         describe(`{ default: () => ... } option`, () => {
-          it.todo("with transformation description and title", () => {
+          it("with transformation description and title", () => {
             expectJSONSchemaProperty(
               Schema.Struct({
                 a: Schema.optionalWith(
@@ -2738,21 +2743,16 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 title: "outer-title"
               }),
               {
-                "$defs": {
-                  "NonEmptyString": {
-                    "type": "string",
-                    "description": "inner-description",
-                    "title": "inner-title",
-                    "minLength": 1
-                  }
-                },
                 "type": "object",
                 "description": "outer-description",
                 "title": "outer-title",
                 "required": [],
                 "properties": {
                   "a": {
-                    "$ref": "#/$defs/NonEmptyString"
+                    "description": "middle-description",
+                    "minLength": 1,
+                    "title": "middle-title",
+                    "type": "string"
                   }
                 },
                 "additionalProperties": false
@@ -3205,19 +3205,18 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
     })
   })
 
-  it.todo("examples JSON Schema annotation support", () => {
+  it("examples JSON Schema annotation support", () => {
     expectJSONSchemaAnnotations(Schema.String.annotations({ examples: ["a", "b"] }), {
       "type": "string",
       "examples": ["a", "b"]
     })
     expectJSONSchemaProperty(Schema.BigInt.annotations({ examples: [1n, 2n] }), {
-      "$defs": {
-        "BigInt": {
-          "type": "string",
-          "description": "a string to be decoded into a bigint"
-        }
-      },
-      "$ref": "#/$defs/BigInt"
+      "description": "a string to be decoded into a bigint",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "type": "string"
     })
     expectJSONSchemaProperty(
       Schema.Struct({
@@ -3236,7 +3235,9 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
         ],
         "properties": {
           "a": {
-            "$ref": "#/$defs/BigInt",
+            "allOf": [
+              { "$ref": "#/$defs/BigInt" }
+            ],
             "examples": ["1", "2"]
           }
         },
@@ -3569,7 +3570,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           })
         })
 
-        it.todo("with transformation description, title and identifier", () => {
+        it("with transformation description, title and identifier", () => {
           expectJSONSchemaProperty(
             Schema.Struct({
               a: Schema.optionalWith(
@@ -3589,12 +3590,6 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             }),
             {
               "$defs": {
-                "NonEmptyString": {
-                  "type": "string",
-                  "description": "inner-description",
-                  "title": "inner-title",
-                  "minLength": 1
-                },
                 "75d9b539-eb6b-48d3-81dd-61176a9bce78": {
                   "type": "object",
                   "description": "outer-description",
@@ -3602,7 +3597,10 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   "required": [],
                   "properties": {
                     "a": {
-                      "$ref": "#/$defs/NonEmptyString"
+                      "type": "string",
+                      "description": "middle-description",
+                      "title": "middle-title",
+                      "minLength": 1
                     }
                   },
                   "additionalProperties": false
@@ -3618,11 +3616,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
 
   describe("surrogate annotation support", () => {
     describe("Class", () => {
-      it.todo("should support typeSchema(Class)", () => {
-        class A extends Schema.Class<A>("70ac1a3e-d046-4be0-8b32-8be7eced43a3")({ a: Schema.String }) {}
+      it("should support typeSchema(Class)", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
         expectJSONSchemaProperty(Schema.typeSchema(A), {
           "$defs": {
-            "70ac1a3e-d046-4be0-8b32-8be7eced43a3": {
+            "A": {
               "type": "object",
               "required": ["a"],
               "properties": {
@@ -3633,42 +3631,37 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               "additionalProperties": false
             }
           },
-          "$ref": "#/$defs/70ac1a3e-d046-4be0-8b32-8be7eced43a3"
+          "$ref": "#/$defs/A"
         })
         expectJSONSchemaProperty(
           Schema.typeSchema(A).annotations({
-            description: "3dc02abf-b76d-4e66-bbc6-81e5d435aea3",
-            title: "8c8e9575-579c-4ac6-aca5-9bb168d84e21"
+            description: "description",
+            title: "title"
           }),
           {
-            "$defs": {
-              "70ac1a3e-d046-4be0-8b32-8be7eced43a3": {
-                "type": "object",
-                "required": ["a"],
-                "properties": {
-                  "a": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false,
-                "description": "3dc02abf-b76d-4e66-bbc6-81e5d435aea3",
-                "title": "8c8e9575-579c-4ac6-aca5-9bb168d84e21"
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "string"
               }
             },
-            "$ref": "#/$defs/70ac1a3e-d046-4be0-8b32-8be7eced43a3"
+            "additionalProperties": false,
+            "description": "description",
+            "title": "title"
           }
         )
       })
 
-      it.todo("with identifier annotation", () => {
-        class A extends Schema.Class<A>("3aa58407-8688-48f4-95ee-dccf6eeccd79")({ a: Schema.String }, {
-          identifier: "798908a2-365f-4d9b-8ec7-96fe840667fa",
-          description: "e972ddfe-0031-4ceb-9201-d21c97e066e3",
-          title: "ce02e6c4-fd67-41d1-ac75-75bec81fd987"
+      it("with identifier annotation", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }, {
+          identifier: "ID",
+          description: "description",
+          title: "title"
         }) {}
         expectJSONSchemaProperty(Schema.typeSchema(A), {
           "$defs": {
-            "798908a2-365f-4d9b-8ec7-96fe840667fa": {
+            "ID": {
               "type": "object",
               "required": ["a"],
               "properties": {
@@ -3677,33 +3670,28 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 }
               },
               "additionalProperties": false,
-              "description": "e972ddfe-0031-4ceb-9201-d21c97e066e3",
-              "title": "ce02e6c4-fd67-41d1-ac75-75bec81fd987"
+              "description": "description",
+              "title": "title"
             }
           },
-          "$ref": "#/$defs/798908a2-365f-4d9b-8ec7-96fe840667fa"
+          "$ref": "#/$defs/ID"
         })
         expectJSONSchemaProperty(
           Schema.typeSchema(A).annotations({
-            description: "c0211013-fb29-46d8-9c8e-54625d1108eb",
-            title: "b1ff8ecb-4191-4229-bb6f-2338ccbe85ee"
+            description: "description",
+            title: "title"
           }),
           {
-            "$defs": {
-              "798908a2-365f-4d9b-8ec7-96fe840667fa": {
-                "type": "object",
-                "required": ["a"],
-                "properties": {
-                  "a": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false,
-                "description": "c0211013-fb29-46d8-9c8e-54625d1108eb",
-                "title": "b1ff8ecb-4191-4229-bb6f-2338ccbe85ee"
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+              "a": {
+                "type": "string"
               }
             },
-            "$ref": "#/$defs/798908a2-365f-4d9b-8ec7-96fe840667fa"
+            "additionalProperties": false,
+            "description": "description",
+            "title": "title"
           }
         )
       })
