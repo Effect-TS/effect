@@ -3976,38 +3976,23 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
-    it.todo("Transformation", () => {
+    it("Transformation", () => {
       expectJSONSchema(Schema.NumberFromString.annotations({ jsonSchema: { "type": "custom" } }), {
-        "$defs": {
-          "NumberFromString": {
-            "type": "custom"
-          }
-        },
-        "$ref": "#/$defs/NumberFromString"
+        "type": "custom"
       })
     })
 
-    it.todo("refinement of a transformation with an override annotation", () => {
+    it("refinement of a transformation with an override annotation", () => {
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { type: "string", format: "date-time" } }), {
-        "$defs": {
-          "Date": {
-            "format": "date-time",
-            "type": "string"
-          }
-        },
-        "$ref": "#/$defs/Date"
+        "format": "date-time",
+        "type": "string"
       })
       expectJSONSchema(
         Schema.Date.annotations({
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
         {
-          "$defs": {
-            "Date": {
-              "anyOf": [{ "type": "object" }, { "type": "array" }]
-            }
-          },
-          "$ref": "#/$defs/Date"
+          "anyOf": [{ "type": "object" }, { "type": "array" }]
         }
       )
       expectJSONSchema(
@@ -4015,37 +4000,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           jsonSchema: { anyOf: [{ type: "object" }, { type: "array" }] }
         }),
         {
-          "$defs": {
-            "Date": {
-              "anyOf": [{ "type": "object" }, { "type": "array" }]
-            }
-          },
-          "$ref": "#/$defs/Date"
+          "anyOf": [{ "type": "object" }, { "type": "array" }]
         }
       )
       expectJSONSchema(Schema.Date.annotations({ jsonSchema: { "$ref": "x" } }), {
-        "$defs": {
-          "Date": {
-            "$ref": "x"
-          }
-        },
-        "$ref": "#/$defs/Date"
+        "$ref": "x"
       })
-      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { "const": 1 } }), {
-        "$defs": {
-          "Date": {
-            "const": 1
-          }
-        },
-        "$ref": "#/$defs/Date"
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { "type": "number", "const": 1 } }), {
+        "type": "number",
+        "const": 1
       })
-      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { "enum": [1] } }), {
-        "$defs": {
-          "Date": {
-            "enum": [1]
-          }
-        },
-        "$ref": "#/$defs/Date"
+      expectJSONSchema(Schema.Date.annotations({ jsonSchema: { "type": "number", "enum": [1] } }), {
+        "type": "number",
+        "enum": [1]
       })
     })
 
@@ -4327,41 +4294,28 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
   describe("Schema.encodedBoundSchema / Schema.encodedSchema", () => {
     describe("borrowing the identifier", () => {
       describe("Declaration", () => {
-        it.todo("without inner transformation", () => {
-          const schema = Schema.Chunk(Schema.String).annotations({ identifier: "72e47719-6e43-4498-abfb-b8d98b233e55" })
+        it("without inner transformation", () => {
+          const schema = Schema.Chunk(Schema.String).annotations({ identifier: "ID" })
           const expected = {
-            "$defs": {
-              "72e47719-6e43-4498-abfb-b8d98b233e55": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
+            "items": {
+              "type": "string"
             },
-            "$ref": "#/$defs/72e47719-6e43-4498-abfb-b8d98b233e55"
+            "type": "array"
           }
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
         })
 
-        it.todo("with inner transformation", () => {
+        it("with inner transformation", () => {
           const schema = Schema.Chunk(Schema.NumberFromString).annotations({
-            identifier: "e4be2cb9-227a-4160-b4a6-d2e3db09eb24"
+            identifier: "ID"
           })
           const expected = {
-            "$defs": {
-              "NumberFromString": {
-                "description": "a string to be decoded into a number",
-                "type": "string"
-              },
-              "e4be2cb9-227a-4160-b4a6-d2e3db09eb24": {
-                "items": {
-                  "$ref": "#/$defs/NumberFromString"
-                },
-                "type": "array"
-              }
+            "items": {
+              "description": "a string to be decoded into a number",
+              "type": "string"
             },
-            "$ref": "#/$defs/e4be2cb9-227a-4160-b4a6-d2e3db09eb24"
+            "type": "array"
           }
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
@@ -4369,7 +4323,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       describe("Refinement", () => {
-        it.todo("without from transformation", () => {
+        it("without from transformation", () => {
           const schema = Schema.Trimmed
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
@@ -4383,71 +4337,50 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             "$ref": "#/$defs/Trimmed"
           })
           expectJSONSchemaProperty(Schema.encodedSchema(schema), {
-            "$defs": {
-              "Trimmed": {
-                "type": "string"
-              }
-            },
-            "$ref": "#/$defs/Trimmed"
+            "type": "string"
           })
         })
 
-        it.todo("with from transformation", () => {
+        it("with from transformation", () => {
           const schema = Schema.compose(Schema.String, Schema.Trimmed).annotations({
-            identifier: "29840acc-99d1-41c6-82dd-31932521e7ea"
+            identifier: "ID"
           })
           const expected = {
-            "$defs": {
-              "29840acc-99d1-41c6-82dd-31932521e7ea": {
-                "type": "string"
-              }
-            },
-            "$ref": "#/$defs/29840acc-99d1-41c6-82dd-31932521e7ea"
+            "type": "string"
           }
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
         })
 
-        it.todo("a stable filter without inner transformations", () => {
+        it("a stable filter without inner transformations", () => {
           const schema = Schema.Array(Schema.NumberFromString).pipe(Schema.minItems(2)).annotations(
-            { identifier: "7848c831-fa50-4e36-aee8-65d2648c0120" }
+            { identifier: "ID" }
           )
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
-              "7848c831-fa50-4e36-aee8-65d2648c0120": {
+              "ID": {
                 "description": "an array of at least 2 item(s)",
                 "title": "minItems(2)",
                 "items": {
-                  "$ref": "#/$defs/NumberFromString"
+                  "description": "a string to be decoded into a number",
+                  "type": "string"
                 },
                 "minItems": 2,
                 "type": "array"
-              },
-              "NumberFromString": {
-                "description": "a string to be decoded into a number",
-                "type": "string"
               }
             },
-            "$ref": "#/$defs/7848c831-fa50-4e36-aee8-65d2648c0120"
+            "$ref": "#/$defs/ID"
           })
           expectJSONSchemaProperty(Schema.encodedSchema(schema), {
-            "$defs": {
-              "7848c831-fa50-4e36-aee8-65d2648c0120": {
-                "items": {
-                  "$ref": "#/$defs/NumberFromString"
-                },
-                "type": "array"
-              },
-              "NumberFromString": {
-                "description": "a string to be decoded into a number",
-                "type": "string"
-              }
+            "items": {
+              "description": "a string to be decoded into a number",
+              "type": "string"
             },
-            "$ref": "#/$defs/7848c831-fa50-4e36-aee8-65d2648c0120"
+            "type": "array"
           })
         })
 
-        it.todo("a stable filter with inner transformations SHOULD NOT borrow the annotations, identifier included", () => {
+        it("a stable filter with inner transformations SHOULD NOT borrow the annotations, identifier included", () => {
           const schema = Schema.compose(Schema.Unknown, Schema.Array(Schema.String)).pipe(Schema.minItems(1))
           const expected = {
             "$id": "/schemas/unknown",

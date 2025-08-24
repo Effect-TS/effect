@@ -2792,7 +2792,9 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
       const from = encodedAST_(ast.from, isBound)
       if (isBound) {
         if (from === ast.from) return ast
-        if (hasStableFilter(ast)) return new Refinement(from, ast.filter, ast.annotations)
+        if (getTransformationFrom(ast.from) === undefined && hasStableFilter(ast)) {
+          return new Refinement(from, ast.filter, ast.annotations)
+        }
         return from
       } else {
         return from
