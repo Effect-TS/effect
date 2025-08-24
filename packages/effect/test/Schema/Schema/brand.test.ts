@@ -20,7 +20,7 @@ describe("brand", () => {
     Util.assertions.make.fail(
       schema,
       "",
-      `NonEmptyString
+      `nonEmptyString & Brand<"A">
 └─ Predicate refinement failure
    └─ Expected a non empty string, actual ""`
     )
