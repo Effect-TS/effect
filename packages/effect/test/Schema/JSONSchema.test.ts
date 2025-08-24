@@ -4411,24 +4411,18 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
         })
 
-        it.todo("with inner transformations", () => {
+        it("with inner transformations", () => {
           const schema = Schema.Tuple(Schema.NumberFromString).annotations({
-            identifier: "5f699d98-b193-4436-9ac5-145a532a2b4d"
+            identifier: "ID"
           })
           const expected = {
-            "$defs": {
-              "NumberFromString": {
-                "description": "a string to be decoded into a number",
-                "type": "string"
-              },
-              "5f699d98-b193-4436-9ac5-145a532a2b4d": {
-                "additionalItems": false,
-                "items": [{ "$ref": "#/$defs/NumberFromString" }],
-                "minItems": 1,
-                "type": "array"
-              }
-            },
-            "$ref": "#/$defs/5f699d98-b193-4436-9ac5-145a532a2b4d"
+            "additionalItems": false,
+            "items": [{
+              "description": "a string to be decoded into a number",
+              "type": "string"
+            }],
+            "minItems": 1,
+            "type": "array"
           }
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
@@ -4457,28 +4451,20 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
         })
 
-        it.todo("with inner transformations", () => {
+        it("with inner transformations", () => {
           const schema = Schema.Struct({ a: Schema.NumberFromString }).annotations({
-            identifier: "bc516245-69d0-4671-82e1-8629a656e99a"
+            identifier: "ID"
           })
           const expected = {
-            "$defs": {
-              "NumberFromString": {
+            "additionalProperties": false,
+            "properties": {
+              "a": {
                 "description": "a string to be decoded into a number",
                 "type": "string"
-              },
-              "bc516245-69d0-4671-82e1-8629a656e99a": {
-                "additionalProperties": false,
-                "properties": {
-                  "a": {
-                    "$ref": "#/$defs/NumberFromString"
-                  }
-                },
-                "required": ["a"],
-                "type": "object"
               }
             },
-            "$ref": "#/$defs/bc516245-69d0-4671-82e1-8629a656e99a"
+            "required": ["a"],
+            "type": "object"
           }
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
@@ -4486,60 +4472,43 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       describe("Union", () => {
-        it.todo("without inner transformations", () => {
+        it("without inner transformations", () => {
           const schema = Schema.Union(Schema.String, Schema.JsonNumber).annotations({
-            identifier: "c0c853a6-9029-49d9-9a63-08aa542ec7da"
+            identifier: "ID"
           })
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "$defs": {
               "JsonNumber": {
-                "type": "number",
+                "description": "a finite number",
                 "title": "finite",
-                "description": "a finite number"
-              },
-              "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
-                "anyOf": [
-                  { "type": "string" },
-                  { "$ref": "#/$defs/JsonNumber" }
-                ]
-              }
-            },
-            "$ref": "#/$defs/c0c853a6-9029-49d9-9a63-08aa542ec7da"
-          })
-          expectJSONSchema(Schema.encodedSchema(schema), {
-            "$defs": {
-              "JsonNumber": {
                 "type": "number"
               },
-              "c0c853a6-9029-49d9-9a63-08aa542ec7da": {
+              "ID": {
                 "anyOf": [
                   { "type": "string" },
                   { "$ref": "#/$defs/JsonNumber" }
                 ]
               }
             },
-            "$ref": "#/$defs/c0c853a6-9029-49d9-9a63-08aa542ec7da"
+            "$ref": "#/$defs/ID"
+          })
+          expectJSONSchema(Schema.encodedSchema(schema), {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" }
+            ]
           })
         })
 
-        it.todo("with inner transformations", () => {
+        it("with inner transformations", () => {
           const schema = Schema.Union(Schema.String, Schema.NumberFromString).annotations({
-            identifier: "a9c6e11c-e1a2-482e-9748-e0ce161b926a"
+            identifier: "ID"
           })
           const expected = {
-            "$defs": {
-              "NumberFromString": {
-                "description": "a string to be decoded into a number",
-                "type": "string"
-              },
-              "a9c6e11c-e1a2-482e-9748-e0ce161b926a": {
-                "anyOf": [
-                  { "type": "string" },
-                  { "$ref": "#/$defs/NumberFromString" }
-                ]
-              }
-            },
-            "$ref": "#/$defs/a9c6e11c-e1a2-482e-9748-e0ce161b926a"
+            "anyOf": [
+              { "type": "string" },
+              { "description": "a string to be decoded into a number", "type": "string" }
+            ]
           }
           expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
           expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
@@ -4547,7 +4516,7 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
 
       describe("Suspend", () => {
-        it.todo("without inner transformations", () => {
+        it("without inner transformations", () => {
           interface Category {
             readonly name: string
             readonly categories: ReadonlyArray<Category>
@@ -4556,11 +4525,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           const schema: Schema.Schema<Category> = Schema.Struct({
             name: Schema.String,
             categories: Schema.Array(
-              Schema.suspend(() => schema).annotations({ identifier: "9456cebc-bb96-4fe7-8766-cc1e0f0bb823" })
+              Schema.suspend(() => schema).annotations({ identifier: "ID" })
             )
           })
 
-          const expected = {
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "type": "object",
             "required": [
               "name",
@@ -4573,13 +4542,13 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
               "categories": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
+                  "$ref": "#/$defs/IDEncodedBound"
                 }
               }
             },
             "additionalProperties": false,
             "$defs": {
-              "9456cebc-bb96-4fe7-8766-cc1e0f0bb823": {
+              "IDEncodedBound": {
                 "type": "object",
                 "required": [
                   "name",
@@ -4592,19 +4561,57 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                   "categories": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/$defs/9456cebc-bb96-4fe7-8766-cc1e0f0bb823"
+                      "$ref": "#/$defs/IDEncodedBound"
                     }
                   }
                 },
                 "additionalProperties": false
               }
             }
-          }
-          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
-          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+          })
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/IDEncoded"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "IDEncoded": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/IDEncoded"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          })
         })
 
-        it.todo("with inner transformations", () => {
+        it("with inner transformations", () => {
           interface Category {
             readonly name: number
             readonly categories: ReadonlyArray<Category>
@@ -4617,11 +4624,11 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
           const schema: Schema.Schema<Category, CategoryEncoded> = Schema.Struct({
             name: Schema.NumberFromString,
             categories: Schema.Array(
-              Schema.suspend(() => schema).annotations({ identifier: "1e7880a8-555c-46e9-8b58-500e441134bf" })
+              Schema.suspend(() => schema).annotations({ identifier: "ID" })
             )
           })
 
-          const expected = {
+          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), {
             "type": "object",
             "required": [
               "name",
@@ -4629,22 +4636,19 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
             ],
             "properties": {
               "name": {
-                "$ref": "#/$defs/NumberFromString"
+                "description": "a string to be decoded into a number",
+                "type": "string"
               },
               "categories": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/$defs/1e7880a8-555c-46e9-8b58-500e441134bf"
+                  "$ref": "#/$defs/IDEncodedBound"
                 }
               }
             },
             "additionalProperties": false,
             "$defs": {
-              "NumberFromString": {
-                "description": "a string to be decoded into a number",
-                "type": "string"
-              },
-              "1e7880a8-555c-46e9-8b58-500e441134bf": {
+              "IDEncodedBound": {
                 "type": "object",
                 "required": [
                   "name",
@@ -4652,33 +4656,69 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
                 ],
                 "properties": {
                   "name": {
-                    "$ref": "#/$defs/NumberFromString"
+                    "description": "a string to be decoded into a number",
+                    "type": "string"
                   },
                   "categories": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/$defs/1e7880a8-555c-46e9-8b58-500e441134bf"
+                      "$ref": "#/$defs/IDEncodedBound"
                     }
                   }
                 },
                 "additionalProperties": false
               }
             }
-          }
-          expectJSONSchemaProperty(Schema.encodedBoundSchema(schema), expected)
-          expectJSONSchemaProperty(Schema.encodedSchema(schema), expected)
+          })
+          expectJSONSchemaProperty(Schema.encodedSchema(schema), {
+            "type": "object",
+            "required": [
+              "name",
+              "categories"
+            ],
+            "properties": {
+              "name": {
+                "description": "a string to be decoded into a number",
+                "type": "string"
+              },
+              "categories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/IDEncoded"
+                }
+              }
+            },
+            "additionalProperties": false,
+            "$defs": {
+              "IDEncoded": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categories"
+                ],
+                "properties": {
+                  "name": {
+                    "description": "a string to be decoded into a number",
+                    "type": "string"
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/IDEncoded"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          })
         })
       })
 
-      it.todo("Transformation", () => {
+      it("Transformation", () => {
         const expected = {
-          "$defs": {
-            "NumberFromString": {
-              "type": "string",
-              "description": "a string to be decoded into a number"
-            }
-          },
-          "$ref": "#/$defs/NumberFromString"
+          "type": "string",
+          "description": "a string to be decoded into a number"
         }
         expectJSONSchemaProperty(Schema.encodedBoundSchema(Schema.NumberFromString), expected)
         expectJSONSchemaProperty(Schema.encodedSchema(Schema.NumberFromString), expected)
