@@ -2126,7 +2126,8 @@ export const unsafeMakeSpan = <XA, XE>(
       options.context ?? Context.empty(),
       links,
       timingEnabled ? clock.unsafeCurrentTimeNanos() : bigint0,
-      options.kind ?? "internal"
+      options.kind ?? "internal",
+      options
     )
 
     if (annotationsFromEnv._tag === "Some") {
