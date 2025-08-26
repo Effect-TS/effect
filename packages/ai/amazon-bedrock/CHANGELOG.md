@@ -1,5 +1,14 @@
 # @effect/ai-amazon-bedrock
 
+## 0.6.1
+
+### Patch Changes
+
+- [#5424](https://github.com/Effect-TS/effect/pull/5424) [`3a8ba9b`](https://github.com/Effect-TS/effect/commit/3a8ba9b5e894a28e1724a5d5f3a965348caec2f1) Thanks @IMax153! - Fix system content block structure for Amazon Bedrock `AiLanguageModel`
+
+- Updated dependencies [[`0271f14`](https://github.com/Effect-TS/effect/commit/0271f1450c0c861f589e26ff534a73dea7ea97b7)]:
+  - effect@3.17.9
+
 ## 0.6.0
 
 ### Patch Changes

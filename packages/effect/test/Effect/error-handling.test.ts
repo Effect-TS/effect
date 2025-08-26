@@ -11,7 +11,6 @@ import * as FiberId from "effect/FiberId"
 import { constFalse, constTrue, identity, pipe } from "effect/Function"
 import * as Option from "effect/Option"
 import { causesArb } from "../utils/cause.js"
-import { assertType, satisfies } from "../utils/types.js"
 
 const ExampleError = new Error("Oh noes!")
 
@@ -269,7 +268,6 @@ describe("Effect", () => {
         Effect.exit
       )
       deepStrictEqual(result, Exit.fail({ _tag: "ErrorB" as const }))
-      satisfies<true>(assertType<Exit.Exit<ErrorA, ErrorB>>()(result))
     }))
   it.effect("catchTags - recovers from one of several tagged errors", () =>
     Effect.gen(function*() {

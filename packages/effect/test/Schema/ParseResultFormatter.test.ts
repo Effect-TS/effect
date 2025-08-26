@@ -161,7 +161,7 @@ describe("Formatters output", () => {
       expectSyncTree(
         schema,
         input,
-        `AsyncString
+        `(string <-> string)
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       )
       expectSyncIssues(schema, input, [{
@@ -180,7 +180,7 @@ describe("Formatters output", () => {
       expectSyncTree(
         schema,
         input,
-        `AsyncString
+        `(string <-> string)
 └─ cannot be be resolved synchronously, this is caused by using runSync on an effect that performs async work`
       )
       expectSyncIssues(schema, input, [{
@@ -1341,15 +1341,15 @@ describe("Formatters output", () => {
         expectSyncTree(
           schema,
           null,
-          `Expected A, actual null`
+          `Expected readonly [number, A | null], actual null`
         )
         expectSyncTree(
           schema,
           [1, undefined],
-          `A
+          `readonly [number, A | null]
 └─ [1]
    └─ A | null
-      ├─ Expected A, actual undefined
+      ├─ Expected readonly [number, A | null], actual undefined
       └─ Expected null, actual undefined`
         )
       })
@@ -1395,7 +1395,7 @@ describe("Formatters output", () => {
           `readonly [number, A | null]
 └─ [1]
    └─ A | null
-      ├─ Expected A, actual undefined
+      ├─ Expected readonly [number, A | null], actual undefined
       └─ Expected null, actual undefined`
         )
       })

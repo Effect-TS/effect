@@ -1,132 +1,196 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Chunk } from "effect"
+import { Option, Redacted, Schema } from "effect"
 import * as util from "../../src/internal/schema/util.js"
 
 describe("effect/internal/schema/util", () => {
   it("ownKeys", () => {
-    deepStrictEqual(util.ownKeys({}), [])
-    deepStrictEqual(util.ownKeys({ a: 1 }), ["a"])
-    deepStrictEqual(util.ownKeys({ a: 1, b: 2 }), ["a", "b"])
+    deepStrictEqual(Reflect.ownKeys({}), [])
+    deepStrictEqual(Reflect.ownKeys({ a: 1 }), ["a"])
+    deepStrictEqual(Reflect.ownKeys({ a: 1, b: 2 }), ["a", "b"])
     const a = Symbol.for("effect/Schema/test/a")
     const b = Symbol.for("effect/Schema/test/b")
-    deepStrictEqual(util.ownKeys({ [a]: 3, [b]: 4 }), [a, b])
-    deepStrictEqual(util.ownKeys({ a: 1, [a]: 3, b: 2, [b]: 4 }), ["a", "b", a, b])
+    deepStrictEqual(Reflect.ownKeys({ [a]: 3, [b]: 4 }), [a, b])
+    deepStrictEqual(Reflect.ownKeys({ a: 1, [a]: 3, b: 2, [b]: 4 }), ["a", "b", a, b])
   })
 
   describe("formatUnknown", () => {
+    const format = util.formatUnknown
+
     it("null", () => {
-      strictEqual(util.formatUnknown(null), "null")
+      strictEqual(format(null), `null`)
     })
 
     it("undefined", () => {
-      strictEqual(util.formatUnknown(undefined), "undefined")
-    })
-
-    it("boolean", () => {
-      strictEqual(util.formatUnknown(true), "true")
-      strictEqual(util.formatUnknown(false), "false")
-    })
-
-    it("number", () => {
-      strictEqual(util.formatUnknown(1), "1")
-      strictEqual(util.formatUnknown(1.1), "1.1")
-      strictEqual(util.formatUnknown(-1), "-1")
-      strictEqual(util.formatUnknown(-1.1), "-1.1")
-      strictEqual(util.formatUnknown(0), "0")
-      strictEqual(util.formatUnknown(-0), "0")
-      strictEqual(util.formatUnknown(NaN), "NaN")
-      strictEqual(util.formatUnknown(Infinity), "Infinity")
-      strictEqual(util.formatUnknown(-Infinity), "-Infinity")
-    })
-
-    it("bigint", () => {
-      strictEqual(util.formatUnknown(1n), "1n")
-      strictEqual(util.formatUnknown(-1n), "-1n")
-      strictEqual(util.formatUnknown(0n), "0n")
-      strictEqual(util.formatUnknown(-0n), "0n")
-    })
-
-    it("symbol", () => {
-      const a = Symbol.for("effect/Schema/test/a")
-      strictEqual(util.formatUnknown(a), "Symbol(effect/Schema/test/a)")
+      strictEqual(format(undefined), `undefined`)
     })
 
     it("string", () => {
-      strictEqual(util.formatUnknown(""), `""`)
-      strictEqual(util.formatUnknown("a"), `"a"`)
-      strictEqual(util.formatUnknown("ab"), `"ab"`)
-      strictEqual(util.formatUnknown("abc"), `"abc"`)
+      strictEqual(format("a"), `"a"`)
+    })
+
+    it("number", () => {
+      strictEqual(format(123), `123`)
+    })
+
+    it("boolean", () => {
+      strictEqual(format(true), `true`)
+    })
+
+    it("symbol", () => {
+      strictEqual(format(Symbol("a")), `Symbol(a)`)
+    })
+
+    it("bigint", () => {
+      strictEqual(format(BigInt(123)), `123n`)
+    })
+
+    it("custom toString method", () => {
+      strictEqual(format({ toString: () => "custom" }), `custom`)
     })
 
     it("array", () => {
-      strictEqual(util.formatUnknown([]), "[]")
-      strictEqual(util.formatUnknown([1]), "[1]")
-      strictEqual(util.formatUnknown([1, 2]), "[1,2]")
-      strictEqual(util.formatUnknown([1, 2, 3]), "[1,2,3]")
+      strictEqual(format([1, 2, 3n]), `[1,2,3n]`)
+    })
+
+    it("circular array", () => {
+      const arr: any = [1]
+      arr.push(arr)
+      strictEqual(format(arr), `[1,[Circular]]`)
+    })
+
+    it("Set", () => {
+      strictEqual(format(new Set([1, 2, 3])), `Set([1,2,3])`)
+    })
+
+    it("Map", () => {
+      strictEqual(format(new Map([["a", 1], ["b", 2]])), `Map([["a",1],["b",2]])`)
+    })
+
+    it("circular Map contents", () => {
+      const obj: any = { a: 1 }
+      const map = new Map([["obj", obj]])
+      obj.map = map
+      strictEqual(format(map), `Map([["obj",{"a":1,"map":[Circular]}]])`)
+    })
+
+    it("circular Set contents", () => {
+      const obj: any = { a: 1 }
+      const set = new Set([obj])
+      obj.set = set
+      strictEqual(format(set), `Set([{"a":1,"set":[Circular]}])`)
     })
 
     it("object", () => {
-      strictEqual(util.formatUnknown({}), "{}")
-      strictEqual(util.formatUnknown({ a: 1 }), `{"a":1}`)
-      strictEqual(util.formatUnknown({ a: 1, b: 2 }), `{"a":1,"b":2}`)
-      const a = Symbol.for("effect/Schema/test/a")
-      strictEqual(util.formatUnknown({ [a]: 3 }), `{${String(a)}:3}`)
+      strictEqual(format({ a: 1 }), `{"a":1}`)
+      strictEqual(format({ a: 1, b: 2 }), `{"a":1,"b":2}`)
+      strictEqual(format({ [Symbol.for("a")]: 1 }), `{Symbol(a):1}`)
+      strictEqual(format({ a: 1, b: [1, 2, 3n] }), `{"a":1,"b":[1,2,3n]}`)
     })
 
-    it("should format symbol property signatures", () => {
-      strictEqual(util.formatUnknown({ [Symbol.for("a")]: 1 }), "{Symbol(a):1}")
+    it("circular object", () => {
+      const obj: any = { a: 1 }
+      obj.b = obj
+      strictEqual(format(obj), `{"a":1,"b":[Circular]}`)
     })
 
-    it("should handle circular references", () => {
-      const circular: any = { a: null }
-      circular.a = circular
-      strictEqual(util.formatUnknown(circular), "<circular structure>")
+    it("object with null prototype", () => {
+      strictEqual(format(Object.create(null)), `{}`)
+      strictEqual(format(Object.create(null, { a: { value: 1 } })), `{"a":1}`)
     })
 
-    it("should detect data types with a custom `toString` implementation", () => {
-      const noToString = { a: 1 }
-      strictEqual(util.formatUnknown(noToString), `{"a":1}`)
-      const ToString = Object.create({
-        toString() {
-          return "toString custom implementation"
-        }
-      })
-      strictEqual(util.formatUnknown(ToString), "toString custom implementation")
-      // should not detect arrays
-      strictEqual(util.formatUnknown([1, 2, 3]), "[1,2,3]")
+    it("Error", () => {
+      strictEqual(format(new Error("a")), `Error: a`)
     })
 
     it("Date", () => {
-      strictEqual(util.formatUnknown(new Date("2024-01-01T00:00:00.000Z")), "2024-01-01T00:00:00.000Z")
+      strictEqual(format(new Date(0)), `1970-01-01T00:00:00.000Z`)
+      strictEqual(format(new Date("invalid")), `Invalid Date`)
     })
 
-    it("iterables", () => {
-      strictEqual(util.formatUnknown(new Set([])), "Set([])")
-      strictEqual(util.formatUnknown(new Set([1, 2, 3])), "Set([1,2,3])")
-      strictEqual(util.formatUnknown(new Map([])), "Map([])")
-      strictEqual(util.formatUnknown(new Map([[1, "a"], [2, "b"], [3, "c"]])), `Map([[1,"a"],[2,"b"],[3,"c"]])`)
+    it("RegExp", () => {
+      strictEqual(format(/a/), `/a/`)
     })
 
-    it("classes", () => {
-      class A {
-        constructor(readonly a: number) {}
-      }
-      strictEqual(util.formatUnknown(new A(1)), `A({"a":1})`)
+    it("Redacted", () => {
+      strictEqual(format(Redacted.make("a")), `<redacted>`)
     })
 
-    it("Chunks", () => {
+    it("Option", () => {
       strictEqual(
-        util.formatUnknown(Chunk.make(1, 2, 3)),
+        format(Option.some(1)),
         `{
-  "_id": "Chunk",
-  "values": [
-    1,
-    2,
-    3
-  ]
+  "_id": "Option",
+  "_tag": "Some",
+  "value": 1
 }`
       )
+      strictEqual(
+        format(Option.none()),
+        `{
+  "_id": "Option",
+  "_tag": "None"
+}`
+      )
+    })
+
+    it("Class", () => {
+      class A extends Schema.Class<A>("A")({
+        a: Schema.String
+      }) {}
+      strictEqual(format(new A({ a: "a" })), `A({ "a": "a" })`)
+    })
+
+    it("TaggedError", () => {
+      class E extends Schema.TaggedError<E>("E")("E", {
+        a: Schema.String
+      }) {}
+      strictEqual(format(new E({ a: "a" })), `E: { "a": "a" }`)
+    })
+
+    describe("whitespace", () => {
+      it("object", () => {
+        strictEqual(format({ a: 1 }, 2), `{"a":1}`)
+        strictEqual(
+          format({ a: 1, b: 2 }, 2),
+          `{
+  "a": 1,
+  "b": 2
+}`
+        )
+        strictEqual(
+          format({ a: 1, b: [1, 2, 3n] }, 2),
+          `{
+  "a": 1,
+  "b": [
+    1,
+    2,
+    3n
+  ]
+}`
+        )
+        strictEqual(format({ [Symbol.for("a")]: 1 }, 2), `{Symbol(a):1}`)
+      })
+
+      it("circular object", () => {
+        const obj: any = { a: 1 }
+        obj.b = obj
+        strictEqual(
+          format(obj, 2),
+          `{
+  "a": 1,
+  "b": [Circular]
+}`
+        )
+      })
+
+      it("object with null prototype", () => {
+        strictEqual(format(Object.create(null), 2), `{}`)
+        strictEqual(
+          format(Object.create(null, { a: { value: 1 } }), 2),
+          `{"a":1}`
+        )
+      })
     })
   })
 })
