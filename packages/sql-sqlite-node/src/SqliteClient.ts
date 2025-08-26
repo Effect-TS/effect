@@ -17,6 +17,12 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export type Database = Sqlite.Database
+
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
 /**
@@ -38,6 +44,7 @@ export type TypeId = typeof TypeId
 export interface SqliteClient extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: SqliteClientConfig
+  readonly rawClient: Effect.Effect<Database>
   readonly export: Effect.Effect<Uint8Array, SqlError>
   readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
@@ -78,6 +85,7 @@ export interface SqliteClientConfig {
 }
 
 interface SqliteConnection extends Connection {
+  readonly database: Database
   readonly export: Effect.Effect<Uint8Array, SqlError>
   readonly backup: (destination: string) => Effect.Effect<BackupMetadata, SqlError>
   readonly loadExtension: (path: string) => Effect.Effect<void, SqlError>
@@ -173,6 +181,7 @@ export const make = (
         )
 
       return identity<SqliteConnection>({
+        database: db,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)
@@ -241,6 +250,7 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
+        rawClient: Effect.flatMap(acquirer, (_) => Effect.succeed(_.database)),
         export: Effect.flatMap(acquirer, (_) => _.export),
         backup: (destination: string) => Effect.flatMap(acquirer, (_) => _.backup(destination)),
         loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
