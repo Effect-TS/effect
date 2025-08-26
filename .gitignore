@@ -6,7 +6,10 @@ tmp/
 dist/
 build/
 docs/
-scratchpad/
+scratchpad/*
+!scratchpad/package.json
+scratchpad-bun/*
+!scratchpad-bun/package.json
 .direnv/
 .idea/
 .env*

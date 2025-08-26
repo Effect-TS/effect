@@ -1,0 +1,16 @@
+{
+  "name": "scratchpad-bun",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@effect-native/bun-test": "workspace:*",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "workspaces": [
+    "../packages-native/*",
+    "../packages/*"
+  ]
+}

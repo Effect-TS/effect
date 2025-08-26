@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest"
 import * as Effect from "effect/Effect"
+import { describe, expect, it } from "vitest"
 import { greet } from "../src/index.js"
 
 describe("@effect-native/example", () => {

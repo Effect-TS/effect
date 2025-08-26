@@ -3,15 +3,15 @@
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "description": "A set of helpers for testing Effects with Bun",
-  "homepage": "https://github.com/effect-native/effect",
+  "description": "Helpers for testing every Effect with bun:test",
+  "homepage": "https://github.com/effect-native/effect-native",
   "repository": {
     "type": "git",
-    "url": "https://github.com/effect-native/effect.git",
+    "url": "https://github.com/effect-native/effect-native.git",
     "directory": "packages-native/bun-test"
   },
   "bugs": {
-    "url": "https://github.com/effect-native/effect/issues"
+    "url": "https://github.com/effect-native/effect-native/issues"
   },
   "publishConfig": {
     "access": "public",
@@ -36,6 +36,7 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
+    "@types/bun": "*",
     "bun": "^1.1.0"
   },
   "devDependencies": {

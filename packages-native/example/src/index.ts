@@ -1,10 +1,10 @@
 /**
  * @effect-native/example
- * 
+ *
  * Example custom package in the effect-native fork.
  * This demonstrates how to create packages that extend Effect
  * without being part of the upstream repository.
- * 
+ *
  * @packageDocumentation
  * @since 0.0.1
  */

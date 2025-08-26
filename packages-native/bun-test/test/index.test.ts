@@ -165,7 +165,7 @@ describe("@effect-native/bun-test", () => {
       const effect = Effect.gen(function*() {
         attempts++
         if (attempts < 3) {
-          yield* Effect.fail("not yet")
+          return yield* Effect.fail("not yet")
         }
         return "success"
       })
@@ -193,7 +193,7 @@ describe("@effect-native/bun-test", () => {
   })
 
   describe("test variations", () => {
-    BunTest.it.effect.todo("should support todo tests")
+    BunTest.it.effect.todo("should support todo tests", () => Effect.void)
 
     BunTest.it.effect.skipIf(false)("should run when condition is false", () => Effect.succeed("ran"))
 

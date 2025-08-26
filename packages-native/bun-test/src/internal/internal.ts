@@ -19,6 +19,12 @@ import * as TestEnvironment from "effect/TestContext"
 import * as Utils from "effect/Utils"
 import type * as BunTest from "../index.js"
 
+/**
+ * Executes an Effect and returns a Promise that resolves to the result or throws an error.
+ * Handles interruption and multiple errors gracefully.
+ * 
+ * @internal
+ */
 const runPromise = <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
     const exit = yield* Effect.exit(effect)
@@ -40,15 +46,28 @@ const runPromise = <E, A>(effect: Effect.Effect<A, E>) =>
     }
   }).pipe(Effect.runPromise).then((f) => f())
 
-/** @internal */
+/**
+ * Runs a test Effect by converting it to a Promise.
+ * 
+ * @internal
+ */
 const runTest = <E, A>(effect: Effect.Effect<A, E>) => runPromise(effect)
 
-/** @internal */
+/**
+ * Test environment layer that provides TestContext without default logging.
+ * 
+ * @internal
+ */
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
 
-/** @internal */
+/**
+ * Custom equality tester for Effect data types that implement Equal.
+ * Returns true if values are equal, false if not, undefined if not applicable.
+ * 
+ * @internal
+ */
 function customTester(a: unknown, b: unknown): boolean | undefined {
   if (!Equal.isEqual(a) || !Equal.isEqual(b)) {
     return undefined
@@ -74,7 +93,12 @@ function customTester(a: unknown, b: unknown): boolean | undefined {
   )
 }
 
-/** @internal */
+/**
+ * Extends Bun's expect with custom equality checking for Effect's Equal instances.
+ * This allows proper comparison of Option, Either, and other Effect data types.
+ * 
+ * @internal
+ */
 export const addEqualityTesters = () => {
   // Bun doesn't have addEqualityTesters, but we can extend expect
   const originalToEqual = B.expect.prototype.toEqual
@@ -91,7 +115,12 @@ export const addEqualityTesters = () => {
   }
 }
 
-/** @internal */
+/**
+ * Factory function for creating test runners with different execution contexts.
+ * Handles all test modifiers (skip, only, etc.) and property-based testing.
+ * 
+ * @internal
+ */
 const makeTester = <R>(
   mapEffect: (self: Effect.Effect<any, any, any>) => Effect.Effect<any, any, never>
 ): any => {
@@ -178,26 +207,47 @@ const makeTester = <R>(
   return Object.assign(f, { skip, skipIf, runIf, only, each, failing, todo, prop }) as any
 }
 
-/** @internal */
+/**
+ * Test runner that provides TestServices (TestClock, TestRandom, etc.) for deterministic testing.
+ * 
+ * @internal
+ */
 export const effect = makeTester((effect: Effect.Effect<any, any, any>) =>
   Effect.provide(effect, TestEnv) as Effect.Effect<any, any, never>
 )
 
-/** @internal */
+/**
+ * Test runner that provides TestServices and automatic resource management via Scope.
+ * 
+ * @internal
+ */
 export const scoped = makeTester(
   (effect: Effect.Effect<any, any, any>) =>
     Effect.scoped(effect).pipe(Effect.provide(TestEnv)) as Effect.Effect<any, any, never>
 )
 
-/** @internal */
+/**
+ * Test runner for integration tests without TestServices.
+ * 
+ * @internal
+ */
 export const live = makeTester((effect: Effect.Effect<any, any, any>) => effect as Effect.Effect<any, any, never>)
 
-/** @internal */
+/**
+ * Test runner for integration tests with resource management but without TestServices.
+ * 
+ * @internal
+ */
 export const scopedLive = makeTester((effect: Effect.Effect<any, any, any>) =>
   Effect.scoped(effect) as Effect.Effect<any, any, never>
 )
 
-/** @internal */
+/**
+ * Retries a flaky test up to 100 times or until timeout.
+ * Uses exponential backoff with jitter for retry delays.
+ * 
+ * @internal
+ */
 export const flakyTest = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeout: Duration.DurationInput = Duration.seconds(30)
@@ -210,7 +260,12 @@ export const flakyTest = <A, E, R>(
   return Effect.retry(self, policy) as Effect.Effect<A, never, R>
 }
 
-/** @internal */
+/**
+ * Creates a test suite with a shared Layer that's initialized once and reused across tests.
+ * Supports nested layers and automatic cleanup after all tests complete.
+ * 
+ * @internal
+ */
 export const layer = <R, E>(
   layer_: Layer.Layer<R, E>,
   options?: {
@@ -315,7 +370,12 @@ export const layer = <R, E>(
   }
 }
 
-/** @internal */
+/**
+ * Property-based testing using FastCheck.
+ * Automatically converts Schema to Arbitrary and runs multiple test cases.
+ * 
+ * @internal
+ */
 export const prop: any = (name: string, arbitraries: any, self: any, options?: any) => {
   const timeout = typeof options === "number" ? options : options?.timeout
   const params = typeof options === "object" ? options.fastCheck : undefined

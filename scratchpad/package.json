@@ -39,5 +39,8 @@
     "@effect/vitest": "workspace:*",
     "@effect/workflow": "workspace:*",
     "effect": "workspace:*"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
   }
 }
