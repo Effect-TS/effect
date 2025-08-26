@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"],
+  "compilerOptions": {
+    "types": ["bun"],
+    "outDir": "build/src"
+  },
+  "references": [
+    {
+      "path": "../../packages/effect/tsconfig.src.json"
+    }
+  ]
+}

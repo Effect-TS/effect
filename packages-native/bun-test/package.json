@@ -1,0 +1,45 @@
+{
+  "name": "@effect-native/bun-test",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "A set of helpers for testing Effects with Bun",
+  "homepage": "https://github.com/effect-native/effect",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-native/effect.git",
+    "directory": "packages-native/bun-test"
+  },
+  "bugs": {
+    "url": "https://github.com/effect-native/effect/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "directory": "dist",
+    "linkDirectory": false
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "bun test",
+    "coverage": "bun test --coverage"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^",
+    "bun": "^1.1.0"
+  },
+  "devDependencies": {
+    "effect": "workspace:^",
+    "bun": "^1.1.38"
+  }
+}
