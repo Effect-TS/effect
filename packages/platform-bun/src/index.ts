@@ -96,6 +96,11 @@ export * as BunTerminal from "./BunTerminal.js"
 /**
  * @since 1.0.0
  */
+export * as BunUdpSocket from "./BunUdpSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as BunWorker from "./BunWorker.js"
 
 /**
