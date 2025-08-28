@@ -144,6 +144,15 @@ export class Gone extends HttpApiSchema.EmptyError<Gone>()({
  * @since 1.0.0
  * @category empty errors
  */
+export class TooFast extends HttpApiSchema.EmptyError<TooFast>()({
+  tag: "TooFast",
+  status: 429
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category empty errors
+ */
 export class InternalServerError extends HttpApiSchema.EmptyError<InternalServerError>()({
   tag: "InternalServerError",
   status: 500
