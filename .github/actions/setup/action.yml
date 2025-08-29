@@ -34,4 +34,7 @@ runs:
         node-version: ${{ inputs.node-version }}
     - name: Install dependencies
       shell: bash
-      run: pnpm install
+      env:
+        NODE_OPTIONS: "--max-old-space-size=4096"
+        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      run: pnpm install --frozen-lockfile --prefer-offline --network-concurrency=32
