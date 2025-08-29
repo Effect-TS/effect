@@ -1,12 +1,15 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@1.6.4/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "effect-native/effect" }],
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "effect-native/effect" }
+  ],
   "commit": false,
   "linked": [],
   "access": "public",
   "baseBranch": "effect-native/main",
   "updateInternalDependencies": "patch",
-  "ignore": ["scratchpad", "@effect/*"],
+  "ignore": ["scratchpad", "@effect/*", "effect"],
   "snapshot": {
     "useCalculatedVersion": false,
     "prereleaseTemplate": "{tag}-{commit}"

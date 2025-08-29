@@ -36,11 +36,11 @@
     "coverage": "bun test --coverage"
   },
   "peerDependencies": {
-    "effect": ">=3.0.0",
+    "effect": "*",
     "@types/bun": "*"
   },
   "devDependencies": {
-    "effect": "workspace:^",
+    "effect": "latest",
     "bun": "^1.1.38"
   }
 }
