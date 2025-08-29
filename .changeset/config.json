@@ -9,7 +9,7 @@
   "access": "public",
   "baseBranch": "effect-native/main",
   "updateInternalDependencies": "patch",
-  "ignore": ["scratchpad", "@effect/*", "effect"],
+  "ignore": ["scratchpad"],
   "snapshot": {
     "useCalculatedVersion": false,
     "prereleaseTemplate": "{tag}-{commit}"
