@@ -1,29 +1,7 @@
 /**
  * @since 0.1.0
  */
-// Conditional import based on runtime environment
-let B: any
-try {
-  // This will work in Bun
-  B = require("bun:test")
-} catch {
-  // Fallback for other environments (like Node.js during docgen)
-  B = {
-    test: () => {},
-    describe: () => {},
-    beforeAll: () => {},
-    beforeEach: () => {},
-    afterAll: () => {},
-    afterEach: () => {},
-    expect: () => ({ toEqual: () => {}, toBe: () => {}, toBeDefined: () => {}, toBeGreaterThan: () => {} }),
-    jest: { fn: () => {}, spyOn: () => {} },
-    mock: () => {},
-    setDefaultTimeout: () => {},
-    setSystemTime: () => {},
-    spyOn: () => {}
-  }
-}
-
+import * as B from "bun:test"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as FC from "effect/FastCheck"

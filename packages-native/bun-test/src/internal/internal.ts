@@ -1,27 +1,7 @@
 /**
  * @since 0.1.0
  */
-// Conditional import based on runtime environment
-let B: any
-try {
-  // This will work in Bun
-  B = require("bun:test")
-} catch {
-  // Fallback for other environments (like Node.js during docgen)
-  B = {
-    test: Object.assign(() => {}, {
-      skip: () => {},
-      only: () => {},
-      failing: () => {},
-      todo: () => {}
-    }),
-    describe: () => {},
-    afterAll: () => {},
-    expect: Object.assign(() => ({}), {
-      prototype: { toEqual: () => {} }
-    })
-  }
-}
+import * as B from "bun:test"
 import * as Arbitrary from "effect/Arbitrary"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
