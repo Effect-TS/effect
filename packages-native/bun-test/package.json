@@ -36,9 +36,8 @@
     "coverage": "bun test --coverage"
   },
   "peerDependencies": {
-    "effect": "^3.17.9",
-    "@types/bun": "*",
-    "bun": "^1.1.0"
+    "effect": ">=3.0.0",
+    "@types/bun": "*"
   },
   "devDependencies": {
     "effect": "workspace:^",
