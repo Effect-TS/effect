@@ -690,8 +690,8 @@ export class InferenceConfiguration extends Schema.Class<InferenceConfiguration>
       Schema.maxItems(4)
     )
   ),
-  temperature: Schema.Number.pipe(Schema.between(0, 1)),
-  topP: Schema.Number.pipe(Schema.between(0, 1))
+  temperature: Schema.optional(Schema.Number.pipe(Schema.between(0, 1))),
+  topP: Schema.optional(Schema.Number.pipe(Schema.between(0, 1)))
 }) {}
 
 /**

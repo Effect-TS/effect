@@ -1209,17 +1209,17 @@ export const promise = <A>(evaluate: (signal: AbortSignal) => PromiseLike<A>): E
     ? core.async((resolve, signal) => {
       try {
         evaluate(signal)
-          .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
+          .then((a) => resolve(core.succeed(a)), (e) => resolve(core.die(e)))
       } catch (e) {
-        resolve(core.exitDie(e))
+        resolve(core.die(e))
       }
     })
     : core.async((resolve) => {
       try {
         ;(evaluate as LazyArg<PromiseLike<A>>)()
-          .then((a) => resolve(core.exitSucceed(a)), (e) => resolve(core.exitDie(e)))
+          .then((a) => resolve(core.succeed(a)), (e) => resolve(core.die(e)))
       } catch (e) {
-        resolve(core.exitDie(e))
+        resolve(core.die(e))
       }
     })
 
@@ -1687,7 +1687,7 @@ export const tryPromise: {
     return core.async((resolve, signal) => {
       try {
         evaluate(signal).then(
-          (a) => resolve(core.exitSucceed(a)),
+          (a) => resolve(core.succeed(a)),
           (e) => resolve(fail(e))
         )
       } catch (e) {
@@ -1700,7 +1700,7 @@ export const tryPromise: {
     try {
       evaluate()
         .then(
-          (a) => resolve(core.exitSucceed(a)),
+          (a) => resolve(core.succeed(a)),
           (e) => resolve(fail(e))
         )
     } catch (e) {
