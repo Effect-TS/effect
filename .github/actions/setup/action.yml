@@ -9,8 +9,24 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install pnpm
+    - name: Detect pnpm
+      id: pnpm
+      shell: bash
+      run: |
+        if command -v pnpm >/dev/null 2>&1; then
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "version=$(pnpm --version)" >> "$GITHUB_OUTPUT"
+          echo "Using system pnpm $(pnpm --version)"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          echo "pnpm not found on PATH; will install"
+        fi
+    - name: Install pnpm (if missing)
+      if: steps.pnpm.outputs.found != 'true'
       uses: pnpm/action-setup@v3
+      with:
+        # Install into a job-scoped temp dir to avoid clashes on self-hosted
+        dest: ${{ runner.temp }}/setup-pnpm
     - name: Install node
       uses: actions/setup-node@v4
       with:
