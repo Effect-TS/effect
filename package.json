@@ -3,11 +3,12 @@
   "type": "module",
   "packageManager": "pnpm@10.4.0+sha512.6b849d0787d97f8f4e1f03a9b8ff8f038e79e153d6f11ae539ae7c435ff9e796df6a862c991502695c7f9e8fac8aeafc1ac5a8dab47e36148d183832d886dd52",
   "scripts": {
+    "ok": "pnpm test --run; TEST=$?; pnpm check; TEST=$(($TEST+$?)); pnpm circular; TEST=$(($TEST+$?)); pnpm codegen; TEST=$(($TEST+$?)); pnpm lint-fix; TEST=$(($TEST+$?)); pnpm test-types; TEST=$(($TEST+$?)); exit $TEST;",
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel --filter \"./packages-native/**/*\" run codegen",
     "codemod": "node scripts/codemod.mjs",
     "build": "pnpm --recursive --parallel --filter \"./packages-native/**/*\" run build",
-    "circular": "node scripts/circular.mjs",
+    "circular": "depcruise --config .dependency-cruiser.cjs \"packages-native/*/src/**/*.{ts,tsx}\" --output-type err --validate",
     "test": "vitest",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
@@ -17,11 +18,7 @@
     "docgen": "pnpm --recursive --filter \"./packages-native/**/*\" exec docgen && node scripts/docs.mjs",
     "test-types": "tstyche",
     "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish",
-    "changeset-version-native": "changeset version && node scripts/version.mjs",
-    "changeset-publish-native": "pnpm codemod && pnpm build-native && TEST_DIST= pnpm test-native && changeset publish --filter \"./packages-native/**/*\"",
-    "build-native": "pnpm --recursive --parallel --filter \"./packages-native/**/*\" run build",
-    "test-native": "pnpm --recursive --filter \"./packages-native/**/*\" run test"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",
@@ -69,7 +66,7 @@
     "eslint-plugin-sort-destructure-keys": "^2.0.0",
     "glob": "^11.0.2",
     "jscodeshift": "^17.3.0",
-    "madge": "^8.0.0",
+    "dependency-cruiser": "^16.9.0",
     "playwright": "^1.52.0",
     "prettier": "^3.5.3",
     "rimraf": "^6.0.1",

@@ -25,8 +25,8 @@ jobs:
       - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
         with:
-          version: pnpm changeset-version-native
-          publish: pnpm changeset-publish-native
+          version: pnpm changeset-version
+          publish: pnpm changeset-publish
         env:
           GITHUB_TOKEN: ${{ secrets.CHANGESETS_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
