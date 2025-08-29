@@ -1,5 +1,11 @@
 # @effect-native/bun-test
 
+## 0.1.3
+
+### Patch Changes
+
+- [`5cdcf79`](https://github.com/effect-native/effect-native/commit/5cdcf79069495bcbf9b0393c55c757a2c8441120) Thanks @subtleGradient! - add missing dependency on fast-check
+
 ## 0.1.2
 
 ### Patch Changes
