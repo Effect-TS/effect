@@ -13,6 +13,21 @@ This is the **effect-native fork** of the Effect TypeScript framework. It mainta
 - **Custom packages**: Located in `packages-native/`, use `@effect-native/` namespace
 - **Pre-push hook**: Prevents accidentally pushing custom packages to upstream
 
+## Critical Development Rules
+
+⚠️ **Mandatory workflow for any TypeScript development:**
+1. Create/modify function
+2. Run `pnpm lint --fix` immediately after editing
+3. Check TypeScript compilation
+4. Write comprehensive tests with `@effect/vitest`
+5. Validate JSDoc documentation compiles with `pnpm docgen`
+
+⚠️ **Never violate these patterns:**
+- **Never use `try-catch` in `Effect.gen`** - use Effect error handling
+- **Never use type assertions** (`as never`, `as any`) - maintain type safety
+- **Always use `return yield*`** for errors and interrupts
+- **100% JSDoc coverage required** with working examples
+
 ## Development Commands
 
 ### Building
@@ -67,6 +82,41 @@ The monorepo uses pnpm workspaces with packages organized in:
 4. **Schemas**: Data validation and serialization via Schema module
 5. **Pipeable API**: All modules follow pipe-first functional programming style
 
+### Essential Effect Patterns
+
+**Concurrency & Control Flow:**
+- Use `Effect.all` for concurrent operations (not sequential await)
+- Use `Effect.forEach` over manual loops for collections
+- Use `Effect.raceAll` for timeout scenarios
+- Use `Fiber` for advanced concurrency control
+- Use `Queue` for producer/consumer patterns
+
+**Error Handling:**
+- Use `Effect.catchTag` for specific error handling
+- Define custom error types extending `Data.TaggedError`
+- Use `return yield*` for errors and interrupts (never throw)
+- Implement proper error context with custom error types
+
+**Resource Management:**
+- Use `Effect.acquireUseRelease` for proper cleanup
+- Use `Ref` for mutable state management in Effect context
+- Use `Effect.cached` for expensive computations
+- Implement proper batching with `Effect.forEach` options
+
+**Type Safety:**
+- Use branded types for domain-specific values
+- Always validate inputs with `Schema`
+- Use proper variance annotations (`in`/`out`)
+- Leverage `Schema` for runtime validation and type inference
+
+### Common Pitfalls to Avoid
+
+- **Never mix Promise-based and Effect-based code directly**
+- **Never use `Effect.runSync` in production code**
+- **Never create Effects inside loops without proper batching**
+- **Never ignore fiber interruption in long-running operations**
+- **Never create circular dependencies between services**
+
 ### Key Modules
 
 - **Effect**: Core effect system for async operations, error handling, and concurrency
@@ -77,9 +127,12 @@ The monorepo uses pnpm workspaces with packages organized in:
 
 ### Testing Approach
 
-- Tests use Vitest with custom configuration in `vitest.shared.ts`
+- Tests use `@effect/vitest` with custom configuration in `vitest.shared.ts`
 - Test files located in `test/` directories
+- Use `it.effect` pattern for Effect-based tests
 - Use `Effect.gen` for readable async test code
+- Use `assert` methods instead of `expect` for Effect tests
+- Utilize `TestClock` for time-dependent testing
 - Prefer property-based testing with FastCheck where applicable
 
 ### Build System
@@ -134,9 +187,13 @@ Custom packages in `packages-native/` should:
 
 All public APIs must include:
 - `@since` tag with version
-- `@example` tag with usage example
+- `@example` tag with **compilable** usage example
 - Brief description of functionality
 - `@category` tag for documentation organization (optional)
+- Proper import patterns in examples
+- Real-world, practical usage demonstrations
+- **100% JSDoc coverage** - no exceptions
+- All examples must compile with `pnpm docgen`
 
 ### Changeset Process
 
@@ -145,3 +202,36 @@ Before committing features:
 2. Select appropriate semver level (patch/minor/major)
 3. Write clear changeset description
 4. Reference issues with "closes #123" in commit messages
+
+## Advanced Development Patterns
+
+### Performance & Resource Management
+- Use `Effect.cached` for expensive computations
+- Use `Semaphore` for controlling concurrent access
+- Implement structured concurrency with `Effect.fork`
+- Use `Effect.acquireUseRelease` for proper resource cleanup
+- Use streaming (`Stream`) for memory-efficient large data processing
+
+### Type-Level Programming
+- Use branded types for domain-specific type safety
+- Implement phantom types for compile-time constraints
+- Leverage conditional types for complex type constraints
+- Use proper variance annotations (`in`/`out`)
+
+### Error Architecture
+- Create hierarchical error types with `Data.TaggedError`
+- Use `Effect.mapError` for translating between error layers
+- Implement centralized error translation strategies
+- Never mix Promise-based and Effect-based error handling
+
+### Debugging & Development
+- Use `Effect.tap` for side-effect debugging without changing flow
+- Use `Logger` service for structured logging in development
+- Use `TestClock` and `TestContext` for deterministic testing
+- Use `Effect.gen` with proper yielding for readable async code
+
+### Service Design
+- Create platform-agnostic service interfaces
+- Use `Context.Tag` with proper type constraints
+- Design services to be composable through Layer composition
+- Avoid circular dependencies between services
