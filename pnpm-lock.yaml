@@ -167,6 +167,9 @@ importers:
       effect:
         specifier: latest
         version: 3.17.9
+      fast-check:
+        specifier: ^3.23.2
+        version: 3.23.2
     publishDirectory: dist
 
   scratchpad:
