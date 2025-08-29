@@ -9,7 +9,7 @@ permissions: {}
 jobs:
   types:
     name: Types
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-latest]
     timeout-minutes: 10
     permissions:
       issues: write

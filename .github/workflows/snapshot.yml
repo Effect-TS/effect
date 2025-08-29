@@ -10,7 +10,7 @@ jobs:
   snapshot:
     name: Snapshot
     if: github.repository_owner == 'effect-native'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-latest]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4

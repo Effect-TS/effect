@@ -15,7 +15,7 @@ permissions: {}
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-latest]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
   deploy:
     if: github.repository_owner == 'effect-native' && github.event_name == 'push' && github.ref == 'refs/heads/effect-native/main'
     name: Deploy
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-latest]
     timeout-minutes: 10
     needs: build
     permissions:
