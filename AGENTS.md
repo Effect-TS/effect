@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance when working with code in this repository.
 
 ## Repository Overview
 
@@ -9,7 +7,7 @@ This is the **effect-native fork** of the Effect TypeScript framework. It mainta
 ### Fork-Specific Setup
 
 - **Git remotes**: `origin` points to `effect-native/effect`, `upstream` points to `Effect-TS/effect`
-- **Branch strategy**: 
+- **Branch strategy**:
   - `main`: Clean mirror of upstream for contributions
   - `effect-native/main`: Fork's branch with custom packages
 - **Custom packages**: Located in `packages-native/`, use `@effect-native/` namespace
