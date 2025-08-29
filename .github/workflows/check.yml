@@ -2,9 +2,9 @@ name: Check
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, next-minor, next-major]
+    branches: [effect-native/main]
   push:
-    branches: [main, next-minor, next-major]
+    branches: [effect-native/main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

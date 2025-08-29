@@ -2,9 +2,9 @@ name: Pages
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, next-minor, next-major]
+    branches: [effect-native/main]
   push:
-    branches: [main, next-minor, next-major]
+    branches: [effect-native/main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,17 +23,17 @@ jobs:
         uses: ./.github/actions/setup
       - run: pnpm docgen
       - name: Build pages Jekyll
-        if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.repository_owner == 'effect-native' && github.event_name == 'push' && github.ref == 'refs/heads/effect-native/main'
         uses: actions/jekyll-build-pages@v1
         with:
           source: ./docs
           destination: ./_site
       - name: Upload pages artifact
-        if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.repository_owner == 'effect-native' && github.event_name == 'push' && github.ref == 'refs/heads/effect-native/main'
         uses: actions/upload-pages-artifact@v3
 
   deploy:
-    if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository_owner == 'effect-native' && github.event_name == 'push' && github.ref == 'refs/heads/effect-native/main'
     name: Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 10

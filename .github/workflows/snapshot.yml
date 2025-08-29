@@ -1,7 +1,7 @@
 name: Snapshot
 on:
   pull_request:
-    branches: [main, next-minor, next-major]
+    branches: [effect-native/main]
   workflow_dispatch:
 
 permissions: {}
@@ -9,7 +9,7 @@ permissions: {}
 jobs:
   snapshot:
     name: Snapshot
-    if: github.repository_owner == 'Effect-Ts'
+    if: github.repository_owner == 'effect-native'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,4 +22,4 @@ jobs:
         run: pnpm build
       - name: Create snapshot
         id: snapshot
-        run: pnpx pkg-pr-new@0.0.28 publish --pnpm --comment=off ./packages/* ./packages/ai/*
+        run: pnpx pkg-pr-new@0.0.28 publish --pnpm --comment=off ./packages-native/*

@@ -28,5 +28,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: "Failed TypeScript's nightly type test run",
-              body: `The following type test run against TypeScript's nightly build failed: [#${context.runNumber}](https://github.com/Effect-TS/effect/actions/runs/${context.runId}).`
+              body: `The following type test run against TypeScript's nightly build failed: [#${context.runNumber}](https://github.com/effect-native/effect-native/actions/runs/${context.runId}).`
             })
