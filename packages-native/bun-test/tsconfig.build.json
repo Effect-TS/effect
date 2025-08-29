@@ -7,9 +7,5 @@
     "outDir": "build/esm",
     "declarationDir": "build/dts"
   },
-  "references": [
-    {
-      "path": "../../packages/effect/tsconfig.src.json"
-    }
-  ]
+  "references": []
 }

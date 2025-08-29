@@ -6,9 +6,5 @@
     "types": ["bun"],
     "outDir": "build/src"
   },
-  "references": [
-    {
-      "path": "../../packages/effect/tsconfig.src.json"
-    }
-  ]
+  "references": []
 }
