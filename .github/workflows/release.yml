@@ -28,5 +28,5 @@ jobs:
           version: pnpm changeset-version-native
           publish: pnpm changeset-publish-native
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CHANGESETS_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
