@@ -1,7 +1,29 @@
 /**
  * @since 0.1.0
  */
-import * as B from "bun:test"
+// Conditional import based on runtime environment
+let B: any
+try {
+  // This will work in Bun
+  B = require("bun:test")
+} catch {
+  // Fallback for other environments (like Node.js during docgen)
+  B = {
+    test: () => {},
+    describe: () => {},
+    beforeAll: () => {},
+    beforeEach: () => {},
+    afterAll: () => {},
+    afterEach: () => {},
+    expect: () => ({ toEqual: () => {}, toBe: () => {}, toBeDefined: () => {}, toBeGreaterThan: () => {} }),
+    jest: { fn: () => {}, spyOn: () => {} },
+    mock: () => {},
+    setDefaultTimeout: () => {},
+    setSystemTime: () => {},
+    spyOn: () => {}
+  }
+}
+
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as FC from "effect/FastCheck"
@@ -11,17 +33,100 @@ import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as internal from "./internal/internal.js"
 
+/**
+ * Runs a function after all tests have completed.
+ *
+ * @since 0.1.0
+ * @category hooks
+ */
 export const afterAll = B.afterAll
+
+/**
+ * Runs a function after each test.
+ *
+ * @since 0.1.0
+ * @category hooks
+ */
 export const afterEach = B.afterEach
+
+/**
+ * Runs a function before all tests.
+ *
+ * @since 0.1.0
+ * @category hooks
+ */
 export const beforeAll = B.beforeAll
+
+/**
+ * Runs a function before each test.
+ *
+ * @since 0.1.0
+ * @category hooks
+ */
 export const beforeEach = B.beforeEach
+
+/**
+ * Groups related tests together.
+ *
+ * @since 0.1.0
+ * @category organizing
+ */
 export const describe = B.describe
+
+/**
+ * Assertion library for testing.
+ *
+ * @since 0.1.0
+ * @category assertions
+ */
 export const expect = B.expect
+
+/**
+ * Jest compatibility utilities.
+ *
+ * @since 0.1.0
+ * @category compatibility
+ */
 export const jest = B.jest
+
+/**
+ * Creates mock functions.
+ *
+ * @since 0.1.0
+ * @category mocking
+ */
 export const mock = B.mock
+
+/**
+ * Sets the default timeout for tests.
+ *
+ * @since 0.1.0
+ * @category configuration
+ */
 export const setDefaultTimeout = B.setDefaultTimeout
+
+/**
+ * Sets the system time for testing.
+ *
+ * @since 0.1.0
+ * @category testing utilities
+ */
 export const setSystemTime = B.setSystemTime
+
+/**
+ * Creates spy functions.
+ *
+ * @since 0.1.0
+ * @category mocking
+ */
 export const spyOn = B.spyOn
+
+/**
+ * Defines a test case.
+ *
+ * @since 0.1.0
+ * @category testing
+ */
 export const test = B.test
 
 /**
@@ -377,7 +482,7 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
  * @example
  * ```ts
  * import { effect, expect } from "@effect-native/bun-test"
- * import { Effect, TestClock, Duration } from "effect"
+ * import { Effect, TestClock, Clock, Duration } from "effect"
  *
  * effect("time-dependent test", () =>
  *   Effect.gen(function* () {
@@ -427,6 +532,8 @@ export const scoped: BunTest.Tester<TestServices.TestServices | Scope.Scope> = i
  * import { live, expect } from "@effect-native/bun-test"
  * import { Effect } from "effect"
  *
+ * declare const fetchFromRealAPI: () => Effect.Effect<{ status: number }>
+ *
  * live("real service test", () =>
  *   Effect.gen(function* () {
  *     const result = yield* fetchFromRealAPI()
@@ -447,6 +554,13 @@ export const live: BunTest.Tester<never> = internal.live
  * ```ts
  * import { scopedLive, expect } from "@effect-native/bun-test"
  * import { Effect } from "effect"
+ *
+ * interface Database {
+ *   query(sql: string): Effect.Effect<unknown>
+ *   close(): Effect.Effect<void>
+ * }
+ *
+ * declare const connectToDatabase: () => Effect.Effect<Database>
  *
  * scopedLive("database connection test", () =>
  *   Effect.gen(function* () {
@@ -523,8 +637,11 @@ export const layer: <R, E>(
  * @category testing utilities
  * @example
  * ```ts
- * import { effect, flakyTest } from "@effect-native/bun-test"
+ * import { effect, flakyTest, expect } from "@effect-native/bun-test"
  * import { Effect, Duration } from "effect"
+ *
+ * declare const fetchWithRetry: (url: string) => Effect.Effect<Response>
+ * const url = "https://example.com"
  *
  * effect("unreliable network test", () =>
  *   flakyTest(
@@ -547,7 +664,7 @@ export const flakyTest = internal.flakyTest
  * @category property testing
  * @example
  * ```ts
- * import { prop } from "@effect-native/bun-test"
+ * import { prop, expect } from "@effect-native/bun-test"
  * import * as Schema from "effect/Schema"
  *
  * prop(
@@ -579,11 +696,7 @@ const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as 
  * ```ts
  * import { it, expect } from "@effect-native/bun-test"
  * import { Effect } from "effect"
- *
- * // Standard test
- * it("basic test", () => {
- *   expect(1 + 1).toBe(2)
- * })
+ * import * as Schema from "effect/Schema"
  *
  * // Effect test
  * it.effect("effect test", () =>
