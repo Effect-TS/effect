@@ -265,10 +265,42 @@ export type GenAITelemetryAttributeOptions = BaseAttributes & {
  * @since Utilities
  */
 export const addGenAIAnnotations: {
+  /**
+   * Applies the specified GenAI telemetry attributes to the provided `Span`.
+   *
+   * **NOTE**: This method will mutate the `Span` **in-place**.
+   *
+   * @since 1.0.0
+   * @since Utilities
+   */
   (options: GenAITelemetryAttributeOptions): (span: Span) => void
+  /**
+   * Applies the specified GenAI telemetry attributes to the provided `Span`.
+   *
+   * **NOTE**: This method will mutate the `Span` **in-place**.
+   *
+   * @since 1.0.0
+   * @since Utilities
+   */
   (span: Span, options: GenAITelemetryAttributeOptions): void
 } = dual<
+  /**
+   * Applies the specified GenAI telemetry attributes to the provided `Span`.
+   *
+   * **NOTE**: This method will mutate the `Span` **in-place**.
+   *
+   * @since 1.0.0
+   * @since Utilities
+   */
   (options: GenAITelemetryAttributeOptions) => (span: Span) => void,
+  /**
+   * Applies the specified GenAI telemetry attributes to the provided `Span`.
+   *
+   * **NOTE**: This method will mutate the `Span` **in-place**.
+   *
+   * @since 1.0.0
+   * @since Utilities
+   */
   (span: Span, options: GenAITelemetryAttributeOptions) => void
 >(2, (span, options) => {
   addSpanBaseAttributes(span, { system: options.system })

@@ -289,7 +289,55 @@ export const make: <I, S>(tag: Tag<I, S>, service: Types.NoInfer<S>) => Context<
  * @since 2.0.0
  */
 export const add: {
+  /**
+   * Adds a service to a given `Context`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context, pipe } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const someContext = Context.make(Port, { PORT: 8080 })
+   *
+   * const Services = pipe(
+   *   someContext,
+   *   Context.add(Timeout, { TIMEOUT: 5000 })
+   * )
+   *
+   * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   */
   <I, S>(tag: Tag<I, S>, service: Types.NoInfer<S>): <Services>(self: Context<Services>) => Context<Services | I>
+  /**
+   * Adds a service to a given `Context`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context, pipe } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const someContext = Context.make(Port, { PORT: 8080 })
+   *
+   * const Services = pipe(
+   *   someContext,
+   *   Context.add(Timeout, { TIMEOUT: 5000 })
+   * )
+   *
+   * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   */
   <Services, I, S>(self: Context<Services>, tag: Tag<I, S>, service: Types.NoInfer<S>): Context<Services | I>
 } = internal.add
 
@@ -316,9 +364,97 @@ export const add: {
  * @category getters
  */
 export const get: {
+  /**
+   * Get a service from the context that corresponds to the given tag.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = pipe(
+   *   Context.make(Port, { PORT: 8080 }),
+   *   Context.add(Timeout, { TIMEOUT: 5000 })
+   * )
+   *
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <I, S>(tag: Reference<I, S>): <Services>(self: Context<Services>) => S
+  /**
+   * Get a service from the context that corresponds to the given tag.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = pipe(
+   *   Context.make(Port, { PORT: 8080 }),
+   *   Context.add(Timeout, { TIMEOUT: 5000 })
+   * )
+   *
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <Services, I extends Services, S>(tag: Tag<I, S>): (self: Context<Services>) => S
+  /**
+   * Get a service from the context that corresponds to the given tag.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = pipe(
+   *   Context.make(Port, { PORT: 8080 }),
+   *   Context.add(Timeout, { TIMEOUT: 5000 })
+   * )
+   *
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <Services, I, S>(self: Context<Services>, tag: Reference<I, S>): S
+  /**
+   * Get a service from the context that corresponds to the given tag.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = pipe(
+   *   Context.make(Port, { PORT: 8080 }),
+   *   Context.add(Timeout, { TIMEOUT: 5000 })
+   * )
+   *
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <Services, I extends Services, S>(self: Context<Services>, tag: Tag<I, S>): S
 } = internal.get
 
@@ -330,7 +466,21 @@ export const get: {
  * @category getters
  */
 export const getOrElse: {
+  /**
+   * Get a service from the context that corresponds to the given tag, or
+   * use the fallback value.
+   *
+   * @since 3.7.0
+   * @category getters
+   */
   <S, I, B>(tag: Tag<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
+  /**
+   * Get a service from the context that corresponds to the given tag, or
+   * use the fallback value.
+   *
+   * @since 3.7.0
+   * @category getters
+   */
   <Services, S, I, B>(self: Context<Services>, tag: Tag<I, S>, orElse: LazyArg<B>): S | B
 } = internal.getOrElse
 
@@ -358,7 +508,53 @@ export const getOrElse: {
  * @category unsafe
  */
 export const unsafeGet: {
+  /**
+   * Get a service from the context that corresponds to the given tag.
+   * This function is unsafe because if the tag is not present in the context, a runtime error will be thrown.
+   *
+   * For a safer version see {@link getOption}.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = Context.make(Port, { PORT: 8080 })
+   *
+   * assert.deepStrictEqual(Context.unsafeGet(Services, Port), { PORT: 8080 })
+   * assert.throws(() => Context.unsafeGet(Services, Timeout))
+   * ```
+   *
+   * @since 2.0.0
+   * @category unsafe
+   */
   <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => S
+  /**
+   * Get a service from the context that corresponds to the given tag.
+   * This function is unsafe because if the tag is not present in the context, a runtime error will be thrown.
+   *
+   * For a safer version see {@link getOption}.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = Context.make(Port, { PORT: 8080 })
+   *
+   * assert.deepStrictEqual(Context.unsafeGet(Services, Port), { PORT: 8080 })
+   * assert.throws(() => Context.unsafeGet(Services, Timeout))
+   * ```
+   *
+   * @since 2.0.0
+   * @category unsafe
+   */
   <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): S
 } = internal.unsafeGet
 
@@ -384,7 +580,49 @@ export const unsafeGet: {
  * @category getters
  */
 export const getOption: {
+  /**
+   * Get the value associated with the specified tag from the context wrapped in an `Option` object. If the tag is not
+   * found, the `Option` object will be `None`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context, Option } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = Context.make(Port, { PORT: 8080 })
+   *
+   * assert.deepStrictEqual(Context.getOption(Services, Port), Option.some({ PORT: 8080 }))
+   * assert.deepStrictEqual(Context.getOption(Services, Timeout), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <S, I>(tag: Tag<I, S>): <Services>(self: Context<Services>) => Option<S>
+  /**
+   * Get the value associated with the specified tag from the context wrapped in an `Option` object. If the tag is not
+   * found, the `Option` object will be `None`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context, Option } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const Services = Context.make(Port, { PORT: 8080 })
+   *
+   * assert.deepStrictEqual(Context.getOption(Services, Port), Option.some({ PORT: 8080 }))
+   * assert.deepStrictEqual(Context.getOption(Services, Timeout), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <Services, S, I>(self: Context<Services>, tag: Tag<I, S>): Option<S>
 } = internal.getOption
 
@@ -411,7 +649,51 @@ export const getOption: {
  * @since 2.0.0
  */
 export const merge: {
+  /**
+   * Merges two `Context`s, returning a new `Context` containing the services of both.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const firstContext = Context.make(Port, { PORT: 8080 })
+   * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
+   *
+   * const Services = Context.merge(firstContext, secondContext)
+   *
+   * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   */
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
+  /**
+   * Merges two `Context`s, returning a new `Context` containing the services of both.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Context } from "effect"
+   *
+   * const Port = Context.GenericTag<{ PORT: number }>("Port")
+   * const Timeout = Context.GenericTag<{ TIMEOUT: number }>("Timeout")
+   *
+   * const firstContext = Context.make(Port, { PORT: 8080 })
+   * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
+   *
+   * const Services = Context.merge(firstContext, secondContext)
+   *
+   * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
+   * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
+   * ```
+   *
+   * @since 2.0.0
+   */
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = internal.merge
 

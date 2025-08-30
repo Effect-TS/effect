@@ -89,6 +89,14 @@ export const make: (params: Partial<CliConfig>) => CliConfig = InternalCliConfig
  * @category utilities
  */
 export const normalizeCase: {
+  /**
+   * @since 1.0.0
+   * @category utilities
+   */
   (text: string): (self: CliConfig) => string
+  /**
+   * @since 1.0.0
+   * @category utilities
+   */
   (self: CliConfig, text: string): string
 } = InternalCliConfig.normalizeCase

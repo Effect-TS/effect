@@ -71,6 +71,9 @@ export type Unify<A> = Values<
  * @since 2.0.0
  */
 export const unify: {
+  /**
+   * @since 2.0.0
+   */
   <
     Args extends Array<any>,
     Args2 extends Array<any>,
@@ -81,6 +84,9 @@ export const unify: {
   >(
     x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => T
   ): (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => (...args: Args5) => Unify<T>
+  /**
+   * @since 2.0.0
+   */
   <
     Args extends Array<any>,
     Args2 extends Array<any>,
@@ -90,24 +96,32 @@ export const unify: {
   >(
     x: (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => T
   ): (...args: Args) => (...args: Args2) => (...args: Args3) => (...args: Args4) => Unify<T>
+  /**
+   * @since 2.0.0
+   */
   <
     Args extends Array<any>,
     Args2 extends Array<any>,
     Args3 extends Array<any>,
     T
-  >(
-    x: (...args: Args) => (...args: Args2) => (...args: Args3) => T
-  ): (...args: Args) => (...args: Args2) => (...args: Args3) => Unify<T>
+  >(x: (...args: Args) => (...args: Args2) => (...args: Args3) => T): (...args: Args) => (...args: Args2) => (...args: Args3) => Unify<T>
+  /**
+   * @since 2.0.0
+   */
   <
     Args extends Array<any>,
     Args2 extends Array<any>,
     T
-  >(
-    x: (...args: Args) => (...args: Args2) => T
-  ): (...args: Args) => (...args: Args2) => Unify<T>
+  >(x: (...args: Args) => (...args: Args2) => T): (...args: Args) => (...args: Args2) => Unify<T>
+  /**
+   * @since 2.0.0
+   */
   <
     Args extends Array<any>,
     T
   >(x: (...args: Args) => T): (...args: Args) => Unify<T>
+  /**
+   * @since 2.0.0
+   */
   <T>(x: T): Unify<T>
 } = identity as any

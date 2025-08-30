@@ -93,14 +93,136 @@ export const isFunction = (input: unknown): input is Function => typeof input ==
  * @since 2.0.0
  */
 export const dual: {
-  <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
-    arity: Parameters<DataFirst>["length"],
-    body: DataFirst
-  ): DataLast & DataFirst
-  <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(
-    isDataFirst: (args: IArguments) => boolean,
-    body: DataFirst
-  ): DataLast & DataFirst
+  /**
+   * Creates a function that can be used in a data-last (aka `pipe`able) or
+   * data-first style.
+   *
+   * The first parameter to `dual` is either the arity of the uncurried function
+   * or a predicate that determines if the function is being used in a data-first
+   * or data-last style.
+   *
+   * Using the arity is the most common use case, but there are some cases where
+   * you may want to use a predicate. For example, if you have a function that
+   * takes an optional argument, you can use a predicate to determine if the
+   * function is being used in a data-first or data-last style.
+   *
+   * You can pass either the arity of the uncurried function or a predicate
+   * which determines if the function is being used in a data-first or
+   * data-last style.
+   *
+   * **Example** (Using arity to determine data-first or data-last style)
+   *
+   * ```ts
+   * import { dual, pipe } from "effect/Function"
+   *
+   * const sum = dual<
+   *   (that: number) => (self: number) => number,
+   *   (self: number, that: number) => number
+   * >(2, (self, that) => self + that)
+   *
+   * console.log(sum(2, 3)) // 5
+   * console.log(pipe(2, sum(3))) // 5
+   * ```
+   *
+   * **Example** (Using call signatures to define the overloads)
+   *
+   * ```ts
+   * import { dual, pipe } from "effect/Function"
+   *
+   * const sum: {
+   *   (that: number): (self: number) => number
+   *   (self: number, that: number): number
+   * } = dual(2, (self: number, that: number): number => self + that)
+   *
+   * console.log(sum(2, 3)) // 5
+   * console.log(pipe(2, sum(3))) // 5
+   * ```
+   *
+   * **Example** (Using a predicate to determine data-first or data-last style)
+   *
+   * ```ts
+   * import { dual, pipe } from "effect/Function"
+   *
+   * const sum = dual<
+   *   (that: number) => (self: number) => number,
+   *   (self: number, that: number) => number
+   * >(
+   *   (args) => args.length === 2,
+   *   (self, that) => self + that
+   * )
+   *
+   * console.log(sum(2, 3)) // 5
+   * console.log(pipe(2, sum(3))) // 5
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(arity: Parameters<DataFirst>["length"], body: DataFirst): DataLast & DataFirst
+  /**
+   * Creates a function that can be used in a data-last (aka `pipe`able) or
+   * data-first style.
+   *
+   * The first parameter to `dual` is either the arity of the uncurried function
+   * or a predicate that determines if the function is being used in a data-first
+   * or data-last style.
+   *
+   * Using the arity is the most common use case, but there are some cases where
+   * you may want to use a predicate. For example, if you have a function that
+   * takes an optional argument, you can use a predicate to determine if the
+   * function is being used in a data-first or data-last style.
+   *
+   * You can pass either the arity of the uncurried function or a predicate
+   * which determines if the function is being used in a data-first or
+   * data-last style.
+   *
+   * **Example** (Using arity to determine data-first or data-last style)
+   *
+   * ```ts
+   * import { dual, pipe } from "effect/Function"
+   *
+   * const sum = dual<
+   *   (that: number) => (self: number) => number,
+   *   (self: number, that: number) => number
+   * >(2, (self, that) => self + that)
+   *
+   * console.log(sum(2, 3)) // 5
+   * console.log(pipe(2, sum(3))) // 5
+   * ```
+   *
+   * **Example** (Using call signatures to define the overloads)
+   *
+   * ```ts
+   * import { dual, pipe } from "effect/Function"
+   *
+   * const sum: {
+   *   (that: number): (self: number) => number
+   *   (self: number, that: number): number
+   * } = dual(2, (self: number, that: number): number => self + that)
+   *
+   * console.log(sum(2, 3)) // 5
+   * console.log(pipe(2, sum(3))) // 5
+   * ```
+   *
+   * **Example** (Using a predicate to determine data-first or data-last style)
+   *
+   * ```ts
+   * import { dual, pipe } from "effect/Function"
+   *
+   * const sum = dual<
+   *   (that: number) => (self: number) => number,
+   *   (self: number, that: number) => number
+   * >(
+   *   (args) => args.length === 2,
+   *   (self, that) => self + that
+   * )
+   *
+   * console.log(sum(2, 3)) // 5
+   * console.log(pipe(2, sum(3))) // 5
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <DataLast extends (...args: Array<any>) => any, DataFirst extends (...args: Array<any>) => any>(isDataFirst: (args: IArguments) => boolean, body: DataFirst): DataLast & DataFirst
 } = function(arity, body) {
   if (typeof arity === "function") {
     return function() {
@@ -405,7 +527,41 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
  * @since 2.0.0
  */
 export const compose: {
+  /**
+   * Composes two functions, `ab` and `bc` into a single function that takes in an argument `a` of type `A` and returns a result of type `C`.
+   * The result is obtained by first applying the `ab` function to `a` and then applying the `bc` function to the result of `ab`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { compose } from "effect/Function"
+   *
+   * const increment = (n: number) => n + 1;
+   * const square = (n: number) => n * n;
+   *
+   * assert.strictEqual(compose(increment, square)(2), 9);
+   * ```
+   *
+   * @since 2.0.0
+   */
   <B, C>(bc: (b: B) => C): <A>(self: (a: A) => B) => (a: A) => C
+  /**
+   * Composes two functions, `ab` and `bc` into a single function that takes in an argument `a` of type `A` and returns a result of type `C`.
+   * The result is obtained by first applying the `ab` function to `a` and then applying the `bc` function to the result of `ab`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { compose } from "effect/Function"
+   *
+   * const increment = (n: number) => n + 1;
+   * const square = (n: number) => n * n;
+   *
+   * assert.strictEqual(compose(increment, square)(2), 9);
+   * ```
+   *
+   * @since 2.0.0
+   */
   <A, B, C>(self: (a: A) => B, bc: (b: B) => C): (a: A) => C
 } = dual(2, <A, B, C>(ab: (a: A) => B, bc: (b: B) => C): (a: A) => C => (a) => bc(ab(a)))
 

@@ -145,9 +145,17 @@ export const make = Effect.sync(() => {
  * @category accessors
  */
 export const mutation: {
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   (
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R | Reactivity>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
@@ -162,11 +170,19 @@ export const mutation: {
  * @category accessors
  */
 export const query: {
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   (
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope | Reactivity>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
@@ -182,9 +198,17 @@ export const query: {
  * @category accessors
  */
 export const stream: {
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   (
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream.Stream<A, E, Exclude<R, Scope.Scope> | Reactivity>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>

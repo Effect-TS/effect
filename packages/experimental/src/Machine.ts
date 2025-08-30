@@ -317,9 +317,17 @@ export interface SerializableActor<M extends Machine.Any> extends Actor<M> {
  * @category constructors
  */
 export const make: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, InitErr, R>(
     initialize: Effect.Effect<ProcedureList<State, Public, Private, R>, InitErr, R>
   ): Machine<State, Public, Private, void, InitErr, Exclude<R, Scope.Scope | MachineContext>>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, Input, InitErr, R>(
     initialize: Machine.Initialize<Input, State, Public, Private, R, InitErr, R>
   ): Machine<State, Public, Private, Input, InitErr, Exclude<R, Scope.Scope | MachineContext>>
@@ -354,6 +362,10 @@ export const makeWith = <State, Input = void>(): {
  * @category constructors
  */
 export const makeSerializable: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <
     State,
     IS,
@@ -371,6 +383,10 @@ export const makeSerializable: {
       | Effect.Effect<SerializableProcedureList<State, Public, Private, R>, InitErr, R>
       | Machine.InitializeSerializable<void, State, Public, Private, R, InitErr, R>
   ): SerializableMachine<State, Public, Private, void, InitErr, Exclude<R, Scope.Scope | MachineContext>, RS>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <
     State,
     IS,
@@ -427,13 +443,16 @@ export const makeSerializable: {
  * @category combinators
  */
 export const retry: {
-  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
-    policy: Schedule.Schedule<Out, In, R>
-  ): (self: M) => Machine.AddContext<M, R>
-  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
-    self: M,
-    policy: Schedule.Schedule<Out, In, R>
-  ): Machine.AddContext<M, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(policy: Schedule.Schedule<Out, In, R>): (self: M) => Machine.AddContext<M, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(self: M, policy: Schedule.Schedule<Out, In, R>): Machine.AddContext<M, R>
 } = dual(2, <M extends Machine.Any, Out, In extends Machine.InitError<M> | MachineDefect, R>(
   self: M,
   retryPolicy: Schedule.Schedule<Out, In, R>
@@ -456,7 +475,15 @@ export const currentTracingEnabled: FiberRef.FiberRef<boolean> = globalValue(
  * @category tracing
  */
 export const withTracingEnabled: {
+  /**
+   * @since 1.0.0
+   * @category tracing
+   */
   (enabled: boolean): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category tracing
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, enabled: boolean): Effect.Effect<A, E, R>
 } = dual(
   2,

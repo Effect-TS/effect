@@ -58,7 +58,15 @@ export const make = <T>(value: T): MutableRef<T> => {
  * @category general
  */
 export const compareAndSet: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(oldValue: T, newValue: T): (self: MutableRef<T>) => boolean
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, oldValue: T, newValue: T): boolean
 } = Dual.dual<
   <T>(oldValue: T, newValue: T) => (self: MutableRef<T>) => boolean,
@@ -106,7 +114,15 @@ export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdat
  * @category general
  */
 export const getAndSet: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(value: T): (self: MutableRef<T>) => T
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, value: T): T
 } = Dual.dual<
   <T>(value: T) => (self: MutableRef<T>) => T,
@@ -122,7 +138,15 @@ export const getAndSet: {
  * @category general
  */
 export const getAndUpdate: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(f: (value: T) => T): (self: MutableRef<T>) => T
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, f: (value: T) => T): T
 } = Dual.dual<
   <T>(f: (value: T) => T) => (self: MutableRef<T>) => T,
@@ -146,7 +170,15 @@ export const incrementAndGet = (self: MutableRef<number>): number => updateAndGe
  * @category general
  */
 export const set: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(value: T): (self: MutableRef<T>) => MutableRef<T>
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, value: T): MutableRef<T>
 } = Dual.dual<
   <T>(value: T) => (self: MutableRef<T>) => MutableRef<T>,
@@ -161,7 +193,15 @@ export const set: {
  * @category general
  */
 export const setAndGet: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(value: T): (self: MutableRef<T>) => T
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, value: T): T
 } = Dual.dual<
   <T>(value: T) => (self: MutableRef<T>) => T,
@@ -176,7 +216,15 @@ export const setAndGet: {
  * @category general
  */
 export const update: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(f: (value: T) => T): (self: MutableRef<T>) => MutableRef<T>
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, f: (value: T) => T): MutableRef<T>
 } = Dual.dual<
   <T>(f: (value: T) => T) => (self: MutableRef<T>) => MutableRef<T>,
@@ -188,7 +236,15 @@ export const update: {
  * @category general
  */
 export const updateAndGet: {
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(f: (value: T) => T): (self: MutableRef<T>) => T
+  /**
+   * @since 2.0.0
+   * @category general
+   */
   <T>(self: MutableRef<T>, f: (value: T) => T): T
 } = Dual.dual<
   <T>(f: (value: T) => T) => (self: MutableRef<T>) => T,

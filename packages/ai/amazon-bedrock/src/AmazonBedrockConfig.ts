@@ -41,11 +41,33 @@ export declare namespace AmazonBedrockConfig {
  * @category Configuration
  */
 export const withClientTransform: {
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
   (transform: (client: HttpClient) => HttpClient): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, transform: (client: HttpClient) => HttpClient): Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    transform: (client: HttpClient) => HttpClient
+  ): Effect.Effect<A, E, R>
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
   (transform: (client: HttpClient) => HttpClient) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  <A, E, R>(self: Effect.Effect<A, E, R>, transform: (client: HttpClient) => HttpClient) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
+  <A, E, R>(
+    self: Effect.Effect<A, E, R>,
+    transform: (client: HttpClient) => HttpClient
+  ) => Effect.Effect<A, E, R>
 >(
   2,
   (self, transformClient) =>

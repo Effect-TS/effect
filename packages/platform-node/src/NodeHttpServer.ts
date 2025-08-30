@@ -38,13 +38,19 @@ export const make: (
  * @category constructors
  */
 export const makeHandler: {
-  <R, E>(
-    httpApp: App.Default<E, R>
-  ): Effect.Effect<
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <R, E>(httpApp: App.Default<E, R>): Effect.Effect<
     (nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) => void,
     never,
     Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>
   >
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <R, E, App extends App.Default<any, any>>(
     httpApp: App.Default<E, R>,
     middleware: Middleware.HttpMiddleware.Applied<App, E, R>

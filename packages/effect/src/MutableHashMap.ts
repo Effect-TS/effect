@@ -140,10 +140,26 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableH
  * @category elements
  */
 export const get: {
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K): <V>(self: MutableHashMap<K, V>) => Option.Option<V>
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K): Option.Option<V>
 } = dual<
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K) => <V>(self: MutableHashMap<K, V>) => Option.Option<V>,
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K) => Option.Option<V>
 >(2, <K, V>(self: MutableHashMap<K, V>, key: K): Option.Option<V> => {
   if (Equal.isEqual(key) === false) {
@@ -212,10 +228,26 @@ const getFromBucket = <K, V>(
  * @category elements
  */
 export const has: {
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K): <V>(self: MutableHashMap<K, V>) => boolean
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K): boolean
 } = dual<
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K) => <V>(self: MutableHashMap<K, V>) => boolean,
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K) => boolean
 >(2, (self, key) => Option.isSome(get(self, key)))
 
@@ -223,10 +255,22 @@ export const has: {
  * @since 2.0.0
  */
 export const set: {
+  /**
+   * @since 2.0.0
+   */
   <K, V>(key: K, value: V): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
+  /**
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K, value: V): MutableHashMap<K, V>
 } = dual<
+  /**
+   * @since 2.0.0
+   */
   <K, V>(key: K, value: V) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
+  /**
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K, value: V) => MutableHashMap<K, V>
 >(3, <K, V>(self: MutableHashMap<K, V>, key: K, value: V) => {
   if (Equal.isEqual(key) === false) {
@@ -268,10 +312,30 @@ const removeFromBucket = <K, V>(
  * @since 2.0.0
  */
 export const modify: {
+  /**
+   * Updates the value of the specified key within the `MutableHashMap` if it exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, f: (v: V) => V): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
+  /**
+   * Updates the value of the specified key within the `MutableHashMap` if it exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K, f: (v: V) => V): MutableHashMap<K, V>
 } = dual<
+  /**
+   * Updates the value of the specified key within the `MutableHashMap` if it exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, f: (v: V) => V) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
+  /**
+   * Updates the value of the specified key within the `MutableHashMap` if it exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K, f: (v: V) => V) => MutableHashMap<K, V>
 >(3, <K, V>(self: MutableHashMap<K, V>, key: K, f: (v: V) => V) => {
   if (Equal.isEqual(key) === false) {
@@ -303,13 +367,38 @@ export const modify: {
  * @since 2.0.0
  */
 export const modifyAt: {
+  /**
+   * Set or remove the specified key in the `MutableHashMap` using the specified
+   * update function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, f: (value: Option.Option<V>) => Option.Option<V>): (self: MutableHashMap<K, V>) => MutableHashMap<K, V>
-  <K, V>(self: MutableHashMap<K, V>, key: K, f: (value: Option.Option<V>) => Option.Option<V>): MutableHashMap<K, V>
-} = dual<
+  /**
+   * Set or remove the specified key in the `MutableHashMap` using the specified
+   * update function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(
+    self: MutableHashMap<K, V>,
     key: K,
     f: (value: Option.Option<V>) => Option.Option<V>
-  ) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
+  ): MutableHashMap<K, V>
+} = dual<
+  /**
+   * Set or remove the specified key in the `MutableHashMap` using the specified
+   * update function.
+   *
+   * @since 2.0.0
+   */
+  <K, V>(key: K, f: (value: Option.Option<V>) => Option.Option<V>) => (self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
+  /**
+   * Set or remove the specified key in the `MutableHashMap` using the specified
+   * update function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(
     self: MutableHashMap<K, V>,
     key: K,
@@ -349,10 +438,22 @@ export const modifyAt: {
  * @since 2.0.0
  */
 export const remove: {
+  /**
+   * @since 2.0.0
+   */
   <K>(key: K): <V>(self: MutableHashMap<K, V>) => MutableHashMap<K, V>
+  /**
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K): MutableHashMap<K, V>
 } = dual<
+  /**
+   * @since 2.0.0
+   */
   <K>(key: K) => <V>(self: MutableHashMap<K, V>) => MutableHashMap<K, V>,
+  /**
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, key: K) => MutableHashMap<K, V>
 >(2, <K, V>(self: MutableHashMap<K, V>, key: K) => {
   if (Equal.isEqual(key) === false) {
@@ -399,7 +500,13 @@ export const isEmpty = <K, V>(self: MutableHashMap<K, V>): boolean => size(self)
  * @since 2.0.0
  */
 export const forEach: {
+  /**
+   * @since 2.0.0
+   */
   <K, V>(f: (value: V, key: K) => void): (self: MutableHashMap<K, V>) => void
+  /**
+   * @since 2.0.0
+   */
   <K, V>(self: MutableHashMap<K, V>, f: (value: V, key: K) => void): void
 } = dual(2, <K, V>(self: MutableHashMap<K, V>, f: (value: V, key: K) => void) => {
   self.referential.forEach(f)

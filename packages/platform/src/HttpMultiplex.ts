@@ -58,10 +58,18 @@ export const make: <E, R>(
  * @category combinators
  */
 export const add: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E2, R2, E3, R3>(
     predicate: (request: ServerRequest.HttpServerRequest) => Effect.Effect<boolean, E2, R2>,
     app: App.Default<E3, R3>
   ): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E3 | E, R2 | R3 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2, E3, R3>(
     self: HttpMultiplex<E, R>,
     predicate: (request: ServerRequest.HttpServerRequest) => Effect.Effect<boolean, E2, R2>,
@@ -74,11 +82,15 @@ export const add: {
  * @category combinators
  */
 export const headerExact: {
-  <E2, R2>(
-    header: string,
-    value: string,
-    app: App.Default<E2, R2>
-  ): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E2, R2>(header: string, value: string, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(
     self: HttpMultiplex<E, R>,
     header: string,
@@ -92,11 +104,15 @@ export const headerExact: {
  * @category combinators
  */
 export const headerRegex: {
-  <E2, R2>(
-    header: string,
-    regex: RegExp,
-    app: App.Default<E2, R2>
-  ): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E2, R2>(header: string, regex: RegExp, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(
     self: HttpMultiplex<E, R>,
     header: string,
@@ -110,11 +126,15 @@ export const headerRegex: {
  * @category combinators
  */
 export const headerStartsWith: {
-  <E2, R2>(
-    header: string,
-    prefix: string,
-    app: App.Default<E2, R2>
-  ): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E2, R2>(header: string, prefix: string, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(
     self: HttpMultiplex<E, R>,
     header: string,
@@ -128,11 +148,15 @@ export const headerStartsWith: {
  * @category combinators
  */
 export const headerEndsWith: {
-  <E2, R2>(
-    header: string,
-    suffix: string,
-    app: App.Default<E2, R2>
-  ): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E2, R2>(header: string, suffix: string, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(
     self: HttpMultiplex<E, R>,
     header: string,
@@ -146,7 +170,15 @@ export const headerEndsWith: {
  * @category combinators
  */
 export const hostExact: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E2, R2>(host: string, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(self: HttpMultiplex<E, R>, host: string, app: App.Default<E2, R2>): HttpMultiplex<E | E2, R | R2>
 } = internal.hostExact
 
@@ -155,7 +187,15 @@ export const hostExact: {
  * @category combinators
  */
 export const hostRegex: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E2, R2>(regex: RegExp, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(self: HttpMultiplex<E, R>, regex: RegExp, app: App.Default<E2, R2>): HttpMultiplex<E | E2, R | R2>
 } = internal.hostRegex
 
@@ -164,7 +204,15 @@ export const hostRegex: {
  * @category combinators
  */
 export const hostStartsWith: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E2, R2>(prefix: string, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(self: HttpMultiplex<E, R>, prefix: string, app: App.Default<E2, R2>): HttpMultiplex<E | E2, R | R2>
 } = internal.hostStartsWith
 
@@ -173,6 +221,14 @@ export const hostStartsWith: {
  * @category combinators
  */
 export const hostEndsWith: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E2, R2>(suffix: string, app: App.Default<E2, R2>): <E, R>(self: HttpMultiplex<E, R>) => HttpMultiplex<E2 | E, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, E2, R2>(self: HttpMultiplex<E, R>, suffix: string, app: App.Default<E2, R2>): HttpMultiplex<E | E2, R | R2>
 } = internal.hostEndsWith

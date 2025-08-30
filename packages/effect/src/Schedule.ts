@@ -197,7 +197,35 @@ export const isSchedule: (u: unknown) => u is Schedule<unknown, never, unknown> 
  * @category Timing & Delay
  */
 export const addDelay: {
+  /**
+   * Adds a delay to every interval in a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule by applying an additional delay to
+   * every interval it defines. The delay is determined by the provided function,
+   * which takes the schedule's output and returns a delay duration.
+   *
+   * @see {@link addDelayEffect} If you need to compute the delay using an effectful function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out>(f: (out: Out) => Duration.DurationInput): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Adds a delay to every interval in a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule by applying an additional delay to
+   * every interval it defines. The delay is determined by the provided function,
+   * which takes the schedule's output and returns a delay duration.
+   *
+   * @see {@link addDelayEffect} If you need to compute the delay using an effectful function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, f: (out: Out) => Duration.DurationInput): Schedule<Out, In, R>
 } = internal.addDelay
 
@@ -217,9 +245,37 @@ export const addDelay: {
  * @category Timing & Delay
  */
 export const addDelayEffect: {
-  <Out, R2>(
-    f: (out: Out) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Adds an effectfully computed delay to every interval in a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule by applying an additional delay to
+   * each interval, where the delay is determined by an effectful function. The
+   * function takes the schedule’s output and returns an effect that produces a
+   * delay duration.
+   *
+   * @see {@link addDelay} If you need to compute the delay using a pure function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
+  <Out, R2>(f: (out: Out) => Effect.Effect<Duration.DurationInput, never, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Adds an effectfully computed delay to every interval in a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule by applying an additional delay to
+   * each interval, where the delay is determined by an effectful function. The
+   * function takes the schedule’s output and returns an effect that produces a
+   * delay duration.
+   *
+   * @see {@link addDelay} If you need to compute the delay using a pure function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (out: Out) => Effect.Effect<Duration.DurationInput, never, R2>
@@ -247,13 +303,48 @@ export const addDelayEffect: {
  * @category Sequential Composition
  */
 export const andThen: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2 | Out, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Out | Out2, In & In2, R | R2>
+  /**
+   * Runs two schedules sequentially, merging their outputs.
+   *
+   * **Details**
+   *
+   * This function executes two schedules one after the other. The first schedule
+   * runs to completion, and then the second schedule begins execution. Unlike
+   * {@link andThenEither}, this function merges the outputs instead of wrapping
+   * them in `Either`, allowing both schedules to contribute their results
+   * directly.
+   *
+   * This is useful when a workflow consists of two phases where the second phase
+   * should start only after the first one has fully completed.
+   *
+   * @see {@link andThenEither} If you need to keep track of which schedule
+   * produced each result.
+   *
+   * @since 2.0.0
+   * @category Sequential Composition
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2 | Out, In & In2, R2 | R>
+  /**
+   * Runs two schedules sequentially, merging their outputs.
+   *
+   * **Details**
+   *
+   * This function executes two schedules one after the other. The first schedule
+   * runs to completion, and then the second schedule begins execution. Unlike
+   * {@link andThenEither}, this function merges the outputs instead of wrapping
+   * them in `Either`, allowing both schedules to contribute their results
+   * directly.
+   *
+   * This is useful when a workflow consists of two phases where the second phase
+   * should start only after the first one has fully completed.
+   *
+   * @see {@link andThenEither} If you need to keep track of which schedule
+   * produced each result.
+   *
+   * @since 2.0.0
+   * @category Sequential Composition
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<Out | Out2, In & In2, R | R2>
 } = internal.andThen
 
 /**
@@ -277,13 +368,48 @@ export const andThen: {
  * @category Sequential Composition
  */
 export const andThenEither: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Either.Either<Out2, Out>, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Either.Either<Out2, Out>, In & In2, R | R2>
+  /**
+   * Runs two schedules sequentially, collecting results in an `Either`.
+   *
+   * **Details**
+   *
+   * This function combines two schedules in sequence. The first schedule runs to
+   * completion, and then the second schedule starts and runs to completion as
+   * well. The outputs of both schedules are collected into an `Either` structure:
+   * - `Either.Left` contains the output of the second schedule.
+   * - `Either.Right` contains the output of the first schedule.
+   *
+   * This is useful when you need to switch from one schedule to another after the
+   * first one finishes, while still keeping track of which schedule produced each
+   * result.
+   *
+   * @see {@link andThen} If you need to merge the outputs of both schedules.
+   *
+   * @since 2.0.0
+   * @category Sequential Composition
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Either.Either<Out2, Out>, In & In2, R2 | R>
+  /**
+   * Runs two schedules sequentially, collecting results in an `Either`.
+   *
+   * **Details**
+   *
+   * This function combines two schedules in sequence. The first schedule runs to
+   * completion, and then the second schedule starts and runs to completion as
+   * well. The outputs of both schedules are collected into an `Either` structure:
+   * - `Either.Left` contains the output of the second schedule.
+   * - `Either.Right` contains the output of the first schedule.
+   *
+   * This is useful when you need to switch from one schedule to another after the
+   * first one finishes, while still keeping track of which schedule produced each
+   * result.
+   *
+   * @see {@link andThen} If you need to merge the outputs of both schedules.
+   *
+   * @since 2.0.0
+   * @category Sequential Composition
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<Either.Either<Out2, Out>, In & In2, R | R2>
 } = internal.andThenEither
 
 /**
@@ -302,7 +428,37 @@ export const andThenEither: {
  * @category Mapping
  */
 export const as: {
+  /**
+   * Transforms a schedule to always produce a constant output.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule so that instead of returning its
+   * computed outputs, it always returns a constant value.
+   *
+   * This is useful when you need a schedule for timing but don’t care about its
+   * actual output, or when you want to standardize results across different
+   * scheduling strategies.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out2>(out: Out2): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R>
+  /**
+   * Transforms a schedule to always produce a constant output.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule so that instead of returning its
+   * computed outputs, it always returns a constant value.
+   *
+   * This is useful when you need a schedule for timing but don’t care about its
+   * actual output, or when you want to standardize results across different
+   * scheduling strategies.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, Out2>(self: Schedule<Out, In, R>, out: Out2): Schedule<Out2, In, R>
 } = internal.as
 
@@ -343,13 +499,44 @@ export const asVoid: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<void, 
  * @category Zipping
  */
 export const bothInOut: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], readonly [In, In2], R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], readonly [In, In2], R | R2>
+  // TODO(4.0): rename to `zip`?
+  /**
+   * Combines two schedules, preserving both their inputs and outputs.
+   *
+   * **Details**
+   *
+   * This function merges two schedules so that both their input types and output
+   * types are retained. When executed, the resulting schedule will take inputs
+   * from both original schedules and produce a tuple containing both outputs.
+   *
+   * It recurs if either schedule wants to continue, using the shorter delay.
+   *
+   * This is useful when you want to track multiple schedules simultaneously,
+   * ensuring that both receive the same inputs and produce combined results.
+   *
+   * @since 2.0.0
+   * @category Zipping
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], readonly [In, In2], R2 | R>
+  // TODO(4.0): rename to `zip`?
+  /**
+   * Combines two schedules, preserving both their inputs and outputs.
+   *
+   * **Details**
+   *
+   * This function merges two schedules so that both their input types and output
+   * types are retained. When executed, the resulting schedule will take inputs
+   * from both original schedules and produce a tuple containing both outputs.
+   *
+   * It recurs if either schedule wants to continue, using the shorter delay.
+   *
+   * This is useful when you want to track multiple schedules simultaneously,
+   * ensuring that both receive the same inputs and produce combined results.
+   *
+   * @since 2.0.0
+   * @category Zipping
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<[Out, Out2], readonly [In, In2], R | R2>
 } = internal.bothInOut
 
 /**
@@ -371,7 +558,43 @@ export const bothInOut: {
  * @category Recurrence Conditions
  */
 export const check: {
+  /**
+   * Filters schedule executions based on a custom condition.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by applying a custom test function to each
+   * input-output pair. The test function determines whether the schedule should
+   * continue or stop. If the function returns `true`, the schedule proceeds as
+   * usual; if it returns `false`, the schedule terminates.
+   *
+   * This is useful for conditional retries, custom stop conditions, or
+   * dynamically controlling execution based on observed inputs and outputs.
+   *
+   * @see {@link checkEffect} If you need to use an effectful test function.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <In, Out>(test: (input: In, output: Out) => boolean): <R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Filters schedule executions based on a custom condition.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by applying a custom test function to each
+   * input-output pair. The test function determines whether the schedule should
+   * continue or stop. If the function returns `true`, the schedule proceeds as
+   * usual; if it returns `false`, the schedule terminates.
+   *
+   * This is useful for conditional retries, custom stop conditions, or
+   * dynamically controlling execution based on observed inputs and outputs.
+   *
+   * @see {@link checkEffect} If you need to use an effectful test function.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, test: (input: In, output: Out) => boolean): Schedule<Out, In, R>
 } = internal.check
 
@@ -393,9 +616,41 @@ export const check: {
  * @category Recurrence Conditions
  */
 export const checkEffect: {
-  <In, Out, R2>(
-    test: (input: In, output: Out) => Effect.Effect<boolean, never, R2>
-  ): <R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Conditionally filters schedule executions using an effectful function.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by applying a custom effectful test
+   * function to each input-output pair. The test function determines whether the
+   * schedule should continue (`true`) or stop (`false`).
+   *
+   * This is useful when the decision to continue depends on external factors such
+   * as database lookups, API calls, or other asynchronous computations.
+   *
+   * @see {@link check} If you need to use a pure test function.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
+  <In, Out, R2>(test: (input: In, output: Out) => Effect.Effect<boolean, never, R2>): <R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Conditionally filters schedule executions using an effectful function.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by applying a custom effectful test
+   * function to each input-output pair. The test function determines whether the
+   * schedule should continue (`true`) or stop (`false`).
+   *
+   * This is useful when the decision to continue depends on external factors such
+   * as database lookups, API calls, or other asynchronous computations.
+   *
+   * @see {@link check} If you need to use a pure test function.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     test: (input: In, output: Out) => Effect.Effect<boolean, never, R2>
@@ -528,7 +783,41 @@ export const collectWhileEffect: <A, R>(
  * @category Composition
  */
 export const compose: {
+  /**
+   * Chains two schedules, passing the output of the first as the input to the
+   * second, while selecting the shorter delay between them.
+   *
+   * **Details**
+   *
+   * This function composes two schedules so that the output of the first schedule
+   * becomes the input of the second schedule. The first schedule executes first,
+   * and once it produces a result, the second schedule receives that result and
+   * continues execution based on it.
+   *
+   * This is useful for building complex scheduling workflows where one schedule's
+   * behavior determines how the next schedule behaves.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out2, Out, R2>(that: Schedule<Out2, Out, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R2 | R>
+  /**
+   * Chains two schedules, passing the output of the first as the input to the
+   * second, while selecting the shorter delay between them.
+   *
+   * **Details**
+   *
+   * This function composes two schedules so that the output of the first schedule
+   * becomes the input of the second schedule. The first schedule executes first,
+   * and once it produces a result, the second schedule receives that result and
+   * continues execution based on it.
+   *
+   * This is useful for building complex scheduling workflows where one schedule's
+   * behavior determines how the next schedule behaves.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out, In, R, Out2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, Out, R2>): Schedule<Out2, In, R | R2>
 } = internal.compose
 
@@ -551,7 +840,43 @@ export const compose: {
  * @category Mapping
  */
 export const mapInput: {
+  /**
+   * Transforms the input type of a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule by applying a transformation function
+   * to its inputs. Instead of directly receiving values of type `In`, the
+   * schedule will now accept values of type `In2`, which are converted to `In`
+   * using the provided mapping function `f`.
+   *
+   * This is useful when you have a schedule that expects a specific input type
+   * but you need to adapt it to work with a different type.
+   *
+   * @see {@link mapInputEffect} If you need to use an effectful transformation function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <In, In2>(f: (in2: In2) => In): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In2, R>
+  /**
+   * Transforms the input type of a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a given schedule by applying a transformation function
+   * to its inputs. Instead of directly receiving values of type `In`, the
+   * schedule will now accept values of type `In2`, which are converted to `In`
+   * using the provided mapping function `f`.
+   *
+   * This is useful when you have a schedule that expects a specific input type
+   * but you need to adapt it to work with a different type.
+   *
+   * @see {@link mapInputEffect} If you need to use an effectful transformation function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, In2>(self: Schedule<Out, In, R>, f: (in2: In2) => In): Schedule<Out, In2, R>
 } = internal.mapInput
 
@@ -574,13 +899,44 @@ export const mapInput: {
  * @category Mapping
  */
 export const mapInputEffect: {
-  <In2, In, R2>(
-    f: (in2: In2) => Effect.Effect<In, never, R2>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In2, R2 | R>
-  <Out, In, R, In2, R2>(
-    self: Schedule<Out, In, R>,
-    f: (in2: In2) => Effect.Effect<In, never, R2>
-  ): Schedule<Out, In2, R | R2>
+  /**
+   * Transforms the input type of a schedule using an effectful function.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by applying an effectful transformation to
+   * its inputs. Instead of directly receiving values of type `In`, the schedule
+   * will now accept values of type `In2`, which are converted to `In` via an
+   * effectful function `f`.
+   *
+   * This is useful when the input transformation involves external dependencies,
+   * such as API calls, database lookups, or other asynchronous computations.
+   *
+   * @see {@link mapInput} If you need to use a pure transformation function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
+  <In2, In, R2>(f: (in2: In2) => Effect.Effect<In, never, R2>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In2, R2 | R>
+  /**
+   * Transforms the input type of a schedule using an effectful function.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by applying an effectful transformation to
+   * its inputs. Instead of directly receiving values of type `In`, the schedule
+   * will now accept values of type `In2`, which are converted to `In` via an
+   * effectful function `f`.
+   *
+   * This is useful when the input transformation involves external dependencies,
+   * such as API calls, database lookups, or other asynchronous computations.
+   *
+   * @see {@link mapInput} If you need to use a pure transformation function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
+  <Out, In, R, In2, R2>(self: Schedule<Out, In, R>, f: (in2: In2) => Effect.Effect<In, never, R2>): Schedule<Out, In2, R | R2>
 } = internal.mapInputEffect
 
 /**
@@ -598,9 +954,35 @@ export const mapInputEffect: {
  * @category Mapping
  */
 export const mapInputContext: {
-  <R0, R>(
-    f: (env0: Context.Context<R0>) => Context.Context<R>
-  ): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, R0>
+  /**
+   * Transforms the required context of a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by mapping its required context (`R`) into
+   * a new context (`R0`) using the provided function `f`.
+   *
+   * This is useful when you need to adapt a schedule to work with a different
+   * dependency environment without changing its core logic.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
+  <R0, R>(f: (env0: Context.Context<R0>) => Context.Context<R>): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, R0>
+  /**
+   * Transforms the required context of a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule by mapping its required context (`R`) into
+   * a new context (`R0`) using the provided function `f`.
+   *
+   * This is useful when you need to adapt a schedule to work with a different
+   * dependency environment without changing its core logic.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, R0>(
     self: Schedule<Out, In, R>,
     f: (env0: Context.Context<R0>) => Context.Context<R>
@@ -639,7 +1021,37 @@ export const count: Schedule<number> = internal.count
  * @category Cron
  */
 export const cron: {
+  /**
+   * Creates a schedule that recurs based on a cron expression.
+   *
+   * **Details**
+   *
+   * This schedule automatically executes at intervals defined by a cron
+   * expression. It triggers at the beginning of each matched interval and
+   * produces timestamps representing the start and end of the cron window.
+   *
+   * The cron `expression` is validated lazily, meaning errors may only be
+   * detected when the schedule is executed.
+   *
+   * @since 2.0.0
+   * @category Cron
+   */
   (cron: Cron.Cron): Schedule<[number, number]>
+  /**
+   * Creates a schedule that recurs based on a cron expression.
+   *
+   * **Details**
+   *
+   * This schedule automatically executes at intervals defined by a cron
+   * expression. It triggers at the beginning of each matched interval and
+   * produces timestamps representing the start and end of the cron window.
+   *
+   * The cron `expression` is validated lazily, meaning errors may only be
+   * detected when the schedule is executed.
+   *
+   * @since 2.0.0
+   * @category Cron
+   */
   (expression: string, tz?: DateTime.TimeZone | string): Schedule<[number, number]>
 } = internal.cron
 
@@ -755,9 +1167,43 @@ export const dayOfWeek: (day: number) => Schedule<number> = internal.dayOfWeek
  * @category Timing & Delay
  */
 export const delayed: {
-  (
-    f: (duration: Duration.Duration) => Duration.DurationInput
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Modifies a schedule by adding a computed delay before each execution.
+   *
+   * **Details**
+   *
+   * This function adjusts an existing schedule by applying a transformation to
+   * its delays. Instead of using the default interval, each delay is modified
+   * using the provided function `f`, which takes the current delay and returns a
+   * new delay.
+   *
+   * This is useful for dynamically adjusting wait times between executions, such
+   * as introducing jitter, exponential backoff, or custom delay logic.
+   *
+   * @see {@link delayedEffect} If you need to compute the delay using an effectful function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
+  (f: (duration: Duration.Duration) => Duration.DurationInput): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Modifies a schedule by adding a computed delay before each execution.
+   *
+   * **Details**
+   *
+   * This function adjusts an existing schedule by applying a transformation to
+   * its delays. Instead of using the default interval, each delay is modified
+   * using the provided function `f`, which takes the current delay and returns a
+   * new delay.
+   *
+   * This is useful for dynamically adjusting wait times between executions, such
+   * as introducing jitter, exponential backoff, or custom delay logic.
+   *
+   * @see {@link delayedEffect} If you need to compute the delay using an effectful function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R>(
     self: Schedule<Out, In, R>,
     f: (duration: Duration.Duration) => Duration.DurationInput
@@ -784,9 +1230,47 @@ export const delayed: {
  * @category Timing & Delay
  */
 export const delayedEffect: {
+  /**
+   * Modifies a schedule by adding an effectfully computed delay before each
+   * execution.
+   *
+   * **Details**
+   *
+   * This function adjusts an existing schedule by introducing a delay that is
+   * computed via an effect. Instead of using a fixed delay, each interval is
+   * dynamically adjusted based on an effectful function `f`, which takes the
+   * current delay and returns a new delay wrapped in an `Effect`.
+   *
+   * This is useful for adaptive scheduling where delays depend on external
+   * factors, such as API calls, database queries, or dynamic system conditions.
+   *
+   * @see {@link delayed} If you need to compute the delay using a pure function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <R2>(
     f: (duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
   ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Modifies a schedule by adding an effectfully computed delay before each
+   * execution.
+   *
+   * **Details**
+   *
+   * This function adjusts an existing schedule by introducing a delay that is
+   * computed via an effect. Instead of using a fixed delay, each interval is
+   * dynamically adjusted based on an effectful function `f`, which takes the
+   * current delay and returns a new delay wrapped in an `Effect`.
+   *
+   * This is useful for adaptive scheduling where delays depend on external
+   * factors, such as API calls, database queries, or dynamic system conditions.
+   *
+   * @see {@link delayed} If you need to compute the delay using a pure function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
@@ -838,9 +1322,39 @@ export const delays: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Durati
  * @category Mapping
  */
 export const mapBoth: {
+  /**
+   * Transforms both the input and output of a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule by applying a transformation to
+   * both its input values and its output values. The provided transformation
+   * functions `onInput` and `onOutput` allow you to map the schedule to work with
+   * a different input type while modifying its outputs as well.
+   *
+   * @see {@link mapBothEffect} If you need to use effectful transformation functions.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <In2, In, Out, Out2>(
     options: { readonly onInput: (in2: In2) => In; readonly onOutput: (out: Out) => Out2 }
   ): <R>(self: Schedule<Out, In, R>) => Schedule<Out2, In2, R>
+  /**
+   * Transforms both the input and output of a schedule.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule by applying a transformation to
+   * both its input values and its output values. The provided transformation
+   * functions `onInput` and `onOutput` allow you to map the schedule to work with
+   * a different input type while modifying its outputs as well.
+   *
+   * @see {@link mapBothEffect} If you need to use effectful transformation functions.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, In2, Out2>(
     self: Schedule<Out, In, R>,
     options: { readonly onInput: (in2: In2) => In; readonly onOutput: (out: Out) => Out2 }
@@ -865,12 +1379,46 @@ export const mapBoth: {
  * @category Mapping
  */
 export const mapBothEffect: {
+  /**
+   * Transforms both the input and output of a schedule using effectful
+   * computations.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule by applying effectful
+   * transformations to both its input values and its output values. The provided
+   * effectful functions `onInput` and `onOutput` allow you to transform inputs
+   * and outputs using computations that may involve additional logic, resource
+   * access, or side effects.
+   *
+   * @see {@link mapBoth} If you need to use pure transformation functions.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <In2, In, R2, Out, R3, Out2>(
     options: {
       readonly onInput: (input: In2) => Effect.Effect<In, never, R2>
       readonly onOutput: (out: Out) => Effect.Effect<Out2, never, R3>
     }
   ): <R>(self: Schedule<Out, In, R>) => Schedule<Out2, In2, R2 | R3 | R>
+  /**
+   * Transforms both the input and output of a schedule using effectful
+   * computations.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule by applying effectful
+   * transformations to both its input values and its output values. The provided
+   * effectful functions `onInput` and `onOutput` allow you to transform inputs
+   * and outputs using computations that may involve additional logic, resource
+   * access, or side effects.
+   *
+   * @see {@link mapBoth} If you need to use pure transformation functions.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, In2, R2, Out2, R3>(
     self: Schedule<Out, In, R>,
     options: {
@@ -917,13 +1465,22 @@ export const duration: (duration: Duration.DurationInput) => Schedule<Duration.D
  * @category Alternatives
  */
 export const either: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], In & In2, R | R2>
+  // TODO(4.0): remove?
+  /**
+   * Alias of {@link union}.
+   *
+   * @since 2.0.0
+   * @category Alternatives
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
+  // TODO(4.0): remove?
+  /**
+   * Alias of {@link union}.
+   *
+   * @since 2.0.0
+   * @category Alternatives
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<[Out, Out2], In & In2, R | R2>
 } = internal.either
 
 // TODO(4.0): remove?
@@ -934,10 +1491,24 @@ export const either: {
  * @category Alternatives
  */
 export const eitherWith: {
+  // TODO(4.0): remove?
+  /**
+   * Alias of {@link unionWith}.
+   *
+   * @since 2.0.0
+   * @category Alternatives
+   */
   <Out2, In2, R2>(
     that: Schedule<Out2, In2, R2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
+  // TODO(4.0): remove?
+  /**
+   * Alias of {@link unionWith}.
+   *
+   * @since 2.0.0
+   * @category Alternatives
+   */
   <Out, In, R, Out2, In2, R2>(
     self: Schedule<Out, In, R>,
     that: Schedule<Out2, In2, R2>,
@@ -981,7 +1552,43 @@ export const elapsed: Schedule<Duration.Duration> = internal.elapsed
  * @category Finalization
  */
 export const ensuring: {
+  /**
+   * Attaches a finalizer to a schedule that runs when the schedule completes.
+   *
+   * **Details**
+   *
+   * This function returns a new schedule that executes a given finalizer when the
+   * schedule reaches completion. Unlike `Effect.ensuring`, this method does not
+   * guarantee the finalizer will run in all cases. If the schedule never
+   * initializes or is not driven to completion, the finalizer may not execute.
+   * However, if the schedule decides not to continue, the finalizer will be
+   * invoked.
+   *
+   * This is useful for cleaning up resources, logging, or executing other side
+   * effects when a schedule completes.
+   *
+   * @since 2.0.0
+   * @category Finalization
+   */
   <X>(finalizer: Effect.Effect<X, never, never>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Attaches a finalizer to a schedule that runs when the schedule completes.
+   *
+   * **Details**
+   *
+   * This function returns a new schedule that executes a given finalizer when the
+   * schedule reaches completion. Unlike `Effect.ensuring`, this method does not
+   * guarantee the finalizer will run in all cases. If the schedule never
+   * initializes or is not driven to completion, the finalizer may not execute.
+   * However, if the schedule decides not to continue, the finalizer will be
+   * invoked.
+   *
+   * This is useful for cleaning up resources, logging, or executing other side
+   * effects when a schedule completes.
+   *
+   * @since 2.0.0
+   * @category Finalization
+   */
   <Out, In, R, X>(self: Schedule<Out, In, R>, finalizer: Effect.Effect<X, never, never>): Schedule<Out, In, R>
 } = internal.ensuring
 
@@ -1169,13 +1776,52 @@ export const passthrough: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<I
  * @category Composition
  */
 export const intersect: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], In & In2, R | R2>
+  /**
+   * Combines two schedules, continuing only if both schedules want to continue,
+   * using the longer delay.
+   *
+   * **Details**
+   *
+   * This function takes two schedules and creates a new schedule that only
+   * continues execution if both schedules allow it. The interval between
+   * recurrences is determined by the longer delay between the two schedules.
+   *
+   * The output of the resulting schedule is a tuple containing the outputs of
+   * both schedules. The input type is the intersection of both schedules' input
+   * types.
+   *
+   * This is useful when coordinating multiple scheduling conditions where
+   * execution should proceed only when both schedules permit it.
+   *
+   * @see {@link intersectWith} If you need to use a custom merge function.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
+  /**
+   * Combines two schedules, continuing only if both schedules want to continue,
+   * using the longer delay.
+   *
+   * **Details**
+   *
+   * This function takes two schedules and creates a new schedule that only
+   * continues execution if both schedules allow it. The interval between
+   * recurrences is determined by the longer delay between the two schedules.
+   *
+   * The output of the resulting schedule is a tuple containing the outputs of
+   * both schedules. The input type is the intersection of both schedules' input
+   * types.
+   *
+   * This is useful when coordinating multiple scheduling conditions where
+   * execution should proceed only when both schedules permit it.
+   *
+   * @see {@link intersectWith} If you need to use a custom merge function.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<[Out, Out2], In & In2, R | R2>
 } = internal.intersect
 
 /**
@@ -1198,10 +1844,48 @@ export const intersect: {
  * @category Composition
  */
 export const intersectWith: {
+  /**
+   * Combines two schedules, continuing only if both want to continue, merging
+   * intervals using a custom function.
+   *
+   * **Details**
+   *
+   * This function takes two schedules and creates a new schedule that only
+   * continues execution if both schedules allow it. Instead of automatically
+   * using the longer delay (like {@link intersect}), this function applies a
+   * user-provided merge function `f` to determine the next interval between
+   * executions.
+   *
+   * The output of the resulting schedule is a tuple containing the outputs of
+   * both schedules, and the input type is the intersection of both schedules'
+   * input types.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out2, In2, R2>(
     that: Schedule<Out2, In2, R2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
+  /**
+   * Combines two schedules, continuing only if both want to continue, merging
+   * intervals using a custom function.
+   *
+   * **Details**
+   *
+   * This function takes two schedules and creates a new schedule that only
+   * continues execution if both schedules allow it. Instead of automatically
+   * using the longer delay (like {@link intersect}), this function applies a
+   * user-provided merge function `f` to determine the next interval between
+   * executions.
+   *
+   * The output of the resulting schedule is a tuple containing the outputs of
+   * both schedules, and the input type is the intersection of both schedules'
+   * input types.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out, In, R, Out2, In2, R2>(
     self: Schedule<Out, In, R>,
     that: Schedule<Out2, In2, R2>,
@@ -1253,9 +1937,49 @@ export const jittered: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out,
  * @category Timing & Delay
  */
 export const jitteredWith: {
-  (
-    options: { min?: number | undefined; max?: number | undefined }
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that randomly adjusts the interval size within a
+   * user-defined range.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule so that its delay between executions is
+   * randomly varied within a specified range. Instead of using the default `0.8 -
+   * 1.2` range like {@link jittered}, this function allows customizing the `min`
+   * and `max` multipliers.
+   *
+   * The delay for each step will be adjusted within `min * original_interval` and
+   * `max * original_interval`. If `min` and `max` are not provided, the defaults
+   * are `0.8` and `1.2`, respectively.
+   *
+   * This is useful for introducing randomness into scheduling behavior while
+   * having precise control over the jitter range.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
+  (options: { min?: number | undefined; max?: number | undefined }): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that randomly adjusts the interval size within a
+   * user-defined range.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule so that its delay between executions is
+   * randomly varied within a specified range. Instead of using the default `0.8 -
+   * 1.2` range like {@link jittered}, this function allows customizing the `min`
+   * and `max` multipliers.
+   *
+   * The delay for each step will be adjusted within `min * original_interval` and
+   * `max * original_interval`. If `min` and `max` are not provided, the defaults
+   * are `0.8` and `1.2`, respectively.
+   *
+   * This is useful for introducing randomness into scheduling behavior while
+   * having precise control over the jitter range.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R>(
     self: Schedule<Out, In, R>,
     options: { min?: number | undefined; max?: number | undefined }
@@ -1304,7 +2028,47 @@ export const linear: (base: Duration.DurationInput) => Schedule<Duration.Duratio
  * @category Mapping
  */
 export const map: {
+  /**
+   * Returns a new schedule that transforms its output using the specified
+   * function.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that its outputs are
+   * transformed by the provided function `f`. The timing and recurrence behavior
+   * of the schedule remain unchanged, but the values it produces are mapped to
+   * new values.
+   *
+   * This is useful when composing schedules where you need to adjust the output
+   * format or apply additional processing.
+   *
+   * @see {@link mapEffect} If you need to use an effectful transformation
+   * function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, Out2>(f: (out: Out) => Out2): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R>
+  /**
+   * Returns a new schedule that transforms its output using the specified
+   * function.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that its outputs are
+   * transformed by the provided function `f`. The timing and recurrence behavior
+   * of the schedule remain unchanged, but the values it produces are mapped to
+   * new values.
+   *
+   * This is useful when composing schedules where you need to adjust the output
+   * format or apply additional processing.
+   *
+   * @see {@link mapEffect} If you need to use an effectful transformation
+   * function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, Out2>(self: Schedule<Out, In, R>, f: (out: Out) => Out2): Schedule<Out2, In, R>
 } = internal.map
 
@@ -1328,9 +2092,45 @@ export const map: {
  * @category Mapping
  */
 export const mapEffect: {
-  <Out, Out2, R2>(
-    f: (out: Out) => Effect.Effect<Out2, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R2 | R>
+  /**
+   * Returns a new schedule that applies an effectful transformation to its
+   * output.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule by applying an effectful function
+   * `f` to its output values. The timing and recurrence behavior of the schedule
+   * remain unchanged, but each output is mapped to a new value within an
+   * `Effect`.
+   *
+   * This is useful when you need to perform side effects or asynchronous
+   * transformations before passing the output forward.
+   *
+   * @see {@link map} If you need to use a pure transformation function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
+  <Out, Out2, R2>(f: (out: Out) => Effect.Effect<Out2, never, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R2 | R>
+  /**
+   * Returns a new schedule that applies an effectful transformation to its
+   * output.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule by applying an effectful function
+   * `f` to its output values. The timing and recurrence behavior of the schedule
+   * remain unchanged, but each output is mapped to a new value within an
+   * `Effect`.
+   *
+   * This is useful when you need to perform side effects or asynchronous
+   * transformations before passing the output forward.
+   *
+   * @see {@link map} If you need to use a pure transformation function.
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <Out, In, R, Out2, R2>(
     self: Schedule<Out, In, R>,
     f: (out: Out) => Effect.Effect<Out2, never, R2>
@@ -1354,9 +2154,39 @@ export const mapEffect: {
  * @category Timing & Delay
  */
 export const modifyDelay: {
-  <Out>(
-    f: (out: Out, duration: Duration.Duration) => Duration.DurationInput
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that modifies the delay between executions using a
+   * custom function.
+   *
+   * **Details**
+   *
+   * This function transforms an existing schedule by applying `f` to modify the
+   * delay before each execution. The function receives both the schedule's output
+   * (`out`) and the originally computed delay (`duration`), and returns a new
+   * adjusted delay.
+   *
+   * @see {@link modifyDelayEffect} If you need to use an effectful function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
+  <Out>(f: (out: Out, duration: Duration.Duration) => Duration.DurationInput): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that modifies the delay between executions using a
+   * custom function.
+   *
+   * **Details**
+   *
+   * This function transforms an existing schedule by applying `f` to modify the
+   * delay before each execution. The function receives both the schedule's output
+   * (`out`) and the originally computed delay (`duration`), and returns a new
+   * adjusted delay.
+   *
+   * @see {@link modifyDelayEffect} If you need to use an effectful function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R>(
     self: Schedule<Out, In, R>,
     f: (out: Out, duration: Duration.Duration) => Duration.DurationInput
@@ -1380,9 +2210,41 @@ export const modifyDelay: {
  * @category Timing & Delay
  */
 export const modifyDelayEffect: {
+  /**
+   * Returns a new schedule that modifies the delay before execution using an
+   * effectful function.
+   *
+   * **Details**
+   *
+   * This function takes an existing schedule and applies an effectful function
+   * `f` to dynamically adjust the delay before each execution. The function
+   * receives both the schedule's output (`out`) and the originally computed delay
+   * (`duration`), returning a new adjusted delay wrapped in an `Effect`.
+   *
+   * @see {@link modifyDelay} If you need to use a pure function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, R2>(
     f: (out: Out, duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
   ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that modifies the delay before execution using an
+   * effectful function.
+   *
+   * **Details**
+   *
+   * This function takes an existing schedule and applies an effectful function
+   * `f` to dynamically adjust the delay before each execution. The function
+   * receives both the schedule's output (`out`) and the originally computed delay
+   * (`duration`), returning a new adjusted delay wrapped in an `Effect`.
+   *
+   * @see {@link modifyDelay} If you need to use a pure function.
+   *
+   * @since 2.0.0
+   * @category Timing & Delay
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (out: Out, duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
@@ -1404,9 +2266,37 @@ export const modifyDelayEffect: {
  * @since 2.0.0
  */
 export const onDecision: {
+  /**
+   * Returns a new schedule that executes an effect every time the schedule makes
+   * a decision.
+   *
+   * **Details**
+   *
+   * This function enhances an existing schedule by running an effectful function
+   * `f` whenever a scheduling decision is made. The function receives the current
+   * schedule output (`out`) and the decision (`ScheduleDecision`), allowing
+   * additional logic to be executed, such as logging, monitoring, or side
+   * effects.
+   *
+   * @since 2.0.0
+   */
   <Out, X, R2>(
     f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<X, never, R2>
   ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that executes an effect every time the schedule makes
+   * a decision.
+   *
+   * **Details**
+   *
+   * This function enhances an existing schedule by running an effectful function
+   * `f` whenever a scheduling decision is made. The function receives the current
+   * schedule output (`out`) and the decision (`ScheduleDecision`), allowing
+   * additional logic to be executed, such as logging, monitoring, or side
+   * effects.
+   *
+   * @since 2.0.0
+   */
   <Out, In, R, X, R2>(
     self: Schedule<Out, In, R>,
     f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<X, never, R2>
@@ -1445,7 +2335,43 @@ export const once: Schedule<void> = internal.once
  * @category Context
  */
 export const provideContext: {
+  /**
+   * Returns a new schedule with a provided context, eliminating the need for
+   * external dependencies.
+   *
+   * **Details**
+   *
+   * This function supplies a required `context` to a schedule, allowing it to run
+   * without requiring external dependencies. After calling this function, the
+   * schedule can be used freely without needing to pass a context at execution
+   * time.
+   *
+   * This is useful when working with schedules that rely on contextual
+   * information, such as logging services, database connections, or configuration
+   * settings.
+   *
+   * @since 2.0.0
+   * @category Context
+   */
   <R>(context: Context.Context<R>): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, never>
+  /**
+   * Returns a new schedule with a provided context, eliminating the need for
+   * external dependencies.
+   *
+   * **Details**
+   *
+   * This function supplies a required `context` to a schedule, allowing it to run
+   * without requiring external dependencies. After calling this function, the
+   * schedule can be used freely without needing to pass a context at execution
+   * time.
+   *
+   * This is useful when working with schedules that rely on contextual
+   * information, such as logging services, database connections, or configuration
+   * settings.
+   *
+   * @since 2.0.0
+   * @category Context
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, context: Context.Context<R>): Schedule<Out, In, never>
 } = internal.provideContext
 
@@ -1466,10 +2392,39 @@ export const provideContext: {
  * @category Context
  */
 export const provideService: {
-  <I, S>(
-    tag: Context.Tag<I, S>,
-    service: Types.NoInfer<S>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, Exclude<R, I>>
+  /**
+   * Returns a new schedule with a single required service provided, eliminating
+   * the need for external dependencies.
+   *
+   * **Details**
+   *
+   * This function supplies a single service dependency to a schedule, allowing it
+   * to run without requiring that service externally. If a schedule depends on
+   * multiple services, consider using `provideContext` instead.
+   *
+   * This is useful when working with schedules that require a specific service,
+   * such as logging, metrics, or configuration retrieval.
+   *
+   * @since 2.0.0
+   * @category Context
+   */
+  <I, S>(tag: Context.Tag<I, S>, service: Types.NoInfer<S>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, Exclude<R, I>>
+  /**
+   * Returns a new schedule with a single required service provided, eliminating
+   * the need for external dependencies.
+   *
+   * **Details**
+   *
+   * This function supplies a single service dependency to a schedule, allowing it
+   * to run without requiring that service externally. If a schedule depends on
+   * multiple services, consider using `provideContext` instead.
+   *
+   * This is useful when working with schedules that require a specific service,
+   * such as logging, metrics, or configuration retrieval.
+   *
+   * @since 2.0.0
+   * @category Context
+   */
   <Out, In, R, I, S>(
     self: Schedule<Out, In, R>,
     tag: Context.Tag<I, S>,
@@ -1621,7 +2576,41 @@ export const recurs: (n: number) => Schedule<number> = internal.recurs
  * @category Reducing
  */
 export const reduce: {
+  /**
+   * Returns a new schedule that folds over the outputs of this one.
+   *
+   * **Details**
+   *
+   * This schedule transforms the output by accumulating values over time using a
+   * reducer function `f`. It starts with an initial value `zero` and updates it
+   * each time the schedule produces an output.
+   *
+   * This is useful for tracking statistics, aggregating results, or summarizing
+   * data across multiple executions.
+   *
+   * @see {@link reduceEffect} If you need to use an effectful reducer function.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
   <Out, Z>(zero: Z, f: (z: Z, out: Out) => Z): <In, R>(self: Schedule<Out, In, R>) => Schedule<Z, In, R>
+  /**
+   * Returns a new schedule that folds over the outputs of this one.
+   *
+   * **Details**
+   *
+   * This schedule transforms the output by accumulating values over time using a
+   * reducer function `f`. It starts with an initial value `zero` and updates it
+   * each time the schedule produces an output.
+   *
+   * This is useful for tracking statistics, aggregating results, or summarizing
+   * data across multiple executions.
+   *
+   * @see {@link reduceEffect} If you need to use an effectful reducer function.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
   <Out, In, R, Z>(self: Schedule<Out, In, R>, zero: Z, f: (z: Z, out: Out) => Z): Schedule<Z, In, R>
 } = internal.reduce
 
@@ -1644,10 +2633,43 @@ export const reduce: {
  * @category Reducing
  */
 export const reduceEffect: {
-  <Z, Out, R2>(
-    zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Z, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Z, In, R2 | R>
+  /**
+   * Returns a new schedule that effectfully folds over the outputs of this one.
+   *
+   * **Details**
+   *
+   * This schedule accumulates outputs over time using an effectful reducer
+   * function `f`. It starts with an initial value `zero` and updates it
+   * asynchronously or based on external dependencies.
+   *
+   * This is useful for asynchronous state tracking, logging, external metrics
+   * aggregation, or any scenario where accumulation needs to involve an effectful
+   * computation.
+   *
+   * @see {@link reduce} If you need to use a pure reducer function.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
+  <Z, Out, R2>(zero: Z, f: (z: Z, out: Out) => Effect.Effect<Z, never, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Z, In, R2 | R>
+  /**
+   * Returns a new schedule that effectfully folds over the outputs of this one.
+   *
+   * **Details**
+   *
+   * This schedule accumulates outputs over time using an effectful reducer
+   * function `f`. It starts with an initial value `zero` and updates it
+   * asynchronously or based on external dependencies.
+   *
+   * This is useful for asynchronous state tracking, logging, external metrics
+   * aggregation, or any scenario where accumulation needs to involve an effectful
+   * computation.
+   *
+   * @see {@link reduce} If you need to use a pure reducer function.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
   <Out, In, R, Z, R2>(
     self: Schedule<Out, In, R>,
     zero: Z,
@@ -1693,7 +2715,35 @@ export const repetitions: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<n
  * @category State Management
  */
 export const resetAfter: {
+  /**
+   * Returns a new schedule that automatically resets to its initial state after a
+   * period of inactivity defined by `duration`.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule so that if no inputs are received for the
+   * specified `duration`, the schedule resets as if it were new.
+   *
+   * @see {@link resetWhen} If you need to reset based on output values.
+   *
+   * @since 2.0.0
+   * @category State Management
+   */
   (duration: Duration.DurationInput): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that automatically resets to its initial state after a
+   * period of inactivity defined by `duration`.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule so that if no inputs are received for the
+   * specified `duration`, the schedule resets as if it were new.
+   *
+   * @see {@link resetWhen} If you need to reset based on output values.
+   *
+   * @since 2.0.0
+   * @category State Management
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, duration: Duration.DurationInput): Schedule<Out, In, R>
 } = internal.resetAfter
 
@@ -1712,7 +2762,35 @@ export const resetAfter: {
  * @category State Management
  */
 export const resetWhen: {
+  /**
+   * Resets the schedule when the specified predicate on the schedule output
+   * evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule so that it resets to its initial state
+   * whenever the provided predicate `f` returns `true` for an output value.
+   *
+   * @see {@link resetAfter} If you need to reset based on inactivity.
+   *
+   * @since 2.0.0
+   * @category State Management
+   */
   <Out>(f: Predicate<Out>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Resets the schedule when the specified predicate on the schedule output
+   * evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies a schedule so that it resets to its initial state
+   * whenever the provided predicate `f` returns `true` for an output value.
+   *
+   * @see {@link resetAfter} If you need to reset based on inactivity.
+   *
+   * @since 2.0.0
+   * @category State Management
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<Out>): Schedule<Out, In, R>
 } = internal.resetWhen
 
@@ -1732,10 +2810,37 @@ export const resetWhen: {
  * @category Execution
  */
 export const run: {
-  <In>(
-    now: number,
-    input: Iterable<In>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Effect.Effect<Chunk.Chunk<Out>, never, R>
+  /**
+   * Runs a schedule using the provided inputs and collects all outputs.
+   *
+   * **Details**
+   *
+   * This function executes a given schedule with a sequence of input values and
+   * accumulates all outputs into a `Chunk`. The schedule starts execution at the
+   * specified `now` timestamp and proceeds according to its defined behavior.
+   *
+   * This is useful for batch processing, simulating execution, or testing
+   * schedules with predefined input sequences.
+   *
+   * @since 2.0.0
+   * @category Execution
+   */
+  <In>(now: number, input: Iterable<In>): <Out, R>(self: Schedule<Out, In, R>) => Effect.Effect<Chunk.Chunk<Out>, never, R>
+  /**
+   * Runs a schedule using the provided inputs and collects all outputs.
+   *
+   * **Details**
+   *
+   * This function executes a given schedule with a sequence of input values and
+   * accumulates all outputs into a `Chunk`. The schedule starts execution at the
+   * specified `now` timestamp and proceeds according to its defined behavior.
+   *
+   * This is useful for batch processing, simulating execution, or testing
+   * schedules with predefined input sequences.
+   *
+   * @since 2.0.0
+   * @category Execution
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, now: number, input: Iterable<In>): Effect.Effect<Chunk.Chunk<Out>, never, R>
 } = internal.run
 
@@ -1796,13 +2901,34 @@ export const sync: <A>(evaluate: LazyArg<A>) => Schedule<A> = internal.sync
  * @category Tapping
  */
 export const tapInput: {
-  <In2, X, R2>(
-    f: (input: In2) => Effect.Effect<X, never, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In & In2, R2 | R>
-  <Out, In, R, In2, X, R2>(
-    self: Schedule<Out, In, R>,
-    f: (input: In2) => Effect.Effect<X, never, R2>
-  ): Schedule<Out, In & In2, R | R2>
+  /**
+   * Returns a new schedule that runs the given effectful function for each input
+   * before continuing execution.
+   *
+   * **Details**
+   *
+   * This function allows side effects to be performed on each input processed by
+   * the schedule. It does not modify the schedule’s behavior but ensures that the
+   * provided function `f` runs before each step.
+   *
+   * @since 2.0.0
+   * @category Tapping
+   */
+  <In2, X, R2>(f: (input: In2) => Effect.Effect<X, never, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In & In2, R2 | R>
+  /**
+   * Returns a new schedule that runs the given effectful function for each input
+   * before continuing execution.
+   *
+   * **Details**
+   *
+   * This function allows side effects to be performed on each input processed by
+   * the schedule. It does not modify the schedule’s behavior but ensures that the
+   * provided function `f` runs before each step.
+   *
+   * @since 2.0.0
+   * @category Tapping
+   */
+  <Out, In, R, In2, X, R2>(self: Schedule<Out, In, R>, f: (input: In2) => Effect.Effect<X, never, R2>): Schedule<Out, In & In2, R | R2>
 } = internal.tapInput
 
 /**
@@ -1819,13 +2945,34 @@ export const tapInput: {
  * @category Tapping
  */
 export const tapOutput: {
-  <X, R2, Out>(
-    f: (out: Types.NoInfer<Out>) => Effect.Effect<X, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, X, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out) => Effect.Effect<X, never, R2>
-  ): Schedule<Out, In, R | R2>
+  /**
+   * Returns a new schedule that runs the given effectful function for each output
+   * before continuing execution.
+   *
+   * **Details**
+   *
+   * This function allows side effects to be performed on each output produced by
+   * the schedule. It does not modify the schedule’s behavior but ensures that the
+   * provided function `f` runs after each step.
+   *
+   * @since 2.0.0
+   * @category Tapping
+   */
+  <X, R2, Out>(f: (out: Types.NoInfer<Out>) => Effect.Effect<X, never, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that runs the given effectful function for each output
+   * before continuing execution.
+   *
+   * **Details**
+   *
+   * This function allows side effects to be performed on each output produced by
+   * the schedule. It does not modify the schedule’s behavior but ensures that the
+   * provided function `f` runs after each step.
+   *
+   * @since 2.0.0
+   * @category Tapping
+   */
+  <Out, In, R, X, R2>(self: Schedule<Out, In, R>, f: (out: Out) => Effect.Effect<X, never, R2>): Schedule<Out, In, R | R2>
 } = internal.tapOutput
 
 /**
@@ -1866,13 +3013,52 @@ export const unfold: <A>(initial: A, f: (a: A) => A) => Schedule<A> = internal.u
  * @category Composition
  */
 export const union: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], In & In2, R | R2>
+  /**
+   * Combines two schedules, continuing execution as long as at least one of them
+   * allows it, using the shorter delay.
+   *
+   * **Details**
+   *
+   * This function combines two schedules into a single schedule that executes in
+   * parallel. If either schedule allows continuation, the merged schedule
+   * continues. When both schedules produce delays, the schedule selects the
+   * shorter delay to determine the next step.
+   *
+   * The output of the new schedule is a tuple containing the outputs of both
+   * schedules. The input type is the intersection of both schedules' input types.
+   *
+   * This is useful for scenarios where multiple scheduling conditions should be
+   * considered, ensuring execution proceeds if at least one schedule permits it.
+   *
+   * @see {@link unionWith} If you need to use a custom merge function.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
+  /**
+   * Combines two schedules, continuing execution as long as at least one of them
+   * allows it, using the shorter delay.
+   *
+   * **Details**
+   *
+   * This function combines two schedules into a single schedule that executes in
+   * parallel. If either schedule allows continuation, the merged schedule
+   * continues. When both schedules produce delays, the schedule selects the
+   * shorter delay to determine the next step.
+   *
+   * The output of the new schedule is a tuple containing the outputs of both
+   * schedules. The input type is the intersection of both schedules' input types.
+   *
+   * This is useful for scenarios where multiple scheduling conditions should be
+   * considered, ensuring execution proceeds if at least one schedule permits it.
+   *
+   * @see {@link unionWith} If you need to use a custom merge function.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<[Out, Out2], In & In2, R | R2>
 } = internal.union
 
 /**
@@ -1900,10 +3086,58 @@ export const union: {
  * @category Composition
  */
 export const unionWith: {
+  /**
+   * Combines two schedules, continuing execution as long as at least one of them
+   * wants to continue, merging their intervals using a custom merge function.
+   *
+   * **Details**
+   *
+   * This function allows you to combine two schedules while defining how their
+   * intervals should be merged. Unlike {@link union}, which simply selects the
+   * shorter delay, this function lets you specify a custom merging strategy for
+   * the schedules’ intervals.
+   *
+   * The merged schedule continues execution as long as at least one of the input
+   * schedules allows it. The next interval is determined by applying the provided
+   * merge function to the intervals of both schedules.
+   *
+   * The output of the resulting schedule is a tuple containing the outputs of
+   * both schedules. The input type is the intersection of both schedules' input
+   * types.
+   *
+   * @see {@link union} If you need to use the shorter delay.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out2, In2, R2>(
     that: Schedule<Out2, In2, R2>,
     f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
   ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
+  /**
+   * Combines two schedules, continuing execution as long as at least one of them
+   * wants to continue, merging their intervals using a custom merge function.
+   *
+   * **Details**
+   *
+   * This function allows you to combine two schedules while defining how their
+   * intervals should be merged. Unlike {@link union}, which simply selects the
+   * shorter delay, this function lets you specify a custom merging strategy for
+   * the schedules’ intervals.
+   *
+   * The merged schedule continues execution as long as at least one of the input
+   * schedules allows it. The next interval is determined by applying the provided
+   * merge function to the intervals of both schedules.
+   *
+   * The output of the resulting schedule is a tuple containing the outputs of
+   * both schedules. The input type is the intersection of both schedules' input
+   * types.
+   *
+   * @see {@link union} If you need to use the shorter delay.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out, In, R, Out2, In2, R2>(
     self: Schedule<Out, In, R>,
     that: Schedule<Out2, In2, R2>,
@@ -1927,7 +3161,37 @@ export const unionWith: {
  * @category Recurrence Conditions
  */
 export const untilInput: {
+  /**
+   * Returns a new schedule that stops execution when the given predicate on the
+   * input evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it continues executing
+   * only while the provided predicate returns `false` for incoming inputs. Once
+   * an input satisfies the condition, the schedule terminates immediately.
+   *
+   * @see {@link untilInputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <In>(f: Predicate<In>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that stops execution when the given predicate on the
+   * input evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it continues executing
+   * only while the provided predicate returns `false` for incoming inputs. Once
+   * an input satisfies the condition, the schedule terminates immediately.
+   *
+   * @see {@link untilInputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<In>): Schedule<Out, In, R>
 } = internal.untilInput
 
@@ -1948,9 +3212,39 @@ export const untilInput: {
  * @category Recurrence Conditions
  */
 export const untilInputEffect: {
-  <In, R2>(
-    f: (input: In) => Effect.Effect<boolean, never, R2>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that stops execution when the given effectful
+   * predicate on the input evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it continues executing
+   * only while the provided effectful predicate returns `false` for incoming
+   * inputs. The predicate is an `Effect`, meaning it can involve asynchronous
+   * computations or dependency-based logic.
+   *
+   * @see {@link untilInput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
+  <In, R2>(f: (input: In) => Effect.Effect<boolean, never, R2>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that stops execution when the given effectful
+   * predicate on the input evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it continues executing
+   * only while the provided effectful predicate returns `false` for incoming
+   * inputs. The predicate is an `Effect`, meaning it can involve asynchronous
+   * computations or dependency-based logic.
+   *
+   * @see {@link untilInput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (input: In) => Effect.Effect<boolean, never, R2>
@@ -1976,7 +3270,43 @@ export const untilInputEffect: {
  * @category Recurrence Conditions
  */
 export const untilOutput: {
+  /**
+   * Returns a new schedule that stops execution when the given predicate on the
+   * output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * executing while the given predicate returns false for its output values. Once
+   * the predicate evaluates to `true`, execution stops.
+   *
+   * The output of the resulting schedule remains the same, but its duration is
+   * now constrained by a stopping condition based on its own output.
+   *
+   * @see {@link untilOutputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out>(f: Predicate<Out>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that stops execution when the given predicate on the
+   * output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * executing while the given predicate returns false for its output values. Once
+   * the predicate evaluates to `true`, execution stops.
+   *
+   * The output of the resulting schedule remains the same, but its duration is
+   * now constrained by a stopping condition based on its own output.
+   *
+   * @see {@link untilOutputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<Out>): Schedule<Out, In, R>
 } = internal.untilOutput
 
@@ -1996,9 +3326,37 @@ export const untilOutput: {
  * @category Recurrence Conditions
  */
 export const untilOutputEffect: {
-  <Out, R2>(
-    f: (out: Out) => Effect.Effect<boolean, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that stops execution when the given effectful
+   * predicate on the output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * executing while the provided effectful predicate returns `false` for its
+   * output values. Once the predicate returns `true`, execution stops.
+   *
+   * @see {@link untilOutput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
+  <Out, R2>(f: (out: Out) => Effect.Effect<boolean, never, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that stops execution when the given effectful
+   * predicate on the output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * executing while the provided effectful predicate returns `false` for its
+   * output values. Once the predicate returns `true`, execution stops.
+   *
+   * @see {@link untilOutput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (out: Out) => Effect.Effect<boolean, never, R2>
@@ -2018,7 +3376,31 @@ export const untilOutputEffect: {
  * @category Recurrence Conditions
  */
 export const upTo: {
+  /**
+   * Returns a new schedule that limits execution to a fixed duration.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule to stop execution after a
+   * specified duration has passed. The schedule continues as normal until the
+   * duration is reached, at which point it stops automatically.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   (duration: Duration.DurationInput): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that limits execution to a fixed duration.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule to stop execution after a
+   * specified duration has passed. The schedule continues as normal until the
+   * duration is reached, at which point it stops automatically.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, duration: Duration.DurationInput): Schedule<Out, In, R>
 } = internal.upTo
 
@@ -2038,7 +3420,37 @@ export const upTo: {
  * @category Recurrence Conditions
  */
 export const whileInput: {
+  /**
+   * Returns a new schedule that continues execution as long as the given
+   * predicate on the input is true.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while a specified predicate holds true for its input. If the
+   * predicate evaluates to `false` at any step, the schedule stops.
+   *
+   * @see {@link whileInputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <In>(f: Predicate<In>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that continues execution as long as the given
+   * predicate on the input is true.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while a specified predicate holds true for its input. If the
+   * predicate evaluates to `false` at any step, the schedule stops.
+   *
+   * @see {@link whileInputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<In>): Schedule<Out, In, R>
 } = internal.whileInput
 
@@ -2058,9 +3470,37 @@ export const whileInput: {
  * @category Recurrence Conditions
  */
 export const whileInputEffect: {
-  <In, R2>(
-    f: (input: In) => Effect.Effect<boolean, never, R2>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that continues execution for as long as the given
+   * effectful predicate on the input evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while an effectful predicate holds true for its input. If the
+   * predicate evaluates to `false` at any step, the schedule stops.
+   *
+   * @see {@link whileInput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
+  <In, R2>(f: (input: In) => Effect.Effect<boolean, never, R2>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that continues execution for as long as the given
+   * effectful predicate on the input evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while an effectful predicate holds true for its input. If the
+   * predicate evaluates to `false` at any step, the schedule stops.
+   *
+   * @see {@link whileInput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (input: In) => Effect.Effect<boolean, never, R2>
@@ -2083,7 +3523,37 @@ export const whileInputEffect: {
  * @category Recurrence Conditions
  */
 export const whileOutput: {
+  /**
+   * Returns a new schedule that continues execution for as long as the given
+   * predicate on the output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while a provided condition holds true for its output. If the
+   * predicate returns `false`, the schedule stops.
+   *
+   * @see {@link whileOutputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out>(f: Predicate<Out>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
+  /**
+   * Returns a new schedule that continues execution for as long as the given
+   * predicate on the output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while a provided condition holds true for its output. If the
+   * predicate returns `false`, the schedule stops.
+   *
+   * @see {@link whileOutputEffect} If you need to use an effectful predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<Out>): Schedule<Out, In, R>
 } = internal.whileOutput
 
@@ -2103,9 +3573,37 @@ export const whileOutput: {
  * @category Recurrence Conditions
  */
 export const whileOutputEffect: {
-  <Out, R2>(
-    f: (out: Out) => Effect.Effect<boolean, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that continues execution for as long as the given
+   * effectful predicate on the output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while an effectful condition holds true for its output. If the
+   * effectful predicate returns `false`, the schedule stops.
+   *
+   * @see {@link whileOutput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
+  <Out, R2>(f: (out: Out) => Effect.Effect<boolean, never, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
+  /**
+   * Returns a new schedule that continues execution for as long as the given
+   * effectful predicate on the output evaluates to `true`.
+   *
+   * **Details**
+   *
+   * This function modifies an existing schedule so that it only continues
+   * execution while an effectful condition holds true for its output. If the
+   * effectful predicate returns `false`, the schedule stops.
+   *
+   * @see {@link whileOutput} If you need to use a pure predicate.
+   *
+   * @since 2.0.0
+   * @category Recurrence Conditions
+   */
   <Out, In, R, R2>(
     self: Schedule<Out, In, R>,
     f: (out: Out) => Effect.Effect<boolean, never, R2>
@@ -2144,13 +3642,20 @@ export const windowed: (interval: Duration.DurationInput) => Schedule<number> = 
  * @category Composition
  */
 export const zipLeft: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Out, In & In2, R | R2>
+  /**
+   * The same as {@link intersect} but ignores the right output.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In & In2, R2 | R>
+  /**
+   * The same as {@link intersect} but ignores the right output.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<Out, In & In2, R | R2>
 } = internal.zipLeft
 
 /**
@@ -2160,13 +3665,20 @@ export const zipLeft: {
  * @category Composition
  */
 export const zipRight: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Out2, In & In2, R | R2>
+  /**
+   * The same as {@link intersect} but ignores the left output.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out2, In2, R2>(that: Schedule<Out2, In2, R2>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In & In2, R2 | R>
+  /**
+   * The same as {@link intersect} but ignores the left output.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out, In, R, Out2, In2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, In2, R2>): Schedule<Out2, In & In2, R | R2>
 } = internal.zipRight
 
 /**
@@ -2176,10 +3688,19 @@ export const zipRight: {
  * @category Composition
  */
 export const zipWith: {
-  <Out2, In2, R2, Out, Out3>(
-    that: Schedule<Out2, In2, R2>,
-    f: (out: Out, out2: Out2) => Out3
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out3, In & In2, R2 | R>
+  /**
+   * Equivalent to {@link intersect} followed by {@link map}.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
+  <Out2, In2, R2, Out, Out3>(that: Schedule<Out2, In2, R2>, f: (out: Out, out2: Out2) => Out3): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out3, In & In2, R2 | R>
+  /**
+   * Equivalent to {@link intersect} followed by {@link map}.
+   *
+   * @since 2.0.0
+   * @category Composition
+   */
   <Out, In, R, Out2, In2, R2, Out3>(
     self: Schedule<Out, In, R>,
     that: Schedule<Out2, In2, R2>,

@@ -131,13 +131,26 @@ export const OtelTraceState: Tag<OtelTraceState, Otel.TraceState> = internal.tra
  * @category propagation
  */
 export const withSpanContext: {
-  (
-    spanContext: Otel.SpanContext
-  ): <A, E, R>(
+  /**
+   * Set the effect's parent span from the given opentelemetry `SpanContext`.
+   *
+   * This is handy when you set up OpenTelemetry outside of Effect and want to
+   * attach to a parent span.
+   *
+   * @since 1.0.0
+   * @category propagation
+   */
+  (spanContext: Otel.SpanContext): <A, E, R>(
     effect: Effect<A, E, R>
   ) => Effect<A, E, Exclude<R, ParentSpan>>
-  <A, E, R>(
-    effect: Effect<A, E, R>,
-    spanContext: Otel.SpanContext
-  ): Effect<A, E, Exclude<R, ParentSpan>>
+  /**
+   * Set the effect's parent span from the given opentelemetry `SpanContext`.
+   *
+   * This is handy when you set up OpenTelemetry outside of Effect and want to
+   * attach to a parent span.
+   *
+   * @since 1.0.0
+   * @category propagation
+   */
+  <A, E, R>(effect: Effect<A, E, R>, spanContext: Otel.SpanContext): Effect<A, E, Exclude<R, ParentSpan>>
 } = internal.withSpanContext

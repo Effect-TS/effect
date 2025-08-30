@@ -144,9 +144,25 @@ export const all: <const Arg extends Iterable<Args<any>> | Record<string, Args<a
  * @category combinators
  */
 export const atLeast: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (times: 0): <A>(self: Args<A>) => Args<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (times: number): <A>(self: Args<A>) => Args<NonEmptyArray<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Args<A>, times: 0): Args<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Args<A>, times: number): Args<NonEmptyArray<A>>
 } = InternalArgs.atLeast
 
@@ -155,7 +171,15 @@ export const atLeast: {
  * @category combinators
  */
 export const atMost: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (times: number): <A>(self: Args<A>) => Args<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Args<A>, times: number): Args<Array<A>>
 } = InternalArgs.atMost
 
@@ -164,9 +188,25 @@ export const atMost: {
  * @category combinators
  */
 export const between: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (min: 0, max: number): <A>(self: Args<A>) => Args<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (min: number, max: number): <A>(self: Args<A>) => Args<NonEmptyArray<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Args<A>, min: 0, max: number): Args<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Args<A>, min: number, max: number): Args<NonEmptyArray<A>>
 } = InternalArgs.between
 
@@ -325,7 +365,15 @@ export const integer: (config?: Args.BaseArgsConfig) => Args<number> = InternalA
  * @category mapping
  */
 export const map: {
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B): (self: Args<A>) => Args<B>
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(self: Args<A>, f: (a: A) => B): Args<B>
 } = InternalArgs.map
 
@@ -334,8 +382,19 @@ export const map: {
  * @category mapping
  */
 export const mapEffect: {
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>): (self: Args<A>) => Args<B>
-  <A, B>(self: Args<A>, f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>): Args<B>
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
+  <A, B>(
+   self: Args<A>,
+   f: (a: A) => Effect<B, HelpDoc, FileSystem | Path | Terminal>
+  ): Args<B>
 } = InternalArgs.mapEffect
 
 /**
@@ -343,7 +402,15 @@ export const mapEffect: {
  * @category mapping
  */
 export const mapTryCatch: {
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B, onError: (e: unknown) => HelpDoc): (self: Args<A>) => Args<B>
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(self: Args<A>, f: (a: A) => B, onError: (e: unknown) => HelpDoc): Args<B>
 } = InternalArgs.mapTryCatch
 
@@ -412,19 +479,20 @@ export const text: (config?: Args.BaseArgsConfig) => Args<string> = InternalArgs
  * @category combinators
  */
 export const validate: {
-  (
-    args: ReadonlyArray<string>,
-    config: CliConfig
-  ): <A>(self: Args<A>) => Effect<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (args: ReadonlyArray<string>, config: CliConfig): <A>(self: Args<A>) => Effect<
     [Array<string>, A],
     ValidationError,
     FileSystem | Path | Terminal
   >
-  <A>(
-    self: Args<A>,
-    args: ReadonlyArray<string>,
-    config: CliConfig
-  ): Effect<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A>(self: Args<A>, args: ReadonlyArray<string>, config: CliConfig): Effect<
     [Array<string>, A],
     ValidationError,
     FileSystem | Path | Terminal
@@ -436,7 +504,15 @@ export const validate: {
  * @category combinators
  */
 export const withDefault: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <const B>(fallback: B): <A>(self: Args<A>) => Args<B | A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, const B>(self: Args<A>, fallback: B): Args<A | B>
 } = InternalArgs.withDefault
 
@@ -445,7 +521,15 @@ export const withDefault: {
  * @category combinators
  */
 export const withFallbackConfig: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <B>(config: Config<B>): <A>(self: Args<A>) => Args<B | A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Args<A>, config: Config<B>): Args<A | B>
 } = InternalArgs.withFallbackConfig
 
@@ -454,7 +538,15 @@ export const withFallbackConfig: {
  * @category combinators
  */
 export const withDescription: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (description: string): <A>(self: Args<A>) => Args<A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Args<A>, description: string): Args<A>
 } = InternalArgs.withDescription
 
@@ -463,7 +555,15 @@ export const withDescription: {
  * @category combinators
  */
 export const withSchema: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, I extends A, B>(schema: Schema<B, I, FileSystem | Path | Terminal>): (self: Args<A>) => Args<B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, I extends A, B>(self: Args<A>, schema: Schema<B, I, FileSystem | Path | Terminal>): Args<B>
 } = InternalArgs.withSchema
 
@@ -472,19 +572,22 @@ export const withSchema: {
  * @category combinators
  */
 export const wizard: {
-  (
-    config: CliConfig
-  ): <A>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (config: CliConfig): <A>(
     self: Args<A>
   ) => Effect<
     Array<string>,
     ValidationError | QuitException,
     FileSystem | Path | Terminal
   >
-  <A>(
-    self: Args<A>,
-    config: CliConfig
-  ): Effect<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A>(self: Args<A>, config: CliConfig): Effect<
     Array<string>,
     ValidationError | QuitException,
     FileSystem | Path | Terminal

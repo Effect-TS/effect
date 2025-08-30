@@ -779,10 +779,34 @@ export const empty: AiResponse = new AiResponse(
  * @category Combination
  */
 export const merge: {
+  /**
+   * Combines two responses into a single response.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (other: AiResponse): (self: AiResponse) => AiResponse
+  /**
+   * Combines two responses into a single response.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (self: AiResponse, other: AiResponse): AiResponse
 } = dual<
+  /**
+   * Combines two responses into a single response.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (other: AiResponse) => (self: AiResponse) => AiResponse,
+  /**
+   * Combines two responses into a single response.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (self: AiResponse, other: AiResponse) => AiResponse
 >(2, (self, other) => {
   const newParts = mergeParts(self, other)
@@ -881,6 +905,16 @@ const mergeParts = (self: AiResponse, other: AiResponse): ReadonlyArray<Part> =>
  * @category Combination
  */
 export const withToolCallsJson: {
+  /**
+   * Adds the specified tool calls to the provided `AiResponse`.
+   *
+   * **NOTE**: With this method, the tool call parameters will be parsed as a
+   * JSON string. If your tool call parameters are already parsed, use
+   * `AiResponse.withToolCallsUnknown`.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (
     toolCalls: Iterable<{
       readonly id: string
@@ -888,6 +922,16 @@ export const withToolCallsJson: {
       readonly params: string
     }>
   ): (self: AiResponse) => Effect.Effect<AiResponse, AiError>
+  /**
+   * Adds the specified tool calls to the provided `AiResponse`.
+   *
+   * **NOTE**: With this method, the tool call parameters will be parsed as a
+   * JSON string. If your tool call parameters are already parsed, use
+   * `AiResponse.withToolCallsUnknown`.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (
     self: AiResponse,
     toolCalls: Iterable<{
@@ -897,6 +941,16 @@ export const withToolCallsJson: {
     }>
   ): Effect.Effect<AiResponse, AiError>
 } = dual<
+  /**
+   * Adds the specified tool calls to the provided `AiResponse`.
+   *
+   * **NOTE**: With this method, the tool call parameters will be parsed as a
+   * JSON string. If your tool call parameters are already parsed, use
+   * `AiResponse.withToolCallsUnknown`.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (
     toolCalls: Iterable<{
       readonly id: string
@@ -904,6 +958,16 @@ export const withToolCallsJson: {
       readonly params: string
     }>
   ) => (self: AiResponse) => Effect.Effect<AiResponse, AiError>,
+  /**
+   * Adds the specified tool calls to the provided `AiResponse`.
+   *
+   * **NOTE**: With this method, the tool call parameters will be parsed as a
+   * JSON string. If your tool call parameters are already parsed, use
+   * `AiResponse.withToolCallsUnknown`.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (
     self: AiResponse,
     toolCalls: Iterable<{

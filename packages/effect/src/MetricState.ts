@@ -172,7 +172,15 @@ export declare namespace MetricState {
  * @category constructors
  */
 export const counter: {
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   (count: number): MetricState.Counter<number>
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   (count: bigint): MetricState.Counter<bigint>
 } = internal.counter
 
@@ -187,7 +195,15 @@ export const frequency: (occurrences: ReadonlyMap<string, number>) => MetricStat
  * @category constructors
  */
 export const gauge: {
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   (count: number): MetricState.Gauge<number>
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   (count: bigint): MetricState.Gauge<bigint>
 } = internal.gauge
 

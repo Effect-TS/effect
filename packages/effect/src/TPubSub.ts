@@ -132,7 +132,21 @@ export const isShutdown: <A>(self: TPubSub<A>) => STM.STM<boolean> = internal.is
  * @category mutations
  */
 export const publish: {
+  /**
+   * Publishes a message to the `TPubSub`, returning whether the message was published
+   * to the `TPubSub`.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TPubSub<A>) => STM.STM<boolean>
+  /**
+   * Publishes a message to the `TPubSub`, returning whether the message was published
+   * to the `TPubSub`.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TPubSub<A>, value: A): STM.STM<boolean>
 } = internal.publish
 
@@ -144,7 +158,21 @@ export const publish: {
  * @category mutations
  */
 export const publishAll: {
+  /**
+   * Publishes all of the specified messages to the `TPubSub`, returning whether they
+   * were published to the `TPubSub`.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(iterable: Iterable<A>): (self: TPubSub<A>) => STM.STM<boolean>
+  /**
+   * Publishes all of the specified messages to the `TPubSub`, returning whether they
+   * were published to the `TPubSub`.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TPubSub<A>, iterable: Iterable<A>): STM.STM<boolean>
 } = internal.publishAll
 

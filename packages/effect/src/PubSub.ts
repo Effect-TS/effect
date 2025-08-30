@@ -155,7 +155,21 @@ export const awaitShutdown: <A>(self: PubSub<A>) => Effect.Effect<void> = intern
  * @category utils
  */
 export const publish: {
+  /**
+   * Publishes a message to the `PubSub`, returning whether the message was published
+   * to the `PubSub`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: PubSub<A>) => Effect.Effect<boolean>
+  /**
+   * Publishes a message to the `PubSub`, returning whether the message was published
+   * to the `PubSub`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: PubSub<A>, value: A): Effect.Effect<boolean>
 } = internal.publish
 
@@ -167,7 +181,21 @@ export const publish: {
  * @category utils
  */
 export const publishAll: {
+  /**
+   * Publishes all of the specified messages to the `PubSub`, returning whether they
+   * were published to the `PubSub`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(elements: Iterable<A>): (self: PubSub<A>) => Effect.Effect<boolean>
+  /**
+   * Publishes all of the specified messages to the `PubSub`, returning whether they
+   * were published to the `PubSub`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: PubSub<A>, elements: Iterable<A>): Effect.Effect<boolean>
 } = internal.publishAll
 

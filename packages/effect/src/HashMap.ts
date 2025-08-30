@@ -95,7 +95,15 @@ export declare namespace HashMap {
  * @category refinements
  */
 export const isHashMap: {
+  /**
+   * @since 2.0.0
+   * @category refinements
+   */
   <K, V>(u: Iterable<readonly [K, V]>): u is HashMap<K, V>
+  /**
+   * @since 2.0.0
+   * @category refinements
+   */
   (u: unknown): u is HashMap<unknown, unknown>
 } = HM.isHashMap
 
@@ -144,7 +152,21 @@ export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = HM.isEmpty
  * @category elements
  */
 export const get: {
+  /**
+   * Safely lookup the value for the specified key in the `HashMap` using the
+   * internal hashing function.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K>(key: K1): <V>(self: HashMap<K, V>) => Option<V>
+  /**
+   * Safely lookup the value for the specified key in the `HashMap` using the
+   * internal hashing function.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1): Option<V>
 } = HM.get
 
@@ -155,7 +177,19 @@ export const get: {
  * @category elements
  */
 export const getHash: {
+  /**
+   * Lookup the value for the specified key in the `HashMap` using a custom hash.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K>(key: K1, hash: number): <V>(self: HashMap<K, V>) => Option<V>
+  /**
+   * Lookup the value for the specified key in the `HashMap` using a custom hash.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number): Option<V>
 } = HM.getHash
 
@@ -167,7 +201,21 @@ export const getHash: {
  * @category unsafe
  */
 export const unsafeGet: {
+  /**
+   * Unsafely lookup the value for the specified key in the `HashMap` using the
+   * internal hashing function.
+   *
+   * @since 2.0.0
+   * @category unsafe
+   */
   <K1 extends K, K>(key: K1): <V>(self: HashMap<K, V>) => V
+  /**
+   * Unsafely lookup the value for the specified key in the `HashMap` using the
+   * internal hashing function.
+   *
+   * @since 2.0.0
+   * @category unsafe
+   */
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1): V
 } = HM.unsafeGet
 
@@ -178,7 +226,19 @@ export const unsafeGet: {
  * @category elements
  */
 export const has: {
+  /**
+   * Checks if the specified key has an entry in the `HashMap`.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K>(key: K1): <K, V>(self: HashMap<K, V>) => boolean
+  /**
+   * Checks if the specified key has an entry in the `HashMap`.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1): boolean
 } = HM.has
 
@@ -190,7 +250,21 @@ export const has: {
  * @category elements
  */
 export const hasHash: {
+  /**
+   * Checks if the specified key has an entry in the `HashMap` using a custom
+   * hash.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K>(key: K1, hash: number): <V>(self: HashMap<K, V>) => boolean
+  /**
+   * Checks if the specified key has an entry in the `HashMap` using a custom
+   * hash.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <K1 extends K, K, V>(self: HashMap<K, V>, key: K1, hash: number): boolean
 } = HM.hasHash
 
@@ -211,8 +285,43 @@ export const hasHash: {
  * @category elements
  */
 export const hasBy: {
+  /**
+   * Checks if an element matching the given predicate exists in the given `HashMap`.
+   *
+   * @example
+   * ```ts
+   * import { HashMap } from "effect"
+   *
+   * const hm = HashMap.make([1, 'a'])
+   * HashMap.hasBy(hm, (value, key) => value === 'a' && key === 1); // -> true
+   * HashMap.hasBy(hm, (value) => value === 'b'); // -> false
+   *
+   * ```
+   *
+   * @since 3.16.0
+   * @category elements
+   */
   <K, V>(predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): (self: HashMap<K, V>) => boolean
-  <K, V>(self: HashMap<K, V>, predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): boolean
+  /**
+   * Checks if an element matching the given predicate exists in the given `HashMap`.
+   *
+   * @example
+   * ```ts
+   * import { HashMap } from "effect"
+   *
+   * const hm = HashMap.make([1, 'a'])
+   * HashMap.hasBy(hm, (value, key) => value === 'a' && key === 1); // -> true
+   * HashMap.hasBy(hm, (value) => value === 'b'); // -> false
+   *
+   * ```
+   *
+   * @since 3.16.0
+   * @category elements
+   */
+  <K, V>(
+   self: HashMap<K, V>,
+   predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean
+  ): boolean
 } = HM.hasBy
 
 /**
@@ -222,7 +331,19 @@ export const hasBy: {
  * @since 2.0.0
  */
 export const set: {
+  /**
+   * Sets the specified key to the specified value using the internal hashing
+   * function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, value: V): (self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Sets the specified key to the specified value using the internal hashing
+   * function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, key: K, value: V): HashMap<K, V>
 } = HM.set
 
@@ -299,8 +420,43 @@ export const size: <K, V>(self: HashMap<K, V>) => number = HM.size
  * @category folding
  */
 export const countBy: {
+  /**
+   * Counts all the element of the given HashMap that pass the given predicate
+   *
+   * **Example**
+   *
+   * ```ts
+   * import { HashMap } from "effect"
+   *
+   * const map = HashMap.make([1, "a"], [2, "b"], [3, "c"])
+   * const result = HashMap.countBy(map, (_v, key) => key % 2 === 1)
+   * console.log(result) // 2
+   * ```
+   *
+   * @since 3.17.0
+   * @category folding
+   */
   <K, V>(predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): (self: HashMap<K, V>) => number
-  <K, V>(self: HashMap<K, V>, predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): number
+  /**
+   * Counts all the element of the given HashMap that pass the given predicate
+   *
+   * **Example**
+   *
+   * ```ts
+   * import { HashMap } from "effect"
+   *
+   * const map = HashMap.make([1, "a"], [2, "b"], [3, "c"])
+   * const result = HashMap.countBy(map, (_v, key) => key % 2 === 1)
+   * console.log(result) // 2
+   * ```
+   *
+   * @since 3.17.0
+   * @category folding
+   */
+  <K, V>(
+   self: HashMap<K, V>,
+   predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean
+  ): number
 } = HM.countBy
 
 /**
@@ -323,7 +479,17 @@ export const endMutation: <K, V>(self: HashMap<K, V>) => HashMap<K, V> = HM.endM
  * @since 2.0.0
  */
 export const mutate: {
+  /**
+   * Mutates the `HashMap` within the context of the provided function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(f: (self: HashMap<K, V>) => void): (self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Mutates the `HashMap` within the context of the provided function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, f: (self: HashMap<K, V>) => void): HashMap<K, V>
 } = HM.mutate
 
@@ -338,7 +504,27 @@ export const mutate: {
  * @since 2.0.0
  */
 export const modifyAt: {
+  /**
+   * Set or remove the specified key in the `HashMap` using the specified
+   * update function. The value of the specified key will be computed using the
+   * provided hash.
+   *
+   * The update function will be invoked with the current value of the key if it
+   * exists, or `None` if no such value exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, f: HashMap.UpdateFn<V>): (self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Set or remove the specified key in the `HashMap` using the specified
+   * update function. The value of the specified key will be computed using the
+   * provided hash.
+   *
+   * The update function will be invoked with the current value of the key if it
+   * exists, or `None` if no such value exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, key: K, f: HashMap.UpdateFn<V>): HashMap<K, V>
 } = HM.modifyAt
 
@@ -355,7 +541,31 @@ export const modifyAt: {
  * @since 2.0.0
  */
 export const modifyHash: {
+  /**
+   * Alter the value of the specified key in the `HashMap` using the specified
+   * update function. The value of the specified key will be computed using the
+   * provided hash.
+   *
+   * The update function will be invoked with the current value of the key if it
+   * exists, or `None` if no such value exists.
+   *
+   * This function will always either update or insert a value into the `HashMap`.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, hash: number, f: HashMap.UpdateFn<V>): (self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Alter the value of the specified key in the `HashMap` using the specified
+   * update function. The value of the specified key will be computed using the
+   * provided hash.
+   *
+   * The update function will be invoked with the current value of the key if it
+   * exists, or `None` if no such value exists.
+   *
+   * This function will always either update or insert a value into the `HashMap`.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, key: K, hash: number, f: HashMap.UpdateFn<V>): HashMap<K, V>
 } = HM.modifyHash
 
@@ -365,7 +575,17 @@ export const modifyHash: {
  * @since 2.0.0
  */
 export const modify: {
+  /**
+   * Updates the value of the specified key within the `HashMap` if it exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(key: K, f: (v: V) => V): (self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Updates the value of the specified key within the `HashMap` if it exists.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, key: K, f: (v: V) => V): HashMap<K, V>
 } = HM.modify
 
@@ -375,7 +595,17 @@ export const modify: {
  * @since 2.0.0
  */
 export const union: {
+  /**
+   * Performs a union of this `HashMap` and that `HashMap`.
+   *
+   * @since 2.0.0
+   */
   <K1, V1>(that: HashMap<K1, V1>): <K0, V0>(self: HashMap<K0, V0>) => HashMap<K1 | K0, V1 | V0>
+  /**
+   * Performs a union of this `HashMap` and that `HashMap`.
+   *
+   * @since 2.0.0
+   */
   <K0, V0, K1, V1>(self: HashMap<K0, V0>, that: HashMap<K1, V1>): HashMap<K0 | K1, V0 | V1>
 } = HM.union
 
@@ -386,7 +616,19 @@ export const union: {
  * @since 2.0.0
  */
 export const remove: {
+  /**
+   * Remove the entry for the specified key in the `HashMap` using the internal
+   * hashing function.
+   *
+   * @since 2.0.0
+   */
   <K>(key: K): <V>(self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Remove the entry for the specified key in the `HashMap` using the internal
+   * hashing function.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, key: K): HashMap<K, V>
 } = HM.remove
 
@@ -396,7 +638,17 @@ export const remove: {
  * @since 2.0.0
  */
 export const removeMany: {
+  /**
+   * Removes all entries in the `HashMap` which have the specified keys.
+   *
+   * @since 2.0.0
+   */
   <K>(keys: Iterable<K>): <V>(self: HashMap<K, V>) => HashMap<K, V>
+  /**
+   * Removes all entries in the `HashMap` which have the specified keys.
+   *
+   * @since 2.0.0
+   */
   <K, V>(self: HashMap<K, V>, keys: Iterable<K>): HashMap<K, V>
 } = HM.removeMany
 
@@ -407,7 +659,19 @@ export const removeMany: {
  * @category mapping
  */
 export const map: {
+  /**
+   * Maps over the entries of the `HashMap` using the specified function.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, V, K>(f: (value: V, key: K) => A): (self: HashMap<K, V>) => HashMap<K, A>
+  /**
+   * Maps over the entries of the `HashMap` using the specified function.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <K, V, A>(self: HashMap<K, V>, f: (value: V, key: K) => A): HashMap<K, A>
 } = HM.map
 
@@ -420,7 +684,23 @@ export const map: {
  * @category sequencing
  */
 export const flatMap: {
+  /**
+   * Chains over the entries of the `HashMap` using the specified function.
+   *
+   * **NOTE**: the hash and equal of both maps have to be the same.
+   *
+   * @since 2.0.0
+   * @category sequencing
+   */
   <A, K, B>(f: (value: A, key: K) => HashMap<K, B>): (self: HashMap<K, A>) => HashMap<K, B>
+  /**
+   * Chains over the entries of the `HashMap` using the specified function.
+   *
+   * **NOTE**: the hash and equal of both maps have to be the same.
+   *
+   * @since 2.0.0
+   * @category sequencing
+   */
   <K, A, B>(self: HashMap<K, A>, f: (value: A, key: K) => HashMap<K, B>): HashMap<K, B>
 } = HM.flatMap
 
@@ -431,7 +711,19 @@ export const flatMap: {
  * @category traversing
  */
 export const forEach: {
+  /**
+   * Applies the specified function to the entries of the `HashMap`.
+   *
+   * @since 2.0.0
+   * @category traversing
+   */
   <V, K>(f: (value: V, key: K) => void): (self: HashMap<K, V>) => void
+  /**
+   * Applies the specified function to the entries of the `HashMap`.
+   *
+   * @since 2.0.0
+   * @category traversing
+   */
   <V, K>(self: HashMap<K, V>, f: (value: V, key: K) => void): void
 } = HM.forEach
 
@@ -442,7 +734,19 @@ export const forEach: {
  * @category folding
  */
 export const reduce: {
+  /**
+   * Reduces the specified state over the entries of the `HashMap`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, V, K>(zero: Z, f: (accumulator: Z, value: V, key: K) => Z): (self: HashMap<K, V>) => Z
+  /**
+   * Reduces the specified state over the entries of the `HashMap`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <K, V, Z>(self: HashMap<K, V>, zero: Z, f: (accumulator: Z, value: V, key: K) => Z): Z
 } = HM.reduce
 
@@ -453,9 +757,33 @@ export const reduce: {
  * @category filtering
  */
 export const filter: {
+  /**
+   * Filters entries out of a `HashMap` using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
   <K, A, B extends A>(f: (a: NoInfer<A>, k: K) => a is B): (self: HashMap<K, A>) => HashMap<K, B>
+  /**
+   * Filters entries out of a `HashMap` using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
   <K, A>(f: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => HashMap<K, A>
+  /**
+   * Filters entries out of a `HashMap` using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
   <K, A, B extends A>(self: HashMap<K, A>, f: (a: A, k: K) => a is B): HashMap<K, B>
+  /**
+   * Filters entries out of a `HashMap` using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
   <K, A>(self: HashMap<K, A>, f: (a: A, k: K) => boolean): HashMap<K, A>
 } = HM.filter
 
@@ -475,7 +803,21 @@ export const compact: <K, A>(self: HashMap<K, Option<A>>) => HashMap<K, A> = HM.
  * @category filtering
  */
 export const filterMap: {
+  /**
+   * Maps over the entries of the `HashMap` using the specified partial function
+   * and filters out `None` values.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
   <A, K, B>(f: (value: A, key: K) => Option<B>): (self: HashMap<K, A>) => HashMap<K, B>
+  /**
+   * Maps over the entries of the `HashMap` using the specified partial function
+   * and filters out `None` values.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
   <K, A, B>(self: HashMap<K, A>, f: (value: A, key: K) => Option<B>): HashMap<K, B>
 } = HM.filterMap
 
@@ -487,9 +829,37 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const findFirst: {
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <K, A, B extends A>(predicate: (a: NoInfer<A>, k: K) => a is B): (self: HashMap<K, A>) => Option<[K, B]>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => Option<[K, A]>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <K, A, B extends A>(self: HashMap<K, A>, predicate: (a: A, k: K) => a is B): Option<[K, B]>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): Option<[K, A]>
 } = HM.findFirst
 
@@ -500,7 +870,19 @@ export const findFirst: {
  * @category elements
  */
 export const some: {
+  /**
+   * Checks if any entry in a hashmap meets a specific condition.
+   *
+   * @since 3.13.0
+   * @category elements
+   */
   <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => boolean
+  /**
+   * Checks if any entry in a hashmap meets a specific condition.
+   *
+   * @since 3.13.0
+   * @category elements
+   */
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): boolean
 } = HM.some
 
@@ -514,6 +896,24 @@ export const some: {
  * @category elements
  */
 export const every: {
+  /**
+   * Checks if all entries in a hashmap meets a specific condition.
+   *
+   * @param self - The hashmap to check.
+   * @param predicate - The condition to test entries (value, key).
+   *
+   * @since 3.14.0
+   * @category elements
+   */
   <K, A>(predicate: (a: NoInfer<A>, k: K) => boolean): (self: HashMap<K, A>) => boolean
+  /**
+   * Checks if all entries in a hashmap meets a specific condition.
+   *
+   * @param self - The hashmap to check.
+   * @param predicate - The condition to test entries (value, key).
+   *
+   * @since 3.14.0
+   * @category elements
+   */
   <K, A>(self: HashMap<K, A>, predicate: (a: A, k: K) => boolean): boolean
 } = HM.every

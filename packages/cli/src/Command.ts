@@ -128,22 +128,31 @@ export declare namespace Command {
  * @category constructors
  */
 export const fromDescriptor: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   (): <A extends { readonly name: string }>(
     command: Descriptor.Command<A>
   ) => Command<A["name"], never, never, A>
 
-  <A extends { readonly name: string }, R, E>(
-    handler: (_: A) => Effect<void, E, R>
-  ): (command: Descriptor.Command<A>) => Command<A["name"], R, E, A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <A extends { readonly name: string }, R, E>(handler: (_: A) => Effect<void, E, R>): (command: Descriptor.Command<A>) => Command<A["name"], R, E, A>
 
-  <A extends { readonly name: string }>(
-    descriptor: Descriptor.Command<A>
-  ): Command<A["name"], never, never, A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <A extends { readonly name: string }>(descriptor: Descriptor.Command<A>): Command<A["name"], never, never, A>
 
-  <A extends { readonly name: string }, R, E>(
-    descriptor: Descriptor.Command<A>,
-    handler: (_: A) => Effect<void, E, R>
-  ): Command<A["name"], R, E, A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <A extends { readonly name: string }, R, E>(descriptor: Descriptor.Command<A>, handler: (_: A) => Effect<void, E, R>): Command<A["name"], R, E, A>
 } = Internal.fromDescriptor
 
 /**
@@ -209,6 +218,10 @@ export const getUsage: <Name extends string, R, E, A>(self: Command<Name, R, E, 
  * @category constructors
  */
 export const make: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <Name extends string>(name: Name): Command<
     Name,
     never,
@@ -216,16 +229,21 @@ export const make: {
     {}
   >
 
-  <Name extends string, const Config extends Command.Config>(
-    name: Name,
-    config: Config
-  ): Command<
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <Name extends string, const Config extends Command.Config>(name: Name, config: Config): Command<
     Name,
     never,
     never,
     Types.Simplify<Command.ParseConfig<Config>>
   >
 
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <Name extends string, const Config extends Command.Config, R, E>(
     name: Name,
     config: Config,
@@ -253,11 +271,17 @@ export const prompt: <Name extends string, A, R, E>(
  * @category combinators
  */
 export const provide: {
-  <A, LR, LE, LA>(
-    layer: Layer<LA, LE, LR> | ((_: A) => Layer<LA, LE, LR>)
-  ): <Name extends string, R, E>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A, LR, LE, LA>(layer: Layer<LA, LE, LR> | ((_: A) => Layer<LA, LE, LR>)): <Name extends string, R, E>(
     self: Command<Name, R, E, A>
   ) => Command<Name, LR | Exclude<R, LA>, LE | E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Name extends string, R, E, A, LR, LE, LA>(
     self: Command<Name, R, E, A>,
     layer: Layer<LA, LE, LR> | ((_: A) => Layer<LA, LE, LR>)
@@ -269,12 +293,17 @@ export const provide: {
  * @category combinators
  */
 export const provideEffect: {
-  <I, S, A, R2, E2>(
-    tag: Tag<I, S>,
-    effect: Effect<S, E2, R2> | ((_: A) => Effect<S, E2, R2>)
-  ): <Name extends string, R, E>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <I, S, A, R2, E2>(tag: Tag<I, S>, effect: Effect<S, E2, R2> | ((_: A) => Effect<S, E2, R2>)): <Name extends string, R, E>(
     self: Command<Name, R, E, A>
   ) => Command<Name, R2 | Exclude<R, I>, E2 | E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Name extends string, R, E, A, I, S, R2, E2>(
     self: Command<Name, R, E, A>,
     tag: Tag<I, S>,
@@ -287,9 +316,15 @@ export const provideEffect: {
  * @category combinators
  */
 export const provideEffectDiscard: {
-  <A, R2, E2, _>(
-    effect: Effect<_, E2, R2> | ((_: A) => Effect<_, E2, R2>)
-  ): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, R2 | R, E2 | E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A, R2, E2, _>(effect: Effect<_, E2, R2> | ((_: A) => Effect<_, E2, R2>)): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, R2 | R, E2 | E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Name extends string, R, E, A, R2, E2, _>(
     self: Command<Name, R, E, A>,
     effect: Effect<_, E2, R2> | ((_: A) => Effect<_, E2, R2>)
@@ -301,15 +336,16 @@ export const provideEffectDiscard: {
  * @category combinators
  */
 export const provideSync: {
-  <I, S, A>(
-    tag: Tag<I, S>,
-    service: S | ((_: A) => S)
-  ): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, Exclude<R, I>, E, A>
-  <Name extends string, R, E, A, I, S>(
-    self: Command<Name, R, E, A>,
-    tag: Tag<I, S>,
-    service: S | ((_: A) => S)
-  ): Command<Name, Exclude<R, I>, E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <I, S, A>(tag: Tag<I, S>, service: S | ((_: A) => S)): <Name extends string, R, E>(self: Command<Name, R, E, A>) => Command<Name, Exclude<R, I>, E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <Name extends string, R, E, A, I, S>(self: Command<Name, R, E, A>, tag: Tag<I, S>, service: S | ((_: A) => S)): Command<Name, Exclude<R, I>, E, A>
 } = Internal.provideSync
 
 /**
@@ -317,9 +353,15 @@ export const provideSync: {
  * @category combinators
  */
 export const transformHandler: {
-  <R, E, A, R2, E2>(
-    f: (effect: Effect<void, E, R>, config: A) => Effect<void, E2, R2>
-  ): <Name extends string>(self: Command<Name, R, E, A>) => Command<Name, R | R2, E | E2, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <R, E, A, R2, E2>(f: (effect: Effect<void, E, R>, config: A) => Effect<void, E2, R2>): <Name extends string>(self: Command<Name, R, E, A>) => Command<Name, R | R2, E | E2, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Name extends string, R, E, A, R2, E2>(
     self: Command<Name, R, E, A>,
     f: (effect: Effect<void, E, R>, config: A) => Effect<void, E2, R2>
@@ -331,13 +373,16 @@ export const transformHandler: {
  * @category combinators
  */
 export const withDescription: {
-  (
-    help: string | HelpDoc
-  ): <Name extends string, R, E, A>(self: Command<Name, R, E, A>) => Command<Name, R, E, A>
-  <Name extends string, R, E, A>(
-    self: Command<Name, R, E, A>,
-    help: string | HelpDoc
-  ): Command<Name, R, E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (help: string | HelpDoc): <Name extends string, R, E, A>(self: Command<Name, R, E, A>) => Command<Name, R, E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <Name extends string, R, E, A>(self: Command<Name, R, E, A>, help: string | HelpDoc): Command<Name, R, E, A>
 } = Internal.withDescription
 
 /**
@@ -345,13 +390,16 @@ export const withDescription: {
  * @category combinators
  */
 export const withHandler: {
-  <A, R, E>(
-    handler: (_: A) => Effect<void, E, R>
-  ): <Name extends string, XR, XE>(self: Command<Name, XR, XE, A>) => Command<Name, R, E, A>
-  <Name extends string, XR, XE, A, R, E>(
-    self: Command<Name, XR, XE, A>,
-    handler: (_: A) => Effect<void, E, R>
-  ): Command<Name, R, E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A, R, E>(handler: (_: A) => Effect<void, E, R>): <Name extends string, XR, XE>(self: Command<Name, XR, XE, A>) => Command<Name, R, E, A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <Name extends string, XR, XE, A, R, E>(self: Command<Name, XR, XE, A>, handler: (_: A) => Effect<void, E, R>): Command<Name, R, E, A>
 } = Internal.withHandler
 
 /**
@@ -359,11 +407,13 @@ export const withHandler: {
  * @category combinators
  */
 export const withSubcommands: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     Subcommand extends readonly [Command<any, any, any, any>, ...Array<Command<any, any, any, any>>]
-  >(
-    subcommands: Subcommand
-  ): <Name extends string, R, E, A>(
+  >(subcommands: Subcommand): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
   ) => Command<
     Name,
@@ -377,16 +427,17 @@ export const withSubcommands: {
       >
     >
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     Name extends string,
     R,
     E,
     A,
     Subcommand extends readonly [Command<any, any, any, any>, ...Array<Command<any, any, any, any>>]
-  >(
-    self: Command<Name, R, E, A>,
-    subcommands: Subcommand
-  ): Command<
+  >(self: Command<Name, R, E, A>, subcommands: Subcommand): Command<
     Name,
     | R
     | Exclude<Effect.Context<ReturnType<Subcommand[number]["handler"]>>, Command.Context<Name>>,
@@ -405,16 +456,21 @@ export const withSubcommands: {
  * @category accessors
  */
 export const wizard: {
-  (
-    prefix: ReadonlyArray<string>,
-    config: CliConfig
-  ): <Name extends string, R, E, A>(
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
+  (prefix: ReadonlyArray<string>, config: CliConfig): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
   ) => Effect<
     Array<string>,
     QuitException | ValidationError,
     FileSystem | Path | Terminal
   >
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     prefix: ReadonlyArray<string>,
@@ -431,11 +487,17 @@ export const wizard: {
  * @category conversions
  */
 export const run: {
-  (
-    config: Omit<CliApp.ConstructorArgs<never>, "command">
-  ): <Name extends string, R, E, A>(
+  /**
+   * @since 1.0.0
+   * @category conversions
+   */
+  (config: Omit<CliApp.ConstructorArgs<never>, "command">): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
   ) => (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
+  /**
+   * @since 1.0.0
+   * @category conversions
+   */
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     config: Omit<CliApp.ConstructorArgs<never>, "command">

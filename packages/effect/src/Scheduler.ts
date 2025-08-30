@@ -348,6 +348,8 @@ export const currentScheduler: FiberRef<Scheduler> = globalValue(
 
 /** @internal */
 export const withScheduler = dual<
+  /** @internal */
   (scheduler: Scheduler) => <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>,
+  /** @internal */
   <A, E, R>(self: Effect<A, E, R>, scheduler: Scheduler) => Effect<A, E, R>
 >(2, (self, scheduler) => core.fiberRefLocally(self, currentScheduler, scheduler))

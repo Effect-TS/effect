@@ -865,7 +865,27 @@ export const vbar: Doc<never> = internal.vbar
  * @category concatenation
  */
 export const cat: {
+  // -----------------------------------------------------------------------------
+  // Concatenation
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `cat` combinator lays out two documents separated by nothing.
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  // -----------------------------------------------------------------------------
+  // Concatenation
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `cat` combinator lays out two documents separated by nothing.
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.cat
 
@@ -940,7 +960,63 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
  * @category concatenation
  */
 export const catWithLine: {
+  /**
+   * The `catWithLine` combinator concatenates two documents by placing a `line`
+   * document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithLine(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  /**
+   * The `catWithLine` combinator concatenates two documents by placing a `line`
+   * document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithLine(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.catWithLine
 
@@ -978,7 +1054,73 @@ export const catWithLine: {
  * @category concatenation
  */
 export const catWithLineBreak: {
+  /**
+   * The `catWithLineBreak` combinator concatenates two documents by placing a
+   * `lineBreak` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithLineBreak(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(Doc.group(doc), { style: "pretty" }),
+   *   "ab"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  /**
+   * The `catWithLineBreak` combinator concatenates two documents by placing a
+   * `lineBreak` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithLineBreak(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(Doc.group(doc), { style: "pretty" }),
+   *   "ab"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.catWithLineBreak
 
@@ -1019,7 +1161,79 @@ export const catWithLineBreak: {
  * @category concatenation
  */
 export const catWithSoftLine: {
+  /**
+   * The `catWithSoftLine` combinator concatenates two documents by placing a
+   * `softLine` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithSoftLine(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "a b"
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 1 }
+   *   }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  /**
+   * The `catWithSoftLine` combinator concatenates two documents by placing a
+   * `softLine` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithSoftLine(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "a b"
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 1 }
+   *   }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.catWithSoftLine
 
@@ -1060,7 +1274,79 @@ export const catWithSoftLine: {
  * @category concatenation
  */
 export const catWithSoftLineBreak: {
+  /**
+   * The `catWithSoftLineBreak` combinator concatenates two documents by
+   * placing a `softLineBreak` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithSoftLineBreak(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "ab"
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 1 }
+   *   }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  /**
+   * The `catWithSoftLineBreak` combinator concatenates two documents by
+   * placing a `softLineBreak` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithSoftLineBreak(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "ab"
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 1 }
+   *   }),
+   *   String.stripMargin(
+   *     `|a
+   *      |b`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.catWithSoftLineBreak
 
@@ -1089,7 +1375,55 @@ export const catWithSoftLineBreak: {
  * @category concatenation
  */
 export const catWithSpace: {
+  /**
+   * The `catWithSpace` combinator concatenates two documents by placing a
+   * `space` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithSpace(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "a b"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  /**
+   * The `catWithSpace` combinator concatenates two documents by placing a
+   * `space` document between them.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   Doc.char("a"),
+   *   Doc.catWithSpace(Doc.char("b"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "a b"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.catWithSpace
 
@@ -1118,7 +1452,55 @@ export const catWithSpace: {
  * @category concatenation
  */
 export const concatWith: {
+  /**
+   * The `concatWith` combinator concatenates all documents in a collection
+   * element-wise with the specified binary function.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   [Doc.char("a"), Doc.char("b")],
+   *   Doc.concatWith((x, y) => Doc.catWithSpace(y)(x))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "a b"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A>(f: (left: Doc<A>, right: Doc<A>) => Doc<A>): (docs: Iterable<Doc<A>>) => Doc<A>
+  /**
+   * The `concatWith` combinator concatenates all documents in a collection
+   * element-wise with the specified binary function.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   *
+   * const doc: Doc.Doc<never> = pipe(
+   *   [Doc.char("a"), Doc.char("b")],
+   *   Doc.concatWith((x, y) => Doc.catWithSpace(y)(x))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "a b"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category concatenation
+   */
   <A>(docs: Iterable<Doc<A>>, f: (left: Doc<A>, right: Doc<A>) => Doc<A>): Doc<A>
 } = internal.concatWith
 
@@ -1419,7 +1801,161 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  * @category alternative layouts
  */
 export const flatAlt: {
+  // -----------------------------------------------------------------------------
+  // Alternative Layouts
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `flatAlt` document will render `left` by default. However, when
+   * `group`ed, `y` will be preferred with `left` as the fallback for cases where
+   * `y` does not fit onto the page.
+   *
+   * **NOTE**:
+   * Users should be careful to ensure that `left` is less wide than `right`.
+   * Otherwise, if `right` ends up not fitting the page, then the layout
+   * algorithms will fall back to an even wider layout.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const open = pipe(Doc.empty, Doc.flatAlt(Doc.text("{ ")))
+   * const close = pipe(Doc.empty, Doc.flatAlt(Doc.text(" }")))
+   * const separator = pipe(Doc.empty, Doc.flatAlt(Doc.text("; ")))
+   *
+   * const prettyDo = <A>(documents: Array<Doc.Doc<A>>): Doc.Doc<A> => {
+   *   return pipe(
+   *     Doc.hsep([
+   *       Doc.text("do"),
+   *       pipe(
+   *         documents,
+   *         Doc.encloseSep(open, close, separator),
+   *         Doc.align
+   *       )
+   *     ]),
+   *     Doc.group
+   *   )
+   * }
+   *
+   * const statements = [
+   *   Doc.text("name:_ <- getArgs"),
+   *   Doc.text("let greet = \"Hello, \" <> name"),
+   *   Doc.text("putStrLn greet")
+   * ]
+   *
+   * // If it fits, then the content is put onto a single line with the `{;}` style
+   * assert.strictEqual(
+   *   pipe(
+   *     prettyDo(statements),
+   *     Doc.render({
+   *       style: "pretty",
+   *       options: { lineWidth: 80 }
+   *     })
+   *   ),
+   *   "do { name:_ <- getArgs; let greet = \"Hello, \" <> name; putStrLn greet }"
+   * )
+   *
+   * // When there is not enough space, the content is broken up onto multiple lines
+   * assert.strictEqual(
+   *   pipe(
+   *     prettyDo(statements),
+   *     Doc.render({
+   *       style: "pretty",
+   *       options: { lineWidth: 10 }
+   *     })
+   *   ),
+   *   String.stripMargin(
+   *     `|do name:_ <- getArgs
+   *      |   let greet = "Hello, " <> name
+   *      |   putStrLn greet`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alternative layouts
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  // -----------------------------------------------------------------------------
+  // Alternative Layouts
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `flatAlt` document will render `left` by default. However, when
+   * `group`ed, `y` will be preferred with `left` as the fallback for cases where
+   * `y` does not fit onto the page.
+   *
+   * **NOTE**:
+   * Users should be careful to ensure that `left` is less wide than `right`.
+   * Otherwise, if `right` ends up not fitting the page, then the layout
+   * algorithms will fall back to an even wider layout.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const open = pipe(Doc.empty, Doc.flatAlt(Doc.text("{ ")))
+   * const close = pipe(Doc.empty, Doc.flatAlt(Doc.text(" }")))
+   * const separator = pipe(Doc.empty, Doc.flatAlt(Doc.text("; ")))
+   *
+   * const prettyDo = <A>(documents: Array<Doc.Doc<A>>): Doc.Doc<A> => {
+   *   return pipe(
+   *     Doc.hsep([
+   *       Doc.text("do"),
+   *       pipe(
+   *         documents,
+   *         Doc.encloseSep(open, close, separator),
+   *         Doc.align
+   *       )
+   *     ]),
+   *     Doc.group
+   *   )
+   * }
+   *
+   * const statements = [
+   *   Doc.text("name:_ <- getArgs"),
+   *   Doc.text("let greet = \"Hello, \" <> name"),
+   *   Doc.text("putStrLn greet")
+   * ]
+   *
+   * // If it fits, then the content is put onto a single line with the `{;}` style
+   * assert.strictEqual(
+   *   pipe(
+   *     prettyDo(statements),
+   *     Doc.render({
+   *       style: "pretty",
+   *       options: { lineWidth: 80 }
+   *     })
+   *   ),
+   *   "do { name:_ <- getArgs; let greet = \"Hello, \" <> name; putStrLn greet }"
+   * )
+   *
+   * // When there is not enough space, the content is broken up onto multiple lines
+   * assert.strictEqual(
+   *   pipe(
+   *     prettyDo(statements),
+   *     Doc.render({
+   *       style: "pretty",
+   *       options: { lineWidth: 10 }
+   *     })
+   *   ),
+   *   String.stripMargin(
+   *     `|do name:_ <- getArgs
+   *      |   let greet = "Hello, " <> name
+   *      |   putStrLn greet`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alternative layouts
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.flatAlt
 
@@ -1428,7 +1964,15 @@ export const flatAlt: {
  * @category alternative layouts
  */
 export const union: {
+  /**
+   * @since 1.0.0
+   * @category alternative layouts
+   */
   <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  /**
+   * @since 1.0.0
+   * @category alternative layouts
+   */
   <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
 } = internal.union
 
@@ -1565,7 +2109,89 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  * @category reactive layouts
  */
 export const width: {
+  /**
+   * The `width` combinator makes the column width of a document available to the
+   * document while rendering.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const annotate = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
+   *   pipe(
+   *     Doc.squareBracketed(doc),
+   *     Doc.width((w) => Doc.text(` <- width: ${w}`))
+   *   )
+   *
+   * const docs = [
+   *   Doc.text("---"),
+   *   Doc.text("------"),
+   *   Doc.indent(Doc.text("---"), 3),
+   *   Doc.vsep([Doc.text("---"), Doc.indent(Doc.text("---"), 4)])
+   * ]
+   *
+   * const doc = Doc.align(Doc.vsep(docs.map(annotate)))
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|[---] <- width: 5
+   *      |[------] <- width: 8
+   *      |[   ---] <- width: 8
+   *      |[---
+   *      |    ---] <- width: 8`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category reactive layouts
+   */
   <A, B>(react: (width: number) => Doc<B>): (self: Doc<A>) => Doc<A | B>
+  /**
+   * The `width` combinator makes the column width of a document available to the
+   * document while rendering.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const annotate = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
+   *   pipe(
+   *     Doc.squareBracketed(doc),
+   *     Doc.width((w) => Doc.text(` <- width: ${w}`))
+   *   )
+   *
+   * const docs = [
+   *   Doc.text("---"),
+   *   Doc.text("------"),
+   *   Doc.indent(Doc.text("---"), 3),
+   *   Doc.vsep([Doc.text("---"), Doc.indent(Doc.text("---"), 4)])
+   * ]
+   *
+   * const doc = Doc.align(Doc.vsep(docs.map(annotate)))
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|[---] <- width: 5
+   *      |[------] <- width: 8
+   *      |[   ---] <- width: 8
+   *      |[---
+   *      |    ---] <- width: 8`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category reactive layouts
+   */
   <A, B>(self: Doc<A>, react: (width: number) => Doc<B>): Doc<A | B>
 } = internal.width
 
@@ -1662,7 +2288,99 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  * @category alignment
  */
 export const nest: {
+  // -----------------------------------------------------------------------------
+  // Alignment
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Lays out a document with the current nesting level (indentation
+   * of the following lines) increased by the specified `indent`.
+   * Negative values are allowed and will decrease the nesting level
+   * accordingly.
+   *
+   * See also:
+   * * `hang`: nest a document relative to the current cursor
+   * position instead of the current nesting level
+   * * `align`: set the nesting level to the current cursor
+   * position
+   * * `indent`: increase the indentation on the spot, padding
+   * any empty space with spaces
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.vsep([
+   *   pipe(Doc.vsep(Doc.words("lorem ipsum dolor")), Doc.nest(4)),
+   *   Doc.text("sit"),
+   *   Doc.text("amet")
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|lorem
+   *      |    ipsum
+   *      |    dolor
+   *      |sit
+   *      |amet`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   (indent: number): <A>(self: Doc<A>) => Doc<A>
+  // -----------------------------------------------------------------------------
+  // Alignment
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Lays out a document with the current nesting level (indentation
+   * of the following lines) increased by the specified `indent`.
+   * Negative values are allowed and will decrease the nesting level
+   * accordingly.
+   *
+   * See also:
+   * * `hang`: nest a document relative to the current cursor
+   * position instead of the current nesting level
+   * * `align`: set the nesting level to the current cursor
+   * position
+   * * `indent`: increase the indentation on the spot, padding
+   * any empty space with spaces
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.vsep([
+   *   pipe(Doc.vsep(Doc.words("lorem ipsum dolor")), Doc.nest(4)),
+   *   Doc.text("sit"),
+   *   Doc.text("amet")
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|lorem
+   *      |    ipsum
+   *      |    dolor
+   *      |sit
+   *      |amet`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   <A>(self: Doc<A>, indent: number): Doc<A>
 } = internal.nest
 
@@ -1752,7 +2470,81 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  * @category alignment
  */
 export const hang: {
+  /**
+   * The `hang` combinator lays out a document with the nesting level set to
+   * the *current column* plus the specified `indent`. Negative values for
+   * `indent` are allowed and decrease the nesting level accordingly.
+   *
+   * This differs from the `nest` combinator, which is based on the *current
+   * nesting level* plus the specified `indent`. When you"re not sure, try the
+   * more efficient combinator (`nest`) first.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("prefix"),
+   *   pipe(Doc.reflow("Indenting these words with hang"), Doc.hang(4))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 24 }
+   *   }),
+   *   String.stripMargin(
+   *     `|prefix Indenting these
+   *      |           words with
+   *      |           hang`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   (indent: number): <A>(self: Doc<A>) => Doc<A>
+  /**
+   * The `hang` combinator lays out a document with the nesting level set to
+   * the *current column* plus the specified `indent`. Negative values for
+   * `indent` are allowed and decrease the nesting level accordingly.
+   *
+   * This differs from the `nest` combinator, which is based on the *current
+   * nesting level* plus the specified `indent`. When you"re not sure, try the
+   * more efficient combinator (`nest`) first.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("prefix"),
+   *   pipe(Doc.reflow("Indenting these words with hang"), Doc.hang(4))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 24 }
+   *   }),
+   *   String.stripMargin(
+   *     `|prefix Indenting these
+   *      |           words with
+   *      |           hang`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   <A>(self: Doc<A>, indent: number): Doc<A>
 } = internal.hang
 
@@ -1790,7 +2582,73 @@ export const hang: {
  * @category alignment
  */
 export const indent: {
+  /**
+   * The `indent` combinator indents a document by the specified `indent`
+   * beginning from the current cursor position.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.hcat([
+   *   Doc.text("prefix"),
+   *   pipe(Doc.reflow("The indent function indents these words!"), Doc.indent(4))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 24 }
+   *   }),
+   *   String.stripMargin(
+   *     `|prefix    The indent
+   *      |          function
+   *      |          indents these
+   *      |          words!`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   (indent: number): <A>(self: Doc<A>) => Doc<A>
+  /**
+   * The `indent` combinator indents a document by the specified `indent`
+   * beginning from the current cursor position.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.hcat([
+   *   Doc.text("prefix"),
+   *   pipe(Doc.reflow("The indent function indents these words!"), Doc.indent(4))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 24 }
+   *   }),
+   *   String.stripMargin(
+   *     `|prefix    The indent
+   *      |          function
+   *      |          indents these
+   *      |          words!`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   <A>(self: Doc<A>, indent: number): Doc<A>
 } = internal.indent
 
@@ -1847,11 +2705,111 @@ export const indent: {
  * @category alignment
  */
 export const encloseSep: {
-  <A, B, C>(
-    left: Doc<A>,
-    right: Doc<B>,
-    sep: Doc<C>
-  ): <D>(docs: Iterable<Doc<D>>) => Doc<A | B | C | D>
+  /**
+   * The `encloseSep` combinator concatenates a collection of documents,
+   * separating each document in the collection using the specified `sep`
+   * document. After concatenation, the resulting document is enclosed by the
+   * specified `left` and `right` documents.
+   *
+   * To place the `sep` document at the end of each entry, see the `punctuate`
+   * combinator.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("list"),
+   *   Doc.align(
+   *     pipe(
+   *       ["1", "20", "300", "4000"].map(
+   *         (n) => n.length === 1 ? Doc.char(n) : Doc.text(n)
+   *       ),
+   *       Doc.encloseSep(Doc.lbracket, Doc.rbracket, Doc.comma)
+   *     )
+   *   )
+   * ])
+   *
+   * // The documents are laid out horizontally if the document fits the page
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "list [1,20,300,4000]"
+   * )
+   *
+   * // Otherwise they are laid out vertically, with separators put in the front
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 10 }
+   *   }),
+   *   String.stripMargin(
+   *     `|list [1
+   *      |     ,20
+   *      |     ,300
+   *      |     ,4000]`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
+  <A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>): <D>(docs: Iterable<Doc<D>>) => Doc<A | B | C | D>
+  /**
+   * The `encloseSep` combinator concatenates a collection of documents,
+   * separating each document in the collection using the specified `sep`
+   * document. After concatenation, the resulting document is enclosed by the
+   * specified `left` and `right` documents.
+   *
+   * To place the `sep` document at the end of each entry, see the `punctuate`
+   * combinator.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("list"),
+   *   Doc.align(
+   *     pipe(
+   *       ["1", "20", "300", "4000"].map(
+   *         (n) => n.length === 1 ? Doc.char(n) : Doc.text(n)
+   *       ),
+   *       Doc.encloseSep(Doc.lbracket, Doc.rbracket, Doc.comma)
+   *     )
+   *   )
+   * ])
+   *
+   * // The documents are laid out horizontally if the document fits the page
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "list [1,20,300,4000]"
+   * )
+   *
+   * // Otherwise they are laid out vertically, with separators put in the front
+   * assert.strictEqual(
+   *   Doc.render(doc, {
+   *     style: "pretty",
+   *     options: { lineWidth: 10 }
+   *   }),
+   *   String.stripMargin(
+   *     `|list [1
+   *      |     ,20
+   *      |     ,300
+   *      |     ,4000]`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category alignment
+   */
   <A, B, C, D>(docs: Iterable<Doc<D>>, left: Doc<A>, right: Doc<B>, sep: Doc<C>): Doc<A | B | C | D>
 } = internal.encloseSep
 
@@ -1958,7 +2916,107 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  * @category filling
  */
 export const fill: {
+  // -----------------------------------------------------------------------------
+  // Filling
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `fill` combinator first lays out the document `x` and then appends
+   * `space`s until the width of the document is equal to the specified `width`.
+   * If the width of `x` is already larger than the specified `width`, nothing is
+   * appended.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * type Signature = [name: string, type: string]
+   *
+   * const signatures: Array<Signature> = [
+   *   ["empty", "Doc"],
+   *   ["nest", "Int -> Doc -> Doc"],
+   *   ["fillSep", "[Doc] -> Doc"]
+   * ]
+   *
+   * const prettySignature = <A>([name, type]: Signature): Doc.Doc<A> =>
+   *   Doc.hsep([
+   *     pipe(Doc.text(name), Doc.fill(5)),
+   *     Doc.text("::"),
+   *     Doc.text(type)
+   *   ])
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("let"),
+   *   Doc.align(Doc.vcat(signatures.map(prettySignature)))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|let empty :: Doc
+   *      |    nest  :: Int -> Doc -> Doc
+   *      |    fillSep :: [Doc] -> Doc`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category filling
+   */
   (w: number): <A>(self: Doc<A>) => Doc<A>
+  // -----------------------------------------------------------------------------
+  // Filling
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `fill` combinator first lays out the document `x` and then appends
+   * `space`s until the width of the document is equal to the specified `width`.
+   * If the width of `x` is already larger than the specified `width`, nothing is
+   * appended.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * type Signature = [name: string, type: string]
+   *
+   * const signatures: Array<Signature> = [
+   *   ["empty", "Doc"],
+   *   ["nest", "Int -> Doc -> Doc"],
+   *   ["fillSep", "[Doc] -> Doc"]
+   * ]
+   *
+   * const prettySignature = <A>([name, type]: Signature): Doc.Doc<A> =>
+   *   Doc.hsep([
+   *     pipe(Doc.text(name), Doc.fill(5)),
+   *     Doc.text("::"),
+   *     Doc.text(type)
+   *   ])
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("let"),
+   *   Doc.align(Doc.vcat(signatures.map(prettySignature)))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|let empty :: Doc
+   *      |    nest  :: Int -> Doc -> Doc
+   *      |    fillSep :: [Doc] -> Doc`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category filling
+   */
   <A>(self: Doc<A>, w: number): Doc<A>
 } = internal.fill
 
@@ -2010,7 +3068,101 @@ export const fill: {
  * @category filling
  */
 export const fillBreak: {
+  /**
+   * The `fillBreak` combinator first lays out the document `x` and then appends
+   * `space`s until the width of the document is equal to the specified `width`.
+   * If the width of `x` is already larger than the specified `width`, the nesting
+   * level is increased by the specified `width` and a `line` is appended.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * type Signature = [name: string, type: string]
+   *
+   * const signatures: Array<Signature> = [
+   *   ["empty", "Doc"],
+   *   ["nest", "Int -> Doc -> Doc"],
+   *   ["fillSep", "[Doc] -> Doc"]
+   * ]
+   *
+   * const prettySignature = <A>([name, type]: Signature): Doc.Doc<A> =>
+   *   Doc.hsep([
+   *     pipe(Doc.text(name), Doc.fillBreak(5)),
+   *     Doc.text("::"),
+   *     Doc.text(type)
+   *   ])
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("let"),
+   *   Doc.align(Doc.vcat(signatures.map(prettySignature)))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|let empty :: Doc
+   *      |    nest  :: Int -> Doc -> Doc
+   *      |    fillSep
+   *      |          :: [Doc] -> Doc`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category filling
+   */
   (w: number): <A>(self: Doc<A>) => Doc<A>
+  /**
+   * The `fillBreak` combinator first lays out the document `x` and then appends
+   * `space`s until the width of the document is equal to the specified `width`.
+   * If the width of `x` is already larger than the specified `width`, the nesting
+   * level is increased by the specified `width` and a `line` is appended.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * type Signature = [name: string, type: string]
+   *
+   * const signatures: Array<Signature> = [
+   *   ["empty", "Doc"],
+   *   ["nest", "Int -> Doc -> Doc"],
+   *   ["fillSep", "[Doc] -> Doc"]
+   * ]
+   *
+   * const prettySignature = <A>([name, type]: Signature): Doc.Doc<A> =>
+   *   Doc.hsep([
+   *     pipe(Doc.text(name), Doc.fillBreak(5)),
+   *     Doc.text("::"),
+   *     Doc.text(type)
+   *   ])
+   *
+   * const doc = Doc.hsep([
+   *   Doc.text("let"),
+   *   Doc.align(Doc.vcat(signatures.map(prettySignature)))
+   * ])
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|let empty :: Doc
+   *      |    nest  :: Int -> Doc -> Doc
+   *      |    fillSep
+   *      |          :: [Doc] -> Doc`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category filling
+   */
   <A>(self: Doc<A>, w: number): Doc<A>
 } = internal.fillBreak
 
@@ -2060,7 +3212,35 @@ export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> = inter
  * @category annotations
  */
 export const annotate: {
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Adds an annotation to a `Doc`. The annotation can then be used by the rendering
+   * algorithm to, for example, add color to certain parts of the output.
+   *
+   * **Note** This function is relevant only for custom formats with their own annotations,
+   * and is not relevant for basic pretty printing.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A>(annotation: A): (self: Doc<A>) => Doc<A>
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Adds an annotation to a `Doc`. The annotation can then be used by the rendering
+   * algorithm to, for example, add color to certain parts of the output.
+   *
+   * **Note** This function is relevant only for custom formats with their own annotations,
+   * and is not relevant for basic pretty printing.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A>(self: Doc<A>, annotation: A): Doc<A>
 } = internal.annotate
 
@@ -2086,7 +3266,49 @@ export const annotate: {
  * @category annotations
  */
 export const alterAnnotations: {
+  /**
+   * Change the annotations of a document. Individual annotations can be removed,
+   * changed, or replaced by multiple ones.
+   *
+   * This is a general function that combines `unAnnotate` and `reAnnotate`, and
+   * is useful for mapping semantic annotations (such as »this is a keyword«) to
+   * display annotations (such as »this is red and underlined«) because some
+   * backends may not care about certain annotations while others may.
+   *
+   * Annotations earlier in the new list will be applied earlier, so returning
+   * `[Bold, Green]` will result in a bold document that contains green text, and
+   * not vice versa.
+   *
+   * Since this traverses the entire document tree, including the parts that are
+   * not rendered (due to other layouts having better fit), it is preferable to
+   * reannotate a document **after** producing the layout by using
+   * `alterAnnotations` from the `SimpleDocStream` module.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(f: (a: A) => Iterable<B>): (self: Doc<A>) => Doc<B>
+  /**
+   * Change the annotations of a document. Individual annotations can be removed,
+   * changed, or replaced by multiple ones.
+   *
+   * This is a general function that combines `unAnnotate` and `reAnnotate`, and
+   * is useful for mapping semantic annotations (such as »this is a keyword«) to
+   * display annotations (such as »this is red and underlined«) because some
+   * backends may not care about certain annotations while others may.
+   *
+   * Annotations earlier in the new list will be applied earlier, so returning
+   * `[Bold, Green]` will result in a bold document that contains green text, and
+   * not vice versa.
+   *
+   * Since this traverses the entire document tree, including the parts that are
+   * not rendered (due to other layouts having better fit), it is preferable to
+   * reannotate a document **after** producing the layout by using
+   * `alterAnnotations` from the `SimpleDocStream` module.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(self: Doc<A>, f: (a: A) => Iterable<B>): Doc<B>
 } = internal.alterAnnotations
 
@@ -2102,7 +3324,29 @@ export const alterAnnotations: {
  * @category annotations
  */
 export const reAnnotate: {
+  /**
+   * Changes the annotation of a document. Useful for modifying documents embedded
+   * with one form of annotation with a more general annotation.
+   *
+   * **Note** that with each invocation, the entire document tree is traversed.
+   * If possible, it is preferable to reannotate a document after producing the
+   * layout using `reAnnotateS`.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(f: (a: A) => B): (self: Doc<A>) => Doc<B>
+  /**
+   * Changes the annotation of a document. Useful for modifying documents embedded
+   * with one form of annotation with a more general annotation.
+   *
+   * **Note** that with each invocation, the entire document tree is traversed.
+   * If possible, it is preferable to reannotate a document after producing the
+   * layout using `reAnnotateS`.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(self: Doc<A>, f: (a: A) => B): Doc<B>
 } = internal.reAnnotate
 
@@ -2127,40 +3371,56 @@ export const unAnnotate: <A>(self: Doc<A>) => Doc<never> = internal.unAnnotate
  * @category folding
  */
 export const match: {
+  // -----------------------------------------------------------------------------
+  // Folding
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, R>(
-    patterns: {
-      readonly Fail: () => R
-      readonly Empty: () => R
-      readonly Char: (char: string) => R
-      readonly Text: (text: string) => R
-      readonly Line: () => R
-      readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
-      readonly Cat: (x: Doc<A>, y: Doc<A>) => R
-      readonly Nest: (indent: number, doc: Doc<A>) => R
-      readonly Union: (x: Doc<A>, y: Doc<A>) => R
-      readonly Column: (react: (position: number) => Doc<A>) => R
-      readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
-      readonly Nesting: (react: (level: number) => Doc<A>) => R
-      readonly Annotated: (annotation: A, doc: Doc<A>) => R
-    }
+   patterns: {
+     readonly Fail: () => R
+     readonly Empty: () => R
+     readonly Char: (char: string) => R
+     readonly Text: (text: string) => R
+     readonly Line: () => R
+     readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
+     readonly Cat: (x: Doc<A>, y: Doc<A>) => R
+     readonly Nest: (indent: number, doc: Doc<A>) => R
+     readonly Union: (x: Doc<A>, y: Doc<A>) => R
+     readonly Column: (react: (position: number) => Doc<A>) => R
+     readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
+     readonly Nesting: (react: (level: number) => Doc<A>) => R
+     readonly Annotated: (annotation: A, doc: Doc<A>) => R
+   }
   ): (self: Doc<A>) => R
+  // -----------------------------------------------------------------------------
+  // Folding
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, R>(
-    self: Doc<A>,
-    patterns: {
-      readonly Fail: () => R
-      readonly Empty: () => R
-      readonly Char: (char: string) => R
-      readonly Text: (text: string) => R
-      readonly Line: () => R
-      readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
-      readonly Cat: (x: Doc<A>, y: Doc<A>) => R
-      readonly Nest: (indent: number, doc: Doc<A>) => R
-      readonly Union: (x: Doc<A>, y: Doc<A>) => R
-      readonly Column: (react: (position: number) => Doc<A>) => R
-      readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
-      readonly Nesting: (react: (level: number) => Doc<A>) => R
-      readonly Annotated: (annotation: A, doc: Doc<A>) => R
-    }
+   self: Doc<A>,
+   patterns: {
+     readonly Fail: () => R
+     readonly Empty: () => R
+     readonly Char: (char: string) => R
+     readonly Text: (text: string) => R
+     readonly Line: () => R
+     readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
+     readonly Cat: (x: Doc<A>, y: Doc<A>) => R
+     readonly Nest: (indent: number, doc: Doc<A>) => R
+     readonly Union: (x: Doc<A>, y: Doc<A>) => R
+     readonly Column: (react: (position: number) => Doc<A>) => R
+     readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
+     readonly Nesting: (react: (level: number) => Doc<A>) => R
+     readonly Annotated: (annotation: A, doc: Doc<A>) => R
+   }
   ): R
 } = internal.match
 
@@ -2173,7 +3433,23 @@ export const match: {
  * @category rendering
  */
 export const render: {
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category rendering
+   */
   (config: Doc.RenderConfig): <A>(self: Doc<A>) => string
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category rendering
+   */
   <A>(self: Doc<A>, config: Doc.RenderConfig): string
 } = InternalRender.render
 
@@ -2194,7 +3470,23 @@ export const renderStream: <A>(
  * @category combinators
  */
 export const map: {
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => B): (self: Doc<A>) => Doc<B>
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Doc<A>, f: (a: A) => B): Doc<B>
 } = internal.map
 
@@ -2251,7 +3543,63 @@ export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
  * @category utilities
  */
 export const surround: {
+  // -----------------------------------------------------------------------------
+  // Utilities
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `surround` combinator encloses a document in between `left` and `right`
+   * documents.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   *
+   * const doc = pipe(
+   *   Doc.char("-"),
+   *   Doc.surround(Doc.char("A"), Doc.char("Z"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "A-Z"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category utilities
+   */
   <A, B, C>(left: Doc<A>, right: Doc<B>): (self: Doc<C>) => Doc<A | B | C>
+  // -----------------------------------------------------------------------------
+  // Utilities
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The `surround` combinator encloses a document in between `left` and `right`
+   * documents.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   *
+   * const doc = pipe(
+   *   Doc.char("-"),
+   *   Doc.surround(Doc.char("A"), Doc.char("Z"))
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(doc, { style: "pretty" }),
+   *   "A-Z"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category utilities
+   */
   <A, B, C>(self: Doc<C>, left: Doc<A>, right: Doc<B>): Doc<A | B | C>
 } = internal.surround
 
@@ -2431,6 +3779,86 @@ export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
  * @category utilities
  */
 export const punctuate: {
+  /**
+   * The `punctuate` combinator appends the `punctuator` document to all but the
+   * last document in a collection of documents. The separators are places after
+   * the document entries, which can be observed if the result is oriented
+   * vertically.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const docs = pipe(
+   *   Doc.words("lorem ipsum dolor sit amet"),
+   *   Doc.punctuate(Doc.comma)
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(Doc.hsep(docs), { style: "pretty" }),
+   *   "lorem, ipsum, dolor, sit, amet"
+   * )
+   *
+   * // The separators are put at the end of the entries, which can be better
+   * // visualzied if the documents are rendered vertically
+   * assert.strictEqual(
+   *   Doc.render(Doc.vsep(docs), { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|lorem,
+   *      |ipsum,
+   *      |dolor,
+   *      |sit,
+   *      |amet`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category utilities
+   */
   <A, B>(punctuator: Doc<A>): (docs: Iterable<Doc<B>>) => ReadonlyArray<Doc<A | B>>
+  /**
+   * The `punctuate` combinator appends the `punctuator` document to all but the
+   * last document in a collection of documents. The separators are places after
+   * the document entries, which can be observed if the result is oriented
+   * vertically.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import { pipe } from "effect/Function"
+   * import * as String from "effect/String"
+   *
+   * const docs = pipe(
+   *   Doc.words("lorem ipsum dolor sit amet"),
+   *   Doc.punctuate(Doc.comma)
+   * )
+   *
+   * assert.strictEqual(
+   *   Doc.render(Doc.hsep(docs), { style: "pretty" }),
+   *   "lorem, ipsum, dolor, sit, amet"
+   * )
+   *
+   * // The separators are put at the end of the entries, which can be better
+   * // visualzied if the documents are rendered vertically
+   * assert.strictEqual(
+   *   Doc.render(Doc.vsep(docs), { style: "pretty" }),
+   *   String.stripMargin(
+   *     `|lorem,
+   *      |ipsum,
+   *      |dolor,
+   *      |sit,
+   *      |amet`
+   *   )
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category utilities
+   */
   <A, B>(docs: Iterable<Doc<B>>, punctuator: Doc<A>): ReadonlyArray<Doc<A | B>>
 } = internal.punctuate

@@ -222,7 +222,23 @@ export const make: <A, E = never>(
  * @category combinators
  */
 export const into: {
+  /**
+   * Run an `Effect` into a `Mailbox`, where success ends the mailbox and failure
+   * fails the mailbox.
+   *
+   * @since 3.8.0
+   * @experimental
+   * @category combinators
+   */
   <A, E>(self: Mailbox<A, E>): <AX, EX extends E, RX>(effect: Effect<AX, EX, RX>) => Effect<boolean, never, RX>
+  /**
+   * Run an `Effect` into a `Mailbox`, where success ends the mailbox and failure
+   * fails the mailbox.
+   *
+   * @since 3.8.0
+   * @experimental
+   * @category combinators
+   */
   <AX, E, EX extends E, RX, A>(effect: Effect<AX, EX, RX>, self: Mailbox<A, E>): Effect<boolean, never, RX>
 } = internal.into
 
@@ -252,17 +268,31 @@ export const toStream: <A, E>(self: ReadonlyMailbox<A, E>) => Stream<A, E> = int
  * @category conversions
  */
 export const fromStream: {
+  /**
+   * Create a `ReadonlyMailbox` from a `Stream`.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category conversions
+   */
   (
-    options?: {
-      readonly capacity?: number | undefined
-      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
-    }
+   options?: {
+     readonly capacity?: number | undefined
+     readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+   }
   ): <A, E, R>(self: Stream<A, E, R>) => Effect<ReadonlyMailbox<A, E>, never, R | Scope>
+  /**
+   * Create a `ReadonlyMailbox` from a `Stream`.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category conversions
+   */
   <A, E, R>(
-    self: Stream<A, E, R>,
-    options?: {
-      readonly capacity?: number | undefined
-      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
-    }
+   self: Stream<A, E, R>,
+   options?: {
+     readonly capacity?: number | undefined
+     readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+   }
   ): Effect<ReadonlyMailbox<A, E>, never, R | Scope>
 } = internal.fromStream

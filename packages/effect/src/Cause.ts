@@ -978,7 +978,35 @@ export const stripFailures: <E>(self: Cause<E>) => Cause<never> = internal.strip
  * @category Getters
  */
 export const stripSomeDefects: {
+  /**
+   * Removes matching defects from a `Cause` using a partial function, returning
+   * the remainder.
+   *
+   * **Details**
+   *
+   * This function applies a user-defined extraction function to each defect
+   * (`Die`). If the function matches the defect, that defect is removed. If all
+   * defects match, the result is `None`. Otherwise, you get a `Cause` with the
+   * unmatched defects.
+   *
+   * @since 2.0.0
+   * @category Getters
+   */
   (pf: (defect: unknown) => Option.Option<unknown>): <E>(self: Cause<E>) => Option.Option<Cause<E>>
+  /**
+   * Removes matching defects from a `Cause` using a partial function, returning
+   * the remainder.
+   *
+   * **Details**
+   *
+   * This function applies a user-defined extraction function to each defect
+   * (`Die`). If the function matches the defect, that defect is removed. If all
+   * defects match, the result is `None`. Otherwise, you get a `Cause` with the
+   * unmatched defects.
+   *
+   * @since 2.0.0
+   * @category Getters
+   */
   <E>(self: Cause<E>, pf: (defect: unknown) => Option.Option<unknown>): Option.Option<Cause<E>>
 } = internal.stripSomeDefects
 
@@ -997,7 +1025,35 @@ export const stripSomeDefects: {
  * @category Mapping
  */
 export const as: {
+  /**
+   * Replaces any errors in a `Cause` with a provided constant error.
+   *
+   * **Details**
+   *
+   * This function transforms all `Fail` errors into the specified error value,
+   * preserving the structure of the `Cause`. It's useful when you no longer need
+   * the original error details but still want to keep the cause shape.
+   *
+   * @see {@link map} Apply a custom transformation to `Fail` errors
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <E2>(error: E2): <E>(self: Cause<E>) => Cause<E2>
+  /**
+   * Replaces any errors in a `Cause` with a provided constant error.
+   *
+   * **Details**
+   *
+   * This function transforms all `Fail` errors into the specified error value,
+   * preserving the structure of the `Cause`. It's useful when you no longer need
+   * the original error details but still want to keep the cause shape.
+   *
+   * @see {@link map} Apply a custom transformation to `Fail` errors
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <E, E2>(self: Cause<E>, error: E2): Cause<E2>
 } = internal.as
 
@@ -1016,7 +1072,35 @@ export const as: {
  * @category Mapping
  */
 export const map: {
+  /**
+   * Transforms the errors in a `Cause` using a user-provided function.
+   *
+   * **Details**
+   *
+   * This function applies `f` to each `Fail` error while leaving defects (`Die`)
+   * and interruptions untouched. It's useful for changing or simplifying error
+   * types in your effectful workflows.
+   *
+   * @see {@link as} Replace errors with a single constant
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <E, E2>(f: (e: E) => E2): (self: Cause<E>) => Cause<E2>
+  /**
+   * Transforms the errors in a `Cause` using a user-provided function.
+   *
+   * **Details**
+   *
+   * This function applies `f` to each `Fail` error while leaving defects (`Die`)
+   * and interruptions untouched. It's useful for changing or simplifying error
+   * types in your effectful workflows.
+   *
+   * @see {@link as} Replace errors with a single constant
+   *
+   * @since 2.0.0
+   * @category Mapping
+   */
   <E, E2>(self: Cause<E>, f: (e: E) => E2): Cause<E2>
 } = internal.map
 
@@ -1035,7 +1119,35 @@ export const map: {
  * @category Sequencing
  */
 export const flatMap: {
+  /**
+   * Transforms errors in a `Cause` into new causes.
+   *
+   * **Details**
+   *
+   * This function applies a function `f` to each `Fail` error, converting it into
+   * a new `Cause`. This is especially powerful for merging or restructuring error
+   * types while preserving or combining cause information.
+   *
+   * @see {@link map} Apply a simpler transformation to errors
+   *
+   * @since 2.0.0
+   * @category Sequencing
+   */
   <E, E2>(f: (e: E) => Cause<E2>): (self: Cause<E>) => Cause<E2>
+  /**
+   * Transforms errors in a `Cause` into new causes.
+   *
+   * **Details**
+   *
+   * This function applies a function `f` to each `Fail` error, converting it into
+   * a new `Cause`. This is especially powerful for merging or restructuring error
+   * types while preserving or combining cause information.
+   *
+   * @see {@link map} Apply a simpler transformation to errors
+   *
+   * @since 2.0.0
+   * @category Sequencing
+   */
   <E, E2>(self: Cause<E>, f: (e: E) => Cause<E2>): Cause<E2>
 } = internal.flatMap
 
@@ -1047,9 +1159,37 @@ export const flatMap: {
  * @category Sequencing
  */
 export const andThen: {
+  /**
+   * Sequences two `Cause`s. The second `Cause` can be dependent on the result of
+   * the first `Cause`.
+   *
+   * @since 2.0.0
+   * @category Sequencing
+   */
   <E, E2>(f: (e: E) => Cause<E2>): (self: Cause<E>) => Cause<E2>
+  /**
+   * Sequences two `Cause`s. The second `Cause` can be dependent on the result of
+   * the first `Cause`.
+   *
+   * @since 2.0.0
+   * @category Sequencing
+   */
   <E2>(f: Cause<E2>): <E>(self: Cause<E>) => Cause<E2>
+  /**
+   * Sequences two `Cause`s. The second `Cause` can be dependent on the result of
+   * the first `Cause`.
+   *
+   * @since 2.0.0
+   * @category Sequencing
+   */
   <E, E2>(self: Cause<E>, f: (e: E) => Cause<E2>): Cause<E2>
+  /**
+   * Sequences two `Cause`s. The second `Cause` can be dependent on the result of
+   * the first `Cause`.
+   *
+   * @since 2.0.0
+   * @category Sequencing
+   */
   <E, E2>(self: Cause<E>, f: Cause<E2>): Cause<E2>
 } = internal.andThen
 
@@ -1082,7 +1222,31 @@ export const flatten: <E>(self: Cause<Cause<E>>) => Cause<E> = internal.flatten
  * @category Elements
  */
 export const contains: {
+  /**
+   * Checks if the current `Cause` contains or is equal to another `Cause`.
+   *
+   * **Details**
+   *
+   * This function returns `true` if `that` cause is part of or the same as
+   * the current `Cause`. It's useful when you need to check for specific
+   * error patterns or deduplicate repeated failures.
+   *
+   * @since 2.0.0
+   * @category Elements
+   */
   <E2>(that: Cause<E2>): <E>(self: Cause<E>) => boolean
+  /**
+   * Checks if the current `Cause` contains or is equal to another `Cause`.
+   *
+   * **Details**
+   *
+   * This function returns `true` if `that` cause is part of or the same as
+   * the current `Cause`. It's useful when you need to check for specific
+   * error patterns or deduplicate repeated failures.
+   *
+   * @since 2.0.0
+   * @category Elements
+   */
   <E, E2>(self: Cause<E>, that: Cause<E2>): boolean
 } = internal.contains
 
@@ -1144,7 +1308,57 @@ export const squash: <E>(self: Cause<E>) => unknown = core.causeSquash
  * @category Destructors
  */
 export const squashWith: {
+  /**
+   * Extracts the most "important" defect from a `Cause`, transforming failures
+   * into defects using a provided function.
+   *
+   * **Details**
+   *
+   * This function reduces a `Cause` to a single, prioritized defect, while
+   * allowing you to transform recoverable failures into defects through a custom
+   * function. It processes the `Cause` in the following order:
+   *
+   * 1. If the `Cause` contains a failure (e.g., from `Effect.fail`), it applies
+   *    the provided function `f` to the error to transform it into a defect.
+   * 2. If there is no failure, it looks for the first defect (e.g., from
+   *    `Effect.die`) and returns it.
+   * 3. If neither is present and the `Cause` stems from an interruption, it
+   *    returns an `InterruptedException`.
+   *
+   * This function is particularly useful when you need custom handling or
+   * transformation of errors while processing a `Cause`.
+   *
+   * @see {@link squash} Extracts the most "important" defect without transforming failures.
+   *
+   * @since 2.0.0
+   * @category Destructors
+   */
   <E>(f: (error: E) => unknown): (self: Cause<E>) => unknown
+  /**
+   * Extracts the most "important" defect from a `Cause`, transforming failures
+   * into defects using a provided function.
+   *
+   * **Details**
+   *
+   * This function reduces a `Cause` to a single, prioritized defect, while
+   * allowing you to transform recoverable failures into defects through a custom
+   * function. It processes the `Cause` in the following order:
+   *
+   * 1. If the `Cause` contains a failure (e.g., from `Effect.fail`), it applies
+   *    the provided function `f` to the error to transform it into a defect.
+   * 2. If there is no failure, it looks for the first defect (e.g., from
+   *    `Effect.die`) and returns it.
+   * 3. If neither is present and the `Cause` stems from an interruption, it
+   *    returns an `InterruptedException`.
+   *
+   * This function is particularly useful when you need custom handling or
+   * transformation of errors while processing a `Cause`.
+   *
+   * @see {@link squash} Extracts the most "important" defect without transforming failures.
+   *
+   * @since 2.0.0
+   * @category Destructors
+   */
   <E>(self: Cause<E>, f: (error: E) => unknown): unknown
 } = core.causeSquashWith
 
@@ -1170,7 +1384,49 @@ export const squashWith: {
  * @category Elements
  */
 export const find: {
+  /**
+   * Searches a `Cause` using a partial function to extract information.
+   *
+   * **Details**
+   *
+   * This function allows you to search through a `Cause` using a custom partial
+   * function. The partial function is applied to the `Cause`, and if it matches,
+   * the result is returned wrapped in a `Some`. If no match is found, the result
+   * is `None`.
+   *
+   * This is particularly useful when you are only interested in specific types of
+   * errors, defects, or interruption causes within a potentially complex `Cause`
+   * structure. By leveraging a partial function, you can focus on extracting only
+   * the relevant information you care about.
+   *
+   * The partial function should return an `Option` indicating whether it matched
+   * and the value it extracted.
+   *
+   * @since 2.0.0
+   * @category Elements
+   */
   <E, Z>(pf: (cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Option.Option<Z>
+  /**
+   * Searches a `Cause` using a partial function to extract information.
+   *
+   * **Details**
+   *
+   * This function allows you to search through a `Cause` using a custom partial
+   * function. The partial function is applied to the `Cause`, and if it matches,
+   * the result is returned wrapped in a `Some`. If no match is found, the result
+   * is `None`.
+   *
+   * This is particularly useful when you are only interested in specific types of
+   * errors, defects, or interruption causes within a potentially complex `Cause`
+   * structure. By leveraging a partial function, you can focus on extracting only
+   * the relevant information you care about.
+   *
+   * The partial function should return an `Option` indicating whether it matched
+   * and the value it extracted.
+   *
+   * @since 2.0.0
+   * @category Elements
+   */
   <E, Z>(self: Cause<E>, pf: (cause: Cause<E>) => Option.Option<Z>): Option.Option<Z>
 } = internal.find
 
@@ -1196,9 +1452,93 @@ export const find: {
  * @category Filtering
  */
 export const filter: {
+  /**
+   * Preserves parts of a `Cause` that match a given predicate.
+   *
+   * **Details**
+   *
+   * This function allows you to retain only the parts of a `Cause` structure that
+   * match a specified predicate or refinement. Any parts of the `Cause` that do
+   * not match the provided condition are excluded from the result.
+   *
+   * You can use this function in two ways:
+   * - With a `Predicate`: A function that evaluates whether a `Cause` should be
+   *   retained based on its value.
+   * - With a `Refinement`: A more specific predicate that can refine the type of
+   *   the `Cause`.
+   *
+   * This is useful when you need to extract specific types of errors, defects, or
+   * interruptions from a `Cause` while discarding unrelated parts.
+   *
+   * @since 2.0.0
+   * @category Filtering
+   */
   <E, EB extends E>(refinement: Refinement<Cause<NoInfer<E>>, Cause<EB>>): (self: Cause<E>) => Cause<EB>
+  /**
+   * Preserves parts of a `Cause` that match a given predicate.
+   *
+   * **Details**
+   *
+   * This function allows you to retain only the parts of a `Cause` structure that
+   * match a specified predicate or refinement. Any parts of the `Cause` that do
+   * not match the provided condition are excluded from the result.
+   *
+   * You can use this function in two ways:
+   * - With a `Predicate`: A function that evaluates whether a `Cause` should be
+   *   retained based on its value.
+   * - With a `Refinement`: A more specific predicate that can refine the type of
+   *   the `Cause`.
+   *
+   * This is useful when you need to extract specific types of errors, defects, or
+   * interruptions from a `Cause` while discarding unrelated parts.
+   *
+   * @since 2.0.0
+   * @category Filtering
+   */
   <E>(predicate: Predicate<Cause<NoInfer<E>>>): (self: Cause<E>) => Cause<E>
+  /**
+   * Preserves parts of a `Cause` that match a given predicate.
+   *
+   * **Details**
+   *
+   * This function allows you to retain only the parts of a `Cause` structure that
+   * match a specified predicate or refinement. Any parts of the `Cause` that do
+   * not match the provided condition are excluded from the result.
+   *
+   * You can use this function in two ways:
+   * - With a `Predicate`: A function that evaluates whether a `Cause` should be
+   *   retained based on its value.
+   * - With a `Refinement`: A more specific predicate that can refine the type of
+   *   the `Cause`.
+   *
+   * This is useful when you need to extract specific types of errors, defects, or
+   * interruptions from a `Cause` while discarding unrelated parts.
+   *
+   * @since 2.0.0
+   * @category Filtering
+   */
   <E, EB extends E>(self: Cause<E>, refinement: Refinement<Cause<E>, Cause<EB>>): Cause<EB>
+  /**
+   * Preserves parts of a `Cause` that match a given predicate.
+   *
+   * **Details**
+   *
+   * This function allows you to retain only the parts of a `Cause` structure that
+   * match a specified predicate or refinement. Any parts of the `Cause` that do
+   * not match the provided condition are excluded from the result.
+   *
+   * You can use this function in two ways:
+   * - With a `Predicate`: A function that evaluates whether a `Cause` should be
+   *   retained based on its value.
+   * - With a `Refinement`: A more specific predicate that can refine the type of
+   *   the `Cause`.
+   *
+   * This is useful when you need to extract specific types of errors, defects, or
+   * interruptions from a `Cause` while discarding unrelated parts.
+   *
+   * @since 2.0.0
+   * @category Filtering
+   */
   <E>(self: Cause<E>, predicate: Predicate<Cause<E>>): Cause<E>
 } = internal.filter
 
@@ -1230,26 +1570,80 @@ export const filter: {
  * @category Matching
  */
 export const match: {
+  /**
+   * Transforms a `Cause` into a single value using custom handlers for each
+   * possible case.
+   *
+   * **Details**
+   *
+   * This function processes a `Cause` by applying a set of custom handlers to
+   * each possible type of cause: `Empty`, `Fail`, `Die`, `Interrupt`,
+   * `Sequential`, and `Parallel`. The result of this function is a single value
+   * of type `Z`. This function allows you to define exactly how to handle each
+   * part of a `Cause`, whether it's a failure, defect, interruption, or a
+   * combination of these.
+   *
+   * The options parameter provides handlers for:
+   * - `onEmpty`: Handles the case where the cause is `Empty`, meaning no errors
+   *   occurred.
+   * - `onFail`: Processes a failure with an error of type `E`.
+   * - `onDie`: Processes a defect (unexpected error).
+   * - `onInterrupt`: Handles a fiber interruption, providing the `FiberId` of the
+   *   interruption.
+   * - `onSequential`: Combines two sequential causes into a single value of type
+   *   `Z`.
+   * - `onParallel`: Combines two parallel causes into a single value of type `Z`.
+   *
+   * @since 2.0.0
+   * @category Matching
+   */
   <Z, E>(
-    options: {
-      readonly onEmpty: Z
-      readonly onFail: (error: E) => Z
-      readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onSequential: (left: Z, right: Z) => Z
-      readonly onParallel: (left: Z, right: Z) => Z
-    }
+   options: {
+     readonly onEmpty: Z
+     readonly onFail: (error: E) => Z
+     readonly onDie: (defect: unknown) => Z
+     readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+     readonly onSequential: (left: Z, right: Z) => Z
+     readonly onParallel: (left: Z, right: Z) => Z
+   }
   ): (self: Cause<E>) => Z
+  /**
+   * Transforms a `Cause` into a single value using custom handlers for each
+   * possible case.
+   *
+   * **Details**
+   *
+   * This function processes a `Cause` by applying a set of custom handlers to
+   * each possible type of cause: `Empty`, `Fail`, `Die`, `Interrupt`,
+   * `Sequential`, and `Parallel`. The result of this function is a single value
+   * of type `Z`. This function allows you to define exactly how to handle each
+   * part of a `Cause`, whether it's a failure, defect, interruption, or a
+   * combination of these.
+   *
+   * The options parameter provides handlers for:
+   * - `onEmpty`: Handles the case where the cause is `Empty`, meaning no errors
+   *   occurred.
+   * - `onFail`: Processes a failure with an error of type `E`.
+   * - `onDie`: Processes a defect (unexpected error).
+   * - `onInterrupt`: Handles a fiber interruption, providing the `FiberId` of the
+   *   interruption.
+   * - `onSequential`: Combines two sequential causes into a single value of type
+   *   `Z`.
+   * - `onParallel`: Combines two parallel causes into a single value of type `Z`.
+   *
+   * @since 2.0.0
+   * @category Matching
+   */
   <Z, E>(
-    self: Cause<E>,
-    options: {
-      readonly onEmpty: Z
-      readonly onFail: (error: E) => Z
-      readonly onDie: (defect: unknown) => Z
-      readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onSequential: (left: Z, right: Z) => Z
-      readonly onParallel: (left: Z, right: Z) => Z
-    }
+   self: Cause<E>,
+   options: {
+     readonly onEmpty: Z
+     readonly onFail: (error: E) => Z
+     readonly onDie: (defect: unknown) => Z
+     readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
+     readonly onSequential: (left: Z, right: Z) => Z
+     readonly onParallel: (left: Z, right: Z) => Z
+   }
   ): Z
 } = internal.match
 
@@ -1279,8 +1673,62 @@ export const match: {
  * @category Reducing
  */
 export const reduce: {
+  /**
+   * Combines all parts of a `Cause` into a single value by starting with an
+   * initial value.
+   *
+   * **Details**
+   *
+   * This function processes a `Cause` by starting with an initial value (`zero`)
+   * and applying a custom function (`pf`) to combine all elements of the `Cause`
+   * into a single result of type `Z`. The custom function determines how each
+   * part of the `Cause` contributes to the final result. The function can return
+   * an `Option` to either continue combining values or skip specific parts of the
+   * `Cause`.
+   *
+   * This function is useful for tasks such as:
+   * - Aggregating error messages from a `Cause` into a single string.
+   * - Summarizing the structure of a `Cause` into a simplified result.
+   * - Filtering or processing only specific parts of a `Cause`.
+   *
+   * The reduction proceeds in a top-down manner, visiting all nodes in the
+   * `Cause` structure. This gives you complete control over how each part of the
+   * `Cause` contributes to the final result.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
   <Z, E>(zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): (self: Cause<E>) => Z
-  <Z, E>(self: Cause<E>, zero: Z, pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>): Z
+  /**
+   * Combines all parts of a `Cause` into a single value by starting with an
+   * initial value.
+   *
+   * **Details**
+   *
+   * This function processes a `Cause` by starting with an initial value (`zero`)
+   * and applying a custom function (`pf`) to combine all elements of the `Cause`
+   * into a single result of type `Z`. The custom function determines how each
+   * part of the `Cause` contributes to the final result. The function can return
+   * an `Option` to either continue combining values or skip specific parts of the
+   * `Cause`.
+   *
+   * This function is useful for tasks such as:
+   * - Aggregating error messages from a `Cause` into a single string.
+   * - Summarizing the structure of a `Cause` into a simplified result.
+   * - Filtering or processing only specific parts of a `Cause`.
+   *
+   * The reduction proceeds in a top-down manner, visiting all nodes in the
+   * `Cause` structure. This gives you complete control over how each part of the
+   * `Cause` contributes to the final result.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
+  <Z, E>(
+   self: Cause<E>,
+   zero: Z,
+   pf: (accumulator: Z, cause: Cause<E>) => Option.Option<Z>
+  ): Z
 } = internal.reduce
 
 /**
@@ -1307,7 +1755,53 @@ export const reduce: {
  * @category Reducing
  */
 export const reduceWithContext: {
+  /**
+   * Combines all parts of a `Cause` into a single value using a custom reducer
+   * and a context.
+   *
+   * **Details**
+   *
+   * This function allows you to reduce a `Cause` into a single value of type `Z`
+   * using a custom `CauseReducer`. A `CauseReducer` provides methods to handle
+   * specific parts of the `Cause`, such as failures, defects, or interruptions.
+   * Additionally, this function provides access to a `context` value, which can
+   * be used to carry information or maintain state during the reduction process.
+   *
+   * This is particularly useful when the reduction process needs additional
+   * context or configuration, such as:
+   * - Aggregating error details with dynamic formatting.
+   * - Collecting logs or statistics about the `Cause`.
+   * - Performing stateful transformations based on the `context`.
+   *
+   * @see {@link reduce} To reduce a `Cause` without additional context.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
   <C, E, Z>(context: C, reducer: CauseReducer<C, E, Z>): (self: Cause<E>) => Z
+  /**
+   * Combines all parts of a `Cause` into a single value using a custom reducer
+   * and a context.
+   *
+   * **Details**
+   *
+   * This function allows you to reduce a `Cause` into a single value of type `Z`
+   * using a custom `CauseReducer`. A `CauseReducer` provides methods to handle
+   * specific parts of the `Cause`, such as failures, defects, or interruptions.
+   * Additionally, this function provides access to a `context` value, which can
+   * be used to carry information or maintain state during the reduction process.
+   *
+   * This is particularly useful when the reduction process needs additional
+   * context or configuration, such as:
+   * - Aggregating error details with dynamic formatting.
+   * - Collecting logs or statistics about the `Cause`.
+   * - Performing stateful transformations based on the `context`.
+   *
+   * @see {@link reduce} To reduce a `Cause` without additional context.
+   *
+   * @since 2.0.0
+   * @category Reducing
+   */
   <C, E, Z>(self: Cause<E>, context: C, reducer: CauseReducer<C, E, Z>): Z
 } = internal.reduceWithContext
 

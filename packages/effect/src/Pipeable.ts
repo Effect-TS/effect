@@ -554,7 +554,15 @@ const Base: PipeableConstructor = (function() {
  * @category Constructors
  */
 export const Class: {
+  /**
+   * @since 3.15.0
+   * @category Constructors
+   */
   (): PipeableConstructor
+  /**
+   * @since 3.15.0
+   * @category Constructors
+   */
   <TBase extends Ctor>(klass: TBase): TBase & PipeableConstructor
 } = (klass?: Ctor) =>
   klass ?

@@ -159,15 +159,22 @@ export const text: Primitive<string> = InternalPrimitive.text
  * @category combinators
  */
 export const validate: {
-  (
-    value: Option<string>,
-    config: CliConfig
-  ): <A>(self: Primitive<A>) => Effect<A, string, FileSystem>
-  <A>(
-    self: Primitive<A>,
-    value: Option<string>,
-    config: CliConfig
-  ): Effect<A, string, FileSystem>
+  /**
+   * Validates that the specified value, if any, matches the specified primitive
+   * type.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (value: Option<string>, config: CliConfig): <A>(self: Primitive<A>) => Effect<A, string, FileSystem>
+  /**
+   * Validates that the specified value, if any, matches the specified primitive
+   * type.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A>(self: Primitive<A>, value: Option<string>, config: CliConfig): Effect<A, string, FileSystem>
 } = InternalPrimitive.validate
 
 /**
@@ -178,6 +185,20 @@ export const validate: {
  * @category combinators
  */
 export const wizard: {
+  /**
+   * Runs a wizard that will prompt the user for input matching the specified
+   * primitive type.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (help: HelpDoc): <A>(self: Primitive<A>) => Prompt<A>
+  /**
+   * Runs a wizard that will prompt the user for input matching the specified
+   * primitive type.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Primitive<A>, help: HelpDoc): Prompt<A>
 } = InternalPrimitive.wizard

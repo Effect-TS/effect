@@ -72,19 +72,25 @@ export const make = <State>(initialState: State, options?: {
  * @category combinators
  */
 export const addProcedure: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     Req extends Procedure.TaggedRequest.Any,
     State,
     R2
-  >(
-    procedure: Procedure.Procedure<Req, State, R2>
-  ): <
+  >(procedure: Procedure.Procedure<Req, State, R2>): <
     Public extends Procedure.TaggedRequest.Any,
     Private extends Procedure.TaggedRequest.Any,
     R
   >(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Req | Public, Private, R | R2>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     State,
     Public extends Procedure.TaggedRequest.Any,
@@ -120,19 +126,25 @@ export const addProcedure: {
  * @category combinators
  */
 export const addProcedurePrivate: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     Req extends Procedure.TaggedRequest.Any,
     State,
     R2
-  >(
-    procedure: Procedure.Procedure<Req, State, R2>
-  ): <
+  >(procedure: Procedure.Procedure<Req, State, R2>): <
     Public extends Procedure.TaggedRequest.Any,
     Private extends Procedure.TaggedRequest.Any,
     R
   >(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Public, Private | Req, R | R2>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     State,
     Public extends Procedure.TaggedRequest.Any,
@@ -256,11 +268,17 @@ export const addPrivate = <Req extends Procedure.TaggedRequest.Any>(): {
  * @category combinators
  */
 export const withInitialState: {
-  <State>(
-    initialState: Types.NoInfer<State>
-  ): <Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <State>(initialState: Types.NoInfer<State>): <Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
     self: ProcedureList<State, Public, Private, R>
   ) => ProcedureList<State, Public, Private, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <State, Public extends Procedure.TaggedRequest.Any, Private extends Procedure.TaggedRequest.Any, R>(
     self: ProcedureList<State, Public, Private, R>,
     initialState: Types.NoInfer<State>

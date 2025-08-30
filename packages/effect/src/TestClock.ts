@@ -476,7 +476,13 @@ export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<voi
  * @since 2.0.0
  */
 export const adjustWith = dual<
+  /**
+   * @since 2.0.0
+   */
   (duration: Duration.DurationInput) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * @since 2.0.0
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, duration: Duration.DurationInput) => Effect.Effect<A, E, R>
 >(2, (effect, durationInput) => {
   const duration = Duration.decode(durationInput)

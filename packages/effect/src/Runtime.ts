@@ -82,13 +82,25 @@ export interface RunForkOptions {
  * @category execution
  */
 export const runFork: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<A, E>
+  /**
+   * Executes the effect using the provided Scheduler or using the global
+   * Scheduler if not provided
+   *
+   * @since 2.0.0
+   * @category execution
+   */
+  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<A, E>
+  /**
+   * Executes the effect using the provided Scheduler or using the global
+   * Scheduler if not provided
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: RunForkOptions | undefined
+   runtime: Runtime<R>,
+   effect: Effect.Effect<A, E, R>,
+   options?: RunForkOptions | undefined
   ): Fiber.RuntimeFiber<A, E>
 } = internal.unsafeFork
 
@@ -102,7 +114,25 @@ export const runFork: {
  * @category execution
  */
 export const runSyncExit: {
+  /**
+   * Executes the effect synchronously returning the exit.
+   *
+   * This method is effectful and should only be invoked at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): Exit.Exit<A, E>
+  /**
+   * Executes the effect synchronously returning the exit.
+   *
+   * This method is effectful and should only be invoked at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E>
 } = internal.unsafeRunSyncExit
 
@@ -116,7 +146,25 @@ export const runSyncExit: {
  * @category execution
  */
 export const runSync: {
+  /**
+   * Executes the effect synchronously throwing in case of errors or async boundaries.
+   *
+   * This method is effectful and should only be invoked at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): A
+  /**
+   * Executes the effect synchronously throwing in case of errors or async boundaries.
+   *
+   * This method is effectful and should only be invoked at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
 } = internal.unsafeRunSync
 
@@ -139,16 +187,34 @@ export interface RunCallbackOptions<in A, in E = never> extends RunForkOptions {
  * @category execution
  */
 export const runCallback: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(
+  /**
+   * Executes the effect asynchronously, eventually passing the exit value to
+   * the specified callback.
+   *
+   * This method is effectful and should only be invoked at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
+  <R>(runtime: Runtime<R>): <A, E>(
     effect: Effect.Effect<A, E, R>,
     options?: RunCallbackOptions<A, E> | undefined
   ) => (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
+  /**
+   * Executes the effect asynchronously, eventually passing the exit value to
+   * the specified callback.
+   *
+   * This method is effectful and should only be invoked at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: RunCallbackOptions<A, E> | undefined
+   runtime: Runtime<R>,
+   effect: Effect.Effect<A, E, R>,
+   options?: RunCallbackOptions<A, E> | undefined
   ): (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
 } = internal.unsafeRunCallback
 
@@ -164,13 +230,33 @@ export const runCallback: {
  * @category execution
  */
 export const runPromise: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal } | undefined) => Promise<A>
+  /**
+   * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
+   * with the value of the effect once the effect has been executed, or will be
+   * rejected with the first error or exception throw by the effect.
+   *
+   * This method is effectful and should only be used at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
+  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal } | undefined) => Promise<A>
+  /**
+   * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
+   * with the value of the effect once the effect has been executed, or will be
+   * rejected with the first error or exception throw by the effect.
+   *
+   * This method is effectful and should only be used at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: { readonly signal?: AbortSignal } | undefined
+   runtime: Runtime<R>,
+   effect: Effect.Effect<A, E, R>,
+   options?: { readonly signal?: AbortSignal } | undefined
   ): Promise<A>
 } = internal.unsafeRunPromise
 
@@ -185,16 +271,34 @@ export const runPromise: {
  * @category execution
  */
 export const runPromiseExit: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(
+  /**
+   * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
+   * with the `Exit` state of the effect once the effect has been executed.
+   *
+   * This method is effectful and should only be used at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
+  <R>(runtime: Runtime<R>): <A, E>(
     effect: Effect.Effect<A, E, R>,
     options?: { readonly signal?: AbortSignal } | undefined
   ) => Promise<Exit.Exit<A, E>>
+  /**
+   * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
+   * with the `Exit` state of the effect once the effect has been executed.
+   *
+   * This method is effectful and should only be used at the edges of your
+   * program.
+   *
+   * @since 2.0.0
+   * @category execution
+   */
   <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: { readonly signal?: AbortSignal } | undefined
+   runtime: Runtime<R>,
+   effect: Effect.Effect<A, E, R>,
+   options?: { readonly signal?: AbortSignal } | undefined
   ): Promise<Exit.Exit<A, E>>
 } = internal.unsafeRunPromiseExit
 
@@ -278,8 +382,19 @@ export const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure = internal.f
  * @category runtime flags
  */
 export const updateRuntimeFlags: {
+  /**
+   * @since 2.0.0
+   * @category runtime flags
+   */
   (f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): <R>(self: Runtime<R>) => Runtime<R>
-  <R>(self: Runtime<R>, f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): Runtime<R>
+  /**
+   * @since 2.0.0
+   * @category runtime flags
+   */
+  <R>(
+   self: Runtime<R>,
+   f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags
+  ): Runtime<R>
 } = internal.updateRuntimeFlags
 
 /**
@@ -287,7 +402,15 @@ export const updateRuntimeFlags: {
  * @category runtime flags
  */
 export const enableRuntimeFlag: {
+  /**
+   * @since 2.0.0
+   * @category runtime flags
+   */
   (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
+  /**
+   * @since 2.0.0
+   * @category runtime flags
+   */
   <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
 } = internal.enableRuntimeFlag
 
@@ -296,7 +419,15 @@ export const enableRuntimeFlag: {
  * @category runtime flags
  */
 export const disableRuntimeFlag: {
+  /**
+   * @since 2.0.0
+   * @category runtime flags
+   */
   (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
+  /**
+   * @since 2.0.0
+   * @category runtime flags
+   */
   <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
 } = internal.disableRuntimeFlag
 
@@ -305,7 +436,15 @@ export const disableRuntimeFlag: {
  * @category context
  */
 export const updateContext: {
+  /**
+   * @since 2.0.0
+   * @category context
+   */
   <R, R2>(f: (context: Context.Context<R>) => Context.Context<R2>): (self: Runtime<R>) => Runtime<R2>
+  /**
+   * @since 2.0.0
+   * @category context
+   */
   <R, R2>(self: Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>): Runtime<R2>
 } = internal.updateContext
 
@@ -324,7 +463,35 @@ export const updateContext: {
  * ```
  */
 export const provideService: {
+  /**
+   * @since 2.0.0
+   * @category context
+   * @example
+   * ```ts
+   * import { Context, Runtime } from "effect"
+   *
+   * class Name extends Context.Tag("Name")<Name, string>() {}
+   *
+   * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
+   *   Runtime.provideService(Name, "John")
+   * )
+   * ```
+   */
   <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime<R>) => Runtime<I | R>
+  /**
+   * @since 2.0.0
+   * @category context
+   * @example
+   * ```ts
+   * import { Context, Runtime } from "effect"
+   *
+   * class Name extends Context.Tag("Name")<Name, string>() {}
+   *
+   * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
+   *   Runtime.provideService(Name, "John")
+   * )
+   * ```
+   */
   <R, I, S>(self: Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime<R | I>
 } = internal.provideService
 
@@ -333,8 +500,19 @@ export const provideService: {
  * @category fiber refs
  */
 export const updateFiberRefs: {
+  /**
+   * @since 2.0.0
+   * @category fiber refs
+   */
   (f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): <R>(self: Runtime<R>) => Runtime<R>
-  <R>(self: Runtime<R>, f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): Runtime<R>
+  /**
+   * @since 2.0.0
+   * @category fiber refs
+   */
+  <R>(
+   self: Runtime<R>,
+   f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs
+  ): Runtime<R>
 } = internal.updateFiberRefs
 
 /**
@@ -355,7 +533,41 @@ export const updateFiberRefs: {
  * ```
  */
 export const setFiberRef: {
+  /**
+   * @since 2.0.0
+   * @category fiber refs
+   * @example
+   * ```ts
+   * import { Effect, FiberRef, Runtime } from "effect"
+   *
+   * const ref = FiberRef.unsafeMake(0)
+   *
+   * const updatedRuntime = Runtime.defaultRuntime.pipe(
+   *   Runtime.setFiberRef(ref, 1)
+   * )
+   *
+   * // returns 1
+   * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+   * ```
+   */
   <A>(fiberRef: FiberRef.FiberRef<A>, value: A): <R>(self: Runtime<R>) => Runtime<R>
+  /**
+   * @since 2.0.0
+   * @category fiber refs
+   * @example
+   * ```ts
+   * import { Effect, FiberRef, Runtime } from "effect"
+   *
+   * const ref = FiberRef.unsafeMake(0)
+   *
+   * const updatedRuntime = Runtime.defaultRuntime.pipe(
+   *   Runtime.setFiberRef(ref, 1)
+   * )
+   *
+   * // returns 1
+   * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+   * ```
+   */
   <R, A>(self: Runtime<R>, fiberRef: FiberRef.FiberRef<A>, value: A): Runtime<R>
 } = internal.setFiberRef
 
@@ -378,6 +590,42 @@ export const setFiberRef: {
  * ```
  */
 export const deleteFiberRef: {
+  /**
+   * @since 2.0.0
+   * @category fiber refs
+   * @example
+   * ```ts
+   * import { Effect, FiberRef, Runtime } from "effect"
+   *
+   * const ref = FiberRef.unsafeMake(0)
+   *
+   * const updatedRuntime = Runtime.defaultRuntime.pipe(
+   *   Runtime.setFiberRef(ref, 1),
+   *   Runtime.deleteFiberRef(ref)
+   * )
+   *
+   * // returns 0
+   * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+   * ```
+   */
   <A>(fiberRef: FiberRef.FiberRef<A>): <R>(self: Runtime<R>) => Runtime<R>
+  /**
+   * @since 2.0.0
+   * @category fiber refs
+   * @example
+   * ```ts
+   * import { Effect, FiberRef, Runtime } from "effect"
+   *
+   * const ref = FiberRef.unsafeMake(0)
+   *
+   * const updatedRuntime = Runtime.defaultRuntime.pipe(
+   *   Runtime.setFiberRef(ref, 1),
+   *   Runtime.deleteFiberRef(ref)
+   * )
+   *
+   * // returns 0
+   * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+   * ```
+   */
   <R, A>(self: Runtime<R>, fiberRef: FiberRef.FiberRef<A>): Runtime<R>
 } = internal.deleteFiberRef

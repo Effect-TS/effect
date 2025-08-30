@@ -96,12 +96,29 @@ export const isBufferSliding: (self: MergeStrategy) => self is BufferSliding = i
  * @category folding
  */
 export const match: {
-  <A>(options: {
-    readonly onBackPressure: () => A
-    readonly onBufferSliding: () => A
-  }): (self: MergeStrategy) => A
-  <A>(self: MergeStrategy, options: {
-    readonly onBackPressure: () => A
-    readonly onBufferSliding: () => A
-  }): A
+  /**
+   * Folds an `MergeStrategy` into a value of type `A`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
+  <A>(
+   options: {
+     readonly onBackPressure: () => A
+     readonly onBufferSliding: () => A
+   }
+  ): (self: MergeStrategy) => A
+  /**
+   * Folds an `MergeStrategy` into a value of type `A`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
+  <A>(
+   self: MergeStrategy,
+   options: {
+     readonly onBackPressure: () => A
+     readonly onBufferSliding: () => A
+   }
+  ): A
 } = internal.match

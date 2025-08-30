@@ -25,15 +25,38 @@ import type { MatchRecord, Simplify } from "./Types.js"
  * @since 2.0.0
  */
 export const pick: {
-  <Keys extends Array<PropertyKey>>(
-    ...keys: Keys
-  ): <S extends { [K in Keys[number]]?: any }>(
+  /**
+   * Create a new object by picking properties of an existing object.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Struct } from "effect"
+   *
+   * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b")), { a: "a", b: 1 })
+   * assert.deepStrictEqual(Struct.pick({ a: "a", b: 1, c: true }, "a", "b"), { a: "a", b: 1 })
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <Keys extends Array<PropertyKey>>(...keys: Keys): <S extends { [K in Keys[number]]?: any }>(
     s: S
   ) => MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>>
-  <S extends object, Keys extends Array<keyof S>>(
-    s: S,
-    ...keys: Keys
-  ): MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>>
+  /**
+   * Create a new object by picking properties of an existing object.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Struct } from "effect"
+   *
+   * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.pick("a", "b")), { a: "a", b: 1 })
+   * assert.deepStrictEqual(Struct.pick({ a: "a", b: 1, c: true }, "a", "b"), { a: "a", b: 1 })
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <S extends object, Keys extends Array<keyof S>>(s: S, ...keys: Keys): MatchRecord<S, { [K in Keys[number]]?: S[K] }, Simplify<Pick<S, Keys[number]>>>
 } = dual(
   (args) => Predicate.isObject(args[0]),
   <S extends object, Keys extends Array<keyof S>>(s: S, ...keys: Keys) => {
@@ -62,13 +85,36 @@ export const pick: {
  * @since 2.0.0
  */
 export const omit: {
-  <Keys extends Array<PropertyKey>>(
-    ...keys: Keys
-  ): <S extends { [K in Keys[number]]?: any }>(s: S) => Simplify<Omit<S, Keys[number]>>
-  <S extends object, Keys extends Array<keyof S>>(
-    s: S,
-    ...keys: Keys
-  ): Simplify<Omit<S, Keys[number]>>
+  /**
+   * Create a new object by omitting properties of an existing object.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Struct } from "effect"
+   *
+   * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.omit("c")), { a: "a", b: 1 })
+   * assert.deepStrictEqual(Struct.omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <Keys extends Array<PropertyKey>>(...keys: Keys): <S extends { [K in Keys[number]]?: any }>(s: S) => Simplify<Omit<S, Keys[number]>>
+  /**
+   * Create a new object by omitting properties of an existing object.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Struct } from "effect"
+   *
+   * assert.deepStrictEqual(pipe({ a: "a", b: 1, c: true }, Struct.omit("c")), { a: "a", b: 1 })
+   * assert.deepStrictEqual(Struct.omit({ a: "a", b: 1, c: true }, "c"), { a: "a", b: 1 })
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <S extends object, Keys extends Array<keyof S>>(s: S, ...keys: Keys): Simplify<Omit<S, Keys[number]>>
 } = dual(
   (args) => Predicate.isObject(args[0]),
   <S extends object, Keys extends Array<keyof S>>(s: S, ...keys: Keys) => {
@@ -160,7 +206,53 @@ type PartialTransform<O, T> = {
  * @since 2.0.0
  */
 export const evolve: {
+  /**
+   * Transforms the values of a Struct provided a transformation function for each key.
+   * If no transformation function is provided for a key, it will return the original value for that key.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Struct } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     { a: 'a', b: 1, c: 3 },
+   *     Struct.evolve({
+   *       a: (a) => a.length,
+   *       b: (b) => b * 2
+   *     })
+   *   ),
+   *   { a: 1, b: 2, c: 3 }
+   * )
+   * ```
+   *
+   * @since 2.0.0
+   */
   <O, T>(t: PartialTransform<O, T>): (obj: O) => Transformed<O, T>
+  /**
+   * Transforms the values of a Struct provided a transformation function for each key.
+   * If no transformation function is provided for a key, it will return the original value for that key.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Struct } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   pipe(
+   *     { a: 'a', b: 1, c: 3 },
+   *     Struct.evolve({
+   *       a: (a) => a.length,
+   *       b: (b) => b * 2
+   *     })
+   *   ),
+   *   { a: 1, b: 2, c: 3 }
+   * )
+   * ```
+   *
+   * @since 2.0.0
+   */
   <O, T>(obj: O, t: PartialTransform<O, T>): Transformed<O, T>
 } = dual(
   2,

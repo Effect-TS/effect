@@ -541,7 +541,19 @@ export const shutdown: <A>(self: Dequeue<A> | Enqueue<A>) => Effect.Effect<void>
  * @category utils
  */
 export const offer: {
+  /**
+   * Places one value in the queue.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: Enqueue<A>) => Effect.Effect<boolean>
+  /**
+   * Places one value in the queue.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Enqueue<A>, value: A): Effect.Effect<boolean>
 } = internal.offer
 
@@ -552,7 +564,19 @@ export const offer: {
  * @category utils
  */
 export const unsafeOffer: {
+  /**
+   * Places one value in the queue.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: Enqueue<A>) => boolean
+  /**
+   * Places one value in the queue.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Enqueue<A>, value: A): boolean
 } = internal.unsafeOffer
 
@@ -575,7 +599,43 @@ export const unsafeOffer: {
  * @category utils
  */
 export const offerAll: {
+  /**
+   * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
+   * the queue and always returns true. If the queue has reached capacity, then
+   * the fiber performing the `offerAll` will be suspended until there is room
+   * in the queue.
+   *
+   * For Unbounded Queue: Places all values in the queue and returns true.
+   *
+   * For Sliding Queue: uses `Sliding` Strategy If there is room in the queue,
+   * it places the values otherwise it removes the old elements and enqueues the
+   * new ones. Always returns true.
+   *
+   * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
+   * queue but if there is no room it will not enqueue them and return false.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(iterable: Iterable<A>): (self: Enqueue<A>) => Effect.Effect<boolean>
+  /**
+   * For Bounded Queue: uses the `BackPressure` Strategy, places the values in
+   * the queue and always returns true. If the queue has reached capacity, then
+   * the fiber performing the `offerAll` will be suspended until there is room
+   * in the queue.
+   *
+   * For Unbounded Queue: Places all values in the queue and returns true.
+   *
+   * For Sliding Queue: uses `Sliding` Strategy If there is room in the queue,
+   * it places the values otherwise it removes the old elements and enqueues the
+   * new ones. Always returns true.
+   *
+   * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
+   * queue but if there is no room it will not enqueue them and return false.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Enqueue<A>, iterable: Iterable<A>): Effect.Effect<boolean>
 } = internal.offerAll
 
@@ -613,7 +673,19 @@ export const takeAll: <A>(self: Dequeue<A>) => Effect.Effect<Chunk.Chunk<A>> = i
  * @category utils
  */
 export const takeUpTo: {
+  /**
+   * Takes up to max number of values from the queue.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (max: number): <A>(self: Dequeue<A>) => Effect.Effect<Chunk.Chunk<A>>
+  /**
+   * Takes up to max number of values from the queue.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Dequeue<A>, max: number): Effect.Effect<Chunk.Chunk<A>>
 } = internal.takeUpTo
 
@@ -626,7 +698,23 @@ export const takeUpTo: {
  * @category utils
  */
 export const takeBetween: {
+  /**
+   * Takes a number of elements from the queue between the specified minimum and
+   * maximum. If there are fewer than the minimum number of elements available,
+   * suspends until at least the minimum number of elements have been collected.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (min: number, max: number): <A>(self: Dequeue<A>) => Effect.Effect<Chunk.Chunk<A>>
+  /**
+   * Takes a number of elements from the queue between the specified minimum and
+   * maximum. If there are fewer than the minimum number of elements available,
+   * suspends until at least the minimum number of elements have been collected.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Dequeue<A>, min: number, max: number): Effect.Effect<Chunk.Chunk<A>>
 } = internal.takeBetween
 
@@ -639,6 +727,22 @@ export const takeBetween: {
  * @category utils
  */
 export const takeN: {
+  /**
+   * Takes the specified number of elements from the queue. If there are fewer
+   * than the specified number of elements available, it suspends until they
+   * become available.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (n: number): <A>(self: Dequeue<A>) => Effect.Effect<Chunk.Chunk<A>>
+  /**
+   * Takes the specified number of elements from the queue. If there are fewer
+   * than the specified number of elements available, it suspends until they
+   * become available.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Dequeue<A>, n: number): Effect.Effect<Chunk.Chunk<A>>
 } = internal.takeN

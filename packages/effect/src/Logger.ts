@@ -136,13 +136,16 @@ export const addScoped: <A, E, R>(
  * @category mapping
  */
 export const mapInput: {
-  <Message, Message2>(
-    f: (message: Message2) => Message
-  ): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
-  <Output, Message, Message2>(
-    self: Logger<Message, Output>,
-    f: (message: Message2) => Message
-  ): Logger<Message2, Output>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
+  <Message, Message2>(f: (message: Message2) => Message): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
+  <Output, Message, Message2>(self: Logger<Message, Output>, f: (message: Message2) => Message): Logger<Message2, Output>
 } = internal.mapInput
 
 /**
@@ -150,12 +153,18 @@ export const mapInput: {
  * @category mapping
  */
 export const mapInputOptions: {
-  <Message, Message2>(
-    f: (options: Logger.Options<Message2>) => Logger.Options<Message>
-  ): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
+  <Message, Message2>(f: (options: Logger.Options<Message2>) => Logger.Options<Message>): <Output>(self: Logger<Message, Output>) => Logger<Message2, Output>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
   <Output, Message, Message2>(
-    self: Logger<Message, Output>,
-    f: (options: Logger.Options<Message2>) => Logger.Options<Message>
+   self: Logger<Message, Output>,
+   f: (options: Logger.Options<Message2>) => Logger.Options<Message>
   ): Logger<Message2, Output>
 } = internal.mapInputOptions
 
@@ -167,13 +176,22 @@ export const mapInputOptions: {
  * @category filtering
  */
 export const filterLogLevel: {
-  (
-    f: (logLevel: LogLevel.LogLevel) => boolean
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option.Option<Output>>
-  <Message, Output>(
-    self: Logger<Message, Output>,
-    f: (logLevel: LogLevel.LogLevel) => boolean
-  ): Logger<Message, Option.Option<Output>>
+  /**
+   * Returns a version of this logger that only logs messages when the log level
+   * satisfies the specified predicate.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
+  (f: (logLevel: LogLevel.LogLevel) => boolean): <Message, Output>(self: Logger<Message, Output>) => Logger<Message, Option.Option<Output>>
+  /**
+   * Returns a version of this logger that only logs messages when the log level
+   * satisfies the specified predicate.
+   *
+   * @since 2.0.0
+   * @category filtering
+   */
+  <Message, Output>(self: Logger<Message, Output>, f: (logLevel: LogLevel.LogLevel) => boolean): Logger<Message, Option.Option<Output>>
 } = internal.filterLogLevel
 
 /**
@@ -181,13 +199,16 @@ export const filterLogLevel: {
  * @category mapping
  */
 export const map: {
-  <Output, Output2>(
-    f: (output: Output) => Output2
-  ): <Message>(self: Logger<Message, Output>) => Logger<Message, Output2>
-  <Message, Output, Output2>(
-    self: Logger<Message, Output>,
-    f: (output: Output) => Output2
-  ): Logger<Message, Output2>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
+  <Output, Output2>(f: (output: Output) => Output2): <Message>(self: Logger<Message, Output>) => Logger<Message, Output2>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
+  <Message, Output, Output2>(self: Logger<Message, Output>, f: (output: Output) => Output2): Logger<Message, Output2>
 } = internal.map
 
 /**
@@ -223,14 +244,78 @@ export const map: {
  * @category mapping
  */
 export const batched: {
+  /**
+   * Creates a batched logger that groups log messages together and processes them
+   * in intervals.
+   *
+   * @example
+   * ```ts
+   * import { Console, Effect, Logger } from "effect"
+   *
+   * const LoggerLive = Logger.replaceScoped(
+   *   Logger.defaultLogger,
+   *   Logger.logfmtLogger.pipe(
+   *     Logger.batched("500 millis", (messages) => Console.log("BATCH", `[\n${messages.join("\n")}\n]`))
+   *   )
+   * )
+   *
+   * const program = Effect.gen(function*() {
+   *   yield* Effect.log("one")
+   *   yield* Effect.log("two")
+   *   yield* Effect.log("three")
+   * }).pipe(Effect.provide(LoggerLive))
+   *
+   * Effect.runFork(program)
+   * // BATCH [
+   * // timestamp=... level=INFO fiber=#0 message=one
+   * // timestamp=... level=INFO fiber=#0 message=two
+   * // timestamp=... level=INFO fiber=#0 message=three
+   * // ]
+   * ```
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <Output, R>(
-    window: DurationInput,
-    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+   window: DurationInput,
+   f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
   ): <Message>(self: Logger<Message, Output>) => Effect<Logger<Message, void>, never, R | Scope>
+  /**
+   * Creates a batched logger that groups log messages together and processes them
+   * in intervals.
+   *
+   * @example
+   * ```ts
+   * import { Console, Effect, Logger } from "effect"
+   *
+   * const LoggerLive = Logger.replaceScoped(
+   *   Logger.defaultLogger,
+   *   Logger.logfmtLogger.pipe(
+   *     Logger.batched("500 millis", (messages) => Console.log("BATCH", `[\n${messages.join("\n")}\n]`))
+   *   )
+   * )
+   *
+   * const program = Effect.gen(function*() {
+   *   yield* Effect.log("one")
+   *   yield* Effect.log("two")
+   *   yield* Effect.log("three")
+   * }).pipe(Effect.provide(LoggerLive))
+   *
+   * Effect.runFork(program)
+   * // BATCH [
+   * // timestamp=... level=INFO fiber=#0 message=one
+   * // timestamp=... level=INFO fiber=#0 message=two
+   * // timestamp=... level=INFO fiber=#0 message=three
+   * // ]
+   * ```
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <Message, Output, R>(
-    self: Logger<Message, Output>,
-    window: DurationInput,
-    f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
+   self: Logger<Message, Output>,
+   window: DurationInput,
+   f: (messages: Array<Types.NoInfer<Output>>) => Effect<void, never, R>
   ): Effect<Logger<Message, void>, never, Scope | R>
 } = fiberRuntime.batchedLogger
 
@@ -289,7 +374,15 @@ export const remove: <A>(logger: Logger<unknown, A>) => Layer.Layer<never> = cir
  * @category context
  */
 export const replace: {
+  /**
+   * @since 2.0.0
+   * @category context
+   */
   <B>(that: Logger<unknown, B>): <A>(self: Logger<unknown, A>) => Layer.Layer<never>
+  /**
+   * @since 2.0.0
+   * @category context
+   */
   <A, B>(self: Logger<unknown, A>, that: Logger<unknown, B>): Layer.Layer<never>
 } = circular.replaceLogger
 
@@ -298,7 +391,15 @@ export const replace: {
  * @category context
  */
 export const replaceEffect: {
+  /**
+   * @since 2.0.0
+   * @category context
+   */
   <B, E, R>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, R>
+  /**
+   * @since 2.0.0
+   * @category context
+   */
   <A, B, E, R>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<never, E, R>
 } = circular.replaceLoggerEffect
 
@@ -307,13 +408,16 @@ export const replaceEffect: {
  * @category context
  */
 export const replaceScoped: {
-  <B, E, R>(
-    that: Effect<Logger<unknown, B>, E, R>
-  ): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, Exclude<R, Scope>>
-  <A, B, E, R>(
-    self: Logger<unknown, A>,
-    that: Effect<Logger<unknown, B>, E, R>
-  ): Layer.Layer<never, E, Exclude<R, Scope>>
+  /**
+   * @since 2.0.0
+   * @category context
+   */
+  <B, E, R>(that: Effect<Logger<unknown, B>, E, R>): <A>(self: Logger<unknown, A>) => Layer.Layer<never, E, Exclude<R, Scope>>
+  /**
+   * @since 2.0.0
+   * @category context
+   */
+  <A, B, E, R>(self: Logger<unknown, A>, that: Effect<Logger<unknown, B>, E, R>): Layer.Layer<never, E, Exclude<R, Scope>>
 } = circular.replaceLoggerScoped
 
 /**
@@ -339,7 +443,15 @@ export const sync: <A>(evaluate: LazyArg<A>) => Logger<unknown, A> = internal.sy
  * @category constructors
  */
 export const test: {
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   <Message>(input: Message): <Output>(self: Logger<Message, Output>) => Output
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   <Message, Output>(self: Logger<Message, Output>, input: Message): Output
 } = internalCircular.test
 
@@ -361,7 +473,41 @@ export const test: {
  * @category context
  */
 export const withMinimumLogLevel: {
+  /**
+   * Sets the minimum log level for subsequent logging operations, allowing
+   * control over which log messages are displayed based on their severity.
+   *
+   * @example
+   * ```ts
+   * import { Effect, Logger, LogLevel } from "effect"
+   *
+   * const program = Effect.logDebug("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Debug))
+   *
+   * Effect.runFork(program)
+   * // timestamp=... level=DEBUG fiber=#0 message=message1
+   * ```
+   *
+   * @since 2.0.0
+   * @category context
+   */
   (level: LogLevel.LogLevel): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  /**
+   * Sets the minimum log level for subsequent logging operations, allowing
+   * control over which log messages are displayed based on their severity.
+   *
+   * @example
+   * ```ts
+   * import { Effect, Logger, LogLevel } from "effect"
+   *
+   * const program = Effect.logDebug("message1").pipe(Logger.withMinimumLogLevel(LogLevel.Debug))
+   *
+   * Effect.runFork(program)
+   * // timestamp=... level=DEBUG fiber=#0 message=message1
+   * ```
+   *
+   * @since 2.0.0
+   * @category context
+   */
   <A, E, R>(self: Effect<A, E, R>, level: LogLevel.LogLevel): Effect<A, E, R>
 } = circular.withMinimumLogLevel
 
@@ -380,13 +526,22 @@ export const withSpanAnnotations: <Message, Output>(self: Logger<Message, Output
  * @category zipping
  */
 export const zip: {
-  <Message2, Output2>(
-    that: Logger<Message2, Output2>
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, [Output, Output2]>
-  <Message, Output, Message2, Output2>(
-    self: Logger<Message, Output>,
-    that: Logger<Message2, Output2>
-  ): Logger<Message & Message2, [Output, Output2]>
+  /**
+   * Combines this logger with the specified logger to produce a new logger that
+   * logs to both this logger and that logger.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
+  <Message2, Output2>(that: Logger<Message2, Output2>): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, [Output, Output2]>
+  /**
+   * Combines this logger with the specified logger to produce a new logger that
+   * logs to both this logger and that logger.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
+  <Message, Output, Message2, Output2>(self: Logger<Message, Output>, that: Logger<Message2, Output2>): Logger<Message & Message2, [Output, Output2]>
 } = internal.zip
 
 /**
@@ -394,13 +549,16 @@ export const zip: {
  * @category zipping
  */
 export const zipLeft: {
-  <Message2, Output2>(
-    that: Logger<Message2, Output2>
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, Output>
-  <Message, Output, Message2, Output2>(
-    self: Logger<Message, Output>,
-    that: Logger<Message2, Output2>
-  ): Logger<Message & Message2, Output>
+  /**
+   * @since 2.0.0
+   * @category zipping
+   */
+  <Message2, Output2>(that: Logger<Message2, Output2>): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, Output>
+  /**
+   * @since 2.0.0
+   * @category zipping
+   */
+  <Message, Output, Message2, Output2>(self: Logger<Message, Output>, that: Logger<Message2, Output2>): Logger<Message & Message2, Output>
 } = internal.zipLeft
 
 /**
@@ -408,13 +566,16 @@ export const zipLeft: {
  * @category zipping
  */
 export const zipRight: {
-  <Message2, Output2>(
-    that: Logger<Message2, Output2>
-  ): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, Output2>
-  <Message, Output, Message2, Output2>(
-    self: Logger<Message, Output>,
-    that: Logger<Message2, Output2>
-  ): Logger<Message & Message2, Output2>
+  /**
+   * @since 2.0.0
+   * @category zipping
+   */
+  <Message2, Output2>(that: Logger<Message2, Output2>): <Message, Output>(self: Logger<Message, Output>) => Logger<Message & Message2, Output2>
+  /**
+   * @since 2.0.0
+   * @category zipping
+   */
+  <Message, Output, Message2, Output2>(self: Logger<Message, Output>, that: Logger<Message2, Output2>): Logger<Message & Message2, Output2>
 } = internal.zipRight
 
 /**

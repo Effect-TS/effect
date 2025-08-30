@@ -66,11 +66,19 @@ export const fromDuplex: <IE, E, I = Uint8Array, O = Uint8Array>(
  * @since 1.0.0
  */
 export const pipeThroughDuplex: {
+  /**
+   * @category combinators
+   * @since 1.0.0
+   */
   <E2, B = Uint8Array>(
     duplex: LazyArg<Duplex>,
     onError: (error: unknown) => E2,
     options?: (FromReadableOptions & FromWritableOptions) | undefined
   ): <R, E, A>(self: Stream.Stream<A, E, R>) => Stream.Stream<B, E2 | E, R>
+  /**
+   * @category combinators
+   * @since 1.0.0
+   */
   <R, E, A, E2, B = Uint8Array>(
     self: Stream.Stream<A, E, R>,
     duplex: LazyArg<Duplex>,
@@ -84,13 +92,16 @@ export const pipeThroughDuplex: {
  * @since 1.0.0
  */
 export const pipeThroughSimple: {
-  (
-    duplex: LazyArg<Duplex>
-  ): <R, E>(self: Stream.Stream<string | Uint8Array, E, R>) => Stream.Stream<Uint8Array, E | PlatformError, R>
-  <R, E>(
-    self: Stream.Stream<string | Uint8Array, E, R>,
-    duplex: LazyArg<Duplex>
-  ): Stream.Stream<Uint8Array, PlatformError | E, R>
+  /**
+   * @category combinators
+   * @since 1.0.0
+   */
+  (duplex: LazyArg<Duplex>): <R, E>(self: Stream.Stream<string | Uint8Array, E, R>) => Stream.Stream<Uint8Array, E | PlatformError, R>
+  /**
+   * @category combinators
+   * @since 1.0.0
+   */
+  <R, E>(self: Stream.Stream<string | Uint8Array, E, R>, duplex: LazyArg<Duplex>): Stream.Stream<Uint8Array, PlatformError | E, R>
 } = internal.pipeThroughSimple
 
 /**

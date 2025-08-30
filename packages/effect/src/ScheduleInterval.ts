@@ -56,7 +56,21 @@ export const empty: Interval = internal.empty
  * @category ordering
  */
 export const lessThan: {
+  /**
+   * Returns `true` if this `Interval` is less than `that` interval, `false`
+   * otherwise.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (that: Interval): (self: Interval) => boolean
+  /**
+   * Returns `true` if this `Interval` is less than `that` interval, `false`
+   * otherwise.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (self: Interval, that: Interval): boolean
 } = internal.lessThan
 
@@ -67,7 +81,19 @@ export const lessThan: {
  * @category ordering
  */
 export const min: {
+  /**
+   * Returns the minimum of two `Interval`s.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (that: Interval): (self: Interval) => Interval
+  /**
+   * Returns the minimum of two `Interval`s.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (self: Interval, that: Interval): Interval
 } = internal.min
 
@@ -78,7 +104,19 @@ export const min: {
  * @category ordering
  */
 export const max: {
+  /**
+   * Returns the maximum of two `Interval`s.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (that: Interval): (self: Interval) => Interval
+  /**
+   * Returns the maximum of two `Interval`s.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (self: Interval, that: Interval): Interval
 } = internal.max
 
@@ -106,7 +144,21 @@ export const isNonEmpty: (self: Interval) => boolean = internal.isNonEmpty
  * @category ordering
  */
 export const intersect: {
+  /**
+   * Computes a new `Interval` which is the intersection of this `Interval` and
+   * that `Interval`.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (that: Interval): (self: Interval) => Interval
+  /**
+   * Computes a new `Interval` which is the intersection of this `Interval` and
+   * that `Interval`.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (self: Interval, that: Interval): Interval
 } = internal.intersect
 
@@ -128,7 +180,23 @@ export const size: (self: Interval) => Duration.Duration = internal.size
  * @category utils
  */
 export const union: {
+  /**
+   * Computes a new `Interval` which is the union of this `Interval` and that
+   * `Interval` as a `Some`, otherwise returns `None` if the two intervals cannot
+   * form a union.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: Interval): (self: Interval) => Option.Option<Interval>
+  /**
+   * Computes a new `Interval` which is the union of this `Interval` and that
+   * `Interval` as a `Some`, otherwise returns `None` if the two intervals cannot
+   * form a union.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: Interval, that: Interval): Option.Option<Interval>
 } = internal.union
 

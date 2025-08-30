@@ -76,7 +76,15 @@ export const symbol: Equivalence<symbol> = strict()
  * @since 2.0.0
  */
 export const combine: {
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(that: Equivalence<A>): (self: Equivalence<A>) => Equivalence<A>
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(self: Equivalence<A>, that: Equivalence<A>): Equivalence<A>
 } = dual(2, <A>(self: Equivalence<A>, that: Equivalence<A>): Equivalence<A> => make((x, y) => self(x, y) && that(x, y)))
 
@@ -85,7 +93,15 @@ export const combine: {
  * @since 2.0.0
  */
 export const combineMany: {
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(collection: Iterable<Equivalence<A>>): (self: Equivalence<A>) => Equivalence<A>
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(self: Equivalence<A>, collection: Iterable<Equivalence<A>>): Equivalence<A>
 } = dual(2, <A>(self: Equivalence<A>, collection: Iterable<Equivalence<A>>): Equivalence<A> =>
   make((x, y) => {
@@ -114,7 +130,15 @@ export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence
  * @since 2.0.0
  */
 export const mapInput: {
+  /**
+   * @category mapping
+   * @since 2.0.0
+   */
   <B, A>(f: (b: B) => A): (self: Equivalence<A>) => Equivalence<B>
+  /**
+   * @category mapping
+   * @since 2.0.0
+   */
   <A, B>(self: Equivalence<A>, f: (b: B) => A): Equivalence<B>
 } = dual(
   2,

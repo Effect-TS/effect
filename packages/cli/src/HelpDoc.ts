@@ -174,7 +174,15 @@ export const getSpan: (self: HelpDoc) => Span = InternalHelpDoc.getSpan
  * @category combinators
  */
 export const sequence: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (that: HelpDoc): (self: HelpDoc) => HelpDoc
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HelpDoc, that: HelpDoc): HelpDoc
 } = InternalHelpDoc.sequence
 
@@ -183,7 +191,15 @@ export const sequence: {
  * @category combinators
  */
 export const orElse: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (that: HelpDoc): (self: HelpDoc) => HelpDoc
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HelpDoc, that: HelpDoc): HelpDoc
 } = InternalHelpDoc.orElse
 
@@ -192,7 +208,15 @@ export const orElse: {
  * @category mapping
  */
 export const mapDescriptionList: {
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   (f: (span: Span, helpDoc: HelpDoc) => [Span, HelpDoc]): (self: HelpDoc) => HelpDoc
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   (self: HelpDoc, f: (span: Span, helpDoc: HelpDoc) => [Span, HelpDoc]): HelpDoc
 } = InternalHelpDoc.mapDescriptionList
 

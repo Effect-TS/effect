@@ -166,7 +166,19 @@ export const head = <A>(self: MutableList<A>): A | undefined => self.head === un
  * @category traversing
  */
 export const forEach: {
+  /**
+   * Executes the specified function `f` for each element in the list.
+   *
+   * @since 2.0.0
+   * @category traversing
+   */
   <A>(f: (element: A) => void): (self: MutableList<A>) => void
+  /**
+   * Executes the specified function `f` for each element in the list.
+   *
+   * @since 2.0.0
+   * @category traversing
+   */
   <A>(self: MutableList<A>, f: (element: A) => void): void
 } = Dual.dual<
   <A>(f: (element: A) => void) => (self: MutableList<A>) => void,
@@ -198,7 +210,19 @@ export const reset = <A>(self: MutableList<A>): MutableList<A> => {
  * @since 2.0.0
  */
 export const append: {
+  /**
+   * Appends the specified element to the end of the `MutableList`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A>(value: A): (self: MutableList<A>) => MutableList<A>
+  /**
+   * Appends the specified element to the end of the `MutableList`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A>(self: MutableList<A>, value: A): MutableList<A>
 } = Dual.dual<
   <A>(value: A) => (self: MutableList<A>) => MutableList<A>,
@@ -254,7 +278,19 @@ export const pop = <A>(self: MutableList<A>): A | undefined => {
  * @since 2.0.0
  */
 export const prepend: {
+  /**
+   * Prepends the specified value to the beginning of the list.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A>(value: A): (self: MutableList<A>) => MutableList<A>
+  /**
+   * Prepends the specified value to the beginning of the list.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A>(self: MutableList<A>, value: A): MutableList<A>
 } = Dual.dual<
   <A>(value: A) => (self: MutableList<A>) => MutableList<A>,

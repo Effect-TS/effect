@@ -251,7 +251,15 @@ export const empty: DocStream<never> = internal.empty
  * @category constructors
  */
 export const char: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   (char: string): <A>(self: DocStream<A>) => DocStream<A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <A>(self: DocStream<A>, char: string): DocStream<A>
 } = internal.char
 
@@ -260,7 +268,15 @@ export const char: {
  * @category constructors
  */
 export const text: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   (text: string): <A>(self: DocStream<A>) => DocStream<A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <A>(self: DocStream<A>, text: string): DocStream<A>
 } = internal.text
 
@@ -269,7 +285,15 @@ export const text: {
  * @category constructors
  */
 export const line: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   (indentation: number): <A>(self: DocStream<A>) => DocStream<A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <A>(self: DocStream<A>, indentation: number): DocStream<A>
 } = internal.line
 
@@ -278,7 +302,15 @@ export const line: {
  * @category constructors
  */
 export const pushAnnotation: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <B>(annotation: B): <A>(self: DocStream<A>) => DocStream<B | A>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <A, B>(self: DocStream<A>, annotation: B): DocStream<A | B>
 } = internal.pushAnnotation
 
@@ -300,7 +332,29 @@ export const popAnnotation: <A>(stream: DocStream<A>) => DocStream<A> = internal
  * @category annotations
  */
 export const alterAnnotations: {
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Changes the annotation of a document to a different annotation, or to
+   * none at all.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(f: (a: A) => Option<B>): (self: DocStream<A>) => DocStream<B>
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Changes the annotation of a document to a different annotation, or to
+   * none at all.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(self: DocStream<A>, f: (a: A) => Option<B>): DocStream<B>
 } = internal.alterAnnotations
 
@@ -311,7 +365,19 @@ export const alterAnnotations: {
  * @category annotations
  */
 export const reAnnotate: {
+  /**
+   * Modify the annotations of a document.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(f: (a: A) => B): (self: DocStream<A>) => DocStream<B>
+  /**
+   * Modify the annotations of a document.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(self: DocStream<A>, f: (a: A) => B): DocStream<B>
 } = internal.reAnnotate
 
@@ -332,7 +398,23 @@ export const unAnnotate: <A>(self: DocStream<A>) => DocStream<never> = internal.
  * @category folding
  */
 export const foldMap: {
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, M>(M: monoid.Monoid<M>, f: (a: A) => M): (self: DocStream<A>) => M
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, M>(self: DocStream<A>, M: monoid.Monoid<M>, f: (a: A) => M): M
 } = internal.foldMap
 
@@ -341,28 +423,36 @@ export const foldMap: {
  * @category folding
  */
 export const match: {
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, R>(
-    patterns: {
-      readonly FailedStream: () => R
-      readonly EmptyStream: () => R
-      readonly CharStream: (char: string, stream: DocStream<A>) => R
-      readonly TextStream: (text: string, stream: DocStream<A>) => R
-      readonly LineStream: (indentation: number, stream: DocStream<A>) => R
-      readonly PushAnnotationStream: (annotation: A, stream: DocStream<A>) => R
-      readonly PopAnnotationStream: (stream: DocStream<A>) => R
-    }
+   patterns: {
+     readonly FailedStream: () => R
+     readonly EmptyStream: () => R
+     readonly CharStream: (char: string, stream: DocStream<A>) => R
+     readonly TextStream: (text: string, stream: DocStream<A>) => R
+     readonly LineStream: (indentation: number, stream: DocStream<A>) => R
+     readonly PushAnnotationStream: (annotation: A, stream: DocStream<A>) => R
+     readonly PopAnnotationStream: (stream: DocStream<A>) => R
+   }
   ): (self: DocStream<A>) => R
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, R>(
-    self: DocStream<A>,
-    patterns: {
-      readonly FailedStream: () => R
-      readonly EmptyStream: () => R
-      readonly CharStream: (char: string, stream: DocStream<A>) => R
-      readonly TextStream: (text: string, stream: DocStream<A>) => R
-      readonly LineStream: (indentation: number, stream: DocStream<A>) => R
-      readonly PushAnnotationStream: (annotation: A, stream: DocStream<A>) => R
-      readonly PopAnnotationStream: (stream: DocStream<A>) => R
-    }
+   self: DocStream<A>,
+   patterns: {
+     readonly FailedStream: () => R
+     readonly EmptyStream: () => R
+     readonly CharStream: (char: string, stream: DocStream<A>) => R
+     readonly TextStream: (text: string, stream: DocStream<A>) => R
+     readonly LineStream: (indentation: number, stream: DocStream<A>) => R
+     readonly PushAnnotationStream: (annotation: A, stream: DocStream<A>) => R
+     readonly PopAnnotationStream: (stream: DocStream<A>) => R
+   }
   ): R
 } = internal.match
 
@@ -371,7 +461,15 @@ export const match: {
  * @category mapping
  */
 export const map: {
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B): (self: DocStream<A>) => DocStream<B>
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(self: DocStream<A>, f: (a: A) => B): DocStream<B>
 } = internal.map
 

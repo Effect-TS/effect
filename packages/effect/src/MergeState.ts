@@ -148,6 +148,10 @@ export const isRightDone: <Env, Err, Err1, Err2, Elem, Done, Done1, Done2>(
  * @category folding
  */
 export const match: {
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     options: {
       readonly onBothRunning: (
@@ -158,6 +162,10 @@ export const match: {
       readonly onRightDone: (f: (exit: Exit.Exit<Done, Err>) => Effect.Effect<Done2, Err2, Env>) => Z
     }
   ): (self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>) => Z
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <Env, Err, Err1, Err2, Elem, Done, Done1, Done2, Z>(
     self: MergeState<Env, Err, Err1, Err2, Elem, Done, Done1, Done2>,
     options: {

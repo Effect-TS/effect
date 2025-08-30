@@ -70,11 +70,23 @@ export const collectAll: <R, E, Out>(
  * @category utils
  */
 export const launch: {
-  <A2, R2>(
-    schedule: Schedule.Schedule<A2, unknown, R2>
-  ): <Type, In, R, E, Out>(
+  /**
+   * Returns an effect that will launch the polling metric in a background
+   * fiber, using the specified schedule.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
+  <A2, R2>(schedule: Schedule.Schedule<A2, unknown, R2>): <Type, In, R, E, Out>(
     self: MetricPolling<Type, In, R, E, Out>
   ) => Effect.Effect<Fiber.Fiber<A2, E>, never, R2 | R | Scope.Scope>
+  /**
+   * Returns an effect that will launch the polling metric in a background
+   * fiber, using the specified schedule.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <Type, In, R, E, Out, A2, R2>(
     self: MetricPolling<Type, In, R, E, Out>,
     schedule: Schedule.Schedule<A2, unknown, R2>
@@ -108,9 +120,21 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
  * @category constructors
  */
 export const retry: {
-  <X, E, R2>(
-    policy: Schedule.Schedule<X, NoInfer<E>, R2>
-  ): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
+  /**
+   * Returns a new polling metric whose poll function will be retried with the
+   * specified retry policy.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  <X, E, R2>(policy: Schedule.Schedule<X, NoInfer<E>, R2>): <Type, In, R, Out>(self: MetricPolling<Type, In, R, E, Out>) => MetricPolling<Type, In, R2 | R, E, Out>
+  /**
+   * Returns a new polling metric whose poll function will be retried with the
+   * specified retry policy.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   <Type, In, R, E, Out, X, R2>(
     self: MetricPolling<Type, In, R, E, Out>,
     policy: Schedule.Schedule<X, E, R2>
@@ -124,9 +148,13 @@ export const retry: {
  * @category utils
  */
 export const zip: {
-  <Type2, In2, R2, E2, Out2>(
-    that: MetricPolling<Type2, In2, R2, E2, Out2>
-  ): <Type, In, R, E, Out>(
+  /**
+   * Zips this polling metric with the specified polling metric.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
+  <Type2, In2, R2, E2, Out2>(that: MetricPolling<Type2, In2, R2, E2, Out2>): <Type, In, R, E, Out>(
     self: MetricPolling<Type, In, R, E, Out>
   ) => MetricPolling<
     readonly [Type, Type2], // readonly because invariant
@@ -135,6 +163,12 @@ export const zip: {
     E2 | E,
     [Out, Out2]
   >
+  /**
+   * Zips this polling metric with the specified polling metric.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <Type, In, R, E, Out, Type2, In2, R2, E2, Out2>(
     self: MetricPolling<Type, In, R, E, Out>,
     that: MetricPolling<Type2, In2, R2, E2, Out2>

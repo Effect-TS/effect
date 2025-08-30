@@ -109,6 +109,10 @@ export const stream: <E, R>(
  * @category pattern matching
  */
 export const matchStatus: {
+  /**
+   * @since 1.0.0
+   * @category pattern matching
+   */
   <
     const Cases extends {
       readonly [status: number]: (_: HttpClientResponse) => any
@@ -119,6 +123,10 @@ export const matchStatus: {
       readonly orElse: (_: HttpClientResponse) => any
     }
   >(cases: Cases): (self: HttpClientResponse) => Cases[keyof Cases] extends (_: any) => infer R ? Unify<R> : never
+  /**
+   * @since 1.0.0
+   * @category pattern matching
+   */
   <
     const Cases extends {
       readonly [status: number]: (_: HttpClientResponse) => any
@@ -136,7 +144,15 @@ export const matchStatus: {
  * @category filters
  */
 export const filterStatus: {
+  /**
+   * @since 1.0.0
+   * @category filters
+   */
   (f: (status: number) => boolean): (self: HttpClientResponse) => Effect.Effect<HttpClientResponse, Error.ResponseError>
+  /**
+   * @since 1.0.0
+   * @category filters
+   */
   (self: HttpClientResponse, f: (status: number) => boolean): Effect.Effect<HttpClientResponse, Error.ResponseError>
 } = internal.filterStatus
 

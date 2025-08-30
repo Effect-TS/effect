@@ -107,6 +107,12 @@ export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKey
  * @category constructors
  */
 export const counter: {
+  /**
+   * Creates a metric key for a counter, with the specified name.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   (
     name: string,
     options?: {
@@ -115,6 +121,12 @@ export const counter: {
       readonly incremental?: boolean | undefined
     }
   ): MetricKey.Counter<number>
+  /**
+   * Creates a metric key for a counter, with the specified name.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   (
     name: string,
     options: {
@@ -149,14 +161,32 @@ export const frequency: (
  * @category constructors
  */
 export const gauge: {
-  (name: string, options?: {
-    readonly description?: string | undefined
-    readonly bigint?: false | undefined
-  }): MetricKey.Gauge<number>
-  (name: string, options: {
-    readonly description?: string | undefined
-    readonly bigint: true
-  }): MetricKey.Gauge<bigint>
+  /**
+   * Creates a metric key for a gauge, with the specified name.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  (
+    name: string,
+    options?: {
+      readonly description?: string | undefined
+      readonly bigint?: false | undefined
+    }
+  ): MetricKey.Gauge<number>
+  /**
+   * Creates a metric key for a gauge, with the specified name.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  (
+    name: string,
+    options: {
+      readonly description?: string | undefined
+      readonly bigint: true
+    }
+  ): MetricKey.Gauge<bigint>
 } = internal.gauge
 
 /**
@@ -196,15 +226,20 @@ export const summary: (
  * @category constructors
  */
 export const tagged: {
-  (
-    key: string,
-    value: string
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey<Type>,
-    key: string,
-    value: string
-  ): MetricKey<Type>
+  /**
+   * Returns a new `MetricKey` with the specified tag appended.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  (key: string, value: string): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  /**
+   * Returns a new `MetricKey` with the specified tag appended.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>, key: string, value: string): MetricKey<Type>
 } = internal.tagged
 
 /**
@@ -214,11 +249,18 @@ export const tagged: {
  * @category constructors
  */
 export const taggedWithLabels: {
-  (
-    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
-  ): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
-  <Type extends MetricKeyType.MetricKeyType<any, any>>(
-    self: MetricKey<Type>,
-    extraTags: ReadonlyArray<MetricLabel.MetricLabel>
-  ): MetricKey<Type>
+  /**
+   * Returns a new `MetricKey` with the specified tags appended.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  (extraTags: ReadonlyArray<MetricLabel.MetricLabel>): <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>) => MetricKey<Type>
+  /**
+   * Returns a new `MetricKey` with the specified tags appended.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
+  <Type extends MetricKeyType.MetricKeyType<any, any>>(self: MetricKey<Type>, extraTags: ReadonlyArray<MetricLabel.MetricLabel>): MetricKey<Type>
 } = internal.taggedWithLabels

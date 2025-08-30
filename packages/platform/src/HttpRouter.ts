@@ -329,7 +329,15 @@ export const currentRouterConfig: FiberRef<Partial<RouterConfig>> = internal.cur
  * @category router config
  */
 export const withRouterConfig: {
+  /**
+   * @since 1.0.0
+   * @category router config
+   */
   (config: Partial<RouterConfig>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category router config
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, config: Partial<RouterConfig>): Effect.Effect<A, E, R>
 } = internal.withRouterConfig
 
@@ -370,7 +378,15 @@ export const makeRoute: <E, R>(
  * @category utils
  */
 export const prefixPath: {
+  /**
+   * @since 1.0.0
+   * @category utils
+   */
   (prefix: string): (self: string) => string
+  /**
+   * @since 1.0.0
+   * @category utils
+   */
   (self: string, prefix: string): string
 } = internal.prefixPath
 
@@ -379,7 +395,15 @@ export const prefixPath: {
  * @category combinators
  */
 export const prefixAll: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (prefix: PathInput): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R>(self: HttpRouter<E, R>, prefix: PathInput): HttpRouter<E, R>
 } = internal.prefixAll
 
@@ -388,18 +412,21 @@ export const prefixAll: {
  * @category combinators
  */
 export const append: {
-  <R1, E1>(
-    route: Route<E1, R1>
-  ): <E, R>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <R1, E1>(route: Route<E1, R1>): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<
     E1 | E,
     R | HttpRouter.ExcludeProvided<R1>
   >
-  <E, R, E1, R1>(
-    self: HttpRouter<E, R>,
-    route: Route<E1, R1>
-  ): HttpRouter<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, R, E1, R1>(self: HttpRouter<E, R>, route: Route<E1, R1>): HttpRouter<
     E | E1,
     R | HttpRouter.ExcludeProvided<R1>
   >
@@ -410,9 +437,17 @@ export const append: {
  * @category combinators
  */
 export const concat: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R1, E1>(that: HttpRouter<E1, R1>): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R1 | R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, R1, E1>(self: HttpRouter<E, R>, that: HttpRouter<E1, R1>): HttpRouter<
     E | E1,
     R | R1
@@ -432,7 +467,15 @@ export const concatAll: <Routers extends ReadonlyArray<HttpRouter<unknown, unkno
  * @category routing
  */
 export const mount: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(path: `/${string}`, that: HttpRouter<E1, R1>): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E1 | E, R1 | R>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(self: HttpRouter<E, R>, path: `/${string}`, that: HttpRouter<E1, R1>): HttpRouter<E | E1, R | R1>
 } = internal.mount
 
@@ -441,6 +484,10 @@ export const mount: {
  * @category routing
  */
 export const mountApp: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: `/${string}`,
     that: App.Default<E1, R1>,
@@ -452,6 +499,10 @@ export const mountApp: {
     | HttpRouter.ExcludeProvided<R1>
     | HttpRouter.ExcludeProvided<R>
   >
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: `/${string}`,
@@ -491,6 +542,10 @@ export const route: (
  * @category routing
  */
 export const all: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -501,6 +556,10 @@ export const all: {
     E1 | E,
     R | HttpRouter.ExcludeProvided<R1>
   >
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -517,6 +576,10 @@ export const all: {
  * @category routing
  */
 export const get: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -524,6 +587,10 @@ export const get: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -537,6 +604,10 @@ export const get: {
  * @category routing
  */
 export const post: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -544,6 +615,10 @@ export const post: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -557,6 +632,10 @@ export const post: {
  * @category routing
  */
 export const patch: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -564,6 +643,10 @@ export const patch: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -577,6 +660,10 @@ export const patch: {
  * @category routing
  */
 export const put: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -584,6 +671,10 @@ export const put: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -597,6 +688,10 @@ export const put: {
  * @category routing
  */
 export const del: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -604,6 +699,10 @@ export const del: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -617,6 +716,10 @@ export const del: {
  * @category routing
  */
 export const head: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -624,6 +727,10 @@ export const head: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -637,6 +744,10 @@ export const head: {
  * @category routing
  */
 export const options: {
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <R1, E1>(
     path: PathInput,
     handler: Route.Handler<E1, R1>,
@@ -644,6 +755,10 @@ export const options: {
   ): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | E, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category routing
+   */
   <E, R, E1, R1>(
     self: HttpRouter<E, R>,
     path: PathInput,
@@ -657,9 +772,15 @@ export const options: {
  * @category combinators
  */
 export const use: {
-  <E, R, R1, E1>(
-    f: (self: Route.Middleware<E, R>) => App.Default<E1, R1>
-  ): (self: HttpRouter<E, R>) => HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, R, R1, E1>(f: (self: Route.Middleware<E, R>) => App.Default<E1, R1>): (self: HttpRouter<E, R>) => HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, R1, E1>(
     self: HttpRouter<E, R>,
     f: (self: Route.Middleware<E, R>) => App.Default<E1, R1>
@@ -671,9 +792,17 @@ export const use: {
  * @category combinators
  */
 export const transform: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, R1, E1>(
     f: (self: Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
   ): (self: HttpRouter<E, R>) => HttpRouter<E1, HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, R1, E1>(
     self: HttpRouter<E, R>,
     f: (self: Route.Handler<E, R>) => App.HttpApp<Respondable.Respondable, E1, R1>
@@ -685,13 +814,16 @@ export const transform: {
  * @category combinators
  */
 export const catchAll: {
-  <E, E2, R2>(
-    f: (e: E) => Route.Handler<E2, R2>
-  ): <R>(self: HttpRouter<E, R>) => HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
-  <E, R, E2, R2>(
-    self: HttpRouter<E, R>,
-    f: (e: E) => Route.Handler<E2, R2>
-  ): HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, E2, R2>(f: (e: E) => Route.Handler<E2, R2>): <R>(self: HttpRouter<E, R>) => HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, R, E2, R2>(self: HttpRouter<E, R>, f: (e: E) => Route.Handler<E2, R2>): HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
 } = internal.catchAll
 
 /**
@@ -699,13 +831,16 @@ export const catchAll: {
  * @category combinators
  */
 export const catchAllCause: {
-  <E, E2, R2>(
-    f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
-  ): <R>(self: HttpRouter<E, R>) => HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
-  <E, R, E2, R2>(
-    self: HttpRouter<E, R>,
-    f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>
-  ): HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, E2, R2>(f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>): <R>(self: HttpRouter<E, R>) => HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, R, E2, R2>(self: HttpRouter<E, R>, f: (e: Cause.Cause<E>) => Route.Handler<E2, R2>): HttpRouter<E2, R | HttpRouter.ExcludeProvided<R2>>
 } = internal.catchAllCause
 
 /**
@@ -713,12 +848,17 @@ export const catchAllCause: {
  * @category combinators
  */
 export const catchTag: {
-  <K extends E extends { _tag: string } ? E["_tag"] : never, E, E1, R1>(
-    k: K,
-    f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>
-  ): <R>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, E1, R1>(k: K, f: (e: Extract<E, { _tag: K }>) => Route.Handler<E1, R1>): <R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<E1 | Exclude<E, { _tag: K }>, R | HttpRouter.ExcludeProvided<R1>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, K extends E extends { _tag: string } ? E["_tag"] : never, E1, R1>(
     self: HttpRouter<E, R>,
     k: K,
@@ -731,14 +871,16 @@ export const catchTag: {
  * @category combinators
  */
 export const catchTags: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     E,
     Cases extends E extends { _tag: string }
       ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>) | undefined }
       : {}
-  >(
-    cases: Cases
-  ): <R>(
+  >(cases: Cases): <R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<
     | Exclude<E, { _tag: keyof Cases }>
@@ -752,16 +894,17 @@ export const catchTags: {
       }[keyof Cases]
     >
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     R,
     E,
     Cases extends E extends { _tag: string }
       ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>) | undefined } :
       {}
-  >(
-    self: HttpRouter<E, R>,
-    cases: Cases
-  ): HttpRouter<
+  >(self: HttpRouter<E, R>, cases: Cases): HttpRouter<
     | Exclude<E, { _tag: keyof Cases }>
     | {
       [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
@@ -780,15 +923,16 @@ export const catchTags: {
  * @category combinators
  */
 export const provideService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E, Exclude<R, Context.Tag.Identifier<T>>>
-  <E, R, T extends Context.Tag<any, any>>(
-    self: HttpRouter<E, R>,
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): HttpRouter<E, Exclude<R, Context.Tag.Identifier<T>>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <T extends Context.Tag<any, any>>(tag: T, service: Context.Tag.Service<T>): <E, R>(self: HttpRouter<E, R>) => HttpRouter<E, Exclude<R, Context.Tag.Identifier<T>>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <E, R, T extends Context.Tag<any, any>>(self: HttpRouter<E, R>, tag: T, service: Context.Tag.Service<T>): HttpRouter<E, Exclude<R, Context.Tag.Identifier<T>>>
 } = internal.provideService
 
 /**
@@ -796,16 +940,21 @@ export const provideService: {
  * @category combinators
  */
 export const provideServiceEffect: {
-  <T extends Context.Tag<any, any>, R1, E1>(
-    tag: T,
-    effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>
-  ): <E, R>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <T extends Context.Tag<any, any>, R1, E1>(tag: T, effect: Effect.Effect<Context.Tag.Service<T>, E1, R1>): <E, R>(
     self: HttpRouter<E, R>
   ) => HttpRouter<
     E1 | E,
     | Exclude<R, Context.Tag.Identifier<T>>
     | Exclude<HttpRouter.ExcludeProvided<R1>, Context.Tag.Identifier<T>>
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <E, R, T extends Context.Tag<any, any>, R1, E1>(
     self: HttpRouter<E, R>,
     tag: T,

@@ -241,7 +241,21 @@ export const isConfig: (u: unknown) => u is Config<unknown> = internal.isConfig
  * @category mapping
  */
 export const map: {
+  /**
+   * Returns a  config whose structure is the same as this one, but which produces
+   * a different value, constructed using the specified function.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
+  /**
+   * Returns a  config whose structure is the same as this one, but which produces
+   * a different value, constructed using the specified function.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
 } = internal.map
 
@@ -254,7 +268,23 @@ export const map: {
  * @category utils
  */
 export const mapAttempt: {
+  /**
+   * Returns a config whose structure is the same as this one, but which may
+   * produce a different value, constructed using the specified function, which
+   * may throw exceptions that will be translated into validation errors.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
+  /**
+   * Returns a config whose structure is the same as this one, but which may
+   * produce a different value, constructed using the specified function, which
+   * may throw exceptions that will be translated into validation errors.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
 } = internal.mapAttempt
 
@@ -267,7 +297,23 @@ export const mapAttempt: {
  * @category utils
  */
 export const mapOrFail: {
+  /**
+   * Returns a new config whose structure is the samea as this one, but which
+   * may produce a different value, constructed using the specified fallible
+   * function.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(f: (a: A) => Either.Either<B, ConfigError.ConfigError>): (self: Config<A>) => Config<B>
+  /**
+   * Returns a new config whose structure is the samea as this one, but which
+   * may produce a different value, constructed using the specified fallible
+   * function.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(self: Config<A>, f: (a: A) => Either.Either<B, ConfigError.ConfigError>): Config<B>
 } = internal.mapOrFail
 
@@ -279,7 +325,21 @@ export const mapOrFail: {
  * @category utils
  */
 export const nested: {
+  /**
+   * Returns a config that has this configuration nested as a property of the
+   * specified name.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (name: string): <A>(self: Config<A>) => Config<A>
+  /**
+   * Returns a config that has this configuration nested as a property of the
+   * specified name.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Config<A>, name: string): Config<A>
 } = internal.nested
 
@@ -292,7 +352,23 @@ export const nested: {
  * @category utils
  */
 export const orElse: {
+  /**
+   * Returns a config whose structure is preferentially described by this
+   * config, but which falls back to the specified config if there is an issue
+   * reading from this config.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A2>(that: LazyArg<Config<A2>>): <A>(self: Config<A>) => Config<A2 | A>
+  /**
+   * Returns a config whose structure is preferentially described by this
+   * config, but which falls back to the specified config if there is an issue
+   * reading from this config.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, A2>(self: Config<A>, that: LazyArg<Config<A2>>): Config<A | A2>
 } = internal.orElse
 
@@ -305,18 +381,34 @@ export const orElse: {
  * @category utils
  */
 export const orElseIf: {
+  /**
+   * Returns configuration which reads from this configuration, but which falls
+   * back to the specified configuration if reading from this configuration
+   * fails with an error satisfying the specified predicate.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A2>(
-    options: {
-      readonly if: Predicate<ConfigError.ConfigError>
-      readonly orElse: LazyArg<Config<A2>>
-    }
+   options: {
+     readonly if: Predicate<ConfigError.ConfigError>
+     readonly orElse: LazyArg<Config<A2>>
+   }
   ): <A>(self: Config<A>) => Config<A>
+  /**
+   * Returns configuration which reads from this configuration, but which falls
+   * back to the specified configuration if reading from this configuration
+   * fails with an error satisfying the specified predicate.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, A2>(
-    self: Config<A>,
-    options: {
-      readonly if: Predicate<ConfigError.ConfigError>
-      readonly orElse: LazyArg<Config<A2>>
-    }
+   self: Config<A>,
+   options: {
+     readonly if: Predicate<ConfigError.ConfigError>
+     readonly orElse: LazyArg<Config<A2>>
+   }
   ): Config<A>
 } = internal.orElseIf
 
@@ -365,7 +457,19 @@ export const secret: (name?: string) => Config<Secret.Secret> = internal.secret
  * @category constructors
  */
 export const redacted: {
+  /**
+   * Constructs a config for a redacted value.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   (name?: string): Config<Redacted.Redacted>
+  /**
+   * Constructs a config for a redacted value.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   <A>(config: Config<A>): Config<Redacted.Redacted<A>>
 } = internal.redacted
 
@@ -376,17 +480,27 @@ export const redacted: {
  * @category constructors
  */
 export const branded: {
-  <A, B extends Brand.Branded<A, any>>(
-    constructor: Brand.Brand.Constructor<B>
-  ): (config: Config<A>) => Config<B>
-  <B extends Brand.Branded<string, any>>(
-    name: string | undefined,
-    constructor: Brand.Brand.Constructor<B>
-  ): Config<B>
-  <A, B extends Brand.Branded<A, any>>(
-    config: Config<A>,
-    constructor: Brand.Brand.Constructor<B>
-  ): Config<B>
+  /**
+   * Constructs a config for a branded value.
+   *
+   * @since 3.16.0
+   * @category constructors
+   */
+  <A, B extends Brand.Branded<A, any>>(constructor: Brand.Brand.Constructor<B>): (config: Config<A>) => Config<B>
+  /**
+   * Constructs a config for a branded value.
+   *
+   * @since 3.16.0
+   * @category constructors
+   */
+  <B extends Brand.Branded<string, any>>(name: string | undefined, constructor: Brand.Brand.Constructor<B>): Config<B>
+  /**
+   * Constructs a config for a branded value.
+   *
+   * @since 3.16.0
+   * @category constructors
+   */
+  <A, B extends Brand.Branded<A, any>>(config: Config<A>, constructor: Brand.Brand.Constructor<B>): Config<B>
 } = internal.branded
 
 /**
@@ -471,27 +585,60 @@ export const unwrap: <A>(wrapped: Config.Wrap<A>) => Config<A> = internal.unwrap
  * @category utils
  */
 export const validate: {
+  /**
+   * Returns a config that describes the same structure as this one, but which
+   * performs validation during loading.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B extends A>(
-    options: {
-      readonly message: string
-      readonly validation: Refinement<A, B>
-    }
+   options: {
+     readonly message: string
+     readonly validation: Refinement<A, B>
+   }
   ): (self: Config<A>) => Config<B>
-  <A>(options: {
-    readonly message: string
-    readonly validation: Predicate<A>
-  }): (self: Config<A>) => Config<A>
+  /**
+   * Returns a config that describes the same structure as this one, but which
+   * performs validation during loading.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
+  <A>(
+   options: {
+     readonly message: string
+     readonly validation: Predicate<A>
+   }
+  ): (self: Config<A>) => Config<A>
+  /**
+   * Returns a config that describes the same structure as this one, but which
+   * performs validation during loading.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B extends A>(
-    self: Config<A>,
-    options: {
-      readonly message: string
-      readonly validation: Refinement<A, B>
-    }
+   self: Config<A>,
+   options: {
+     readonly message: string
+     readonly validation: Refinement<A, B>
+   }
   ): Config<B>
-  <A>(self: Config<A>, options: {
-    readonly message: string
-    readonly validation: Predicate<A>
-  }): Config<A>
+  /**
+   * Returns a config that describes the same structure as this one, but which
+   * performs validation during loading.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
+  <A>(
+   self: Config<A>,
+   options: {
+     readonly message: string
+     readonly validation: Predicate<A>
+   }
+  ): Config<A>
 } = internal.validate
 
 /**
@@ -502,7 +649,21 @@ export const validate: {
  * @category utils
  */
 export const withDefault: {
+  /**
+   * Returns a config that describes the same structure as this one, but has the
+   * specified default value in case the information cannot be found.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <const A2>(def: A2): <A>(self: Config<A>) => Config<A2 | A>
+  /**
+   * Returns a config that describes the same structure as this one, but has the
+   * specified default value in case the information cannot be found.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, const A2>(self: Config<A>, def: A2): Config<A | A2>
 } = internal.withDefault
 
@@ -513,7 +674,19 @@ export const withDefault: {
  * @category utils
  */
 export const withDescription: {
+  /**
+   * Adds a description to this configuration, which is intended for humans.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (description: string): <A>(self: Config<A>) => Config<A>
+  /**
+   * Adds a description to this configuration, which is intended for humans.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Config<A>, description: string): Config<A>
 } = internal.withDescription
 
@@ -525,7 +698,21 @@ export const withDescription: {
  * @category zipping
  */
 export const zip: {
+  /**
+   * Returns a config that is the composition of this config and the specified
+   * config.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <B>(that: Config<B>): <A>(self: Config<A>) => Config<[A, B]>
+  /**
+   * Returns a config that is the composition of this config and the specified
+   * config.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A, B>(self: Config<A>, that: Config<B>): Config<[A, B]>
 } = internal.zip
 
@@ -537,6 +724,20 @@ export const zip: {
  * @category zipping
  */
 export const zipWith: {
+  /**
+   * Returns a config that is the composes this config and the specified config
+   * using the provided function.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <B, A, C>(that: Config<B>, f: (a: A, b: B) => C): (self: Config<A>) => Config<C>
+  /**
+   * Returns a config that is the composes this config and the specified config
+   * using the provided function.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A, B, C>(self: Config<A>, that: Config<B>, f: (a: A, b: B) => C): Config<C>
 } = internal.zipWith

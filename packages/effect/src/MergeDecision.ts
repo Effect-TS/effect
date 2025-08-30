@@ -79,17 +79,25 @@ export const isMergeDecision: (u: unknown) => u is MergeDecision<unknown, unknow
  * @category folding
  */
 export const match: {
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <R, E0, Z0, E, Z, Z2>(
-    options: {
-      readonly onDone: (effect: Effect.Effect<Z, E, R>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>) => Z2
-    }
+   options: {
+     readonly onDone: (effect: Effect.Effect<Z, E, R>) => Z2
+     readonly onAwait: (f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>) => Z2
+   }
   ): (self: MergeDecision<R, E0, Z0, E, Z>) => Z2
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <R, E0, Z0, E, Z, Z2>(
-    self: MergeDecision<R, E0, Z0, E, Z>,
-    options: {
-      readonly onDone: (effect: Effect.Effect<Z, E, R>) => Z2
-      readonly onAwait: (f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>) => Z2
-    }
+   self: MergeDecision<R, E0, Z0, E, Z>,
+   options: {
+     readonly onDone: (effect: Effect.Effect<Z, E, R>) => Z2
+     readonly onAwait: (f: (exit: Exit.Exit<Z0, E0>) => Effect.Effect<Z, E, R>) => Z2
+   }
   ): Z2
 } = internal.match

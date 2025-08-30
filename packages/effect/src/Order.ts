@@ -78,7 +78,15 @@ export const reverse = <A>(O: Order<A>): Order<A> => make((self, that) => O(that
  * @since 2.0.0
  */
 export const combine: {
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(that: Order<A>): (self: Order<A>) => Order<A>
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(self: Order<A>, that: Order<A>): Order<A>
 } = dual(2, <A>(self: Order<A>, that: Order<A>): Order<A> =>
   make((a1, a2) => {
@@ -94,7 +102,15 @@ export const combine: {
  * @since 2.0.0
  */
 export const combineMany: {
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<A>
+  /**
+   * @category combining
+   * @since 2.0.0
+   */
   <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<A>
 } = dual(2, <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<A> =>
   make((a1, a2) => {
@@ -127,7 +143,15 @@ export const combineAll = <A>(collection: Iterable<Order<A>>): Order<A> => combi
  * @since 2.0.0
  */
 export const mapInput: {
+  /**
+   * @category mapping
+   * @since 2.0.0
+   */
   <B, A>(f: (b: B) => A): (self: Order<A>) => Order<B>
+  /**
+   * @category mapping
+   * @since 2.0.0
+   */
   <A, B>(self: Order<A>, f: (b: B) => A): Order<B>
 } = dual(
   2,

@@ -185,6 +185,13 @@ const isInternalInterruption = Cause.reduceWithContext(undefined, {
  * @categories combinators
  */
 export const unsafeSet: {
+  /**
+   * Set the fiber in a FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
+   * If a fiber is already running, it will be interrupted unless `options.onlyIfMissing` is set.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     fiber: Fiber.RuntimeFiber<XA, XE>,
     options?: {
@@ -193,6 +200,13 @@ export const unsafeSet: {
       readonly propagateInterruption?: boolean | undefined
     }
   ): (self: FiberHandle<A, E>) => void
+  /**
+   * Set the fiber in a FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
+   * If a fiber is already running, it will be interrupted unless `options.onlyIfMissing` is set.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     self: FiberHandle<A, E>,
     fiber: Fiber.RuntimeFiber<XA, XE>,
@@ -251,6 +265,13 @@ export const unsafeSet: {
  * @categories combinators
  */
 export const set: {
+  /**
+   * Set the fiber in the FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
+   * If a fiber already exists in the FiberHandle, it will be interrupted unless `options.onlyIfMissing` is set.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     fiber: Fiber.RuntimeFiber<XA, XE>,
     options?: {
@@ -258,6 +279,13 @@ export const set: {
       readonly propagateInterruption?: boolean | undefined
     }
   ): (self: FiberHandle<A, E>) => Effect.Effect<void>
+  /**
+   * Set the fiber in the FiberHandle. When the fiber completes, it will be removed from the FiberHandle.
+   * If a fiber already exists in the FiberHandle, it will be interrupted unless `options.onlyIfMissing` is set.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     self: FiberHandle<A, E>,
     fiber: Fiber.RuntimeFiber<XA, XE>,
@@ -342,6 +370,13 @@ const constInterruptedFiber = (function() {
  * @categories combinators
  */
 export const run: {
+  /**
+   * Run an Effect and add the forked fiber to the FiberHandle.
+   * When the fiber completes, it will be removed from the FiberHandle.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E>(
     self: FiberHandle<A, E>,
     options?: {
@@ -351,6 +386,13 @@ export const run: {
   ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
   ) => Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
+  /**
+   * Run an Effect and add the forked fiber to the FiberHandle.
+   * When the fiber completes, it will be removed from the FiberHandle.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, R, XE extends E, XA extends A>(
     self: FiberHandle<A, E>,
     effect: Effect.Effect<XA, XE, R>,

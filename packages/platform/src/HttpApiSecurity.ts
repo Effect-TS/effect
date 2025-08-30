@@ -143,7 +143,15 @@ export const basic: Basic = Object.assign(Object.create(Proto), {
  * @category annotations
  */
 export const annotateContext: {
+  /**
+   * @since 1.0.0
+   * @category annotations
+   */
   <I>(context: Context.Context<I>): <A extends HttpApiSecurity>(self: A) => A
+  /**
+   * @since 1.0.0
+   * @category annotations
+   */
   <A extends HttpApiSecurity, I>(self: A, context: Context.Context<I>): A
 } = dual(
   2,
@@ -159,7 +167,15 @@ export const annotateContext: {
  * @category annotations
  */
 export const annotate: {
+  /**
+   * @since 1.0.0
+   * @category annotations
+   */
   <I, S>(tag: Context.Tag<I, S>, value: S): <A extends HttpApiSecurity>(self: A) => A
+  /**
+   * @since 1.0.0
+   * @category annotations
+   */
   <A extends HttpApiSecurity, I, S>(self: A, tag: Context.Tag<I, S>, value: S): A
 } = dual(
   3,

@@ -116,7 +116,15 @@ export const frequency: (_key: MetricKey.MetricKey.Frequency) => MetricHook.Freq
  * @category constructors
  */
 export const gauge: {
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   (key: MetricKey.MetricKey.Gauge<number>, startAt: number): MetricHook.Gauge<number>
+  /**
+   * @since 2.0.0
+   * @category constructors
+   */
   (key: MetricKey.MetricKey.Gauge<bigint>, startAt: bigint): MetricHook.Gauge<bigint>
 } = internal.gauge
 
@@ -137,7 +145,15 @@ export const summary: (key: MetricKey.MetricKey.Summary) => MetricHook.Summary =
  * @category utils
  */
 export const onUpdate: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
 } = internal.onUpdate
 
@@ -146,6 +162,14 @@ export const onUpdate: {
  * @category utils
  */
 export const onModify: {
+  /**
+   * @since 3.6.5
+   * @category utils
+   */
   <In, Out>(f: (input: In) => void): (self: MetricHook<In, Out>) => MetricHook<In, Out>
+  /**
+   * @since 3.6.5
+   * @category utils
+   */
   <In, Out>(self: MetricHook<In, Out>, f: (input: In) => void): MetricHook<In, Out>
 } = internal.onModify

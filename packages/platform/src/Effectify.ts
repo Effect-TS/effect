@@ -244,11 +244,17 @@ export type EffectifyError<T> = T extends {
  * @since 1.0.0
  */
 export const effectify: {
+  /**
+   * @since 1.0.0
+   */
   <F extends (...args: Array<any>) => any>(fn: F): Effectify<F, EffectifyError<F>>
-  <F extends (...args: Array<any>) => any, E>(
-    fn: F,
-    onError: (error: EffectifyError<F>, args: Parameters<F>) => E
-  ): Effectify<F, E>
+  /**
+   * @since 1.0.0
+   */
+  <F extends (...args: Array<any>) => any, E>(fn: F, onError: (error: EffectifyError<F>, args: Parameters<F>) => E): Effectify<F, E>
+  /**
+   * @since 1.0.0
+   */
   <F extends (...args: Array<any>) => any, E, E2>(
     fn: F,
     onError: (error: EffectifyError<F>, args: Parameters<F>) => E,

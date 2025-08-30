@@ -604,9 +604,15 @@ export const file: (options?: Prompt.FileOptions) => Prompt<string> = InternalFi
  * @category combinators
  */
 export const flatMap: {
-  <Output, Output2>(
-    f: (output: Output) => Prompt<Output2>
-  ): (self: Prompt<Output>) => Prompt<Output2>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <Output, Output2>(f: (output: Output) => Prompt<Output2>): (self: Prompt<Output>) => Prompt<Output2>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Prompt<Output2>): Prompt<Output2>
 } = InternalPrompt.flatMap
 
@@ -639,7 +645,15 @@ export const list: (options: Prompt.ListOptions) => Prompt<Array<string>> = Inte
  * @category combinators
  */
 export const map: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Output, Output2>(f: (output: Output) => Output2): (self: Prompt<Output>) => Prompt<Output2>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Output2): Prompt<Output2>
 } = InternalPrompt.map
 

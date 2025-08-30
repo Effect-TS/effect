@@ -94,7 +94,15 @@ export const get: <A>(self: SubscriptionRef<A>) => Effect.Effect<A> = internal.g
  * @category utils
  */
 export const getAndSet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: SubscriptionRef<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, value: A): Effect.Effect<A>
 } = Ref.getAndSet
 
@@ -103,7 +111,15 @@ export const getAndSet: {
  * @category utils
  */
 export const getAndUpdate: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect.Effect<A>
 } = Ref.getAndUpdate
 
@@ -112,7 +128,15 @@ export const getAndUpdate: {
  * @category utils
  */
 export const getAndUpdateEffect: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(f: (a: A) => Effect.Effect<A, E, R>): (self: SubscriptionRef<A>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 } = Synchronized.getAndUpdateEffect
 
@@ -121,7 +145,15 @@ export const getAndUpdateEffect: {
  * @category utils
  */
 export const getAndUpdateSome: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(pf: (a: A) => Option.Option<A>): (self: SubscriptionRef<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<A>
 } = Ref.getAndUpdateSome
 
@@ -130,9 +162,15 @@ export const getAndUpdateSome: {
  * @category utils
  */
 export const getAndUpdateSomeEffect: {
-  <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
-  ): (self: SubscriptionRef<A>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
+  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>): (self: SubscriptionRef<A>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(
     self: SubscriptionRef<A>,
     pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
@@ -152,7 +190,15 @@ export const make: <A>(value: A) => Effect.Effect<SubscriptionRef<A>> = internal
  * @category utils
  */
 export const modify: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(f: (a: A) => readonly [B, A]): (self: SubscriptionRef<A>) => Effect.Effect<B>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(self: SubscriptionRef<A>, f: (a: A) => readonly [B, A]): Effect.Effect<B>
 } = internal.modify
 
@@ -161,8 +207,19 @@ export const modify: {
  * @category utils
  */
 export const modifyEffect: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <B, A, E, R>(f: (a: A) => Effect.Effect<readonly [B, A], E, R>): (self: SubscriptionRef<A>) => Effect.Effect<B, E, R>
-  <A, B, E, R>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<readonly [B, A], E, R>): Effect.Effect<B, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
+  <A, B, E, R>(
+    self: SubscriptionRef<A>,
+    f: (a: A) => Effect.Effect<readonly [B, A], E, R>
+  ): Effect.Effect<B, E, R>
 } = internal.modifyEffect
 
 /**
@@ -170,10 +227,15 @@ export const modifyEffect: {
  * @category utils
  */
 export const modifySome: {
-  <B, A>(
-    fallback: B,
-    pf: (a: A) => Option.Option<readonly [B, A]>
-  ): (self: SubscriptionRef<A>) => Effect.Effect<B>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
+  <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (self: SubscriptionRef<A>) => Effect.Effect<B>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(
     self: SubscriptionRef<A>,
     fallback: B,
@@ -186,10 +248,18 @@ export const modifySome: {
  * @category utils
  */
 export const modifySomeEffect: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B, R, E>(
     fallback: B,
     pf: (a: A) => Option.Option<Effect.Effect<readonly [B, A], E, R>>
   ): (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<B, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B, R, E>(
     self: Synchronized.SynchronizedRef<A>,
     fallback: B,
@@ -202,7 +272,15 @@ export const modifySomeEffect: {
  * @category utils
  */
 export const set: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: SubscriptionRef<A>) => Effect.Effect<void>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, value: A): Effect.Effect<void>
 } = internal.set
 
@@ -211,7 +289,15 @@ export const set: {
  * @category utils
  */
 export const setAndGet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: SubscriptionRef<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, value: A): Effect.Effect<A>
 } = Ref.setAndGet
 
@@ -220,7 +306,15 @@ export const setAndGet: {
  * @category utils
  */
 export const update: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect.Effect<void>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect.Effect<void>
 } = Ref.update
 
@@ -229,7 +323,15 @@ export const update: {
  * @category utils
  */
 export const updateEffect: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(f: (a: A) => Effect.Effect<A, E, R>): (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<void, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(self: Synchronized.SynchronizedRef<A>, f: (a: A) => Effect.Effect<A, E, R>): Effect.Effect<void, E, R>
 } = Synchronized.updateEffect
 
@@ -238,7 +340,15 @@ export const updateEffect: {
  * @category utils
  */
 export const updateAndGet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => A): (self: SubscriptionRef<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, f: (a: A) => A): Effect.Effect<A>
 } = Ref.updateAndGet
 
@@ -247,7 +357,15 @@ export const updateAndGet: {
  * @category utils
  */
 export const updateAndGetEffect: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(f: (a: A) => Effect.Effect<A, E, R>): (self: SubscriptionRef<A>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(self: SubscriptionRef<A>, f: (a: A) => Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 } = Synchronized.updateAndGetEffect
 
@@ -256,7 +374,15 @@ export const updateAndGetEffect: {
  * @category utils
  */
 export const updateSome: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: SubscriptionRef<A>) => Effect.Effect<void>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, f: (a: A) => Option.Option<A>): Effect.Effect<void>
 } = Ref.updateSome
 
@@ -265,9 +391,15 @@ export const updateSome: {
  * @category utils
  */
 export const updateSomeEffect: {
-  <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
-  ): (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<void, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
+  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>): (self: Synchronized.SynchronizedRef<A>) => Effect.Effect<void, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(
     self: Synchronized.SynchronizedRef<A>,
     pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
@@ -279,7 +411,15 @@ export const updateSomeEffect: {
  * @category utils
  */
 export const updateSomeAndGet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(pf: (a: A) => Option.Option<A>): (self: SubscriptionRef<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: SubscriptionRef<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<A>
 } = Ref.updateSomeAndGet
 
@@ -288,9 +428,15 @@ export const updateSomeAndGet: {
  * @category utils
  */
 export const updateSomeAndGetEffect: {
-  <A, R, E>(
-    pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>
-  ): (self: SubscriptionRef<A>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
+  <A, R, E>(pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>): (self: SubscriptionRef<A>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, R, E>(
     self: SubscriptionRef<A>,
     pf: (a: A) => Option.Option<Effect.Effect<A, E, R>>

@@ -72,7 +72,15 @@ export const get: <A>(self: TSubscriptionRef<A>) => STM.STM<A> = internal.get
  * @category mutations
  */
 export const getAndSet: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(value: A): (self: TSubscriptionRef<A>) => STM.STM<A>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, value: A): STM.STM<A>
 } = internal.getAndSet
 
@@ -81,7 +89,15 @@ export const getAndSet: {
  * @category mutations
  */
 export const getAndUpdate: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TSubscriptionRef<A>) => STM.STM<A>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, f: (a: A) => A): STM.STM<A>
 } = internal.getAndUpdate
 
@@ -90,7 +106,15 @@ export const getAndUpdate: {
  * @category mutations
  */
 export const getAndUpdateSome: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: TSubscriptionRef<A>) => STM.STM<A>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, f: (a: A) => Option.Option<A>): STM.STM<A>
 } = internal.getAndUpdateSome
 
@@ -105,7 +129,15 @@ export const make: <A>(value: A) => STM.STM<TSubscriptionRef<A>> = internal.make
  * @category mutations
  */
 export const modify: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A, B>(f: (a: A) => readonly [B, A]): (self: TSubscriptionRef<A>) => STM.STM<B>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A, B>(self: TSubscriptionRef<A>, f: (a: A) => readonly [B, A]): STM.STM<B>
 } = internal.modify
 
@@ -114,8 +146,20 @@ export const modify: {
  * @category mutations
  */
 export const modifySome: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): (self: TSubscriptionRef<A>) => STM.STM<B>
-  <A, B>(self: TSubscriptionRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): STM.STM<B>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
+  <A, B>(
+   self: TSubscriptionRef<A>,
+   fallback: B,
+   f: (a: A) => Option.Option<readonly [B, A]>
+  ): STM.STM<B>
 } = internal.modifySome
 
 /**
@@ -123,7 +167,15 @@ export const modifySome: {
  * @category mutations
  */
 export const set: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(value: A): (self: TSubscriptionRef<A>) => STM.STM<void>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, value: A): STM.STM<void>
 } = internal.set
 
@@ -132,7 +184,15 @@ export const set: {
  * @category mutations
  */
 export const setAndGet: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(value: A): (self: TSubscriptionRef<A>) => STM.STM<A>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, value: A): STM.STM<A>
 } = internal.setAndGet
 
@@ -141,7 +201,15 @@ export const setAndGet: {
  * @category mutations
  */
 export const update: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TSubscriptionRef<A>) => STM.STM<void>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, f: (a: A) => A): STM.STM<void>
 } = internal.update
 
@@ -150,7 +218,15 @@ export const update: {
  * @category mutations
  */
 export const updateAndGet: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TSubscriptionRef<A>) => STM.STM<A>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, f: (a: A) => A): STM.STM<A>
 } = internal.updateAndGet
 
@@ -159,7 +235,15 @@ export const updateAndGet: {
  * @category mutations
  */
 export const updateSome: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: TSubscriptionRef<A>) => STM.STM<void>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, f: (a: A) => Option.Option<A>): STM.STM<void>
 } = internal.updateSome
 
@@ -168,7 +252,15 @@ export const updateSome: {
  * @category mutations
  */
 export const updateSomeAndGet: {
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: TSubscriptionRef<A>) => STM.STM<A>
+  /**
+   * @since 3.10.0
+   * @category mutations
+   */
   <A>(self: TSubscriptionRef<A>, f: (a: A) => Option.Option<A>): STM.STM<A>
 } = internal.updateSomeAndGet
 

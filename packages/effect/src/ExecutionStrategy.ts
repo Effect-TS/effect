@@ -106,14 +106,33 @@ export const isParallelN: (self: ExecutionStrategy) => self is ParallelN = inter
  * @category folding
  */
 export const match: {
-  <A>(options: {
-    readonly onSequential: LazyArg<A>
-    readonly onParallel: LazyArg<A>
-    readonly onParallelN: (n: number) => A
-  }): (self: ExecutionStrategy) => A
-  <A>(self: ExecutionStrategy, options: {
-    readonly onSequential: LazyArg<A>
-    readonly onParallel: LazyArg<A>
-    readonly onParallelN: (n: number) => A
-  }): A
+  /**
+   * Folds over the specified `ExecutionStrategy` using the provided case
+   * functions.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
+  <A>(
+   options: {
+     readonly onSequential: LazyArg<A>
+     readonly onParallel: LazyArg<A>
+     readonly onParallelN: (n: number) => A
+   }
+  ): (self: ExecutionStrategy) => A
+  /**
+   * Folds over the specified `ExecutionStrategy` using the provided case
+   * functions.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
+  <A>(
+   self: ExecutionStrategy,
+   options: {
+     readonly onSequential: LazyArg<A>
+     readonly onParallel: LazyArg<A>
+     readonly onParallelN: (n: number) => A
+   }
+  ): A
 } = internal.match

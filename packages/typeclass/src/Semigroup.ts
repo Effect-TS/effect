@@ -93,7 +93,31 @@ export const reverse = <A>(S: Semigroup<A>): Semigroup<A> =>
  * @since 0.24.0
  */
 export const intercalate: {
+  /**
+   * The `intercalate` API returns a function that takes a `Semigroup` instance and a separator value, and returns a new
+   * `Semigroup` instance that combines values with the given separator.
+   *
+   * This API is useful when you want to combine values with a specific separator. For example, when you want to concatenate
+   * an array of strings with a separator string in between.
+   *
+   * It is interesting to note that there is no equivalent API in the `Monoid` module. This is because the value `empty`,
+   * which is required for the `Monoid` interface, cannot exist.
+   *
+   * @since 0.24.0
+   */
   <A>(separator: A): (S: Semigroup<A>) => Semigroup<A>
+  /**
+   * The `intercalate` API returns a function that takes a `Semigroup` instance and a separator value, and returns a new
+   * `Semigroup` instance that combines values with the given separator.
+   *
+   * This API is useful when you want to combine values with a specific separator. For example, when you want to concatenate
+   * an array of strings with a separator string in between.
+   *
+   * It is interesting to note that there is no equivalent API in the `Monoid` module. This is because the value `empty`,
+   * which is required for the `Monoid` interface, cannot exist.
+   *
+   * @since 0.24.0
+   */
   <A>(S: Semigroup<A>, separator: A): Semigroup<A>
 } = dual(
   2,
@@ -129,7 +153,13 @@ export const last = <A = never>(): Semigroup<A> =>
  * @since 0.24.0
  */
 export const imap: {
+  /**
+   * @since 0.24.0
+   */
   <A, B>(to: (a: A) => B, from: (b: B) => A): (self: Semigroup<A>) => Semigroup<B>
+  /**
+   * @since 0.24.0
+   */
   <A, B>(self: Semigroup<A>, to: (a: A) => B, from: (b: B) => A): Semigroup<B>
 } = dual(3, <A, B>(S: Semigroup<A>, to: (a: A) => B, from: (b: B) => A): Semigroup<B> =>
   make(

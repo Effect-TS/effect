@@ -231,7 +231,25 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = internal.c
  * @category utils
  */
 export const mapInputPath: {
+  /**
+   * Returns a new config provider that will automatically tranform all path
+   * configuration names with the specified function. This can be utilized to
+   * adapt the names of configuration properties from one naming convention to
+   * another.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (f: (path: string) => string): (self: ConfigProvider) => ConfigProvider
+  /**
+   * Returns a new config provider that will automatically tranform all path
+   * configuration names with the specified function. This can be utilized to
+   * adapt the names of configuration properties from one naming convention to
+   * another.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: ConfigProvider, f: (path: string) => string): ConfigProvider
 } = internal.mapInputPath
 
@@ -267,7 +285,25 @@ export const lowerCase: (self: ConfigProvider) => ConfigProvider = internal.lowe
  * @category utils
  */
 export const nested: {
+  /**
+   * Returns a new config provider that will automatically nest all
+   * configuration under the specified property name. This can be utilized to
+   * aggregate separate configuration sources that are all required to load a
+   * single configuration value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (name: string): (self: ConfigProvider) => ConfigProvider
+  /**
+   * Returns a new config provider that will automatically nest all
+   * configuration under the specified property name. This can be utilized to
+   * aggregate separate configuration sources that are all required to load a
+   * single configuration value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: ConfigProvider, name: string): ConfigProvider
 } = internal.nested
 
@@ -280,7 +316,23 @@ export const nested: {
  * @category utils
  */
 export const orElse: {
+  /**
+   * Returns a new config provider that preferentially loads configuration data
+   * from this one, but which will fall back to the specified alternate provider
+   * if there are any issues loading the configuration from this provider.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: LazyArg<ConfigProvider>): (self: ConfigProvider) => ConfigProvider
+  /**
+   * Returns a new config provider that preferentially loads configuration data
+   * from this one, but which will fall back to the specified alternate provider
+   * if there are any issues loading the configuration from this provider.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: ConfigProvider, that: LazyArg<ConfigProvider>): ConfigProvider
 } = internal.orElse
 
@@ -294,7 +346,25 @@ export const orElse: {
  * @category utils
  */
 export const unnested: {
+  /**
+   * Returns a new config provider that will automatically un-nest all
+   * configuration under the specified property name. This can be utilized to
+   * de-aggregate separate configuration sources that are all required to load a
+   * single configuration value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (name: string): (self: ConfigProvider) => ConfigProvider
+  /**
+   * Returns a new config provider that will automatically un-nest all
+   * configuration under the specified property name. This can be utilized to
+   * de-aggregate separate configuration sources that are all required to load a
+   * single configuration value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: ConfigProvider, name: string): ConfigProvider
 } = internal.unnested
 
@@ -328,6 +398,24 @@ export const upperCase: (self: ConfigProvider) => ConfigProvider = internal.uppe
  * @category combinators
  */
 export const within: {
+  /**
+   * Returns a new config provider that transforms the config provider with the
+   * specified function within the specified path.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   (path: ReadonlyArray<string>, f: (self: ConfigProvider) => ConfigProvider): (self: ConfigProvider) => ConfigProvider
-  (self: ConfigProvider, path: ReadonlyArray<string>, f: (self: ConfigProvider) => ConfigProvider): ConfigProvider
+  /**
+   * Returns a new config provider that transforms the config provider with the
+   * specified function within the specified path.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
+  (
+   self: ConfigProvider,
+   path: ReadonlyArray<string>,
+   f: (self: ConfigProvider) => ConfigProvider
+  ): ConfigProvider
 } = internal.within

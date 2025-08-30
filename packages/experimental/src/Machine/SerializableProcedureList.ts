@@ -41,6 +41,10 @@ export const make: <State>(
  * @category combinators
  */
 export const add: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     Req extends Schema.TaggedRequest.All,
     I,
@@ -60,6 +64,10 @@ export const add: {
     Private,
     R | R2 | Schema.SerializableWithResult.Context<Req>
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     State,
     Public extends Schema.TaggedRequest.All,
@@ -94,7 +102,15 @@ export const add: {
     Req | Public,
     Private,
     R | R2 | Schema.SerializableWithResult.Context<Req>
-  > => ProcedureList.addProcedure(self, Procedure.makeSerializable<any, any>()(schema, handler)) as any
+  > => ProcedureList.addProcedure(self, Procedure.makeSerializable</**
+   * @since 1.0.0
+   * @category combinators
+   */
+  any, /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  any>()(schema, handler)) as any
 )
 
 /**
@@ -102,6 +118,10 @@ export const add: {
  * @category combinators
  */
 export const addPrivate: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     Req extends Schema.TaggedRequest.All,
     I,
@@ -121,6 +141,10 @@ export const addPrivate: {
     Private | Req,
     R | R2 | Schema.SerializableWithResult.Context<Req>
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <
     State,
     Public extends Schema.TaggedRequest.All,
@@ -155,7 +179,15 @@ export const addPrivate: {
     Public,
     Private | Req,
     R | R2 | Schema.SerializableWithResult.Context<Req>
-  > => ProcedureList.addProcedurePrivate(self, Procedure.makeSerializable<any, any>()(schema, handler)) as any
+  > => ProcedureList.addProcedurePrivate(self, Procedure.makeSerializable</**
+   * @since 1.0.0
+   * @category combinators
+   */
+  any, /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  any>()(schema, handler)) as any
 )
 
 /**
@@ -163,11 +195,17 @@ export const addPrivate: {
  * @category combinators
  */
 export const withInitialState: {
-  <State>(
-    initialState: Types.NoInfer<State>
-  ): <Public extends Schema.TaggedRequest.All, Private extends Schema.TaggedRequest.All, R>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <State>(initialState: Types.NoInfer<State>): <Public extends Schema.TaggedRequest.All, Private extends Schema.TaggedRequest.All, R>(
     self: SerializableProcedureList<State, Public, Private, R>
   ) => SerializableProcedureList<State, Public, Private, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <State, Public extends Schema.TaggedRequest.All, Private extends Schema.TaggedRequest.All, R>(
     self: SerializableProcedureList<State, Public, Private, R>,
     initialState: Types.NoInfer<State>

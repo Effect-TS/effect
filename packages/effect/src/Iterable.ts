@@ -95,7 +95,39 @@ export const range = (start: number, end?: number): Iterable<number> => {
  * @since 2.0.0
  */
 export const replicate: {
+  /**
+   * Return a `Iterable` containing a value repeated the specified number of times.
+   *
+   * **Note**. `n` is normalized to an integer >= 1.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { replicate } from "effect/Iterable"
+   *
+   * assert.deepStrictEqual(Array.from(replicate("a", 3)), ["a", "a", "a"])
+   * ```
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   (n: number): <A>(a: A) => Iterable<A>
+  /**
+   * Return a `Iterable` containing a value repeated the specified number of times.
+   *
+   * **Note**. `n` is normalized to an integer >= 1.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { replicate } from "effect/Iterable"
+   *
+   * assert.deepStrictEqual(Array.from(replicate("a", 3)), ["a", "a", "a"])
+   * ```
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   <A>(a: A, n: number): Iterable<A>
 } = dual(2, <A>(a: A, n: number): Iterable<A> => makeBy(() => a, { length: n }))
 
@@ -131,7 +163,19 @@ export const fromRecord = <K extends string, A>(self: Readonly<Record<K, A>>): I
  * @since 2.0.0
  */
 export const prepend: {
+  /**
+   * Prepend an element to the front of an `Iterable`, creating a new `Iterable`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(head: B): <A>(self: Iterable<A>) => Iterable<A | B>
+  /**
+   * Prepend an element to the front of an `Iterable`, creating a new `Iterable`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, head: B): Iterable<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, head: B): Iterable<A | B> => prependAll(self, [head]))
 
@@ -153,7 +197,41 @@ export const prepend: {
  * @since 2.0.0
  */
 export const prependAll: {
+  /**
+   * Prepends the specified prefix iterable to the beginning of the specified iterable.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Iterable } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   Array.from(Iterable.prependAll([1, 2], ["a", "b"])),
+   *   ["a", "b", 1, 2]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<A | B>
+  /**
+   * Prepends the specified prefix iterable to the beginning of the specified iterable.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Iterable } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   Array.from(Iterable.prependAll([1, 2], ["a", "b"])),
+   *   ["a", "b", 1, 2]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B>
 } = dual(
   2,
@@ -167,7 +245,19 @@ export const prependAll: {
  * @since 2.0.0
  */
 export const append: {
+  /**
+   * Append an element to the end of an `Iterable`, creating a new `Iterable`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(last: B): <A>(self: Iterable<A>) => Iterable<A | B>
+  /**
+   * Append an element to the end of an `Iterable`, creating a new `Iterable`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, last: B): Iterable<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, last: B): Iterable<A | B> => appendAll(self, [last]))
 
@@ -178,7 +268,19 @@ export const append: {
  * @since 2.0.0
  */
 export const appendAll: {
+  /**
+   * Concatenates two iterables, combining their elements.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<A | B>
+  /**
+   * Concatenates two iterables, combining their elements.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B>
 } = dual(
   2,
@@ -212,7 +314,19 @@ export const appendAll: {
  * @since 2.0.0
  */
 export const scan: {
+  /**
+   * Reduce an `Iterable` from the left, keeping all intermediate results instead of only the final result.
+   *
+   * @category folding
+   * @since 2.0.0
+   */
   <B, A>(b: B, f: (b: B, a: A) => B): (self: Iterable<A>) => Iterable<B>
+  /**
+   * Reduce an `Iterable` from the left, keeping all intermediate results instead of only the final result.
+   *
+   * @category folding
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A) => B): Iterable<B>
 } = dual(3, <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A) => B): Iterable<B> => ({
   [Symbol.iterator]() {
@@ -303,7 +417,23 @@ export const unsafeHead = <A>(self: Iterable<A>): A => {
  * @since 2.0.0
  */
 export const take: {
+  /**
+   * Keep only a max number of elements from the start of an `Iterable`, creating a new `Iterable`.
+   *
+   * **Note**. `n` is normalized to a non negative integer.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   (n: number): <A>(self: Iterable<A>) => Iterable<A>
+  /**
+   * Keep only a max number of elements from the start of an `Iterable`, creating a new `Iterable`.
+   *
+   * **Note**. `n` is normalized to a non negative integer.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, n: number): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, n: number): Iterable<A> => ({
   [Symbol.iterator]() {
@@ -328,9 +458,33 @@ export const take: {
  * @since 2.0.0
  */
 export const takeWhile: {
+  /**
+   * Calculate the longest initial Iterable for which all element satisfy the specified predicate, creating a new `Iterable`.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Iterable<B>
+  /**
+   * Calculate the longest initial Iterable for which all element satisfy the specified predicate, creating a new `Iterable`.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Iterable<A>
+  /**
+   * Calculate the longest initial Iterable for which all element satisfy the specified predicate, creating a new `Iterable`.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Iterable<B>
+  /**
+   * Calculate the longest initial Iterable for which all element satisfy the specified predicate, creating a new `Iterable`.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A> => ({
   [Symbol.iterator]() {
@@ -357,7 +511,23 @@ export const takeWhile: {
  * @since 2.0.0
  */
 export const drop: {
+  /**
+   * Drop a max number of elements from the start of an `Iterable`
+   *
+   * **Note**. `n` is normalized to a non negative integer.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   (n: number): <A>(self: Iterable<A>) => Iterable<A>
+  /**
+   * Drop a max number of elements from the start of an `Iterable`
+   *
+   * **Note**. `n` is normalized to a non negative integer.
+   *
+   * @category getters
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, n: number): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, n: number): Iterable<A> => ({
   [Symbol.iterator]() {
@@ -386,11 +556,53 @@ export const drop: {
  * @since 2.0.0
  */
 export const findFirst: {
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B>(f: (a: NoInfer<A>, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<A>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
 } = dual(
   2,
@@ -420,11 +632,47 @@ export const findFirst: {
  * @since 2.0.0
  */
 export const findLast: {
+  /**
+   * Find the last element for which a predicate holds.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B>(f: (a: NoInfer<A>, i: number) => Option<B>): (self: Iterable<A>) => Option<B>
+  /**
+   * Find the last element for which a predicate holds.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Option<B>
+  /**
+   * Find the last element for which a predicate holds.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Option<A>
+  /**
+   * Find the last element for which a predicate holds.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Option<B>
+  /**
+   * Find the last element for which a predicate holds.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option<B>
+  /**
+   * Find the last element for which a predicate holds.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option<A>
 } = dual(
   2,
@@ -455,7 +703,19 @@ export const findLast: {
  * @since 2.0.0
  */
 export const zip: {
+  /**
+   * Takes two `Iterable`s and returns an `Iterable` of corresponding pairs.
+   *
+   * @category zipping
+   * @since 2.0.0
+   */
   <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<[A, B]>
+  /**
+   * Takes two `Iterable`s and returns an `Iterable` of corresponding pairs.
+   *
+   * @category zipping
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<[A, B]>
 } = dual(
   2,
@@ -470,7 +730,21 @@ export const zip: {
  * @since 2.0.0
  */
 export const zipWith: {
+  /**
+   * Apply a function to pairs of elements at the same index in two `Iterable`s, collecting the results. If one
+   * input `Iterable` is short, excess elements of the longer `Iterable` are discarded.
+   *
+   * @category zipping
+   * @since 2.0.0
+   */
   <B, A, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => Iterable<C>
+  /**
+   * Apply a function to pairs of elements at the same index in two `Iterable`s, collecting the results. If one
+   * input `Iterable` is short, excess elements of the longer `Iterable` are discarded.
+   *
+   * @category zipping
+   * @since 2.0.0
+   */
   <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C>
 } = dual(3, <B, A, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C> => ({
   [Symbol.iterator]() {
@@ -496,7 +770,19 @@ export const zipWith: {
  * @since 2.0.0
  */
 export const intersperse: {
+  /**
+   * Places an element in between members of an `Iterable`.
+   * If the input is a non-empty array, the result is also a non-empty array.
+   *
+   * @since 2.0.0
+   */
   <B>(middle: B): <A>(self: Iterable<A>) => Iterable<A | B>
+  /**
+   * Places an element in between members of an `Iterable`.
+   * If the input is a non-empty array, the result is also a non-empty array.
+   *
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, middle: B): Iterable<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, middle: B): Iterable<A | B> => ({
   [Symbol.iterator]() {
@@ -548,7 +834,19 @@ const _equivalence = Equal.equivalence()
  * @since 2.0.0
  */
 export const contains: {
+  /**
+   * Returns a function that checks if a `Iterable` contains a given value using the default `Equivalence`.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(a: A): (self: Iterable<A>) => boolean
+  /**
+   * Returns a function that checks if a `Iterable` contains a given value using the default `Equivalence`.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, a: A): boolean
 } = containsWith(_equivalence)
 
@@ -560,7 +858,21 @@ export const contains: {
  * @since 2.0.0
  */
 export const chunksOf: {
+  /**
+   * Splits an `Iterable` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
+   * the `Iterable`.
+   *
+   * @category splitting
+   * @since 2.0.0
+   */
   (n: number): <A>(self: Iterable<A>) => Iterable<Array<A>>
+  /**
+   * Splits an `Iterable` into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
+   * the `Iterable`.
+   *
+   * @category splitting
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, n: number): Iterable<Array<A>>
 } = dual(2, <A>(self: Iterable<A>, n: number): Iterable<Array<A>> => {
   const safeN = Math.max(1, Math.floor(n))
@@ -597,7 +909,19 @@ export const chunksOf: {
  * @since 2.0.0
  */
 export const groupWith: {
+  /**
+   * Group equal, consecutive elements of an `Iterable` into `NonEmptyArray`s using the provided `isEquivalent` function.
+   *
+   * @category grouping
+   * @since 2.0.0
+   */
   <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => Iterable<NonEmptyArray<A>>
+  /**
+   * Group equal, consecutive elements of an `Iterable` into `NonEmptyArray`s using the provided `isEquivalent` function.
+   *
+   * @category grouping
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Iterable<NonEmptyArray<A>>
 } = dual(
   2,
@@ -654,13 +978,22 @@ export const group: <A>(self: Iterable<A>) => Iterable<NonEmptyArray<A>> = group
  * @since 2.0.0
  */
 export const groupBy: {
-  <A, K extends string | symbol>(
-    f: (a: A) => K
-  ): (self: Iterable<A>) => Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
-  <A, K extends string | symbol>(
-    self: Iterable<A>,
-    f: (a: A) => K
-  ): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  /**
+   * Splits an `Iterable` into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
+   * function on each element, and grouping the results according to values returned
+   *
+   * @category grouping
+   * @since 2.0.0
+   */
+  <A, K extends string | symbol>(f: (a: A) => K): (self: Iterable<A>) => Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
+  /**
+   * Splits an `Iterable` into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
+   * function on each element, and grouping the results according to values returned
+   *
+   * @category grouping
+   * @since 2.0.0
+   */
+  <A, K extends string | symbol>(self: Iterable<A>, f: (a: A) => K): Record<Record.ReadonlyRecord.NonLiteralKey<K>, NonEmptyArray<A>>
 } = dual(2, <A, K extends string | symbol>(
   self: Iterable<A>,
   f: (a: A) => K
@@ -707,9 +1040,15 @@ export const of = <A>(a: A): Iterable<A> => [a]
  * @since 2.0.0
  */
 export const map: {
-  <A, B>(
-    f: (a: NoInfer<A>, i: number) => B
-  ): (self: Iterable<A>) => Iterable<B>
+  /**
+   * @category mapping
+   * @since 2.0.0
+   */
+  <A, B>(f: (a: NoInfer<A>, i: number) => B): (self: Iterable<A>) => Iterable<B>
+  /**
+   * @category mapping
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: NoInfer<A>, i: number) => B): Iterable<B>
 } = dual(2, <A, B>(self: Iterable<A>, f: (a: A, i: number) => B): Iterable<B> => ({
   [Symbol.iterator]() {
@@ -734,9 +1073,19 @@ export const map: {
  * @since 2.0.0
  */
 export const flatMap: {
-  <A, B>(
-    f: (a: NoInfer<A>, i: number) => Iterable<B>
-  ): (self: Iterable<A>) => Iterable<B>
+  /**
+   * Applies a function to each element in an Iterable and returns a new Iterable containing the concatenated mapped elements.
+   *
+   * @category sequencing
+   * @since 2.0.0
+   */
+  <A, B>(f: (a: NoInfer<A>, i: number) => Iterable<B>): (self: Iterable<A>) => Iterable<B>
+  /**
+   * Applies a function to each element in an Iterable and returns a new Iterable containing the concatenated mapped elements.
+   *
+   * @category sequencing
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: NoInfer<A>, i: number) => Iterable<B>): Iterable<B>
 } = dual(
   2,
@@ -777,7 +1126,15 @@ export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
  * @since 2.0.0
  */
 export const filterMap: {
+  /**
+   * @category filtering
+   * @since 2.0.0
+   */
   <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Iterable<B>
+  /**
+   * @category filtering
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Iterable<B>
 } = dual(
   2,
@@ -809,7 +1166,19 @@ export const filterMap: {
  * @since 2.0.0
  */
 export const filterMapWhile: {
+  /**
+   * Transforms all elements of the `Iterable` for as long as the specified function returns some value
+   *
+   * @category filtering
+   * @since 2.0.0
+   */
   <A, B>(f: (a: A, i: number) => Option<B>): (self: Iterable<A>) => Iterable<B>
+  /**
+   * Transforms all elements of the `Iterable` for as long as the specified function returns some value
+   *
+   * @category filtering
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>): Iterable<B>
 } = dual(2, <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option<B>) => ({
   [Symbol.iterator]() {
@@ -893,9 +1262,25 @@ export const getRights = <R, L>(self: Iterable<Either<R, L>>): Iterable<R> => fi
  * @since 2.0.0
  */
 export const filter: {
+  /**
+   * @category filtering
+   * @since 2.0.0
+   */
   <A, B extends A>(refinement: (a: NoInfer<A>, i: number) => a is B): (self: Iterable<A>) => Iterable<B>
+  /**
+   * @category filtering
+   * @since 2.0.0
+   */
   <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => Iterable<A>
+  /**
+   * @category filtering
+   * @since 2.0.0
+   */
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Iterable<B>
+  /**
+   * @category filtering
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Iterable<A>
 } = dual(
   2,
@@ -924,7 +1309,15 @@ export const filter: {
  * @since 2.0.0
  */
 export const flatMapNullable: {
+  /**
+   * @category sequencing
+   * @since 2.0.0
+   */
   <A, B>(f: (a: A) => B | null | undefined): (self: Iterable<A>) => Iterable<NonNullable<B>>
+  /**
+   * @category sequencing
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, f: (a: A) => B | null | undefined): Iterable<NonNullable<B>>
 } = dual(
   2,
@@ -942,7 +1335,19 @@ export const flatMapNullable: {
  * @since 2.0.0
  */
 export const some: {
+  /**
+   * Check if a predicate holds true for some `Iterable` element.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(predicate: (a: A, i: number) => boolean): (self: Iterable<A>) => boolean
+  /**
+   * Check if a predicate holds true for some `Iterable` element.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): boolean
 } = dual(
   2,
@@ -984,7 +1389,17 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterab
  * @since 2.0.0
  */
 export const forEach: {
+  /**
+   * Iterate over the `Iterable` applying `f`.
+   *
+   * @since 2.0.0
+   */
   <A>(f: (a: A, i: number) => void): (self: Iterable<A>) => void
+  /**
+   * Iterate over the `Iterable` applying `f`.
+   *
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, f: (a: A, i: number) => void): void
 } = dual(2, <A>(self: Iterable<A>, f: (a: A, i: number) => void): void => {
   let i = 0
@@ -998,7 +1413,15 @@ export const forEach: {
  * @since 2.0.0
  */
 export const reduce: {
+  /**
+   * @category folding
+   * @since 2.0.0
+   */
   <B, A>(b: B, f: (b: B, a: A, i: number) => B): (self: Iterable<A>) => B
+  /**
+   * @category folding
+   * @since 2.0.0
+   */
   <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A, i: number) => B): B
 } = dual(3, <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A, i: number) => B): B => {
   if (Array.isArray(self)) {
@@ -1018,7 +1441,17 @@ export const reduce: {
  * @since 2.0.0
  */
 export const dedupeAdjacentWith: {
+  /**
+   * Deduplicates adjacent elements that are identical using the provided `isEquivalent` function.
+   *
+   * @since 2.0.0
+   */
   <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => Iterable<A>
+  /**
+   * Deduplicates adjacent elements that are identical using the provided `isEquivalent` function.
+   *
+   * @since 2.0.0
+   */
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Iterable<A> => ({
   [Symbol.iterator]() {
@@ -1060,7 +1493,19 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjac
  * @category elements
  */
 export const cartesianWith: {
+  /**
+   * Zips this Iterable crosswise with the specified Iterable using the specified combiner.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, B, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => Iterable<C>
+  /**
+   * Zips this Iterable crosswise with the specified Iterable using the specified combiner.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C>
 } = dual(
   3,
@@ -1075,7 +1520,19 @@ export const cartesianWith: {
  * @category elements
  */
 export const cartesian: {
+  /**
+   * Zips this Iterable crosswise with the specified Iterable.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<[A, B]>
+  /**
+   * Zips this Iterable crosswise with the specified Iterable.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<[A, B]>
 } = dual(
   2,
@@ -1098,7 +1555,37 @@ export const cartesian: {
  * @since 3.16.0
  */
 export const countBy: {
+  /**
+   * Counts all the element of the given iterable that pass the given predicate
+   *
+   * **Example**
+   *
+   * ```ts
+   * import { Iterable } from "effect"
+   *
+   * const result = Iterable.countBy([1, 2, 3, 4, 5], n => n % 2 === 0)
+   * console.log(result) // 2
+   * ```
+   *
+   * @category folding
+   * @since 3.16.0
+   */
   <A>(predicate: (a: NoInfer<A>, i: number) => boolean): (self: Iterable<A>) => number
+  /**
+   * Counts all the element of the given iterable that pass the given predicate
+   *
+   * **Example**
+   *
+   * ```ts
+   * import { Iterable } from "effect"
+   *
+   * const result = Iterable.countBy([1, 2, 3, 4, 5], n => n % 2 === 0)
+   * console.log(result) // 2
+   * ```
+   *
+   * @category folding
+   * @since 3.16.0
+   */
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): number
 } = dual(
   2,

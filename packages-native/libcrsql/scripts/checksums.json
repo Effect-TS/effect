@@ -1,0 +1,8 @@
+{
+  "darwin-aarch64": { "file": "libcrsqlite.dylib", "sha256": "68ef3d9ba24a3c5d66466794a649f96b6111017e3f7f62a279a67e31637b5fc7" },
+  "darwin-x86_64": { "file": "libcrsqlite.dylib", "sha256": "b52db79feb47cfdbdcab00ccb4ca6d1bf29958acff8321fc57356f170b8d43bf" },
+  "linux-aarch64": { "file": "libcrsqlite.so", "sha256": "fdac7d80b4443a96e107f08f0d6e873cbd6666b884ae900b803394bdea9f31ab" },
+  "linux-x86_64": { "file": "libcrsqlite.so", "sha256": "6548af9fe19554dc972975ae7ed0e1a39aafd15944bf0292080d22965cd0eb96" },
+  "win-x86_64": { "file": "crsqlite.dll", "sha256": "030c10703e2cda85cb66e459063315998fd5137c97da69f5ad9749c9e515079d" },
+  "win-i686": { "file": "crsqlite.dll", "sha256": "a31a624fdbc1ddaebf273f0e3b5723a15bc6f4fbd8428cfbec9427eb01322c7d" }
+}

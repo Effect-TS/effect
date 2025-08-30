@@ -66,7 +66,17 @@ export type Concat<A extends string, B extends string> = `${A}${B}`
  * @since 2.0.0
  */
 export const concat: {
+  /**
+   * Concatenates two strings at runtime.
+   *
+   * @since 2.0.0
+   */
   <B extends string>(that: B): <A extends string>(self: A) => Concat<A, B>
+  /**
+   * Concatenates two strings at runtime.
+   *
+   * @since 2.0.0
+   */
   <A extends string, B extends string>(self: A, that: B): Concat<A, B>
 } = dual(2, (self: string, that: string): string => self + that)
 
@@ -262,7 +272,31 @@ export const length = (self: string): number => self.length
  * @since 2.0.0
  */
 export const split: {
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String } from "effect"
+   *
+   * assert.deepStrictEqual(pipe('abc', String.split('')), ['a', 'b', 'c'])
+   * assert.deepStrictEqual(pipe('', String.split('')), [''])
+   * ```
+   *
+   * @since 2.0.0
+   */
   (separator: string | RegExp): (self: string) => NonEmptyArray<string>
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String } from "effect"
+   *
+   * assert.deepStrictEqual(pipe('abc', String.split('')), ['a', 'b', 'c'])
+   * assert.deepStrictEqual(pipe('', String.split('')), [''])
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, separator: string | RegExp): NonEmptyArray<string>
 } = dual(2, (self: string, separator: string | RegExp): NonEmptyArray<string> => {
   const out = self.split(separator)
@@ -303,7 +337,31 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  * @since 2.0.0
  */
 export const charCodeAt: {
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.charCodeAt(1)), Option.some(98))
+   * assert.deepStrictEqual(pipe("abc", String.charCodeAt(4)), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (index: number): (self: string) => Option.Option<number>
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.charCodeAt(1)), Option.some(98))
+   * assert.deepStrictEqual(pipe("abc", String.charCodeAt(4)), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, index: number): Option.Option<number>
 } = dual(
   2,
@@ -338,7 +396,31 @@ export const substring = (start: number, end?: number) => (self: string): string
  * @since 2.0.0
  */
 export const at: {
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.at(1)), Option.some("b"))
+   * assert.deepStrictEqual(pipe("abc", String.at(4)), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (index: number): (self: string) => Option.Option<string>
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.at(1)), Option.some("b"))
+   * assert.deepStrictEqual(pipe("abc", String.at(4)), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, index: number): Option.Option<string>
 } = dual(2, (self: string, index: number): Option.Option<string> => Option.fromNullable(self.at(index)))
 
@@ -355,7 +437,31 @@ export const at: {
  * @since 2.0.0
  */
 export const charAt: {
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.charAt(1)), Option.some("b"))
+   * assert.deepStrictEqual(pipe("abc", String.charAt(4)), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (index: number): (self: string) => Option.Option<string>
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.charAt(1)), Option.some("b"))
+   * assert.deepStrictEqual(pipe("abc", String.charAt(4)), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, index: number): Option.Option<string>
 } = dual(
   2,
@@ -374,7 +480,29 @@ export const charAt: {
  * @since 2.0.0
  */
 export const codePointAt: {
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.codePointAt(1)), Option.some(98))
+   * ```
+   *
+   * @since 2.0.0
+   */
   (index: number): (self: string) => Option.Option<number>
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("abc", String.codePointAt(1)), Option.some(98))
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, index: number): Option.Option<number>
 } = dual(2, (self: string, index: number): Option.Option<number> => Option.fromNullable(self.codePointAt(index)))
 
@@ -529,7 +657,33 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
  * @since 2.0.0
  */
 export const search: {
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("ababb", String.search("b")), Option.some(1))
+   * assert.deepStrictEqual(pipe("ababb", String.search(/abb/)), Option.some(2))
+   * assert.deepStrictEqual(pipe("ababb", String.search("d")), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (regexp: RegExp | string): (self: string) => Option.Option<number>
+  /**
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, String, Option } from "effect"
+   *
+   * assert.deepStrictEqual(pipe("ababb", String.search("b")), Option.some(1))
+   * assert.deepStrictEqual(pipe("ababb", String.search(/abb/)), Option.some(2))
+   * assert.deepStrictEqual(pipe("ababb", String.search("d")), Option.none())
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, regexp: RegExp | string): Option.Option<number>
 } = dual(
   2,
@@ -588,7 +742,47 @@ export const toLocaleUpperCase = (locale?: Intl.LocalesArgument) => (self: strin
  * @since 2.0.0
  */
 export const takeLeft: {
+  /**
+   * Keep the specified number of characters from the start of a string.
+   *
+   * If `n` is larger than the available number of characters, the string will
+   * be returned whole.
+   *
+   * If `n` is not a positive number, an empty string will be returned.
+   *
+   * If `n` is a float, it will be rounded down to the nearest integer.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { String } from "effect"
+   *
+   * assert.deepStrictEqual(String.takeLeft("Hello World", 5), "Hello")
+   * ```
+   *
+   * @since 2.0.0
+   */
   (n: number): (self: string) => string
+  /**
+   * Keep the specified number of characters from the start of a string.
+   *
+   * If `n` is larger than the available number of characters, the string will
+   * be returned whole.
+   *
+   * If `n` is not a positive number, an empty string will be returned.
+   *
+   * If `n` is a float, it will be rounded down to the nearest integer.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { String } from "effect"
+   *
+   * assert.deepStrictEqual(String.takeLeft("Hello World", 5), "Hello")
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, n: number): string
 } = dual(2, (self: string, n: number): string => self.slice(0, Math.max(n, 0)))
 
@@ -613,7 +807,47 @@ export const takeLeft: {
  * @since 2.0.0
  */
 export const takeRight: {
+  /**
+   * Keep the specified number of characters from the end of a string.
+   *
+   * If `n` is larger than the available number of characters, the string will
+   * be returned whole.
+   *
+   * If `n` is not a positive number, an empty string will be returned.
+   *
+   * If `n` is a float, it will be rounded down to the nearest integer.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { String } from "effect"
+   *
+   * assert.deepStrictEqual(String.takeRight("Hello World", 5), "World")
+   * ```
+   *
+   * @since 2.0.0
+   */
   (n: number): (self: string) => string
+  /**
+   * Keep the specified number of characters from the end of a string.
+   *
+   * If `n` is larger than the available number of characters, the string will
+   * be returned whole.
+   *
+   * If `n` is not a positive number, an empty string will be returned.
+   *
+   * If `n` is a float, it will be rounded down to the nearest integer.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { String } from "effect"
+   *
+   * assert.deepStrictEqual(String.takeRight("Hello World", 5), "World")
+   * ```
+   *
+   * @since 2.0.0
+   */
   (self: string, n: number): string
 } = dual(
   2,
@@ -647,7 +881,21 @@ export const linesWithSeparators = (s: string): LinesIterator => linesSeparated(
  * @since 2.0.0
  */
 export const stripMarginWith: {
+  /**
+   * For every line in this string, strip a leading prefix consisting of blanks
+   * or control characters followed by the character specified by `marginChar`
+   * from the line.
+   *
+   * @since 2.0.0
+   */
   (marginChar: string): (self: string) => string
+  /**
+   * For every line in this string, strip a leading prefix consisting of blanks
+   * or control characters followed by the character specified by `marginChar`
+   * from the line.
+   *
+   * @since 2.0.0
+   */
   (self: string, marginChar: string): string
 } = dual(2, (self: string, marginChar: string): string => {
   let out = ""

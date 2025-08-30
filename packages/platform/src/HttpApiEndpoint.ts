@@ -916,11 +916,16 @@ export const make = <Method extends HttpMethod>(method: Method): {
  * @category constructors
  */
 export const get: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "GET">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "GET">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "GET">
 } = make("GET")
 
 /**
@@ -928,11 +933,16 @@ export const get: {
  * @category constructors
  */
 export const post: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "POST">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "POST">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "POST">
 } = make("POST")
 
 /**
@@ -940,11 +950,16 @@ export const post: {
  * @category constructors
  */
 export const put: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "PUT">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "PUT">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "PUT">
 } = make("PUT")
 
 /**
@@ -952,11 +967,16 @@ export const put: {
  * @category constructors
  */
 export const patch: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "PATCH">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "PATCH">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "PATCH">
 } = make("PATCH")
 
 /**
@@ -964,11 +984,16 @@ export const patch: {
  * @category constructors
  */
 export const del: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "DELETE">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "DELETE">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "DELETE">
 } = make("DELETE")
 
 /**
@@ -976,11 +1001,16 @@ export const del: {
  * @category constructors
  */
 export const head: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "HEAD">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "HEAD">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "HEAD">
 } = make("HEAD")
 
 /**
@@ -988,9 +1018,14 @@ export const head: {
  * @category constructors
  */
 export const options: {
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   <const Name extends string>(name: Name): HttpApiEndpoint.Constructor<Name, "OPTIONS">
-  <const Name extends string>(
-    name: Name,
-    path: PathSegment
-  ): HttpApiEndpoint<Name, "OPTIONS">
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <const Name extends string>(name: Name, path: PathSegment): HttpApiEndpoint<Name, "OPTIONS">
 } = make("OPTIONS")

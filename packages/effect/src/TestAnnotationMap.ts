@@ -55,7 +55,13 @@ export const make = (map: HashMap.HashMap<TestAnnotation.TestAnnotation<any>, an
  * @since 2.0.0
  */
 export const overwrite = dual<
+  /**
+   * @since 2.0.0
+   */
   <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
+  /**
+   * @since 2.0.0
+   */
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap
 >(3, (self, key, value) => make(HashMap.set(self.map, key, value)))
 
@@ -63,8 +69,18 @@ export const overwrite = dual<
  * @since 2.0.0
  */
 export const update = dual<
+  /**
+   * @since 2.0.0
+   */
   <A>(key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => (self: TestAnnotationMap) => TestAnnotationMap,
-  <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => TestAnnotationMap
+  /**
+   * @since 2.0.0
+   */
+  <A>(
+    self: TestAnnotationMap,
+    key: TestAnnotation.TestAnnotation<A>,
+    f: (value: A) => A
+  ) => TestAnnotationMap
 >(3, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => {
   let value = key.initial
   if (HashMap.has(self.map, key)) {
@@ -80,7 +96,19 @@ export const update = dual<
  * @since 2.0.0
  */
 export const get = dual<
+  /**
+   * Retrieves the annotation of the specified type, or its default value if
+   * there is none.
+   *
+   * @since 2.0.0
+   */
   <A>(key: TestAnnotation.TestAnnotation<A>) => (self: TestAnnotationMap) => A,
+  /**
+   * Retrieves the annotation of the specified type, or its default value if
+   * there is none.
+   *
+   * @since 2.0.0
+   */
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => A
 >(2, <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>) => {
   if (HashMap.has(self.map, key)) {
@@ -95,7 +123,17 @@ export const get = dual<
  * @since 2.0.0
  */
 export const annotate = dual<
+  /**
+   * Appends the specified annotation to the annotation map.
+   *
+   * @since 2.0.0
+   */
   <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
+  /**
+   * Appends the specified annotation to the annotation map.
+   *
+   * @since 2.0.0
+   */
   <A>(self: TestAnnotationMap, key: TestAnnotation.TestAnnotation<A>, value: A) => TestAnnotationMap
 >(3, (self, key, value) => update(self, key, (_) => key.combine(_, value)))
 
@@ -103,7 +141,13 @@ export const annotate = dual<
  * @since 2.0.0
  */
 export const combine = dual<
+  /**
+   * @since 2.0.0
+   */
   (that: TestAnnotationMap) => (self: TestAnnotationMap) => TestAnnotationMap,
+  /**
+   * @since 2.0.0
+   */
   (self: TestAnnotationMap, that: TestAnnotationMap) => TestAnnotationMap
 >(2, (self, that) => {
   let result = self.map

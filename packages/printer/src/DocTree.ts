@@ -225,7 +225,19 @@ export const line: <A>(indentation: number) => DocTree<A> = internal.line
  * @category constructors
  */
 export const annotation: {
+  /**
+   * Annotate the specified `DocTree` with an annotation of type `A`.
+   *
+   * @since 1.0.0
+   * @category constructors
+   */
   <A>(annotation: A): <B>(self: DocTree<B>) => DocTree<A | B>
+  /**
+   * Annotate the specified `DocTree` with an annotation of type `A`.
+   *
+   * @since 1.0.0
+   * @category constructors
+   */
   <A, B>(self: DocTree<A>, annotation: B): DocTree<A | B>
 } = internal.annotation
 
@@ -249,7 +261,29 @@ export const concat: <A>(trees: ReadonlyArray<DocTree<A>>) => DocTree<A> = inter
  * @category annotations
  */
 export const alterAnnotations: {
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Change the annotation of a document to a different annotation, or none at
+   * all.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(f: (a: A) => Iterable<B>): (self: DocTree<A>) => DocTree<B>
+  // -----------------------------------------------------------------------------
+  // Annotations
+  // -----------------------------------------------------------------------------
+
+  /**
+   * Change the annotation of a document to a different annotation, or none at
+   * all.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(self: DocTree<A>, f: (a: A) => Iterable<B>): DocTree<B>
 } = internal.alterAnnotations
 
@@ -260,7 +294,19 @@ export const alterAnnotations: {
  * @category annotations
  */
 export const reAnnotate: {
+  /**
+   * Change the annotation of a `DocTree`.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(f: (a: A) => B): (self: DocTree<A>) => DocTree<B>
+  /**
+   * Change the annotation of a `DocTree`.
+   *
+   * @since 1.0.0
+   * @category annotations
+   */
   <A, B>(self: DocTree<A>, f: (a: A) => B): DocTree<B>
 } = internal.reAnnotate
 
@@ -281,7 +327,23 @@ export const unAnnotate: <A>(self: DocTree<A>) => DocTree<never> = internal.unAn
  * @category folding
  */
 export const foldMap: {
+  // -----------------------------------------------------------------------------
+  // Folding
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, M>(M: monoid.Monoid<M>, f: (a: A) => M): (self: DocTree<A>) => M
+  // -----------------------------------------------------------------------------
+  // Folding
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category folding
+   */
   <A, M>(self: DocTree<A>, M: monoid.Monoid<M>, f: (a: A) => M): M
 } = internal.foldMap
 
@@ -330,16 +392,104 @@ export const foldMap: {
  * @category rendering
  */
 export const renderSimplyDecorated: {
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The simplest possible tree-based renderer.
+   *
+   * For example, here is a document annotated with `void` and thee behavior is
+   * to surround annotated regions with »>>>« and »<<<«.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import * as DocTree from "@effect/printer/DocTree"
+   * import * as Layout from "@effect/printer/Layout"
+   * import { identity, pipe } from "effect/Function"
+   * import * as String from "@effect/typeclass/data/String"
+   *
+   * const doc: Doc.Doc<void> = Doc.hsep([
+   *   Doc.text("hello"),
+   *   pipe(
+   *     Doc.text("world"),
+   *     Doc.annotate(undefined),
+   *     Doc.cat(Doc.char("!"))
+   *   )
+   * ])
+   *
+   * const tree = DocTree.treeForm(Layout.pretty(Layout.defaultOptions)(doc))
+   *
+   * const rendered = pipe(
+   *   tree,
+   *   DocTree.renderSimplyDecorated(String.Monoid, identity, (_, x) => `>>>${x}<<<`)
+   * )
+   *
+   * assert.strictEqual(
+   *   rendered,
+   *   "hello >>>world<<<!"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category rendering
+   */
   <A, M>(
-    M: monoid.Monoid<M>,
-    renderText: (text: string) => M,
-    renderAnnotation: (annotation: A, out: M) => M
+   M: monoid.Monoid<M>,
+   renderText: (text: string) => M,
+   renderAnnotation: (annotation: A, out: M) => M
   ): (self: DocTree<A>) => M
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * The simplest possible tree-based renderer.
+   *
+   * For example, here is a document annotated with `void` and thee behavior is
+   * to surround annotated regions with »>>>« and »<<<«.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Doc from "@effect/printer/Doc"
+   * import * as DocTree from "@effect/printer/DocTree"
+   * import * as Layout from "@effect/printer/Layout"
+   * import { identity, pipe } from "effect/Function"
+   * import * as String from "@effect/typeclass/data/String"
+   *
+   * const doc: Doc.Doc<void> = Doc.hsep([
+   *   Doc.text("hello"),
+   *   pipe(
+   *     Doc.text("world"),
+   *     Doc.annotate(undefined),
+   *     Doc.cat(Doc.char("!"))
+   *   )
+   * ])
+   *
+   * const tree = DocTree.treeForm(Layout.pretty(Layout.defaultOptions)(doc))
+   *
+   * const rendered = pipe(
+   *   tree,
+   *   DocTree.renderSimplyDecorated(String.Monoid, identity, (_, x) => `>>>${x}<<<`)
+   * )
+   *
+   * assert.strictEqual(
+   *   rendered,
+   *   "hello >>>world<<<!"
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category rendering
+   */
   <A, M>(
-    self: DocTree<A>,
-    M: monoid.Monoid<M>,
-    renderText: (text: string) => M,
-    renderAnnotation: (annotation: A, out: M) => M
+   self: DocTree<A>,
+   M: monoid.Monoid<M>,
+   renderText: (text: string) => M,
+   renderAnnotation: (annotation: A, out: M) => M
   ): M
 } = internal.renderSimplyDecorated
 

@@ -108,7 +108,21 @@ export const cooperativeYielding: (self: RuntimeFlags) => boolean = internal.coo
  * @category diffing
  */
 export const diff: {
+  /**
+   * Creates a `RuntimeFlagsPatch` which describes the difference between `self`
+   * and `that`.
+   *
+   * @since 2.0.0
+   * @category diffing
+   */
   (that: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlagsPatch.RuntimeFlagsPatch
+  /**
+   * Creates a `RuntimeFlagsPatch` which describes the difference between `self`
+   * and `that`.
+   *
+   * @since 2.0.0
+   * @category diffing
+   */
   (self: RuntimeFlags, that: RuntimeFlags): RuntimeFlagsPatch.RuntimeFlagsPatch
 } = internal.diff
 
@@ -127,7 +141,19 @@ export const differ: Differ.Differ<RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsP
  * @category utils
  */
 export const disable: {
+  /**
+   * Disables the specified `RuntimeFlag`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (flag: RuntimeFlag): (self: RuntimeFlags) => RuntimeFlags
+  /**
+   * Disables the specified `RuntimeFlag`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlags, flag: RuntimeFlag): RuntimeFlags
 } = internal.disable
 
@@ -138,7 +164,19 @@ export const disable: {
  * @category utils
  */
 export const disableAll: {
+  /**
+   * Disables all of the `RuntimeFlag`s in the specified set of `RuntimeFlags`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (flags: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlags
+  /**
+   * Disables all of the `RuntimeFlag`s in the specified set of `RuntimeFlags`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlags, flags: RuntimeFlags): RuntimeFlags
 } = internal.disableAll
 
@@ -179,7 +217,19 @@ export const disableWindDown: Layer.Layer<never> = circular.disableWindDown
  * @category utils
  */
 export const enable: {
+  /**
+   * Enables the specified `RuntimeFlag`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (flag: RuntimeFlag): (self: RuntimeFlags) => RuntimeFlags
+  /**
+   * Enables the specified `RuntimeFlag`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlags, flag: RuntimeFlag): RuntimeFlags
 } = internal.enable
 
@@ -190,7 +240,19 @@ export const enable: {
  * @category utils
  */
 export const enableAll: {
+  /**
+   * Enables all of the `RuntimeFlag`s in the specified set of `RuntimeFlags`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (flags: RuntimeFlags): (self: RuntimeFlags) => RuntimeFlags
+  /**
+   * Enables all of the `RuntimeFlag`s in the specified set of `RuntimeFlags`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlags, flags: RuntimeFlags): RuntimeFlags
 } = internal.enableAll
 
@@ -253,7 +315,19 @@ export const interruption: (self: RuntimeFlags) => boolean = internal.interrupti
  * @category elements
  */
 export const isEnabled: {
+  /**
+   * Returns `true` if the specified `RuntimeFlag` is enabled, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (flag: RuntimeFlag): (self: RuntimeFlags) => boolean
+  /**
+   * Returns `true` if the specified `RuntimeFlag` is enabled, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (self: RuntimeFlags, flag: RuntimeFlag): boolean
 } = internal.isEnabled
 
@@ -264,7 +338,19 @@ export const isEnabled: {
  * @category elements
  */
 export const isDisabled: {
+  /**
+   * Returns `true` if the specified `RuntimeFlag` is disabled, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (flag: RuntimeFlag): (self: RuntimeFlags) => boolean
+  /**
+   * Returns `true` if the specified `RuntimeFlag` is disabled, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (self: RuntimeFlags, flag: RuntimeFlag): boolean
 } = internal.isDisabled
 
@@ -297,7 +383,21 @@ export const opSupervision: (self: RuntimeFlags) => boolean = internal.opSupervi
  * @category utils
  */
 export const patch: {
+  /**
+   * Patches a set of `RuntimeFlag`s with a `RuntimeFlagsPatch`, returning the
+   * patched set of `RuntimeFlag`s.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (patch: RuntimeFlagsPatch.RuntimeFlagsPatch): (self: RuntimeFlags) => RuntimeFlags
+  /**
+   * Patches a set of `RuntimeFlag`s with a `RuntimeFlagsPatch`, returning the
+   * patched set of `RuntimeFlag`s.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlags, patch: RuntimeFlagsPatch.RuntimeFlagsPatch): RuntimeFlags
 } = internal.patch
 

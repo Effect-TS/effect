@@ -58,7 +58,15 @@ export const make = <A, E, R>(options: {
  * @category combinators
  */
 export const map: {
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: NoInfer<A>) => B): <E, R>(fa: Subscribable<A, E, R>) => Subscribable<B, E, R>
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R>
 } = dual(2, <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R> =>
   make({
@@ -71,9 +79,15 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B, E2, R2>(
-    f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>
-  ): <E, R>(fa: Subscribable<A, E, R>) => Subscribable<B, E | E2, R | R2>
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A, B, E2, R2>(f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>): <E, R>(fa: Subscribable<A, E, R>) => Subscribable<B, E | E2, R | R2>
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, E, R, B, E2, R2>(
     self: Subscribable<A, E, R>,
     f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>

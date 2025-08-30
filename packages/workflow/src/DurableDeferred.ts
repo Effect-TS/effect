@@ -134,13 +134,19 @@ export {
  * @category Combinators
  */
 export const into: {
-  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
-    self: DurableDeferred<Success, Error>
-  ): <R>(effect: Effect.Effect<Success["Type"], Error["Type"], R>) => Effect.Effect<
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
+  <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(self: DurableDeferred<Success, Error>): <R>(effect: Effect.Effect<Success["Type"], Error["Type"], R>) => Effect.Effect<
     Success["Type"],
     Error["Type"],
     R | WorkflowEngine | WorkflowInstance | Success["Context"] | Error["Context"]
   >
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, R>(
     effect: Effect.Effect<Success["Type"], Error["Type"], R>,
     self: DurableDeferred<Success, Error>
@@ -317,12 +323,22 @@ export const token: <Success extends Schema.Schema.Any, Error extends Schema.Sch
  * @category Token
  */
 export const tokenFromExecutionId: {
-  (options: {
-    readonly workflow: Workflow.Any
-    readonly executionId: string
-  }): <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+  /**
+   * @since 1.0.0
+   * @category Token
+   */
+  (
+    options: {
+      readonly workflow: Workflow.Any
+      readonly executionId: string
+    }
+  ): <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>
   ) => Token
+  /**
+   * @since 1.0.0
+   * @category Token
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: { readonly workflow: Workflow.Any; readonly executionId: string }
@@ -348,12 +364,22 @@ export const tokenFromExecutionId: {
  * @category Token
  */
 export const tokenFromPayload: {
-  <W extends Workflow.Any>(options: {
-    readonly workflow: W
-    readonly payload: Schema.Simplify<Schema.Struct.Constructor<W["payloadSchema"]["fields"]>>
-  }): <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
+  /**
+   * @since 1.0.0
+   * @category Token
+   */
+  <W extends Workflow.Any>(
+    options: {
+      readonly workflow: W
+      readonly payload: Schema.Simplify<Schema.Struct.Constructor<W["payloadSchema"]["fields"]>>
+    }
+  ): <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>
   ) => Effect.Effect<Token>
+  /**
+   * @since 1.0.0
+   * @category Token
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All, W extends Workflow.Any>(
     self: DurableDeferred<Success, Error>,
     options: {
@@ -382,6 +408,10 @@ export const tokenFromPayload: {
  * @category Combinators
  */
 export const done: {
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
       readonly token: Token
@@ -392,6 +422,10 @@ export const done: {
     never,
     WorkflowEngine | Success["Context"] | Error["Context"]
   >
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
@@ -425,12 +459,20 @@ export const done: {
  * @category Combinators
  */
 export const succeed: {
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
       readonly token: Token
       readonly value: Success["Type"]
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Success["Context"]>
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
@@ -458,12 +500,20 @@ export const succeed: {
  * @category Combinators
  */
 export const fail: {
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
       readonly token: Token
       readonly error: Error["Type"]
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {
@@ -491,12 +541,20 @@ export const fail: {
  * @category Combinators
  */
 export const failCause: {
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     options: {
       readonly token: Token
       readonly cause: Cause.Cause<Error["Type"]>
     }
   ): (self: DurableDeferred<Success, Error>) => Effect.Effect<void, never, WorkflowEngine | Error["Context"]>
+  /**
+   * @since 1.0.0
+   * @category Combinators
+   */
   <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
     self: DurableDeferred<Success, Error>,
     options: {

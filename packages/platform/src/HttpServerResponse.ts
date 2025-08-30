@@ -109,10 +109,15 @@ export const text: (body: string, options?: Options.WithContentType | undefined)
  * @category constructors
  */
 export const html: {
-  <A extends ReadonlyArray<Template.Interpolated>>(
-    strings: TemplateStringsArray,
-    ...args: A
-  ): Effect.Effect<HttpServerResponse, Template.Interpolated.Error<A[number]>, Template.Interpolated.Context<A[number]>>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
+  <A extends ReadonlyArray<Template.Interpolated>>(strings: TemplateStringsArray, ...args: A): Effect.Effect<HttpServerResponse, Template.Interpolated.Error<A[number]>, Template.Interpolated.Context<A[number]>>
+  /**
+   * @since 1.0.0
+   * @category constructors
+   */
   (html: string): HttpServerResponse
 } = internal.html
 
@@ -203,7 +208,15 @@ export const fileWeb: (
  * @category combinators
  */
 export const setHeader: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: string): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, key: string, value: string): HttpServerResponse
 } = internal.setHeader
 
@@ -212,7 +225,15 @@ export const setHeader: {
  * @category combinators
  */
 export const setHeaders: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: Headers.Input): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, input: Headers.Input): HttpServerResponse
 } = internal.setHeaders
 
@@ -221,7 +242,15 @@ export const setHeaders: {
  * @category combinators
  */
 export const removeCookie: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (name: string): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, name: string): HttpServerResponse
 } = internal.removeCookie
 
@@ -230,10 +259,15 @@ export const removeCookie: {
  * @category combinators
  */
 export const expireCookie: {
-  (
-    name: string,
-    options?: Omit<Cookie["options"], "expires" | "maxAge">
-  ): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (name: string, options?: Omit<Cookie["options"], "expires" | "maxAge">): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: HttpServerResponse,
     name: string,
@@ -246,7 +280,15 @@ export const expireCookie: {
  * @category combinators
  */
 export const replaceCookies: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (cookies: Cookies): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, cookies: Cookies): HttpServerResponse
 } = internal.replaceCookies
 
@@ -255,16 +297,20 @@ export const replaceCookies: {
  * @category combinators
  */
 export const setCookie: {
-  (
-    name: string,
-    value: string,
-    options?: Cookie["options"]
-  ): (
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (name: string, value: string, options?: Cookie["options"]): (
     self: HttpServerResponse
   ) => Effect.Effect<
     HttpServerResponse,
     CookiesError
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: HttpServerResponse,
     name: string,
@@ -281,11 +327,15 @@ export const setCookie: {
  * @category combinators
  */
 export const unsafeSetCookie: {
-  (
-    name: string,
-    value: string,
-    options?: Cookie["options"]
-  ): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (name: string, value: string, options?: Cookie["options"]): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: HttpServerResponse,
     name: string,
@@ -299,7 +349,15 @@ export const unsafeSetCookie: {
  * @category combinators
  */
 export const updateCookies: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (f: (cookies: Cookies) => Cookies): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, f: (cookies: Cookies) => Cookies): HttpServerResponse
 } = internal.updateCookies
 
@@ -308,7 +366,15 @@ export const updateCookies: {
  * @category combinators
  */
 export const mergeCookies: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (cookies: Cookies): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, cookies: Cookies): HttpServerResponse
 } = internal.mergeCookies
 
@@ -317,6 +383,10 @@ export const mergeCookies: {
  * @category combinators
  */
 export const setCookies: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     cookies: Iterable<
       readonly [
@@ -326,6 +396,10 @@ export const setCookies: {
       ]
     >
   ): (self: HttpServerResponse) => Effect.Effect<HttpServerResponse, CookiesError, never>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: HttpServerResponse,
     cookies: Iterable<
@@ -343,6 +417,10 @@ export const setCookies: {
  * @category combinators
  */
 export const unsafeSetCookies: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     cookies: Iterable<
       readonly [
@@ -352,6 +430,10 @@ export const unsafeSetCookies: {
       ]
     >
   ): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: HttpServerResponse,
     cookies: Iterable<
@@ -369,7 +451,15 @@ export const unsafeSetCookies: {
  * @category combinators
  */
 export const setBody: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: Body.HttpBody): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse
 } = internal.setBody
 
@@ -378,7 +468,15 @@ export const setBody: {
  * @category combinators
  */
 export const setStatus: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (status: number, statusText?: string | undefined): (self: HttpServerResponse) => HttpServerResponse
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpServerResponse, status: number, statusText?: string | undefined): HttpServerResponse
 } = internal.setStatus
 

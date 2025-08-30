@@ -121,7 +121,25 @@ const addOpenAiResponseAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai
  * @since Utilities
  */
 export const addGenAIAnnotations = dual<
+  /**
+   * Applies the specified OpenAi GenAI telemetry attributes to the provided
+   * `Span`.
+   *
+   * **NOTE**: This method will mutate the `Span` **in-place**.
+   *
+   * @since 1.0.0
+   * @since Utilities
+   */
   (options: OpenAiTelemetryAttributeOptions) => (span: Span) => void,
+  /**
+   * Applies the specified OpenAi GenAI telemetry attributes to the provided
+   * `Span`.
+   *
+   * **NOTE**: This method will mutate the `Span` **in-place**.
+   *
+   * @since 1.0.0
+   * @since Utilities
+   */
   (span: Span, options: OpenAiTelemetryAttributeOptions) => void
 >(2, (span, options) => {
   AiTelemetry.addGenAIAnnotations(span, options)

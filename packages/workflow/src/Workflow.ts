@@ -562,11 +562,33 @@ export const wrapActivityResult = <A, E, R>(
  * @category Compensation
  */
 export const withCompensation: {
+  /**
+   * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
+   * called if the entire workflow fails, allowing you to perform cleanup or
+   * other actions based on the success value and the cause of the workflow failure.
+   *
+   * NOTE: Compensation will not work for nested activities. Compensation
+   * finalizers are only registered for top-level effects in the workflow.
+   *
+   * @since 1.0.0
+   * @category Compensation
+   */
   <A, R2>(
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
   ): <E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
+  /**
+   * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
+   * called if the entire workflow fails, allowing you to perform cleanup or
+   * other actions based on the success value and the cause of the workflow failure.
+   *
+   * NOTE: Compensation will not work for nested activities. Compensation
+   * finalizers are only registered for top-level effects in the workflow.
+   *
+   * @since 1.0.0
+   * @category Compensation
+   */
   <A, E, R, R2>(
     effect: Effect.Effect<A, E, R>,
     compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>

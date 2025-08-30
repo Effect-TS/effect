@@ -44,7 +44,7 @@ export const run: <R2 = never>(
         )
         return dump.replace(/^create table sqlite_sequence\(.*$/im, "")
           .replace(/\n{2,}/gm, "\n\n")
-          .trim()
+          .trim();
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )

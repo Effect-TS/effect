@@ -101,17 +101,29 @@ export const isNoUpstream: <A>(self: UpstreamPullRequest<A>) => self is NoUpstre
  * @category folding
  */
 export const match: {
+  /**
+   * Folds an `UpstreamPullRequest<A>` into a value of type `Z`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, Z>(
-    options: {
-      readonly onPulled: (value: A) => Z
-      readonly onNoUpstream: (activeDownstreamCount: number) => Z
-    }
+   options: {
+     readonly onPulled: (value: A) => Z
+     readonly onNoUpstream: (activeDownstreamCount: number) => Z
+   }
   ): (self: UpstreamPullRequest<A>) => Z
+  /**
+   * Folds an `UpstreamPullRequest<A>` into a value of type `Z`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, Z>(
-    self: UpstreamPullRequest<A>,
-    options: {
-      readonly onPulled: (value: A) => Z
-      readonly onNoUpstream: (activeDownstreamCount: number) => Z
-    }
+   self: UpstreamPullRequest<A>,
+   options: {
+     readonly onPulled: (value: A) => Z
+     readonly onNoUpstream: (activeDownstreamCount: number) => Z
+   }
   ): Z
 } = internal.match

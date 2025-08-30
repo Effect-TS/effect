@@ -295,7 +295,15 @@ export {
  * @since 3.10.0
  */
 export const fromOption: {
+  /**
+   * @category constructors
+   * @since 3.10.0
+   */
   (onNone: () => ParseIssue): <A>(self: Option.Option<A>) => Either.Either<A, ParseIssue>
+  /**
+   * @category constructors
+   * @since 3.10.0
+   */
   <A>(self: Option.Option<A>, onNone: () => ParseIssue): Either.Either<A, ParseIssue>
 } = Either.fromOption
 
@@ -306,13 +314,16 @@ const isEither: <A, E, R>(self: Effect.Effect<A, E, R>) => self is Either.Either
  * @since 3.10.0
  */
 export const flatMap: {
-  <A, B, E1, R1>(
-    f: (a: A) => Effect.Effect<B, E1, R1>
-  ): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E1 | E, R1 | R>
-  <A, E, R, B, E1, R1>(
-    self: Effect.Effect<A, E, R>,
-    f: (a: A) => Effect.Effect<B, E1, R1>
-  ): Effect.Effect<B, E | E1, R | R1>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
+  <A, B, E1, R1>(f: (a: A) => Effect.Effect<B, E1, R1>): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E1 | E, R1 | R>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
+  <A, E, R, B, E1, R1>(self: Effect.Effect<A, E, R>, f: (a: A) => Effect.Effect<B, E1, R1>): Effect.Effect<B, E | E1, R | R1>
 } = dual(2, <A, E, R, B, E1, R1>(
   self: Effect.Effect<A, E, R>,
   f: (a: A) => Effect.Effect<B, E1, R1>
@@ -327,7 +338,15 @@ export const flatMap: {
  * @since 3.10.0
  */
 export const map: {
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
   <A, B>(f: (a: A) => B): <E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<B, E, R>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
   <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R>
 } = dual(2, <A, E, R, B>(self: Effect.Effect<A, E, R>, f: (a: A) => B): Effect.Effect<B, E, R> => {
   return isEither(self) ?
@@ -340,7 +359,15 @@ export const map: {
  * @since 3.10.0
  */
 export const mapError: {
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
   <E, E2>(f: (e: E) => E2): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E2, R>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
   <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R>
 } = dual(2, <A, E, R, E2>(self: Effect.Effect<A, E, R>, f: (e: E) => E2): Effect.Effect<A, E2, R> => {
   return isEither(self) ?
@@ -366,9 +393,17 @@ export const eitherOrUndefined = <A, E, R>(
  * @since 3.10.0
  */
 export const mapBoth: {
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
   <E, E2, A, A2>(
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
   ): <R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2, E2, R>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
   <A, E, R, E2, A2>(
     self: Effect.Effect<A, E, R>,
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
@@ -387,13 +422,16 @@ export const mapBoth: {
  * @since 3.10.0
  */
 export const orElse: {
-  <E, A2, E2, R2>(
-    f: (e: E) => Effect.Effect<A2, E2, R2>
-  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A, E2, R2 | R>
-  <A, E, R, A2, E2, R2>(
-    self: Effect.Effect<A, E, R>,
-    f: (e: E) => Effect.Effect<A2, E2, R2>
-  ): Effect.Effect<A2 | A, E2, R2 | R>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
+  <E, A2, E2, R2>(f: (e: E) => Effect.Effect<A2, E2, R2>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A2 | A, E2, R2 | R>
+  /**
+   * @category optimisation
+   * @since 3.10.0
+   */
+  <A, E, R, A2, E2, R2>(self: Effect.Effect<A, E, R>, f: (e: E) => Effect.Effect<A2, E2, R2>): Effect.Effect<A2 | A, E2, R2 | R>
 } = dual(2, <A, E, R, A2, E2, R2>(
   self: Effect.Effect<A, E, R>,
   f: (e: E) => Effect.Effect<A2, E2, R2>

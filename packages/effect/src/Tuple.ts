@@ -84,13 +84,44 @@ export const getSecond = <L, R>(self: readonly [L, R]): R => self[1]
  * @since 3.9.0
  */
 export const map: {
-  <T extends ReadonlyArray<any> | [], B>(
-    fn: (element: T[number]) => B
-  ): (self: T) => TupleOf<T["length"], B>
-  <B, T extends ReadonlyArray<any> | []>(
-    self: T,
-    fn: (element: T[number]) => B
-  ): TupleOf<T["length"], B>
+  /**
+   * Transforms each element of tuple using the given function, treating tuple homomorphically
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Tuple } from "effect"
+   *
+   * const result = pipe(
+   *   ["a", 1, false] as const,
+   *   Tuple.map((el) => el.toString().toUpperCase())
+   * )
+   * assert.deepStrictEqual(result, ['A', '1', 'FALSE'])
+   * ```
+   *
+   * @category mapping
+   * @since 3.9.0
+   */
+  <T extends ReadonlyArray<any> | [], B>(fn: (element: T[number]) => B): (self: T) => TupleOf<T["length"], B>
+  /**
+   * Transforms each element of tuple using the given function, treating tuple homomorphically
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { pipe, Tuple } from "effect"
+   *
+   * const result = pipe(
+   *   ["a", 1, false] as const,
+   *   Tuple.map((el) => el.toString().toUpperCase())
+   * )
+   * assert.deepStrictEqual(result, ['A', '1', 'FALSE'])
+   * ```
+   *
+   * @category mapping
+   * @since 3.9.0
+   */
+  <B, T extends ReadonlyArray<any> | []>(self: T, fn: (element: T[number]) => B): TupleOf<T["length"], B>
 } = dual(
   2,
   <N extends number, A, B>(
@@ -117,14 +148,53 @@ export const map: {
  * @since 2.0.0
  */
 export const mapBoth: {
-  <L1, L2, R1, R2>(options: {
-    readonly onFirst: (e: L1) => L2
-    readonly onSecond: (a: R1) => R2
-  }): (self: readonly [L1, R1]) => [L2, R2]
-  <L1, R1, L2, R2>(self: readonly [L1, R1], options: {
-    readonly onFirst: (e: L1) => L2
-    readonly onSecond: (a: R1) => R2
-  }): [L2, R2]
+  /**
+   * Transforms both elements of a tuple with two elements using the given functions.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { mapBoth } from "effect/Tuple"
+   *
+   * assert.deepStrictEqual(
+   *   mapBoth(["hello", 42], { onFirst: s => s.toUpperCase(), onSecond: n => n.toString() }),
+   *   ["HELLO", "42"]
+   * )
+   * ```
+   *
+   * @category mapping
+   * @since 2.0.0
+   */
+  <L1, L2, R1, R2>(
+    options: {
+      readonly onFirst: (e: L1) => L2
+      readonly onSecond: (a: R1) => R2
+    }
+  ): (self: readonly [L1, R1]) => [L2, R2]
+  /**
+   * Transforms both elements of a tuple with two elements using the given functions.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { mapBoth } from "effect/Tuple"
+   *
+   * assert.deepStrictEqual(
+   *   mapBoth(["hello", 42], { onFirst: s => s.toUpperCase(), onSecond: n => n.toString() }),
+   *   ["HELLO", "42"]
+   * )
+   * ```
+   *
+   * @category mapping
+   * @since 2.0.0
+   */
+  <L1, R1, L2, R2>(
+    self: readonly [L1, R1],
+    options: {
+      readonly onFirst: (e: L1) => L2
+      readonly onSecond: (a: R1) => R2
+    }
+  ): [L2, R2]
 } = dual(
   2,
   <L1, R1, L2, R2>(
@@ -154,7 +224,41 @@ export const mapBoth: {
  * @since 2.0.0
  */
 export const mapFirst: {
+  /**
+   * Transforms the first component of a tuple with two elements using a given function.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { mapFirst } from "effect/Tuple"
+   *
+   * assert.deepStrictEqual(
+   *   mapFirst(["hello", 42], s => s.toUpperCase()),
+   *   ["HELLO", 42]
+   * )
+   * ```
+   *
+   * @category mapping
+   * @since 2.0.0
+   */
   <L1, L2>(f: (left: L1) => L2): <R>(self: readonly [L1, R]) => [L2, R]
+  /**
+   * Transforms the first component of a tuple with two elements using a given function.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { mapFirst } from "effect/Tuple"
+   *
+   * assert.deepStrictEqual(
+   *   mapFirst(["hello", 42], s => s.toUpperCase()),
+   *   ["HELLO", 42]
+   * )
+   * ```
+   *
+   * @category mapping
+   * @since 2.0.0
+   */
   <L1, R, L2>(self: readonly [L1, R], f: (left: L1) => L2): [L2, R]
 } = dual(2, <L1, R, L2>(self: readonly [L1, R], f: (left: L1) => L2): [L2, R] => [f(self[0]), self[1]])
 
@@ -176,7 +280,41 @@ export const mapFirst: {
  * @since 2.0.0
  */
 export const mapSecond: {
+  /**
+   * Transforms the second component of a tuple with two elements using a given function.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { mapSecond } from "effect/Tuple"
+   *
+   * assert.deepStrictEqual(
+   *   mapSecond(["hello", 42], n => n.toString()),
+   *   ["hello", "42"]
+   * )
+   * ```
+   *
+   * @category mapping
+   * @since 2.0.0
+   */
   <R1, R2>(f: (right: R1) => R2): <L>(self: readonly [L, R1]) => [L, R2]
+  /**
+   * Transforms the second component of a tuple with two elements using a given function.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { mapSecond } from "effect/Tuple"
+   *
+   * assert.deepStrictEqual(
+   *   mapSecond(["hello", 42], n => n.toString()),
+   *   ["hello", "42"]
+   * )
+   * ```
+   *
+   * @category mapping
+   * @since 2.0.0
+   */
   <L, R1, R2>(self: readonly [L, R1], f: (right: R1) => R2): [L, R2]
 } = dual(2, <L, R1, R2>(self: readonly [L, R1], f: (right: R1) => R2): [L, R2] => [self[0], f(self[1])])
 
@@ -228,7 +366,19 @@ export const getOrder: <T extends ReadonlyArray<order.Order<any>>>(
  * @since 2.0.0
  */
 export const appendElement: {
+  /**
+   * Appends an element to the end of a tuple.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(that: B): <A extends ReadonlyArray<unknown>>(self: A) => [...A, B]
+  /**
+   * Appends an element to the end of a tuple.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A extends ReadonlyArray<unknown>, B>(self: A, that: B): [...A, B]
 } = dual(2, <A extends ReadonlyArray<unknown>, B>(self: A, that: B): [...A, B] => [...self, that])
 
@@ -247,7 +397,35 @@ export const appendElement: {
  * @since 3.4.0
  */
 export const at: {
+  /**
+   * Retrieves the element at a specified index from a tuple.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Tuple } from "effect"
+   *
+   * assert.deepStrictEqual(Tuple.at([1, 'hello', true], 1), 'hello')
+   * ```
+   *
+   * @category getters
+   * @since 3.4.0
+   */
   <N extends number>(index: N): <A extends ReadonlyArray<unknown>>(self: A) => A[N]
+  /**
+   * Retrieves the element at a specified index from a tuple.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Tuple } from "effect"
+   *
+   * assert.deepStrictEqual(Tuple.at([1, 'hello', true], 1), 'hello')
+   * ```
+   *
+   * @category getters
+   * @since 3.4.0
+   */
   <A extends ReadonlyArray<unknown>, N extends number>(self: A, index: N): A[N]
 } = dual(2, <A extends ReadonlyArray<unknown>, N extends number>(self: A, index: N): A[N] => self[index])
 

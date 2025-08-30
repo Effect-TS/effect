@@ -390,7 +390,17 @@ export const causeSquash = <E>(self: MicroCause<E>): unknown =>
  * @category MicroCause
  */
 export const causeWithTrace: {
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category MicroCause
+   */
   (trace: string): <E>(self: MicroCause<E>) => MicroCause<E>
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category MicroCause
+   */
   <E>(self: MicroCause<E>, trace: string): MicroCause<E>
 } = dual(2, <E>(self: MicroCause<E>, trace: string): MicroCause<E> => {
   const traces = [...self.traces, trace]
@@ -1257,7 +1267,31 @@ const fromIterator: (
  * @category mapping & sequencing
  */
 export const as: {
+  // ----------------------------------------------------------------------------
+  // mapping & sequencing
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Create a `Micro` effect that will replace the success value of the given
+   * effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
   <A, B>(value: B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  // ----------------------------------------------------------------------------
+  // mapping & sequencing
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Create a `Micro` effect that will replace the success value of the given
+   * effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
   <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R>
 } = dual(2, <A, E, R, B>(self: Micro<A, E, R>, value: B): Micro<B, E, R> => map(self, (_) => value))
 
@@ -1295,27 +1329,61 @@ export const flip = <A, E, R>(self: Micro<A, E, R>): Micro<E, A, R> =>
  * @category mapping & sequencing
  */
 export const andThen: {
-  <A, X>(
-    f: (a: A) => X
-  ): <E, R>(
+  /**
+   * A more flexible version of `flatMap` that combines `map` and `flatMap` into a
+   * single API.
+   *
+   * It also lets you directly pass a `Micro` effect, which will be executed after
+   * the current effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, X>(f: (a: A) => X): <E, R>(
     self: Micro<A, E, R>
   ) => [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
     : Micro<X, E, R>
-  <X>(
-    f: NotFunction<X>
-  ): <A, E, R>(
+  /**
+   * A more flexible version of `flatMap` that combines `map` and `flatMap` into a
+   * single API.
+   *
+   * It also lets you directly pass a `Micro` effect, which will be executed after
+   * the current effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <X>(f: NotFunction<X>): <A, E, R>(
     self: Micro<A, E, R>
   ) => [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
     : Micro<X, E, R>
-  <A, E, R, X>(
-    self: Micro<A, E, R>,
-    f: (a: A) => X
-  ): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
+  /**
+   * A more flexible version of `flatMap` that combines `map` and `flatMap` into a
+   * single API.
+   *
+   * It also lets you directly pass a `Micro` effect, which will be executed after
+   * the current effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, E, R, X>(self: Micro<A, E, R>, f: (a: A) => X): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
     : Micro<X, E, R>
-  <A, E, R, X>(
-    self: Micro<A, E, R>,
-    f: NotFunction<X>
-  ): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
+  /**
+   * A more flexible version of `flatMap` that combines `map` and `flatMap` into a
+   * single API.
+   *
+   * It also lets you directly pass a `Micro` effect, which will be executed after
+   * the current effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, E, R, X>(self: Micro<A, E, R>, f: NotFunction<X>): [X] extends [Micro<infer A1, infer E1, infer R1>] ? Micro<A1, E | E1, R | R1>
     : Micro<X, E, R>
 } = dual(
   2,
@@ -1336,27 +1404,53 @@ export const andThen: {
  * @category mapping & sequencing
  */
 export const tap: {
-  <A, X>(
-    f: (a: NoInfer<A>) => X
-  ): <E, R>(
+  /**
+   * Execute a side effect from the success value of the `Micro` effect.
+   *
+   * It is similar to the `andThen` api, but the success value is ignored.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, X>(f: (a: NoInfer<A>) => X): <E, R>(
     self: Micro<A, E, R>
   ) => [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
     : Micro<A, E, R>
-  <X>(
-    f: NotFunction<X>
-  ): <A, E, R>(
+  /**
+   * Execute a side effect from the success value of the `Micro` effect.
+   *
+   * It is similar to the `andThen` api, but the success value is ignored.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <X>(f: NotFunction<X>): <A, E, R>(
     self: Micro<A, E, R>
   ) => [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
     : Micro<A, E, R>
-  <A, E, R, X>(
-    self: Micro<A, E, R>,
-    f: (a: NoInfer<A>) => X
-  ): [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
+  /**
+   * Execute a side effect from the success value of the `Micro` effect.
+   *
+   * It is similar to the `andThen` api, but the success value is ignored.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, E, R, X>(self: Micro<A, E, R>, f: (a: NoInfer<A>) => X): [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
     : Micro<A, E, R>
-  <A, E, R, X>(
-    self: Micro<A, E, R>,
-    f: NotFunction<X>
-  ): [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
+  /**
+   * Execute a side effect from the success value of the `Micro` effect.
+   *
+   * It is similar to the `andThen` api, but the success value is ignored.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, E, R, X>(self: Micro<A, E, R>, f: NotFunction<X>): [X] extends [Micro<infer _A1, infer E1, infer R1>] ? Micro<A, E | E1, R | R1>
     : Micro<A, E, R>
 } = dual(
   2,
@@ -1489,7 +1583,23 @@ export const raceAllFirst = <Eff extends Micro<any, any, any>>(
  * @category sequencing
  */
 export const race: {
+  /**
+   * Returns an effect that races two effects, yielding the value of the first
+   * effect to succeed. Losers of the race will be interrupted immediately.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category sequencing
+   */
   <A2, E2, R2>(that: Micro<A2, E2, R2>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
+  /**
+   * Returns an effect that races two effects, yielding the value of the first
+   * effect to succeed. Losers of the race will be interrupted immediately.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category sequencing
+   */
   <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, that: Micro<A2, E2, R2>): Micro<A | A2, E | E2, R | R2>
 } = dual(
   2,
@@ -1506,7 +1616,23 @@ export const race: {
  * @category sequencing
  */
 export const raceFirst: {
+  /**
+   * Returns an effect that races two effects, yielding the value of the first
+   * effect to succeed *or* fail. Losers of the race will be interrupted immediately.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category sequencing
+   */
   <A2, E2, R2>(that: Micro<A2, E2, R2>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
+  /**
+   * Returns an effect that races two effects, yielding the value of the first
+   * effect to succeed *or* fail. Losers of the race will be interrupted immediately.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category sequencing
+   */
   <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, that: Micro<A2, E2, R2>): Micro<A | A2, E | E2, R | R2>
 } = dual(
   2,
@@ -1523,13 +1649,24 @@ export const raceFirst: {
  * @category mapping & sequencing
  */
 export const flatMap: {
-  <A, B, E2, R2>(
-    f: (a: A) => Micro<B, E2, R2>
-  ): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
-  <A, E, R, B, E2, R2>(
-    self: Micro<A, E, R>,
-    f: (a: A) => Micro<B, E2, R2>
-  ): Micro<B, E | E2, R | R2>
+  /**
+   * Map the success value of this `Micro` effect to another `Micro` effect, then
+   * flatten the result.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, B, E2, R2>(f: (a: A) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<B, E | E2, R | R2>
+  /**
+   * Map the success value of this `Micro` effect to another `Micro` effect, then
+   * flatten the result.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
+  <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (a: A) => Micro<B, E2, R2>): Micro<B, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, B, E2, R2>(
@@ -1574,7 +1711,23 @@ export const flatten = <A, E, R, E2, R2>(
  * @category mapping & sequencing
  */
 export const map: {
+  /**
+   * Transforms the success value of the `Micro` effect with the specified
+   * function.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
   <A, B>(f: (a: A) => B): <E, R>(self: Micro<A, E, R>) => Micro<B, E, R>
+  /**
+   * Transforms the success value of the `Micro` effect with the specified
+   * function.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category mapping & sequencing
+   */
   <A, E, R, B>(self: Micro<A, E, R>, f: (a: A) => B): Micro<B, E, R>
 } = dual(
   2,
@@ -1833,7 +1986,21 @@ export class MicroSchedulerDefault implements MicroScheduler {
  * @category environment
  */
 export const service: {
+  /**
+   * Access the given `Context.Tag` from the environment.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment
+   */
   <I, S>(tag: Context.Reference<I, S>): Micro<S>
+  /**
+   * Access the given `Context.Tag` from the environment.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment
+   */
   <I, S>(tag: Context.Tag<I, S>): Micro<S, never, I>
 } =
   (<I, S>(tag: Context.Tag<I, S>): Micro<S, never, I> =>
@@ -1862,17 +2029,53 @@ export const serviceOption = <I, S>(
  * @category environment
  */
 export const updateContext: {
-  <R2, R>(
+  /**
+   * Update the Context with the given mapping function.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category environment
+   */
+  <R2, R>(f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>): <A, E>(self: Micro<A, E, R>) => Micro<A, E, R2>
+  /**
+   * Update the Context with the given mapping function.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category environment
+   */
+  <A, E, R, R2>(
+    self: Micro<A, E, R>,
     f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>
-  ): <A, E>(self: Micro<A, E, R>) => Micro<A, E, R2>
-  <A, E, R, R2>(self: Micro<A, E, R>, f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>): Micro<A, E, R2>
+  ): Micro<A, E, R2>
 } = dual(
   2,
   <A, E, R, R2>(
     self: Micro<A, E, R>,
     f: (context: Context.Context<R2>) => Context.Context<NoInfer<R>>
   ): Micro<A, E, R2> =>
-    withMicroFiber<A, E, R2>((fiber) => {
+    withMicroFiber</**
+     * Update the Context with the given mapping function.
+     *
+     * @since 3.11.0
+     * @experimental
+     * @category environment
+     */
+    A, /**
+     * Update the Context with the given mapping function.
+     *
+     * @since 3.11.0
+     * @experimental
+     * @category environment
+     */
+    E, /**
+     * Update the Context with the given mapping function.
+     *
+     * @since 3.11.0
+     * @experimental
+     * @category environment
+     */
+    R2>((fiber) => {
       const prev = fiber.context as Context.Context<R2>
       fiber.context = f(prev)
       return onExit(
@@ -1893,24 +2096,38 @@ export const updateContext: {
  * @category environment
  */
 export const updateService: {
-  <I, A>(
-    tag: Context.Reference<I, A>,
-    f: (value: A) => A
-  ): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
-  <I, A>(
-    tag: Context.Tag<I, A>,
-    f: (value: A) => A
-  ): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R | I>
-  <XA, E, R, I, A>(
-    self: Micro<XA, E, R>,
-    tag: Context.Reference<I, A>,
-    f: (value: A) => A
-  ): Micro<XA, E, R>
-  <XA, E, R, I, A>(
-    self: Micro<XA, E, R>,
-    tag: Context.Tag<I, A>,
-    f: (value: A) => A
-  ): Micro<XA, E, R | I>
+  /**
+   * Update the service for the given `Context.Tag` in the environment.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category environment
+   */
+  <I, A>(tag: Context.Reference<I, A>, f: (value: A) => A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R>
+  /**
+   * Update the service for the given `Context.Tag` in the environment.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category environment
+   */
+  <I, A>(tag: Context.Tag<I, A>, f: (value: A) => A): <XA, E, R>(self: Micro<XA, E, R>) => Micro<XA, E, R | I>
+  /**
+   * Update the service for the given `Context.Tag` in the environment.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category environment
+   */
+  <XA, E, R, I, A>(self: Micro<XA, E, R>, tag: Context.Reference<I, A>, f: (value: A) => A): Micro<XA, E, R>
+  /**
+   * Update the service for the given `Context.Tag` in the environment.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category environment
+   */
+  <XA, E, R, I, A>(self: Micro<XA, E, R>, tag: Context.Tag<I, A>, f: (value: A) => A): Micro<XA, E, R | I>
 } = dual(
   3,
   <XA, E, R, I, A>(
@@ -1949,13 +2166,22 @@ const getContext = withMicroFiber((fiber) => succeed(fiber.context))
  * @category environment
  */
 export const provideContext: {
-  <XR>(
-    context: Context.Context<XR>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, XR>>
-  <A, E, R, XR>(
-    self: Micro<A, E, R>,
-    context: Context.Context<XR>
-  ): Micro<A, E, Exclude<R, XR>>
+  /**
+   * Merge the given `Context` with the current context.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment
+   */
+  <XR>(context: Context.Context<XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, XR>>
+  /**
+   * Merge the given `Context` with the current context.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment
+   */
+  <A, E, R, XR>(self: Micro<A, E, R>, context: Context.Context<XR>): Micro<A, E, Exclude<R, XR>>
 } = dual(
   2,
   <A, E, R, XR>(
@@ -1972,15 +2198,22 @@ export const provideContext: {
  * @category environment
  */
 export const provideService: {
-  <I, S>(
-    tag: Context.Tag<I, S>,
-    service: S
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, I>>
-  <A, E, R, I, S>(
-    self: Micro<A, E, R>,
-    tag: Context.Tag<I, S>,
-    service: S
-  ): Micro<A, E, Exclude<R, I>>
+  /**
+   * Add the provided service to the current context.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment
+   */
+  <I, S>(tag: Context.Tag<I, S>, service: S): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, I>>
+  /**
+   * Add the provided service to the current context.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment
+   */
+  <A, E, R, I, S>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, service: S): Micro<A, E, Exclude<R, I>>
 } = dual(
   3,
   <A, E, R, I, S>(
@@ -1999,15 +2232,24 @@ export const provideService: {
  * @category environment
  */
 export const provideServiceEffect: {
-  <I, S, E2, R2>(
-    tag: Context.Tag<I, S>,
-    acquire: Micro<S, E2, R2>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | E2, Exclude<R, I> | R2>
-  <A, E, R, I, S, E2, R2>(
-    self: Micro<A, E, R>,
-    tag: Context.Tag<I, S>,
-    acquire: Micro<S, E2, R2>
-  ): Micro<A, E | E2, Exclude<R, I> | R2>
+  /**
+   * Create a service using the provided `Micro` effect, and add it to the
+   * current context.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category environment
+   */
+  <I, S, E2, R2>(tag: Context.Tag<I, S>, acquire: Micro<S, E2, R2>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | E2, Exclude<R, I> | R2>
+  /**
+   * Create a service using the provided `Micro` effect, and add it to the
+   * current context.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category environment
+   */
+  <A, E, R, I, S, E2, R2>(self: Micro<A, E, R>, tag: Context.Tag<I, S>, acquire: Micro<S, E2, R2>): Micro<A, E | E2, Exclude<R, I> | R2>
 } = dual(
   3,
   <A, E, R, I, S, E2, R2>(
@@ -2080,13 +2322,46 @@ export class CurrentScheduler extends Context.Reference<CurrentScheduler>()<
  * @category environment refs
  */
 export const withConcurrency: {
-  (
-    concurrency: "unbounded" | number
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
-  <A, E, R>(
-    self: Micro<A, E, R>,
-    concurrency: "unbounded" | number
-  ): Micro<A, E, R>
+  /**
+   * If you have a `Micro` that uses `concurrency: "inherit"`, you can use this
+   * api to control the concurrency of that `Micro` when it is run.
+   *
+   * @example
+   * ```ts
+   * import * as Micro from "effect/Micro"
+   *
+   * Micro.forEach([1, 2, 3], (n) => Micro.succeed(n), {
+   *   concurrency: "inherit"
+   * }).pipe(
+   *   Micro.withConcurrency(2) // use a concurrency of 2
+   * )
+   * ```
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment refs
+   */
+  (concurrency: "unbounded" | number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  /**
+   * If you have a `Micro` that uses `concurrency: "inherit"`, you can use this
+   * api to control the concurrency of that `Micro` when it is run.
+   *
+   * @example
+   * ```ts
+   * import * as Micro from "effect/Micro"
+   *
+   * Micro.forEach([1, 2, 3], (n) => Micro.succeed(n), {
+   *   concurrency: "inherit"
+   * }).pipe(
+   *   Micro.withConcurrency(2) // use a concurrency of 2
+   * )
+   * ```
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category environment refs
+   */
+  <A, E, R>(self: Micro<A, E, R>, concurrency: "unbounded" | number): Micro<A, E, R>
 } = dual(
   2,
   <A, E, R>(
@@ -2108,12 +2383,36 @@ export const withConcurrency: {
  * @category zipping
  */
 export const zip: {
+  // ----------------------------------------------------------------------------
+  // zipping
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Combine two `Micro` effects into a single effect that produces a tuple of
+   * their results.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category zipping
+   */
   <A2, E2, R2>(
     that: Micro<A2, E2, R2>,
     options?:
       | { readonly concurrent?: boolean | undefined }
       | undefined
   ): <A, E, R>(self: Micro<A, E, R>) => Micro<[A, A2], E2 | E, R2 | R>
+  // ----------------------------------------------------------------------------
+  // zipping
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Combine two `Micro` effects into a single effect that produces a tuple of
+   * their results.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category zipping
+   */
   <A, E, R, A2, E2, R2>(
     self: Micro<A, E, R>,
     that: Micro<A2, E2, R2>,
@@ -2135,11 +2434,29 @@ export const zip: {
  * @category zipping
  */
 export const zipWith: {
+  /**
+   * The `Micro.zipWith` function combines two `Micro` effects and allows you to
+   * apply a function to the results of the combined effects, transforming them
+   * into a single value.
+   *
+   * @since 3.4.3
+   * @experimental
+   * @category zipping
+   */
   <A2, E2, R2, A, B>(
     that: Micro<A2, E2, R2>,
     f: (a: A, b: A2) => B,
     options?: { readonly concurrent?: boolean | undefined }
   ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R2 | R>
+  /**
+   * The `Micro.zipWith` function combines two `Micro` effects and allows you to
+   * apply a function to the results of the combined effects, transforming them
+   * into a single value.
+   *
+   * @since 3.4.3
+   * @experimental
+   * @category zipping
+   */
   <A, E, R, A2, E2, R2, B>(
     self: Micro<A, E, R>,
     that: Micro<A2, E2, R2>,
@@ -2173,19 +2490,79 @@ export const zipWith: {
  * @category filtering & conditionals
  */
 export const filterOrFailCause: {
+  // ----------------------------------------------------------------------------
+  // filtering & conditionals
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * `MicroCause` if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
   <A, B extends A, E2>(
     refinement: Refinement<A, B>,
     orFailWith: (a: NoInfer<A>) => MicroCause<E2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
+  // ----------------------------------------------------------------------------
+  // filtering & conditionals
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * `MicroCause` if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
   <A, E2>(
     predicate: Predicate<NoInfer<A>>,
     orFailWith: (a: NoInfer<A>) => MicroCause<E2>
   ): <E, R>(self: Micro<A, E, R>) => Micro<A, E2 | E, R>
+  // ----------------------------------------------------------------------------
+  // filtering & conditionals
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * `MicroCause` if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
   <A, E, R, B extends A, E2>(
     self: Micro<A, E, R>,
     refinement: Refinement<A, B>,
     orFailWith: (a: A) => MicroCause<E2>
   ): Micro<B, E | E2, R>
+  // ----------------------------------------------------------------------------
+  // filtering & conditionals
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * `MicroCause` if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
   <A, E, R, E2>(
     self: Micro<A, E, R>,
     predicate: Predicate<A>,
@@ -2209,19 +2586,57 @@ export const filterOrFailCause: {
  * @category filtering & conditionals
  */
 export const filterOrFail: {
-  <A, B extends A, E2>(
-    refinement: Refinement<A, B>,
-    orFailWith: (a: NoInfer<A>) => E2
-  ): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
-  <A, E2>(
-    predicate: Predicate<NoInfer<A>>,
-    orFailWith: (a: NoInfer<A>) => E2
-  ): <E, R>(self: Micro<A, E, R>) => Micro<A, E2 | E, R>
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * error if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
+  <A, B extends A, E2>(refinement: Refinement<A, B>, orFailWith: (a: NoInfer<A>) => E2): <E, R>(self: Micro<A, E, R>) => Micro<B, E2 | E, R>
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * error if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
+  <A, E2>(predicate: Predicate<NoInfer<A>>, orFailWith: (a: NoInfer<A>) => E2): <E, R>(self: Micro<A, E, R>) => Micro<A, E2 | E, R>
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * error if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
   <A, E, R, B extends A, E2>(
     self: Micro<A, E, R>,
     refinement: Refinement<A, B>,
     orFailWith: (a: A) => E2
   ): Micro<B, E | E2, R>
+  /**
+   * Filter the specified effect with the provided function, failing with specified
+   * error if the predicate fails.
+   *
+   * In addition to the filtering capabilities discussed earlier, you have the option to further
+   * refine and narrow down the type of the success channel by providing a
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
   <A, E, R, E2>(self: Micro<A, E, R>, predicate: Predicate<A>, orFailWith: (a: A) => E2): Micro<A, E | E2, R>
 } = dual((args) => isMicro(args[0]), <A, E, R, B extends A, E2>(
   self: Micro<A, E, R>,
@@ -2237,13 +2652,22 @@ export const filterOrFail: {
  * @category filtering & conditionals
  */
 export const when: {
-  <E2 = never, R2 = never>(
-    condition: LazyArg<boolean> | Micro<boolean, E2, R2>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E | E2, R | R2>
-  <A, E, R, E2 = never, R2 = never>(
-    self: Micro<A, E, R>,
-    condition: LazyArg<boolean> | Micro<boolean, E2, R2>
-  ): Micro<Option.Option<A>, E | E2, R | R2>
+  /**
+   * The moral equivalent of `if (p) exp`.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
+  <E2 = never, R2 = never>(condition: LazyArg<boolean> | Micro<boolean, E2, R2>): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E | E2, R | R2>
+  /**
+   * The moral equivalent of `if (p) exp`.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category filtering & conditionals
+   */
+  <A, E, R, E2 = never, R2 = never>(self: Micro<A, E, R>, condition: LazyArg<boolean> | Micro<boolean, E2, R2>): Micro<Option.Option<A>, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, E2 = never, R2 = never>(
@@ -2268,16 +2692,49 @@ export const when: {
  * @category repetition
  */
 export const repeatExit: {
-  <A, E>(options: {
-    while: Predicate<MicroExit<A, E>>
-    times?: number | undefined
-    schedule?: MicroSchedule | undefined
-  }): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
-  <A, E, R>(self: Micro<A, E, R>, options: {
-    while: Predicate<MicroExit<A, E>>
-    times?: number | undefined
-    schedule?: MicroSchedule | undefined
-  }): Micro<A, E, R>
+  // ----------------------------------------------------------------------------
+  // repetition
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Repeat the given `Micro` using the provided options.
+   *
+   * The `while` predicate will be checked after each iteration, and can use the
+   * fall `MicroExit` of the effect to determine if the repetition should continue.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category repetition
+   */
+  <A, E>(
+    options: {
+      while: Predicate<MicroExit<A, E>>
+      times?: number | undefined
+      schedule?: MicroSchedule | undefined
+    }
+  ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  // ----------------------------------------------------------------------------
+  // repetition
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Repeat the given `Micro` using the provided options.
+   *
+   * The `while` predicate will be checked after each iteration, and can use the
+   * fall `MicroExit` of the effect to determine if the repetition should continue.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category repetition
+   */
+  <A, E, R>(
+    self: Micro<A, E, R>,
+    options: {
+      while: Predicate<MicroExit<A, E>>
+      times?: number | undefined
+      schedule?: MicroSchedule | undefined
+    }
+  ): Micro<A, E, R>
 } = dual(2, <A, E, R>(self: Micro<A, E, R>, options: {
   while: Predicate<MicroExit<A, E>>
   times?: number | undefined
@@ -2318,6 +2775,14 @@ export const repeatExit: {
  * @category repetition
  */
 export const repeat: {
+  /**
+   * Repeat the given `Micro` effect using the provided options. Only successful
+   * results will be repeated.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category repetition
+   */
   <A, E>(
     options?: {
       while?: Predicate<A> | undefined
@@ -2325,6 +2790,14 @@ export const repeat: {
       schedule?: MicroSchedule | undefined
     } | undefined
   ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  /**
+   * Repeat the given `Micro` effect using the provided options. Only successful
+   * results will be repeated.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category repetition
+   */
   <A, E, R>(
     self: Micro<A, E, R>,
     options?: {
@@ -2354,7 +2827,21 @@ export const repeat: {
  * @category repetition
  */
 export const replicate: {
+  /**
+   * Replicates the given effect `n` times.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category repetition
+   */
   (n: number): <A, E, R>(self: Micro<A, E, R>) => Array<Micro<A, E, R>>
+  /**
+   * Replicates the given effect `n` times.
+   *
+   * @since 3.11.0
+   * @experimental
+   * @category repetition
+   */
   <A, E, R>(self: Micro<A, E, R>, n: number): Array<Micro<A, E, R>>
 } = dual(
   2,
@@ -2369,6 +2856,13 @@ export const replicate: {
  * @category repetition
  */
 export const replicateEffect: {
+  /**
+   * Performs this effect the specified number of times and collects the
+   * results.
+   *
+   * @since 3.11.0
+   * @category repetition
+   */
   (
     n: number,
     options?: {
@@ -2376,6 +2870,13 @@ export const replicateEffect: {
       readonly discard?: false | undefined
     }
   ): <A, E, R>(self: Micro<A, E, R>) => Micro<Array<A>, E, R>
+  /**
+   * Performs this effect the specified number of times and collects the
+   * results.
+   *
+   * @since 3.11.0
+   * @category repetition
+   */
   (
     n: number,
     options: {
@@ -2383,6 +2884,13 @@ export const replicateEffect: {
       readonly discard: true
     }
   ): <A, E, R>(self: Micro<A, E, R>) => Micro<void, E, R>
+  /**
+   * Performs this effect the specified number of times and collects the
+   * results.
+   *
+   * @since 3.11.0
+   * @category repetition
+   */
   <A, E, R>(
     self: Micro<A, E, R>,
     n: number,
@@ -2391,6 +2899,13 @@ export const replicateEffect: {
       readonly discard?: false | undefined
     }
   ): Micro<Array<A>, E, R>
+  /**
+   * Performs this effect the specified number of times and collects the
+   * results.
+   *
+   * @since 3.11.0
+   * @category repetition
+   */
   <A, E, R>(
     self: Micro<A, E, R>,
     n: number,
@@ -2476,7 +2991,23 @@ export const scheduleExponential = (baseMillis: number, factor = 2): MicroSchedu
  * @category scheduling
  */
 export const scheduleAddDelay: {
+  /**
+   * Returns a new `MicroSchedule` with an added calculated delay to each delay
+   * returned by this schedule.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (f: () => number): (self: MicroSchedule) => MicroSchedule
+  /**
+   * Returns a new `MicroSchedule` with an added calculated delay to each delay
+   * returned by this schedule.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (self: MicroSchedule, f: () => number): MicroSchedule
 } = dual(
   2,
@@ -2493,7 +3024,23 @@ export const scheduleAddDelay: {
  * @category scheduling
  */
 export const scheduleWithMaxDelay: {
+  /**
+   * Transform a `MicroSchedule` to one that will have a delay that will never exceed
+   * the specified maximum.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (max: number): (self: MicroSchedule) => MicroSchedule
+  /**
+   * Transform a `MicroSchedule` to one that will have a delay that will never exceed
+   * the specified maximum.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
   2,
@@ -2510,7 +3057,23 @@ export const scheduleWithMaxDelay: {
  * @category scheduling
  */
 export const scheduleWithMaxElapsed: {
+  /**
+   * Transform a `MicroSchedule` to one that will stop repeating after the specified
+   * amount of time.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (max: number): (self: MicroSchedule) => MicroSchedule
+  /**
+   * Transform a `MicroSchedule` to one that will stop repeating after the specified
+   * amount of time.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (self: MicroSchedule, max: number): MicroSchedule
 } = dual(
   2,
@@ -2527,7 +3090,23 @@ export const scheduleWithMaxElapsed: {
  * @category scheduling
  */
 export const scheduleUnion: {
+  /**
+   * Combines two `MicroSchedule`s, by recurring if either schedule wants to
+   * recur, using the minimum of the two durations between recurrences.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (that: MicroSchedule): (self: MicroSchedule) => MicroSchedule
+  /**
+   * Combines two `MicroSchedule`s, by recurring if either schedule wants to
+   * recur, using the minimum of the two durations between recurrences.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (self: MicroSchedule, that: MicroSchedule): MicroSchedule
 } = dual(
   2,
@@ -2544,7 +3123,23 @@ export const scheduleUnion: {
  * @category scheduling
  */
 export const scheduleIntersect: {
+  /**
+   * Combines two `MicroSchedule`s, by recurring only if both schedules want to
+   * recur, using the maximum of the two durations between recurrences.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (that: MicroSchedule): (self: MicroSchedule) => MicroSchedule
+  /**
+   * Combines two `MicroSchedule`s, by recurring only if both schedules want to
+   * recur, using the maximum of the two durations between recurrences.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category scheduling
+   */
   (self: MicroSchedule, that: MicroSchedule): MicroSchedule
 } = dual(
   2,
@@ -2565,9 +3160,31 @@ export const scheduleIntersect: {
  * @category error handling
  */
 export const catchAllCause: {
-  <E, B, E2, R2>(
-    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  // ----------------------------------------------------------------------------
+  // error handling
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Catch the full `MicroCause` object of the given `Micro` effect, allowing you to
+   * recover from any kind of cause.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2>(f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  // ----------------------------------------------------------------------------
+  // error handling
+  // ----------------------------------------------------------------------------
+
+  /**
+   * Catch the full `MicroCause` object of the given `Micro` effect, allowing you to
+   * recover from any kind of cause.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
@@ -2601,21 +3218,53 @@ const OnFailureProto = makePrimitiveProto({
  * @category error handling
  */
 export const catchCauseIf: {
+  /**
+   * Selectively catch a `MicroCause` object of the given `Micro` effect,
+   * using the provided predicate to determine if the failure should be caught.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <E, B, E2, R2, EB extends MicroCause<E>>(
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
   ): <A, R>(
     self: Micro<A, E, R>
   ) => Micro<A | B, Exclude<E, MicroCause.Error<EB>> | E2, R | R2>
+  /**
+   * Selectively catch a `MicroCause` object of the given `Micro` effect,
+   * using the provided predicate to determine if the failure should be caught.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <E, B, E2, R2>(
     predicate: Predicate<MicroCause<NoInfer<E>>>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
+  /**
+   * Selectively catch a `MicroCause` object of the given `Micro` effect,
+   * using the provided predicate to determine if the failure should be caught.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
     self: Micro<A, E, R>,
     refinement: Refinement<MicroCause<E>, EB>,
     f: (cause: EB) => Micro<B, E2, R2>
   ): Micro<A | B, Exclude<E, MicroCause.Error<EB>> | E2, R | R2>
+  /**
+   * Selectively catch a `MicroCause` object of the given `Micro` effect,
+   * using the provided predicate to determine if the failure should be caught.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     predicate: Predicate<MicroCause<NoInfer<E>>>,
@@ -2641,9 +3290,25 @@ export const catchCauseIf: {
  * @category error handling
  */
 export const catchAll: {
-  <E, B, E2, R2>(
-    f: (e: NoInfer<E>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  /**
+   * Catch the error of the given `Micro` effect, allowing you to recover from it.
+   *
+   * It only catches expected errors.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2>(f: (e: NoInfer<E>) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E2, R | R2>
+  /**
+   * Catch the error of the given `Micro` effect, allowing you to recover from it.
+   *
+   * It only catches expected errors.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (e: NoInfer<E>) => Micro<B, E2, R2>): Micro<A | B, E2, R | R2>
 } = dual(
   2,
@@ -2661,9 +3326,21 @@ export const catchAll: {
  * @category error handling
  */
 export const catchAllDefect: {
-  <E, B, E2, R2>(
-    f: (defect: unknown) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
+  /**
+   * Catch any unexpected errors of the given `Micro` effect, allowing you to recover from them.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2>(f: (defect: unknown) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A | B, E | E2, R | R2>
+  /**
+   * Catch any unexpected errors of the given `Micro` effect, allowing you to recover from them.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A | B, E | E2, R | R2>
 } = dual(
   2,
@@ -2679,9 +3356,21 @@ export const catchAllDefect: {
  * @category error handling
  */
 export const tapErrorCause: {
-  <E, B, E2, R2>(
-    f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect using the full `MicroCause` object of the given `Micro`.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2>(f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect using the full `MicroCause` object of the given `Micro`.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     f: (cause: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
@@ -2703,19 +3392,48 @@ export const tapErrorCause: {
  * @category error handling
  */
 export const tapErrorCauseIf: {
-  <E, B, E2, R2, EB extends MicroCause<E>>(
-    refinement: Refinement<MicroCause<E>, EB>,
-    f: (a: EB) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect using if a `MicroCause` object matches the specified
+   * predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2, EB extends MicroCause<E>>(refinement: Refinement<MicroCause<E>, EB>, f: (a: EB) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect using if a `MicroCause` object matches the specified
+   * predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <E, B, E2, R2>(
     predicate: (cause: NoInfer<MicroCause<E>>) => boolean,
     f: (a: NoInfer<MicroCause<E>>) => Micro<B, E2, R2>
   ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect using if a `MicroCause` object matches the specified
+   * predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2, EB extends MicroCause<E>>(
     self: Micro<A, E, R>,
     refinement: Refinement<MicroCause<E>, EB>,
     f: (a: EB) => Micro<B, E2, R2>
   ): Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect using if a `MicroCause` object matches the specified
+   * predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(
     self: Micro<A, E, R>,
     predicate: (cause: NoInfer<MicroCause<E>>) => boolean,
@@ -2738,9 +3456,21 @@ export const tapErrorCauseIf: {
  * @category error handling
  */
 export const tapError: {
-  <E, B, E2, R2>(
-    f: (e: NoInfer<E>) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect from expected errors of the given `Micro`.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2>(f: (e: NoInfer<E>) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect from expected errors of the given `Micro`.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (e: NoInfer<E>) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
 } = dual(
   2,
@@ -2756,9 +3486,21 @@ export const tapError: {
  * @category error handling
  */
 export const tapDefect: {
-  <E, B, E2, R2>(
-    f: (defect: unknown) => Micro<B, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect from unexpected errors of the given `Micro`.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
+  <E, B, E2, R2>(f: (defect: unknown) => Micro<B, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E | E2, R | R2>
+  /**
+   * Perform a side effect from unexpected errors of the given `Micro`.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B, E2, R2>(self: Micro<A, E, R>, f: (defect: unknown) => Micro<B, E2, R2>): Micro<A, E | E2, R | R2>
 } = dual(
   2,
@@ -2774,19 +3516,41 @@ export const tapDefect: {
  * @category error handling
  */
 export const catchIf: {
-  <E, EB extends E, A2, E2, R2>(
-    refinement: Refinement<NoInfer<E>, EB>,
-    f: (e: EB) => Micro<A2, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A2 | A, E2 | Exclude<E, EB>, R2 | R>
-  <E, A2, E2, R2>(
-    predicate: Predicate<NoInfer<E>>,
-    f: (e: NoInfer<E>) => Micro<A2, E2, R2>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A2 | A, E | E2, R2 | R>
+  /**
+   * Catch any expected errors that match the specified predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
+  <E, EB extends E, A2, E2, R2>(refinement: Refinement<NoInfer<E>, EB>, f: (e: EB) => Micro<A2, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A2 | A, E2 | Exclude<E, EB>, R2 | R>
+  /**
+   * Catch any expected errors that match the specified predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
+  <E, A2, E2, R2>(predicate: Predicate<NoInfer<E>>, f: (e: NoInfer<E>) => Micro<A2, E2, R2>): <A, R>(self: Micro<A, E, R>) => Micro<A2 | A, E | E2, R2 | R>
+  /**
+   * Catch any expected errors that match the specified predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, EB extends E, A2, E2, R2>(
     self: Micro<A, E, R>,
     refinement: Refinement<E, EB>,
     f: (e: EB) => Micro<A2, E2, R2>
   ): Micro<A | A2, E2 | Exclude<E, EB>, R | R2>
+  /**
+   * Catch any expected errors that match the specified predicate.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, A2, E2, R2>(
     self: Micro<A, E, R>,
     predicate: Predicate<E>,
@@ -2814,10 +3578,21 @@ export const catchIf: {
  * @category error handling
  */
 export const catchTag: {
-  <K extends E extends { _tag: string } ? E["_tag"] : never, E, A1, E1, R1>(
-    k: K,
-    f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>
-  ): <A, R>(self: Micro<A, E, R>) => Micro<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
+  /**
+   * Recovers from the specified tagged error.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
+  <K extends E extends { _tag: string } ? E["_tag"] : never, E, A1, E1, R1>(k: K, f: (e: Extract<E, { _tag: K }>) => Micro<A1, E1, R1>): <A, R>(self: Micro<A, E, R>) => Micro<A1 | A, E1 | Exclude<E, { _tag: K }>, R1 | R>
+  /**
+   * Recovers from the specified tagged error.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1, A1>(
     self: Micro<A, E, R>,
     k: K,
@@ -2838,7 +3613,21 @@ export const catchTag: {
  * @category error handling
  */
 export const mapErrorCause: {
+  /**
+   * Transform the full `MicroCause` object of the given `Micro` effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <E, E2>(f: (e: MicroCause<E>) => MicroCause<E2>): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  /**
+   * Transform the full `MicroCause` object of the given `Micro` effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, E2>(self: Micro<A, E, R>, f: (e: MicroCause<E>) => MicroCause<E2>): Micro<A, E2, R>
 } = dual(
   2,
@@ -2854,7 +3643,21 @@ export const mapErrorCause: {
  * @category error handling
  */
 export const mapError: {
+  /**
+   * Transform any expected errors of the given `Micro` effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <E, E2>(f: (e: E) => E2): <A, R>(self: Micro<A, E, R>) => Micro<A, E2, R>
+  /**
+   * Transform any expected errors of the given `Micro` effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, E2>(self: Micro<A, E, R>, f: (e: E) => E2): Micro<A, E2, R>
 } = dual(
   2,
@@ -2879,7 +3682,21 @@ export const orDie = <A, E, R>(self: Micro<A, E, R>): Micro<A, never, R> => catc
  * @category error handling
  */
 export const orElseSucceed: {
+  /**
+   * Recover from all errors by succeeding with the given value.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <B>(f: LazyArg<B>): <A, E, R>(self: Micro<A, E, R>) => Micro<A | B, never, R>
+  /**
+   * Recover from all errors by succeeding with the given value.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R, B>(self: Micro<A, E, R>, f: LazyArg<B>): Micro<A | B, never, R>
 } = dual(
   2,
@@ -2942,6 +3759,13 @@ export const either = <A, E, R>(self: Micro<A, E, R>): Micro<Either.Either<A, E>
  * @category error handling
  */
 export const retry: {
+  /**
+   * Retry the given `Micro` effect using the provided options.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E>(
     options?: {
       while?: Predicate<E> | undefined
@@ -2949,6 +3773,13 @@ export const retry: {
       schedule?: MicroSchedule | undefined
     } | undefined
   ): <R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  /**
+   * Retry the given `Micro` effect using the provided options.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R>(
     self: Micro<A, E, R>,
     options?: {
@@ -2981,7 +3812,23 @@ export const retry: {
  * @category error handling
  */
 export const withTrace: {
+  /**
+   * Add a stack trace to any failures that occur in the effect. The trace will be
+   * added to the `traces` field of the `MicroCause` object.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   (name: string): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  /**
+   * Add a stack trace to any failures that occur in the effect. The trace will be
+   * added to the `traces` field of the `MicroCause` object.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category error handling
+   */
   <A, E, R>(self: Micro<A, E, R>, name: string): Micro<A, E, R>
 } = function() {
   const prevLimit = globalThis.Error.stackTraceLimit
@@ -3017,10 +3864,30 @@ export const withTrace: {
  * @category pattern matching
  */
 export const matchCauseEffect: {
-  <E, A2, E2, R2, A, A3, E3, R3>(options: {
-    readonly onFailure: (cause: MicroCause<E>) => Micro<A2, E2, R2>
-    readonly onSuccess: (a: A) => Micro<A3, E3, R3>
-  }): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+  // ----------------------------------------------------------------------------
+  // pattern matching
+  // ----------------------------------------------------------------------------
+
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category pattern matching
+   */
+  <E, A2, E2, R2, A, A3, E3, R3>(
+    options: {
+      readonly onFailure: (cause: MicroCause<E>) => Micro<A2, E2, R2>
+      readonly onSuccess: (a: A) => Micro<A3, E3, R3>
+    }
+  ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+  // ----------------------------------------------------------------------------
+  // pattern matching
+  // ----------------------------------------------------------------------------
+
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category pattern matching
+   */
   <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Micro<A, E, R>,
     options: {
@@ -3058,12 +3925,22 @@ const OnSuccessAndFailureProto = makePrimitiveProto({
  * @category pattern matching
  */
 export const matchCause: {
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category pattern matching
+   */
   <E, A2, A, A3>(
     options: {
       readonly onFailure: (cause: MicroCause<E>) => A2
       readonly onSuccess: (a: A) => A3
     }
   ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, never, R>
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category pattern matching
+   */
   <A, E, R, A2, A3>(
     self: Micro<A, E, R>,
     options: {
@@ -3092,12 +3969,22 @@ export const matchCause: {
  * @category pattern matching
  */
 export const matchEffect: {
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category pattern matching
+   */
   <E, A2, E2, R2, A, A3, E3, R3>(
     options: {
       readonly onFailure: (e: E) => Micro<A2, E2, R2>
       readonly onSuccess: (a: A) => Micro<A3, E3, R3>
     }
   ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, E2 | E3, R2 | R3 | R>
+  /**
+   * @since 3.4.6
+   * @experimental
+   * @category pattern matching
+   */
   <A, E, R, A2, E2, R2, A3, E3, R3>(
     self: Micro<A, E, R>,
     options: {
@@ -3126,12 +4013,22 @@ export const matchEffect: {
  * @category pattern matching
  */
 export const match: {
+  /**
+   * @since 3.4.0
+   * @experimental
+   * @category pattern matching
+   */
   <E, A2, A, A3>(
     options: {
       readonly onFailure: (error: E) => A2
       readonly onSuccess: (value: A) => A3
     }
   ): <R>(self: Micro<A, E, R>) => Micro<A2 | A3, never, R>
+  /**
+   * @since 3.4.0
+   * @experimental
+   * @category pattern matching
+   */
   <A, E, R, A2, A3>(
     self: Micro<A, E, R>,
     options: {
@@ -3184,7 +4081,23 @@ export const sleep = (millis: number): Micro<void> =>
  * @category delays & timeouts
  */
 export const delay: {
+  /**
+   * Returns an effect that will delay the execution of this effect by the
+   * specified duration.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
   (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
+  /**
+   * Returns an effect that will delay the execution of this effect by the
+   * specified duration.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
   <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<A, E, R>
 } = dual(
   2,
@@ -3202,14 +4115,39 @@ export const delay: {
  * @category delays & timeouts
  */
 export const timeoutOrElse: {
-  <A2, E2, R2>(options: {
-    readonly duration: number
-    readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
-  }): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
-  <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, options: {
-    readonly duration: number
-    readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
-  }): Micro<A | A2, E | E2, R | R2>
+  /**
+   * Returns an effect that will timeout this effect, that will execute the
+   * fallback effect if the timeout elapses before the effect has produced a value.
+   *
+   * If the timeout elapses, the running effect will be safely interrupted.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
+  <A2, E2, R2>(
+    options: {
+      readonly duration: number
+      readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
+    }
+  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A | A2, E | E2, R | R2>
+  /**
+   * Returns an effect that will timeout this effect, that will execute the
+   * fallback effect if the timeout elapses before the effect has produced a value.
+   *
+   * If the timeout elapses, the running effect will be safely interrupted.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
+  <A, E, R, A2, E2, R2>(
+    self: Micro<A, E, R>,
+    options: {
+      readonly duration: number
+      readonly onTimeout: LazyArg<Micro<A2, E2, R2>>
+    }
+  ): Micro<A | A2, E | E2, R | R2>
 } = dual(
   2,
   <A, E, R, A2, E2, R2>(self: Micro<A, E, R>, options: {
@@ -3231,7 +4169,29 @@ export const timeoutOrElse: {
  * @category delays & timeouts
  */
 export const timeout: {
+  /**
+   * Returns an effect that will timeout this effect, that will fail with a
+   * `TimeoutException` if the timeout elapses before the effect has produced a
+   * value.
+   *
+   * If the timeout elapses, the running effect will be safely interrupted.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
   (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | TimeoutException, R>
+  /**
+   * Returns an effect that will timeout this effect, that will fail with a
+   * `TimeoutException` if the timeout elapses before the effect has produced a
+   * value.
+   *
+   * If the timeout elapses, the running effect will be safely interrupted.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
   <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<A, E | TimeoutException, R>
 } = dual(
   2,
@@ -3251,7 +4211,29 @@ export const timeout: {
  * @category delays & timeouts
  */
 export const timeoutOption: {
+  /**
+   * Returns an effect that will timeout this effect, succeeding with a `None`
+   * if the timeout elapses before the effect has produced a value; and `Some` of
+   * the produced value otherwise.
+   *
+   * If the timeout elapses, the running effect will be safely interrupted.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
   (millis: number): <A, E, R>(self: Micro<A, E, R>) => Micro<Option.Option<A>, E, R>
+  /**
+   * Returns an effect that will timeout this effect, succeeding with a `None`
+   * if the timeout elapses before the effect has produced a value; and `Some` of
+   * the produced value otherwise.
+   *
+   * If the timeout elapses, the running effect will be safely interrupted.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category delays & timeouts
+   */
   <A, E, R>(self: Micro<A, E, R>, millis: number): Micro<Option.Option<A>, E, R>
 } = dual(
   2,
@@ -3408,7 +4390,21 @@ export const scope: Micro<MicroScope, never, MicroScope> = service(MicroScope)
  * @category resources & finalization
  */
 export const provideScope: {
+  /**
+   * Provide a `MicroScope` to an effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category resources & finalization
+   */
   (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, Exclude<R, MicroScope>>
+  /**
+   * Provide a `MicroScope` to an effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<A, E, Exclude<R, MicroScope>>
 } = dual(
   2,
@@ -3467,13 +4463,24 @@ export const addFinalizer = (
  * @category resources & finalization
  */
 export const onExit: {
-  <A, E, XE, XR>(
-    f: (exit: MicroExit<A, E>) => Micro<void, XE, XR>
-  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(
-    self: Micro<A, E, R>,
-    f: (exit: MicroExit<A, E>) => Micro<void, XE, XR>
-  ): Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect is completed, run the given finalizer effect with the
+   * `MicroExit` of the executed effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
+  <A, E, XE, XR>(f: (exit: MicroExit<A, E>) => Micro<void, XE, XR>): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect is completed, run the given finalizer effect with the
+   * `MicroExit` of the executed effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, f: (exit: MicroExit<A, E>) => Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
 } = dual(
   2,
   <A, E, R, XE, XR>(
@@ -3496,13 +4503,22 @@ export const onExit: {
  * @category resources & finalization
  */
 export const ensuring: {
-  <XE, XR>(
-    finalizer: Micro<void, XE, XR>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
-  <A, E, R, XE, XR>(
-    self: Micro<A, E, R>,
-    finalizer: Micro<void, XE, XR>
-  ): Micro<A, E | XE, R | XR>
+  /**
+   * Regardless of the result of the this `Micro` effect, run the finalizer effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category resources & finalization
+   */
+  <XE, XR>(finalizer: Micro<void, XE, XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * Regardless of the result of the this `Micro` effect, run the finalizer effect.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category resources & finalization
+   */
+  <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
 } = dual(
   2,
   <A, E, R, XE, XR>(
@@ -3520,19 +4536,51 @@ export const ensuring: {
  * @category resources & finalization
  */
 export const onExitIf: {
+  /**
+   * When the `Micro` effect is completed, run the given finalizer effect if it
+   * matches the specified predicate.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, XE, XR, B extends MicroExit<A, E>>(
     refinement: Refinement<MicroExit<A, E>, B>,
     f: (exit: B) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect is completed, run the given finalizer effect if it
+   * matches the specified predicate.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, XE, XR>(
     predicate: Predicate<MicroExit<NoInfer<A>, NoInfer<E>>>,
     f: (exit: MicroExit<NoInfer<A>, NoInfer<E>>) => Micro<void, XE, XR>
   ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect is completed, run the given finalizer effect if it
+   * matches the specified predicate.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, R, XE, XR, B extends MicroExit<A, E>>(
     self: Micro<A, E, R>,
     refinement: Refinement<MicroExit<A, E>, B>,
     f: (exit: B) => Micro<void, XE, XR>
   ): Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect is completed, run the given finalizer effect if it
+   * matches the specified predicate.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
     predicate: Predicate<MicroExit<NoInfer<A>, NoInfer<E>>>,
@@ -3556,9 +4604,23 @@ export const onExitIf: {
  * @category resources & finalization
  */
 export const onError: {
-  <A, E, XE, XR>(
-    f: (cause: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
-  ): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect fails, run the given finalizer effect with the
+   * `MicroCause` of the executed effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
+  <A, E, XE, XR>(f: (cause: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>): <R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * When the `Micro` effect fails, run the given finalizer effect with the
+   * `MicroCause` of the executed effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, R, XE, XR>(
     self: Micro<A, E, R>,
     f: (cause: MicroCause<NoInfer<E>>) => Micro<void, XE, XR>
@@ -3579,9 +4641,21 @@ export const onError: {
  * @category resources & finalization
  */
 export const onInterrupt: {
-  <XE, XR>(
-    finalizer: Micro<void, XE, XR>
-  ): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * If this `Micro` effect is aborted, run the finalizer effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
+  <XE, XR>(finalizer: Micro<void, XE, XR>): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E | XE, R | XR>
+  /**
+   * If this `Micro` effect is aborted, run the finalizer effect.
+   *
+   * @since 3.4.6
+   * @experimental
+   * @category resources & finalization
+   */
   <A, E, R, XE, XR>(self: Micro<A, E, R>, finalizer: Micro<void, XE, XR>): Micro<A, E | XE, R | XR>
 } = dual(
   2,
@@ -3867,14 +4941,50 @@ export const whileLoop: <A, E, R>(options: {
  * @category collecting & elements
  */
 export const forEach: {
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options?: {
-    readonly concurrency?: Concurrency | undefined
-    readonly discard?: false | undefined
-  }): Micro<Array<B>, E, R>
-  <A, B, E, R>(iterable: Iterable<A>, f: (a: A, index: number) => Micro<B, E, R>, options: {
-    readonly concurrency?: Concurrency | undefined
-    readonly discard: true
-  }): Micro<void, E, R>
+  /**
+   * For each element of the provided iterable, run the effect and collect the
+   * results.
+   *
+   * If the `discard` option is set to `true`, the results will be discarded and
+   * the effect will return `void`.
+   *
+   * The `concurrency` option can be set to control how many effects are run
+   * concurrently. By default, the effects are run sequentially.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category collecting & elements
+   */
+  <A, B, E, R>(
+    iterable: Iterable<A>,
+    f: (a: A, index: number) => Micro<B, E, R>,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard?: false | undefined
+    }
+  ): Micro<Array<B>, E, R>
+  /**
+   * For each element of the provided iterable, run the effect and collect the
+   * results.
+   *
+   * If the `discard` option is set to `true`, the results will be discarded and
+   * the effect will return `void`.
+   *
+   * The `concurrency` option can be set to control how many effects are run
+   * concurrently. By default, the effects are run sequentially.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category collecting & elements
+   */
+  <A, B, E, R>(
+    iterable: Iterable<A>,
+    f: (a: A, index: number) => Micro<B, E, R>,
+    options: {
+      readonly concurrency?: Concurrency | undefined
+      readonly discard: true
+    }
+  ): Micro<void, E, R>
 } = <
   A,
   B,
@@ -4043,7 +5153,21 @@ export const Do: Micro<{}> = succeed({})
  * @category do notation
  */
 export const bindTo: {
+  /**
+   * Bind the success value of this `Micro` effect to the provided name.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category do notation
+   */
   <N extends string>(name: N): <A, E, R>(self: Micro<A, E, R>) => Micro<{ [K in N]: A }, E, R>
+  /**
+   * Bind the success value of this `Micro` effect to the provided name.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category do notation
+   */
   <A, E, R, N extends string>(self: Micro<A, E, R>, name: N): Micro<{ [K in N]: A }, E, R>
 } = doNotation.bindTo<MicroTypeLambda>(map)
 
@@ -4055,15 +5179,22 @@ export const bindTo: {
  * @category do notation
  */
 export const bind: {
-  <N extends string, A extends Record<string, any>, B, E2, R2>(
-    name: N,
-    f: (a: NoInfer<A>) => Micro<B, E2, R2>
-  ): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
-  <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(
-    self: Micro<A, E, R>,
-    name: N,
-    f: (a: NoInfer<A>) => Micro<B, E2, R2>
-  ): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
+  /**
+   * Bind the success value of this `Micro` effect to the provided name.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category do notation
+   */
+  <N extends string, A extends Record<string, any>, B, E2, R2>(name: N, f: (a: NoInfer<A>) => Micro<B, E2, R2>): <E, R>(self: Micro<A, E, R>) => Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
+  /**
+   * Bind the success value of this `Micro` effect to the provided name.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category do notation
+   */
+  <A extends Record<string, any>, E, R, B, E2, R2, N extends string>(self: Micro<A, E, R>, name: N, f: (a: NoInfer<A>) => Micro<B, E2, R2>): Micro<Simplify<Omit<A, N> & { [K in N]: B }>, E | E2, R | R2>
 } = doNotation.bind<MicroTypeLambda>(map, flatMap)
 
 const let_: {
@@ -4155,7 +5286,27 @@ export const forkDaemon = <A, E, R>(
  * @category fiber & forking
  */
 export const forkIn: {
+  /**
+   * Run the `Micro` effect in a new `MicroFiber` that can be awaited, joined, or
+   * aborted.
+   *
+   * The lifetime of the handle will be attached to the provided `MicroScope`.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category fiber & forking
+   */
   (scope: MicroScope): <A, E, R>(self: Micro<A, E, R>) => Micro<MicroFiber<A, E>, never, R>
+  /**
+   * Run the `Micro` effect in a new `MicroFiber` that can be awaited, joined, or
+   * aborted.
+   *
+   * The lifetime of the handle will be attached to the provided `MicroScope`.
+   *
+   * @since 3.4.0
+   * @experimental
+   * @category fiber & forking
+   */
   <A, E, R>(self: Micro<A, E, R>, scope: MicroScope): Micro<MicroFiber<A, E>, never, R>
 } = dual(
   2,

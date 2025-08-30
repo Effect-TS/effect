@@ -467,7 +467,23 @@ export const interrupted: (fiberId: FiberId.FiberId) => Fiber<never> = internal.
  * @category interruption
  */
 export const interruptAs: {
+  /**
+   * Interrupts the fiber as if interrupted from the specified fiber. If the
+   * fiber has already exited, the returned effect will resume immediately.
+   * Otherwise, the effect will resume when the fiber exits.
+   *
+   * @since 2.0.0
+   * @category interruption
+   */
   (fiberId: FiberId.FiberId): <A, E>(self: Fiber<A, E>) => Effect.Effect<Exit.Exit<A, E>>
+  /**
+   * Interrupts the fiber as if interrupted from the specified fiber. If the
+   * fiber has already exited, the returned effect will resume immediately.
+   * Otherwise, the effect will resume when the fiber exits.
+   *
+   * @since 2.0.0
+   * @category interruption
+   */
   <A, E>(self: Fiber<A, E>, fiberId: FiberId.FiberId): Effect.Effect<Exit.Exit<A, E>>
 } = core.interruptAsFiber
 
@@ -480,7 +496,23 @@ export const interruptAs: {
  * @category interruption
  */
 export const interruptAsFork: {
+  /**
+   * Interrupts the fiber as if interrupted from the specified fiber. If the
+   * fiber has already exited, the returned effect will resume immediately.
+   * Otherwise, the effect will resume when the fiber exits.
+   *
+   * @since 2.0.0
+   * @category interruption
+   */
   (fiberId: FiberId.FiberId): <A, E>(self: Fiber<A, E>) => Effect.Effect<void>
+  /**
+   * Interrupts the fiber as if interrupted from the specified fiber. If the
+   * fiber has already exited, the returned effect will resume immediately.
+   * Otherwise, the effect will resume when the fiber exits.
+   *
+   * @since 2.0.0
+   * @category interruption
+   */
   <A, E>(self: Fiber<A, E>, fiberId: FiberId.FiberId): Effect.Effect<void>
 } = internal.interruptAsFork
 
@@ -500,7 +532,21 @@ export const interruptAll: (fibers: Iterable<Fiber<any, any>>) => Effect.Effect<
  * @category interruption
  */
 export const interruptAllAs: {
+  /**
+   * Interrupts all fibers as by the specified fiber, awaiting their
+   * interruption.
+   *
+   * @since 2.0.0
+   * @category interruption
+   */
   (fiberId: FiberId.FiberId): (fibers: Iterable<Fiber<any, any>>) => Effect.Effect<void>
+  /**
+   * Interrupts all fibers as by the specified fiber, awaiting their
+   * interruption.
+   *
+   * @since 2.0.0
+   * @category interruption
+   */
   (fibers: Iterable<Fiber<any, any>>, fiberId: FiberId.FiberId): Effect.Effect<void>
 } = internal.interruptAllAs
 
@@ -543,7 +589,19 @@ export const joinAll: <A, E>(fibers: Iterable<Fiber<A, E>>) => Effect.Effect<Arr
  * @category mapping
  */
 export const map: {
+  /**
+   * Maps over the value the Fiber computes.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B): <E>(self: Fiber<A, E>) => Fiber<B, E>
+  /**
+   * Maps over the value the Fiber computes.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, E, B>(self: Fiber<A, E>, f: (a: A) => B): Fiber<B, E>
 } = internal.map
 
@@ -554,7 +612,19 @@ export const map: {
  * @category mapping
  */
 export const mapEffect: {
+  /**
+   * Effectually maps over the value the fiber computes.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, A2, E2>(f: (a: A) => Effect.Effect<A2, E2>): <E>(self: Fiber<A, E>) => Fiber<A2, E2 | E>
+  /**
+   * Effectually maps over the value the fiber computes.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, E, A2, E2>(self: Fiber<A, E>, f: (a: A) => Effect.Effect<A2, E2>): Fiber<A2, E | E2>
 } = internal.mapEffect
 
@@ -566,7 +636,21 @@ export const mapEffect: {
  * @category mapping
  */
 export const mapFiber: {
+  /**
+   * Passes the success of this fiber to the specified callback, and continues
+   * with the fiber that it returns.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <E, E2, A, B>(f: (a: A) => Fiber<B, E2>): (self: Fiber<A, E>) => Effect.Effect<Fiber<B, E | E2>>
+  /**
+   * Passes the success of this fiber to the specified callback, and continues
+   * with the fiber that it returns.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, E, E2, B>(self: Fiber<A, E>, f: (a: A) => Fiber<B, E2>): Effect.Effect<Fiber<B, E | E2>>
 } = internal.mapFiber
 
@@ -577,18 +661,30 @@ export const mapFiber: {
  * @category folding
  */
 export const match: {
+  /**
+   * Folds over the `Fiber` or `RuntimeFiber`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, E, Z>(
-    options: {
-      readonly onFiber: (fiber: Fiber<A, E>) => Z
-      readonly onRuntimeFiber: (fiber: RuntimeFiber<A, E>) => Z
-    }
+   options: {
+     readonly onFiber: (fiber: Fiber<A, E>) => Z
+     readonly onRuntimeFiber: (fiber: RuntimeFiber<A, E>) => Z
+   }
   ): (self: Fiber<A, E>) => Z
+  /**
+   * Folds over the `Fiber` or `RuntimeFiber`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, E, Z>(
-    self: Fiber<A, E>,
-    options: {
-      readonly onFiber: (fiber: Fiber<A, E>) => Z
-      readonly onRuntimeFiber: (fiber: RuntimeFiber<A, E>) => Z
-    }
+   self: Fiber<A, E>,
+   options: {
+     readonly onFiber: (fiber: Fiber<A, E>) => Z
+     readonly onRuntimeFiber: (fiber: RuntimeFiber<A, E>) => Z
+   }
   ): Z
 } = internal.match
 
@@ -609,7 +705,23 @@ export const never: Fiber<never> = internal.never
  * @category alternatives
  */
 export const orElse: {
+  /**
+   * Returns a fiber that prefers `this` fiber, but falls back to the `that` one
+   * when `this` one fails. Interrupting the returned fiber will interrupt both
+   * fibers, sequentially, from left to right.
+   *
+   * @since 2.0.0
+   * @category alternatives
+   */
   <A2, E2>(that: Fiber<A2, E2>): <A, E>(self: Fiber<A, E>) => Fiber<A2 | A, E2 | E>
+  /**
+   * Returns a fiber that prefers `this` fiber, but falls back to the `that` one
+   * when `this` one fails. Interrupting the returned fiber will interrupt both
+   * fibers, sequentially, from left to right.
+   *
+   * @since 2.0.0
+   * @category alternatives
+   */
   <A, E, A2, E2>(self: Fiber<A, E>, that: Fiber<A2, E2>): Fiber<A | A2, E | E2>
 } = internal.orElse
 
@@ -622,7 +734,23 @@ export const orElse: {
  * @category alternatives
  */
 export const orElseEither: {
+  /**
+   * Returns a fiber that prefers `this` fiber, but falls back to the `that` one
+   * when `this` one fails. Interrupting the returned fiber will interrupt both
+   * fibers, sequentially, from left to right.
+   *
+   * @since 2.0.0
+   * @category alternatives
+   */
   <A2, E2>(that: Fiber<A2, E2>): <A, E>(self: Fiber<A, E>) => Fiber<Either.Either<A2, A>, E2 | E>
+  /**
+   * Returns a fiber that prefers `this` fiber, but falls back to the `that` one
+   * when `this` one fails. Interrupting the returned fiber will interrupt both
+   * fibers, sequentially, from left to right.
+   *
+   * @since 2.0.0
+   * @category alternatives
+   */
   <A, E, A2, E2>(self: Fiber<A, E>, that: Fiber<A2, E2>): Fiber<Either.Either<A2, A>, E | E2>
 } = internal.orElseEither
 
@@ -704,7 +832,21 @@ export {
  * @category zipping
  */
 export const zip: {
+  /**
+   * Zips this fiber and the specified fiber together, producing a tuple of
+   * their output.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A2, E2>(that: Fiber<A2, E2>): <A, E>(self: Fiber<A, E>) => Fiber<[A, A2], E2 | E>
+  /**
+   * Zips this fiber and the specified fiber together, producing a tuple of
+   * their output.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A, E, A2, E2>(self: Fiber<A, E>, that: Fiber<A2, E2>): Fiber<[A, A2], E | E2>
 } = circular.zipFiber
 
@@ -715,7 +857,19 @@ export const zip: {
  * @category zipping
  */
 export const zipLeft: {
+  /**
+   * Same as `zip` but discards the output of that `Fiber`.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A2, E2>(that: Fiber<A2, E2>): <A, E>(self: Fiber<A, E>) => Fiber<A, E2 | E>
+  /**
+   * Same as `zip` but discards the output of that `Fiber`.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A, E, A2, E2>(self: Fiber<A, E>, that: Fiber<A2, E2>): Fiber<A, E | E2>
 } = circular.zipLeftFiber
 
@@ -726,7 +880,19 @@ export const zipLeft: {
  * @category zipping
  */
 export const zipRight: {
+  /**
+   * Same as `zip` but discards the output of this `Fiber`.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A2, E2>(that: Fiber<A2, E2>): <A, E>(self: Fiber<A, E>) => Fiber<A2, E2 | E>
+  /**
+   * Same as `zip` but discards the output of this `Fiber`.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A, E, A2, E2>(self: Fiber<A, E>, that: Fiber<A2, E2>): Fiber<A2, E | E2>
 } = circular.zipRightFiber
 
@@ -739,6 +905,22 @@ export const zipRight: {
  * @category zipping
  */
 export const zipWith: {
+  /**
+   * Zips this fiber with the specified fiber, combining their results using the
+   * specified combiner function. Both joins and interruptions are performed in
+   * sequential order from left to right.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <B, E2, A, C>(that: Fiber<B, E2>, f: (a: A, b: B) => C): <E>(self: Fiber<A, E>) => Fiber<C, E2 | E>
+  /**
+   * Zips this fiber with the specified fiber, combining their results using the
+   * specified combiner function. Both joins and interruptions are performed in
+   * sequential order from left to right.
+   *
+   * @since 2.0.0
+   * @category zipping
+   */
   <A, E, B, E2, C>(self: Fiber<A, E>, that: Fiber<B, E2>, f: (a: A, b: B) => C): Fiber<C, E | E2>
 } = circular.zipWithFiber

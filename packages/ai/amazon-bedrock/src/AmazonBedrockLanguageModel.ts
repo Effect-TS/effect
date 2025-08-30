@@ -246,10 +246,26 @@ export const layer = (options: {
  * @category Configuration
  */
 export const withConfigOverride: {
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
   (config: Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
   <A, E, R>(self: Effect.Effect<A, E, R>, config: Config.Service): Effect.Effect<A, E, R>
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
   (config: Config.Service) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * @since 1.0.0
+   * @category Configuration
+   */
   <A, E, R>(self: Effect.Effect<A, E, R>, config: Config.Service) => Effect.Effect<A, E, R>
 >(2, (self, overrides) =>
   Effect.flatMap(

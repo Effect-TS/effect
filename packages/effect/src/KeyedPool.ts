@@ -149,7 +149,25 @@ export const makeWithTTLBy: <K, A, E, R>(
  * @category combinators
  */
 export const get: {
+  /**
+   * Retrieves an item from the pool belonging to the given key in a scoped
+   * effect. Note that if acquisition fails, then the returned effect will fail
+   * for that same reason. Retrying a failed acquisition attempt will repeat the
+   * acquisition attempt.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <K>(key: K): <A, E>(self: KeyedPool<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
+  /**
+   * Retrieves an item from the pool belonging to the given key in a scoped
+   * effect. Note that if acquisition fails, then the returned effect will fail
+   * for that same reason. Retrying a failed acquisition attempt will repeat the
+   * acquisition attempt.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <K, A, E>(self: KeyedPool<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope>
 } = internal.get
 
@@ -162,6 +180,22 @@ export const get: {
  * @category combinators
  */
 export const invalidate: {
+  /**
+   * Invalidates the specified item. This will cause the pool to eventually
+   * reallocate the item, although this reallocation may occur lazily rather
+   * than eagerly.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(item: A): <K, E>(self: KeyedPool<K, A, E>) => Effect.Effect<void>
+  /**
+   * Invalidates the specified item. This will cause the pool to eventually
+   * reallocate the item, although this reallocation may occur lazily rather
+   * than eagerly.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <K, A, E>(self: KeyedPool<K, A, E>, item: A): Effect.Effect<void>
 } = internal.invalidate

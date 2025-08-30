@@ -418,12 +418,20 @@ export const toHrTime = (self: DurationInput): [seconds: number, nanos: number] 
  * @category pattern matching
  */
 export const match: {
+  /**
+   * @since 2.0.0
+   * @category pattern matching
+   */
   <A, B>(
     options: {
       readonly onMillis: (millis: number) => A
       readonly onNanos: (nanos: bigint) => B
     }
   ): (self: DurationInput) => A | B
+  /**
+   * @since 2.0.0
+   * @category pattern matching
+   */
   <A, B>(
     self: DurationInput,
     options: {
@@ -454,6 +462,10 @@ export const match: {
  * @category pattern matching
  */
 export const matchWith: {
+  /**
+   * @since 2.0.0
+   * @category pattern matching
+   */
   <A, B>(
     that: DurationInput,
     options: {
@@ -461,6 +473,10 @@ export const matchWith: {
       readonly onNanos: (self: bigint, that: bigint) => B
     }
   ): (self: DurationInput) => A | B
+  /**
+   * @since 2.0.0
+   * @category pattern matching
+   */
   <A, B>(
     self: DurationInput,
     that: DurationInput,
@@ -518,14 +534,31 @@ export const Order: order.Order<Duration> = order.make((self, that) =>
  * @since 2.0.0
  */
 export const between: {
-  (options: {
-    minimum: DurationInput
-    maximum: DurationInput
-  }): (self: DurationInput) => boolean
-  (self: DurationInput, options: {
-    minimum: DurationInput
-    maximum: DurationInput
-  }): boolean
+  /**
+   * Checks if a `Duration` is between a `minimum` and `maximum` value.
+   *
+   * @category predicates
+   * @since 2.0.0
+   */
+  (
+    options: {
+      minimum: DurationInput
+      maximum: DurationInput
+    }
+  ): (self: DurationInput) => boolean
+  /**
+   * Checks if a `Duration` is between a `minimum` and `maximum` value.
+   *
+   * @category predicates
+   * @since 2.0.0
+   */
+  (
+    self: DurationInput,
+    options: {
+      minimum: DurationInput
+      maximum: DurationInput
+    }
+  ): boolean
 } = order.between(order.mapInput(Order, decode))
 
 /**
@@ -544,7 +577,13 @@ const _min = order.min(Order)
  * @since 2.0.0
  */
 export const min: {
+  /**
+   * @since 2.0.0
+   */
   (that: DurationInput): (self: DurationInput) => Duration
+  /**
+   * @since 2.0.0
+   */
   (self: DurationInput, that: DurationInput): Duration
 } = dual(2, (self: DurationInput, that: DurationInput): Duration => _min(decode(self), decode(that)))
 
@@ -555,7 +594,15 @@ const _max = order.max(Order)
  * @category order
  */
 export const max: {
+  /**
+   * @since 2.0.0
+   * @category order
+   */
   (that: DurationInput): (self: DurationInput) => Duration
+  /**
+   * @since 2.0.0
+   * @category order
+   */
   (self: DurationInput, that: DurationInput): Duration
 } = dual(2, (self: DurationInput, that: DurationInput): Duration => _max(decode(self), decode(that)))
 
@@ -566,14 +613,27 @@ const _clamp = order.clamp(Order)
  * @category order
  */
 export const clamp: {
-  (options: {
-    minimum: DurationInput
-    maximum: DurationInput
-  }): (self: DurationInput) => Duration
-  (self: DurationInput, options: {
-    minimum: DurationInput
-    maximum: DurationInput
-  }): Duration
+  /**
+   * @since 2.0.0
+   * @category order
+   */
+  (
+    options: {
+      minimum: DurationInput
+      maximum: DurationInput
+    }
+  ): (self: DurationInput) => Duration
+  /**
+   * @since 2.0.0
+   * @category order
+   */
+  (
+    self: DurationInput,
+    options: {
+      minimum: DurationInput
+      maximum: DurationInput
+    }
+  ): Duration
 } = dual(
   2,
   (self: DurationInput, options: {
@@ -591,7 +651,15 @@ export const clamp: {
  * @category math
  */
 export const divide: {
+  /**
+   * @since 2.4.19
+   * @category math
+   */
   (by: number): (self: DurationInput) => Option.Option<Duration>
+  /**
+   * @since 2.4.19
+   * @category math
+   */
   (self: DurationInput, by: number): Option.Option<Duration>
 } = dual(
   2,
@@ -621,7 +689,15 @@ export const divide: {
  * @category math
  */
 export const unsafeDivide: {
+  /**
+   * @since 2.4.19
+   * @category math
+   */
   (by: number): (self: DurationInput) => Duration
+  /**
+   * @since 2.4.19
+   * @category math
+   */
   (self: DurationInput, by: number): Duration
 } = dual(
   2,
@@ -644,7 +720,15 @@ export const unsafeDivide: {
  * @category math
  */
 export const times: {
+  /**
+   * @since 2.0.0
+   * @category math
+   */
   (times: number): (self: DurationInput) => Duration
+  /**
+   * @since 2.0.0
+   * @category math
+   */
   (self: DurationInput, times: number): Duration
 } = dual(
   2,
@@ -660,7 +744,15 @@ export const times: {
  * @category math
  */
 export const subtract: {
+  /**
+   * @since 2.0.0
+   * @category math
+   */
   (that: DurationInput): (self: DurationInput) => Duration
+  /**
+   * @since 2.0.0
+   * @category math
+   */
   (self: DurationInput, that: DurationInput): Duration
 } = dual(
   2,
@@ -676,7 +768,15 @@ export const subtract: {
  * @category math
  */
 export const sum: {
+  /**
+   * @since 2.0.0
+   * @category math
+   */
   (that: DurationInput): (self: DurationInput) => Duration
+  /**
+   * @since 2.0.0
+   * @category math
+   */
   (self: DurationInput, that: DurationInput): Duration
 } = dual(
   2,
@@ -692,7 +792,15 @@ export const sum: {
  * @category predicates
  */
 export const lessThan: {
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (that: DurationInput): (self: DurationInput) => boolean
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (self: DurationInput, that: DurationInput): boolean
 } = dual(
   2,
@@ -708,7 +816,15 @@ export const lessThan: {
  * @category predicates
  */
 export const lessThanOrEqualTo: {
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (that: DurationInput): (self: DurationInput) => boolean
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (self: DurationInput, that: DurationInput): boolean
 } = dual(
   2,
@@ -724,7 +840,15 @@ export const lessThanOrEqualTo: {
  * @category predicates
  */
 export const greaterThan: {
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (that: DurationInput): (self: DurationInput) => boolean
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (self: DurationInput, that: DurationInput): boolean
 } = dual(
   2,
@@ -740,7 +864,15 @@ export const greaterThan: {
  * @category predicates
  */
 export const greaterThanOrEqualTo: {
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (that: DurationInput): (self: DurationInput) => boolean
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (self: DurationInput, that: DurationInput): boolean
 } = dual(
   2,
@@ -756,7 +888,15 @@ export const greaterThanOrEqualTo: {
  * @category predicates
  */
 export const equals: {
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (that: DurationInput): (self: DurationInput) => boolean
+  /**
+   * @since 2.0.0
+   * @category predicates
+   */
   (self: DurationInput, that: DurationInput): boolean
 } = dual(2, (self: DurationInput, that: DurationInput): boolean => Equivalence(decode(self), decode(that)))
 

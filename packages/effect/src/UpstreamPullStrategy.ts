@@ -105,17 +105,29 @@ export const isPullAfterAllEnqueued: <A>(self: UpstreamPullStrategy<A>) => self 
  * @category folding
  */
 export const match: {
+  /**
+   * Folds an `UpstreamPullStrategy<A>` into a value of type `Z`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, Z>(
-    options: {
-      readonly onNext: (emitSeparator: Option.Option<A>) => Z
-      readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
-    }
+   options: {
+     readonly onNext: (emitSeparator: Option.Option<A>) => Z
+     readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
+   }
   ): (self: UpstreamPullStrategy<A>) => Z
+  /**
+   * Folds an `UpstreamPullStrategy<A>` into a value of type `Z`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, Z>(
-    self: UpstreamPullStrategy<A>,
-    options: {
-      readonly onNext: (emitSeparator: Option.Option<A>) => Z
-      readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
-    }
+   self: UpstreamPullStrategy<A>,
+   options: {
+     readonly onNext: (emitSeparator: Option.Option<A>) => Z
+     readonly onAllEnqueued: (emitSeparator: Option.Option<A>) => Z
+   }
   ): Z
 } = internal.match

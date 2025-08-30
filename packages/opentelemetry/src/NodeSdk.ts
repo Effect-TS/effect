@@ -74,7 +74,15 @@ export const layerTracerProvider = (
  * @category layer
  */
 export const layer: {
+  /**
+   * @since 1.0.0
+   * @category layer
+   */
   (evaluate: LazyArg<Configuration>): Layer.Layer<Resource.Resource>
+  /**
+   * @since 1.0.0
+   * @category layer
+   */
   <R, E>(evaluate: Effect.Effect<Configuration, E, R>): Layer.Layer<Resource.Resource, E, R>
 } = (
   evaluate: LazyArg<Configuration> | Effect.Effect<Configuration, any, any>

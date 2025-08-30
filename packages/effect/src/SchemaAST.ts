@@ -315,7 +315,15 @@ export interface Annotated {
  * @since 3.10.0
  */
 export const getAnnotation: {
+  /**
+   * @category annotations
+   * @since 3.10.0
+   */
   <A>(key: symbol): (annotated: Annotated) => Option.Option<A>
+  /**
+   * @category annotations
+   * @since 3.10.0
+   */
   <A>(annotated: Annotated, key: symbol): Option.Option<A>
 } = dual(
   2,

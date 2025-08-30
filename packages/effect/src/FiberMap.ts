@@ -205,6 +205,13 @@ const isInternalInterruption = Cause.reduceWithContext(undefined, {
  * @categories combinators
  */
 export const unsafeSet: {
+  /**
+   * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
+   * If the key already exists in the FiberMap, the previous fiber will be interrupted.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
@@ -214,6 +221,13 @@ export const unsafeSet: {
       readonly propagateInterruption?: boolean | undefined
     } | undefined
   ): (self: FiberMap<K, A, E>) => void
+  /**
+   * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
+   * If the key already exists in the FiberMap, the previous fiber will be interrupted.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E, XE extends E, XA extends A>(
     self: FiberMap<K, A, E>,
     key: K,
@@ -280,6 +294,13 @@ export const unsafeSet: {
  * @categories combinators
  */
 export const set: {
+  /**
+   * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
+   * If the key already exists in the FiberMap, the previous fiber will be interrupted.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E, XE extends E, XA extends A>(
     key: K,
     fiber: Fiber.RuntimeFiber<XA, XE>,
@@ -288,6 +309,13 @@ export const set: {
       readonly propagateInterruption?: boolean | undefined
     } | undefined
   ): (self: FiberMap<K, A, E>) => Effect.Effect<void>
+  /**
+   * Add a fiber to the FiberMap. When the fiber completes, it will be removed from the FiberMap.
+   * If the key already exists in the FiberMap, the previous fiber will be interrupted.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E, XE extends E, XA extends A>(
     self: FiberMap<K, A, E>,
     key: K,
@@ -323,16 +351,35 @@ export const set: {
  * @categories combinators
  */
 export const unsafeGet: {
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Option.Option<Fiber.RuntimeFiber<A, E>>
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E>(self: FiberMap<K, A, E>, key: K): Option.Option<Fiber.RuntimeFiber<A, E>>
 } = dual<
-  <K>(
-    key: K
-  ) => <A, E>(self: FiberMap<K, A, E>) => Option.Option<Fiber.RuntimeFiber<A, E>>,
-  <K, A, E>(
-    self: FiberMap<K, A, E>,
-    key: K
-  ) => Option.Option<Fiber.RuntimeFiber<A, E>>
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
+  <K>(key: K) => <A, E>(self: FiberMap<K, A, E>) => Option.Option<Fiber.RuntimeFiber<A, E>>,
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
+  <K, A, E>(self: FiberMap<K, A, E>, key: K) => Option.Option<Fiber.RuntimeFiber<A, E>>
 >(2, (self, key) => self.state._tag === "Closed" ? Option.none() : MutableHashMap.get(self.state.backing, key))
 
 /**
@@ -342,16 +389,35 @@ export const unsafeGet: {
  * @categories combinators
  */
 export const get: {
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
 } = dual<
-  <K>(
-    key: K
-  ) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>,
-  <K, A, E>(
-    self: FiberMap<K, A, E>,
-    key: K
-  ) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
+  <K>(key: K) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>,
+  /**
+   * Retrieve a fiber from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
+  <K, A, E>(self: FiberMap<K, A, E>, key: K) => Effect.Effect<Fiber.RuntimeFiber<A, E>, NoSuchElementException>
 >(2, (self, key) => Effect.suspend(() => unsafeGet(self, key)))
 
 /**
@@ -361,7 +427,19 @@ export const get: {
  * @categories combinators
  */
 export const unsafeHas: {
+  /**
+   * Check if a key exists in the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => boolean
+  /**
+   * Check if a key exists in the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E>(self: FiberMap<K, A, E>, key: K): boolean
 } = dual(
   2,
@@ -376,7 +454,19 @@ export const unsafeHas: {
  * @categories combinators
  */
 export const has: {
+  /**
+   * Check if a key exists in the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<boolean>
+  /**
+   * Check if a key exists in the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<boolean>
 } = dual(
   2,
@@ -390,16 +480,35 @@ export const has: {
  * @categories combinators
  */
 export const remove: {
+  /**
+   * Remove a fiber from the FiberMap, interrupting it if it exists.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K>(key: K): <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>
+  /**
+   * Remove a fiber from the FiberMap, interrupting it if it exists.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E>(self: FiberMap<K, A, E>, key: K): Effect.Effect<void>
 } = dual<
-  <K>(
-    key: K
-  ) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>,
-  <K, A, E>(
-    self: FiberMap<K, A, E>,
-    key: K
-  ) => Effect.Effect<void>
+  /**
+   * Remove a fiber from the FiberMap, interrupting it if it exists.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
+  <K>(key: K) => <A, E>(self: FiberMap<K, A, E>) => Effect.Effect<void>,
+  /**
+   * Remove a fiber from the FiberMap, interrupting it if it exists.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
+  <K, A, E>(self: FiberMap<K, A, E>, key: K) => Effect.Effect<void>
 >(2, (self, key) =>
   Effect.withFiberRuntime((removeFiber) => {
     if (self.state._tag === "Closed") {
@@ -446,6 +555,13 @@ const constInterruptedFiber = (function() {
  * @categories combinators
  */
 export const run: {
+  /**
+   * Run an Effect and add the forked fiber to the FiberMap.
+   * When the fiber completes, it will be removed from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E>(
     self: FiberMap<K, A, E>,
     key: K,
@@ -456,6 +572,13 @@ export const run: {
   ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
   ) => Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
+  /**
+   * Run an Effect and add the forked fiber to the FiberMap.
+   * When the fiber completes, it will be removed from the FiberMap.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <K, A, E, R, XE extends E, XA extends A>(
     self: FiberMap<K, A, E>,
     key: K,

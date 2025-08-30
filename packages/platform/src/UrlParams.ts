@@ -98,7 +98,15 @@ export const empty: UrlParams = []
  * @category combinators
  */
 export const getAll: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string): (self: UrlParams) => ReadonlyArray<string>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, key: string): ReadonlyArray<string>
 } = dual(
   2,
@@ -116,7 +124,15 @@ export const getAll: {
  * @category combinators
  */
 export const getFirst: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string): (self: UrlParams) => Option.Option<string>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, key: string): Option.Option<string>
 } = dual(2, (self: UrlParams, key: string): Option.Option<string> =>
   Option.map(
@@ -129,7 +145,15 @@ export const getFirst: {
  * @category combinators
  */
 export const getLast: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string): (self: UrlParams) => Option.Option<string>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, key: string): Option.Option<string>
 } = dual(2, (self: UrlParams, key: string): Option.Option<string> =>
   Option.map(
@@ -142,7 +166,15 @@ export const getLast: {
  * @category combinators
  */
 export const set: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: Coercible): (self: UrlParams) => UrlParams
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, key: string, value: Coercible): UrlParams
 } = dual(3, (self: UrlParams, key: string, value: Coercible): UrlParams =>
   Arr.append(
@@ -155,7 +187,15 @@ export const set: {
  * @category combinators
  */
 export const setAll: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: Input): (self: UrlParams) => UrlParams
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, input: Input): UrlParams
 } = dual(2, (self: UrlParams, input: Input): UrlParams => {
   const toSet = fromInput(input)
@@ -171,7 +211,15 @@ export const setAll: {
  * @category combinators
  */
 export const append: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: Coercible): (self: UrlParams) => UrlParams
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, key: string, value: Coercible): UrlParams
 } = dual(3, (self: UrlParams, key: string, value: Coercible): UrlParams =>
   Arr.append(
@@ -184,7 +232,15 @@ export const append: {
  * @category combinators
  */
 export const appendAll: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: Input): (self: UrlParams) => UrlParams
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, input: Input): UrlParams
 } = dual(2, (self: UrlParams, input: Input): UrlParams => Arr.appendAll(self, fromInput(input)))
 
@@ -193,7 +249,15 @@ export const appendAll: {
  * @category combinators
  */
 export const remove: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string): (self: UrlParams) => UrlParams
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: UrlParams, key: string): UrlParams
 } = dual(2, (self: UrlParams, key: string): UrlParams => Arr.filter(self, ([k]) => k !== key))
 

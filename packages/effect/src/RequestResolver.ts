@@ -148,10 +148,24 @@ export const makeBatched: <A extends Request.Request<any, any>, R>(
  * @category combinators
  */
 export const around: {
+  /**
+   * A data source aspect that executes requests between two effects, `before`
+   * and `after`, where the result of `before` can be used by `after`.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A2, R2, X, R3>(
     before: Effect.Effect<A2, never, R2>,
     after: (a: A2) => Effect.Effect<X, never, R3>
   ): <A, R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
+  /**
+   * A data source aspect that executes requests between two effects, `before`
+   * and `after`, where the result of `before` can be used by `after`.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, R, A2, R2, X, R3>(
     self: RequestResolver<A, R>,
     before: Effect.Effect<A2, never, R2>,
@@ -187,10 +201,64 @@ export const around: {
  * ```
  */
 export const aroundRequests: {
+  /**
+   * A data source aspect that executes requests between two effects, `before`
+   * and `after`, where the result of `before` can be used by `after`.
+   *
+   * The `before` and `after` effects are provided with the requests being executed.
+   *
+   * @since 2.0.0
+   * @category combinators
+   * @example
+   * ```ts
+   * import { Effect, Request, RequestResolver } from "effect"
+   *
+   * interface GetUserById extends Request.Request<unknown> {
+   *   readonly id: number
+   * }
+   *
+   * const resolver = RequestResolver.fromFunction(
+   *   (request: GetUserById) => ({ id: request.id, name: "John" })
+   * )
+   *
+   * RequestResolver.aroundRequests(
+   *   resolver,
+   *   (requests) => Effect.log(`got ${requests.length} requests`),
+   *   (requests, _) => Effect.log(`finised running ${requests.length} requests`)
+   * )
+   * ```
+   */
   <A, A2, R2, X, R3>(
     before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
     after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
+  /**
+   * A data source aspect that executes requests between two effects, `before`
+   * and `after`, where the result of `before` can be used by `after`.
+   *
+   * The `before` and `after` effects are provided with the requests being executed.
+   *
+   * @since 2.0.0
+   * @category combinators
+   * @example
+   * ```ts
+   * import { Effect, Request, RequestResolver } from "effect"
+   *
+   * interface GetUserById extends Request.Request<unknown> {
+   *   readonly id: number
+   * }
+   *
+   * const resolver = RequestResolver.fromFunction(
+   *   (request: GetUserById) => ({ id: request.id, name: "John" })
+   * )
+   *
+   * RequestResolver.aroundRequests(
+   *   resolver,
+   *   (requests) => Effect.log(`got ${requests.length} requests`),
+   *   (requests, _) => Effect.log(`finised running ${requests.length} requests`)
+   * )
+   * ```
+   */
   <A, R, A2, R2, X, R3>(
     self: RequestResolver<A, R>,
     before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
@@ -205,7 +273,19 @@ export const aroundRequests: {
  * @category combinators
  */
 export const batchN: {
+  /**
+   * Returns a data source that executes at most `n` requests in parallel.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   (n: number): <A, R>(self: RequestResolver<A, R>) => RequestResolver<A, R>
+  /**
+   * Returns a data source that executes at most `n` requests in parallel.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, R>(self: RequestResolver<A, R>, n: number): RequestResolver<A, R>
 } = internal.batchN
 
@@ -216,9 +296,19 @@ export const batchN: {
  * @category context
  */
 export const mapInputContext: {
-  <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
+  /**
+   * Provides this data source with part of its required context.
+   *
+   * @since 2.0.0
+   * @category context
+   */
+  <R0, R>(f: (context: Context.Context<R0>) => Context.Context<R>): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
+  /**
+   * Provides this data source with part of its required context.
+   *
+   * @since 2.0.0
+   * @category context
+   */
   <R, A extends Request.Request<any, any>, R0>(
     self: RequestResolver<A, R>,
     f: (context: Context.Context<R0>) => Context.Context<R>
@@ -234,10 +324,26 @@ export const mapInputContext: {
  * @category combinators
  */
 export const eitherWith: {
+  /**
+   * Returns a new data source that executes requests of type `C` using the
+   * specified function to transform `C` requests into requests that either this
+   * data source or that data source can execute.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
     that: RequestResolver<B, R2>,
     f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
   ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
+  /**
+   * Returns a new data source that executes requests of type `C` using the
+   * specified function to transform `C` requests into requests that either this
+   * data source or that data source can execute.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <
     R,
     A extends Request.Request<any, any>,
@@ -320,13 +426,20 @@ export const never: RequestResolver<never> = internal.never
  * @category context
  */
 export const provideContext: {
-  <R>(
-    context: Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A>
-  <R, A extends Request.Request<any, any>>(
-    self: RequestResolver<A, R>,
-    context: Context.Context<R>
-  ): RequestResolver<A>
+  /**
+   * Provides this data source with its required context.
+   *
+   * @since 2.0.0
+   * @category context
+   */
+  <R>(context: Context.Context<R>): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A>
+  /**
+   * Provides this data source with its required context.
+   *
+   * @since 2.0.0
+   * @category context
+   */
+  <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>, context: Context.Context<R>): RequestResolver<A>
 } = internal.provideContext
 
 /**
@@ -338,13 +451,24 @@ export const provideContext: {
  * @category combinators
  */
 export const race: {
-  <A2 extends Request.Request<any, any>, R2>(
-    that: RequestResolver<A2, R2>
-  ): <A extends Request.Request<any, any>, R>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
-  <A extends Request.Request<any, any>, R, A2 extends Request.Request<any, any>, R2>(
-    self: RequestResolver<A, R>,
-    that: RequestResolver<A2, R2>
-  ): RequestResolver<A | A2, R | R2>
+  /**
+   * Returns a new data source that executes requests by sending them to this
+   * data source and that data source, returning the results from the first data
+   * source to complete and safely interrupting the loser.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A2 extends Request.Request<any, any>, R2>(that: RequestResolver<A2, R2>): <A extends Request.Request<any, any>, R>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
+  /**
+   * Returns a new data source that executes requests by sending them to this
+   * data source and that data source, returning the results from the first data
+   * source to complete and safely interrupting the loser.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A extends Request.Request<any, any>, R, A2 extends Request.Request<any, any>, R2>(self: RequestResolver<A, R>, that: RequestResolver<A2, R2>): RequestResolver<A | A2, R | R2>
 } = internal.race
 
 /**
@@ -354,13 +478,18 @@ export const race: {
  * @category combinators
  */
 export const locally: {
-  <A>(
-    self: FiberRef<A>,
-    value: A
-  ): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
-  <R, B extends Request.Request<any, any>, A>(
-    use: RequestResolver<B, R>,
-    self: FiberRef<A>,
-    value: A
-  ): RequestResolver<B, R>
+  /**
+   * Returns a new data source with a localized FiberRef
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A>(self: FiberRef<A>, value: A): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
+  /**
+   * Returns a new data source with a localized FiberRef
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
+  <R, B extends Request.Request<any, any>, A>(use: RequestResolver<B, R>, self: FiberRef<A>, value: A): RequestResolver<B, R>
 } = core.resolverLocally

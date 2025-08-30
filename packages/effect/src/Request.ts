@@ -176,7 +176,19 @@ export const TaggedClass: <Tag extends string>(
  * @category request completion
  */
 export const complete: {
+  /**
+   * Complete a `Request` with the specified result.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(result: Request.Result<A>): (self: A) => Effect.Effect<void>
+  /**
+   * Complete a `Request` with the specified result.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(self: A, result: Request.Result<A>): Effect.Effect<void>
 } = internal.complete
 
@@ -187,7 +199,19 @@ export const complete: {
  * @category request completion
  */
 export const interruptWhenPossible: {
+  /**
+   * Interrupts the child effect when requests are no longer needed
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   (all: Iterable<Request<any, any>>): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  /**
+   * Interrupts the child effect when requests are no longer needed
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A, E, R>(self: Effect.Effect<A, E, R>, all: Iterable<Request<any, any>>): Effect.Effect<void, E, R>
 } = fiberRuntime.interruptWhenPossible
 
@@ -200,13 +224,24 @@ export const interruptWhenPossible: {
  * @category request completion
  */
 export const completeEffect: {
-  <A extends Request<any, any>, R>(
-    effect: Effect.Effect<Request.Success<A>, Request.Error<A>, R>
-  ): (self: A) => Effect.Effect<void, never, R>
-  <A extends Request<any, any>, R>(
-    self: A,
-    effect: Effect.Effect<Request.Success<A>, Request.Error<A>, R>
-  ): Effect.Effect<void, never, R>
+  /**
+   * Complete a `Request` with the specified effectful computation, failing the
+   * request with the error from the effect workflow if it fails, and completing
+   * the request with the value of the effect workflow if it succeeds.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
+  <A extends Request<any, any>, R>(effect: Effect.Effect<Request.Success<A>, Request.Error<A>, R>): (self: A) => Effect.Effect<void, never, R>
+  /**
+   * Complete a `Request` with the specified effectful computation, failing the
+   * request with the error from the effect workflow if it fails, and completing
+   * the request with the value of the effect workflow if it succeeds.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
+  <A extends Request<any, any>, R>(self: A, effect: Effect.Effect<Request.Success<A>, Request.Error<A>, R>): Effect.Effect<void, never, R>
 } = internal.completeEffect
 
 /**
@@ -216,7 +251,19 @@ export const completeEffect: {
  * @category request completion
  */
 export const fail: {
+  /**
+   * Complete a `Request` with the specified error.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(error: Request.Error<A>): (self: A) => Effect.Effect<void>
+  /**
+   * Complete a `Request` with the specified error.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(self: A, error: Request.Error<A>): Effect.Effect<void>
 } = internal.fail
 
@@ -227,7 +274,19 @@ export const fail: {
  * @category request completion
  */
 export const failCause: {
+  /**
+   * Complete a `Request` with the specified cause.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(cause: Cause<Request.Error<A>>): (self: A) => Effect.Effect<void>
+  /**
+   * Complete a `Request` with the specified cause.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(self: A, cause: Cause<Request.Error<A>>): Effect.Effect<void>
 } = internal.failCause
 
@@ -238,7 +297,19 @@ export const failCause: {
  * @category request completion
  */
 export const succeed: {
+  /**
+   * Complete a `Request` with the specified value.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(value: Request.Success<A>): (self: A) => Effect.Effect<void>
+  /**
+   * Complete a `Request` with the specified value.
+   *
+   * @since 2.0.0
+   * @category request completion
+   */
   <A extends Request<any, any>>(self: A, value: Request.Success<A>): Effect.Effect<void>
 } = internal.succeed
 

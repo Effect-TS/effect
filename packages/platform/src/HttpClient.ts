@@ -208,13 +208,16 @@ export const options: (
  * @category error handling
  */
 export const catchAll: {
-  <E, E2, R2>(
-    f: (e: E) => Effect.Effect<ClientResponse.HttpClientResponse, E2, R2>
-  ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E2, R2 | R>
-  <E, R, A2, E2, R2>(
-    self: HttpClient.With<E, R>,
-    f: (e: E) => Effect.Effect<A2, E2, R2>
-  ): HttpClient.With<E2, R | R2>
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
+  <E, E2, R2>(f: (e: E) => Effect.Effect<ClientResponse.HttpClientResponse, E2, R2>): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E2, R2 | R>
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
+  <E, R, A2, E2, R2>(self: HttpClient.With<E, R>, f: (e: E) => Effect.Effect<A2, E2, R2>): HttpClient.With<E2, R | R2>
 } = internal.catchAll
 
 /**
@@ -222,10 +225,18 @@ export const catchAll: {
  * @category error handling
  */
 export const catchTag: {
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
   <K extends E extends { _tag: string } ? E["_tag"] : never, E, E1, R1>(
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<ClientResponse.HttpClientResponse, E1, R1>
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E1 | Exclude<E, { _tag: K }>, R1 | R>
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
   <R, E, K extends E extends { _tag: string } ? E["_tag"] : never, R1, E1>(
     self: HttpClient.With<E, R>,
     tag: K,
@@ -238,6 +249,10 @@ export const catchTag: {
  * @category error handling
  */
 export const catchTags: {
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
   <
     E,
     Cases extends
@@ -247,9 +262,7 @@ export const catchTags: {
         ) => Effect.Effect<ClientResponse.HttpClientResponse, any, any>
       }
       & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>["_tag"]>]: never })
-  >(
-    cases: Cases
-  ): <R>(
+  >(cases: Cases): <R>(
     self: HttpClient.With<E, R>
   ) => HttpClient.With<
     | Exclude<E, { _tag: keyof Cases }>
@@ -261,6 +274,10 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, any, infer R> ? R : never
     }[keyof Cases]
   >
+  /**
+   * @since 1.0.0
+   * @category error handling
+   */
   <
     E extends { _tag: string },
     R,
@@ -271,10 +288,7 @@ export const catchTags: {
         ) => Effect.Effect<ClientResponse.HttpClientResponse, any, any>
       }
       & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>["_tag"]>]: never })
-  >(
-    self: HttpClient.With<E, R>,
-    cases: Cases
-  ): HttpClient.With<
+  >(self: HttpClient.With<E, R>, cases: Cases): HttpClient.With<
     | Exclude<E, { _tag: keyof Cases }>
     | {
       [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
@@ -293,10 +307,22 @@ export const catchTags: {
  * @category filters
  */
 export const filterOrElse: {
+  /**
+   * Filters the result of a response, or runs an alternative effect if the predicate fails.
+   *
+   * @since 1.0.0
+   * @category filters
+   */
   <E2, R2>(
     predicate: Predicate.Predicate<ClientResponse.HttpClientResponse>,
     orElse: (response: ClientResponse.HttpClientResponse) => Effect.Effect<ClientResponse.HttpClientResponse, E2, R2>
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E2 | E, R2 | R>
+  /**
+   * Filters the result of a response, or runs an alternative effect if the predicate fails.
+   *
+   * @since 1.0.0
+   * @category filters
+   */
   <E, R, E2, R2>(
     self: HttpClient.With<E, R>,
     predicate: Predicate.Predicate<ClientResponse.HttpClientResponse>,
@@ -311,10 +337,22 @@ export const filterOrElse: {
  * @category filters
  */
 export const filterOrFail: {
+  /**
+   * Filters the result of a response, or throws an error if the predicate fails.
+   *
+   * @since 1.0.0
+   * @category filters
+   */
   <E2>(
     predicate: Predicate.Predicate<ClientResponse.HttpClientResponse>,
     orFailWith: (response: ClientResponse.HttpClientResponse) => E2
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E2 | E, R>
+  /**
+   * Filters the result of a response, or throws an error if the predicate fails.
+   *
+   * @since 1.0.0
+   * @category filters
+   */
   <E, R, E2>(
     self: HttpClient.With<E, R>,
     predicate: Predicate.Predicate<ClientResponse.HttpClientResponse>,
@@ -329,7 +367,19 @@ export const filterOrFail: {
  * @category filters
  */
 export const filterStatus: {
+  /**
+   * Filters responses by HTTP status code.
+   *
+   * @since 1.0.0
+   * @category filters
+   */
   (f: (status: number) => boolean): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | Error.ResponseError, R>
+  /**
+   * Filters responses by HTTP status code.
+   *
+   * @since 1.0.0
+   * @category filters
+   */
   <E, R>(self: HttpClient.With<E, R>, f: (status: number) => boolean): HttpClient.With<E | Error.ResponseError, R>
 } = internal.filterStatus
 
@@ -371,12 +421,20 @@ export const make: (
  * @category mapping & sequencing
  */
 export const transform: {
+  /**
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, E1, R1>(
     f: (
       effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>,
       request: ClientRequest.HttpClientRequest
     ) => Effect.Effect<ClientResponse.HttpClientResponse, E1, R1>
   ): (self: HttpClient.With<E, R>) => HttpClient.With<E | E1, R | R1>
+  /**
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, E1, R1>(
     self: HttpClient.With<E, R>,
     f: (
@@ -391,11 +449,19 @@ export const transform: {
  * @category mapping & sequencing
  */
 export const transformResponse: {
+  /**
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, E1, R1>(
     f: (
       effect: Effect.Effect<ClientResponse.HttpClientResponse, E, R>
     ) => Effect.Effect<ClientResponse.HttpClientResponse, E1, R1>
   ): (self: HttpClient.With<E, R>) => HttpClient.With<E1, R1>
+  /**
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, E1, R1>(
     self: HttpClient.With<E, R>,
     f: (
@@ -411,9 +477,19 @@ export const transformResponse: {
  * @category mapping & sequencing
  */
 export const mapRequest: {
-  (
-    f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
-  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Appends a transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
+  (f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Appends a transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R>(
     self: HttpClient.With<E, R>,
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
@@ -427,9 +503,21 @@ export const mapRequest: {
  * @category mapping & sequencing
  */
 export const mapRequestEffect: {
+  /**
+   * Appends an effectful transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E2, R2>(
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Appends an effectful transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, E2, R2>(
     self: HttpClient.With<E, R>,
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
@@ -443,9 +531,19 @@ export const mapRequestEffect: {
  * @category mapping & sequencing
  */
 export const mapRequestInput: {
-  (
-    f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
-  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Prepends a transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
+  (f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Prepends a transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R>(
     self: HttpClient.With<E, R>,
     f: (a: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest
@@ -459,9 +557,21 @@ export const mapRequestInput: {
  * @category mapping & sequencing
  */
 export const mapRequestInputEffect: {
+  /**
+   * Prepends an effectful transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E2, R2>(
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Prepends an effectful transformation of the request object before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, E2, R2>(
     self: HttpClient.With<E, R>,
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<ClientRequest.HttpClientRequest, E2, R2>
@@ -497,20 +607,34 @@ export declare namespace Retry {
  * @category error handling
  */
 export const retry: {
-  <E, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(
-    options: O
-  ): <R>(self: HttpClient.With<E, R>) => Retry.Return<R, E, O>
-  <B, E, R1>(
-    policy: Schedule.Schedule<B, NoInfer<E>, R1>
-  ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R1 | R>
-  <E, R, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(
-    self: HttpClient.With<E, R>,
-    options: O
-  ): Retry.Return<R, E, O>
-  <E, R, B, R1>(
-    self: HttpClient.With<E, R>,
-    policy: Schedule.Schedule<B, E, R1>
-  ): HttpClient.With<E, R1 | R>
+  /**
+   * Retries the request based on a provided schedule or policy.
+   *
+   * @since 1.0.0
+   * @category error handling
+   */
+  <E, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(options: O): <R>(self: HttpClient.With<E, R>) => Retry.Return<R, E, O>
+  /**
+   * Retries the request based on a provided schedule or policy.
+   *
+   * @since 1.0.0
+   * @category error handling
+   */
+  <B, E, R1>(policy: Schedule.Schedule<B, NoInfer<E>, R1>): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R1 | R>
+  /**
+   * Retries the request based on a provided schedule or policy.
+   *
+   * @since 1.0.0
+   * @category error handling
+   */
+  <E, R, O extends NoExcessProperties<Effect.Retry.Options<E>, O>>(self: HttpClient.With<E, R>, options: O): Retry.Return<R, E, O>
+  /**
+   * Retries the request based on a provided schedule or policy.
+   *
+   * @since 1.0.0
+   * @category error handling
+   */
+  <E, R, B, R1>(self: HttpClient.With<E, R>, policy: Schedule.Schedule<B, E, R1>): HttpClient.With<E, R1 | R>
 } = internal.retry
 
 /**
@@ -523,6 +647,15 @@ export const retry: {
  * @category error handling
  */
 export const retryTransient: {
+  /**
+   * Retries common transient errors, such as rate limiting, timeouts or network issues.
+   *
+   * Specifying a `while` predicate allows you to consider other errors as
+   * transient.
+   *
+   * @since 1.0.0
+   * @category error handling
+   */
   <B, E, R1 = never>(
     options: {
       readonly while?: Predicate.Predicate<NoInfer<E>>
@@ -530,6 +663,15 @@ export const retryTransient: {
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<E>, R1>
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R1 | R>
+  /**
+   * Retries common transient errors, such as rate limiting, timeouts or network issues.
+   *
+   * Specifying a `while` predicate allows you to consider other errors as
+   * transient.
+   *
+   * @since 1.0.0
+   * @category error handling
+   */
   <E, R, B, R1 = never>(
     self: HttpClient.With<E, R>,
     options: {
@@ -547,9 +689,21 @@ export const retryTransient: {
  * @category mapping & sequencing
  */
 export const tap: {
+  /**
+   * Performs an additional effect after a successful request.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <_, E2, R2>(
     f: (response: ClientResponse.HttpClientResponse) => Effect.Effect<_, E2, R2>
   ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Performs an additional effect after a successful request.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, _, E2, R2>(
     self: HttpClient.With<E, R>,
     f: (response: ClientResponse.HttpClientResponse) => Effect.Effect<_, E2, R2>
@@ -563,9 +717,19 @@ export const tap: {
  * @category mapping & sequencing
  */
 export const tapError: {
-  <_, E, E2, R2>(
-    f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
-  ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Performs an additional effect after an unsuccessful request.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
+  <_, E, E2, R2>(f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Performs an additional effect after an unsuccessful request.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, _, E2, R2>(
     self: HttpClient.With<E, R>,
     f: (e: NoInfer<E>) => Effect.Effect<_, E2, R2>
@@ -579,9 +743,19 @@ export const tapError: {
  * @category mapping & sequencing
  */
 export const tapRequest: {
-  <_, E2, R2>(
-    f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<_, E2, R2>
-  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Performs an additional effect on the request before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
+  <_, E2, R2>(f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<_, E2, R2>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E | E2, R | R2>
+  /**
+   * Performs an additional effect on the request before sending it.
+   *
+   * @since 1.0.0
+   * @category mapping & sequencing
+   */
   <E, R, _, E2, R2>(
     self: HttpClient.With<E, R>,
     f: (a: ClientRequest.HttpClientRequest) => Effect.Effect<_, E2, R2>
@@ -595,7 +769,19 @@ export const tapRequest: {
  * @category cookies
  */
 export const withCookiesRef: {
+  /**
+   * Associates a `Ref` of cookies with the client for handling cookies across requests.
+   *
+   * @since 1.0.0
+   * @category cookies
+   */
   (ref: Ref<Cookies>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Associates a `Ref` of cookies with the client for handling cookies across requests.
+   *
+   * @since 1.0.0
+   * @category cookies
+   */
   <E, R>(self: HttpClient.With<E, R>, ref: Ref<Cookies>): HttpClient.With<E, R>
 } = internal.withCookiesRef
 
@@ -606,7 +792,19 @@ export const withCookiesRef: {
  * @category redirects
  */
 export const followRedirects: {
+  /**
+   * Follows HTTP redirects up to a specified number of times.
+   *
+   * @since 1.0.0
+   * @category redirects
+   */
   (maxRedirects?: number | undefined): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Follows HTTP redirects up to a specified number of times.
+   *
+   * @since 1.0.0
+   * @category redirects
+   */
   <E, R>(self: HttpClient.With<E, R>, maxRedirects?: number | undefined): HttpClient.With<E, R>
 } = internal.followRedirects
 
@@ -624,9 +822,19 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Cl
  * @category Tracing
  */
 export const withTracerDisabledWhen: {
-  (
-    predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>
-  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Disables tracing for specific requests based on a provided predicate.
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
+  (predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Disables tracing for specific requests based on a provided predicate.
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
   <E, R>(
     self: HttpClient.With<E, R>,
     predicate: Predicate.Predicate<ClientRequest.HttpClientRequest>
@@ -646,7 +854,19 @@ export const currentTracerPropagation: FiberRef.FiberRef<boolean> = internal.cur
  * @category Tracing
  */
 export const withTracerPropagation: {
+  /**
+   * Enables or disables tracing propagation for the request.
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
   (enabled: boolean): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Enables or disables tracing propagation for the request.
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
   <E, R>(self: HttpClient.With<E, R>, enabled: boolean): HttpClient.With<E, R>
 } = internal.withTracerPropagation
 
@@ -698,10 +918,57 @@ export const SpanNameGenerator: Context.Reference<
  * @category Tracing
  */
 export const withSpanNameGenerator: {
-  (
+  /**
+   * Customizes the span names for tracing.
+   *
+   * ```ts
+   * import { FetchHttpClient, HttpClient } from "@effect/platform"
+   * import { NodeRuntime } from "@effect/platform-node"
+   * import { Effect } from "effect"
+   *
+   * Effect.gen(function* () {
+   *   const client = (yield* HttpClient.HttpClient).pipe(
+   *     // Customize the span names for this HttpClient
+   *     HttpClient.withSpanNameGenerator(
+   *       (request) => `http.client ${request.method} ${request.url}`
+   *     )
+   *   )
+   *
+   *   yield* client.get("https://jsonplaceholder.typicode.com/posts/1")
+   * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+   * ```
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
+  (f: (request: ClientRequest.HttpClientRequest) => string): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  /**
+   * Customizes the span names for tracing.
+   *
+   * ```ts
+   * import { FetchHttpClient, HttpClient } from "@effect/platform"
+   * import { NodeRuntime } from "@effect/platform-node"
+   * import { Effect } from "effect"
+   *
+   * Effect.gen(function* () {
+   *   const client = (yield* HttpClient.HttpClient).pipe(
+   *     // Customize the span names for this HttpClient
+   *     HttpClient.withSpanNameGenerator(
+   *       (request) => `http.client ${request.method} ${request.url}`
+   *     )
+   *   )
+   *
+   *   yield* client.get("https://jsonplaceholder.typicode.com/posts/1")
+   * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+   * ```
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
+  <E, R>(
+    self: HttpClient.With<E, R>,
     f: (request: ClientRequest.HttpClientRequest) => string
-  ): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
-  <E, R>(self: HttpClient.With<E, R>, f: (request: ClientRequest.HttpClientRequest) => string): HttpClient.With<E, R>
+  ): HttpClient.With<E, R>
 } = internal.withSpanNameGenerator
 
 /**

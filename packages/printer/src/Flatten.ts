@@ -157,6 +157,22 @@ export const neverFlat: Flatten<never> = internal.neverFlat
  * @category mapping
  */
 export const map: {
+  // -----------------------------------------------------------------------------
+  // Combinators
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B): (self: Flatten<A>) => Flatten<B>
+  // -----------------------------------------------------------------------------
+  // Combinators
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(self: Flatten<A>, f: (a: A) => B): Flatten<B>
 } = internal.map

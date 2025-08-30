@@ -267,13 +267,19 @@ export interface Param<Name extends string, S extends Schema.Schema.Any | Schema
  * @category path params
  */
 export const param: {
-  <Name extends string>(
-    name: Name
-  ): <S extends Schema.Schema.Any | Schema.PropertySignature.Any>(
+  /**
+   * @since 1.0.0
+   * @category path params
+   */
+  <Name extends string>(name: Name): <S extends Schema.Schema.Any | Schema.PropertySignature.Any>(
     schema:
       & S
       & ([Schema.Schema.Encoded<S> & {}] extends [string] ? unknown : "Schema must be encodable to a string")
   ) => Param<Name, S>
+  /**
+   * @since 1.0.0
+   * @category path params
+   */
   <Name extends string, S extends Schema.Schema.Any | Schema.PropertySignature.Any>(
     name: Name,
     schema:
@@ -318,10 +324,20 @@ export interface asEmpty<
  * @category empty response
  */
 export const asEmpty: {
-  <S extends Schema.Schema.Any>(options: {
-    readonly status: number
-    readonly decode: LazyArg<Schema.Schema.Type<S>>
-  }): (self: S) => asEmpty<S>
+  /**
+   * @since 1.0.0
+   * @category empty response
+   */
+  <S extends Schema.Schema.Any>(
+    options: {
+      readonly status: number
+      readonly decode: LazyArg<Schema.Schema.Type<S>>
+    }
+  ): (self: S) => asEmpty<S>
+  /**
+   * @since 1.0.0
+   * @category empty response
+   */
   <S extends Schema.Schema.Any>(
     self: S,
     options: {
@@ -517,12 +533,20 @@ export declare namespace Encoding {
  * @category encoding
  */
 export const withEncoding: {
+  /**
+   * @since 1.0.0
+   * @category encoding
+   */
   <A extends Schema.Schema.Any, Kind extends Encoding["kind"]>(
     options: {
       readonly kind: Kind
       readonly contentType?: string | undefined
     } & Encoding.Validate<A, Kind>
   ): (self: A) => A
+  /**
+   * @since 1.0.0
+   * @category encoding
+   */
   <A extends Schema.Schema.Any, Kind extends Encoding["kind"]>(
     self: A,
     options: {

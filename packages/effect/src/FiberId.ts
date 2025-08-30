@@ -122,7 +122,19 @@ export const isComposite: (self: FiberId) => self is Composite = internal.isComp
  * @category constructors
  */
 export const combine: {
+  /**
+   * Combine two `FiberId`s.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   (that: FiberId): (self: FiberId) => FiberId
+  /**
+   * Combine two `FiberId`s.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   (self: FiberId, that: FiberId): FiberId
 } = internal.combine
 
@@ -141,7 +153,19 @@ export const combineAll: (fiberIds: HashSet.HashSet<FiberId>) => FiberId = inter
  * @category utils
  */
 export const getOrElse: {
+  /**
+   * Returns this `FiberId` if it is not `None`, otherwise returns that `FiberId`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: FiberId): (self: FiberId) => FiberId
+  /**
+   * Returns this `FiberId` if it is not `None`, otherwise returns that `FiberId`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: FiberId, that: FiberId): FiberId
 } = internal.getOrElse
 

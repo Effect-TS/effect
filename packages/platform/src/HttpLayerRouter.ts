@@ -429,12 +429,12 @@ const makeRoute = <E, R>(options: {
   readonly uninterruptible?: boolean | undefined
   readonly prefix?: Option.Option<string> | undefined
 }): Route<E, Exclude<R, Provided>> =>
-  ({
+  (({
     ...options,
     uninterruptible: options.uninterruptible ?? false,
     prefix: options.prefix ?? Option.none(),
     [RouteTypeId]: RouteTypeId
-  }) as Route<E, Exclude<R, Provided>>
+  }) as Route<E, Exclude<R, Provided>>)
 
 /**
  * @since 1.0.0
@@ -473,7 +473,15 @@ const removeTrailingSlash = (
  * @category PathInput
  */
 export const prefixPath: {
+  /**
+   * @since 1.0.0
+   * @category PathInput
+   */
   (prefix: string): (self: string) => string
+  /**
+   * @since 1.0.0
+   * @category PathInput
+   */
   (self: string, prefix: string): string
 } = dual(2, (self: string, prefix: string) => {
   prefix = removeTrailingSlash(prefix as PathInput)
@@ -485,7 +493,15 @@ export const prefixPath: {
  * @category Route
  */
 export const prefixRoute: {
+  /**
+   * @since 1.0.0
+   * @category Route
+   */
   (prefix: string): <E, R>(self: Route<E, R>) => Route<E, R>
+  /**
+   * @since 1.0.0
+   * @category Route
+   */
   <E, R>(self: Route<E, R>, prefix: string): Route<E, R>
 } = dual(2, <E, R>(self: Route<E, R>, prefix: string): Route<E, R> =>
   makeRoute({

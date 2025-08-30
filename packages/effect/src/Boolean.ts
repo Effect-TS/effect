@@ -44,14 +44,49 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
  * @since 2.0.0
  */
 export const match: {
-  <A, B = A>(options: {
-    readonly onFalse: LazyArg<A>
-    readonly onTrue: LazyArg<B>
-  }): (value: boolean) => A | B
-  <A, B>(value: boolean, options: {
-    readonly onFalse: LazyArg<A>
-    readonly onTrue: LazyArg<B>
-  }): A | B
+  /**
+   * This function returns the result of either of the given functions depending on the value of the boolean parameter.
+   * It is useful when you have to run one of two functions depending on the boolean value.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Boolean } from "effect"
+   *
+   * assert.deepStrictEqual(Boolean.match(true, { onFalse: () => "It's false!", onTrue: () => "It's true!" }), "It's true!")
+   * ```
+   *
+   * @category pattern matching
+   * @since 2.0.0
+   */
+  <A, B = A>(
+    options: {
+      readonly onFalse: LazyArg<A>
+      readonly onTrue: LazyArg<B>
+    }
+  ): (value: boolean) => A | B
+  /**
+   * This function returns the result of either of the given functions depending on the value of the boolean parameter.
+   * It is useful when you have to run one of two functions depending on the boolean value.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Boolean } from "effect"
+   *
+   * assert.deepStrictEqual(Boolean.match(true, { onFalse: () => "It's false!", onTrue: () => "It's true!" }), "It's true!")
+   * ```
+   *
+   * @category pattern matching
+   * @since 2.0.0
+   */
+  <A, B>(
+    value: boolean,
+    options: {
+      readonly onFalse: LazyArg<A>
+      readonly onTrue: LazyArg<B>
+    }
+  ): A | B
 } = dual(2, <A, B>(value: boolean, options: {
   readonly onFalse: LazyArg<A>
   readonly onTrue: LazyArg<B>
@@ -104,7 +139,41 @@ export const not = (self: boolean): boolean => !self
  * @since 2.0.0
  */
 export const and: {
+  /**
+   * Combines two boolean using AND: `self && that`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { and } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(and(true, true), true)
+   * assert.deepStrictEqual(and(true, false), false)
+   * assert.deepStrictEqual(and(false, true), false)
+   * assert.deepStrictEqual(and(false, false), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two boolean using AND: `self && that`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { and } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(and(true, true), true)
+   * assert.deepStrictEqual(and(true, false), false)
+   * assert.deepStrictEqual(and(false, true), false)
+   * assert.deepStrictEqual(and(false, false), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self: boolean, that: boolean): boolean => self && that)
 
@@ -126,7 +195,41 @@ export const and: {
  * @since 2.0.0
  */
 export const nand: {
+  /**
+   * Combines two boolean using NAND: `!(self && that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { nand } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(nand(true, true), false)
+   * assert.deepStrictEqual(nand(true, false), true)
+   * assert.deepStrictEqual(nand(false, true), true)
+   * assert.deepStrictEqual(nand(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two boolean using NAND: `!(self && that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { nand } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(nand(true, true), false)
+   * assert.deepStrictEqual(nand(true, false), true)
+   * assert.deepStrictEqual(nand(false, true), true)
+   * assert.deepStrictEqual(nand(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self: boolean, that: boolean): boolean => !(self && that))
 
@@ -148,7 +251,41 @@ export const nand: {
  * @since 2.0.0
  */
 export const or: {
+  /**
+   * Combines two boolean using OR: `self || that`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { or } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(or(true, true), true)
+   * assert.deepStrictEqual(or(true, false), true)
+   * assert.deepStrictEqual(or(false, true), true)
+   * assert.deepStrictEqual(or(false, false), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two boolean using OR: `self || that`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { or } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(or(true, true), true)
+   * assert.deepStrictEqual(or(true, false), true)
+   * assert.deepStrictEqual(or(false, true), true)
+   * assert.deepStrictEqual(or(false, false), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self: boolean, that: boolean): boolean => self || that)
 
@@ -170,7 +307,41 @@ export const or: {
  * @since 2.0.0
  */
 export const nor: {
+  /**
+   * Combines two booleans using NOR: `!(self || that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { nor } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(nor(true, true), false)
+   * assert.deepStrictEqual(nor(true, false), false)
+   * assert.deepStrictEqual(nor(false, true), false)
+   * assert.deepStrictEqual(nor(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two booleans using NOR: `!(self || that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { nor } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(nor(true, true), false)
+   * assert.deepStrictEqual(nor(true, false), false)
+   * assert.deepStrictEqual(nor(false, true), false)
+   * assert.deepStrictEqual(nor(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self: boolean, that: boolean): boolean => !(self || that))
 
@@ -192,7 +363,41 @@ export const nor: {
  * @since 2.0.0
  */
 export const xor: {
+  /**
+   * Combines two booleans using XOR: `(!self && that) || (self && !that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { xor } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(xor(true, true), false)
+   * assert.deepStrictEqual(xor(true, false), true)
+   * assert.deepStrictEqual(xor(false, true), true)
+   * assert.deepStrictEqual(xor(false, false), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two booleans using XOR: `(!self && that) || (self && !that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { xor } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(xor(true, true), false)
+   * assert.deepStrictEqual(xor(true, false), true)
+   * assert.deepStrictEqual(xor(false, true), true)
+   * assert.deepStrictEqual(xor(false, false), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self: boolean, that: boolean): boolean => (!self && that) || (self && !that))
 
@@ -214,7 +419,41 @@ export const xor: {
  * @since 2.0.0
  */
 export const eqv: {
+  /**
+   * Combines two booleans using EQV (aka XNOR): `!xor(self, that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { eqv } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(eqv(true, true), true)
+   * assert.deepStrictEqual(eqv(true, false), false)
+   * assert.deepStrictEqual(eqv(false, true), false)
+   * assert.deepStrictEqual(eqv(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two booleans using EQV (aka XNOR): `!xor(self, that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { eqv } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(eqv(true, true), true)
+   * assert.deepStrictEqual(eqv(true, false), false)
+   * assert.deepStrictEqual(eqv(false, true), false)
+   * assert.deepStrictEqual(eqv(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self: boolean, that: boolean): boolean => !xor(self, that))
 
@@ -236,7 +475,41 @@ export const eqv: {
  * @since 2.0.0
  */
 export const implies: {
+  /**
+   * Combines two booleans using an implication: `(!self || that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { implies } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(implies(true, true), true)
+   * assert.deepStrictEqual(implies(true, false), false)
+   * assert.deepStrictEqual(implies(false, true), true)
+   * assert.deepStrictEqual(implies(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (that: boolean): (self: boolean) => boolean
+  /**
+   * Combines two booleans using an implication: `(!self || that)`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { implies } from "effect/Boolean"
+   *
+   * assert.deepStrictEqual(implies(true, true), true)
+   * assert.deepStrictEqual(implies(true, false), false)
+   * assert.deepStrictEqual(implies(false, true), true)
+   * assert.deepStrictEqual(implies(false, false), true)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   (self: boolean, that: boolean): boolean
 } = dual(2, (self, that) => self ? that : true)
 

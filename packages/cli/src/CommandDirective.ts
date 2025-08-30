@@ -53,7 +53,15 @@ export const isUserDefined: <A>(self: CommandDirective<A>) => self is UserDefine
  * @category mapping
  */
 export const map: {
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(f: (a: A) => B): (self: CommandDirective<A>) => CommandDirective<B>
+  /**
+   * @since 1.0.0
+   * @category mapping
+   */
   <A, B>(self: CommandDirective<A>, f: (a: A) => B): CommandDirective<B>
 } = InternalCommandDirective.map
 

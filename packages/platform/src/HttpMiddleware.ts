@@ -67,9 +67,15 @@ export const currentTracerDisabledWhen: FiberRef.FiberRef<Predicate.Predicate<Se
  * @category fiber refs
  */
 export const withTracerDisabledWhen: {
-  (
-    predicate: Predicate.Predicate<ServerRequest.HttpServerRequest>
-  ): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
+  (predicate: Predicate.Predicate<ServerRequest.HttpServerRequest>): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(
     layer: Layer.Layer<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.HttpServerRequest>
@@ -81,9 +87,15 @@ export const withTracerDisabledWhen: {
  * @category fiber refs
  */
 export const withTracerDisabledWhenEffect: {
-  (
-    predicate: Predicate.Predicate<ServerRequest.HttpServerRequest>
-  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
+  (predicate: Predicate.Predicate<ServerRequest.HttpServerRequest>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     predicate: Predicate.Predicate<ServerRequest.HttpServerRequest>
@@ -95,7 +107,15 @@ export const withTracerDisabledWhenEffect: {
  * @category fiber refs
  */
 export const withTracerDisabledForUrls: {
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   (urls: ReadonlyArray<string>): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(layer: Layer.Layer<A, E, R>, urls: ReadonlyArray<string>): Layer.Layer<A, E, R>
 } = internal.withTracerDisabledForUrls
 
@@ -177,8 +197,65 @@ export const SpanNameGenerator: Context.Reference<
  * @category Tracing
  */
 export const withSpanNameGenerator: {
-  (
+  /**
+   * Customizes the span name for the http app.
+   *
+   * ```ts
+   * import {
+   *   HttpMiddleware,
+   *   HttpRouter,
+   *   HttpServer,
+   *   HttpServerResponse
+   * } from "@effect/platform"
+   * import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+   * import { Layer } from "effect"
+   * import { createServer } from "http"
+   *
+   * HttpRouter.empty.pipe(
+   *   HttpRouter.get("/", HttpServerResponse.empty()),
+   *   HttpServer.serve(),
+   *   // Customize the span names for this HttpApp
+   *   HttpMiddleware.withSpanNameGenerator((request) => `GET ${request.url}`),
+   *   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+   *   Layer.launch,
+   *   NodeRuntime.runMain
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
+  (f: (request: ServerRequest.HttpServerRequest) => string): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
+  /**
+   * Customizes the span name for the http app.
+   *
+   * ```ts
+   * import {
+   *   HttpMiddleware,
+   *   HttpRouter,
+   *   HttpServer,
+   *   HttpServerResponse
+   * } from "@effect/platform"
+   * import { NodeHttpServer, NodeRuntime } from "@effect/platform-node"
+   * import { Layer } from "effect"
+   * import { createServer } from "http"
+   *
+   * HttpRouter.empty.pipe(
+   *   HttpRouter.get("/", HttpServerResponse.empty()),
+   *   HttpServer.serve(),
+   *   // Customize the span names for this HttpApp
+   *   HttpMiddleware.withSpanNameGenerator((request) => `GET ${request.url}`),
+   *   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 })),
+   *   Layer.launch,
+   *   NodeRuntime.runMain
+   * )
+   * ```
+   *
+   * @since 1.0.0
+   * @category Tracing
+   */
+  <A, E, R>(
+    layer: Layer.Layer<A, E, R>,
     f: (request: ServerRequest.HttpServerRequest) => string
-  ): <A, E, R>(layer: Layer.Layer<A, E, R>) => Layer.Layer<A, E, R>
-  <A, E, R>(layer: Layer.Layer<A, E, R>, f: (request: ServerRequest.HttpServerRequest) => string): Layer.Layer<A, E, R>
+  ): Layer.Layer<A, E, R>
 } = internal.withSpanNameGenerator

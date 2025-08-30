@@ -196,6 +196,10 @@ export const duplex = <R, IE, OE, OutDone, InDone>(
  * @category combinators
  */
 export const duplexSchema: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <IA, II, IR, OA, OI, OR>(
     options: {
       readonly inputSchema: Schema.Schema<IA, II, IR>
@@ -220,6 +224,10 @@ export const duplexSchema: {
     InDone,
     IR | OR | R
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<Uint8Array>,
@@ -244,6 +252,10 @@ export const duplexSchema: {
     R | IR | OR
   >
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <IA, II, IR, OA, OI, OR>(
     options: {
       readonly inputSchema: Schema.Schema<IA, II, IR>
@@ -268,6 +280,10 @@ export const duplexSchema: {
     InDone,
     R | IR | OR
   >,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<Uint8Array>,

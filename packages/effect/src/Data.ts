@@ -459,6 +459,41 @@ export declare namespace TaggedEnum {
  * @since 2.0.0
  */
 export const taggedEnum: {
+  /**
+   * Create a constructor for a tagged union of `Data` structs.
+   *
+   * You can also pass a `TaggedEnum.WithGenerics` if you want to add generics to
+   * the constructor.
+   *
+   * @example
+   * ```ts
+   * import { Data } from "effect"
+   *
+   * const { BadRequest, NotFound } = Data.taggedEnum<
+   *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+   *   | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
+   * >()
+   *
+   * const notFound = NotFound({ status: 404, message: "Not Found" })
+   * ```
+   *
+   * @example
+   * import { Data } from "effect"
+   *
+   * type MyResult<E, A> = Data.TaggedEnum<{
+   *   Failure: { readonly error: E }
+   *   Success: { readonly value: A }
+   * }>
+   * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
+   *   readonly taggedEnum: MyResult<this["A"], this["B"]>
+   * }
+   * const { Failure, Success } = Data.taggedEnum<MyResultDefinition>()
+   *
+   * const success = Success({ value: 1 })
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   <Z extends TaggedEnum.WithGenerics<1>>(): Types.Simplify<
     {
       readonly [Tag in Z["taggedEnum"]["_tag"]]: <A>(
@@ -471,6 +506,41 @@ export const taggedEnum: {
     } & TaggedEnum.GenericMatchers<Z>
   >
 
+  /**
+   * Create a constructor for a tagged union of `Data` structs.
+   *
+   * You can also pass a `TaggedEnum.WithGenerics` if you want to add generics to
+   * the constructor.
+   *
+   * @example
+   * ```ts
+   * import { Data } from "effect"
+   *
+   * const { BadRequest, NotFound } = Data.taggedEnum<
+   *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+   *   | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
+   * >()
+   *
+   * const notFound = NotFound({ status: 404, message: "Not Found" })
+   * ```
+   *
+   * @example
+   * import { Data } from "effect"
+   *
+   * type MyResult<E, A> = Data.TaggedEnum<{
+   *   Failure: { readonly error: E }
+   *   Success: { readonly value: A }
+   * }>
+   * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
+   *   readonly taggedEnum: MyResult<this["A"], this["B"]>
+   * }
+   * const { Failure, Success } = Data.taggedEnum<MyResultDefinition>()
+   *
+   * const success = Success({ value: 1 })
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   <Z extends TaggedEnum.WithGenerics<2>>(): Types.Simplify<
     {
       readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B>(
@@ -483,6 +553,41 @@ export const taggedEnum: {
     } & TaggedEnum.GenericMatchers<Z>
   >
 
+  /**
+   * Create a constructor for a tagged union of `Data` structs.
+   *
+   * You can also pass a `TaggedEnum.WithGenerics` if you want to add generics to
+   * the constructor.
+   *
+   * @example
+   * ```ts
+   * import { Data } from "effect"
+   *
+   * const { BadRequest, NotFound } = Data.taggedEnum<
+   *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+   *   | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
+   * >()
+   *
+   * const notFound = NotFound({ status: 404, message: "Not Found" })
+   * ```
+   *
+   * @example
+   * import { Data } from "effect"
+   *
+   * type MyResult<E, A> = Data.TaggedEnum<{
+   *   Failure: { readonly error: E }
+   *   Success: { readonly value: A }
+   * }>
+   * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
+   *   readonly taggedEnum: MyResult<this["A"], this["B"]>
+   * }
+   * const { Failure, Success } = Data.taggedEnum<MyResultDefinition>()
+   *
+   * const success = Success({ value: 1 })
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   <Z extends TaggedEnum.WithGenerics<3>>(): Types.Simplify<
     {
       readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C>(
@@ -495,6 +600,41 @@ export const taggedEnum: {
     } & TaggedEnum.GenericMatchers<Z>
   >
 
+  /**
+   * Create a constructor for a tagged union of `Data` structs.
+   *
+   * You can also pass a `TaggedEnum.WithGenerics` if you want to add generics to
+   * the constructor.
+   *
+   * @example
+   * ```ts
+   * import { Data } from "effect"
+   *
+   * const { BadRequest, NotFound } = Data.taggedEnum<
+   *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+   *   | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
+   * >()
+   *
+   * const notFound = NotFound({ status: 404, message: "Not Found" })
+   * ```
+   *
+   * @example
+   * import { Data } from "effect"
+   *
+   * type MyResult<E, A> = Data.TaggedEnum<{
+   *   Failure: { readonly error: E }
+   *   Success: { readonly value: A }
+   * }>
+   * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
+   *   readonly taggedEnum: MyResult<this["A"], this["B"]>
+   * }
+   * const { Failure, Success } = Data.taggedEnum<MyResultDefinition>()
+   *
+   * const success = Success({ value: 1 })
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   <Z extends TaggedEnum.WithGenerics<4>>(): Types.Simplify<
     {
       readonly [Tag in Z["taggedEnum"]["_tag"]]: <A, B, C, D>(
@@ -507,6 +647,41 @@ export const taggedEnum: {
     } & TaggedEnum.GenericMatchers<Z>
   >
 
+  /**
+   * Create a constructor for a tagged union of `Data` structs.
+   *
+   * You can also pass a `TaggedEnum.WithGenerics` if you want to add generics to
+   * the constructor.
+   *
+   * @example
+   * ```ts
+   * import { Data } from "effect"
+   *
+   * const { BadRequest, NotFound } = Data.taggedEnum<
+   *   | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
+   *   | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
+   * >()
+   *
+   * const notFound = NotFound({ status: 404, message: "Not Found" })
+   * ```
+   *
+   * @example
+   * import { Data } from "effect"
+   *
+   * type MyResult<E, A> = Data.TaggedEnum<{
+   *   Failure: { readonly error: E }
+   *   Success: { readonly value: A }
+   * }>
+   * interface MyResultDefinition extends Data.TaggedEnum.WithGenerics<2> {
+   *   readonly taggedEnum: MyResult<this["A"], this["B"]>
+   * }
+   * const { Failure, Success } = Data.taggedEnum<MyResultDefinition>()
+   *
+   * const success = Success({ value: 1 })
+   *
+   * @category constructors
+   * @since 2.0.0
+   */
   <A extends { readonly _tag: string }>(): TaggedEnum.Constructor<A>
 } = () =>
   new Proxy({}, {

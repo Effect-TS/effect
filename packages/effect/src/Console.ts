@@ -87,7 +87,15 @@ export const Console: Context.Tag<Console, Console> = defaultConsole.consoleTag
  * @category default services
  */
 export const withConsole: {
+  /**
+   * @since 2.0.0
+   * @category default services
+   */
   <C extends Console>(console: C): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category default services
+   */
   <A, E, R, C extends Console>(effect: Effect<A, E, R>, console: C): Effect<A, E, R>
 } = internal.withConsole
 
@@ -206,14 +214,27 @@ export const warn: (...args: ReadonlyArray<any>) => Effect<void> = internal.warn
  * @category accessor
  */
 export const withGroup: {
-  (options?: {
-    readonly label?: string | undefined
-    readonly collapsed?: boolean | undefined
-  }): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R>(self: Effect<A, E, R>, options?: {
-    readonly label?: string | undefined
-    readonly collapsed?: boolean | undefined
-  }): Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category accessor
+   */
+  (
+   options?: {
+     readonly label?: string | undefined
+     readonly collapsed?: boolean | undefined
+   }
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category accessor
+   */
+  <A, E, R>(
+   self: Effect<A, E, R>,
+   options?: {
+     readonly label?: string | undefined
+     readonly collapsed?: boolean | undefined
+   }
+  ): Effect<A, E, R>
 } = internal.withGroup
 
 /**
@@ -221,6 +242,14 @@ export const withGroup: {
  * @category accessor
  */
 export const withTime: {
+  /**
+   * @since 2.0.0
+   * @category accessor
+   */
   (label?: string): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category accessor
+   */
   <A, E, R>(self: Effect<A, E, R>, label?: string): Effect<A, E, R>
 } = internal.withTime

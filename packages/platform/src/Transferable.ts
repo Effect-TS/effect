@@ -80,9 +80,15 @@ export const addAll = (tranferables: Iterable<globalThis.Transferable>): Effect.
  * @category schema
  */
 export const schema: {
-  <I>(
-    f: (_: I) => Iterable<globalThis.Transferable>
-  ): <A, R>(self: Schema.Schema<A, I, R>) => Schema.Schema<A, I, R>
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
+  <I>(f: (_: I) => Iterable<globalThis.Transferable>): <A, R>(self: Schema.Schema<A, I, R>) => Schema.Schema<A, I, R>
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
   <A, I, R>(
     self: Schema.Schema<A, I, R>,
     f: (_: I) => Iterable<globalThis.Transferable>

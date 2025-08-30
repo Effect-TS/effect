@@ -68,7 +68,23 @@ export const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<a
  * @category utils
  */
 export const forkAs: {
+  /**
+   * Forks this collection of fiber refs as the specified child fiber id. This
+   * will potentially modify the value of the fiber refs, as determined by the
+   * individual fiber refs that make up the collection.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (childId: FiberId.Single): (self: FiberRefs) => FiberRefs
+  /**
+   * Forks this collection of fiber refs as the specified child fiber id. This
+   * will potentially modify the value of the fiber refs, as determined by the
+   * individual fiber refs that make up the collection.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: FiberRefs, childId: FiberId.Single): FiberRefs
 } = internal.forkAs
 
@@ -80,7 +96,21 @@ export const forkAs: {
  * @category getters
  */
 export const get: {
+  /**
+   * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
+   * values if it exists or `None` otherwise.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => Option.Option<A>
+  /**
+   * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
+   * values if it exists or `None` otherwise.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): Option.Option<A>
 } = internal.get
 
@@ -92,7 +122,21 @@ export const get: {
  * @category getters
  */
 export const getOrDefault: {
+  /**
+   * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
+   * values if it exists or the `initial` value of the `FiberRef` otherwise.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(fiberRef: FiberRef.FiberRef<A>): (self: FiberRefs) => A
+  /**
+   * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
+   * values if it exists or the `initial` value of the `FiberRef` otherwise.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(self: FiberRefs, fiberRef: FiberRef.FiberRef<A>): A
 } = internal.getOrDefault
 
@@ -105,7 +149,23 @@ export const getOrDefault: {
  * @category utils
  */
 export const joinAs: {
+  /**
+   * Joins this collection of fiber refs to the specified collection, as the
+   * specified fiber id. This will perform diffing and merging to ensure
+   * preservation of maximum information from both child and parent refs.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (fiberId: FiberId.Single, that: FiberRefs): (self: FiberRefs) => FiberRefs
+  /**
+   * Joins this collection of fiber refs to the specified collection, as the
+   * specified fiber id. This will perform diffing and merging to ensure
+   * preservation of maximum information from both child and parent refs.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: FiberRefs, fiberId: FiberId.Single, that: FiberRefs): FiberRefs
 } = internal.joinAs
 
@@ -124,6 +184,12 @@ export const setAll: (self: FiberRefs) => Effect.Effect<void> = internal.setAll
  * @category utils
  */
 export const updateAs: {
+  /**
+   * Updates the value of the specified `FiberRef` using the provided `FiberId`
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(
     options: {
       readonly fiberId: FiberId.Single
@@ -131,6 +197,12 @@ export const updateAs: {
       readonly value: A
     }
   ): (self: FiberRefs) => FiberRefs
+  /**
+   * Updates the value of the specified `FiberRef` using the provided `FiberId`
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(
     self: FiberRefs,
     options: {
@@ -148,6 +220,12 @@ export const updateAs: {
  * @category utils
  */
 export const updateManyAs: {
+  /**
+   * Updates the values of the specified `FiberRef` & value pairs using the provided `FiberId`
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (
     options: {
       readonly forkAs?: FiberId.Single | undefined
@@ -165,6 +243,12 @@ export const updateManyAs: {
       ]
     }
   ): (self: FiberRefs) => FiberRefs
+  /**
+   * Updates the values of the specified `FiberRef` & value pairs using the provided `FiberId`
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (
     self: FiberRefs,
     options: {

@@ -772,7 +772,15 @@ export const currentHeaders: FiberRef.FiberRef<Headers.Headers> = globalValue(
  * @category headers
  */
 export const withHeaders: {
+  /**
+   * @since 1.0.0
+   * @category headers
+   */
   (headers: Headers.Input): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category headers
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, headers: Headers.Input): Effect.Effect<A, E, R>
 } = dual(
   2,
@@ -785,9 +793,15 @@ export const withHeaders: {
  * @category headers
  */
 export const withHeadersEffect: {
-  <E2, R2>(
-    headers: Effect.Effect<Headers.Input, E2, R2>
-  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>
+  /**
+   * @since 1.0.0
+   * @category headers
+   */
+  <E2, R2>(headers: Effect.Effect<Headers.Input, E2, R2>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, R | R2>
+  /**
+   * @since 1.0.0
+   * @category headers
+   */
   <A, E, R, E2, R2>(
     effect: Effect.Effect<A, E, R>,
     headers: Effect.Effect<Headers.Input, E2, R2>

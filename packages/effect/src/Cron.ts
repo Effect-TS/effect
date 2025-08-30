@@ -550,7 +550,19 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
  * @category predicates
  */
 export const equals: {
+  /**
+   * Checks if two `Cron`s are equal.
+   *
+   * @since 2.0.0
+   * @category predicates
+   */
   (that: Cron): (self: Cron) => boolean
+  /**
+   * Checks if two `Cron`s are equal.
+   *
+   * @since 2.0.0
+   * @category predicates
+   */
   (self: Cron, that: Cron): boolean
 } = dual(2, (self: Cron, that: Cron): boolean => Equivalence(self, that))
 

@@ -59,7 +59,7 @@ export const run: <R2 = never>(
           .replace(/^SET .*$/gm, "")
           .replace(/^SELECT pg_catalog\..*$/gm, "")
           .replace(/\n{2,}/gm, "\n\n")
-          .trim()
+          .trim();
       }).pipe(
         Effect.mapError((error) => new Migrator.MigrationError({ reason: "failed", message: error.message }))
       )

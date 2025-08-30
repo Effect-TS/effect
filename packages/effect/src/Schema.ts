@@ -1062,10 +1062,21 @@ function makeDeclareClass<P extends ReadonlyArray<Schema.All>, A, I, R>(
  * @since 3.10.0
  */
 export const declare: {
-  <A>(
-    is: (input: unknown) => input is A,
-    annotations?: Annotations.Schema<A>
-  ): declare<A>
+  /**
+   * The constraint `R extends Schema.Context<P[number]>` enforces dependencies solely from `typeParameters`.
+   * This ensures that when you call `Schema.to` or `Schema.from`, you receive a schema with a `never` context.
+   *
+   * @category constructors
+   * @since 3.10.0
+   */
+  <A>(is: (input: unknown) => input is A, annotations?: Annotations.Schema<A>): declare<A>
+  /**
+   * The constraint `R extends Schema.Context<P[number]>` enforces dependencies solely from `typeParameters`.
+   * This ensures that when you call `Schema.to` or `Schema.from`, you receive a schema with a `never` context.
+   *
+   * @category constructors
+   * @since 3.10.0
+   */
   <A, I, const P extends ReadonlyArray<Schema.All>>(
     typeParameters: P,
     options: {
@@ -1987,6 +1998,12 @@ export const propertySignature = <S extends Schema.All>(
  * @since 3.10.0
  */
 export const withConstructorDefault: {
+  /**
+   * Enhances a property signature with a default constructor value.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <Type>(defaultValue: () => Types.NoInfer<Type>): <
     TypeToken extends PropertySignature.Token,
     Key extends PropertyKey,
@@ -1996,6 +2013,12 @@ export const withConstructorDefault: {
   >(
     self: PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, boolean, R>
   ) => PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, true, R>
+  /**
+   * Enhances a property signature with a default constructor value.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <
     TypeToken extends PropertySignature.Token,
     Type,
@@ -2057,6 +2080,12 @@ const pruneUndefined = (ast: AST.AST): AST.AST | undefined =>
  * @since 3.10.0
  */
 export const withDecodingDefault: {
+  /**
+   * Enhances a property signature with a default decoding value.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <Type>(defaultValue: () => Types.NoInfer<Exclude<Type, undefined>>): <
     Key extends PropertyKey,
     Encoded,
@@ -2064,6 +2093,12 @@ export const withDecodingDefault: {
   >(
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, false, R>
   ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, false, R>
+  /**
+   * Enhances a property signature with a default decoding value.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <
     Type,
     Key extends PropertyKey,
@@ -2122,16 +2157,30 @@ export const withDecodingDefault: {
  * @since 3.10.0
  */
 export const withDefaults: {
-  <Type>(defaults: {
-    constructor: () => Types.NoInfer<Exclude<Type, undefined>>
-    decoding: () => Types.NoInfer<Exclude<Type, undefined>>
-  }): <
+  /**
+   * Enhances a property signature with a default decoding value and a default constructor value.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
+  <Type>(
+    defaults: {
+      constructor: () => Types.NoInfer<Exclude<Type, undefined>>
+      decoding: () => Types.NoInfer<Exclude<Type, undefined>>
+    }
+  ): <
     Key extends PropertyKey,
     Encoded,
     R
   >(
     self: PropertySignature<"?:", Type, Key, "?:", Encoded, boolean, R>
   ) => PropertySignature<":", Exclude<Type, undefined>, Key, "?:", Encoded, true, R>
+  /**
+   * Enhances a property signature with a default decoding value and a default constructor value.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <
     Type,
     Key extends PropertyKey,
@@ -2165,6 +2214,12 @@ export const withDefaults: {
  * @since 3.10.0
  */
 export const fromKey: {
+  /**
+   * Enhances a property signature by specifying a different key for it in the Encoded type.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <Key extends PropertyKey>(key: Key): <
     TypeToken extends PropertySignature.Token,
     Type,
@@ -2175,6 +2230,12 @@ export const fromKey: {
   >(
     self: PropertySignature<TypeToken, Type, PropertyKey, EncodedToken, Encoded, HasDefault, R>
   ) => PropertySignature<TypeToken, Type, Key, EncodedToken, Encoded, HasDefault, R>
+  /**
+   * Enhances a property signature by specifying a different key for it in the Encoded type.
+   *
+   * @category PropertySignature
+   * @since 3.10.0
+   */
   <
     Type,
     TypeToken extends PropertySignature.Token,
@@ -2549,13 +2610,16 @@ export const optional = <S extends Schema.All>(self: S): optional<S> => {
  * @since 3.10.0
  */
 export const optionalWith: {
-  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
-    options: Options
-  ): (self: S) => optionalWith<S, Options>
-  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(
-    self: S,
-    options: Options
-  ): optionalWith<S, Options>
+  /**
+   * @category PropertySignature
+   * @since 3.10.0
+   */
+  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(options: Options): (self: S) => optionalWith<S, Options>
+  /**
+   * @category PropertySignature
+   * @since 3.10.0
+   */
+  <S extends Schema.All, Options extends OptionalOptions<Schema.Type<S>>>(self: S, options: Options): optionalWith<S, Options>
 } = dual((args) => isSchema(args[0]), (self, options) => {
   return new PropertySignatureWithFromImpl(optionalPropertySignatureAST(self, options), self)
 })
@@ -3108,13 +3172,68 @@ export const omit = <A, I, Keys extends ReadonlyArray<keyof A & keyof I>>(...key
  * @since 3.10.0
  */
 export const pluck: {
-  <A, I, K extends keyof A & keyof I>(
-    key: K
-  ): <R>(schema: Schema<A, I, R>) => SchemaClass<A[K], Simplify<Pick<I, K>>, R>
-  <A, I, R, K extends keyof A & keyof I>(
-    schema: Schema<A, I, R>,
-    key: K
-  ): SchemaClass<A[K], Simplify<Pick<I, K>>, R>
+  /**
+   * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
+   * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
+   *
+   * @example
+   * ```ts
+   * import * as Schema from "effect/Schema"
+   *
+   * // ---------------------------------------------
+   * // use case: pull out a single field from a
+   * // struct through a transformation
+   * // ---------------------------------------------
+   *
+   * const mytable = Schema.Struct({
+   *   column1: Schema.NumberFromString,
+   *   column2: Schema.Number
+   * })
+   *
+   * // const pullOutColumn: S.Schema<number, {
+   * //     readonly column1: string;
+   * // }, never>
+   * const pullOutColumn = mytable.pipe(Schema.pluck("column1"))
+   *
+   * console.log(Schema.decodeUnknownEither(Schema.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+   * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
+   * ```
+   *
+   * @category struct transformations
+   * @since 3.10.0
+   */
+  <A, I, K extends keyof A & keyof I>(key: K): <R>(schema: Schema<A, I, R>) => SchemaClass<A[K], Simplify<Pick<I, K>>, R>
+  /**
+   * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
+   * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
+   *
+   * @example
+   * ```ts
+   * import * as Schema from "effect/Schema"
+   *
+   * // ---------------------------------------------
+   * // use case: pull out a single field from a
+   * // struct through a transformation
+   * // ---------------------------------------------
+   *
+   * const mytable = Schema.Struct({
+   *   column1: Schema.NumberFromString,
+   *   column2: Schema.Number
+   * })
+   *
+   * // const pullOutColumn: S.Schema<number, {
+   * //     readonly column1: string;
+   * // }, never>
+   * const pullOutColumn = mytable.pipe(Schema.pluck("column1"))
+   *
+   * console.log(Schema.decodeUnknownEither(Schema.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+   * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
+   * ```
+   *
+   * @category struct transformations
+   * @since 3.10.0
+   */
+  <A, I, R, K extends keyof A & keyof I>(schema: Schema<A, I, R>, key: K): SchemaClass<A[K], Simplify<Pick<I, K>>, R>
 } = dual(
   2,
   <A, I, R, K extends keyof A & keyof I>(
@@ -3122,7 +3241,97 @@ export const pluck: {
     key: K
   ): Schema<A[K], Pick<I, K>, R> => {
     const ps = AST.getPropertyKeyIndexedAccess(AST.typeAST(schema.ast), key)
-    const value = make<A[K], A[K], R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
+    const value = make</**
+     * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
+     * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
+     *
+     * @example
+     * ```ts
+     * import * as Schema from "effect/Schema"
+     *
+     * // ---------------------------------------------
+     * // use case: pull out a single field from a
+     * // struct through a transformation
+     * // ---------------------------------------------
+     *
+     * const mytable = Schema.Struct({
+     *   column1: Schema.NumberFromString,
+     *   column2: Schema.Number
+     * })
+     *
+     * // const pullOutColumn: S.Schema<number, {
+     * //     readonly column1: string;
+     * // }, never>
+     * const pullOutColumn = mytable.pipe(Schema.pluck("column1"))
+     *
+     * console.log(Schema.decodeUnknownEither(Schema.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+     * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
+     * ```
+     *
+     * @category struct transformations
+     * @since 3.10.0
+     */
+    A[K], /**
+     * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
+     * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
+     *
+     * @example
+     * ```ts
+     * import * as Schema from "effect/Schema"
+     *
+     * // ---------------------------------------------
+     * // use case: pull out a single field from a
+     * // struct through a transformation
+     * // ---------------------------------------------
+     *
+     * const mytable = Schema.Struct({
+     *   column1: Schema.NumberFromString,
+     *   column2: Schema.Number
+     * })
+     *
+     * // const pullOutColumn: S.Schema<number, {
+     * //     readonly column1: string;
+     * // }, never>
+     * const pullOutColumn = mytable.pipe(Schema.pluck("column1"))
+     *
+     * console.log(Schema.decodeUnknownEither(Schema.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+     * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
+     * ```
+     *
+     * @category struct transformations
+     * @since 3.10.0
+     */
+    A[K], /**
+     * Given a schema `Schema<A, I, R>` and a key `key: K`, this function extracts a specific field from the `A` type,
+     * producing a new schema that represents a transformation from the `{ readonly [key]: I[K] }` type to `A[K]`.
+     *
+     * @example
+     * ```ts
+     * import * as Schema from "effect/Schema"
+     *
+     * // ---------------------------------------------
+     * // use case: pull out a single field from a
+     * // struct through a transformation
+     * // ---------------------------------------------
+     *
+     * const mytable = Schema.Struct({
+     *   column1: Schema.NumberFromString,
+     *   column2: Schema.Number
+     * })
+     *
+     * // const pullOutColumn: S.Schema<number, {
+     * //     readonly column1: string;
+     * // }, never>
+     * const pullOutColumn = mytable.pipe(Schema.pluck("column1"))
+     *
+     * console.log(Schema.decodeUnknownEither(Schema.Array(pullOutColumn))([{ column1: "1", column2: 100 }, { column1: "2", column2: 300 }]))
+     * // Output: { _id: 'Either', _tag: 'Right', right: [ 1, 2 ] }
+     * ```
+     *
+     * @category struct transformations
+     * @since 3.10.0
+     */
+    R>(ps.isOptional ? AST.orUndefined(ps.type) : ps.type)
     const out = transform(
       schema.pipe(pick(key)),
       value,
@@ -3225,13 +3434,18 @@ export const partial = <A, I, R>(
  * @since 3.10.0
  */
 export const partialWith: {
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
   <const Options extends { readonly exact: true }>(options: Options): <A, I, R>(
     self: Schema<A, I, R>
   ) => SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
-  <A, I, R, const Options extends { readonly exact: true } | undefined>(
-    self: Schema<A, I, R>,
-    options: Options
-  ): SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <A, I, R, const Options extends { readonly exact: true } | undefined>(self: Schema<A, I, R>, options: Options): SchemaClass<{ [K in keyof A]?: A[K] }, { [K in keyof I]?: I[K] }, R>
 } = dual((args) => isSchema(args[0]), <A, I, R>(
   self: Schema<A, I, R>,
   options: { readonly exact: true }
@@ -3502,7 +3716,101 @@ export interface extend<Self extends Schema.Any, That extends Schema.Any> extend
  * @since 3.10.0
  */
 export const extend: {
+  /**
+   * Extends a schema with another schema.
+   *
+   * Not all extensions are supported, and their support depends on the nature of
+   * the involved schemas.
+   *
+   * Possible extensions include:
+   * - `Schema.String` with another `Schema.String` refinement or a string literal
+   * - `Schema.Number` with another `Schema.Number` refinement or a number literal
+   * - `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean
+   *   literal
+   * - A struct with another struct where overlapping fields support extension
+   * - A struct with in index signature
+   * - A struct with a union of supported schemas
+   * - A refinement of a struct with a supported schema
+   * - A suspend of a struct with a supported schema
+   * - A transformation between structs where the “from” and “to” sides have no
+   *   overlapping fields with the target struct
+   *
+   * @example
+   * ```ts
+   * import * as Schema from "effect/Schema"
+   *
+   * const schema = Schema.Struct({
+   *   a: Schema.String,
+   *   b: Schema.String
+   * })
+   *
+   * // const extended: Schema<
+   * //   {
+   * //     readonly a: string
+   * //     readonly b: string
+   * //   } & {
+   * //     readonly c: string
+   * //   } & {
+   * //     readonly [x: string]: string
+   * //   }
+   * // >
+   * const extended = Schema.asSchema(schema.pipe(
+   *   Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
+   *   Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String })) // <= you can add index signatures
+   * ))
+   * ```
+   *
+   * @category combinators
+   * @since 3.10.0
+   */
   <That extends Schema.Any>(that: That): <Self extends Schema.Any>(self: Self) => extend<Self, That>
+  /**
+   * Extends a schema with another schema.
+   *
+   * Not all extensions are supported, and their support depends on the nature of
+   * the involved schemas.
+   *
+   * Possible extensions include:
+   * - `Schema.String` with another `Schema.String` refinement or a string literal
+   * - `Schema.Number` with another `Schema.Number` refinement or a number literal
+   * - `Schema.Boolean` with another `Schema.Boolean` refinement or a boolean
+   *   literal
+   * - A struct with another struct where overlapping fields support extension
+   * - A struct with in index signature
+   * - A struct with a union of supported schemas
+   * - A refinement of a struct with a supported schema
+   * - A suspend of a struct with a supported schema
+   * - A transformation between structs where the “from” and “to” sides have no
+   *   overlapping fields with the target struct
+   *
+   * @example
+   * ```ts
+   * import * as Schema from "effect/Schema"
+   *
+   * const schema = Schema.Struct({
+   *   a: Schema.String,
+   *   b: Schema.String
+   * })
+   *
+   * // const extended: Schema<
+   * //   {
+   * //     readonly a: string
+   * //     readonly b: string
+   * //   } & {
+   * //     readonly c: string
+   * //   } & {
+   * //     readonly [x: string]: string
+   * //   }
+   * // >
+   * const extended = Schema.asSchema(schema.pipe(
+   *   Schema.extend(Schema.Struct({ c: Schema.String })), // <= you can add more fields
+   *   Schema.extend(Schema.Record({ key: Schema.String, value: Schema.String })) // <= you can add index signatures
+   * ))
+   * ```
+   *
+   * @category combinators
+   * @since 3.10.0
+   */
   <Self extends Schema.Any, That extends Schema.Any>(self: Self, that: That): extend<Self, That>
 } = dual(
   2,
@@ -3514,43 +3822,55 @@ export const extend: {
  * @since 3.10.0
  */
 export const compose: {
-  <To extends Schema.Any, From extends Schema.Any, C extends Schema.Type<From>>(
-    to: To & Schema<Schema.Type<To>, C, Schema.Context<To>>
-  ): (from: From) => transform<From, To>
-  <To extends Schema.Any>(
-    to: To
-  ): <From extends Schema.Any, B extends Schema.Encoded<To>>(
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <To extends Schema.Any, From extends Schema.Any, C extends Schema.Type<From>>(to: To & Schema<Schema.Type<To>, C, Schema.Context<To>>): (from: From) => transform<From, To>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <To extends Schema.Any>(to: To): <From extends Schema.Any, B extends Schema.Encoded<To>>(
     from: From & Schema<B, Schema.Encoded<From>, Schema.Context<From>>
   ) => transform<From, To>
-  <To extends Schema.Any>(
-    to: To,
-    options?: { readonly strict: true }
-  ): <From extends Schema.Any>(
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <To extends Schema.Any>(to: To, options?: { readonly strict: true }): <From extends Schema.Any>(
     from: From & Schema<Schema.Encoded<To>, Schema.Encoded<From>, Schema.Context<From>>
   ) => transform<From, To>
-  <To extends Schema.Any>(
-    to: To,
-    options: { readonly strict: false }
-  ): <From extends Schema.Any>(from: From) => transform<From, To>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <To extends Schema.Any>(to: To, options: { readonly strict: false }): <From extends Schema.Any>(from: From) => transform<From, To>
 
-  <From extends Schema.Any, To extends Schema.Any, C extends Schema.Type<From>>(
-    from: From,
-    to: To & Schema<Schema.Type<To>, C, Schema.Context<To>>
-  ): transform<From, To>
-  <From extends Schema.Any, B extends Schema.Encoded<To>, To extends Schema.Any>(
-    from: From & Schema<B, Schema.Encoded<From>, Schema.Context<From>>,
-    to: To
-  ): transform<From, To>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <From extends Schema.Any, To extends Schema.Any, C extends Schema.Type<From>>(from: From, to: To & Schema<Schema.Type<To>, C, Schema.Context<To>>): transform<From, To>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <From extends Schema.Any, B extends Schema.Encoded<To>, To extends Schema.Any>(from: From & Schema<B, Schema.Encoded<From>, Schema.Context<From>>, to: To): transform<From, To>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
   <From extends Schema.Any, To extends Schema.Any>(
     from: From & Schema<Schema.Encoded<To>, Schema.Encoded<From>, Schema.Context<From>>,
     to: To,
     options?: { readonly strict: true }
   ): transform<From, To>
-  <From extends Schema.Any, To extends Schema.Any>(
-    from: From,
-    to: To,
-    options: { readonly strict: false }
-  ): transform<From, To>
+  /**
+   * @category combinators
+   * @since 3.10.0
+   */
+  <From extends Schema.Any, To extends Schema.Any>(from: From, to: To, options: { readonly strict: false }): transform<From, To>
 } = dual(
   (args) => isSchema(args[1]),
   <B, A, R1, D, C, R2>(from: Schema<B, A, R1>, to: Schema<D, C, R2>): SchemaClass<D, A, R1 | R2> =>
@@ -3740,6 +4060,10 @@ export interface filterEffect<S extends Schema.Any, FD = never>
  * @since 3.10.0
  */
 export const filterEffect: {
+  /**
+   * @category transformations
+   * @since 3.10.0
+   */
   <S extends Schema.Any, FD>(
     f: (
       a: Types.NoInfer<Schema.Type<S>>,
@@ -3747,6 +4071,10 @@ export const filterEffect: {
       self: AST.Transformation
     ) => Effect.Effect<FilterReturnType, never, FD>
   ): (self: S) => filterEffect<S, FD>
+  /**
+   * @category transformations
+   * @since 3.10.0
+   */
   <S extends Schema.Any, RD>(
     self: S,
     f: (
@@ -3827,6 +4155,13 @@ function makeTransformationClass<From extends Schema.Any, To extends Schema.Any,
  * @since 3.10.0
  */
 export const transformOrFail: {
+  /**
+   * Create a new `Schema` by transforming the input and output of an existing `Schema`
+   * using the provided decoding functions.
+   *
+   * @category transformations
+   * @since 3.10.0
+   */
   <To extends Schema.Any, From extends Schema.Any, RD, RE>(
     to: To,
     options: {
@@ -3859,6 +4194,13 @@ export const transformOrFail: {
       readonly strict: false
     }
   ): (from: From) => transformOrFail<From, To, RD | RE>
+  /**
+   * Create a new `Schema` by transforming the input and output of an existing `Schema`
+   * using the provided decoding functions.
+   *
+   * @category transformations
+   * @since 3.10.0
+   */
   <To extends Schema.Any, From extends Schema.Any, RD, RE>(
     from: From,
     to: To,
@@ -3936,6 +4278,13 @@ export interface transform<From extends Schema.All, To extends Schema.All> exten
  * @since 3.10.0
  */
 export const transform: {
+  /**
+   * Create a new `Schema` by transforming the input and output of an existing `Schema`
+   * using the provided mapping functions.
+   *
+   * @category transformations
+   * @since 3.10.0
+   */
   <To extends Schema.Any, From extends Schema.Any>(
     to: To,
     options: {
@@ -3948,6 +4297,13 @@ export const transform: {
       readonly strict: false
     }
   ): (from: From) => transform<From, To>
+  /**
+   * Create a new `Schema` by transforming the input and output of an existing `Schema`
+   * using the provided mapping functions.
+   *
+   * @category transformations
+   * @since 3.10.0
+   */
   <To extends Schema.Any, From extends Schema.Any>(
     from: From,
     to: To,
@@ -4082,6 +4438,33 @@ export function transformLiterals<
  * @since 3.10.0
  */
 export const attachPropertySignature: {
+  /**
+   * Attaches a property signature with the specified key and value to the schema.
+   * This API is useful when you want to add a property to your schema which doesn't describe the shape of the input,
+   * but rather maps to another schema, for example when you want to add a discriminant to a simple union.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as S from "effect/Schema"
+   * import { pipe } from "effect/Function"
+   *
+   * const Circle = S.Struct({ radius: S.Number })
+   * const Square = S.Struct({ sideLength: S.Number })
+   * const Shape = S.Union(
+   *   Circle.pipe(S.attachPropertySignature("kind", "circle")),
+   *   Square.pipe(S.attachPropertySignature("kind", "square"))
+   * )
+   *
+   * assert.deepStrictEqual(S.decodeSync(Shape)({ radius: 10 }), {
+   *   kind: "circle",
+   *   radius: 10
+   * })
+   * ```
+   *
+   * @category combinators
+   * @since 3.10.0
+   */
   <K extends PropertyKey, V extends AST.LiteralValue | symbol, A>(
     key: K,
     value: V,
@@ -4089,6 +4472,33 @@ export const attachPropertySignature: {
   ): <I, R>(
     schema: Schema<A, I, R>
   ) => SchemaClass<A & { readonly [k in K]: V }, I, R>
+  /**
+   * Attaches a property signature with the specified key and value to the schema.
+   * This API is useful when you want to add a property to your schema which doesn't describe the shape of the input,
+   * but rather maps to another schema, for example when you want to add a discriminant to a simple union.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as S from "effect/Schema"
+   * import { pipe } from "effect/Function"
+   *
+   * const Circle = S.Struct({ radius: S.Number })
+   * const Square = S.Struct({ sideLength: S.Number })
+   * const Shape = S.Union(
+   *   Circle.pipe(S.attachPropertySignature("kind", "circle")),
+   *   Square.pipe(S.attachPropertySignature("kind", "square"))
+   * )
+   *
+   * assert.deepStrictEqual(S.decodeSync(Shape)({ radius: 10 }), {
+   *   kind: "circle",
+   *   radius: 10
+   * })
+   * ```
+   *
+   * @category combinators
+   * @since 3.10.0
+   */
   <A, I, R, K extends PropertyKey, V extends AST.LiteralValue | symbol>(
     schema: Schema<A, I, R>,
     key: K,
@@ -4185,7 +4595,21 @@ export declare namespace Annotations {
  * @since 3.10.0
  */
 export const annotations: {
+  /**
+   * Merges a set of new annotations with existing ones, potentially overwriting
+   * any duplicates.
+   *
+   * @category annotations
+   * @since 3.10.0
+   */
   <S extends Annotable.All>(annotations: Annotations.GenericSchema<Schema.Type<S>>): (self: S) => Annotable.Self<S>
+  /**
+   * Merges a set of new annotations with existing ones, potentially overwriting
+   * any duplicates.
+   *
+   * @category annotations
+   * @since 3.10.0
+   */
   <S extends Annotable.All>(self: S, annotations: Annotations.GenericSchema<Schema.Type<S>>): Annotable.Self<S>
 } = dual(
   2,
@@ -4206,14 +4630,20 @@ type Rename<A, M> = {
  * @since 3.10.0
  */
 export const rename: {
+  /**
+   * @category renaming
+   * @since 3.10.0
+   */
   <
     A,
     const M extends
       & { readonly [K in keyof A]?: PropertyKey }
       & { readonly [K in Exclude<keyof M, keyof A>]: never }
-  >(
-    mapping: M
-  ): <I, R>(self: Schema<A, I, R>) => SchemaClass<Simplify<Rename<A, M>>, I, R>
+  >(mapping: M): <I, R>(self: Schema<A, I, R>) => SchemaClass<Simplify<Rename<A, M>>, I, R>
+  /**
+   * @category renaming
+   * @since 3.10.0
+   */
   <
     A,
     I,
@@ -4221,10 +4651,7 @@ export const rename: {
     const M extends
       & { readonly [K in keyof A]?: PropertyKey }
       & { readonly [K in Exclude<keyof M, keyof A>]: never }
-  >(
-    self: Schema<A, I, R>,
-    mapping: M
-  ): SchemaClass<Simplify<Rename<A, M>>, I, R>
+  >(self: Schema<A, I, R>, mapping: M): SchemaClass<Simplify<Rename<A, M>>, I, R>
 } = dual(
   2,
   <
@@ -4840,7 +5267,47 @@ const getParseJsonTransformation = (options?: ParseJsonOptions): SchemaClass<unk
  * @since 3.10.0
  */
 export const parseJson: {
+  /**
+   * The `ParseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
+   * functionality of `JSON.parse`. It also utilizes `JSON.stringify` for encoding.
+   *
+   * You can optionally provide a `ParseJsonOptions` to configure both `JSON.parse` and `JSON.stringify` executions.
+   *
+   * Optionally, you can pass a schema `Schema<A, I, R>` to obtain an `A` type instead of `unknown`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Schema from "effect/Schema"
+   *
+   * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson())(`{"a":"1"}`), { a: "1" })
+   * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson(Schema.Struct({ a: Schema.NumberFromString })))(`{"a":"1"}`), { a: 1 })
+   * ```
+   *
+   * @category string transformations
+   * @since 3.10.0
+   */
   <S extends Schema.Any>(schema: S, options?: ParseJsonOptions): transform<SchemaClass<unknown, string>, S>
+  /**
+   * The `ParseJson` combinator provides a method to convert JSON strings into the `unknown` type using the underlying
+   * functionality of `JSON.parse`. It also utilizes `JSON.stringify` for encoding.
+   *
+   * You can optionally provide a `ParseJsonOptions` to configure both `JSON.parse` and `JSON.stringify` executions.
+   *
+   * Optionally, you can pass a schema `Schema<A, I, R>` to obtain an `A` type instead of `unknown`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import * as Schema from "effect/Schema"
+   *
+   * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson())(`{"a":"1"}`), { a: "1" })
+   * assert.deepStrictEqual(Schema.decodeUnknownSync(Schema.parseJson(Schema.Struct({ a: Schema.NumberFromString })))(`{"a":"1"}`), { a: 1 })
+   * ```
+   *
+   * @category string transformations
+   * @since 3.10.0
+   */
   (options?: ParseJsonOptions): SchemaClass<unknown, string>
 } = <A, I, R>(schemaOrOptions?: Schema<A, I, R> | ParseJsonOptions, o?: ParseJsonOptions) =>
   isSchema(schemaOrOptions)
@@ -6569,11 +7036,25 @@ export function headNonEmpty<S extends Schema.Any, A extends array_.NonEmptyRead
  * @since 3.10.0
  */
 export const headOrElse: {
-  <S extends Schema.Any, A extends ReadonlyArray<unknown>>(
-    fallback?: LazyArg<A[number]>
-  ): (
+  /**
+   * Retrieves the first element of a `ReadonlyArray`.
+   *
+   * If the array is empty, it returns the `fallback` argument if provided; otherwise, it fails.
+   *
+   * @category ReadonlyArray transformations
+   * @since 3.10.0
+   */
+  <S extends Schema.Any, A extends ReadonlyArray<unknown>>(fallback?: LazyArg<A[number]>): (
     self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>
   ) => transform<S, SchemaClass<A[number]>>
+  /**
+   * Retrieves the first element of a `ReadonlyArray`.
+   *
+   * If the array is empty, it returns the `fallback` argument if provided; otherwise, it fails.
+   *
+   * @category ReadonlyArray transformations
+   * @since 3.10.0
+   */
   <S extends Schema.Any, A extends ReadonlyArray<unknown>>(
     self: S & Schema<A, Schema.Encoded<S>, Schema.Context<S>>,
     fallback?: LazyArg<A[number]>
@@ -10208,7 +10689,15 @@ export const serialize = <A, I, R>(self: Serializable<A, I, R>): Effect.Effect<I
  * @category decoding
  */
 export const deserialize: {
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
   (value: unknown): <A, I, R>(self: Serializable<A, I, R>) => Effect.Effect<A, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
   <A, I, R>(self: Serializable<A, I, R>, value: unknown): Effect.Effect<A, ParseResult.ParseError, R>
 } = dual(
   2,
@@ -10344,9 +10833,17 @@ export const exitSchema = <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R
  * @category encoding
  */
 export const serializeFailure: {
+  /**
+   * @since 3.10.0
+   * @category encoding
+   */
   <FA>(value: FA): <SA, SI, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>
   ) => Effect.Effect<FI, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category encoding
+   */
   <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: FA): Effect.Effect<FI, ParseResult.ParseError, R>
 } = dual(
   2,
@@ -10359,9 +10856,15 @@ export const serializeFailure: {
  * @category decoding
  */
 export const deserializeFailure: {
-  (
-    value: unknown
-  ): <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>) => Effect.Effect<FA, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
+  (value: unknown): <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>) => Effect.Effect<FA, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
   <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<FA, ParseResult.ParseError, R>
 } = dual(
   2,
@@ -10376,9 +10879,17 @@ export const deserializeFailure: {
  * @category encoding
  */
 export const serializeSuccess: {
+  /**
+   * @since 3.10.0
+   * @category encoding
+   */
   <SA>(value: SA): <SI, FA, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>
   ) => Effect.Effect<SI, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category encoding
+   */
   <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: SA): Effect.Effect<SI, ParseResult.ParseError, R>
 } = dual(
   2,
@@ -10391,9 +10902,17 @@ export const serializeSuccess: {
  * @category decoding
  */
 export const deserializeSuccess: {
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
   (value: unknown): <SA, SI, FA, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>
   ) => Effect.Effect<SA, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
   <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<SA, ParseResult.ParseError, R>
 } = dual(
   2,
@@ -10408,13 +10927,18 @@ export const deserializeSuccess: {
  * @category encoding
  */
 export const serializeExit: {
+  /**
+   * @since 3.10.0
+   * @category encoding
+   */
   <SA, FA>(value: exit_.Exit<SA, FA>): <SI, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>
   ) => Effect.Effect<ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
-  <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>,
-    value: exit_.Exit<SA, FA>
-  ): Effect.Effect<ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category encoding
+   */
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: exit_.Exit<SA, FA>): Effect.Effect<ExitEncoded<SI, FI, unknown>, ParseResult.ParseError, R>
 } = dual(2, <SA, SI, FA, FI, R>(
   self: WithResult<SA, SI, FA, FI, R>,
   value: exit_.Exit<SA, FA>
@@ -10425,13 +10949,18 @@ export const serializeExit: {
  * @category decoding
  */
 export const deserializeExit: {
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
   (value: unknown): <SA, SI, FA, FI, R>(
     self: WithResult<SA, SI, FA, FI, R>
   ) => Effect.Effect<exit_.Exit<SA, FA>, ParseResult.ParseError, R>
-  <SA, SI, FA, FI, R>(
-    self: WithResult<SA, SI, FA, FI, R>,
-    value: unknown
-  ): Effect.Effect<exit_.Exit<SA, FA>, ParseResult.ParseError, R>
+  /**
+   * @since 3.10.0
+   * @category decoding
+   */
+  <SA, SI, FA, FI, R>(self: WithResult<SA, SI, FA, FI, R>, value: unknown): Effect.Effect<exit_.Exit<SA, FA>, ParseResult.ParseError, R>
 } = dual(2, <SA, SI, FA, FI, R>(
   self: WithResult<SA, SI, FA, FI, R>,
   value: unknown

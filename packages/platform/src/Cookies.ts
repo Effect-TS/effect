@@ -377,11 +377,20 @@ export const unsafeMakeCookie = (
  * @category combinators
  */
 export const setCookie: {
+  /**
+   * Add a cookie to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (cookie: Cookie): (self: Cookies) => Cookies
-  (
-    self: Cookies,
-    cookie: Cookie
-  ): Cookies
+  /**
+   * Add a cookie to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Cookies, cookie: Cookie): Cookies
 } = dual(
   2,
   (self: Cookies, cookie: Cookie) =>
@@ -399,11 +408,20 @@ export const setCookie: {
  * @category combinators
  */
 export const setAllCookie: {
+  /**
+   * Add multiple cookies to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (cookies: Iterable<Cookie>): (self: Cookies) => Cookies
-  (
-    self: Cookies,
-    cookies: Iterable<Cookie>
-  ): Cookies
+  /**
+   * Add multiple cookies to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Cookies, cookies: Iterable<Cookie>): Cookies
 } = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
   const record = { ...self.cookies }
   for (const cookie of cookies) {
@@ -419,11 +437,20 @@ export const setAllCookie: {
  * @category combinators
  */
 export const merge: {
+  /**
+   * Combine two Cookies objects, removing duplicates from the first
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (that: Cookies): (self: Cookies) => Cookies
-  (
-    self: Cookies,
-    that: Cookies
-  ): Cookies
+  /**
+   * Combine two Cookies objects, removing duplicates from the first
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Cookies, that: Cookies): Cookies
 } = dual(2, (self: Cookies, that: Cookies) =>
   fromReadonlyRecord({
     ...self.cookies,
@@ -437,11 +464,20 @@ export const merge: {
  * @category combinators
  */
 export const remove: {
+  /**
+   * Remove a cookie by name
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (name: string): (self: Cookies) => Cookies
-  (
-    self: Cookies,
-    name: string
-  ): Cookies
+  /**
+   * Remove a cookie by name
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Cookies, name: string): Cookies
 } = dual(2, (self: Cookies, name: string) => fromReadonlyRecord(Record.remove(self.cookies, name)))
 
 /**
@@ -451,7 +487,19 @@ export const remove: {
  * @category combinators
  */
 export const get: {
+  /**
+   * Get a cookie from a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (name: string): (self: Cookies) => Option.Option<Cookie>
+  /**
+   * Get a cookie from a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Cookies, name: string): Option.Option<Cookie>
 } = dual(
   (args) => isCookies(args[0]),
@@ -465,7 +513,19 @@ export const get: {
  * @category combinators
  */
 export const getValue: {
+  /**
+   * Get a cookie from a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (name: string): (self: Cookies) => Option.Option<string>
+  /**
+   * Get a cookie from a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Cookies, name: string): Option.Option<string>
 } = dual(
   (args) => isCookies(args[0]),
@@ -480,17 +540,20 @@ export const getValue: {
  * @category combinators
  */
 export const set: {
-  (
-    name: string,
-    value: string,
-    options?: Cookie["options"]
-  ): (self: Cookies) => Either.Either<Cookies, CookiesError>
-  (
-    self: Cookies,
-    name: string,
-    value: string,
-    options?: Cookie["options"]
-  ): Either.Either<Cookies, CookiesError>
+  /**
+   * Add a cookie to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (name: string, value: string, options?: Cookie["options"]): (self: Cookies) => Either.Either<Cookies, CookiesError>
+  /**
+   * Add a cookie to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Cookies, name: string, value: string, options?: Cookie["options"]): Either.Either<Cookies, CookiesError>
 } = dual(
   (args) => isCookies(args[0]),
   (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
@@ -507,17 +570,20 @@ export const set: {
  * @category combinators
  */
 export const unsafeSet: {
-  (
-    name: string,
-    value: string,
-    options?: Cookie["options"]
-  ): (self: Cookies) => Cookies
-  (
-    self: Cookies,
-    name: string,
-    value: string,
-    options?: Cookie["options"]
-  ): Cookies
+  /**
+   * Add a cookie to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (name: string, value: string, options?: Cookie["options"]): (self: Cookies) => Cookies
+  /**
+   * Add a cookie to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Cookies, name: string, value: string, options?: Cookie["options"]): Cookies
 } = dual(
   (args) => isCookies(args[0]),
   (self: Cookies, name: string, value: string, options?: Cookie["options"]) =>
@@ -535,9 +601,21 @@ export const unsafeSet: {
  * @category combinators
  */
 export const setAll: {
+  /**
+   * Add multiple cookies to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): (self: Cookies) => Either.Either<Cookies, CookiesError>
+  /**
+   * Add multiple cookies to a Cookies object
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
@@ -567,9 +645,21 @@ export const setAll: {
  * @category combinators
  */
 export const unsafeSetAll: {
+  /**
+   * Add multiple cookies to a Cookies object, throwing an error if invalid
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>
   ): (self: Cookies) => Cookies
+  /**
+   * Add multiple cookies to a Cookies object, throwing an error if invalid
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (
     self: Cookies,
     cookies: Iterable<readonly [name: string, value: string, options?: Cookie["options"]]>

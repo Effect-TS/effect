@@ -28,6 +28,10 @@ This is the **effect-native fork** of the Effect TypeScript framework. It mainta
 - **Always use `return yield*`** for errors and interrupts
 - **100% JSDoc coverage required** with working examples
 
+### Local CI Parity
+
+- Always run `pnpm ok` after making changes and before pushing. This mirrors our GitHub checks (types, lint, circular, codegen + diff, test-types target, docgen, codemod, build) so failures show up locally first.
+
 ## Development Commands
 
 ### Building
@@ -144,6 +148,15 @@ The monorepo uses pnpm workspaces with packages organized in:
   - `tsconfig.src.json`: Source compilation
   - `tsconfig.test.json`: Test compilation
   - `tsconfig.build.json`: Build references
+
+### packages-native isolation rule
+
+- Do NOT reference workspace upstream packages from `packages-native/*` TypeScript configs.
+  For example, do not add project references to `../../packages/effect/tsconfig.build.json` or
+  `../../packages/platform/tsconfig.build.json`.
+- `packages-native/*` must depend on released versions of upstream packages via peer/dev dependencies as appropriate,
+  not on workspace source. This keeps native forks isolated from upstream internals and prevents
+  workspace-wide compile spillover in CI builds.
 
 ## Fork Workflows
 

@@ -271,7 +271,19 @@ export const isShutdown: <A>(self: TDequeue<A> | TEnqueue<A>) => STM.STM<boolean
  * @category mutations
  */
 export const offer: {
+  /**
+   * Places one value in the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TEnqueue<A>) => STM.STM<void>
+  /**
+   * Places one value in the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TEnqueue<A>, value: A): STM.STM<void>
 } = internal.offer
 
@@ -294,7 +306,43 @@ export const offer: {
  * @category mutations
  */
 export const offerAll: {
+  /**
+   * For Bounded TQueue: uses the `BackPressure` Strategy, places the values in
+   * the queue and always returns true. If the queue has reached capacity, then
+   * the fiber performing the `offerAll` will be suspended until there is room
+   * in the queue.
+   *
+   * For Unbounded TQueue: Places all values in the queue and returns true.
+   *
+   * For Sliding TQueue: uses `Sliding` Strategy If there is room in the queue,
+   * it places the values otherwise it removes the old elements and enqueues the
+   * new ones. Always returns true.
+   *
+   * For Dropping TQueue: uses `Dropping` Strategy, It places the values in the
+   * queue but if there is no room it will not enqueue them and return false.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(iterable: Iterable<A>): (self: TEnqueue<A>) => STM.STM<boolean>
+  /**
+   * For Bounded TQueue: uses the `BackPressure` Strategy, places the values in
+   * the queue and always returns true. If the queue has reached capacity, then
+   * the fiber performing the `offerAll` will be suspended until there is room
+   * in the queue.
+   *
+   * For Unbounded TQueue: Places all values in the queue and returns true.
+   *
+   * For Sliding TQueue: uses `Sliding` Strategy If there is room in the queue,
+   * it places the values otherwise it removes the old elements and enqueues the
+   * new ones. Always returns true.
+   *
+   * For Dropping TQueue: uses `Dropping` Strategy, It places the values in the
+   * queue but if there is no room it will not enqueue them and return false.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TEnqueue<A>, iterable: Iterable<A>): STM.STM<boolean>
 } = internal.offerAll
 
@@ -334,7 +382,23 @@ export const poll: <A>(self: TDequeue<A>) => STM.STM<Option.Option<A>> = interna
  * @category mutations
  */
 export const seek: {
+  /**
+   * Drops elements from the queue while they do not satisfy the predicate,
+   * taking and returning the first element that does satisfy the predicate.
+   * Retries if no elements satisfy the predicate.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(predicate: Predicate<A>): (self: TDequeue<A>) => STM.STM<A>
+  /**
+   * Drops elements from the queue while they do not satisfy the predicate,
+   * taking and returning the first element that does satisfy the predicate.
+   * Retries if no elements satisfy the predicate.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TDequeue<A>, predicate: Predicate<A>): STM.STM<A>
 } = internal.seek
 
@@ -395,7 +459,23 @@ export const takeAll: <A>(self: TDequeue<A>) => STM.STM<Array<A>> = internal.tak
  * @category mutations
  */
 export const takeBetween: {
+  /**
+   * Takes a number of elements from the queue between the specified minimum and
+   * maximum. If there are fewer than the minimum number of elements available,
+   * retries until at least the minimum number of elements have been collected.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (min: number, max: number): <A>(self: TDequeue<A>) => STM.STM<Array<A>>
+  /**
+   * Takes a number of elements from the queue between the specified minimum and
+   * maximum. If there are fewer than the minimum number of elements available,
+   * retries until at least the minimum number of elements have been collected.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TDequeue<A>, min: number, max: number): STM.STM<Array<A>>
 } = internal.takeBetween
 
@@ -408,7 +488,23 @@ export const takeBetween: {
  * @category mutations
  */
 export const takeN: {
+  /**
+   * Takes the specified number of elements from the queue. If there are fewer
+   * than the specified number of elements available, it retries until they
+   * become available.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (n: number): <A>(self: TDequeue<A>) => STM.STM<Array<A>>
+  /**
+   * Takes the specified number of elements from the queue. If there are fewer
+   * than the specified number of elements available, it retries until they
+   * become available.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TDequeue<A>, n: number): STM.STM<Array<A>>
 } = internal.takeN
 
@@ -419,7 +515,19 @@ export const takeN: {
  * @category mutations
  */
 export const takeUpTo: {
+  /**
+   * Takes up to max number of values from the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (max: number): <A>(self: TDequeue<A>) => STM.STM<Array<A>>
+  /**
+   * Takes up to max number of values from the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TDequeue<A>, max: number): STM.STM<Array<A>>
 } = internal.takeUpTo
 

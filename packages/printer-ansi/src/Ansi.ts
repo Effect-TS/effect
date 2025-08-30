@@ -511,6 +511,22 @@ export const stringify: (self: Ansi) => string = InternalAnsi.stringify
  * @categrory combinators
  */
 export const combine: {
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @categrory combinators
+   */
   (that: Ansi): (self: Ansi) => Ansi
+  // -----------------------------------------------------------------------------
+  // Instances
+  // -----------------------------------------------------------------------------
+
+  /**
+   * @since 1.0.0
+   * @categrory combinators
+   */
   (self: Ansi, that: Ansi): Ansi
 } = InternalAnsi.combine

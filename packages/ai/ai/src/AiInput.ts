@@ -563,10 +563,38 @@ const fromResponse = (
  * @category Combination
  */
 export const concat: {
+  /**
+   * Concatenates the messages of one `AiInput` onto the messages of another,
+   * creating a new `AiInput` with the messages from both.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (other: AiInput): (self: AiInput) => AiInput
+  /**
+   * Concatenates the messages of one `AiInput` onto the messages of another,
+   * creating a new `AiInput` with the messages from both.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (self: AiInput, other: AiInput): AiInput
 } = dual<
+  /**
+   * Concatenates the messages of one `AiInput` onto the messages of another,
+   * creating a new `AiInput` with the messages from both.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (other: AiInput) => (self: AiInput) => AiInput,
+  /**
+   * Concatenates the messages of one `AiInput` onto the messages of another,
+   * creating a new `AiInput` with the messages from both.
+   *
+   * @since 1.0.0
+   * @category Combination
+   */
   (self: AiInput, other: AiInput) => AiInput
 >(2, (self, other) =>
   AiInput.make({

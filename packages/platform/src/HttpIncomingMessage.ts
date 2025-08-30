@@ -93,7 +93,15 @@ export class MaxBodySize extends Context.Reference<MaxBodySize>()("@effect/platf
  * @category fiber refs
  */
 export const withMaxBodySize = dual<
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   (size: Option.Option<FileSystem.SizeInput>) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>) => Effect.Effect<A, E, R>
 >(2, (effect, size) => Effect.provideService(effect, MaxBodySize, Option.map(size, FileSystem.Size)))
 

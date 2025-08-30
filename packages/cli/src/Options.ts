@@ -343,7 +343,23 @@ export const text: (name: string) => Options<string> = InternalOptions.text
  * @category combinators
  */
 export const atMost: {
+  // =============================================================================
+  // Combinators
+  // =============================================================================
+
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (times: number): <A>(self: Options<A>) => Options<Array<A>>
+  // =============================================================================
+  // Combinators
+  // =============================================================================
+
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, times: number): Options<Array<A>>
 } = InternalOptions.atMost
 
@@ -352,9 +368,25 @@ export const atMost: {
  * @category combinators
  */
 export const atLeast: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (times: 0): <A>(self: Options<A>) => Options<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (times: number): <A>(self: Options<A>) => Options<NonEmptyArray<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, times: 0): Options<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, times: number): Options<NonEmptyArray<A>>
 } = InternalOptions.atLeast
 
@@ -363,9 +395,25 @@ export const atLeast: {
  * @category combinators
  */
 export const between: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (min: 0, max: number): <A>(self: Options<A>) => Options<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (min: number, max: number): <A>(self: Options<A>) => Options<NonEmptyArray<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, min: 0, max: number): Options<Array<A>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, min: number, max: number): Options<NonEmptyArray<A>>
 } = InternalOptions.between
 
@@ -374,7 +422,15 @@ export const between: {
  * @category combinators
  */
 export const filterMap: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => Option<B>, message: string): (self: Options<A>) => Options<B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, f: (a: A) => Option<B>, message: string): Options<B>
 } = InternalOptions.filterMap
 
@@ -392,7 +448,15 @@ export const isBool: <A>(self: Options<A>) => boolean = InternalOptions.isBool
  * @category combinators
  */
 export const map: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => B): (self: Options<A>) => Options<B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, f: (a: A) => B): Options<B>
 } = InternalOptions.map
 
@@ -401,8 +465,19 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): (self: Options<A>) => Options<B>
-  <A, B>(self: Options<A>, f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>): Options<B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A, B>(
+   self: Options<A>,
+   f: (a: A) => Effect<B, ValidationError, FileSystem | Path | Terminal>
+  ): Options<B>
 } = InternalOptions.mapEffect
 
 /**
@@ -410,7 +485,15 @@ export const mapEffect: {
  * @category combinators
  */
 export const mapTryCatch: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => B, onError: (e: unknown) => HelpDoc): (self: Options<A>) => Options<B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, f: (a: A) => B, onError: (e: unknown) => HelpDoc): Options<B>
 } = InternalOptions.mapTryCatch
 
@@ -425,7 +508,15 @@ export const optional: <A>(self: Options<A>) => Options<Option<A>> = InternalOpt
  * @category combinators
  */
 export const orElse: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(that: Options<A>): <B>(self: Options<B>) => Options<A | B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, that: Options<B>): Options<A | B>
 } = InternalOptions.orElse
 
@@ -434,7 +525,15 @@ export const orElse: {
  * @category combinators
  */
 export const orElseEither: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(that: Options<A>): <B>(self: Options<B>) => Options<Either<A, B>>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, that: Options<B>): Options<Either<A, B>>
 } = InternalOptions.orElseEither
 
@@ -443,14 +542,19 @@ export const orElseEither: {
  * @category combinators
  */
 export const parse: {
-  (
-    args: HashMap<string, ReadonlyArray<string>>,
-    config: CliConfig
-  ): <A>(self: Options<A>) => Effect<A, ValidationError, FileSystem>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (args: HashMap<string, ReadonlyArray<string>>, config: CliConfig): <A>(self: Options<A>) => Effect<A, ValidationError, FileSystem>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(
-    self: Options<A>,
-    args: HashMap<string, ReadonlyArray<string>>,
-    config: CliConfig
+   self: Options<A>,
+   args: HashMap<string, ReadonlyArray<string>>,
+   config: CliConfig
   ): Effect<A, ValidationError, FileSystem>
 } = InternalOptions.parse
 
@@ -481,21 +585,42 @@ export const repeated: <A>(self: Options<A>) => Options<Array<A>> = InternalOpti
  * @category combinators
  */
 export const processCommandLine: {
-  (
-    args: ReadonlyArray<string>,
-    config: CliConfig
-  ): <A>(
+  /**
+   * Processes the provided command-line arguments, searching for the specified
+   * `Options`.
+   *
+   * Returns an `Option<ValidationError>`, any leftover arguments, and the
+   * constructed value of type `A`. The possible error inside
+   * `Option<ValidationError>` would only be triggered if there is an error when
+   * parsing the command-line arguments. This is because `ValidationError`s are
+   * also used internally to control the end of the command-line arguments (i.e.
+   * the command-line symbol `--`) corresponding to options.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  (args: ReadonlyArray<string>, config: CliConfig): <A>(
     self: Options<A>
   ) => Effect<
     [Option<ValidationError>, Array<string>, A],
     ValidationError,
     FileSystem | Path | Terminal
   >
-  <A>(
-    self: Options<A>,
-    args: ReadonlyArray<string>,
-    config: CliConfig
-  ): Effect<
+  /**
+   * Processes the provided command-line arguments, searching for the specified
+   * `Options`.
+   *
+   * Returns an `Option<ValidationError>`, any leftover arguments, and the
+   * constructed value of type `A`. The possible error inside
+   * `Option<ValidationError>` would only be triggered if there is an error when
+   * parsing the command-line arguments. This is because `ValidationError`s are
+   * also used internally to control the end of the command-line arguments (i.e.
+   * the command-line symbol `--`) corresponding to options.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A>(self: Options<A>, args: ReadonlyArray<string>, config: CliConfig): Effect<
     [Option<ValidationError>, Array<string>, A],
     ValidationError,
     FileSystem | Path | Terminal
@@ -507,7 +632,15 @@ export const processCommandLine: {
  * @category combinators
  */
 export const withAlias: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (alias: string): <A>(self: Options<A>) => Options<A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, alias: string): Options<A>
 } = InternalOptions.withAlias
 
@@ -516,7 +649,15 @@ export const withAlias: {
  * @category combinators
  */
 export const withDefault: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <const B>(fallback: B): <A>(self: Options<A>) => Options<B | A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, const B>(self: Options<A>, fallback: B): Options<A | B>
 } = InternalOptions.withDefault
 
@@ -525,7 +666,15 @@ export const withDefault: {
  * @category combinators
  */
 export const withFallbackConfig: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <B>(config: Config<B>): <A>(self: Options<A>) => Options<B | A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, config: Config<B>): Options<A | B>
 } = InternalOptions.withFallbackConfig
 
@@ -534,7 +683,15 @@ export const withFallbackConfig: {
  * @category combinators
  */
 export const withFallbackPrompt: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <B>(prompt: Prompt<B>): <A>(self: Options<A>) => Options<B | A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, B>(self: Options<A>, prompt: Prompt<B>): Options<A | B>
 } = InternalOptions.withFallbackPrompt
 
@@ -543,7 +700,15 @@ export const withFallbackPrompt: {
  * @category combinators
  */
 export const withDescription: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (description: string): <A>(self: Options<A>) => Options<A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, description: string): Options<A>
 } = InternalOptions.withDescription
 
@@ -552,7 +717,15 @@ export const withDescription: {
  * @category combinators
  */
 export const withPseudoName: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (pseudoName: string): <A>(self: Options<A>) => Options<A>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A>(self: Options<A>, pseudoName: string): Options<A>
 } = InternalOptions.withPseudoName
 
@@ -561,7 +734,15 @@ export const withPseudoName: {
  * @category combinators
  */
 export const withSchema: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, I extends A, B>(schema: Schema<B, I, FileSystem | Path | Terminal>): (self: Options<A>) => Options<B>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A, I extends A, B>(self: Options<A>, schema: Schema<B, I, FileSystem | Path | Terminal>): Options<B>
 } = InternalOptions.withSchema
 
@@ -570,19 +751,22 @@ export const withSchema: {
  * @category combinators
  */
 export const wizard: {
-  (
-    config: CliConfig
-  ): <A>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (config: CliConfig): <A>(
     self: Options<A>
   ) => Effect<
     Array<string>,
     QuitException | ValidationError,
     FileSystem | Path | Terminal
   >
-  <A>(
-    self: Options<A>,
-    config: CliConfig
-  ): Effect<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <A>(self: Options<A>, config: CliConfig): Effect<
     Array<string>,
     QuitException | ValidationError,
     FileSystem | Path | Terminal

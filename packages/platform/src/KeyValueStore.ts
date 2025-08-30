@@ -134,7 +134,15 @@ export const makeStringOnly: (
  * @category combinators
  */
 export const prefix: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (prefix: string): <S extends KeyValueStore.AnyStore>(self: S) => S
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <S extends KeyValueStore.AnyStore>(self: S, prefix: string): S
 } = internal.prefix
 

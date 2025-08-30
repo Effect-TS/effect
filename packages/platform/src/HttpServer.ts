@@ -109,21 +109,33 @@ export const make: (
  * @category accessors
  */
 export const serve: {
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   (): <E, R>(
     httpApp: App.Default<E, R>
   ) => Layer.Layer<never, never, HttpServer | Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>>
-  <E, R, App extends App.Default<any, any>>(
-    middleware: Middleware.HttpMiddleware.Applied<App, E, R>
-  ): (
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
+  <E, R, App extends App.Default<any, any>>(middleware: Middleware.HttpMiddleware.Applied<App, E, R>): (
     httpApp: App.Default<E, R>
   ) => Layer.Layer<
     never,
     never,
     HttpServer | Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest | Scope.Scope>
   >
-  <E, R>(
-    httpApp: App.Default<E, R>
-  ): Layer.Layer<never, never, HttpServer | Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
+  <E, R>(httpApp: App.Default<E, R>): Layer.Layer<never, never, HttpServer | Exclude<R, ServerRequest.HttpServerRequest | Scope.Scope>>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   <E, R, App extends App.Default<any, any>>(
     httpApp: App.Default<E, R>,
     middleware: Middleware.HttpMiddleware.Applied<App, E, R>
@@ -139,21 +151,33 @@ export const serve: {
  * @category accessors
  */
 export const serveEffect: {
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   (): <E, R>(
     httpApp: App.Default<E, R>
   ) => Effect.Effect<void, never, Scope.Scope | HttpServer | Exclude<R, ServerRequest.HttpServerRequest>>
-  <E, R, App extends App.Default<any, any>>(
-    middleware: Middleware.HttpMiddleware.Applied<App, E, R>
-  ): (
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
+  <E, R, App extends App.Default<any, any>>(middleware: Middleware.HttpMiddleware.Applied<App, E, R>): (
     httpApp: App.Default<E, R>
   ) => Effect.Effect<
     void,
     never,
     Scope.Scope | HttpServer | Exclude<Effect.Effect.Context<App>, ServerRequest.HttpServerRequest>
   >
-  <E, R>(
-    httpApp: App.Default<E, R>
-  ): Effect.Effect<void, never, Scope.Scope | HttpServer | Exclude<R, ServerRequest.HttpServerRequest>>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
+  <E, R>(httpApp: App.Default<E, R>): Effect.Effect<void, never, Scope.Scope | HttpServer | Exclude<R, ServerRequest.HttpServerRequest>>
+  /**
+   * @since 1.0.0
+   * @category accessors
+   */
   <E, R, App extends App.Default<any, any>>(
     httpApp: App.Default<E, R>,
     middleware: Middleware.HttpMiddleware.Applied<App, E, R>

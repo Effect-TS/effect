@@ -59,7 +59,19 @@ export const fromIterable: (intervals: Iterable<Interval.Interval>) => Intervals
  * @category utils
  */
 export const union: {
+  /**
+   * Computes the union of this `Intervals` and  that `Intervals`
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: Intervals): (self: Intervals) => Intervals
+  /**
+   * Computes the union of this `Intervals` and  that `Intervals`
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: Intervals, that: Intervals): Intervals
 } = internal.union
 
@@ -70,7 +82,19 @@ export const union: {
  * @category utils
  */
 export const intersect: {
+  /**
+   * Produces the intersection of this `Intervals` and that `Intervals`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: Intervals): (self: Intervals) => Intervals
+  /**
+   * Produces the intersection of this `Intervals` and that `Intervals`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: Intervals, that: Intervals): Intervals
 } = internal.intersect
 
@@ -98,7 +122,21 @@ export const end: (self: Intervals) => number = internal.end
  * @category ordering
  */
 export const lessThan: {
+  /**
+   * Returns `true` if the start of this `Intervals` is before the start of that
+   * `Intervals`, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (that: Intervals): (self: Intervals) => boolean
+  /**
+   * Returns `true` if the start of this `Intervals` is before the start of that
+   * `Intervals`, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (self: Intervals, that: Intervals): boolean
 } = internal.lessThan
 
@@ -117,6 +155,18 @@ export const isNonEmpty: (self: Intervals) => boolean = internal.isNonEmpty
  * @category ordering
  */
 export const max: {
+  /**
+   * Returns the maximum of the two `Intervals` (i.e. which has the latest start).
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (that: Intervals): (self: Intervals) => Intervals
+  /**
+   * Returns the maximum of the two `Intervals` (i.e. which has the latest start).
+   *
+   * @since 2.0.0
+   * @category ordering
+   */
   (self: Intervals, that: Intervals): Intervals
 } = internal.max

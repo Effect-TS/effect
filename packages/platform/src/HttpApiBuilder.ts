@@ -907,18 +907,36 @@ const middlewareAddNoContext = (
  * @category middleware
  */
 export const middleware: {
+  /**
+   * Create an `HttpApi` level middleware `Layer`.
+   *
+   * @since 1.0.0
+   * @category middleware
+   */
   <EX = never, RX = never>(
     middleware: MiddlewareFn<never> | Effect.Effect<MiddlewareFn<never>, EX, RX>,
     options?: {
       readonly withContext?: false | undefined
     }
   ): Layer.Layer<never, EX, Exclude<RX, Scope>>
+  /**
+   * Create an `HttpApi` level middleware `Layer`.
+   *
+   * @since 1.0.0
+   * @category middleware
+   */
   <R, EX = never, RX = never>(
     middleware: MiddlewareFn<never, R> | Effect.Effect<MiddlewareFn<never, R>, EX, RX>,
     options: {
       readonly withContext: true
     }
   ): Layer.Layer<never, EX, Exclude<HttpRouter.HttpRouter.ExcludeProvided<R> | RX, Scope>>
+  /**
+   * Create an `HttpApi` level middleware `Layer`.
+   *
+   * @since 1.0.0
+   * @category middleware
+   */
   <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, EX = never, RX = never>(
     api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: MiddlewareFn<NoInfer<Error>> | Effect.Effect<MiddlewareFn<NoInfer<Error>>, EX, RX>,
@@ -926,6 +944,12 @@ export const middleware: {
       readonly withContext?: false | undefined
     }
   ): Layer.Layer<never, EX, Exclude<RX, Scope>>
+  /**
+   * Create an `HttpApi` level middleware `Layer`.
+   *
+   * @since 1.0.0
+   * @category middleware
+   */
   <ApiId extends string, Groups extends HttpApiGroup.HttpApiGroup.Any, Error, ErrorR, R, EX = never, RX = never>(
     api: HttpApi.HttpApi<ApiId, Groups, Error, ErrorR>,
     middleware: MiddlewareFn<NoInfer<Error>, R> | Effect.Effect<MiddlewareFn<NoInfer<Error>, R>, EX, RX>,

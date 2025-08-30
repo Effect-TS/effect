@@ -110,10 +110,16 @@ export const decodeUnknown: <A, I, R>(
  * @category combinators
  */
 export const duplex: {
-  <IA, II, IR, OA, OI, OR>(options: {
-    readonly inputSchema: Schema.Schema<IA, II, IR>
-    readonly outputSchema: Schema.Schema<OA, OI, OR>
-  }): <R, InErr, OutErr, OutDone, InDone>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <IA, II, IR, OA, OI, OR>(
+    options: {
+      readonly inputSchema: Schema.Schema<IA, II, IR>
+      readonly outputSchema: Schema.Schema<OA, OI, OR>
+    }
+  ): <R, InErr, OutErr, OutDone, InDone>(
     self: Channel.Channel<
       Chunk.Chunk<OI>,
       Chunk.Chunk<II>,
@@ -132,6 +138,10 @@ export const duplex: {
     InDone,
     R | IR | OR
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<OI>,
@@ -180,10 +190,18 @@ export const duplex: {
 > => {
   const decode = Schema.decode(Schema.ChunkFromSelf(options.outputSchema))
   return pipe(
-    encode(options.inputSchema)<InErr, InDone>(),
+    encode(options.inputSchema)</**
+     * @since 1.0.0
+     * @category combinators
+     */
+    InErr, /**
+     * @since 1.0.0
+     * @category combinators
+     */
+    InDone>(),
     Channel.pipeTo(self),
     Channel.mapOutEffect(decode)
-  )
+  );
 })
 
 /**
@@ -191,10 +209,16 @@ export const duplex: {
  * @category combinators
  */
 export const duplexUnknown: {
-  <IA, II, IR, OA, OI, OR>(options: {
-    readonly inputSchema: Schema.Schema<IA, II, IR>
-    readonly outputSchema: Schema.Schema<OA, OI, OR>
-  }): <R, InErr, OutErr, OutDone, InDone>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <IA, II, IR, OA, OI, OR>(
+    options: {
+      readonly inputSchema: Schema.Schema<IA, II, IR>
+      readonly outputSchema: Schema.Schema<OA, OI, OR>
+    }
+  ): <R, InErr, OutErr, OutDone, InDone>(
     self: Channel.Channel<
       Chunk.Chunk<unknown>,
       Chunk.Chunk<any>,
@@ -213,6 +237,10 @@ export const duplexUnknown: {
     InDone,
     R | IR | OR
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<unknown>,

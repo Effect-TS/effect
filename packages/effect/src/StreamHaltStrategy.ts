@@ -108,16 +108,33 @@ export const isEither: (self: HaltStrategy) => self is Either = internal.isEithe
  * @category folding
  */
 export const match: {
-  <Z>(options: {
-    readonly onLeft: () => Z
-    readonly onRight: () => Z
-    readonly onBoth: () => Z
-    readonly onEither: () => Z
-  }): (self: HaltStrategy) => Z
-  <Z>(self: HaltStrategy, options: {
-    readonly onLeft: () => Z
-    readonly onRight: () => Z
-    readonly onBoth: () => Z
-    readonly onEither: () => Z
-  }): Z
+  /**
+   * Folds over the specified `HaltStrategy` using the provided case functions.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
+  <Z>(
+   options: {
+     readonly onLeft: () => Z
+     readonly onRight: () => Z
+     readonly onBoth: () => Z
+     readonly onEither: () => Z
+   }
+  ): (self: HaltStrategy) => Z
+  /**
+   * Folds over the specified `HaltStrategy` using the provided case functions.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
+  <Z>(
+   self: HaltStrategy,
+   options: {
+     readonly onLeft: () => Z
+     readonly onRight: () => Z
+     readonly onBoth: () => Z
+     readonly onEither: () => Z
+   }
+  ): Z
 } = internal.match

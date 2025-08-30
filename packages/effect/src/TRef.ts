@@ -77,7 +77,15 @@ export const get: <A>(self: TRef<A>) => STM.STM<A> = internal.get
  * @category mutations
  */
 export const getAndSet: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TRef<A>) => STM.STM<A>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, value: A): STM.STM<A>
 } = internal.getAndSet
 
@@ -86,7 +94,15 @@ export const getAndSet: {
  * @category mutations
  */
 export const getAndUpdate: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TRef<A>) => STM.STM<A>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, f: (a: A) => A): STM.STM<A>
 } = internal.getAndUpdate
 
@@ -95,7 +111,15 @@ export const getAndUpdate: {
  * @category mutations
  */
 export const getAndUpdateSome: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<A>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<A>
 } = internal.getAndUpdateSome
 
@@ -110,7 +134,15 @@ export const make: <A>(value: A) => STM.STM<TRef<A>> = internal.make
  * @category mutations
  */
 export const modify: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(f: (a: A) => readonly [B, A]): (self: TRef<A>) => STM.STM<B>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(self: TRef<A>, f: (a: A) => readonly [B, A]): STM.STM<B>
 } = internal.modify
 
@@ -119,7 +151,15 @@ export const modify: {
  * @category mutations
  */
 export const modifySome: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): (self: TRef<A>) => STM.STM<B>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(self: TRef<A>, fallback: B, f: (a: A) => Option.Option<readonly [B, A]>): STM.STM<B>
 } = internal.modifySome
 
@@ -128,7 +168,15 @@ export const modifySome: {
  * @category mutations
  */
 export const set: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TRef<A>) => STM.STM<void>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, value: A): STM.STM<void>
 } = internal.set
 
@@ -137,7 +185,15 @@ export const set: {
  * @category mutations
  */
 export const setAndGet: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TRef<A>) => STM.STM<A>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, value: A): STM.STM<A>
 } = internal.setAndGet
 
@@ -146,7 +202,15 @@ export const setAndGet: {
  * @category mutations
  */
 export const update: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TRef<A>) => STM.STM<void>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, f: (a: A) => A): STM.STM<void>
 } = internal.update
 
@@ -155,7 +219,15 @@ export const update: {
  * @category mutations
  */
 export const updateAndGet: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TRef<A>) => STM.STM<A>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, f: (a: A) => A): STM.STM<A>
 } = internal.updateAndGet
 
@@ -164,7 +236,15 @@ export const updateAndGet: {
  * @category mutations
  */
 export const updateSome: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<void>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<void>
 } = internal.updateSome
 
@@ -173,6 +253,14 @@ export const updateSome: {
  * @category mutations
  */
 export const updateSomeAndGet: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: TRef<A>) => STM.STM<A>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TRef<A>, f: (a: A) => Option.Option<A>): STM.STM<A>
 } = internal.updateSomeAndGet

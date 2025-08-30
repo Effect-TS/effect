@@ -149,7 +149,15 @@ export const uri: (value: string) => Span = InternalSpan.uri
  * @category combinators
  */
 export const concat: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (that: Span): (self: Span) => Span
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Span, that: Span): Span
 } = InternalSpan.concat
 

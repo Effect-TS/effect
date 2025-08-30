@@ -759,7 +759,43 @@ export const Order: order.Order<number> = order.number
  * ```
  */
 export const lessThan: {
+  /**
+   * Returns `true` if the first argument is less than the second, otherwise
+   * `false`.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { lessThan } from "effect/Number"
+   *
+   * assert.equal(lessThan(2, 3), true)
+   * assert.equal(lessThan(3, 3), false)
+   * assert.equal(lessThan(4, 3), false)
+   * ```
+   */
   (that: number): (self: number) => boolean
+  /**
+   * Returns `true` if the first argument is less than the second, otherwise
+   * `false`.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { lessThan } from "effect/Number"
+   *
+   * assert.equal(lessThan(2, 3), true)
+   * assert.equal(lessThan(3, 3), false)
+   * assert.equal(lessThan(4, 3), false)
+   * ```
+   */
   (self: number, that: number): boolean
 } = order.lessThan(Order)
 
@@ -782,7 +818,43 @@ export const lessThan: {
  * ```
  */
 export const lessThanOrEqualTo: {
+  /**
+   * Returns a function that checks if a given `number` is less than or equal to
+   * the provided one.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { lessThanOrEqualTo } from "effect/Number"
+   *
+   * assert.equal(lessThanOrEqualTo(2, 3), true)
+   * assert.equal(lessThanOrEqualTo(3, 3), true)
+   * assert.equal(lessThanOrEqualTo(4, 3), false)
+   * ```
+   */
   (that: number): (self: number) => boolean
+  /**
+   * Returns a function that checks if a given `number` is less than or equal to
+   * the provided one.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { lessThanOrEqualTo } from "effect/Number"
+   *
+   * assert.equal(lessThanOrEqualTo(2, 3), true)
+   * assert.equal(lessThanOrEqualTo(3, 3), true)
+   * assert.equal(lessThanOrEqualTo(4, 3), false)
+   * ```
+   */
   (self: number, that: number): boolean
 } = order.lessThanOrEqualTo(Order)
 
@@ -805,7 +877,43 @@ export const lessThanOrEqualTo: {
  * ```
  */
 export const greaterThan: {
+  /**
+   * Returns `true` if the first argument is greater than the second, otherwise
+   * `false`.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { greaterThan } from "effect/Number"
+   *
+   * assert.equal(greaterThan(2, 3), false)
+   * assert.equal(greaterThan(3, 3), false)
+   * assert.equal(greaterThan(4, 3), true)
+   * ```
+   */
   (that: number): (self: number) => boolean
+  /**
+   * Returns `true` if the first argument is greater than the second, otherwise
+   * `false`.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { greaterThan } from "effect/Number"
+   *
+   * assert.equal(greaterThan(2, 3), false)
+   * assert.equal(greaterThan(3, 3), false)
+   * assert.equal(greaterThan(4, 3), true)
+   * ```
+   */
   (self: number, that: number): boolean
 } = order.greaterThan(Order)
 
@@ -828,7 +936,43 @@ export const greaterThan: {
  * ```
  */
 export const greaterThanOrEqualTo: {
+  /**
+   * Returns a function that checks if a given `number` is greater than or equal
+   * to the provided one.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { greaterThanOrEqualTo } from "effect/Number"
+   *
+   * assert.equal(greaterThanOrEqualTo(2, 3), false)
+   * assert.equal(greaterThanOrEqualTo(3, 3), true)
+   * assert.equal(greaterThanOrEqualTo(4, 3), true)
+   * ```
+   */
   (that: number): (self: number) => boolean
+  /**
+   * Returns a function that checks if a given `number` is greater than or equal
+   * to the provided one.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { greaterThanOrEqualTo } from "effect/Number"
+   *
+   * assert.equal(greaterThanOrEqualTo(2, 3), false)
+   * assert.equal(greaterThanOrEqualTo(3, 3), true)
+   * assert.equal(greaterThanOrEqualTo(4, 3), true)
+   * ```
+   */
   (self: number, that: number): boolean
 } = order.greaterThanOrEqualTo(Order)
 
@@ -852,13 +996,51 @@ export const greaterThanOrEqualTo: {
  * ```
  */
 export const between: {
+  /**
+   * Checks if a `number` is between a `minimum` and `maximum` value (inclusive).
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Number } from "effect"
+   *
+   * const between = Number.between({ minimum: 0, maximum: 5 })
+   *
+   * assert.equal(between(3), true)
+   * assert.equal(between(-1), false)
+   * assert.equal(between(6), false)
+   * ```
+   */
   (options: { minimum: number; maximum: number }): (self: number) => boolean
+  /**
+   * Checks if a `number` is between a `minimum` and `maximum` value (inclusive).
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category predicates
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Number } from "effect"
+   *
+   * const between = Number.between({ minimum: 0, maximum: 5 })
+   *
+   * assert.equal(between(3), true)
+   * assert.equal(between(-1), false)
+   * assert.equal(between(6), false)
+   * ```
+   */
   (
-    self: number,
-    options: {
-      minimum: number
-      maximum: number
-    }
+   self: number,
+   options: {
+     minimum: number
+     maximum: number
+   }
   ): boolean
 } = order.between(Order)
 
@@ -888,13 +1070,63 @@ export const between: {
  * ```
  */
 export const clamp: {
+  /**
+   * Restricts the given `number` to be within the range specified by the
+   * `minimum` and `maximum` values.
+   *
+   * - If the `number` is less than the `minimum` value, the function returns the
+   *   `minimum` value.
+   * - If the `number` is greater than the `maximum` value, the function returns the
+   *   `maximum` value.
+   * - Otherwise, it returns the original `number`.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Number } from "effect"
+   *
+   * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
+   *
+   * assert.equal(clamp(3), 3)
+   * assert.equal(clamp(0), 1)
+   * assert.equal(clamp(6), 5)
+   * ```
+   */
   (options: { minimum: number; maximum: number }): (self: number) => number
+  /**
+   * Restricts the given `number` to be within the range specified by the
+   * `minimum` and `maximum` values.
+   *
+   * - If the `number` is less than the `minimum` value, the function returns the
+   *   `minimum` value.
+   * - If the `number` is greater than the `maximum` value, the function returns the
+   *   `maximum` value.
+   * - Otherwise, it returns the original `number`.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { Number } from "effect"
+   *
+   * const clamp = Number.clamp({ minimum: 1, maximum: 5 })
+   *
+   * assert.equal(clamp(3), 3)
+   * assert.equal(clamp(0), 1)
+   * assert.equal(clamp(6), 5)
+   * ```
+   */
   (
-    self: number,
-    options: {
-      minimum: number
-      maximum: number
-    }
+   self: number,
+   options: {
+     minimum: number
+     maximum: number
+   }
   ): number
 } = order.clamp(Order)
 
@@ -913,7 +1145,35 @@ export const clamp: {
  * ```
  */
 export const min: {
+  /**
+   * Returns the minimum between two `number`s.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { min } from "effect/Number"
+   *
+   * assert.equal(min(2, 3), 2)
+   * ```
+   */
   (that: number): (self: number) => number
+  /**
+   * Returns the minimum between two `number`s.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { min } from "effect/Number"
+   *
+   * assert.equal(min(2, 3), 2)
+   * ```
+   */
   (self: number, that: number): number
 } = order.min(Order)
 
@@ -932,7 +1192,35 @@ export const min: {
  * ```
  */
 export const max: {
+  /**
+   * Returns the maximum between two `number`s.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { max } from "effect/Number"
+   *
+   * assert.equal(max(2, 3), 3)
+   * ```
+   */
   (that: number): (self: number) => number
+  /**
+   * Returns the maximum between two `number`s.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { max } from "effect/Number"
+   *
+   * assert.equal(max(2, 3), 3)
+   * ```
+   */
   (self: number, that: number): number
 } = order.max(Order)
 
@@ -976,7 +1264,47 @@ export const sign = (n: number): Ordering => Order(n, 0)
  * ```
  */
 export const remainder: {
+  /**
+   * Returns the remainder left over when one operand is divided by a second
+   * operand.
+   *
+   * It always takes the sign of the dividend.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category math
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { remainder } from "effect/Number"
+   *
+   * assert.equal(remainder(2, 2), 0)
+   * assert.equal(remainder(3, 2), 1)
+   * assert.equal(remainder(-4, 2), -0)
+   * ```
+   */
   (divisor: number): (dividend: number) => number
+  /**
+   * Returns the remainder left over when one operand is divided by a second
+   * operand.
+   *
+   * It always takes the sign of the dividend.
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category math
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { remainder } from "effect/Number"
+   *
+   * assert.equal(remainder(2, 2), 0)
+   * assert.equal(remainder(3, 2), 1)
+   * assert.equal(remainder(-4, 2), -0)
+   * ```
+   */
   (dividend: number, divisor: number): number
 } = dual(2, (dividend: number, divisor: number): number => {
   // https://stackoverflow.com/questions/3966484/why-does-modulus-operator-return-fractional-number-in-javascript/31711034#31711034
@@ -1028,6 +1356,15 @@ export const nextPow2 = (n: number): number => {
  * @category constructors
  */
 export const parse: {
+  /**
+   * Tries to parse a `number` from a `string` using the `Number()` function. The
+   * following special string values are supported: "NaN", "Infinity",
+   * "-Infinity".
+   *
+   * @memberof Number
+   * @since 2.0.0
+   * @category constructors
+   */
   (s: string): Option<number>
 } = (s) => {
   if (s === "NaN") {
@@ -1063,7 +1400,39 @@ export const parse: {
  * ```
  */
 export const round: {
+  /**
+   * Returns the number rounded with the given precision.
+   *
+   * @memberof Number
+   * @since 3.8.0
+   * @category math
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { round } from "effect/Number"
+   *
+   * assert.equal(round(1.1234, 2), 1.12)
+   * assert.equal(round(1.567, 2), 1.57)
+   * ```
+   */
   (precision: number): (self: number) => number
+  /**
+   * Returns the number rounded with the given precision.
+   *
+   * @memberof Number
+   * @since 3.8.0
+   * @category math
+   * @example
+   *
+   * ```ts
+   * import * as assert from "node:assert/strict"
+   * import { round } from "effect/Number"
+   *
+   * assert.equal(round(1.1234, 2), 1.12)
+   * assert.equal(round(1.567, 2), 1.57)
+   * ```
+   */
   (self: number, precision: number): number
 } = dual(2, (self: number, precision: number): number => {
   const factor = Math.pow(10, precision)

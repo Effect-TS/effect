@@ -185,7 +185,59 @@ export declare namespace Refinement {
  * @since 2.0.0
  */
 export const mapInput: {
+  /**
+   * Transforms a `Predicate<A>` into a `Predicate<B>` by applying a function `(b: B) => A`
+   * to the input before passing it to the predicate. This is also known as "contramap" or
+   * "pre-composition".
+   *
+   * @example
+   * ```ts
+   * import { Predicate, Number } from "effect"
+   * import * as assert from "node:assert"
+   *
+   * // A predicate on numbers
+   * const isPositive: Predicate.Predicate<number> = Number.greaterThan(0)
+   *
+   * // A function from `string` to `number`
+   * const stringLength = (s: string): number => s.length
+   *
+   * // Create a new predicate on strings by mapping the input
+   * const hasPositiveLength = Predicate.mapInput(isPositive, stringLength)
+   *
+   * assert.strictEqual(hasPositiveLength("hello"), true)
+   * assert.strictEqual(hasPositiveLength(""), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <B, A>(f: (b: B) => A): (self: Predicate<A>) => Predicate<B>
+  /**
+   * Transforms a `Predicate<A>` into a `Predicate<B>` by applying a function `(b: B) => A`
+   * to the input before passing it to the predicate. This is also known as "contramap" or
+   * "pre-composition".
+   *
+   * @example
+   * ```ts
+   * import { Predicate, Number } from "effect"
+   * import * as assert from "node:assert"
+   *
+   * // A predicate on numbers
+   * const isPositive: Predicate.Predicate<number> = Number.greaterThan(0)
+   *
+   * // A function from `string` to `number`
+   * const stringLength = (s: string): number => s.length
+   *
+   * // Create a new predicate on strings by mapping the input
+   * const hasPositiveLength = Predicate.mapInput(isPositive, stringLength)
+   *
+   * assert.strictEqual(hasPositiveLength("hello"), true)
+   * assert.strictEqual(hasPositiveLength(""), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A, B>(self: Predicate<A>, f: (b: B) => A): Predicate<B>
 } = dual(2, <A, B>(self: Predicate<A>, f: (b: B) => A): Predicate<B> => (b) => self(f(b)))
 
@@ -215,7 +267,57 @@ export const mapInput: {
  * @since 3.3.0
  */
 export const isTupleOf: {
+  /**
+   * A refinement that checks if a `ReadonlyArray<T>` is a tuple with exactly `N` elements.
+   * If the check is successful, the type is narrowed to `TupleOf<N, T>`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { isTupleOf } from "effect/Predicate"
+   *
+   * const isTupleOf3 = isTupleOf(3)
+   *
+   * assert.strictEqual(isTupleOf3([1, 2, 3]), true);
+   * assert.strictEqual(isTupleOf3([1, 2]), false);
+   *
+   * const arr: number[] = [1, 2, 3];
+   * if (isTupleOf(arr, 3)) {
+   *   // The type of arr is now [number, number, number]
+   *   const [a, b, c] = arr;
+   *   assert.deepStrictEqual([a, b, c], [1, 2, 3])
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 3.3.0
+   */
   <N extends number>(n: N): <T>(self: ReadonlyArray<T>) => self is TupleOf<N, T>
+  /**
+   * A refinement that checks if a `ReadonlyArray<T>` is a tuple with exactly `N` elements.
+   * If the check is successful, the type is narrowed to `TupleOf<N, T>`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { isTupleOf } from "effect/Predicate"
+   *
+   * const isTupleOf3 = isTupleOf(3)
+   *
+   * assert.strictEqual(isTupleOf3([1, 2, 3]), true);
+   * assert.strictEqual(isTupleOf3([1, 2]), false);
+   *
+   * const arr: number[] = [1, 2, 3];
+   * if (isTupleOf(arr, 3)) {
+   *   // The type of arr is now [number, number, number]
+   *   const [a, b, c] = arr;
+   *   assert.deepStrictEqual([a, b, c], [1, 2, 3])
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 3.3.0
+   */
   <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOf<N, T>
 } = dual(2, <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOf<N, T> => self.length === n)
 
@@ -246,7 +348,59 @@ export const isTupleOf: {
  * @since 3.3.0
  */
 export const isTupleOfAtLeast: {
+  /**
+   * A refinement that checks if a `ReadonlyArray<T>` is a tuple with at least `N` elements.
+   * If the check is successful, the type is narrowed to `TupleOfAtLeast<N, T>`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { isTupleOfAtLeast } from "effect/Predicate"
+   *
+   * const isTupleOfAtLeast3 = isTupleOfAtLeast(3)
+   *
+   * assert.strictEqual(isTupleOfAtLeast3([1, 2, 3]), true);
+   * assert.strictEqual(isTupleOfAtLeast3([1, 2, 3, 4]), true);
+   * assert.strictEqual(isTupleOfAtLeast3([1, 2]), false);
+   *
+   * const arr: number[] = [1, 2, 3, 4];
+   * if (isTupleOfAtLeast(arr, 3)) {
+   *   // The type of arr is now [number, number, number, ...number[]]
+   *   const [a, b, c] = arr;
+   *   assert.deepStrictEqual([a, b, c], [1, 2, 3])
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 3.3.0
+   */
   <N extends number>(n: N): <T>(self: ReadonlyArray<T>) => self is TupleOfAtLeast<N, T>
+  /**
+   * A refinement that checks if a `ReadonlyArray<T>` is a tuple with at least `N` elements.
+   * If the check is successful, the type is narrowed to `TupleOfAtLeast<N, T>`.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { isTupleOfAtLeast } from "effect/Predicate"
+   *
+   * const isTupleOfAtLeast3 = isTupleOfAtLeast(3)
+   *
+   * assert.strictEqual(isTupleOfAtLeast3([1, 2, 3]), true);
+   * assert.strictEqual(isTupleOfAtLeast3([1, 2, 3, 4]), true);
+   * assert.strictEqual(isTupleOfAtLeast3([1, 2]), false);
+   *
+   * const arr: number[] = [1, 2, 3, 4];
+   * if (isTupleOfAtLeast(arr, 3)) {
+   *   // The type of arr is now [number, number, number, ...number[]]
+   *   const [a, b, c] = arr;
+   *   assert.deepStrictEqual([a, b, c], [1, 2, 3])
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 3.3.0
+   */
   <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOfAtLeast<N, T>
 } = dual(2, <T, N extends number>(self: ReadonlyArray<T>, n: N): self is TupleOfAtLeast<N, T> => self.length >= n)
 
@@ -603,7 +757,51 @@ export const isObject = (input: unknown): input is object => isRecordOrArray(inp
  * @since 2.0.0
  */
 export const hasProperty: {
+  /**
+   * A refinement that checks if a value is an object-like value and has a specific property key.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { hasProperty } from "effect/Predicate"
+   *
+   * assert.strictEqual(hasProperty({ a: 1 }, "a"), true)
+   * assert.strictEqual(hasProperty({ a: 1 }, "b"), false)
+   *
+   * const value: unknown = { name: "Alice" };
+   * if (hasProperty(value, "name")) {
+   *   // The type of `value` is narrowed to `{ name: unknown }`
+   *   // and we can safely access `value.name`
+   *   console.log(value.name)
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 2.0.0
+   */
   <P extends PropertyKey>(property: P): (self: unknown) => self is { [K in P]: unknown }
+  /**
+   * A refinement that checks if a value is an object-like value and has a specific property key.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { hasProperty } from "effect/Predicate"
+   *
+   * assert.strictEqual(hasProperty({ a: 1 }, "a"), true)
+   * assert.strictEqual(hasProperty({ a: 1 }, "b"), false)
+   *
+   * const value: unknown = { name: "Alice" };
+   * if (hasProperty(value, "name")) {
+   *   // The type of `value` is narrowed to `{ name: unknown }`
+   *   // and we can safely access `value.name`
+   *   console.log(value.name)
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 2.0.0
+   */
   <P extends PropertyKey>(self: unknown, property: P): self is { [K in P]: unknown }
 } = dual(
   2,
@@ -641,7 +839,65 @@ export const hasProperty: {
  * @since 2.0.0
  */
 export const isTagged: {
+  /**
+   * A refinement that checks if a value is an object with a `_tag` property
+   * that matches the given tag. This is a powerful tool for working with
+   * discriminated union types.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { isTagged } from "effect/Predicate"
+   *
+   * type Shape = { _tag: "circle"; radius: number } | { _tag: "square"; side: number }
+   *
+   * const isCircle = isTagged("circle")
+   *
+   * const shape1: Shape = { _tag: "circle", radius: 10 }
+   * const shape2: Shape = { _tag: "square", side: 5 }
+   *
+   * assert.strictEqual(isCircle(shape1), true)
+   * assert.strictEqual(isCircle(shape2), false)
+   *
+   * if (isCircle(shape1)) {
+   *   // shape1 is now narrowed to { _tag: "circle"; radius: number }
+   *   assert.strictEqual(shape1.radius, 10)
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 2.0.0
+   */
   <K extends string>(tag: K): (self: unknown) => self is { _tag: K }
+  /**
+   * A refinement that checks if a value is an object with a `_tag` property
+   * that matches the given tag. This is a powerful tool for working with
+   * discriminated union types.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { isTagged } from "effect/Predicate"
+   *
+   * type Shape = { _tag: "circle"; radius: number } | { _tag: "square"; side: number }
+   *
+   * const isCircle = isTagged("circle")
+   *
+   * const shape1: Shape = { _tag: "circle", radius: 10 }
+   * const shape2: Shape = { _tag: "square", side: 5 }
+   *
+   * assert.strictEqual(isCircle(shape1), true)
+   * assert.strictEqual(isCircle(shape2), false)
+   *
+   * if (isCircle(shape1)) {
+   *   // shape1 is now narrowed to { _tag: "circle"; radius: number }
+   *   assert.strictEqual(shape1.radius, 10)
+   * }
+   * ```
+   *
+   * @category guards
+   * @since 2.0.0
+   */
   <K extends string>(self: unknown, tag: K): self is { _tag: K }
 } = dual(
   2,
@@ -919,9 +1175,129 @@ export const isRegExp = (input: unknown): input is RegExp => input instanceof Re
  * @since 2.0.0
  */
 export const compose: {
+  /**
+   * Composes a `Refinement` with another `Refinement` or `Predicate`.
+   *
+   * This can be used to chain checks. The first refinement is applied, and if it
+   * passes, the second check is applied to the same value, potentially refining
+   * the type further.
+   *
+   * @example
+   * ```ts
+   * import { Predicate } from "effect"
+   * import * as assert from "node:assert"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const minLength = (n: number) => (s: string): boolean => s.length >= n
+   *
+   * // Create a refinement that checks for a string with a minimum length of 3
+   * const isLongString = Predicate.compose(isString, minLength(3))
+   *
+   * let value: unknown = "hello"
+   *
+   * assert.strictEqual(isLongString(value), true)
+   * if (isLongString(value)) {
+   *   // value is narrowed to string
+   *   assert.strictEqual(value.toUpperCase(), "HELLO")
+   * }
+   * assert.strictEqual(isLongString("hi"), false)
+   * ```
+   *
+   * @since 2.0.0
+   */
   <A, B extends A, C extends B, D extends C>(bc: Refinement<C, D>): (ab: Refinement<A, B>) => Refinement<A, D>
+  /**
+   * Composes a `Refinement` with another `Refinement` or `Predicate`.
+   *
+   * This can be used to chain checks. The first refinement is applied, and if it
+   * passes, the second check is applied to the same value, potentially refining
+   * the type further.
+   *
+   * @example
+   * ```ts
+   * import { Predicate } from "effect"
+   * import * as assert from "node:assert"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const minLength = (n: number) => (s: string): boolean => s.length >= n
+   *
+   * // Create a refinement that checks for a string with a minimum length of 3
+   * const isLongString = Predicate.compose(isString, minLength(3))
+   *
+   * let value: unknown = "hello"
+   *
+   * assert.strictEqual(isLongString(value), true)
+   * if (isLongString(value)) {
+   *   // value is narrowed to string
+   *   assert.strictEqual(value.toUpperCase(), "HELLO")
+   * }
+   * assert.strictEqual(isLongString("hi"), false)
+   * ```
+   *
+   * @since 2.0.0
+   */
   <A, B extends A>(bc: Predicate<NoInfer<B>>): (ab: Refinement<A, B>) => Refinement<A, B>
+  /**
+   * Composes a `Refinement` with another `Refinement` or `Predicate`.
+   *
+   * This can be used to chain checks. The first refinement is applied, and if it
+   * passes, the second check is applied to the same value, potentially refining
+   * the type further.
+   *
+   * @example
+   * ```ts
+   * import { Predicate } from "effect"
+   * import * as assert from "node:assert"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const minLength = (n: number) => (s: string): boolean => s.length >= n
+   *
+   * // Create a refinement that checks for a string with a minimum length of 3
+   * const isLongString = Predicate.compose(isString, minLength(3))
+   *
+   * let value: unknown = "hello"
+   *
+   * assert.strictEqual(isLongString(value), true)
+   * if (isLongString(value)) {
+   *   // value is narrowed to string
+   *   assert.strictEqual(value.toUpperCase(), "HELLO")
+   * }
+   * assert.strictEqual(isLongString("hi"), false)
+   * ```
+   *
+   * @since 2.0.0
+   */
   <A, B extends A, C extends B, D extends C>(ab: Refinement<A, B>, bc: Refinement<C, D>): Refinement<A, D>
+  /**
+   * Composes a `Refinement` with another `Refinement` or `Predicate`.
+   *
+   * This can be used to chain checks. The first refinement is applied, and if it
+   * passes, the second check is applied to the same value, potentially refining
+   * the type further.
+   *
+   * @example
+   * ```ts
+   * import { Predicate } from "effect"
+   * import * as assert from "node:assert"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const minLength = (n: number) => (s: string): boolean => s.length >= n
+   *
+   * // Create a refinement that checks for a string with a minimum length of 3
+   * const isLongString = Predicate.compose(isString, minLength(3))
+   *
+   * let value: unknown = "hello"
+   *
+   * assert.strictEqual(isLongString(value), true)
+   * if (isLongString(value)) {
+   *   // value is narrowed to string
+   *   assert.strictEqual(value.toUpperCase(), "HELLO")
+   * }
+   * assert.strictEqual(isLongString("hi"), false)
+   * ```
+   *
+   * @since 2.0.0
+   */
   <A, B extends A>(ab: Refinement<A, B>, bc: Predicate<NoInfer<B>>): Refinement<A, B>
 } = dual(
   2,
@@ -1016,9 +1392,39 @@ export const productMany = <A>(
  * @since 2.0.0
  */
 export const tuple: {
-  <T extends ReadonlyArray<Predicate.Any>>(
-    ...elements: T
-  ): [Extract<T[number], Refinement.Any>] extends [never] ? Predicate<{ readonly [I in keyof T]: Predicate.In<T[I]> }>
+  /**
+   * Combines an array of predicates into a single predicate that tests an array of values.
+   * This function is highly type-aware and will produce a `Refinement` if any of the provided
+   * predicates are `Refinement`s, allowing for powerful type-narrowing of tuples.
+   *
+   * - If all predicates are `Predicate<T>`, the result is `Predicate<[T, T, ...]>`.
+   * - If any predicate is a `Refinement<A, B>`, the result is a `Refinement` that narrows
+   *   the input tuple type to a more specific tuple type.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const isNumber = (u: unknown): u is number => typeof u === "number"
+   *
+   * // Create a refinement for a [string, number] tuple
+   * const isStringNumberTuple = Predicate.tuple(isString, isNumber)
+   *
+   * const value: [unknown, unknown] = ["hello", 123]
+   * if (isStringNumberTuple(value)) {
+   *   // value is narrowed to [string, number]
+   *   const [s, n] = value
+   *   assert.strictEqual(s.toUpperCase(), "HELLO")
+   *   assert.strictEqual(n.toFixed(2), "123.00")
+   * }
+   * assert.strictEqual(isStringNumberTuple(["hello", "123"]), false)
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <T extends ReadonlyArray<Predicate.Any>>(...elements: T): [Extract<T[number], Refinement.Any>] extends [never] ? Predicate<{ readonly [I in keyof T]: Predicate.In<T[I]> }>
     : Refinement<
       { readonly [I in keyof T]: T[I] extends Refinement.Any ? Refinement.In<T[I]> : Predicate.In<T[I]> },
       { readonly [I in keyof T]: T[I] extends Refinement.Any ? Refinement.Out<T[I]> : Predicate.In<T[I]> }
@@ -1059,9 +1465,40 @@ export const tuple: {
  * @since 2.0.0
  */
 export const struct: {
-  <R extends Record<string, Predicate.Any>>(
-    fields: R
-  ): [Extract<R[keyof R], Refinement.Any>] extends [never] ?
+  /**
+   * Combines a record of predicates into a single predicate that tests a record of values.
+   * This function is highly type-aware and will produce a `Refinement` if any of the provided
+   * predicates are `Refinement`s, allowing for powerful type-narrowing of structs.
+   *
+   * - If all predicates are `Predicate<T>`, the result is `Predicate<{ k: T, ... }>`.
+   * - If any predicate is a `Refinement<A, B>`, the result is a `Refinement` that narrows
+   *   the input record type to a more specific record type.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const isNumber = (u: unknown): u is number => typeof u === "number"
+   *
+   * const personPredicate = Predicate.struct({
+   *   name: isString,
+   *   age: isNumber
+   * })
+   *
+   * const value: { name: unknown; age: unknown } = { name: "Alice", age: 30 }
+   * if (personPredicate(value)) {
+   *   // value is narrowed to { name: string; age: number }
+   *   assert.strictEqual(value.name.toUpperCase(), "ALICE")
+   *   assert.strictEqual(value.age.toFixed(0), "30")
+   * }
+   * assert.strictEqual(personPredicate({ name: "Bob", age: "40" }), false)
+   * ```
+   *
+   * @since 2.0.0
+   */
+  <R extends Record<string, Predicate.Any>>(fields: R): [Extract<R[keyof R], Refinement.Any>] extends [never] ?
     Predicate<{ readonly [K in keyof R]: Predicate.In<R[K]> }> :
     Refinement<
       { readonly [K in keyof R]: R[K] extends Refinement.Any ? Refinement.In<R[K]> : Predicate.In<R[K]> },
@@ -1134,9 +1571,133 @@ export const not = <A>(self: Predicate<A>): Predicate<A> => (a) => !self(a)
  * @since 2.0.0
  */
 export const or: {
+  /**
+   * Combines two predicates with a logical "OR". The resulting predicate returns `true`
+   * if at least one of the predicates returns `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * union of their target types (`B | C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const isNumber = (u: unknown): u is number => typeof u === "number"
+   *
+   * const isStringOrNumber = Predicate.or(isString, isNumber)
+   *
+   * assert.strictEqual(isStringOrNumber("hello"), true)
+   * assert.strictEqual(isStringOrNumber(123), true)
+   * assert.strictEqual(isStringOrNumber(null), false)
+   *
+   * const value: unknown = "world"
+   * if (isStringOrNumber(value)) {
+   *   // value is narrowed to string | number
+   *   console.log(value)
+   * }
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A, C extends A>(that: Refinement<A, C>): <B extends A>(self: Refinement<A, B>) => Refinement<A, B | C>
+  /**
+   * Combines two predicates with a logical "OR". The resulting predicate returns `true`
+   * if at least one of the predicates returns `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * union of their target types (`B | C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const isNumber = (u: unknown): u is number => typeof u === "number"
+   *
+   * const isStringOrNumber = Predicate.or(isString, isNumber)
+   *
+   * assert.strictEqual(isStringOrNumber("hello"), true)
+   * assert.strictEqual(isStringOrNumber(123), true)
+   * assert.strictEqual(isStringOrNumber(null), false)
+   *
+   * const value: unknown = "world"
+   * if (isStringOrNumber(value)) {
+   *   // value is narrowed to string | number
+   *   console.log(value)
+   * }
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A, B extends A, C extends A>(self: Refinement<A, B>, that: Refinement<A, C>): Refinement<A, B | C>
+  /**
+   * Combines two predicates with a logical "OR". The resulting predicate returns `true`
+   * if at least one of the predicates returns `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * union of their target types (`B | C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const isNumber = (u: unknown): u is number => typeof u === "number"
+   *
+   * const isStringOrNumber = Predicate.or(isString, isNumber)
+   *
+   * assert.strictEqual(isStringOrNumber("hello"), true)
+   * assert.strictEqual(isStringOrNumber(123), true)
+   * assert.strictEqual(isStringOrNumber(null), false)
+   *
+   * const value: unknown = "world"
+   * if (isStringOrNumber(value)) {
+   *   // value is narrowed to string | number
+   *   console.log(value)
+   * }
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
+  /**
+   * Combines two predicates with a logical "OR". The resulting predicate returns `true`
+   * if at least one of the predicates returns `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * union of their target types (`B | C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isString = (u: unknown): u is string => typeof u === "string"
+   * const isNumber = (u: unknown): u is number => typeof u === "number"
+   *
+   * const isStringOrNumber = Predicate.or(isString, isNumber)
+   *
+   * assert.strictEqual(isStringOrNumber("hello"), true)
+   * assert.strictEqual(isStringOrNumber(123), true)
+   * assert.strictEqual(isStringOrNumber(null), false)
+   *
+   * const value: unknown = "world"
+   * if (isStringOrNumber(value)) {
+   *   // value is narrowed to string | number
+   *   console.log(value)
+   * }
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A>
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) || that(a))
 
@@ -1175,9 +1736,145 @@ export const or: {
  * @since 2.0.0
  */
 export const and: {
+  /**
+   * Combines two predicates with a logical "AND". The resulting predicate returns `true`
+   * only if both of the predicates return `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * intersection of their target types (`B & C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * type Person = { name: string }
+   * type Employee = { id: number }
+   *
+   * const hasName = (u: unknown): u is Person => Predicate.hasProperty(u, "name") && typeof (u as any).name === "string"
+   * const hasId = (u: unknown): u is Employee => Predicate.hasProperty(u, "id") && typeof (u as any).id === "number"
+   *
+   * const isPersonAndEmployee = Predicate.and(hasName, hasId)
+   *
+   * const val: unknown = { name: "Alice", id: 123 }
+   * if (isPersonAndEmployee(val)) {
+   *   // val is narrowed to Person & Employee
+   *   assert.strictEqual(val.name, "Alice")
+   *   assert.strictEqual(val.id, 123)
+   * }
+   *
+   * assert.strictEqual(isPersonAndEmployee({ name: "Bob" }), false) // Missing id
+   * assert.strictEqual(isPersonAndEmployee({ id: 456 }), false) // Missing name
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A, C extends A>(that: Refinement<A, C>): <B extends A>(self: Refinement<A, B>) => Refinement<A, B & C>
+  /**
+   * Combines two predicates with a logical "AND". The resulting predicate returns `true`
+   * only if both of the predicates return `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * intersection of their target types (`B & C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * type Person = { name: string }
+   * type Employee = { id: number }
+   *
+   * const hasName = (u: unknown): u is Person => Predicate.hasProperty(u, "name") && typeof (u as any).name === "string"
+   * const hasId = (u: unknown): u is Employee => Predicate.hasProperty(u, "id") && typeof (u as any).id === "number"
+   *
+   * const isPersonAndEmployee = Predicate.and(hasName, hasId)
+   *
+   * const val: unknown = { name: "Alice", id: 123 }
+   * if (isPersonAndEmployee(val)) {
+   *   // val is narrowed to Person & Employee
+   *   assert.strictEqual(val.name, "Alice")
+   *   assert.strictEqual(val.id, 123)
+   * }
+   *
+   * assert.strictEqual(isPersonAndEmployee({ name: "Bob" }), false) // Missing id
+   * assert.strictEqual(isPersonAndEmployee({ id: 456 }), false) // Missing name
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A, B extends A, C extends A>(self: Refinement<A, B>, that: Refinement<A, C>): Refinement<A, B & C>
+  /**
+   * Combines two predicates with a logical "AND". The resulting predicate returns `true`
+   * only if both of the predicates return `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * intersection of their target types (`B & C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * type Person = { name: string }
+   * type Employee = { id: number }
+   *
+   * const hasName = (u: unknown): u is Person => Predicate.hasProperty(u, "name") && typeof (u as any).name === "string"
+   * const hasId = (u: unknown): u is Employee => Predicate.hasProperty(u, "id") && typeof (u as any).id === "number"
+   *
+   * const isPersonAndEmployee = Predicate.and(hasName, hasId)
+   *
+   * const val: unknown = { name: "Alice", id: 123 }
+   * if (isPersonAndEmployee(val)) {
+   *   // val is narrowed to Person & Employee
+   *   assert.strictEqual(val.name, "Alice")
+   *   assert.strictEqual(val.id, 123)
+   * }
+   *
+   * assert.strictEqual(isPersonAndEmployee({ name: "Bob" }), false) // Missing id
+   * assert.strictEqual(isPersonAndEmployee({ id: 456 }), false) // Missing name
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
+  /**
+   * Combines two predicates with a logical "AND". The resulting predicate returns `true`
+   * only if both of the predicates return `true`.
+   *
+   * If both predicates are `Refinement`s, the resulting predicate is a `Refinement` to the
+   * intersection of their target types (`B & C`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * type Person = { name: string }
+   * type Employee = { id: number }
+   *
+   * const hasName = (u: unknown): u is Person => Predicate.hasProperty(u, "name") && typeof (u as any).name === "string"
+   * const hasId = (u: unknown): u is Employee => Predicate.hasProperty(u, "id") && typeof (u as any).id === "number"
+   *
+   * const isPersonAndEmployee = Predicate.and(hasName, hasId)
+   *
+   * const val: unknown = { name: "Alice", id: 123 }
+   * if (isPersonAndEmployee(val)) {
+   *   // val is narrowed to Person & Employee
+   *   assert.strictEqual(val.name, "Alice")
+   *   assert.strictEqual(val.id, 123)
+   * }
+   *
+   * assert.strictEqual(isPersonAndEmployee({ name: "Bob" }), false) // Missing id
+   * assert.strictEqual(isPersonAndEmployee({ id: 456 }), false) // Missing name
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A>
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) && that(a))
 
@@ -1205,7 +1902,53 @@ export const and: {
  * @since 2.0.0
  */
 export const xor: {
+  /**
+   * Combines two predicates with a logical "XOR" (exclusive OR). The resulting predicate
+   * returns `true` if one of the predicates returns `true`, but not both.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isPositive = (n: number) => n > 0
+   * const isEven = (n: number) => n % 2 === 0
+   *
+   * const isPositiveXorEven = Predicate.xor(isPositive, isEven)
+   *
+   * assert.strictEqual(isPositiveXorEven(4), false)  // both true -> false
+   * assert.strictEqual(isPositiveXorEven(3), true)   // one true -> true
+   * assert.strictEqual(isPositiveXorEven(-2), true)  // one true -> true
+   * assert.strictEqual(isPositiveXorEven(-1), false) // both false -> false
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
+  /**
+   * Combines two predicates with a logical "XOR" (exclusive OR). The resulting predicate
+   * returns `true` if one of the predicates returns `true`, but not both.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isPositive = (n: number) => n > 0
+   * const isEven = (n: number) => n % 2 === 0
+   *
+   * const isPositiveXorEven = Predicate.xor(isPositive, isEven)
+   *
+   * assert.strictEqual(isPositiveXorEven(4), false)  // both true -> false
+   * assert.strictEqual(isPositiveXorEven(3), true)   // one true -> true
+   * assert.strictEqual(isPositiveXorEven(-2), true)  // one true -> true
+   * assert.strictEqual(isPositiveXorEven(-1), false) // both false -> false
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A>
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) !== that(a))
 
@@ -1233,7 +1976,53 @@ export const xor: {
  * @since 2.0.0
  */
 export const eqv: {
+  /**
+   * Combines two predicates with a logical "EQV" (equivalence). The resulting predicate
+   * returns `true` if both predicates return the same boolean value (both `true` or both `false`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isPositive = (n: number) => n > 0
+   * const isEven = (n: number) => n % 2 === 0
+   *
+   * const isPositiveEqvEven = Predicate.eqv(isPositive, isEven)
+   *
+   * assert.strictEqual(isPositiveEqvEven(4), true)   // both true -> true
+   * assert.strictEqual(isPositiveEqvEven(3), false)  // different -> false
+   * assert.strictEqual(isPositiveEqvEven(-2), false) // different -> false
+   * assert.strictEqual(isPositiveEqvEven(-1), true)  // both false -> true
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
+  /**
+   * Combines two predicates with a logical "EQV" (equivalence). The resulting predicate
+   * returns `true` if both predicates return the same boolean value (both `true` or both `false`).
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * const isPositive = (n: number) => n > 0
+   * const isEven = (n: number) => n % 2 === 0
+   *
+   * const isPositiveEqvEven = Predicate.eqv(isPositive, isEven)
+   *
+   * assert.strictEqual(isPositiveEqvEven(4), true)   // both true -> true
+   * assert.strictEqual(isPositiveEqvEven(3), false)  // different -> false
+   * assert.strictEqual(isPositiveEqvEven(-2), false) // different -> false
+   * assert.strictEqual(isPositiveEqvEven(-1), true)  // both false -> true
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A>
 } = dual(2, <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A> => (a) => self(a) === that(a))
 
@@ -1297,7 +2086,125 @@ export const eqv: {
  * @since 2.0.0
  */
 export const implies: {
+  /**
+   * Creates a predicate that represents a logical "if-then" rule.
+   *
+   * Think of it as a conditional promise: **"If `antecedent` holds true, then I promise `consequent` will also be true."**
+   *
+   * This function is invaluable for defining complex validation logic where one condition dictates another.
+   *
+   * ### How It Works
+   *
+   * The rule only fails (returns `false`) when the "if" part is `true`, but the "then" part is `false`.
+   * In all other cases, the promise is considered kept, and the result is `true`.
+   *
+   * This includes the concept of **"vacuous truth"**: if the "if" part is `false`, the rule doesn't apply,
+   * so the promise isn't broken, and the result is `true`. (e.g., "If it rains, I'll bring an umbrella."
+   * If it doesn't rain, you haven't broken your promise, no matter what).
+   *
+   * ### Key Details
+   *
+   * - **Logical Equivalence**: `implies(p, q)` is the same as `not(p).or(q)`, or simply `!p || q`
+   *   in plain JavaScript. This can be a helpful way to reason about its behavior.
+   *
+   * - **Type-Safety Warning**: This function always returns a `Predicate`, never a type-narrowing
+   *   `Refinement`. A `true` result doesn't guarantee the `consequent` passed (it could be `true`
+   *   simply because the `antecedent` was `false`), so it cannot be used to safely narrow a type.
+   *
+   * @example
+   * ```ts
+   * // Rule: A user can only be an admin if they also belong to the "staff" group.
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * type User = {
+   *   isStaff: boolean
+   *   isAdmin: boolean
+   * }
+   *
+   * const isValidUserPermission = Predicate.implies(
+   *   // antecedent: "if" the user is an admin...
+   *   (user: User) => user.isAdmin,
+   *   // consequent: "then" they must be staff.
+   *   (user: User) => user.isStaff
+   * )
+   *
+   * // A non-admin who is not staff. Rule doesn't apply (antecedent is false).
+   * assert.strictEqual(isValidUserPermission({ isStaff: false, isAdmin: false }), true)
+   *
+   * // A staff member who is not an admin. Rule doesn't apply (antecedent is false).
+   * assert.strictEqual(isValidUserPermission({ isStaff: true, isAdmin: false }), true)
+   *
+   * // An admin who is also staff. The rule was followed.
+   * assert.strictEqual(isValidUserPermission({ isStaff: true, isAdmin: true }), true)
+   *
+   * // An admin who is NOT staff. The rule was broken!
+   * assert.strictEqual(isValidUserPermission({ isStaff: false, isAdmin: true }), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(consequent: Predicate<A>): (antecedent: Predicate<A>) => Predicate<A>
+  /**
+   * Creates a predicate that represents a logical "if-then" rule.
+   *
+   * Think of it as a conditional promise: **"If `antecedent` holds true, then I promise `consequent` will also be true."**
+   *
+   * This function is invaluable for defining complex validation logic where one condition dictates another.
+   *
+   * ### How It Works
+   *
+   * The rule only fails (returns `false`) when the "if" part is `true`, but the "then" part is `false`.
+   * In all other cases, the promise is considered kept, and the result is `true`.
+   *
+   * This includes the concept of **"vacuous truth"**: if the "if" part is `false`, the rule doesn't apply,
+   * so the promise isn't broken, and the result is `true`. (e.g., "If it rains, I'll bring an umbrella."
+   * If it doesn't rain, you haven't broken your promise, no matter what).
+   *
+   * ### Key Details
+   *
+   * - **Logical Equivalence**: `implies(p, q)` is the same as `not(p).or(q)`, or simply `!p || q`
+   *   in plain JavaScript. This can be a helpful way to reason about its behavior.
+   *
+   * - **Type-Safety Warning**: This function always returns a `Predicate`, never a type-narrowing
+   *   `Refinement`. A `true` result doesn't guarantee the `consequent` passed (it could be `true`
+   *   simply because the `antecedent` was `false`), so it cannot be used to safely narrow a type.
+   *
+   * @example
+   * ```ts
+   * // Rule: A user can only be an admin if they also belong to the "staff" group.
+   * import * as assert from "node:assert"
+   * import { Predicate } from "effect"
+   *
+   * type User = {
+   *   isStaff: boolean
+   *   isAdmin: boolean
+   * }
+   *
+   * const isValidUserPermission = Predicate.implies(
+   *   // antecedent: "if" the user is an admin...
+   *   (user: User) => user.isAdmin,
+   *   // consequent: "then" they must be staff.
+   *   (user: User) => user.isStaff
+   * )
+   *
+   * // A non-admin who is not staff. Rule doesn't apply (antecedent is false).
+   * assert.strictEqual(isValidUserPermission({ isStaff: false, isAdmin: false }), true)
+   *
+   * // A staff member who is not an admin. Rule doesn't apply (antecedent is false).
+   * assert.strictEqual(isValidUserPermission({ isStaff: true, isAdmin: false }), true)
+   *
+   * // An admin who is also staff. The rule was followed.
+   * assert.strictEqual(isValidUserPermission({ isStaff: true, isAdmin: true }), true)
+   *
+   * // An admin who is NOT staff. The rule was broken!
+   * assert.strictEqual(isValidUserPermission({ isStaff: false, isAdmin: true }), false)
+   * ```
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(antecedent: Predicate<A>, consequent: Predicate<A>): Predicate<A>
 } = dual(
   2,
@@ -1313,7 +2220,23 @@ export const implies: {
  * @since 2.0.0
  */
 export const nor: {
+  /**
+   * Combines two predicates with a logical "NOR" (negated OR). The resulting predicate
+   * returns `true` only if both predicates return `false`.
+   * This is equivalent to `not(or(p, q))`.
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
+  /**
+   * Combines two predicates with a logical "NOR" (negated OR). The resulting predicate
+   * returns `true` only if both predicates return `false`.
+   * This is equivalent to `not(or(p, q))`.
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A>
 } = dual(
   2,
@@ -1329,7 +2252,23 @@ export const nor: {
  * @since 2.0.0
  */
 export const nand: {
+  /**
+   * Combines two predicates with a logical "NAND" (negated AND). The resulting predicate
+   * returns `true` if at least one of the predicates returns `false`.
+   * This is equivalent to `not(and(p, q))`.
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(that: Predicate<A>): (self: Predicate<A>) => Predicate<A>
+  /**
+   * Combines two predicates with a logical "NAND" (negated AND). The resulting predicate
+   * returns `true` if at least one of the predicates returns `false`.
+   * This is equivalent to `not(and(p, q))`.
+   *
+   * @category combinators
+   * @since 2.0.0
+   */
   <A>(self: Predicate<A>, that: Predicate<A>): Predicate<A>
 } = dual(
   2,

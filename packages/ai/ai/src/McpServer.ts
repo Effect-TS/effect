@@ -707,19 +707,33 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Schema.Any>
  * @category Resources
  */
 export const registerResource: {
-  <E, R>(options: {
-    readonly uri: string
-    readonly name: string
-    readonly description?: string | undefined
-    readonly mimeType?: string | undefined
-    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
-    readonly priority?: number | undefined
-    readonly content: Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
-      E,
-      R
-    >
-  }): Effect.Effect<void, never, Exclude<R, McpServerClient> | McpServer>
+  /**
+   * Register a resource with the McpServer.
+   *
+   * @since 1.0.0
+   * @category Resources
+   */
+  <E, R>(
+    options: {
+      readonly uri: string
+      readonly name: string
+      readonly description?: string | undefined
+      readonly mimeType?: string | undefined
+      readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+      readonly priority?: number | undefined
+      readonly content: Effect.Effect<
+        typeof ReadResourceResult.Type | string | Uint8Array,
+        E,
+        R
+      >
+    }
+  ): Effect.Effect<void, never, Exclude<R, McpServerClient> | McpServer>
+  /**
+   * Register a resource with the McpServer.
+   *
+   * @since 1.0.0
+   * @category Resources
+   */
   <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
     segments: TemplateStringsArray,
     ...schemas:
@@ -859,19 +873,33 @@ export const registerResource: {
  * @category Resources
  */
 export const resource: {
-  <E, R>(options: {
-    readonly uri: string
-    readonly name: string
-    readonly description?: string | undefined
-    readonly mimeType?: string | undefined
-    readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
-    readonly priority?: number | undefined
-    readonly content: Effect.Effect<
-      typeof ReadResourceResult.Type | string | Uint8Array,
-      E,
-      R
-    >
-  }): Layer.Layer<never, never, Exclude<R, McpServerClient>>
+  /**
+   * Register a resource with the McpServer.
+   *
+   * @since 1.0.0
+   * @category Resources
+   */
+  <E, R>(
+    options: {
+      readonly uri: string
+      readonly name: string
+      readonly description?: string | undefined
+      readonly mimeType?: string | undefined
+      readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
+      readonly priority?: number | undefined
+      readonly content: Effect.Effect<
+        typeof ReadResourceResult.Type | string | Uint8Array,
+        E,
+        R
+      >
+    }
+  ): Layer.Layer<never, never, Exclude<R, McpServerClient>>
+  /**
+   * Register a resource with the McpServer.
+   *
+   * @since 1.0.0
+   * @category Resources
+   */
   <const Schemas extends ReadonlyArray<Schema.Schema.Any>>(
     segments: TemplateStringsArray,
     ...schemas:

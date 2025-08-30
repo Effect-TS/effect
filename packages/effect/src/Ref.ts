@@ -79,7 +79,15 @@ export const get: <A>(self: Ref<A>) => Effect.Effect<A> = internal.get
  * @category utils
  */
 export const getAndSet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: Ref<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, value: A): Effect.Effect<A>
 } = internal.getAndSet
 
@@ -88,7 +96,15 @@ export const getAndSet: {
  * @category utils
  */
 export const getAndUpdate: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => A): (self: Ref<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, f: (a: A) => A): Effect.Effect<A>
 } = internal.getAndUpdate
 
@@ -97,7 +113,15 @@ export const getAndUpdate: {
  * @category utils
  */
 export const getAndUpdateSome: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<A>
 } = internal.getAndUpdateSome
 
@@ -106,7 +130,15 @@ export const getAndUpdateSome: {
  * @category utils
  */
 export const modify: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(f: (a: A) => readonly [B, A]): (self: Ref<A>) => Effect.Effect<B>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(self: Ref<A>, f: (a: A) => readonly [B, A]): Effect.Effect<B>
 } = internal.modify
 
@@ -115,7 +147,15 @@ export const modify: {
  * @category utils
  */
 export const modifySome: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <B, A>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): (self: Ref<A>) => Effect.Effect<B>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A, B>(self: Ref<A>, fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): Effect.Effect<B>
 } = internal.modifySome
 
@@ -124,7 +164,15 @@ export const modifySome: {
  * @category utils
  */
 export const set: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: Ref<A>) => Effect.Effect<void>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, value: A): Effect.Effect<void>
 } = internal.set
 
@@ -133,7 +181,15 @@ export const set: {
  * @category utils
  */
 export const setAndGet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): (self: Ref<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, value: A): Effect.Effect<A>
 } = internal.setAndGet
 
@@ -142,7 +198,15 @@ export const setAndGet: {
  * @category utils
  */
 export const update: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => A): (self: Ref<A>) => Effect.Effect<void>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, f: (a: A) => A): Effect.Effect<void>
 } = internal.update
 
@@ -151,7 +215,15 @@ export const update: {
  * @category utils
  */
 export const updateAndGet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => A): (self: Ref<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, f: (a: A) => A): Effect.Effect<A>
 } = internal.updateAndGet
 
@@ -160,7 +232,15 @@ export const updateAndGet: {
  * @category utils
  */
 export const updateSome: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(f: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect.Effect<void>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, f: (a: A) => Option.Option<A>): Effect.Effect<void>
 } = internal.updateSome
 
@@ -169,7 +249,15 @@ export const updateSome: {
  * @category utils
  */
 export const updateSomeAndGet: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(pf: (a: A) => Option.Option<A>): (self: Ref<A>) => Effect.Effect<A>
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(self: Ref<A>, pf: (a: A) => Option.Option<A>): Effect.Effect<A>
 } = internal.updateSomeAndGet
 

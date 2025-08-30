@@ -84,13 +84,16 @@ export const currentTransformer: FiberRef.FiberRef<Option.Option<Statement.Trans
  * @since 1.0.0
  */
 export const withTransformer: {
-  (
-    f: Statement.Transformer
-  ): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R>(
-    effect: Effect<A, E, R>,
-    f: Statement.Transformer
-  ): Effect<A, E, R>
+  /**
+   * @category transformer
+   * @since 1.0.0
+   */
+  (f: Statement.Transformer): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  /**
+   * @category transformer
+   * @since 1.0.0
+   */
+  <A, E, R>(effect: Effect<A, E, R>, f: Statement.Transformer): Effect<A, E, R>
 } = internal.withTransformer
 
 /**
@@ -411,7 +414,15 @@ export const or: (clauses: ReadonlyArray<string | Fragment>) => Fragment = inter
  * @since 1.0.0
  */
 export const csv: {
+  /**
+   * @category constructor
+   * @since 1.0.0
+   */
   (values: ReadonlyArray<string | Fragment>): Fragment
+  /**
+   * @category constructor
+   * @since 1.0.0
+   */
   (prefix: string, values: ReadonlyArray<string | Fragment>): Fragment
 } = internal.csv
 

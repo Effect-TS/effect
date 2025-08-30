@@ -161,7 +161,25 @@ export const close: (self: CloseableScope, exit: Exit.Exit<unknown, unknown>) =>
  * @category utils
  */
 export const extend: {
+  /**
+   * Extends the scope of an `Effect` that requires a scope into this scope.
+   * It provides this scope to the effect but does not close the scope when the
+   * effect completes execution. This allows extending a scoped value into a
+   * larger scope.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (scope: Scope): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope>>
+  /**
+   * Extends the scope of an `Effect` that requires a scope into this scope.
+   * It provides this scope to the effect but does not close the scope when the
+   * effect completes execution. This allows extending a scoped value into a
+   * larger scope.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, scope: Scope): Effect.Effect<A, E, Exclude<R, Scope>>
 } = fiberRuntime.scopeExtend
 
@@ -187,7 +205,25 @@ export const fork: (
  * @category destructors
  */
 export const use: {
+  /**
+   * Provides this closeable scope to an `Effect` that requires a scope,
+   * guaranteeing that the scope is closed with the result of that effect as
+   * soon as the effect completes execution, whether by success, failure, or
+   * interruption.
+   *
+   * @since 2.0.0
+   * @category destructors
+   */
   (scope: CloseableScope): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, Scope>>
+  /**
+   * Provides this closeable scope to an `Effect` that requires a scope,
+   * guaranteeing that the scope is closed with the result of that effect as
+   * soon as the effect completes execution, whether by success, failure, or
+   * interruption.
+   *
+   * @since 2.0.0
+   * @category destructors
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, scope: CloseableScope): Effect.Effect<A, E, Exclude<R, Scope>>
 } = fiberRuntime.scopeUse
 

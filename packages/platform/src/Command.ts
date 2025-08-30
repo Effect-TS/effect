@@ -126,7 +126,19 @@ export const isCommand: (u: unknown) => u is Command = internal.isCommand
  * @category combinators
  */
 export const env: {
+  /**
+   * Specify the environment variables that will be used when running this command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (environment: Record<string, string | undefined>): (self: Command) => Command
+  /**
+   * Specify the environment variables that will be used when running this command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, environment: Record<string, string | undefined>): Command
 } = internal.env
 
@@ -146,7 +158,19 @@ export const exitCode: (self: Command) => Effect<ExitCode, PlatformError, Comman
  * @category combinators
  */
 export const feed: {
+  /**
+   * Feed a string to standard input (default encoding of UTF-8).
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: string): (self: Command) => Command
+  /**
+   * Feed a string to standard input (default encoding of UTF-8).
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, input: string): Command
 } = internal.feed
 
@@ -194,7 +218,31 @@ export const make: (command: string, ...args: Array<string>) => Command = intern
  * @category combinators
  */
 export const pipeTo: {
+  /**
+   * Pipe one command to another command from left to right.
+   *
+   * Conceptually, the equivalent of piping one shell command to another:
+   *
+   * ```sh
+   * command1 | command2
+   * ```
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (into: Command): (self: Command) => Command
+  /**
+   * Pipe one command to another command from left to right.
+   *
+   * Conceptually, the equivalent of piping one shell command to another:
+   *
+   * ```sh
+   * command1 | command2
+   * ```
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, into: Command): Command
 } = internal.pipeTo
 
@@ -206,7 +254,21 @@ export const pipeTo: {
  * @category combinators
  */
 export const runInShell: {
+  /**
+   * Allows for specifying whether or not a `Command` should be run inside a
+   * shell.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (shell: string | boolean): (self: Command) => Command
+  /**
+   * Allows for specifying whether or not a `Command` should be run inside a
+   * shell.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, shell: string | boolean): Command
 } = internal.runInShell
 
@@ -246,7 +308,25 @@ export const streamLines: (command: Command, encoding?: string) => Stream<string
  * @category execution
  */
 export const string: {
+  /**
+   * Runs the command returning the entire output as a string with the
+   * specified encoding.
+   *
+   * If an encoding is not specified, the encoding will default to `utf-8`.
+   *
+   * @since 1.0.0
+   * @category execution
+   */
   (encoding?: string): (command: Command) => Effect<string, PlatformError, CommandExecutor>
+  /**
+   * Runs the command returning the entire output as a string with the
+   * specified encoding.
+   *
+   * If an encoding is not specified, the encoding will default to `utf-8`.
+   *
+   * @since 1.0.0
+   * @category execution
+   */
   (command: Command, encoding?: string): Effect<string, PlatformError, CommandExecutor>
 } = internal.string
 
@@ -257,7 +337,19 @@ export const string: {
  * @category combinators
  */
 export const stderr: {
+  /**
+   * Specify the standard error stream for a command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (stderr: Command.Output): (self: Command) => Command
+  /**
+   * Specify the standard error stream for a command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, stderr: Command.Output): Command
 } = internal.stderr
 
@@ -268,7 +360,19 @@ export const stderr: {
  * @category combinators
  */
 export const stdin: {
+  /**
+   * Specify the standard input stream for a command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (stdin: Command.Input): (self: Command) => Command
+  /**
+   * Specify the standard input stream for a command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, stdin: Command.Input): Command
 } = internal.stdin
 
@@ -279,7 +383,19 @@ export const stdin: {
  * @category combinators
  */
 export const stdout: {
+  /**
+   * Specify the standard output stream for a command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (stdout: Command.Output): (self: Command) => Command
+  /**
+   * Specify the standard output stream for a command.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, stdout: Command.Output): Command
 } = internal.stdout
 
@@ -293,6 +409,24 @@ export const stdout: {
  * @category combinators
  */
 export const workingDirectory: {
+  /**
+   * Set the working directory that will be used when this command will be run.
+   *
+   * For piped commands, the working directory of each command will be set to the
+   * specified working directory.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (cwd: string): (self: Command) => Command
+  /**
+   * Set the working directory that will be used when this command will be run.
+   *
+   * For piped commands, the working directory of each command will be set to the
+   * specified working directory.
+   *
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Command, cwd: string): Command
 } = internal.workingDirectory

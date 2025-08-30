@@ -133,7 +133,15 @@ export const options: (url: string | URL, options?: Options.NoUrl) => HttpClient
  * @category combinators
  */
 export const modify: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (options: Options): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, options: Options): HttpClientRequest
 } = internal.modify
 
@@ -142,7 +150,15 @@ export const modify: {
  * @category combinators
  */
 export const setMethod: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (method: HttpMethod): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, method: HttpMethod): HttpClientRequest
 } = internal.setMethod
 
@@ -151,7 +167,15 @@ export const setMethod: {
  * @category combinators
  */
 export const setHeader: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, key: string, value: string): HttpClientRequest
 } = internal.setHeader
 
@@ -160,7 +184,15 @@ export const setHeader: {
  * @category combinators
  */
 export const setHeaders: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: Headers.Input): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, input: Headers.Input): HttpClientRequest
 } = internal.setHeaders
 
@@ -169,8 +201,20 @@ export const setHeaders: {
  * @category combinators
  */
 export const basicAuth: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (username: string | Redacted, password: string | Redacted): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, username: string | Redacted, password: string | Redacted): HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (
+   self: HttpClientRequest,
+   username: string | Redacted,
+   password: string | Redacted
+  ): HttpClientRequest
 } = internal.basicAuth
 
 /**
@@ -178,7 +222,15 @@ export const basicAuth: {
  * @category combinators
  */
 export const bearerToken: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (token: string | Redacted): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, token: string | Redacted): HttpClientRequest
 } = internal.bearerToken
 
@@ -187,7 +239,15 @@ export const bearerToken: {
  * @category combinators
  */
 export const accept: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (mediaType: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, mediaType: string): HttpClientRequest
 } = internal.accept
 
@@ -202,7 +262,15 @@ export const acceptJson: (self: HttpClientRequest) => HttpClientRequest = intern
  * @category combinators
  */
 export const setUrl: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (url: string | URL): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, url: string | URL): HttpClientRequest
 } = internal.setUrl
 
@@ -211,7 +279,15 @@ export const setUrl: {
  * @category combinators
  */
 export const prependUrl: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (path: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, path: string): HttpClientRequest
 } = internal.prependUrl
 
@@ -220,7 +296,15 @@ export const prependUrl: {
  * @category combinators
  */
 export const appendUrl: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (path: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, path: string): HttpClientRequest
 } = internal.appendUrl
 
@@ -229,7 +313,15 @@ export const appendUrl: {
  * @category combinators
  */
 export const updateUrl: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (f: (url: string) => string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, f: (url: string) => string): HttpClientRequest
 } = internal.updateUrl
 
@@ -238,7 +330,15 @@ export const updateUrl: {
  * @category combinators
  */
 export const setUrlParam: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, key: string, value: string): HttpClientRequest
 } = internal.setUrlParam
 
@@ -247,7 +347,15 @@ export const setUrlParam: {
  * @category combinators
  */
 export const setUrlParams: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: UrlParams.Input): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, input: UrlParams.Input): HttpClientRequest
 } = internal.setUrlParams
 
@@ -256,7 +364,15 @@ export const setUrlParams: {
  * @category combinators
  */
 export const appendUrlParam: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, key: string, value: string): HttpClientRequest
 } = internal.appendUrlParam
 
@@ -265,7 +381,15 @@ export const appendUrlParam: {
  * @category combinators
  */
 export const appendUrlParams: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: UrlParams.Input): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, input: UrlParams.Input): HttpClientRequest
 } = internal.appendUrlParams
 
@@ -274,7 +398,15 @@ export const appendUrlParams: {
  * @category combinators
  */
 export const setHash: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (hash: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, hash: string): HttpClientRequest
 } = internal.setHash
 
@@ -295,7 +427,15 @@ export const toUrl: (self: HttpClientRequest) => Option.Option<URL> = internal.t
  * @category combinators
  */
 export const setBody: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: Body.HttpBody): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, body: Body.HttpBody): HttpClientRequest
 } = internal.setBody
 
@@ -304,7 +444,15 @@ export const setBody: {
  * @category combinators
  */
 export const bodyUint8Array: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: Uint8Array, contentType?: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, body: Uint8Array, contentType?: string): HttpClientRequest
 } = internal.bodyUint8Array
 
@@ -313,7 +461,15 @@ export const bodyUint8Array: {
  * @category combinators
  */
 export const bodyText: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: string, contentType?: string): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, body: string, contentType?: string): HttpClientRequest
 } = internal.bodyText
 
@@ -322,7 +478,15 @@ export const bodyText: {
  * @category combinators
  */
 export const bodyJson: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: unknown): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest, Body.HttpBodyError>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, body: unknown): Effect.Effect<HttpClientRequest, Body.HttpBodyError>
 } = internal.bodyJson
 
@@ -331,7 +495,15 @@ export const bodyJson: {
  * @category combinators
  */
 export const bodyUnsafeJson: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: unknown): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, body: unknown): HttpClientRequest
 } = internal.bodyUnsafeJson
 
@@ -352,7 +524,15 @@ export const schemaBodyJson: <A, I, R>(
  * @category combinators
  */
 export const bodyUrlParams: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (input: UrlParams.Input): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, input: UrlParams.Input): HttpClientRequest
 } = internal.bodyUrlParams
 
@@ -361,7 +541,15 @@ export const bodyUrlParams: {
  * @category combinators
  */
 export const bodyFormData: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (body: FormData): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, body: FormData): HttpClientRequest
 } = internal.bodyFormData
 
@@ -370,7 +558,15 @@ export const bodyFormData: {
  * @category combinators
  */
 export const bodyFormDataRecord: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (entries: Body.FormDataInput): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, entries: Body.FormDataInput): HttpClientRequest
 } = internal.bodyFormDataRecord
 
@@ -379,14 +575,22 @@ export const bodyFormDataRecord: {
  * @category combinators
  */
 export const bodyStream: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
-    body: Stream.Stream<Uint8Array, unknown>,
-    options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
+   body: Stream.Stream<Uint8Array, unknown>,
+   options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
   ): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
-    self: HttpClientRequest,
-    body: Stream.Stream<Uint8Array, unknown>,
-    options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
+   self: HttpClientRequest,
+   body: Stream.Stream<Uint8Array, unknown>,
+   options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined } | undefined
   ): HttpClientRequest
 } = internal.bodyStream
 
@@ -395,14 +599,22 @@ export const bodyStream: {
  * @category combinators
  */
 export const bodyFile: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
-    path: string,
-    options?: FileSystem.StreamOptions & { readonly contentType?: string }
+   path: string,
+   options?: FileSystem.StreamOptions & { readonly contentType?: string }
   ): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (
-    self: HttpClientRequest,
-    path: string,
-    options?: FileSystem.StreamOptions & { readonly contentType?: string }
+   self: HttpClientRequest,
+   path: string,
+   options?: FileSystem.StreamOptions & { readonly contentType?: string }
   ): Effect.Effect<HttpClientRequest, PlatformError.PlatformError, FileSystem.FileSystem>
 } = internal.bodyFile
 
@@ -411,6 +623,14 @@ export const bodyFile: {
  * @category combinators
  */
 export const bodyFileWeb: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (file: Body.HttpBody.FileLike): (self: HttpClientRequest) => HttpClientRequest
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: HttpClientRequest, file: Body.HttpBody.FileLike): HttpClientRequest
 } = internal.bodyFileWeb

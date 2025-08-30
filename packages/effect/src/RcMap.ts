@@ -82,19 +82,91 @@ export declare namespace RcMap {
  * ```
  */
 export const make: {
+  /**
+   * An `RcMap` can contain multiple reference counted resources that can be indexed
+   * by a key. The resources are lazily acquired on the first call to `get` and
+   * released when the last reference is released.
+   *
+   * Complex keys can extend `Equal` and `Hash` to allow lookups by value.
+   *
+   * **Options**
+   *
+   * - `capacity`: The maximum number of resources that can be held in the map.
+   * - `idleTimeToLive`: When the reference count reaches zero, the resource will be released after this duration.
+   *
+   * @since 3.5.0
+   * @category models
+   * @example
+   * ```ts
+   * import { Effect, RcMap } from "effect"
+   *
+   * Effect.gen(function*() {
+   *   const map = yield* RcMap.make({
+   *     lookup: (key: string) =>
+   *       Effect.acquireRelease(
+   *         Effect.succeed(`acquired ${key}`),
+   *         () => Effect.log(`releasing ${key}`)
+   *       )
+   *   })
+   *
+   *   // Get "foo" from the map twice, which will only acquire it once.
+   *   // It will then be released once the scope closes.
+   *   yield* RcMap.get(map, "foo").pipe(
+   *     Effect.andThen(RcMap.get(map, "foo")),
+   *     Effect.scoped
+   *   )
+   * })
+   * ```
+   */
   <K, A, E, R>(
-    options: {
-      readonly lookup: (key: K) => Effect.Effect<A, E, R>
-      readonly idleTimeToLive?: Duration.DurationInput | undefined
-      readonly capacity?: undefined
-    }
+   options: {
+     readonly lookup: (key: K) => Effect.Effect<A, E, R>
+     readonly idleTimeToLive?: Duration.DurationInput | undefined
+     readonly capacity?: undefined
+   }
   ): Effect.Effect<RcMap<K, A, E>, never, Scope.Scope | R>
+  /**
+   * An `RcMap` can contain multiple reference counted resources that can be indexed
+   * by a key. The resources are lazily acquired on the first call to `get` and
+   * released when the last reference is released.
+   *
+   * Complex keys can extend `Equal` and `Hash` to allow lookups by value.
+   *
+   * **Options**
+   *
+   * - `capacity`: The maximum number of resources that can be held in the map.
+   * - `idleTimeToLive`: When the reference count reaches zero, the resource will be released after this duration.
+   *
+   * @since 3.5.0
+   * @category models
+   * @example
+   * ```ts
+   * import { Effect, RcMap } from "effect"
+   *
+   * Effect.gen(function*() {
+   *   const map = yield* RcMap.make({
+   *     lookup: (key: string) =>
+   *       Effect.acquireRelease(
+   *         Effect.succeed(`acquired ${key}`),
+   *         () => Effect.log(`releasing ${key}`)
+   *       )
+   *   })
+   *
+   *   // Get "foo" from the map twice, which will only acquire it once.
+   *   // It will then be released once the scope closes.
+   *   yield* RcMap.get(map, "foo").pipe(
+   *     Effect.andThen(RcMap.get(map, "foo")),
+   *     Effect.scoped
+   *   )
+   * })
+   * ```
+   */
   <K, A, E, R>(
-    options: {
-      readonly lookup: (key: K) => Effect.Effect<A, E, R>
-      readonly idleTimeToLive?: Duration.DurationInput | undefined
-      readonly capacity: number
-    }
+   options: {
+     readonly lookup: (key: K) => Effect.Effect<A, E, R>
+     readonly idleTimeToLive?: Duration.DurationInput | undefined
+     readonly capacity: number
+   }
   ): Effect.Effect<RcMap<K, A, E | Cause.ExceededCapacityException>, never, Scope.Scope | R>
 } = internal.make
 
@@ -103,7 +175,15 @@ export const make: {
  * @category combinators
  */
 export const get: {
+  /**
+   * @since 3.5.0
+   * @category combinators
+   */
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<A, E, Scope.Scope>
+  /**
+   * @since 3.5.0
+   * @category combinators
+   */
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<A, E, Scope.Scope>
 } = internal.get
 
@@ -112,7 +192,15 @@ export const get: {
  * @category combinators
  */
 export const has: {
+  /**
+   * @since 3.17.7
+   * @category combinators
+   */
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<boolean>
+  /**
+   * @since 3.17.7
+   * @category combinators
+   */
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<boolean>
 } = internal.has
 
@@ -127,7 +215,15 @@ export const keys: <K, A, E>(self: RcMap<K, A, E>) => Effect.Effect<Array<K>> = 
  * @category combinators
  */
 export const invalidate: {
+  /**
+   * @since 3.13.0
+   * @category combinators
+   */
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<void>
+  /**
+   * @since 3.13.0
+   * @category combinators
+   */
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<void>
 } = internal.invalidate
 
@@ -136,6 +232,14 @@ export const invalidate: {
  * @category combinators
  */
 export const touch: {
+  /**
+   * @since 3.13.0
+   * @category combinators
+   */
   <K>(key: K): <A, E>(self: RcMap<K, A, E>) => Effect.Effect<void>
+  /**
+   * @since 3.13.0
+   * @category combinators
+   */
   <K, A, E>(self: RcMap<K, A, E>, key: K): Effect.Effect<void>
 } = internal.touch

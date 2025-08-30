@@ -60,7 +60,19 @@ export declare namespace TSet {
  * @category mutations
  */
 export const add: {
+  /**
+   * Stores new element in the set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Stores new element in the set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, value: A): STM.STM<void>
 } = internal.add
 
@@ -72,7 +84,21 @@ export const add: {
  * @category mutations
  */
 export const difference: {
+  /**
+   * Atomically transforms the set into the difference of itself and the
+   * provided set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Atomically transforms the set into the difference of itself and the
+   * provided set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, other: TSet<A>): STM.STM<void>
 } = internal.difference
 
@@ -91,7 +117,19 @@ export const empty: <A>() => STM.STM<TSet<A>> = internal.empty
  * @category elements
  */
 export const forEach: {
+  /**
+   * Atomically performs transactional-effect for each element in set.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, R, E>(f: (value: A) => STM.STM<void, E, R>): (self: TSet<A>) => STM.STM<void, E, R>
+  /**
+   * Atomically performs transactional-effect for each element in set.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, R, E>(self: TSet<A>, f: (value: A) => STM.STM<void, E, R>): STM.STM<void, E, R>
 } = internal.forEach
 
@@ -110,7 +148,19 @@ export const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<TSet<A>> = inte
  * @category elements
  */
 export const has: {
+  /**
+   * Tests whether or not set contains an element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A>(value: A): (self: TSet<A>) => STM.STM<boolean>
+  /**
+   * Tests whether or not set contains an element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A>(self: TSet<A>, value: A): STM.STM<boolean>
 } = internal.has
 
@@ -122,7 +172,21 @@ export const has: {
  * @category mutations
  */
 export const intersection: {
+  /**
+   * Atomically transforms the set into the intersection of itself and the
+   * provided set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Atomically transforms the set into the intersection of itself and the
+   * provided set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, other: TSet<A>): STM.STM<void>
 } = internal.intersection
 
@@ -151,7 +215,19 @@ export const make: <Elements extends Array<any>>(
  * @category folding
  */
 export const reduce: {
+  /**
+   * Atomically folds using a pure function.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z): (self: TSet<A>) => STM.STM<Z>
+  /**
+   * Atomically folds using a pure function.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => Z): STM.STM<Z>
 } = internal.reduce
 
@@ -162,7 +238,19 @@ export const reduce: {
  * @category folding
  */
 export const reduceSTM: {
+  /**
+   * Atomically folds using a transactional function.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A, R, E>(zero: Z, f: (accumulator: Z, value: A) => STM.STM<Z, E, R>): (self: TSet<A>) => STM.STM<Z, E, R>
+  /**
+   * Atomically folds using a transactional function.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A, R, E>(self: TSet<A>, zero: Z, f: (accumulator: Z, value: A) => STM.STM<Z, E, R>): STM.STM<Z, E, R>
 } = internal.reduceSTM
 
@@ -173,7 +261,19 @@ export const reduceSTM: {
  * @category mutations
  */
 export const remove: {
+  /**
+   * Removes a single element from the set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Removes a single element from the set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, value: A): STM.STM<void>
 } = internal.remove
 
@@ -184,7 +284,19 @@ export const remove: {
  * @category mutations
  */
 export const removeAll: {
+  /**
+   * Removes elements from the set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(iterable: Iterable<A>): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Removes elements from the set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, iterable: Iterable<A>): STM.STM<void>
 } = internal.removeAll
 
@@ -196,18 +308,53 @@ export const removeAll: {
  * @category mutations
  */
 export const removeIf: {
-  <A>(predicate: Predicate<A>, options: {
-    readonly discard: true
-  }): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Removes entries from a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
+  <A>(
+    predicate: Predicate<A>,
+    options: {
+      readonly discard: true
+    }
+  ): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Removes entries from a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(
     predicate: Predicate<A>,
     options?: {
       readonly discard: false
     }
   ): (self: TSet<A>) => STM.STM<Array<A>>
-  <A>(self: TSet<A>, predicate: Predicate<A>, options: {
-    readonly discard: true
-  }): STM.STM<void>
+  /**
+   * Removes entries from a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
+  <A>(
+    self: TSet<A>,
+    predicate: Predicate<A>,
+    options: {
+      readonly discard: true
+    }
+  ): STM.STM<void>
+  /**
+   * Removes entries from a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(
     self: TSet<A>,
     predicate: Predicate<A>,
@@ -225,18 +372,53 @@ export const removeIf: {
  * @category mutations
  */
 export const retainIf: {
-  <A>(predicate: Predicate<A>, options: {
-    readonly discard: true
-  }): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Retains entries in a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
+  <A>(
+    predicate: Predicate<A>,
+    options: {
+      readonly discard: true
+    }
+  ): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Retains entries in a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(
     predicate: Predicate<A>,
     options?: {
       readonly discard: false
     }
   ): (self: TSet<A>) => STM.STM<Array<A>>
-  <A>(self: TSet<A>, predicate: Predicate<A>, options: {
-    readonly discard: true
-  }): STM.STM<void>
+  /**
+   * Retains entries in a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
+  <A>(
+    self: TSet<A>,
+    predicate: Predicate<A>,
+    options: {
+      readonly discard: true
+    }
+  ): STM.STM<void>
+  /**
+   * Retains entries in a `TSet` that satisfy the specified predicate and returns the removed entries
+   * (or `void` if `discard = true`).
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(
     self: TSet<A>,
     predicate: Predicate<A>,
@@ -261,7 +443,19 @@ export const size: <A>(self: TSet<A>) => STM.STM<number> = internal.size
  * @category mutations
  */
 export const takeFirst: {
+  /**
+   * Takes the first matching value, or retries until there is one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<B>
+  /**
+   * Takes the first matching value, or retries until there is one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<B>
 } = internal.takeFirst
 
@@ -272,7 +466,19 @@ export const takeFirst: {
  * @category mutations
  */
 export const takeFirstSTM: {
+  /**
+   * Takes the first matching value, or retries until there is one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B, E, R>(pf: (a: A) => STM.STM<B, Option.Option<E>, R>): (self: TSet<A>) => STM.STM<B, E, R>
+  /**
+   * Takes the first matching value, or retries until there is one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B, E, R>(self: TSet<A>, pf: (a: A) => STM.STM<B, Option.Option<E>, R>): STM.STM<B, E, R>
 } = internal.takeFirstSTM
 
@@ -283,7 +489,19 @@ export const takeFirstSTM: {
  * @category mutations
  */
 export const takeSome: {
+  /**
+   * Takes all matching values, or retries until there is at least one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(pf: (a: A) => Option.Option<B>): (self: TSet<A>) => STM.STM<[B, ...Array<B>]>
+  /**
+   * Takes all matching values, or retries until there is at least one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B>(self: TSet<A>, pf: (a: A) => Option.Option<B>): STM.STM<[B, ...Array<B>]>
 } = internal.takeSome
 
@@ -294,7 +512,19 @@ export const takeSome: {
  * @category mutations
  */
 export const takeSomeSTM: {
+  /**
+   * Takes all matching values, or retries until there is at least one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B, E, R>(pf: (a: A) => STM.STM<B, Option.Option<E>, R>): (self: TSet<A>) => STM.STM<[B, ...Array<B>], E, R>
+  /**
+   * Takes all matching values, or retries until there is at least one.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, B, E, R>(self: TSet<A>, pf: (a: A) => STM.STM<B, Option.Option<E>, R>): STM.STM<[B, ...Array<B>], E, R>
 } = internal.takeSomeSTM
 
@@ -337,7 +567,19 @@ export const toReadonlySet: <A>(self: TSet<A>) => STM.STM<ReadonlySet<A>> = inte
  * @category mutations
  */
 export const transform: {
+  /**
+   * Atomically updates all elements using a pure function.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(f: (a: A) => A): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Atomically updates all elements using a pure function.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, f: (a: A) => A): STM.STM<void>
 } = internal.transform
 
@@ -348,7 +590,19 @@ export const transform: {
  * @category mutations
  */
 export const transformSTM: {
+  /**
+   * Atomically updates all elements using a transactional function.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, R, E>(f: (a: A) => STM.STM<A, E, R>): (self: TSet<A>) => STM.STM<void, E, R>
+  /**
+   * Atomically updates all elements using a transactional function.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, R, E>(self: TSet<A>, f: (a: A) => STM.STM<A, E, R>): STM.STM<void, E, R>
 } = internal.transformSTM
 
@@ -360,6 +614,20 @@ export const transformSTM: {
  * @category mutations
  */
 export const union: {
+  /**
+   * Atomically transforms the set into the union of itself and the provided
+   * set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(other: TSet<A>): (self: TSet<A>) => STM.STM<void>
+  /**
+   * Atomically transforms the set into the union of itself and the provided
+   * set.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TSet<A>, other: TSet<A>): STM.STM<void>
 } = internal.union

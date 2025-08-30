@@ -58,7 +58,15 @@ export const acquire: (self: TSemaphore) => STM.STM<void> = internal.acquire
  * @category mutations
  */
 export const acquireN: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (n: number): (self: TSemaphore) => STM.STM<void>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (self: TSemaphore, n: number): STM.STM<void>
 } = internal.acquireN
 
@@ -85,7 +93,15 @@ export const release: (self: TSemaphore) => STM.STM<void> = internal.release
  * @category mutations
  */
 export const releaseN: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (n: number): (self: TSemaphore) => STM.STM<void>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (self: TSemaphore, n: number): STM.STM<void>
 } = internal.releaseN
 
@@ -94,7 +110,15 @@ export const releaseN: {
  * @category mutations
  */
 export const withPermit: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (semaphore: TSemaphore): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, E, R>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore): Effect.Effect<A, E, R>
 } = internal.withPermit
 
@@ -103,7 +127,15 @@ export const withPermit: {
  * @category mutations
  */
 export const withPermits: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (semaphore: TSemaphore, permits: number): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, E, R>(self: Effect.Effect<A, E, R>, semaphore: TSemaphore, permits: number): Effect.Effect<A, E, R>
 } = internal.withPermits
 
@@ -118,7 +150,15 @@ export const withPermitScoped: (self: TSemaphore) => Effect.Effect<void, never, 
  * @category mutations
  */
 export const withPermitsScoped: {
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (permits: number): (self: TSemaphore) => Effect.Effect<void, never, Scope.Scope>
+  /**
+   * @since 2.0.0
+   * @category mutations
+   */
   (self: TSemaphore, permits: number): Effect.Effect<void, never, Scope.Scope>
 } = internal.withPermitsScoped
 

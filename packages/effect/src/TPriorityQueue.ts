@@ -107,7 +107,19 @@ export const make: <A>(order: Order.Order<A>) => (...elements: Array<A>) => STM.
  * @category mutations
  */
 export const offer: {
+  /**
+   * Offers the specified value to the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(value: A): (self: TPriorityQueue<A>) => STM.STM<void>
+  /**
+   * Offers the specified value to the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TPriorityQueue<A>, value: A): STM.STM<void>
 } = internal.offer
 
@@ -118,7 +130,19 @@ export const offer: {
  * @category mutations
  */
 export const offerAll: {
+  /**
+   * Offers all of the elements in the specified collection to the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(values: Iterable<A>): (self: TPriorityQueue<A>) => STM.STM<void>
+  /**
+   * Offers all of the elements in the specified collection to the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TPriorityQueue<A>, values: Iterable<A>): STM.STM<void>
 } = internal.offerAll
 
@@ -147,7 +171,19 @@ export const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<Option.Option<A
  * @category getters
  */
 export const removeIf: {
+  /**
+   * Removes all elements from the queue matching the specified predicate.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM.STM<void>
+  /**
+   * Removes all elements from the queue matching the specified predicate.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM.STM<void>
 } = internal.removeIf
 
@@ -158,7 +194,19 @@ export const removeIf: {
  * @category getters
  */
 export const retainIf: {
+  /**
+   * Retains only elements from the queue matching the specified predicate.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(predicate: Predicate<A>): (self: TPriorityQueue<A>) => STM.STM<void>
+  /**
+   * Retains only elements from the queue matching the specified predicate.
+   *
+   * @since 2.0.0
+   * @category getters
+   */
   <A>(self: TPriorityQueue<A>, predicate: Predicate<A>): STM.STM<void>
 } = internal.retainIf
 
@@ -202,7 +250,19 @@ export const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<Option.Option<A
  * @category mutations
  */
 export const takeUpTo: {
+  /**
+   * Takes up to the specified maximum number of elements from the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (n: number): <A>(self: TPriorityQueue<A>) => STM.STM<Array<A>>
+  /**
+   * Takes up to the specified maximum number of elements from the queue.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A>(self: TPriorityQueue<A>, n: number): STM.STM<Array<A>>
 } = internal.takeUpTo
 

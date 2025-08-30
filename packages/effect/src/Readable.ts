@@ -57,7 +57,15 @@ export const make = <A, E, R>(get: Effect<A, E, R>): Readable<A, E, R> => {
  * @category combinators
  */
 export const map: {
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: NoInfer<A>) => B): <E, R>(fa: Readable<A, E, R>) => Readable<B, E, R>
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, E, R, B>(self: Readable<A, E, R>, f: (a: NoInfer<A>) => B): Readable<B, E, R>
 } = dual(
   2,
@@ -69,13 +77,16 @@ export const map: {
  * @category combinators
  */
 export const mapEffect: {
-  <A, B, E2, R2>(
-    f: (a: NoInfer<A>) => Effect<B, E2, R2>
-  ): <E, R>(fa: Readable<A, E, R>) => Readable<B, E | E2, R | R2>
-  <A, E, R, B, E2, R2>(
-    self: Readable<A, E, R>,
-    f: (a: NoInfer<A>) => Effect<B, E2, R2>
-  ): Readable<B, E | E2, R | R2>
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A, B, E2, R2>(f: (a: NoInfer<A>) => Effect<B, E2, R2>): <E, R>(fa: Readable<A, E, R>) => Readable<B, E | E2, R | R2>
+  /**
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A, E, R, B, E2, R2>(self: Readable<A, E, R>, f: (a: NoInfer<A>) => Effect<B, E2, R2>): Readable<B, E | E2, R | R2>
 } = dual(2, <A, E, R, B, E2, R2>(
   self: Readable<A, E, R>,
   f: (a: NoInfer<A>) => Effect<B, E2, R2>

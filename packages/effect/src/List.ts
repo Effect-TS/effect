@@ -206,7 +206,19 @@ const _Nil = Object.create(NilProto) as Nil<never>
  * @category refinements
  */
 export const isList: {
+  /**
+   * Returns `true` if the specified value is a `List`, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category refinements
+   */
   <A>(u: Iterable<A>): u is List<A>
+  /**
+   * Returns `true` if the specified value is a `List`, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category refinements
+   */
   (u: unknown): u is List<unknown>
 } = (u: unknown): u is List<unknown> => hasProperty(u, TypeId)
 
@@ -316,7 +328,19 @@ export const make = <Elements extends readonly [any, ...Array<any>]>(
  * @since 2.0.0
  */
 export const append: {
+  /**
+   * Appends the specified element to the end of the `List`, creating a new `Cons`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(element: B): <A>(self: List<A>) => Cons<A | B>
+  /**
+   * Appends the specified element to the end of the `List`, creating a new `Cons`.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, element: B): Cons<A | B>
 } = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => appendAll(self, of(element)))
 
@@ -339,9 +363,81 @@ export const append: {
  * @since 2.0.0
  */
 export const appendAll: {
+  /**
+   * Concatenates two lists, combining their elements.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
+   *   [1, 2, "a", "b"]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.OrNonEmpty<S, T, List.Infer<S> | List.Infer<T>>
+  /**
+   * Concatenates two lists, combining their elements.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
+   *   [1, 2, "a", "b"]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
+  /**
+   * Concatenates two lists, combining their elements.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
+   *   [1, 2, "a", "b"]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
+  /**
+   * Concatenates two lists, combining their elements.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.appendAll(List.make("a", "b")), List.toArray),
+   *   [1, 2, "a", "b"]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, that: List<B>): List<A | B>
 } = dual(2, <A, B>(self: List<A>, that: List<B>): List<A | B> => prependAll(that, self))
 
@@ -352,9 +448,27 @@ export const appendAll: {
  * @since 2.0.0
  */
 export const prepend: {
+  /**
+   * Prepends the specified element to the beginning of the list.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(element: B): <A>(self: List<A>) => Cons<A | B>
+  /**
+   * Prepends the specified element to the beginning of the list.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, element: B): Cons<A | B>
-} = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => cons<A | B>(element, self))
+} = dual(2, <A, B>(self: List<A>, element: B): Cons<A | B> => cons</**
+ * Prepends the specified element to the beginning of the list.
+ *
+ * @category concatenating
+ * @since 2.0.0
+ */
+A | B>(element, self))
 
 /**
  * Prepends the specified prefix list to the beginning of the specified list.
@@ -375,9 +489,81 @@ export const prepend: {
  * @since 2.0.0
  */
 export const prependAll: {
+  /**
+   * Prepends the specified prefix list to the beginning of the specified list.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+   *   ["a", "b", 1, 2]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <S extends List<any>, T extends List<any>>(that: T): (self: S) => List.OrNonEmpty<S, T, List.Infer<S> | List.Infer<T>>
+  /**
+   * Prepends the specified prefix list to the beginning of the specified list.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+   *   ["a", "b", 1, 2]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, that: Cons<B>): Cons<A | B>
+  /**
+   * Prepends the specified prefix list to the beginning of the specified list.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+   *   ["a", "b", 1, 2]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: Cons<A>, that: List<B>): Cons<A | B>
+  /**
+   * Prepends the specified prefix list to the beginning of the specified list.
+   * If either list is non-empty, the result is also a non-empty list.
+   *
+   * @example
+   * ```ts
+   * import * as assert from "node:assert"
+   * import { List } from "effect"
+   *
+   * assert.deepStrictEqual(
+   *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+   *   ["a", "b", 1, 2]
+   * )
+   * ```
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, that: List<B>): List<A | B>
 } = dual(2, <A, B>(self: List<A>, prefix: List<B>): List<A | B> => {
   if (isNil(self)) {
@@ -385,11 +571,47 @@ export const prependAll: {
   } else if (isNil(prefix)) {
     return self
   } else {
-    const result = makeCons<A | B>(prefix.head, self)
+    const result = makeCons</**
+     * Prepends the specified prefix list to the beginning of the specified list.
+     * If either list is non-empty, the result is also a non-empty list.
+     *
+     * @example
+     * ```ts
+     * import * as assert from "node:assert"
+     * import { List } from "effect"
+     *
+     * assert.deepStrictEqual(
+     *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+     *   ["a", "b", 1, 2]
+     * )
+     * ```
+     *
+     * @category concatenating
+     * @since 2.0.0
+     */
+    A | B>(prefix.head, self)
     let curr = result
     let that = prefix.tail
     while (!isNil(that)) {
-      const temp = makeCons<A | B>(that.head, self)
+      const temp = makeCons</**
+       * Prepends the specified prefix list to the beginning of the specified list.
+       * If either list is non-empty, the result is also a non-empty list.
+       *
+       * @example
+       * ```ts
+       * import * as assert from "node:assert"
+       * import { List } from "effect"
+       *
+       * assert.deepStrictEqual(
+       *   List.make(1, 2).pipe(List.prependAll(List.make("a", "b")), List.toArray),
+       *   ["a", "b", 1, 2]
+       * )
+       * ```
+       *
+       * @category concatenating
+       * @since 2.0.0
+       */
+      A | B>(that.head, self)
       curr.tail = temp
       curr = temp
       that = that.tail
@@ -406,7 +628,21 @@ export const prependAll: {
  * @since 2.0.0
  */
 export const prependAllReversed: {
+  /**
+   * Prepends the specified prefix list (in reverse order) to the beginning of the
+   * specified list.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <B>(prefix: List<B>): <A>(self: List<A>) => List<A | B>
+  /**
+   * Prepends the specified prefix list (in reverse order) to the beginning of the
+   * specified list.
+   *
+   * @category concatenating
+   * @since 2.0.0
+   */
   <A, B>(self: List<A>, prefix: List<B>): List<A | B>
 } = dual(2, <A, B>(self: List<A>, prefix: List<B>): List<A | B> => {
   let out: List<A | B> = self
@@ -425,7 +661,19 @@ export const prependAllReversed: {
  * @category combinators
  */
 export const drop: {
+  /**
+   * Drops the first `n` elements from the specified list.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   (n: number): <A>(self: List<A>) => List<A>
+  /**
+   * Drops the first `n` elements from the specified list.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(self: List<A>, n: number): List<A>
 } = dual(2, <A>(self: List<A>, n: number): List<A> => {
   if (n <= 0) {
@@ -450,9 +698,33 @@ export const drop: {
  * @category elements
  */
 export const every: {
+  /**
+   * Check if a predicate holds true for every `List` element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: List<A>) => self is List<B>
+  /**
+   * Check if a predicate holds true for every `List` element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A>(predicate: Predicate<A>): (self: List<A>) => boolean
+  /**
+   * Check if a predicate holds true for every `List` element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): self is List<B>
+  /**
+   * Check if a predicate holds true for every `List` element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A>(self: List<A>, predicate: Predicate<A>): boolean
 } = dual(2, <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): self is List<B> => {
   for (const a of self) {
@@ -470,7 +742,19 @@ export const every: {
  * @category elements
  */
 export const some: {
+  /**
+   * Check if a predicate holds true for some `List` element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => self is Cons<A>
+  /**
+   * Check if a predicate holds true for some `List` element.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): self is Cons<A> => {
   let these = self
@@ -490,9 +774,33 @@ export const some: {
  * @category combinators
  */
 export const filter: {
+  /**
+   * Filters a list using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: List<A>) => List<B>
+  /**
+   * Filters a list using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => List<A>
+  /**
+   * Filters a list using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): List<B>
+  /**
+   * Filters a list using the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(self: List<A>, predicate: Predicate<A>): List<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): List<A> => noneIn(self, predicate, false))
 
@@ -595,7 +903,23 @@ const partialFill = <A>(
  * @category combinators
  */
 export const filterMap: {
+  /**
+   * Filters and maps a list using the specified partial function. The resulting
+   * list may be smaller than the input list due to the possibility of the partial
+   * function not being defined for some elements.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => Option.Option<B>): (self: List<A>) => List<B>
+  /**
+   * Filters and maps a list using the specified partial function. The resulting
+   * list may be smaller than the input list due to the possibility of the partial
+   * function not being defined for some elements.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => Option.Option<B>): List<B> => {
   const bs: Array<B> = []
@@ -624,9 +948,37 @@ export const compact = <A>(self: List<Option.Option<A>>): List<A> => filterMap(s
  * @since 2.0.0
  */
 export const findFirst: {
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: List<A>) => Option.Option<B>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => Option.Option<A>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): Option.Option<B>
+  /**
+   * Returns the first element that satisfies the specified
+   * predicate, or `None` if no such element exists.
+   *
+   * @category elements
+   * @since 2.0.0
+   */
   <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A>
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): Option.Option<A> => {
   let these = self
@@ -646,10 +998,26 @@ export const findFirst: {
  * @category sequencing
  */
 export const flatMap: {
-  <S extends List<any>, T extends List<any>>(
-    f: (a: List.Infer<S>, i: number) => T
-  ): (self: S) => List.AndNonEmpty<S, T, List.Infer<T>>
+  /**
+   * Applies a function to each element in a list and returns a new list containing the concatenated mapped elements.
+   *
+   * @since 2.0.0
+   * @category sequencing
+   */
+  <S extends List<any>, T extends List<any>>(f: (a: List.Infer<S>, i: number) => T): (self: S) => List.AndNonEmpty<S, T, List.Infer<T>>
+  /**
+   * Applies a function to each element in a list and returns a new list containing the concatenated mapped elements.
+   *
+   * @since 2.0.0
+   * @category sequencing
+   */
   <A, B>(self: Cons<A>, f: (a: A, i: number) => Cons<B>): Cons<B>
+  /**
+   * Applies a function to each element in a list and returns a new list containing the concatenated mapped elements.
+   *
+   * @since 2.0.0
+   * @category sequencing
+   */
   <A, B>(self: List<A>, f: (a: A, i: number) => List<B>): List<B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => List<B>): List<B> => {
   let rest = self
@@ -682,7 +1050,19 @@ export const flatMap: {
  * @category combinators
  */
 export const forEach: {
+  /**
+   * Applies the specified function to each element of the `List`.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B>(f: (a: A) => B): (self: List<A>) => void
+  /**
+   * Applies the specified function to each element of the `List`.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B>(self: List<A>, f: (a: A) => B): void
 } = dual(2, <A, B>(self: List<A>, f: (a: A) => B): void => {
   let these = self
@@ -747,7 +1127,19 @@ export declare namespace List {
  * @category mapping
  */
 export const map: {
+  /**
+   * Applies the specified mapping function to each element of the list.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <S extends List<any>, B>(f: (a: List.Infer<S>, i: number) => B): (self: S) => List.With<S, B>
+  /**
+   * Applies the specified mapping function to each element of the list.
+   *
+   * @since 2.0.0
+   * @category mapping
+   */
   <S extends List<any>, B>(self: S, f: (a: List.Infer<S>, i: number) => B): List.With<S, B>
 } = dual(2, <A, B>(self: List<A>, f: (a: A, i: number) => B): List<B> => {
   if (isNil(self)) {
@@ -776,11 +1168,41 @@ export const map: {
  * @category combinators
  */
 export const partition: {
-  <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>
-  ): (self: List<A>) => [excluded: List<Exclude<A, B>>, satisfying: List<B>]
+  /**
+   * Partition a list into two lists, where the first list contains all elements
+   * that did not satisfy the specified predicate, and the second list contains
+   * all elements that did satisfy the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
+  <A, B extends A>(refinement: Refinement<NoInfer<A>, B>): (self: List<A>) => [excluded: List<Exclude<A, B>>, satisfying: List<B>]
+  /**
+   * Partition a list into two lists, where the first list contains all elements
+   * that did not satisfy the specified predicate, and the second list contains
+   * all elements that did satisfy the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(predicate: Predicate<NoInfer<A>>): (self: List<A>) => [excluded: List<A>, satisfying: List<A>]
+  /**
+   * Partition a list into two lists, where the first list contains all elements
+   * that did not satisfy the specified predicate, and the second list contains
+   * all elements that did satisfy the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B extends A>(self: List<A>, refinement: Refinement<A, B>): [excluded: List<Exclude<A, B>>, satisfying: List<B>]
+  /**
+   * Partition a list into two lists, where the first list contains all elements
+   * that did not satisfy the specified predicate, and the second list contains
+   * all elements that did satisfy the specified predicate.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(self: List<A>, predicate: Predicate<A>): [excluded: List<A>, satisfying: List<A>]
 } = dual(2, <A>(self: List<A>, predicate: Predicate<A>): [excluded: List<A>, satisfying: List<A>] => {
   const left: Array<A> = []
@@ -804,7 +1226,23 @@ export const partition: {
  * @category combinators
  */
 export const partitionMap: {
+  /**
+   * Partition a list into two lists, where the first list contains all elements
+   * for which the specified function returned a `Left`, and the second list
+   * contains all elements for which the specified function returned a `Right`.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B, C>(f: (a: A) => Either.Either<C, B>): (self: List<A>) => [left: List<B>, right: List<C>]
+  /**
+   * Partition a list into two lists, where the first list contains all elements
+   * for which the specified function returned a `Left`, and the second list
+   * contains all elements for which the specified function returned a `Right`.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A, B, C>(self: List<A>, f: (a: A) => Either.Either<C, B>): [left: List<B>, right: List<C>]
 } = dual(2, <A, B, C>(self: List<A>, f: (a: A) => Either.Either<C, B>): [left: List<B>, right: List<C>] => {
   const left: Array<B> = []
@@ -828,7 +1266,21 @@ export const partitionMap: {
  * @category folding
  */
 export const reduce: {
+  /**
+   * Folds over the elements of the list using the specified function, using the
+   * specified initial value.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A>(zero: Z, f: (b: Z, a: A) => Z): (self: List<A>) => Z
+  /**
+   * Folds over the elements of the list using the specified function, using the
+   * specified initial value.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A, Z>(self: List<A>, zero: Z, f: (b: Z, a: A) => Z): Z
 } = dual(3, <A, Z>(self: List<A>, zero: Z, f: (b: Z, a: A) => Z): Z => {
   let acc = zero
@@ -848,7 +1300,21 @@ export const reduce: {
  * @category folding
  */
 export const reduceRight: {
+  /**
+   * Folds over the elements of the list using the specified function, beginning
+   * with the last element of the list, using the specified initial value.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A>(zero: Z, f: (accumulator: Z, value: A) => Z): (self: List<A>) => Z
+  /**
+   * Folds over the elements of the list using the specified function, beginning
+   * with the last element of the list, using the specified initial value.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <Z, A>(self: List<A>, zero: Z, f: (accumulator: Z, value: A) => Z): Z
 } = dual(3, <Z, A>(self: List<A>, zero: Z, f: (accumulator: Z, value: A) => Z): Z => {
   let acc = zero
@@ -883,7 +1349,19 @@ export const reverse = <A>(self: List<A>): List<A> => {
  * @category combinators
  */
 export const splitAt: {
+  /**
+   * Splits the specified list into two lists at the specified index.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   (n: number): <A>(self: List<A>) => [beforeIndex: List<A>, fromIndex: List<A>]
+  /**
+   * Splits the specified list into two lists at the specified index.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(self: List<A>, n: number): [beforeIndex: List<A>, fromIndex: List<A>]
 } = dual(2, <A>(self: List<A>, n: number): [List<A>, List<A>] => [take(self, n), drop(self, n)])
 
@@ -903,7 +1381,21 @@ export const tail = <A>(self: List<A>): Option.Option<List<A>> => isNil(self) ? 
  * @category combinators
  */
 export const take: {
+  /**
+   * Takes the specified number of elements from the beginning of the specified
+   * list.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   (n: number): <A>(self: List<A>) => List<A>
+  /**
+   * Takes the specified number of elements from the beginning of the specified
+   * list.
+   *
+   * @since 2.0.0
+   * @category combinators
+   */
   <A>(self: List<A>, n: number): List<A>
 } = dual(2, <A>(self: List<A>, n: number): List<A> => {
   if (n <= 0) {

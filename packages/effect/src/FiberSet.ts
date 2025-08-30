@@ -185,6 +185,12 @@ const isInternalInterruption = Cause.reduceWithContext(undefined, {
  * @categories combinators
  */
 export const unsafeAdd: {
+  /**
+   * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     fiber: Fiber.RuntimeFiber<XA, XE>,
     options?: {
@@ -192,6 +198,12 @@ export const unsafeAdd: {
       readonly propagateInterruption?: boolean | undefined
     } | undefined
   ): (self: FiberSet<A, E>) => void
+  /**
+   * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     self: FiberSet<A, E>,
     fiber: Fiber.RuntimeFiber<XA, XE>,
@@ -240,12 +252,24 @@ export const unsafeAdd: {
  * @categories combinators
  */
 export const add: {
+  /**
+   * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     fiber: Fiber.RuntimeFiber<XA, XE>,
     options?: {
       readonly propagateInterruption?: boolean | undefined
     } | undefined
   ): (self: FiberSet<A, E>) => Effect.Effect<void>
+  /**
+   * Add a fiber to the FiberSet. When the fiber completes, it will be removed.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, XE extends E, XA extends A>(
     self: FiberSet<A, E>,
     fiber: Fiber.RuntimeFiber<XA, XE>,
@@ -304,6 +328,13 @@ const constInterruptedFiber = (function() {
  * @categories combinators
  */
 export const run: {
+  /**
+   * Fork an Effect and add the forked fiber to the FiberSet.
+   * When the fiber completes, it will be removed from the FiberSet.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E>(
     self: FiberSet<A, E>,
     options?: {
@@ -312,6 +343,13 @@ export const run: {
   ): <R, XE extends E, XA extends A>(
     effect: Effect.Effect<XA, XE, R>
   ) => Effect.Effect<Fiber.RuntimeFiber<XA, XE>, never, R>
+  /**
+   * Fork an Effect and add the forked fiber to the FiberSet.
+   * When the fiber completes, it will be removed from the FiberSet.
+   *
+   * @since 2.0.0
+   * @categories combinators
+   */
   <A, E, R, XE extends E, XA extends A>(
     self: FiberSet<A, E>,
     effect: Effect.Effect<XA, XE, R>,

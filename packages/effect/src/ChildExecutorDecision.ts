@@ -128,19 +128,31 @@ export const isYield: (self: ChildExecutorDecision) => self is Yield = internal.
  * @category folding
  */
 export const match: {
+  /**
+   * Folds over a `ChildExecutorDecision` to produce a value of type `A`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A>(
-    options: {
-      readonly onContinue: () => A
-      readonly onClose: (value: unknown) => A
-      readonly onYield: () => A
-    }
+   options: {
+     readonly onContinue: () => A
+     readonly onClose: (value: unknown) => A
+     readonly onYield: () => A
+   }
   ): (self: ChildExecutorDecision) => A
+  /**
+   * Folds over a `ChildExecutorDecision` to produce a value of type `A`.
+   *
+   * @since 2.0.0
+   * @category folding
+   */
   <A>(
-    self: ChildExecutorDecision,
-    options: {
-      readonly onContinue: () => A
-      readonly onClose: (value: unknown) => A
-      readonly onYield: () => A
-    }
+   self: ChildExecutorDecision,
+   options: {
+     readonly onContinue: () => A
+     readonly onClose: (value: unknown) => A
+     readonly onYield: () => A
+   }
   ): A
 } = internal.match

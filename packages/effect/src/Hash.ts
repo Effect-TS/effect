@@ -164,7 +164,15 @@ export const array = <A>(arr: ReadonlyArray<A>) => {
  * @category hashing
  */
 export const cached: {
+  /**
+   * @since 2.0.0
+   * @category hashing
+   */
   (self: object): (hash: number) => number
+  /**
+   * @since 2.0.0
+   * @category hashing
+   */
   (self: object, hash: number): number
 } = function() {
   if (arguments.length === 1) {

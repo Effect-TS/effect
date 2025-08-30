@@ -243,12 +243,20 @@ export const value: <const I>(
  * @since 1.0.0
  */
 export const valueTags: {
+  /**
+   * @category Creating a matcher
+   * @since 1.0.0
+   */
   <
     const I,
     P extends
       & { readonly [Tag in Types.Tags<"_tag", I> & string]: (_: Extract<I, { readonly _tag: Tag }>) => any }
       & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
   >(fields: P): (input: I) => Unify<ReturnType<P[keyof P]>>
+  /**
+   * @category Creating a matcher
+   * @since 1.0.0
+   */
   <
     const I,
     P extends
@@ -262,6 +270,10 @@ export const valueTags: {
  * @since 1.0.0
  */
 export const typeTags: {
+  /**
+   * @category Creating a matcher
+   * @since 1.0.0
+   */
   <I, Ret>(): <
     P extends
       & {
@@ -271,6 +283,10 @@ export const typeTags: {
       }
       & { readonly [Tag in Exclude<keyof P, Types.Tags<"_tag", I>>]: never }
   >(fields: P) => (input: I) => Ret
+  /**
+   * @category Creating a matcher
+   * @since 1.0.0
+   */
   <I>(): <
     P extends
       & {

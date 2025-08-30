@@ -173,7 +173,19 @@ export const releaseWrite: (self: TReentrantLock) => STM.STM<number> = internal.
  * @category mutations
  */
 export const withLock: {
+  /**
+   * Runs the specified workflow with a lock.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (self: TReentrantLock): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * Runs the specified workflow with a lock.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, self: TReentrantLock): Effect.Effect<A, E, R>
 } = internal.withLock
 
@@ -184,7 +196,19 @@ export const withLock: {
  * @category mutations
  */
 export const withReadLock: {
+  /**
+   * Runs the specified workflow with a read lock.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (self: TReentrantLock): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * Runs the specified workflow with a read lock.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, self: TReentrantLock): Effect.Effect<A, E, R>
 } = internal.withReadLock
 
@@ -195,7 +219,19 @@ export const withReadLock: {
  * @category mutations
  */
 export const withWriteLock: {
+  /**
+   * Runs the specified workflow with a write lock.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   (self: TReentrantLock): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * Runs the specified workflow with a write lock.
+   *
+   * @since 2.0.0
+   * @category mutations
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, self: TReentrantLock): Effect.Effect<A, E, R>
 } = internal.withWriteLock
 

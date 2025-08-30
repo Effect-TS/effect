@@ -119,7 +119,27 @@ export {
  * @category utils
  */
 export const complete: {
+  /**
+   * Completes the deferred with the result of the specified effect. If the
+   * deferred has already been completed, the method will produce false.
+   *
+   * Note that `Deferred.completeWith` will be much faster, so consider using
+   * that if you do not need to memoize the result of the specified effect.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(effect: Effect.Effect<A, E>): (self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Completes the deferred with the result of the specified effect. If the
+   * deferred has already been completed, the method will produce false.
+   *
+   * Note that `Deferred.completeWith` will be much faster, so consider using
+   * that if you do not need to memoize the result of the specified effect.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, effect: Effect.Effect<A, E>): Effect.Effect<boolean>
 } = core.deferredComplete
 
@@ -131,7 +151,21 @@ export const complete: {
  * @category utils
  */
 export const completeWith: {
+  /**
+   * Completes the deferred with the result of the specified effect. If the
+   * deferred has already been completed, the method will produce false.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(effect: Effect.Effect<A, E>): (self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Completes the deferred with the result of the specified effect. If the
+   * deferred has already been completed, the method will produce false.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, effect: Effect.Effect<A, E>): Effect.Effect<boolean>
 } = core.deferredCompleteWith
 
@@ -143,7 +177,21 @@ export const completeWith: {
  * @category utils
  */
 export const done: {
+  /**
+   * Exits the `Deferred` with the specified `Exit` value, which will be
+   * propagated to all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(exit: Exit.Exit<A, E>): (self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Exits the `Deferred` with the specified `Exit` value, which will be
+   * propagated to all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, exit: Exit.Exit<A, E>): Effect.Effect<boolean>
 } = core.deferredDone
 
@@ -155,7 +203,21 @@ export const done: {
  * @category utils
  */
 export const fail: {
+  /**
+   * Fails the `Deferred` with the specified error, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <E>(error: E): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Fails the `Deferred` with the specified error, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, error: E): Effect.Effect<boolean>
 } = core.deferredFail
 
@@ -167,7 +229,21 @@ export const fail: {
  * @category utils
  */
 export const failSync: {
+  /**
+   * Fails the `Deferred` with the specified error, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <E>(evaluate: LazyArg<E>): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Fails the `Deferred` with the specified error, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, evaluate: LazyArg<E>): Effect.Effect<boolean>
 } = core.deferredFailSync
 
@@ -179,7 +255,21 @@ export const failSync: {
  * @category utils
  */
 export const failCause: {
+  /**
+   * Fails the `Deferred` with the specified `Cause`, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <E>(cause: Cause.Cause<E>): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Fails the `Deferred` with the specified `Cause`, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, cause: Cause.Cause<E>): Effect.Effect<boolean>
 } = core.deferredFailCause
 
@@ -191,7 +281,21 @@ export const failCause: {
  * @category utils
  */
 export const failCauseSync: {
+  /**
+   * Fails the `Deferred` with the specified `Cause`, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <E>(evaluate: LazyArg<Cause.Cause<E>>): <A>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Fails the `Deferred` with the specified `Cause`, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, evaluate: LazyArg<Cause.Cause<E>>): Effect.Effect<boolean>
 } = core.deferredFailCauseSync
 
@@ -203,7 +307,21 @@ export const failCauseSync: {
  * @category utils
  */
 export const die: {
+  /**
+   * Kills the `Deferred` with the specified defect, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (defect: unknown): <A, E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Kills the `Deferred` with the specified defect, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, defect: unknown): Effect.Effect<boolean>
 } = core.deferredDie
 
@@ -215,7 +333,21 @@ export const die: {
  * @category utils
  */
 export const dieSync: {
+  /**
+   * Kills the `Deferred` with the specified defect, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (evaluate: LazyArg<unknown>): <A, E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Kills the `Deferred` with the specified defect, which will be propagated to
+   * all fibers waiting on the value of the `Deferred`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, evaluate: LazyArg<unknown>): Effect.Effect<boolean>
 } = core.deferredDieSync
 
@@ -237,7 +369,21 @@ export const interrupt: <A, E>(self: Deferred<A, E>) => Effect.Effect<boolean> =
  * @category utils
  */
 export const interruptWith: {
+  /**
+   * Completes the `Deferred` with interruption. This will interrupt all fibers
+   * waiting on the value of the `Deferred` with the specified `FiberId`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (fiberId: FiberId.FiberId): <A, E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Completes the `Deferred` with interruption. This will interrupt all fibers
+   * waiting on the value of the `Deferred` with the specified `FiberId`.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, fiberId: FiberId.FiberId): Effect.Effect<boolean>
 } = core.deferredInterruptWith
 
@@ -268,7 +414,19 @@ export const poll: <A, E>(
  * @category utils
  */
 export const succeed: {
+  /**
+   * Completes the `Deferred` with the specified value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(value: A): <E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Completes the `Deferred` with the specified value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, value: A): Effect.Effect<boolean>
 } = core.deferredSucceed
 
@@ -279,7 +437,19 @@ export const succeed: {
  * @category utils
  */
 export const sync: {
+  /**
+   * Completes the `Deferred` with the specified lazily evaluated value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A>(evaluate: LazyArg<A>): <E>(self: Deferred<A, E>) => Effect.Effect<boolean>
+  /**
+   * Completes the `Deferred` with the specified lazily evaluated value.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   <A, E>(self: Deferred<A, E>, evaluate: LazyArg<A>): Effect.Effect<boolean>
 } = core.deferredSync
 

@@ -81,7 +81,15 @@ const makeImpl = <K, V>(tree: RBT.RedBlackTree<K, V>): SortedMap<K, V> => {
  * @category refinements
  */
 export const isSortedMap: {
+  /**
+   * @since 2.0.0
+   * @category refinements
+   */
   <K, V>(u: Iterable<readonly [K, V]>): u is SortedMap<K, V>
+  /**
+   * @since 2.0.0
+   * @category refinements
+   */
   (u: unknown): u is SortedMap<unknown, unknown>
 } = (u: unknown): u is SortedMap<unknown, unknown> => hasProperty(u, TypeId)
 
@@ -98,7 +106,19 @@ export const empty = <K, V = never>(ord: Order<K>): SortedMap<K, V> => makeImpl<
  * @category constructors
  */
 export const fromIterable: {
+  /**
+   * Creates a new `SortedMap` from an iterable collection of key/value pairs.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   <B>(ord: Order<B>): <K extends B, V>(iterable: Iterable<readonly [K, V]>) => SortedMap<K, V>
+  /**
+   * Creates a new `SortedMap` from an iterable collection of key/value pairs.
+   *
+   * @since 2.0.0
+   * @category constructors
+   */
   <K extends B, V, B>(iterable: Iterable<readonly [K, V]>, ord: Order<B>): SortedMap<K, V>
 } = Dual.dual(
   2,
@@ -134,7 +154,15 @@ export const isNonEmpty = <K, V>(self: SortedMap<K, V>): boolean => size(self) >
  * @category elements
  */
 export const get: {
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K): <V>(self: SortedMap<K, V>) => Option.Option<V>
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: SortedMap<K, V>, key: K): Option.Option<V>
 } = Dual.dual<
   <K>(key: K) => <V>(self: SortedMap<K, V>) => Option.Option<V>,
@@ -154,7 +182,15 @@ export const getOrder = <K, V>(self: SortedMap<K, V>): Order<K> => RBT.getOrder(
  * @category elements
  */
 export const has: {
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K): <V>(self: SortedMap<K, V>) => boolean
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: SortedMap<K, V>, key: K): boolean
 } = Dual.dual<
   <K>(key: K) => <V>(self: SortedMap<K, V>) => boolean,
@@ -172,7 +208,15 @@ export const headOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> =
  * @category mapping
  */
 export const map: {
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
   <A, K, B>(f: (a: A, k: K) => B): (self: SortedMap<K, A>) => SortedMap<K, B>
+  /**
+   * @since 2.0.0
+   * @category mapping
+   */
   <K, A, B>(self: SortedMap<K, A>, f: (a: A, k: K) => B): SortedMap<K, B>
 } = Dual.dual<
   <A, K, B>(f: (a: A, k: K) => B) => (self: SortedMap<K, A>) => SortedMap<K, B>,
@@ -189,7 +233,15 @@ export const map: {
  * @category folding
  */
 export const reduce: {
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <B, A, K>(zero: B, f: (acc: B, value: A, key: K) => B): (self: SortedMap<K, A>) => B
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <K, A, B>(self: SortedMap<K, A>, zero: B, f: (acc: B, value: A, key: K) => B): B
 } = Dual.dual<
   <B, A, K>(zero: B, f: (acc: B, value: A, key: K) => B) => (self: SortedMap<K, A>) => B,
@@ -201,7 +253,15 @@ export const reduce: {
  * @category elements
  */
 export const remove: {
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K>(key: K): <V>(self: SortedMap<K, V>) => SortedMap<K, V>
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: SortedMap<K, V>, key: K): SortedMap<K, V>
 } = Dual.dual<
   <K>(key: K) => <V>(self: SortedMap<K, V>) => SortedMap<K, V>,
@@ -213,7 +273,15 @@ export const remove: {
  * @category elements
  */
 export const set: {
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(key: K, value: V): (self: SortedMap<K, V>) => SortedMap<K, V>
+  /**
+   * @since 2.0.0
+   * @category elements
+   */
   <K, V>(self: SortedMap<K, V>, key: K, value: V): SortedMap<K, V>
 } = Dual.dual<
   <K, V>(key: K, value: V) => (self: SortedMap<K, V>) => SortedMap<K, V>,
@@ -262,9 +330,15 @@ export const lastOption = <K, V>(self: SortedMap<K, V>): Option.Option<[K, V]> =
  * @category filtering
  */
 export const partition: {
-  <K, V>(
-    predicate: (a: Types.NoInfer<K>) => boolean
-  ): (self: SortedMap<K, V>) => [excluded: SortedMap<K, V>, satisfying: SortedMap<K, V>]
+  /**
+   * @since 3.1.0
+   * @category filtering
+   */
+  <K, V>(predicate: (a: Types.NoInfer<K>) => boolean): (self: SortedMap<K, V>) => [excluded: SortedMap<K, V>, satisfying: SortedMap<K, V>]
+  /**
+   * @since 3.1.0
+   * @category filtering
+   */
   <K, V>(self: SortedMap<K, V>, predicate: (a: K) => boolean): [excluded: SortedMap<K, V>, satisfying: SortedMap<K, V>]
 } = Dual.dual(
   2,

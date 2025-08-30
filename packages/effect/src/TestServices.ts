@@ -78,7 +78,19 @@ export const annotationsWith = <A, E, R>(
  * @since 2.0.0
  */
 export const withAnnotations = dual<
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * annotations service.
+   *
+   * @since 2.0.0
+   */
   (annotations: Annotations.TestAnnotations) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * annotations service.
+   *
+   * @since 2.0.0
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, annotations: Annotations.TestAnnotations) => Effect.Effect<A, E, R>
 >(2, (effect, annotations) =>
   core.fiberRefLocallyWith(
@@ -165,7 +177,19 @@ export const live: Effect.Effect<Live.TestLive> = liveWith(core.succeed)
  * @since 2.0.0
  */
 export const withLive = dual<
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * live service.
+   *
+   * @since 2.0.0
+   */
   (live: Live.TestLive) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * live service.
+   *
+   * @since 2.0.0
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, live: Live.TestLive) => Effect.Effect<A, E, R>
 >(2, (effect, live) =>
   core.fiberRefLocallyWith(
@@ -212,9 +236,19 @@ export const provideLive = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Eff
  * @since 2.0.0
  */
 export const provideWithLive = dual<
-  <A, E, R, A2, E2, R2>(
-    f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A2, E2, R2>
-  ) => (self: Effect.Effect<A, E, R>) => Effect.Effect<A2, E | E2, R | R2>,
+  /**
+   * Runs a transformation function with the live default Effect services while
+   * ensuring that the workflow itself is run with the test services.
+   *
+   * @since 2.0.0
+   */
+  <A, E, R, A2, E2, R2>(f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A2, E2, R2>) => (self: Effect.Effect<A, E, R>) => Effect.Effect<A2, E | E2, R | R2>,
+  /**
+   * Runs a transformation function with the live default Effect services while
+   * ensuring that the workflow itself is run with the test services.
+   *
+   * @since 2.0.0
+   */
   <A, E, R, A2, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (effect: Effect.Effect<A, E, R>) => Effect.Effect<A2, E2, R2>
@@ -251,7 +285,19 @@ export const sized: Effect.Effect<Sized.TestSized> = sizedWith(core.succeed)
  * @since 2.0.0
  */
 export const withSized = dual<
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * sized service.
+   *
+   * @since 2.0.0
+   */
   (sized: Sized.TestSized) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * sized service.
+   *
+   * @since 2.0.0
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, sized: Sized.TestSized) => Effect.Effect<A, E, R>
 >(2, (effect, sized) =>
   core.fiberRefLocallyWith(
@@ -290,7 +336,13 @@ export const size: Effect.Effect<number> = sizedWith((sized) => sized.size)
  * @since 2.0.0
  */
 export const withSize = dual<
+  /**
+   * @since 2.0.0
+   */
   (size: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * @since 2.0.0
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, size: number) => Effect.Effect<A, E, R>
 >(2, (effect, size) => sizedWith((sized) => sized.withSize(size)(effect)))
 
@@ -322,7 +374,19 @@ export const testConfig: Effect.Effect<TestConfig.TestConfig> = testConfigWith(c
  * @since 2.0.0
  */
 export const withTestConfig = dual<
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * config service.
+   *
+   * @since 2.0.0
+   */
   (config: TestConfig.TestConfig) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+  /**
+   * Executes the specified workflow with the specified implementation of the
+   * config service.
+   *
+   * @since 2.0.0
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, config: TestConfig.TestConfig) => Effect.Effect<A, E, R>
 >(2, (effect, config) =>
   core.fiberRefLocallyWith(

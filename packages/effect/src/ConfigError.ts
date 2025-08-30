@@ -256,7 +256,15 @@ export const isUnsupported: (self: ConfigError) => self is Unsupported = interna
  * @category utils
  */
 export const prefixed: {
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   (prefix: Array<string>): (self: ConfigError) => ConfigError
+  /**
+   * @since 2.0.0
+   * @category utils
+   */
   (self: ConfigError, prefix: Array<string>): ConfigError
 } = internal.prefixed
 
@@ -265,6 +273,14 @@ export const prefixed: {
  * @category folding
  */
 export const reduceWithContext: {
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <C, Z>(context: C, reducer: ConfigErrorReducer<C, Z>): (self: ConfigError) => Z
+  /**
+   * @since 2.0.0
+   * @category folding
+   */
   <C, Z>(self: ConfigError, context: C, reducer: ConfigErrorReducer<C, Z>): Z
 } = internal.reduceWithContext

@@ -25,12 +25,22 @@ interface DataLoaderItem<A extends Request.Request<any, any>> {
  * @category combinators
  */
 export const dataLoader = dual<
-  (options: {
-    readonly window: Duration.DurationInput
-    readonly maxBatchSize?: number
-  }) => <A extends Request.Request<any, any>>(
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (
+    options: {
+      readonly window: Duration.DurationInput
+      readonly maxBatchSize?: number
+    }
+  ) => <A extends Request.Request<any, any>>(
     self: RequestResolver.RequestResolver<A, never>
   ) => Effect.Effect<RequestResolver.RequestResolver<A, never>, never, Scope.Scope>,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <A extends Request.Request<any, any>>(
     self: RequestResolver.RequestResolver<A, never>,
     options: {
@@ -48,7 +58,11 @@ export const dataLoader = dual<
   }) {
     const maxSize = options.maxBatchSize ?? Infinity
     const scope = yield* Effect.scope
-    const runtime = yield* Effect.runtime<never>().pipe(
+    const runtime = yield* Effect.runtime</**
+     * @since 1.0.0
+     * @category combinators
+     */
+    never>().pipe(
       Effect.interruptible
     )
     const runFork = Runtime.runFork(runtime)
@@ -80,7 +94,15 @@ export const dataLoader = dual<
     yield* Scope.addFinalizer(scope, Effect.suspend(() => fiber ? Fiber.interrupt(fiber) : Effect.void))
 
     return RequestResolver.fromEffect((request: A) =>
-      Effect.async<Request.Request.Success<A>, Request.Request.Error<A>>((resume) => {
+      Effect.async</**
+       * @since 1.0.0
+       * @category combinators
+       */
+      Request.Request.Success<A>, /**
+       * @since 1.0.0
+       * @category combinators
+       */
+      Request.Request.Error<A>>((resume) => {
         const item: DataLoaderItem<A> = { request, resume }
         batch.add(item)
         if (batch.size >= maxSize) {
@@ -100,7 +122,7 @@ export const dataLoader = dual<
           batch.delete(item)
         })
       })
-    )
+    );
   })
 )
 
@@ -127,16 +149,26 @@ export declare namespace PersistedRequest {
  * @category combinators
  */
 export const persisted: {
-  <Req extends PersistedRequest.Any>(options: {
-    readonly storeId: string
-    readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
-  }): (
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <Req extends PersistedRequest.Any>(
+    options: {
+      readonly storeId: string
+      readonly timeToLive: (...args: Persistence.ResultPersistence.TimeToLiveArgs<Req>) => Duration.DurationInput
+    }
+  ): (
     self: RequestResolver.RequestResolver<Req, never>
   ) => Effect.Effect<
     RequestResolver.RequestResolver<Req, Schema.WithResult.Context<Req>>,
     never,
     Persistence.ResultPersistence | Scope.Scope
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <Req extends PersistedRequest.Any>(
     self: RequestResolver.RequestResolver<Req, never>,
     options: {

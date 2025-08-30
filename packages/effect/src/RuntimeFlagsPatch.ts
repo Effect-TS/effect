@@ -59,7 +59,21 @@ export const isEmpty: (patch: RuntimeFlagsPatch) => boolean = internal.isEmpty
  * @category elements
  */
 export const isActive: {
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` describes the specified
+   * `RuntimeFlag` as active.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (flag: RuntimeFlagsPatch): (self: RuntimeFlagsPatch) => boolean
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` describes the specified
+   * `RuntimeFlag` as active.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (self: RuntimeFlagsPatch, flag: RuntimeFlagsPatch): boolean
 } = internal.isActive
 
@@ -71,7 +85,21 @@ export const isActive: {
  * @category elements
  */
 export const isEnabled: {
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` describes the specified
+   * `RuntimeFlag` as enabled.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (flag: RuntimeFlags.RuntimeFlag): (self: RuntimeFlagsPatch) => boolean
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` describes the specified
+   * `RuntimeFlag` as enabled.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag): boolean
 } = internal.isEnabled
 
@@ -83,7 +111,21 @@ export const isEnabled: {
  * @category elements
  */
 export const isDisabled: {
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` describes the specified
+   * `RuntimeFlag` as disabled.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (flag: RuntimeFlags.RuntimeFlag): (self: RuntimeFlagsPatch) => boolean
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` describes the specified
+   * `RuntimeFlag` as disabled.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag): boolean
 } = internal.isDisabled
 
@@ -95,7 +137,21 @@ export const isDisabled: {
  * @category elements
  */
 export const includes: {
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` includes the specified
+   * `RuntimeFlag`, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (flag: RuntimeFlagsPatch): (self: RuntimeFlagsPatch) => boolean
+  /**
+   * Returns `true` if the `RuntimeFlagsPatch` includes the specified
+   * `RuntimeFlag`, `false` otherwise.
+   *
+   * @since 2.0.0
+   * @category elements
+   */
   (self: RuntimeFlagsPatch, flag: RuntimeFlagsPatch): boolean
 } = internal.isActive
 
@@ -107,7 +163,21 @@ export const includes: {
  * @category utils
  */
 export const andThen: {
+  /**
+   * Creates a `RuntimeFlagsPatch` describing the application of the `self` patch,
+   * followed by `that` patch.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: RuntimeFlagsPatch): (self: RuntimeFlagsPatch) => RuntimeFlagsPatch
+  /**
+   * Creates a `RuntimeFlagsPatch` describing the application of the `self` patch,
+   * followed by `that` patch.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlagsPatch, that: RuntimeFlagsPatch): RuntimeFlagsPatch
 } = internal.andThen
 
@@ -119,7 +189,21 @@ export const andThen: {
  * @category utils
  */
 export const both: {
+  /**
+   * Creates a `RuntimeFlagsPatch` describing application of both the `self` patch
+   * and `that` patch.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: RuntimeFlagsPatch): (self: RuntimeFlagsPatch) => RuntimeFlagsPatch
+  /**
+   * Creates a `RuntimeFlagsPatch` describing application of both the `self` patch
+   * and `that` patch.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlagsPatch, that: RuntimeFlagsPatch): RuntimeFlagsPatch
 } = internal.both
 
@@ -131,7 +215,21 @@ export const both: {
  * @category utils
  */
 export const either: {
+  /**
+   * Creates a `RuntimeFlagsPatch` describing application of either the `self`
+   * patch or `that` patch.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (that: RuntimeFlagsPatch): (self: RuntimeFlagsPatch) => RuntimeFlagsPatch
+  /**
+   * Creates a `RuntimeFlagsPatch` describing application of either the `self`
+   * patch or `that` patch.
+   *
+   * @since 2.0.0
+   * @category utils
+   */
   (self: RuntimeFlagsPatch, that: RuntimeFlagsPatch): RuntimeFlagsPatch
 } = internal.either
 
@@ -143,7 +241,21 @@ export const either: {
  * @since 2.0.0
  */
 export const exclude: {
+  /**
+   * Creates a `RuntimeFlagsPatch` which describes exclusion of the specified
+   * `RuntimeFlag` from the set of `RuntimeFlags`.
+   *
+   * @category utils
+   * @since 2.0.0
+   */
   (flag: RuntimeFlags.RuntimeFlag): (self: RuntimeFlagsPatch) => RuntimeFlagsPatch
+  /**
+   * Creates a `RuntimeFlagsPatch` which describes exclusion of the specified
+   * `RuntimeFlag` from the set of `RuntimeFlags`.
+   *
+   * @category utils
+   * @since 2.0.0
+   */
   (self: RuntimeFlagsPatch, flag: RuntimeFlags.RuntimeFlag): RuntimeFlagsPatch
 } = internal.exclude
 

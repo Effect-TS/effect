@@ -582,13 +582,23 @@ class PersistedFileImpl extends PartBase implements PersistedFile {
  * @category fiber refs
  */
 export const withLimits: {
-  (options: {
-    readonly maxParts?: Option.Option<number> | undefined
-    readonly maxFieldSize?: FileSystem.SizeInput | undefined
-    readonly maxFileSize?: Option.Option<FileSystem.SizeInput> | undefined
-    readonly maxTotalSize?: Option.Option<FileSystem.SizeInput> | undefined
-    readonly fieldMimeTypes?: ReadonlyArray<string> | undefined
-  }): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
+  (
+    options: {
+      readonly maxParts?: Option.Option<number> | undefined
+      readonly maxFieldSize?: FileSystem.SizeInput | undefined
+      readonly maxFileSize?: Option.Option<FileSystem.SizeInput> | undefined
+      readonly maxTotalSize?: Option.Option<FileSystem.SizeInput> | undefined
+      readonly fieldMimeTypes?: ReadonlyArray<string> | undefined
+    }
+  ): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(
     effect: Effect.Effect<A, E, R>,
     options: {
@@ -641,13 +651,23 @@ const withLimitsContext = (options: {
  * @category fiber refs
  */
 export const withLimitsStream: {
-  (options: {
-    readonly maxParts?: Option.Option<number> | undefined
-    readonly maxFieldSize?: FileSystem.SizeInput | undefined
-    readonly maxFileSize?: Option.Option<FileSystem.SizeInput> | undefined
-    readonly maxTotalSize?: Option.Option<FileSystem.SizeInput> | undefined
-    readonly fieldMimeTypes?: ReadonlyArray<string> | undefined
-  }): <A, E, R>(stream: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
+  (
+    options: {
+      readonly maxParts?: Option.Option<number> | undefined
+      readonly maxFieldSize?: FileSystem.SizeInput | undefined
+      readonly maxFileSize?: Option.Option<FileSystem.SizeInput> | undefined
+      readonly maxTotalSize?: Option.Option<FileSystem.SizeInput> | undefined
+      readonly fieldMimeTypes?: ReadonlyArray<string> | undefined
+    }
+  ): <A, E, R>(stream: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(
     stream: Stream.Stream<A, E, R>,
     options: {
@@ -700,7 +720,15 @@ export class MaxParts extends Context.Reference<MaxParts>()("@effect/platform/Mu
  * @category fiber refs
  */
 export const withMaxParts: {
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   (count: Option.Option<number>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, count: Option.Option<number>): Effect.Effect<A, E, R>
 } = dual(
   2,
@@ -721,7 +749,15 @@ export class MaxFieldSize extends Context.Reference<MaxFieldSize>()("@effect/pla
  * @category fiber refs
  */
 export const withMaxFieldSize: {
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   (size: FileSystem.SizeInput): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, size: FileSystem.SizeInput): Effect.Effect<A, E, R>
 } = dual(
   2,
@@ -742,7 +778,15 @@ export class MaxFileSize extends Context.Reference<MaxFileSize>()("@effect/platf
  * @category fiber refs
  */
 export const withMaxFileSize: {
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   (size: Option.Option<FileSystem.SizeInput>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, size: Option.Option<FileSystem.SizeInput>): Effect.Effect<A, E, R>
 } = dual(
   2,
@@ -767,7 +811,15 @@ export class FieldMimeTypes extends Context.Reference<FieldMimeTypes>()("@effect
  * @category fiber refs
  */
 export const withFieldMimeTypes: {
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   (mimeTypes: ReadonlyArray<string>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
+  /**
+   * @since 1.0.0
+   * @category fiber refs
+   */
   <A, E, R>(effect: Effect.Effect<A, E, R>, mimeTypes: ReadonlyArray<string>): Effect.Effect<A, E, R>
 } = dual(
   2,

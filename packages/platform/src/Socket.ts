@@ -251,6 +251,10 @@ export const toChannel = <IE>(
  * @category combinators
  */
 export const toChannelString: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (encoding?: string | undefined): <IE>(self: Socket) => Channel.Channel<
     Chunk.Chunk<string>,
     Chunk.Chunk<Uint8Array | string | CloseEvent>,
@@ -259,10 +263,11 @@ export const toChannelString: {
     void,
     unknown
   >
-  <IE>(
-    self: Socket,
-    encoding?: string | undefined
-  ): Channel.Channel<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  <IE>(self: Socket, encoding?: string | undefined): Channel.Channel<
     Chunk.Chunk<string>,
     Chunk.Chunk<Uint8Array | string | CloseEvent>,
     SocketError | IE,

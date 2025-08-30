@@ -271,9 +271,17 @@ export const unpackSchemaString = <A, I, R>(
  * @category combinators
  */
 export const duplex: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (options?: NdjsonOptions): <R, IE, OE, OutDone, InDone>(
     self: Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, OE, IE | NdjsonError, OutDone, InDone, R>
   ) => Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, NdjsonError | OE, IE, OutDone, InDone, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, IE, OE, OutDone, InDone>(
     self: Channel.Channel<Chunk.Chunk<Uint8Array>, Chunk.Chunk<Uint8Array>, OE, IE | NdjsonError, OutDone, InDone, R>,
     options?: NdjsonOptions
@@ -292,9 +300,17 @@ export const duplex: {
  * @category combinators
  */
 export const duplexString: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (options?: NdjsonOptions): <R, IE, OE, OutDone, InDone>(
     self: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<string>, OE, IE | NdjsonError, OutDone, InDone, R>
   ) => Channel.Channel<Chunk.Chunk<unknown>, Chunk.Chunk<unknown>, NdjsonError | OE, IE, OutDone, InDone, R>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, IE, OE, OutDone, InDone>(
     self: Channel.Channel<Chunk.Chunk<string>, Chunk.Chunk<string>, OE, IE | NdjsonError, OutDone, InDone, R>,
     options?: NdjsonOptions
@@ -313,6 +329,10 @@ export const duplexString: {
  * @category combinators
  */
 export const duplexSchema: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <IA, II, IR, OA, OI, OR>(
     options: Partial<NdjsonOptions> & {
       readonly inputSchema: Schema.Schema<IA, II, IR>
@@ -337,6 +357,10 @@ export const duplexSchema: {
     InDone,
     R | IR | OR
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<Uint8Array>,
@@ -389,6 +413,10 @@ export const duplexSchema: {
  * @category combinators
  */
 export const duplexSchemaString: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <IA, II, IR, OA, OI, OR>(
     options: Partial<NdjsonOptions> & {
       readonly inputSchema: Schema.Schema<IA, II, IR>
@@ -413,6 +441,10 @@ export const duplexSchemaString: {
     InDone,
     R | IR | OR
   >
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   <R, InErr, OutErr, OutDone, InDone, IA, II, IR, OA, OI, OR>(
     self: Channel.Channel<
       Chunk.Chunk<string>,

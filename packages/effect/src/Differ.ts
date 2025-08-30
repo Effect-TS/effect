@@ -230,14 +230,18 @@ export const empty: <Value, Patch>(self: Differ<Value, Patch>) => Patch = (
  * @category patch
  */
 export const diff: {
+  /**
+   * @since 2.0.0
+   * @category patch
+   */
   <Value>(oldValue: Value, newValue: Value): <Patch>(
     self: Differ<Value, Patch>
   ) => Patch
-  <Value, Patch>(
-    self: Differ<Value, Patch>,
-    oldValue: Value,
-    newValue: Value
-  ): Patch
+  /**
+   * @since 2.0.0
+   * @category patch
+   */
+  <Value, Patch>(self: Differ<Value, Patch>, oldValue: Value, newValue: Value): Patch
 } = Dual.dual(
   3,
   <Value, Patch>(
@@ -258,14 +262,30 @@ export const diff: {
  * @category patch
  */
 export const combine: {
+  /**
+   * Combines two patches to produce a new patch that describes the updates of
+   * the first patch and then the updates of the second patch. The combine
+   * operation should be associative. In addition, if the combine operation is
+   * commutative then joining multiple fibers concurrently will result in
+   * deterministic `FiberRef` values.
+   *
+   * @since 2.0.0
+   * @category patch
+   */
   <Patch>(first: Patch, second: Patch): <Value>(
     self: Differ<Value, Patch>
   ) => Patch
-  <Value, Patch>(
-    self: Differ<Value, Patch>,
-    first: Patch,
-    second: Patch
-  ): Patch
+  /**
+   * Combines two patches to produce a new patch that describes the updates of
+   * the first patch and then the updates of the second patch. The combine
+   * operation should be associative. In addition, if the combine operation is
+   * commutative then joining multiple fibers concurrently will result in
+   * deterministic `FiberRef` values.
+   *
+   * @since 2.0.0
+   * @category patch
+   */
+  <Value, Patch>(self: Differ<Value, Patch>, first: Patch, second: Patch): Patch
 } = Dual.dual(
   3,
   <Value, Patch>(
@@ -283,14 +303,24 @@ export const combine: {
  * @category patch
  */
 export const patch: {
+  /**
+   * Applies a patch to an old value to produce a new value that is equal to the
+   * old value with the updates described by the patch.
+   *
+   * @since 2.0.0
+   * @category patch
+   */
   <Patch, Value>(patch: Patch, oldValue: Value): (
     self: Differ<Value, Patch>
   ) => Value
-  <Patch, Value>(
-    self: Differ<Value, Patch>,
-    patch: Patch,
-    oldValue: Value
-  ): Value
+  /**
+   * Applies a patch to an old value to produce a new value that is equal to the
+   * old value with the updates described by the patch.
+   *
+   * @since 2.0.0
+   * @category patch
+   */
+  <Patch, Value>(self: Differ<Value, Patch>, patch: Patch, oldValue: Value): Value
 } = Dual.dual(
   3,
   <Patch, Value>(
@@ -364,16 +394,25 @@ export const hashSet: <Value>() => Differ<
  * @since 2.0.0
  */
 export const orElseEither: {
+  /**
+   * Combines this differ and the specified differ to produce a differ that
+   * knows how to diff the sum of their values.
+   *
+   * @since 2.0.0
+   */
   <Value2, Patch2>(that: Differ<Value2, Patch2>): <Value, Patch>(
     self: Differ<Value, Patch>
   ) => Differ<
     Either<Value2, Value>,
     Differ.Or.Patch<Value, Value2, Patch, Patch2>
   >
-  <Value, Patch, Value2, Patch2>(
-    self: Differ<Value, Patch>,
-    that: Differ<Value2, Patch2>
-  ): Differ<
+  /**
+   * Combines this differ and the specified differ to produce a differ that
+   * knows how to diff the sum of their values.
+   *
+   * @since 2.0.0
+   */
+  <Value, Patch, Value2, Patch2>(self: Differ<Value, Patch>, that: Differ<Value2, Patch2>): Differ<
     Either<Value2, Value>,
     Differ.Or.Patch<Value, Value2, Patch, Patch2>
   >
@@ -396,10 +435,24 @@ export const readonlyArray: <Value, Patch>(
  * @since 2.0.0
  */
 export const transform: {
-  <Value, Value2>(options: {
-    readonly toNew: (value: Value) => Value2
-    readonly toOld: (value: Value2) => Value
-  }): <Patch>(self: Differ<Value, Patch>) => Differ<Value2, Patch>
+  /**
+   * Transforms the type of values that this differ knows how to differ using
+   * the specified functions that map the new and old value types to each other.
+   *
+   * @since 2.0.0
+   */
+  <Value, Value2>(
+    options: {
+      readonly toNew: (value: Value) => Value2
+      readonly toOld: (value: Value2) => Value
+    }
+  ): <Patch>(self: Differ<Value, Patch>) => Differ<Value2, Patch>
+  /**
+   * Transforms the type of values that this differ knows how to differ using
+   * the specified functions that map the new and old value types to each other.
+   *
+   * @since 2.0.0
+   */
   <Value, Patch, Value2>(
     self: Differ<Value, Patch>,
     options: {
@@ -434,16 +487,25 @@ export const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A> = i
  * @since 2.0.0
  */
 export const zip: {
+  /**
+   * Combines this differ and the specified differ to produce a new differ that
+   * knows how to diff the product of their values.
+   *
+   * @since 2.0.0
+   */
   <Value2, Patch2>(that: Differ<Value2, Patch2>): <Value, Patch>(
     self: Differ<Value, Patch>
   ) => Differ<
     readonly [Value, Value2], // readonly because invariant
     readonly [Patch, Patch2] // readonly because invariant
   >
-  <Value, Patch, Value2, Patch2>(
-    self: Differ<Value, Patch>,
-    that: Differ<Value2, Patch2>
-  ): Differ<
+  /**
+   * Combines this differ and the specified differ to produce a new differ that
+   * knows how to diff the product of their values.
+   *
+   * @since 2.0.0
+   */
+  <Value, Patch, Value2, Patch2>(self: Differ<Value, Patch>, that: Differ<Value2, Patch2>): Differ<
     readonly [Value, Value2], // readonly because invariant
     readonly [Patch, Patch2] // readonly because invariant
   >

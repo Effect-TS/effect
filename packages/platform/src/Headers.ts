@@ -125,10 +125,26 @@ export const unsafeFromRecord = (input: Record.ReadonlyRecord<string, string>): 
  * @category combinators
  */
 export const has: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string): (self: Headers) => boolean
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string): boolean
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string) => (self: Headers) => boolean,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string) => boolean
 >(2, (self, key) => key.toLowerCase() in self)
 
@@ -137,10 +153,26 @@ export const has: {
  * @category combinators
  */
 export const get: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string): (self: Headers) => Option.Option<string>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string): Option.Option<string>
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string) => (self: Headers) => Option.Option<string>,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string) => Option.Option<string>
 >(2, (self, key) => Record.get(self as Record<string, string>, key.toLowerCase()))
 
@@ -149,10 +181,26 @@ export const get: {
  * @category combinators
  */
 export const set: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: string): (self: Headers) => Headers
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string, value: string): Headers
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string, value: string) => (self: Headers) => Headers,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string, value: string) => Headers
 >(3, (self, key, value) => {
   const out = make(self)
@@ -165,10 +213,26 @@ export const set: {
  * @category combinators
  */
 export const setAll: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (headers: Input): (self: Headers) => Headers
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, headers: Input): Headers
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (headers: Input) => (self: Headers) => Headers,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, headers: Input) => Headers
 >(2, (self, headers) =>
   make({
@@ -181,10 +245,26 @@ export const setAll: {
  * @category combinators
  */
 export const merge: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (headers: Headers): (self: Headers) => Headers
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, headers: Headers): Headers
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (headers: Headers) => (self: Headers) => Headers,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, headers: Headers) => Headers
 >(2, (self, headers) => {
   const out = make(self)
@@ -197,10 +277,26 @@ export const merge: {
  * @category combinators
  */
 export const remove: {
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Headers
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Headers
 } = dual<
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (key: string | RegExp | ReadonlyArray<string | RegExp>) => (self: Headers) => Headers,
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
   (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>) => Headers
 >(2, (self, key) => {
   const out = make(self)
@@ -233,13 +329,16 @@ export const remove: {
  * @category combinators
  */
 export const redact: {
-  (
-    key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): (self: Headers) => Record<string, string | Redacted.Redacted>
-  (
-    self: Headers,
-    key: string | RegExp | ReadonlyArray<string | RegExp>
-  ): Record<string, string | Redacted.Redacted>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (key: string | RegExp | ReadonlyArray<string | RegExp>): (self: Headers) => Record<string, string | Redacted.Redacted>
+  /**
+   * @since 1.0.0
+   * @category combinators
+   */
+  (self: Headers, key: string | RegExp | ReadonlyArray<string | RegExp>): Record<string, string | Redacted.Redacted>
 } = dual(
   2,
   (
