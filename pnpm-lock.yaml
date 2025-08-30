@@ -171,6 +171,13 @@ importers:
         version: 3.23.2
     publishDirectory: dist
 
+  packages-native/libsqlite:
+    dependencies:
+      effect:
+        specifier: '*'
+        version: 3.17.9
+    publishDirectory: dist
+
   scratchpad:
     dependencies:
       '@effect/ai':
@@ -2503,7 +2510,6 @@ packages:
 
   bun@1.2.21:
     resolution: {integrity: sha512-y0lJ02dS90U3PJm+7KAKY8Se95AQvP5Xm77LouUwrpNOHpv59kBG4SK1+9iE1cAhpUaFipq+0EJ56S6MmE3row==}
-    cpu: [arm64, x64, aarch64]
     os: [darwin, linux, win32]
     hasBin: true
 
@@ -3996,7 +4002,6 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lighthouse-logger@1.4.2:

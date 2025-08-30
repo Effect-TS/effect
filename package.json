@@ -17,8 +17,8 @@
     "lint-fix": "pnpm lint --fix",
     "docgen": "pnpm --recursive --filter \"./packages-native/**/*\" exec docgen && node scripts/docs.mjs",
     "test-types": "tstyche",
-    "changeset-version": "changeset version && node scripts/version.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish"
+    "changeset-version": "changeset version && node scripts/version.mjs && node scripts/force-libsqlite-embedded.mjs",
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish && node scripts/postpublish-dist-tags.mjs"
   },
   "resolutions": {
     "dependency-tree": "^10.0.9",

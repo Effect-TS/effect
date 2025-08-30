@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/@effect/docgen/schema.json",
+  "examplesCompilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "moduleResolution": "Bundler",
+    "module": "ES2022",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "paths": {
+      "effect": ["../../packages/effect/src/index.js"],
+      "effect/*": ["../../packages/effect/src/*.js"]
+    }
+  }
+}

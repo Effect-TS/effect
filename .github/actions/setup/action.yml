@@ -37,4 +37,13 @@ runs:
       env:
         NODE_OPTIONS: "--max-old-space-size=4096"
         PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
-      run: pnpm install --frozen-lockfile --prefer-offline --network-concurrency=32
+      run: |
+        set -euo pipefail
+        echo "🧩 pnpm install (shared store)"
+        if pnpm install --frozen-lockfile --prefer-offline --network-concurrency=32; then
+          echo "✅ Install succeeded with shared store"
+        else
+          echo "⚠️  Install failed; retrying with per-job store"
+          mkdir -p "$RUNNER_TEMP/pnpm-store"
+          pnpm install --frozen-lockfile --prefer-offline --store-dir="$RUNNER_TEMP/pnpm-store" --network-concurrency=32
+        fi

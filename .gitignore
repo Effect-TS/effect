@@ -13,3 +13,4 @@ scratchpad-bun/*
 .direnv/
 .idea/
 .env*
+result
