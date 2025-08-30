@@ -1,6 +1,6 @@
 {
   "name": "@effect-native/libsqlite",
-  "version": "3.50.200",
+  "version": "3.50.300",
   "type": "module",
   "license": "MIT",
   "description": "Universal, version-pinned libsqlite3 that Just Works — prebuilt via Nix with per-platform paths.",
