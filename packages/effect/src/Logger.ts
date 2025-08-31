@@ -19,6 +19,7 @@ import type * as LogSpan from "./LogSpan.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Scope } from "./Scope.js"
+import type * as Tracer from "./Tracer.js"
 import type * as Types from "./Types.js"
 
 /**
@@ -69,6 +70,7 @@ export declare namespace Logger {
     readonly spans: List.List<LogSpan.LogSpan>
     readonly annotations: HashMap.HashMap<string, unknown>
     readonly date: Date
+    readonly span?: Tracer.AnySpan | undefined
   }
 }
 

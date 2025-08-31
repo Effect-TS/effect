@@ -41,6 +41,12 @@ export const make: Effect.Effect<
     const attributes: Record<string, any> = {
       fiberId: FiberId.threadName(options.fiberId)
     }
+
+    if (options.span) {
+      attributes.spanId ??= options.span.spanId
+      attributes.traceId ??= options.span.traceId
+    }
+
     for (const [key, value] of options.annotations) {
       attributes[key] = unknownToAttributeValue(value)
     }
