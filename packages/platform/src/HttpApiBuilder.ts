@@ -708,23 +708,40 @@ const applyMiddleware = <A extends Effect.Effect<any, any, any>>(
   middleware: MiddlewareMap,
   handler: A
 ) => {
+  // Build a wrapper that threads provided services to both subsequent middleware effects and the final handler
+  let wrap = <X extends Effect.Effect<any, any, any>>(inner: X): X => inner
   for (const entry of middleware.values()) {
     const effect = HttpApiMiddleware.SecurityTypeId in entry.tag ? makeSecurityMiddleware(entry as any) : entry.effect
+    const prevWrap = wrap
     if (entry.tag.optional) {
-      const previous = handler
-      handler = Effect.matchEffect(effect, {
-        onFailure: () => previous,
-        onSuccess: entry.tag.provides !== undefined
-          ? (value) => Effect.provideService(previous, entry.tag.provides as any, value)
-          : (_) => previous
-      }) as any
+      if (entry.tag.provides !== undefined) {
+        wrap = (inner: any) => {
+          const innerWrapped = prevWrap(inner)
+          const effectWrapped = prevWrap(effect)
+          return Effect.matchEffect(effectWrapped, {
+            onFailure: () => innerWrapped,
+            onSuccess: (value) => Effect.provideService(innerWrapped, entry.tag.provides as any, value)
+          }) as any
+        }
+      } else {
+        wrap = (inner: any) => {
+          const innerWrapped = prevWrap(inner)
+          const effectWrapped = prevWrap(effect)
+          return Effect.matchEffect(effectWrapped, {
+            onFailure: () => innerWrapped,
+            onSuccess: () => innerWrapped
+          }) as any
+        }
+      }
     } else {
-      handler = entry.tag.provides !== undefined
-        ? Effect.provideServiceEffect(handler, entry.tag.provides as any, effect) as any
-        : Effect.zipRight(effect, handler) as any
+      if (entry.tag.provides !== undefined) {
+        wrap = (inner: any) => Effect.provideServiceEffect(prevWrap(inner), entry.tag.provides as any, prevWrap(effect)) as any
+      } else {
+        wrap = (inner: any) => Effect.zipRight(prevWrap(effect), prevWrap(inner)) as any
+      }
     }
   }
-  return handler
+  return wrap(handler)
 }
 
 const securityMiddlewareCache = globalValue<WeakMap<any, Effect.Effect<any, any, any>>>(

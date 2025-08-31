@@ -43,16 +43,22 @@ export const isSecurity = (u: TagClassAny): u is TagClassSecurityAny => hasPrope
  * @since 1.0.0
  * @category models
  */
-export interface HttpApiMiddleware<Provides, E> extends Effect.Effect<Provides, E, HttpRouter.HttpRouter.Provided> {}
+export interface HttpApiMiddleware<Provides, E, R = never>
+  extends Effect.Effect<Provides, E, HttpRouter.HttpRouter.Provided | R> {}
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type HttpApiMiddlewareSecurity<Security extends Record<string, HttpApiSecurity.HttpApiSecurity>, Provides, E> = {
+export type HttpApiMiddlewareSecurity<
+  Security extends Record<string, HttpApiSecurity.HttpApiSecurity>,
+  Provides,
+  E,
+  R = never
+> = {
   readonly [K in keyof Security]: (
     _: HttpApiSecurity.HttpApiSecurity.Type<Security[K]>
-  ) => Effect.Effect<Provides, E, HttpRouter.HttpRouter.Provided>
+  ) => Effect.Effect<Provides, E, HttpRouter.HttpRouter.Provided | R>
 }
 
 /**
@@ -106,6 +112,12 @@ export declare namespace HttpApiMiddleware {
    * @since 1.0.0
    * @category models
    */
+  export type Requires<A> = A extends { readonly [TypeId]: { readonly requires: infer Req } } ? Req : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type Only<R> = Extract<R, AnyId>
 
   /**
@@ -131,7 +143,8 @@ export type TagClass<
       HttpApiMiddlewareSecurity<
         Options["security"],
         TagClass.Service<Options>,
-        TagClass.FailureService<Options>
+        TagClass.FailureService<Options>,
+        TagClass.Requires<Options>
       >
     >,
     Options["security"]
@@ -142,7 +155,8 @@ export type TagClass<
     Options,
     HttpApiMiddleware<
       TagClass.Service<Options>,
-      TagClass.FailureService<Options>
+      TagClass.FailureService<Options>,
+      TagClass.Requires<Options>
     >
   >
 
@@ -168,6 +182,16 @@ export declare namespace TagClass {
   export type Service<Options> = Options extends { readonly provides: Context.Tag<any, any> }
     ? Context.Tag.Service<Options["provides"]>
     : void
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Requires<Options> = Options extends { readonly requires: Context.Tag<any, any> }
+    ? Context.Tag.Identifier<Options["requires"]>
+    : Options extends { readonly requires: ReadonlyArray<Context.Tag<any, any>> }
+      ? Context.Tag.Identifier<Options["requires"][number]>
+      : never
 
   /**
    * @since 1.0.0
@@ -213,6 +237,7 @@ export declare namespace TagClass {
       & {
         readonly [TypeId]: {
           readonly provides: Provides<Options>
+          readonly requires: Requires<Options>
           readonly failure: Failure<Options>
           readonly failureContext: FailureContext<Options>
         }
@@ -221,6 +246,9 @@ export declare namespace TagClass {
     readonly optional: Optional<Options>
     readonly failure: FailureSchema<Options>
     readonly provides: Options extends { readonly provides: Context.Tag<any, any> } ? Options["provides"]
+      : undefined
+    readonly requires: Options extends { readonly requires: Context.Tag<any, any> | ReadonlyArray<Context.Tag<any, any>> }
+      ? Options["requires"]
       : undefined
   }
 
@@ -248,6 +276,7 @@ export interface TagClassAny extends Context.Tag<any, HttpApiMiddleware.Any> {
   readonly [TypeId]: TypeId
   readonly optional: boolean
   readonly provides?: Context.Tag<any, any>
+  readonly requires?: ReadonlyArray<Context.Tag<any, any>>
   readonly failure: Schema.Schema.All
 }
 
@@ -270,6 +299,7 @@ export const Tag = <Self>(): <
     readonly optional?: boolean
     readonly failure?: Schema.Schema.All
     readonly provides?: Context.Tag<any, any>
+    readonly requires?: Context.Tag<any, any> | ReadonlyArray<Context.Tag<any, any>>
     readonly security?: Record<string, HttpApiSecurity.HttpApiSecurity>
   }
 >(
@@ -283,6 +313,7 @@ export const Tag = <Self>(): <
     readonly security?: Record<string, HttpApiSecurity.HttpApiSecurity>
     readonly failure?: Schema.Schema.All
     readonly provides?: Context.Tag<any, any>
+    readonly requires?: Context.Tag<any, any> | ReadonlyArray<Context.Tag<any, any>>
   }
 ) => {
   const Err = globalThis.Error as any
@@ -304,6 +335,9 @@ export const Tag = <Self>(): <
   TagClass_.failure = options?.optional === true || options?.failure === undefined ? Schema.Never : options.failure
   if (options?.provides) {
     TagClass_.provides = options.provides
+  }
+  if (options?.requires) {
+    TagClass_.requires = Array.isArray(options.requires) ? options.requires : [options.requires]
   }
   TagClass_.optional = options?.optional ?? false
   if (options?.security) {
