@@ -2668,14 +2668,14 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
         }
         return core.sync(interruptAll)
       })).pipe(
-        core.tap(() =>
+        core.onExit(() =>
           core.async((resume) => {
             let completed = 0
             for (const fiber of fibers) {
               fiber.addObserver(() => {
                 completed++
                 if (completed === fibers.length) {
-                  resume(internalFiber.inheritAll(winner))
+                  resume(winner ? internalFiber.inheritAll(winner) : core.void)
                 }
               })
             }
