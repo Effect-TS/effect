@@ -51,8 +51,8 @@ export const make: Effect.Effect<
     )
 
     if (maybeSpan._tag === "Some") {
-      attributes.spanId ??= maybeSpan.value.spanId
-      attributes.traceId ??= maybeSpan.value.traceId
+      attributes.spanId = maybeSpan.value.spanId
+      attributes.traceId = maybeSpan.value.traceId
     }
 
     for (const [key, value] of options.annotations) {
