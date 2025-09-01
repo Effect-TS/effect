@@ -2632,7 +2632,13 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
 >(all: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
   return core.uninterruptibleMask((restore) =>
     core.withFiberRuntime((state, status) => {
-      const fibers = Array.from(all).map((self) => unsafeFork(restore(self), state, status.runtimeFlags))
+      const fibers = Array.from(all).map((self) =>
+        unsafeFork(
+          core.interruptible(self),
+          state,
+          status.runtimeFlags
+        )
+      )
       let winner: any
       const interruptAll = () => {
         for (const fiber of fibers) {
