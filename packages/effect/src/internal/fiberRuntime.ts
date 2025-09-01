@@ -2652,17 +2652,17 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
       }
       return restore(core.async<A, E, R>((resume) => {
         let lastFail: any
-        let completed = 0
+        let failed = 0
         for (const fiber of fibers) {
           fiber.addObserver((exit) => {
-            completed++
             if (exit._tag === "Success") {
               winner = fiber
               interruptAll()
               resume(exit)
             } else {
+              failed++
               lastFail = exit
-              if (completed === fibers.length) {
+              if (failed === fibers.length) {
                 resume(lastFail)
               }
             }
