@@ -48,3 +48,7 @@
 /packages/typeclass/ @gcanti
 
 /packages/vitest/ @mikearnaldi
+
+/packages-native/bun-test/ @subtlegradient
+/packages-native/libcrsql/ @subtlegradient
+/packages-native/libsqlite/ @subtlegradient

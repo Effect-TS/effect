@@ -1,0 +1,5 @@
+# compiled single file executable
+index
+
+# exported embedded dependencies
+.lib*
