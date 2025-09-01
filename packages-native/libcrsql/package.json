@@ -43,8 +43,12 @@
     "@effect/platform": "*"
   },
   "peerDependenciesMeta": {
-    "effect": { "optional": true },
-    "@effect/platform": { "optional": true }
+    "effect": {
+      "optional": true
+    },
+    "@effect/platform": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18"
