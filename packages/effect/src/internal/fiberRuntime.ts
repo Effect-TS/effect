@@ -6,7 +6,6 @@ import type * as Clock from "../Clock.js"
 import type { ConfigProvider } from "../ConfigProvider.js"
 import * as Context from "../Context.js"
 import type { DefaultServices } from "../DefaultServices.js"
-import * as Deferred from "../Deferred.js"
 import type * as Duration from "../Duration.js"
 import type * as Effect from "../Effect.js"
 import * as Effectable from "../Effectable.js"
@@ -2630,112 +2629,54 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
   A,
   E,
   R
->(all: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> => {
-  const list = Chunk.fromIterable(all)
-  if (!Chunk.isNonEmpty(list)) {
-    return core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`))
-  }
-  const self = Chunk.headNonEmpty(list)
-  const effects = Chunk.tailNonEmpty(list)
-  const inheritAll = (res: readonly [A, Fiber.Fiber<A, E>]) =>
-    pipe(
-      internalFiber.inheritAll(res[1]),
-      core.as(res[0])
-    )
-  return pipe(
-    core.deferredMake<readonly [A, Fiber.Fiber<A, E>], E>(),
-    core.flatMap((done) =>
-      pipe(
-        Ref.make(effects.length),
-        core.flatMap((fails) =>
-          core.uninterruptibleMask<A, E, R>((restore) =>
-            pipe(
-              fork(core.interruptible(self)),
-              core.flatMap((head) =>
-                pipe(
-                  effects,
-                  core.forEachSequential((effect) => fork(core.interruptible(effect))),
-                  core.map((fibers) => Chunk.unsafeFromArray(fibers)),
-                  core.map((tail) => pipe(tail, Chunk.prepend(head)) as Chunk.Chunk<Fiber.RuntimeFiber<A, E>>),
-                  core.tap((fibers) =>
-                    pipe(
-                      fibers,
-                      RA.reduce(core.void, (effect, fiber) =>
-                        pipe(
-                          effect,
-                          core.zipRight(
-                            pipe(
-                              internalFiber._await(fiber),
-                              core.flatMap(raceAllArbiter(fibers, fiber, done, fails)),
-                              fork,
-                              core.asVoid
-                            )
-                          )
-                        ))
-                    )
-                  ),
-                  core.flatMap((fibers) =>
-                    pipe(
-                      restore(pipe(Deferred.await(done), core.flatMap(inheritAll))),
-                      core.onInterrupt(() =>
-                        pipe(
-                          fibers,
-                          RA.reduce(
-                            core.void,
-                            (effect, fiber) => pipe(effect, core.zipLeft(core.interruptFiber(fiber)))
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              )
+>(all: Iterable<Effect.Effect<A, E, R>>): Effect.Effect<A, E, R> =>
+  core.withFiberRuntime((state, status) =>
+    core.async<A, E, R>((resume) => {
+      const fibers = new Set<FiberRuntime<A, E>>()
+      let winner: FiberRuntime<A, E> | undefined
+      let failures: Cause.Cause<E> = internalCause.empty
+      const interruptAll = () => {
+        for (const fiber of fibers) {
+          fiber.unsafeInterruptAsFork(state.id())
+        }
+      }
+      let latch = false
+      let empty = true
+      for (const self of all) {
+        empty = false
+        const fiber = unsafeFork(
+          core.interruptible(self),
+          state,
+          status.runtimeFlags
+        )
+        fibers.add(fiber)
+        fiber.addObserver((exit) => {
+          fibers.delete(fiber)
+          if (!winner) {
+            if (exit._tag === "Success") {
+              latch = true
+              winner = fiber
+              failures = internalCause.empty
+              interruptAll()
+            } else {
+              failures = internalCause.parallel(exit.cause, failures)
+            }
+          }
+          if (latch && fibers.size === 0) {
+            resume(
+              winner ? core.zipRight(internalFiber.inheritAll(winner), winner.unsafePoll()!) : core.failCause(failures)
             )
-          )
-        )
-      )
-    )
+          }
+        })
+        if (winner) break
+      }
+      if (empty) {
+        return resume(core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`)))
+      }
+      latch = true
+      return internalFiber.interruptAllAs(fibers, state.id())
+    })
   )
-}
-
-const raceAllArbiter = <E, E1, A, A1>(
-  fibers: Iterable<Fiber.Fiber<A | A1, E | E1>>,
-  winner: Fiber.Fiber<A | A1, E | E1>,
-  deferred: Deferred.Deferred<readonly [A | A1, Fiber.Fiber<A | A1, E | E1>], E | E1>,
-  fails: Ref.Ref<number>
-) =>
-(exit: Exit.Exit<A | A1, E | E1>): Effect.Effect<void> =>
-  core.exitMatchEffect(exit, {
-    onFailure: (cause) =>
-      pipe(
-        Ref.modify(fails, (fails) =>
-          [
-            fails === 0 ?
-              pipe(core.deferredFailCause(deferred, cause), core.asVoid) :
-              core.void,
-            fails - 1
-          ] as const),
-        core.flatten
-      ),
-    onSuccess: (value): Effect.Effect<void> =>
-      pipe(
-        core.deferredSucceed(deferred, [value, winner] as const),
-        core.flatMap((set) =>
-          set ?
-            pipe(
-              Chunk.fromIterable(fibers),
-              RA.reduce(
-                core.void,
-                (effect, fiber) =>
-                  fiber === winner ?
-                    effect :
-                    pipe(effect, core.zipLeft(core.interruptFiber(fiber)))
-              )
-            ) :
-            core.void
-        )
-      )
-  })
 
 /* @internal */
 export const reduceEffect = dual<
