@@ -1,10 +1,44 @@
 import { describe, it } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
+import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {
+  it.effect("raceAll waits losers interruption", () =>
+    Effect.gen(function*() {
+      const messages: Array<string> = []
+
+      const a = Effect.gen(function*() {
+        yield* Effect.addFinalizer(() => Effect.sync(() => messages.push("finalize a")))
+        yield* Effect.sleep("100 millis")
+        yield* Effect.sync(() => messages.push("done a"))
+      })
+
+      const b = Effect.gen(function*() {
+        yield* Effect.addFinalizer(() => Effect.sync(() => messages.push("finalize b")))
+        yield* Effect.sleep("200 millis")
+        yield* Effect.sync(() => messages.push("done b"))
+      })
+
+      yield* Effect.raceAll([
+        Effect.scoped(a),
+        Effect.scoped(b)
+      ]).pipe(
+        Effect.tap(() => Effect.sync(() => messages.push("race done"))),
+        Effect.fork
+      )
+
+      yield* TestClock.adjust("300 millis")
+
+      deepStrictEqual(messages, [
+        "done a",
+        "finalize a",
+        "finalize b",
+        "race done"
+      ])
+    }))
   it.effect("returns first success", () =>
     Effect.gen(function*() {
       const result = yield* (Effect.raceAll([Effect.fail("fail"), Effect.succeed(24)]))

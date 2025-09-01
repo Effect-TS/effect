@@ -2677,15 +2677,8 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
                   core.flatMap((fibers) =>
                     pipe(
                       restore(pipe(Deferred.await(done), core.flatMap(inheritAll))),
-                      core.onInterrupt(() =>
-                        pipe(
-                          fibers,
-                          RA.reduce(
-                            core.void,
-                            (effect, fiber) => pipe(effect, core.zipLeft(core.interruptFiber(fiber)))
-                          )
-                        )
-                      )
+                      core.onInterrupt(() => core.forEachSequential(fibers, (fiber) => core.interruptFiber(fiber))),
+                      core.tap(() => core.forEachSequential(fibers, internalFiber._await))
                     )
                   )
                 )
