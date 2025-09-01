@@ -2639,6 +2639,9 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
           status.runtimeFlags
         )
       )
+      if (fibers.length === 0) {
+        return core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`))
+      }
       let winner: any
       const interruptAll = () => {
         for (const fiber of fibers) {
@@ -2677,13 +2680,12 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
               fiber.addObserver(() => {
                 completed++
                 if (completed === fibers.length) {
-                  resume(core.void)
+                  resume(internalFiber.inheritAll(winner))
                 }
               })
             }
           })
-        ),
-        core.tap(() => winner ? internalFiber.inheritAll(winner) : core.void)
+        )
       )
     })
   )
