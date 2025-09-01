@@ -871,8 +871,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
             context: contextMap,
             spans,
             annotations,
-            date,
-            span: this.currentSpan
+            date
           })
         }
       })
