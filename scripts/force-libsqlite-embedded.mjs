@@ -36,7 +36,10 @@ try {
     const n = Number(m[1])
     if (Math.floor(n / 100) === patch) train.push(n)
   }
-  const max = train.length ? Math.max(...train) : patch * 100 - 1
+  // If there are no published versions for this sqlite patch train yet,
+  // start wrapper patching at 1 (e.g. 3.50.2 -> 3.50.201), not 100.
+  // Using patch*100 ensures next === 1 on first publish for a train.
+  const max = train.length ? Math.max(...train) : patch * 100
   next = (max % 100) + 1
 } catch {
   next = 0

@@ -1,0 +1,16 @@
+{
+  "name": "scratchpad-bun-libs",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@effect-native/bun-test": "file:../../bun-test/dist",
+    "@effect-native/libcrsql": "file:../../libcrsql/dist",
+    "@effect-native/libsqlite": "file:../../libsqlite/dist"
+  }
+}
