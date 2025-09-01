@@ -2642,7 +2642,7 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
       if (fibers.length === 0) {
         return core.dieSync(() => new core.IllegalArgumentException(`Received an empty collection of effects`))
       }
-      let winner: any
+      let winner: Fiber.Fiber<A, E>
       const interruptAll = () => {
         for (const fiber of fibers) {
           if (fiber !== winner) {
@@ -2651,7 +2651,6 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
         }
       }
       return restore(core.async<A, E, R>((resume) => {
-        let lastFail: any
         let failed = 0
         for (const fiber of fibers) {
           fiber.addObserver((exit) => {
@@ -2661,9 +2660,8 @@ export const raceAll: <Eff extends Effect.Effect<any, any, any>>(
               resume(exit)
             } else {
               failed++
-              lastFail = exit
               if (failed === fibers.length) {
-                resume(lastFail)
+                resume(exit)
               }
             }
           })
