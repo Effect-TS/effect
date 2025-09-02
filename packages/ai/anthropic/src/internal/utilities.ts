@@ -15,7 +15,16 @@ const finishReasonMap: Record<string, AiResponse.FinishReason> = {
 }
 
 /** @internal */
-export const resolveFinishReason = (finishReason: string): AiResponse.FinishReason => {
+export const resolveFinishReason = (
+  finishReason: string,
+  isJsonResponse: boolean = false
+): AiResponse.FinishReason => {
   const reason = finishReasonMap[finishReason]
-  return Predicate.isUndefined(reason) ? "unknown" : reason
+  if (Predicate.isUndefined(reason)) {
+    return "unknown"
+  }
+  if (isJsonResponse && reason === "tool-calls") {
+    return "stop"
+  }
+  return reason
 }
