@@ -769,7 +769,8 @@ export const isDate = (input: unknown): input is Date => input instanceof Date
  * @category guards
  * @since 2.0.0
  */
-export const isIterable = (input: unknown): input is Iterable<unknown> => hasProperty(input, Symbol.iterator)
+export const isIterable = (input: unknown): input is Iterable<unknown> =>
+  typeof input === "string" || hasProperty(input, Symbol.iterator)
 
 /**
  * A refinement that checks if a value is a record (i.e., a plain object).
