@@ -5,62 +5,314 @@ import type * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
-import type * as UrlParams from "@effect/platform/UrlParams"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
 
 export class MessagesPostParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class Model extends S.Literal(
-  "claude-3-7-sonnet-latest",
-  "claude-3-7-sonnet-20250219",
-  "claude-3-5-haiku-latest",
-  "claude-3-5-haiku-20241022",
-  "claude-sonnet-4-20250514",
-  "claude-sonnet-4-0",
-  "claude-4-sonnet-20250514",
-  "claude-3-5-sonnet-latest",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-sonnet-20240620",
-  "claude-opus-4-0",
-  "claude-opus-4-20250514",
-  "claude-4-opus-20250514",
-  "claude-3-opus-latest",
-  "claude-3-opus-20240229",
-  "claude-3-sonnet-20240229",
-  "claude-3-haiku-20240307",
-  "claude-2.1",
-  "claude-2.0"
+/**
+ * The model that will complete your prompt.\n\nSee [models](https://docs.anthropic.com/en/docs/models-overview) for additional details and options.
+ */
+export class Model extends S.Union(
+  /**
+   * High-performance model with early extended thinking
+   */
+  S.Literal("claude-3-7-sonnet-latest"),
+  /**
+   * High-performance model with early extended thinking
+   */
+  S.Literal("claude-3-7-sonnet-20250219"),
+  /**
+   * Fastest and most compact model for near-instant responsiveness
+   */
+  S.Literal("claude-3-5-haiku-latest"),
+  /**
+   * Our fastest model
+   */
+  S.Literal("claude-3-5-haiku-20241022"),
+  /**
+   * High-performance model with extended thinking
+   */
+  S.Literal("claude-sonnet-4-20250514"),
+  /**
+   * High-performance model with extended thinking
+   */
+  S.Literal("claude-sonnet-4-0"),
+  /**
+   * High-performance model with extended thinking
+   */
+  S.Literal("claude-4-sonnet-20250514"),
+  /**
+   * Our previous most intelligent model
+   */
+  S.Literal("claude-3-5-sonnet-latest"),
+  /**
+   * Our previous most intelligent model
+   */
+  S.Literal("claude-3-5-sonnet-20241022"),
+  S.Literal("claude-3-5-sonnet-20240620"),
+  /**
+   * Our most capable model
+   */
+  S.Literal("claude-opus-4-0"),
+  /**
+   * Our most capable model
+   */
+  S.Literal("claude-opus-4-20250514"),
+  /**
+   * Our most capable model
+   */
+  S.Literal("claude-4-opus-20250514"),
+  /**
+   * Our most capable model
+   */
+  S.Literal("claude-opus-4-1-20250805"),
+  /**
+   * Excels at writing and complex tasks
+   */
+  S.Literal("claude-3-opus-latest"),
+  /**
+   * Excels at writing and complex tasks
+   */
+  S.Literal("claude-3-opus-20240229"),
+  /**
+   * Our previous most fast and cost-effective
+   */
+  S.Literal("claude-3-haiku-20240307")
 ) {}
 
-export class CacheControlEphemeralType extends S.Literal("ephemeral") {}
+/**
+ * The time-to-live for the cache control breakpoint.
+ *
+ * This may be one the following values:
+ * - `5m`: 5 minutes
+ * - `1h`: 1 hour
+ *
+ * Defaults to `5m`.
+ */
+export class CacheControlEphemeralTtl extends S.Literal("5m", "1h") {}
 
-export class CacheControlEphemeral extends S.Struct({
-  "type": CacheControlEphemeralType
+export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("CacheControlEphemeral")({
+  /**
+   * The time-to-live for the cache control breakpoint.
+   *
+   * This may be one the following values:
+   * - `5m`: 5 minutes
+   * - `1h`: 1 hour
+   *
+   * Defaults to `5m`.
+   */
+  "ttl": S.optionalWith(CacheControlEphemeralTtl, { nullable: true }),
+  "type": S.Literal("ephemeral")
 }) {}
 
-export class RequestServerToolUseBlockName extends S.Literal("web_search") {}
+export class RequestCharLocationCitation extends S.Class<RequestCharLocationCitation>("RequestCharLocationCitation")({
+  "cited_text": S.String,
+  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+  "document_title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(255))),
+  "end_char_index": S.Int,
+  "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+  "type": S.Literal("char_location")
+}) {}
 
-export class RequestServerToolUseBlockType extends S.Literal("server_tool_use") {}
+export class RequestPageLocationCitation extends S.Class<RequestPageLocationCitation>("RequestPageLocationCitation")({
+  "cited_text": S.String,
+  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+  "document_title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(255))),
+  "end_page_number": S.Int,
+  "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+  "type": S.Literal("page_location")
+}) {}
 
-export class RequestServerToolUseBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
+export class RequestContentBlockLocationCitation
+  extends S.Class<RequestContentBlockLocationCitation>("RequestContentBlockLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(255))),
+    "end_block_index": S.Int,
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("content_block_location")
+  })
+{}
+
+export class RequestWebSearchResultLocationCitation
+  extends S.Class<RequestWebSearchResultLocationCitation>("RequestWebSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "encrypted_index": S.String,
+    "title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(512))),
+    "type": S.Literal("web_search_result_location"),
+    "url": S.String.pipe(S.minLength(1), S.maxLength(2048))
+  })
+{}
+
+export class RequestSearchResultLocationCitation
+  extends S.Class<RequestSearchResultLocationCitation>("RequestSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "end_block_index": S.Int,
+    "search_result_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "source": S.String,
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "title": S.NullOr(S.String),
+    "type": S.Literal("search_result_location")
+  })
+{}
+
+export class RequestTextBlock extends S.Class<RequestTextBlock>("RequestTextBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  "citations": S.optionalWith(
+    S.Array(
+      S.Union(
+        RequestCharLocationCitation,
+        RequestPageLocationCitation,
+        RequestContentBlockLocationCitation,
+        RequestWebSearchResultLocationCitation,
+        RequestSearchResultLocationCitation
+      )
+    ),
+    { nullable: true }
+  ),
+  "text": S.String.pipe(S.minLength(1)),
+  "type": S.Literal("text")
+}) {}
+
+export class Base64ImageSourceMediaType extends S.Literal("image/jpeg", "image/png", "image/gif", "image/webp") {}
+
+export class Base64ImageSource extends S.Class<Base64ImageSource>("Base64ImageSource")({
+  "data": S.String,
+  "media_type": Base64ImageSourceMediaType,
+  "type": S.Literal("base64")
+}) {}
+
+export class URLImageSource extends S.Class<URLImageSource>("URLImageSource")({
+  "type": S.Literal("url"),
+  "url": S.String
+}) {}
+
+export class RequestImageBlock extends S.Class<RequestImageBlock>("RequestImageBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  "source": S.Union(Base64ImageSource, URLImageSource),
+  "type": S.Literal("image")
+}) {}
+
+export class RequestCitationsConfig extends S.Class<RequestCitationsConfig>("RequestCitationsConfig")({
+  "enabled": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class Base64PDFSource extends S.Class<Base64PDFSource>("Base64PDFSource")({
+  "data": S.String,
+  "media_type": S.Literal("application/pdf"),
+  "type": S.Literal("base64")
+}) {}
+
+export class PlainTextSource extends S.Class<PlainTextSource>("PlainTextSource")({
+  "data": S.String,
+  "media_type": S.Literal("text/plain"),
+  "type": S.Literal("text")
+}) {}
+
+export class ContentBlockSource extends S.Class<ContentBlockSource>("ContentBlockSource")({
+  "content": S.Union(S.String, S.Array(S.Union(RequestTextBlock, RequestImageBlock))),
+  "type": S.Literal("content")
+}) {}
+
+export class URLPDFSource extends S.Class<URLPDFSource>("URLPDFSource")({
+  "type": S.Literal("url"),
+  "url": S.String
+}) {}
+
+export class RequestDocumentBlock extends S.Class<RequestDocumentBlock>("RequestDocumentBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  "citations": S.optionalWith(RequestCitationsConfig, { nullable: true }),
+  "context": S.optionalWith(S.String.pipe(S.minLength(1)), { nullable: true }),
+  "source": S.Union(Base64PDFSource, PlainTextSource, ContentBlockSource, URLPDFSource),
+  "title": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(500)), { nullable: true }),
+  "type": S.Literal("document")
+}) {}
+
+export class RequestSearchResultBlock extends S.Class<RequestSearchResultBlock>("RequestSearchResultBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  "citations": S.optionalWith(RequestCitationsConfig, { nullable: true }),
+  "content": S.Array(RequestTextBlock),
+  "source": S.String,
+  "title": S.String,
+  "type": S.Literal("search_result")
+}) {}
+
+export class RequestThinkingBlock extends S.Class<RequestThinkingBlock>("RequestThinkingBlock")({
+  "signature": S.String,
+  "thinking": S.String,
+  "type": S.Literal("thinking")
+}) {}
+
+export class RequestRedactedThinkingBlock
+  extends S.Class<RequestRedactedThinkingBlock>("RequestRedactedThinkingBlock")({
+    "data": S.String,
+    "type": S.Literal("redacted_thinking")
+  })
+{}
+
+export class RequestToolUseBlock extends S.Class<RequestToolUseBlock>("RequestToolUseBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+  "input": S.Record({ key: S.String, value: S.Unknown }),
+  "name": S.String.pipe(S.minLength(1), S.maxLength(200)),
+  "type": S.Literal("tool_use")
+}) {}
+
+export class RequestToolResultBlock extends S.Class<RequestToolResultBlock>("RequestToolResultBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  "content": S.optionalWith(
+    S.Union(S.String, S.Array(S.Union(RequestTextBlock, RequestImageBlock, RequestSearchResultBlock))),
+    { nullable: true }
+  ),
+  "is_error": S.optionalWith(S.Boolean, { nullable: true }),
+  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+  "type": S.Literal("tool_result")
+}) {}
+
+export class RequestServerToolUseBlock extends S.Class<RequestServerToolUseBlock>("RequestServerToolUseBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
   "id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
   "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": RequestServerToolUseBlockName,
-  "type": RequestServerToolUseBlockType
+  "name": S.Literal("web_search"),
+  "type": S.Literal("server_tool_use")
 }) {}
 
-export class RequestWebSearchResultBlockType extends S.Literal("web_search_result") {}
-
-export class RequestWebSearchResultBlock extends S.Struct({
+export class RequestWebSearchResultBlock extends S.Class<RequestWebSearchResultBlock>("RequestWebSearchResultBlock")({
   "encrypted_content": S.String,
-  "page_age": S.optionalWith(S.Union(S.String, S.Null), { nullable: true }),
+  "page_age": S.optionalWith(S.String, { nullable: true }),
   "title": S.String,
-  "type": RequestWebSearchResultBlockType,
+  "type": S.Literal("web_search_result"),
   "url": S.String
 }) {}
 
@@ -68,587 +320,878 @@ export class WebSearchToolResultErrorCode
   extends S.Literal("invalid_tool_input", "unavailable", "max_uses_exceeded", "too_many_requests", "query_too_long")
 {}
 
-export class RequestWebSearchToolResultErrorType extends S.Literal("web_search_tool_result_error") {}
+export class RequestWebSearchToolResultError
+  extends S.Class<RequestWebSearchToolResultError>("RequestWebSearchToolResultError")({
+    "error_code": WebSearchToolResultErrorCode,
+    "type": S.Literal("web_search_tool_result_error")
+  })
+{}
 
-export class RequestWebSearchToolResultError extends S.Struct({
-  "error_code": WebSearchToolResultErrorCode,
-  "type": RequestWebSearchToolResultErrorType
-}) {}
-
-export class RequestWebSearchToolResultBlockType extends S.Literal("web_search_tool_result") {}
-
-export class RequestWebSearchToolResultBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "content": S.Union(S.Array(RequestWebSearchResultBlock), RequestWebSearchToolResultError),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "type": RequestWebSearchToolResultBlockType
-}) {}
-
-export class RequestCharLocationCitationType extends S.Literal("char_location") {}
-
-export class RequestCharLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "end_char_index": S.Int,
-  "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": RequestCharLocationCitationType
-}) {}
-
-export class RequestPageLocationCitationType extends S.Literal("page_location") {}
-
-export class RequestPageLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "end_page_number": S.Int,
-  "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "type": RequestPageLocationCitationType
-}) {}
-
-export class RequestContentBlockLocationCitationType extends S.Literal("content_block_location") {}
-
-export class RequestContentBlockLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "end_block_index": S.Int,
-  "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": RequestContentBlockLocationCitationType
-}) {}
-
-export class RequestWebSearchResultLocationCitationType extends S.Literal("web_search_result_location") {}
-
-export class RequestWebSearchResultLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "encrypted_index": S.String,
-  "title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "type": RequestWebSearchResultLocationCitationType,
-  "url": S.String.pipe(S.minLength(1), S.maxLength(2048))
-}) {}
-
-export class RequestTextBlockType extends S.Literal("text") {}
-
-export class RequestTextBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "citations": S.optionalWith(
-    S.Union(
-      S.Array(
-        S.Union(
-          RequestCharLocationCitation,
-          RequestPageLocationCitation,
-          RequestContentBlockLocationCitation,
-          RequestWebSearchResultLocationCitation
-        )
-      ),
-      S.Null
-    ),
-    { nullable: true }
-  ),
-  "text": S.String.pipe(S.minLength(1)),
-  "type": RequestTextBlockType
-}) {}
-
-export class Base64ImageSourceMediaType extends S.Literal("image/jpeg", "image/png", "image/gif", "image/webp") {}
-
-export class Base64ImageSourceType extends S.Literal("base64") {}
-
-export class Base64ImageSource extends S.Struct({
-  "data": S.String,
-  "media_type": Base64ImageSourceMediaType,
-  "type": Base64ImageSourceType
-}) {}
-
-export class URLImageSourceType extends S.Literal("url") {}
-
-export class URLImageSource extends S.Struct({
-  "type": URLImageSourceType,
-  "url": S.String
-}) {}
-
-export class RequestImageBlockType extends S.Literal("image") {}
-
-export class RequestImageBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "source": S.Union(Base64ImageSource, URLImageSource),
-  "type": RequestImageBlockType
-}) {}
-
-export class RequestToolUseBlockType extends S.Literal("tool_use") {}
-
-export class RequestToolUseBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": S.String.pipe(S.minLength(1), S.maxLength(200)),
-  "type": RequestToolUseBlockType
-}) {}
-
-export class RequestToolResultBlockType extends S.Literal("tool_result") {}
-
-export class RequestToolResultBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "content": S.optionalWith(S.Union(S.String, S.Array(S.Union(RequestTextBlock, RequestImageBlock))), {
-    nullable: true
-  }),
-  "is_error": S.optionalWith(S.Boolean, { nullable: true }),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "type": RequestToolResultBlockType
-}) {}
-
-export class RequestCitationsConfig extends S.Struct({
-  "enabled": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
-export class Base64PDFSourceMediaType extends S.Literal("application/pdf") {}
-
-export class Base64PDFSourceType extends S.Literal("base64") {}
-
-export class Base64PDFSource extends S.Struct({
-  "data": S.String,
-  "media_type": Base64PDFSourceMediaType,
-  "type": Base64PDFSourceType
-}) {}
-
-export class PlainTextSourceMediaType extends S.Literal("text/plain") {}
-
-export class PlainTextSourceType extends S.Literal("text") {}
-
-export class PlainTextSource extends S.Struct({
-  "data": S.String,
-  "media_type": PlainTextSourceMediaType,
-  "type": PlainTextSourceType
-}) {}
-
-export class ContentBlockSourceType extends S.Literal("content") {}
-
-export class ContentBlockSource extends S.Struct({
-  "content": S.Union(S.String, S.Array(S.Union(RequestTextBlock, RequestImageBlock))),
-  "type": ContentBlockSourceType
-}) {}
-
-export class URLPDFSourceType extends S.Literal("url") {}
-
-export class URLPDFSource extends S.Struct({
-  "type": URLPDFSourceType,
-  "url": S.String
-}) {}
-
-export class RequestDocumentBlockType extends S.Literal("document") {}
-
-export class RequestDocumentBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "citations": S.optionalWith(RequestCitationsConfig, { nullable: true }),
-  "context": S.optionalWith(S.Union(S.String.pipe(S.minLength(1)), S.Null), { nullable: true }),
-  "source": S.Union(Base64PDFSource, PlainTextSource, ContentBlockSource, URLPDFSource),
-  "title": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(500)), S.Null), { nullable: true }),
-  "type": RequestDocumentBlockType
-}) {}
-
-export class RequestThinkingBlockType extends S.Literal("thinking") {}
-
-export class RequestThinkingBlock extends S.Struct({
-  "signature": S.String,
-  "thinking": S.String,
-  "type": RequestThinkingBlockType
-}) {}
-
-export class RequestRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
-
-export class RequestRedactedThinkingBlock extends S.Struct({
-  "data": S.String,
-  "type": RequestRedactedThinkingBlockType
-}) {}
+export class RequestWebSearchToolResultBlock
+  extends S.Class<RequestWebSearchToolResultBlock>("RequestWebSearchToolResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+    "content": S.Union(S.Array(RequestWebSearchResultBlock), RequestWebSearchToolResultError),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("web_search_tool_result")
+  })
+{}
 
 export class InputContentBlock extends S.Union(
-  RequestServerToolUseBlock,
-  RequestWebSearchToolResultBlock,
+  /**
+   * Regular text content.
+   */
   RequestTextBlock,
+  /**
+   * Image content specified directly as base64 data or as a reference via a URL.
+   */
   RequestImageBlock,
-  RequestToolUseBlock,
-  RequestToolResultBlock,
+  /**
+   * Document content, either specified directly as base64 data, as text, or as a reference via a URL.
+   */
   RequestDocumentBlock,
+  /**
+   * A search result block containing source, title, and content from search operations.
+   */
+  RequestSearchResultBlock,
+  /**
+   * A block specifying internal thinking by the model.
+   */
   RequestThinkingBlock,
-  RequestRedactedThinkingBlock
+  /**
+   * A block specifying internal, redacted thinking by the model.
+   */
+  RequestRedactedThinkingBlock,
+  /**
+   * A block indicating a tool use by the model.
+   */
+  RequestToolUseBlock,
+  /**
+   * A block specifying the results of a tool use by the model.
+   */
+  RequestToolResultBlock,
+  RequestServerToolUseBlock,
+  RequestWebSearchToolResultBlock
 ) {}
 
 export class InputMessageRole extends S.Literal("user", "assistant") {}
 
-export class InputMessage extends S.Struct({
+export class InputMessage extends S.Class<InputMessage>("InputMessage")({
   "content": S.Union(S.String, S.Array(InputContentBlock)),
   "role": InputMessageRole
 }) {}
 
-export class Metadata extends S.Struct({
-  "user_id": S.optionalWith(S.Union(S.String.pipe(S.maxLength(256)), S.Null), { nullable: true })
+export class Metadata extends S.Class<Metadata>("Metadata")({
+  /**
+   * An external identifier for the user who is associated with the request.
+   *
+   * This should be a uuid, hash value, or other opaque identifier. Anthropic may use this id to help detect abuse. Do not include any identifying information such as name, email address, or phone number.
+   */
+  "user_id": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true })
 }) {}
 
+/**
+ * Determines whether to use priority capacity (if available) or standard capacity for this request.
+ *
+ * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+ */
 export class CreateMessageParamsServiceTier extends S.Literal("auto", "standard_only") {}
 
-export class ThinkingConfigEnabledType extends S.Literal("enabled") {}
-
-export class ThinkingConfigEnabled extends S.Struct({
+export class ThinkingConfigEnabled extends S.Class<ThinkingConfigEnabled>("ThinkingConfigEnabled")({
+  /**
+   * Determines how many tokens Claude can use for its internal reasoning process. Larger budgets can enable more thorough analysis for complex problems, improving response quality.
+   *
+   * Must be ≥1024 and less than `max_tokens`.
+   *
+   * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+   */
   "budget_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1024)),
-  "type": ThinkingConfigEnabledType
+  "type": S.Literal("enabled")
 }) {}
 
-export class ThinkingConfigDisabledType extends S.Literal("disabled") {}
-
-export class ThinkingConfigDisabled extends S.Struct({
-  "type": ThinkingConfigDisabledType
+export class ThinkingConfigDisabled extends S.Class<ThinkingConfigDisabled>("ThinkingConfigDisabled")({
+  "type": S.Literal("disabled")
 }) {}
 
+/**
+ * Configuration for enabling Claude's extended thinking.
+ *
+ * When enabled, responses include `thinking` content blocks showing Claude's thinking process before the final answer. Requires a minimum budget of 1,024 tokens and counts towards your `max_tokens` limit.
+ *
+ * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+ */
 export class ThinkingConfigParam extends S.Union(ThinkingConfigEnabled, ThinkingConfigDisabled) {}
 
-export class ToolChoiceAutoType extends S.Literal("auto") {}
-
-export class ToolChoiceAuto extends S.Struct({
+/**
+ * The model will automatically decide whether to use tools.
+ */
+export class ToolChoiceAuto extends S.Class<ToolChoiceAuto>("ToolChoiceAuto")({
+  /**
+   * Whether to disable parallel tool use.
+   *
+   * Defaults to `false`. If set to `true`, the model will output at most one tool use.
+   */
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true }),
-  "type": ToolChoiceAutoType
+  "type": S.Literal("auto")
 }) {}
 
-export class ToolChoiceAnyType extends S.Literal("any") {}
-
-export class ToolChoiceAny extends S.Struct({
+/**
+ * The model will use any available tools.
+ */
+export class ToolChoiceAny extends S.Class<ToolChoiceAny>("ToolChoiceAny")({
+  /**
+   * Whether to disable parallel tool use.
+   *
+   * Defaults to `false`. If set to `true`, the model will output exactly one tool use.
+   */
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true }),
-  "type": ToolChoiceAnyType
+  "type": S.Literal("any")
 }) {}
 
-export class ToolChoiceToolType extends S.Literal("tool") {}
-
-export class ToolChoiceTool extends S.Struct({
+/**
+ * The model will use the specified tool with `tool_choice.name`.
+ */
+export class ToolChoiceTool extends S.Class<ToolChoiceTool>("ToolChoiceTool")({
+  /**
+   * Whether to disable parallel tool use.
+   *
+   * Defaults to `false`. If set to `true`, the model will output exactly one tool use.
+   */
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * The name of the tool to use.
+   */
   "name": S.String,
-  "type": ToolChoiceToolType
+  "type": S.Literal("tool")
 }) {}
 
-export class ToolChoiceNoneType extends S.Literal("none") {}
-
-export class ToolChoiceNone extends S.Struct({
-  "type": ToolChoiceNoneType
+/**
+ * The model will not be allowed to use tools.
+ */
+export class ToolChoiceNone extends S.Class<ToolChoiceNone>("ToolChoiceNone")({
+  "type": S.Literal("none")
 }) {}
 
+/**
+ * How the model should use the provided tools. The model can use a specific tool, any available tool, decide by itself, or not use tools at all.
+ */
 export class ToolChoice extends S.Union(ToolChoiceAuto, ToolChoiceAny, ToolChoiceTool, ToolChoiceNone) {}
 
-export class ToolTypeEnum extends S.Literal("custom") {}
-
-export class InputSchemaType extends S.Literal("object") {}
-
-export class InputSchema extends S.Struct({
-  "properties": S.optionalWith(S.Union(S.Record({ key: S.String, value: S.Unknown }), S.Null), { nullable: true }),
-  "required": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "type": InputSchemaType
+export class InputSchema extends S.Class<InputSchema>("InputSchema")({
+  "properties": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "required": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "type": S.Literal("object")
 }) {}
 
-export class Tool extends S.Struct({
-  "type": S.optionalWith(S.Union(S.Null, ToolTypeEnum), { nullable: true }),
+export class Tool extends S.Class<Tool>("Tool")({
+  "type": S.optionalWith(S.Literal("custom"), { nullable: true }),
+  /**
+   * Description of what this tool does.
+   *
+   * Tool descriptions should be as detailed as possible. The more information that the model has about what the tool is and how to use it, the better it will perform. You can use natural language descriptions to reinforce important aspects of the tool input JSON schema.
+   */
   "description": S.optionalWith(S.String, { nullable: true }),
-  "name": S.String.pipe(S.minLength(1), S.maxLength(64), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,64}$"))),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.String.pipe(S.minLength(1), S.maxLength(128), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,128}$"))),
+  /**
+   * [JSON schema](https://json-schema.org/draft/2020-12) for this tool's input.
+   *
+   * This defines the shape of the `input` that your tool accepts and that the model will produce.
+   */
   "input_schema": InputSchema,
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true })
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
 }) {}
 
-export class BashTool20250124Name extends S.Literal("bash") {}
-
-export class BashTool20250124Type extends S.Literal("bash_20250124") {}
-
-export class BashTool20250124 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BashTool20250124Name,
-  "type": BashTool20250124Type
+export class BashTool20250124 extends S.Class<BashTool20250124>("BashTool20250124")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("bash"),
+  "type": S.Literal("bash_20250124")
 }) {}
 
-export class TextEditor20250124Name extends S.Literal("str_replace_editor") {}
-
-export class TextEditor20250124Type extends S.Literal("text_editor_20250124") {}
-
-export class TextEditor20250124 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "name": TextEditor20250124Name,
-  "type": TextEditor20250124Type
+export class TextEditor20250124 extends S.Class<TextEditor20250124>("TextEditor20250124")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_editor"),
+  "type": S.Literal("text_editor_20250124")
 }) {}
 
-export class TextEditor20250429Name extends S.Literal("str_replace_based_edit_tool") {}
-
-export class TextEditor20250429Type extends S.Literal("text_editor_20250429") {}
-
-export class TextEditor20250429 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "name": TextEditor20250429Name,
-  "type": TextEditor20250429Type
+export class TextEditor20250429 extends S.Class<TextEditor20250429>("TextEditor20250429")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_based_edit_tool"),
+  "type": S.Literal("text_editor_20250429")
 }) {}
 
-export class WebSearchTool20250305Name extends S.Literal("web_search") {}
-
-export class WebSearchTool20250305Type extends S.Literal("web_search_20250305") {}
-
-export class UserLocationType extends S.Literal("approximate") {}
-
-export class UserLocation extends S.Struct({
-  "city": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
-  "country": S.optionalWith(S.Union(S.String.pipe(S.minLength(2), S.maxLength(2)), S.Null), { nullable: true }),
-  "region": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
-  "timezone": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
-  "type": UserLocationType
+export class TextEditor20250728 extends S.Class<TextEditor20250728>("TextEditor20250728")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  /**
+   * Maximum number of characters to display when viewing a file. If not specified, defaults to displaying the full file.
+   */
+  "max_characters": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_based_edit_tool"),
+  "type": S.Literal("text_editor_20250728")
 }) {}
 
-export class WebSearchTool20250305 extends S.Struct({
-  "allowed_domains": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "blocked_domains": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "cache_control": S.optionalWith(S.Union(CacheControlEphemeral, S.Null), { nullable: true }),
-  "max_uses": S.optionalWith(S.Union(S.Int.pipe(S.greaterThan(0)), S.Null), { nullable: true }),
-  "name": WebSearchTool20250305Name,
-  "type": WebSearchTool20250305Type,
-  "user_location": S.optionalWith(S.Union(UserLocation, S.Null), { nullable: true })
+export class UserLocation extends S.Class<UserLocation>("UserLocation")({
+  /**
+   * The city of the user.
+   */
+  "city": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(255)), { nullable: true }),
+  /**
+   * The two letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) of the user.
+   */
+  "country": S.optionalWith(S.String.pipe(S.minLength(2), S.maxLength(2)), { nullable: true }),
+  /**
+   * The region of the user.
+   */
+  "region": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(255)), { nullable: true }),
+  /**
+   * The [IANA timezone](https://nodatime.org/TimeZones) of the user.
+   */
+  "timezone": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(255)), { nullable: true }),
+  "type": S.Literal("approximate")
+}) {}
+
+export class WebSearchTool20250305 extends S.Class<WebSearchTool20250305>("WebSearchTool20250305")({
+  /**
+   * If provided, only these domains will be included in results. Cannot be used alongside `blocked_domains`.
+   */
+  "allowed_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * If provided, these domains will never appear in results. Cannot be used alongside `allowed_domains`.
+   */
+  "blocked_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
+  /**
+   * Maximum number of times the tool can be used in the API request.
+   */
+  "max_uses": S.optionalWith(S.Int.pipe(S.greaterThan(0)), { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("web_search"),
+  "type": S.Literal("web_search_20250305"),
+  /**
+   * Parameters for the user's location. Used to provide more relevant search results.
+   */
+  "user_location": S.optionalWith(UserLocation, { nullable: true })
 }) {}
 
 export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMessageParams")({
-  "model": S.Union(S.String, Model),
+  "model": Model,
+  /**
+   * Input messages.
+   *
+   * Our models are trained to operate on alternating `user` and `assistant` conversational turns. When creating a new `Message`, you specify the prior conversational turns with the `messages` parameter, and the model then generates the next `Message` in the conversation. Consecutive `user` or `assistant` turns in your request will be combined into a single turn.
+   *
+   * Each input message must be an object with a `role` and `content`. You can specify a single `user`-role message, or you can include multiple `user` and `assistant` messages.
+   *
+   * If the final message uses the `assistant` role, the response content will continue immediately from the content in that message. This can be used to constrain part of the model's response.
+   *
+   * Example with a single `user` message:
+   *
+   * ```json
+   * [{"role": "user", "content": "Hello, Claude"}]
+   * ```
+   *
+   * Example with multiple conversational turns:
+   *
+   * ```json
+   * [
+   *   {"role": "user", "content": "Hello there."},
+   *   {"role": "assistant", "content": "Hi, I'm Claude. How can I help you?"},
+   *   {"role": "user", "content": "Can you explain LLMs in plain English?"},
+   * ]
+   * ```
+   *
+   * Example with a partially-filled response from Claude:
+   *
+   * ```json
+   * [
+   *   {"role": "user", "content": "What's the Greek name for Sun? (A) Sol (B) Helios (C) Sun"},
+   *   {"role": "assistant", "content": "The best answer is ("},
+   * ]
+   * ```
+   *
+   * Each input message `content` may be either a single `string` or an array of content blocks, where each block has a specific `type`. Using a `string` for `content` is shorthand for an array of one content block of type `"text"`. The following input messages are equivalent:
+   *
+   * ```json
+   * {"role": "user", "content": "Hello, Claude"}
+   * ```
+   *
+   * ```json
+   * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
+   * ```
+   *
+   * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+   *
+   * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+   *
+   * There is a limit of 100,000 messages in a single request.
+   */
   "messages": S.Array(InputMessage),
+  /**
+   * The maximum number of tokens to generate before stopping.
+   *
+   * Note that our models may stop _before_ reaching this maximum. This parameter only specifies the absolute maximum number of tokens to generate.
+   *
+   * Different models have different maximum values for this parameter.  See [models](https://docs.anthropic.com/en/docs/models-overview) for details.
+   */
   "max_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+  /**
+   * An object describing metadata about the request.
+   */
   "metadata": S.optionalWith(Metadata, { nullable: true }),
+  /**
+   * Determines whether to use priority capacity (if available) or standard capacity for this request.
+   *
+   * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+   */
   "service_tier": S.optionalWith(CreateMessageParamsServiceTier, { nullable: true }),
+  /**
+   * Custom text sequences that will cause the model to stop generating.
+   *
+   * Our models will normally stop when they have naturally completed their turn, which will result in a response `stop_reason` of `"end_turn"`.
+   *
+   * If you want the model to stop generating when it encounters custom strings of text, you can use the `stop_sequences` parameter. If the model encounters one of the custom sequences, the response `stop_reason` value will be `"stop_sequence"` and the response `stop_sequence` value will contain the matched stop sequence.
+   */
   "stop_sequences": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Whether to incrementally stream the response using server-sent events.
+   *
+   * See [streaming](https://docs.anthropic.com/en/api/messages-streaming) for details.
+   */
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * System prompt.
+   *
+   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+   */
   "system": S.optionalWith(S.Union(S.String, S.Array(RequestTextBlock)), { nullable: true }),
+  /**
+   * Amount of randomness injected into the response.
+   *
+   * Defaults to `1.0`. Ranges from `0.0` to `1.0`. Use `temperature` closer to `0.0` for analytical / multiple choice, and closer to `1.0` for creative and generative tasks.
+   *
+   * Note that even with `temperature` of `0.0`, the results will not be fully deterministic.
+   */
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   "thinking": S.optionalWith(ThinkingConfigParam, { nullable: true }),
   "tool_choice": S.optionalWith(ToolChoice, { nullable: true }),
+  /**
+   * Definitions of tools that the model may use.
+   *
+   * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
+   *
+   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+   *
+   * Each tool definition includes:
+   *
+   * * `name`: Name of the tool.
+   * * `description`: Optional, but strongly-recommended description of the tool.
+   * * `input_schema`: [JSON schema](https://json-schema.org/draft/2020-12) for the tool `input` shape that the model will produce in `tool_use` output content blocks.
+   *
+   * For example, if you defined `tools` as:
+   *
+   * ```json
+   * [
+   *   {
+   *     "name": "get_stock_price",
+   *     "description": "Get the current stock price for a given ticker symbol.",
+   *     "input_schema": {
+   *       "type": "object",
+   *       "properties": {
+   *         "ticker": {
+   *           "type": "string",
+   *           "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+   *         }
+   *       },
+   *       "required": ["ticker"]
+   *     }
+   *   }
+   * ]
+   * ```
+   *
+   * And then asked the model "What's the S&P 500 at today?", the model might produce `tool_use` content blocks in the response like this:
+   *
+   * ```json
+   * [
+   *   {
+   *     "type": "tool_use",
+   *     "id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+   *     "name": "get_stock_price",
+   *     "input": { "ticker": "^GSPC" }
+   *   }
+   * ]
+   * ```
+   *
+   * You might then run your `get_stock_price` tool with `{"ticker": "^GSPC"}` as an input, and return the following back to the model in a subsequent `user` message:
+   *
+   * ```json
+   * [
+   *   {
+   *     "type": "tool_result",
+   *     "tool_use_id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+   *     "content": "259.75 USD"
+   *   }
+   * ]
+   * ```
+   *
+   * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
+   *
+   * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+   */
   "tools": S.optionalWith(
-    S.Array(S.Union(Tool, BashTool20250124, TextEditor20250124, TextEditor20250429, WebSearchTool20250305)),
+    S.Array(
+      S.Union(Tool, BashTool20250124, TextEditor20250124, TextEditor20250429, TextEditor20250728, WebSearchTool20250305)
+    ),
     { nullable: true }
   ),
+  /**
+   * Only sample from the top K options for each subsequent token.
+   *
+   * Used to remove "long tail" low probability responses. [Learn more technical details here](https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277).
+   *
+   * Recommended for advanced use cases only. You usually only need to use `temperature`.
+   */
   "top_k": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
+  /**
+   * Use nucleus sampling.
+   *
+   * In nucleus sampling, we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by `top_p`. You should either alter `temperature` or `top_p`, but not both.
+   *
+   * Recommended for advanced use cases only. You usually only need to use `temperature`.
+   */
   "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true })
 }) {}
 
-export class MessageType extends S.Literal("message") {}
-
-export class MessageRole extends S.Literal("assistant") {}
-
-export class ResponseCharLocationCitationType extends S.Literal("char_location") {}
-
-export class ResponseCharLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String, S.Null),
-  "end_char_index": S.Int,
-  "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": ResponseCharLocationCitationType
-}) {}
-
-export class ResponsePageLocationCitationType extends S.Literal("page_location") {}
-
-export class ResponsePageLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String, S.Null),
-  "end_page_number": S.Int,
-  "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "type": ResponsePageLocationCitationType
-}) {}
-
-export class ResponseContentBlockLocationCitationType extends S.Literal("content_block_location") {}
-
-export class ResponseContentBlockLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String, S.Null),
-  "end_block_index": S.Int,
-  "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": ResponseContentBlockLocationCitationType
-}) {}
-
-export class ResponseWebSearchResultLocationCitationType extends S.Literal("web_search_result_location") {}
-
-export class ResponseWebSearchResultLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "encrypted_index": S.String,
-  "title": S.Union(S.String, S.Null),
-  "type": ResponseWebSearchResultLocationCitationType,
-  "url": S.String
-}) {}
-
-export class ResponseTextBlockType extends S.Literal("text") {}
-
-export class ResponseTextBlock extends S.Struct({
-  "citations": S.optional(S.NullOr(
-    S.Array(
-      S.Union(
-        ResponseCharLocationCitation,
-        ResponsePageLocationCitation,
-        ResponseContentBlockLocationCitation,
-        ResponseWebSearchResultLocationCitation
-      )
+export class ResponseCharLocationCitation
+  extends S.Class<ResponseCharLocationCitation>("ResponseCharLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String),
+    "end_char_index": S.Int,
+    "file_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("char_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "char_location" as const)
     )
-  )),
+  })
+{}
+
+export class ResponsePageLocationCitation
+  extends S.Class<ResponsePageLocationCitation>("ResponsePageLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String),
+    "end_page_number": S.Int,
+    "file_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+    "type": S.Literal("page_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "page_location" as const)
+    )
+  })
+{}
+
+export class ResponseContentBlockLocationCitation
+  extends S.Class<ResponseContentBlockLocationCitation>("ResponseContentBlockLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String),
+    "end_block_index": S.Int,
+    "file_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("content_block_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "content_block_location" as const)
+    )
+  })
+{}
+
+export class ResponseWebSearchResultLocationCitation
+  extends S.Class<ResponseWebSearchResultLocationCitation>("ResponseWebSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "encrypted_index": S.String,
+    "title": S.NullOr(S.String.pipe(S.maxLength(512))),
+    "type": S.Literal("web_search_result_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_result_location" as const)
+    ),
+    "url": S.String
+  })
+{}
+
+export class ResponseSearchResultLocationCitation
+  extends S.Class<ResponseSearchResultLocationCitation>("ResponseSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "end_block_index": S.Int,
+    "search_result_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "source": S.String,
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "title": S.NullOr(S.String),
+    "type": S.Literal("search_result_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "search_result_location" as const)
+    )
+  })
+{}
+
+export class ResponseTextBlock extends S.Class<ResponseTextBlock>("ResponseTextBlock")({
+  /**
+   * Citations supporting the text block.
+   *
+   * The type of citation returned will depend on the type of document being cited. Citing a PDF results in `page_location`, plain text results in `char_location`, and content document results in `content_block_location`.
+   */
+  "citations": S.optionalWith(
+    S.NullOr(
+      S.Array(
+        S.Union(
+          ResponseCharLocationCitation,
+          ResponsePageLocationCitation,
+          ResponseContentBlockLocationCitation,
+          ResponseWebSearchResultLocationCitation,
+          ResponseSearchResultLocationCitation
+        )
+      )
+    ),
+    { default: () => null }
+  ),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
-  "type": ResponseTextBlockType
+  "type": S.Literal("text").pipe(S.propertySignature, S.withConstructorDefault(() => "text" as const))
 }) {}
 
-export class ResponseToolUseBlockType extends S.Literal("tool_use") {}
+export class ResponseThinkingBlock extends S.Class<ResponseThinkingBlock>("ResponseThinkingBlock")({
+  "signature": S.String,
+  "thinking": S.String,
+  "type": S.Literal("thinking").pipe(S.propertySignature, S.withConstructorDefault(() => "thinking" as const))
+}) {}
 
-export class ResponseToolUseBlock extends S.Struct({
+export class ResponseRedactedThinkingBlock
+  extends S.Class<ResponseRedactedThinkingBlock>("ResponseRedactedThinkingBlock")({
+    "data": S.String,
+    "type": S.Literal("redacted_thinking").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "redacted_thinking" as const)
+    )
+  })
+{}
+
+export class ResponseToolUseBlock extends S.Class<ResponseToolUseBlock>("ResponseToolUseBlock")({
   "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
   "input": S.Record({ key: S.String, value: S.Unknown }),
   "name": S.String.pipe(S.minLength(1)),
-  "type": ResponseToolUseBlockType
+  "type": S.Literal("tool_use").pipe(S.propertySignature, S.withConstructorDefault(() => "tool_use" as const))
 }) {}
 
-export class ResponseServerToolUseBlockName extends S.Literal("web_search") {}
-
-export class ResponseServerToolUseBlockType extends S.Literal("server_tool_use") {}
-
-export class ResponseServerToolUseBlock extends S.Struct({
+export class ResponseServerToolUseBlock extends S.Class<ResponseServerToolUseBlock>("ResponseServerToolUseBlock")({
   "id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
   "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": ResponseServerToolUseBlockName,
-  "type": ResponseServerToolUseBlockType
+  "name": S.Literal("web_search"),
+  "type": S.Literal("server_tool_use").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "server_tool_use" as const)
+  )
 }) {}
 
-export class ResponseWebSearchToolResultErrorType extends S.Literal("web_search_tool_result_error") {}
+export class ResponseWebSearchToolResultError
+  extends S.Class<ResponseWebSearchToolResultError>("ResponseWebSearchToolResultError")({
+    "error_code": WebSearchToolResultErrorCode,
+    "type": S.Literal("web_search_tool_result_error").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_tool_result_error" as const)
+    )
+  })
+{}
 
-export class ResponseWebSearchToolResultError extends S.Struct({
-  "error_code": WebSearchToolResultErrorCode,
-  "type": ResponseWebSearchToolResultErrorType
-}) {}
+export class ResponseWebSearchResultBlock
+  extends S.Class<ResponseWebSearchResultBlock>("ResponseWebSearchResultBlock")({
+    "encrypted_content": S.String,
+    "page_age": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "title": S.String,
+    "type": S.Literal("web_search_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_result" as const)
+    ),
+    "url": S.String
+  })
+{}
 
-export class ResponseWebSearchResultBlockType extends S.Literal("web_search_result") {}
-
-export class ResponseWebSearchResultBlock extends S.Struct({
-  "encrypted_content": S.String,
-  "page_age": S.NullOr(S.Union(S.String, S.Null)),
-  "title": S.String,
-  "type": ResponseWebSearchResultBlockType,
-  "url": S.String
-}) {}
-
-export class ResponseWebSearchToolResultBlockType extends S.Literal("web_search_tool_result") {}
-
-export class ResponseWebSearchToolResultBlock extends S.Struct({
-  "content": S.Union(ResponseWebSearchToolResultError, S.Array(ResponseWebSearchResultBlock)),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "type": ResponseWebSearchToolResultBlockType
-}) {}
-
-export class ResponseThinkingBlockType extends S.Literal("thinking") {}
-
-export class ResponseThinkingBlock extends S.Struct({
-  "signature": S.String,
-  "thinking": S.String,
-  "type": ResponseThinkingBlockType
-}) {}
-
-export class ResponseRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
-
-export class ResponseRedactedThinkingBlock extends S.Struct({
-  "data": S.String,
-  "type": ResponseRedactedThinkingBlockType
-}) {}
+export class ResponseWebSearchToolResultBlock
+  extends S.Class<ResponseWebSearchToolResultBlock>("ResponseWebSearchToolResultBlock")({
+    "content": S.Union(ResponseWebSearchToolResultError, S.Array(ResponseWebSearchResultBlock)),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("web_search_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_tool_result" as const)
+    )
+  })
+{}
 
 export class ContentBlock extends S.Union(
   ResponseTextBlock,
+  ResponseThinkingBlock,
+  ResponseRedactedThinkingBlock,
   ResponseToolUseBlock,
   ResponseServerToolUseBlock,
-  ResponseWebSearchToolResultBlock,
-  ResponseThinkingBlock,
-  ResponseRedactedThinkingBlock
+  ResponseWebSearchToolResultBlock
 ) {}
 
 export class StopReason
   extends S.Literal("end_turn", "max_tokens", "stop_sequence", "tool_use", "pause_turn", "refusal")
 {}
 
-export class ServerToolUsage extends S.Struct({
-  "web_search_requests": S.Int.pipe(S.greaterThanOrEqualTo(0))
+export class CacheCreation extends S.Class<CacheCreation>("CacheCreation")({
+  /**
+   * The number of input tokens used to create the 1 hour cache entry.
+   */
+  "ephemeral_1h_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  ),
+  /**
+   * The number of input tokens used to create the 5 minute cache entry.
+   */
+  "ephemeral_5m_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  )
+}) {}
+
+export class ServerToolUsage extends S.Class<ServerToolUsage>("ServerToolUsage")({
+  /**
+   * The number of web search tool requests.
+   */
+  "web_search_requests": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  )
 }) {}
 
 export class UsageServiceTierEnum extends S.Literal("standard", "priority", "batch") {}
 
-export class Usage extends S.Struct({
-  "cache_creation_input_tokens": S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)),
-  "cache_read_input_tokens": S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)),
+export class Usage extends S.Class<Usage>("Usage")({
+  /**
+   * Breakdown of cached tokens by TTL
+   */
+  "cache_creation": S.optionalWith(S.NullOr(CacheCreation), { default: () => null }),
+  /**
+   * The number of input tokens used to create the cache entry.
+   */
+  "cache_creation_input_tokens": S.optionalWith(S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(0))), {
+    default: () => null
+  }),
+  /**
+   * The number of input tokens read from the cache.
+   */
+  "cache_read_input_tokens": S.optionalWith(S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(0))), { default: () => null }),
+  /**
+   * The number of input tokens which were used.
+   */
   "input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+  /**
+   * The number of output tokens which were used.
+   */
   "output_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "server_tool_use": S.optional(S.NullOr(ServerToolUsage)),
-  "service_tier": S.NullOr(S.Union(UsageServiceTierEnum, S.Null))
+  /**
+   * The number of server tool requests.
+   */
+  "server_tool_use": S.optionalWith(S.NullOr(ServerToolUsage), { default: () => null }),
+  /**
+   * If the request used the priority, standard, or batch tier.
+   */
+  "service_tier": S.optionalWith(S.NullOr(UsageServiceTierEnum), { default: () => null })
 }) {}
 
 export class Message extends S.Class<Message>("Message")({
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
-  "type": MessageType,
-  "role": MessageRole,
+  /**
+   * Object type.
+   *
+   * For Messages, this is always `"message"`.
+   */
+  "type": S.Literal("message").pipe(S.propertySignature, S.withConstructorDefault(() => "message" as const)),
+  /**
+   * Conversational role of the generated message.
+   *
+   * This will always be `"assistant"`.
+   */
+  "role": S.Literal("assistant").pipe(S.propertySignature, S.withConstructorDefault(() => "assistant" as const)),
+  /**
+   * Content generated by the model.
+   *
+   * This is an array of content blocks, each of which has a `type` that determines its shape.
+   *
+   * Example:
+   *
+   * ```json
+   * [{"type": "text", "text": "Hi, I'm Claude."}]
+   * ```
+   *
+   * If the request input `messages` ended with an `assistant` turn, then the response `content` will continue directly from that last turn. You can use this to constrain the model's output.
+   *
+   * For example, if the input `messages` were:
+   * ```json
+   * [
+   *   {"role": "user", "content": "What's the Greek name for Sun? (A) Sol (B) Helios (C) Sun"},
+   *   {"role": "assistant", "content": "The best answer is ("}
+   * ]
+   * ```
+   *
+   * Then the response `content` might be:
+   *
+   * ```json
+   * [{"type": "text", "text": "B)"}]
+   * ```
+   */
   "content": S.Array(ContentBlock),
-  "model": S.Union(S.String, Model),
-  "stop_reason": S.Union(StopReason, S.Null),
-  "stop_sequence": S.NullOr(S.Union(S.String, S.Null)),
+  "model": Model,
+  /**
+   * The reason that we stopped.
+   *
+   * This may be one the following values:
+   * * `"end_turn"`: the model reached a natural stopping point
+   * * `"max_tokens"`: we exceeded the requested `max_tokens` or the model's maximum
+   * * `"stop_sequence"`: one of your provided custom `stop_sequences` was generated
+   * * `"tool_use"`: the model invoked one or more tools
+   * * `"pause_turn"`: we paused a long-running turn. You may provide the response back as-is in a subsequent request to let the model continue.
+   * * `"refusal"`: when streaming classifiers intervene to handle potential policy violations
+   *
+   * In non-streaming mode this value is always non-null. In streaming mode, it is null in the `message_start` event and non-null otherwise.
+   */
+  "stop_reason": S.NullOr(StopReason),
+  /**
+   * Which custom stop sequence was generated, if any.
+   *
+   * This value will be a non-null string if one of your custom stop sequences was generated.
+   */
+  "stop_sequence": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+  /**
+   * Billing and rate-limit usage.
+   *
+   * Anthropic's API bills and rate-limits by token counts, as tokens represent the underlying cost to our systems.
+   *
+   * Under the hood, the API transforms requests into a format suitable for the model. The model's output then goes through a parsing stage before becoming an API response. As a result, the token counts in `usage` will not match one-to-one with the exact visible content of an API request or response.
+   *
+   * For example, `output_tokens` will be non-zero, even for an empty string response from Claude.
+   *
+   * Total input tokens in a request is the summation of `input_tokens`, `cache_creation_input_tokens`, and `cache_read_input_tokens`.
+   */
   "usage": Usage
 }) {}
 
-export class InvalidRequestErrorType extends S.Literal("invalid_request_error") {}
-
-export class InvalidRequestError extends S.Struct({
-  "message": S.String,
-  "type": InvalidRequestErrorType
+export class InvalidRequestError extends S.Class<InvalidRequestError>("InvalidRequestError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Invalid request" as const)),
+  "type": S.Literal("invalid_request_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "invalid_request_error" as const)
+  )
 }) {}
 
-export class AuthenticationErrorType extends S.Literal("authentication_error") {}
-
-export class AuthenticationError extends S.Struct({
-  "message": S.String,
-  "type": AuthenticationErrorType
+export class AuthenticationError extends S.Class<AuthenticationError>("AuthenticationError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Authentication error" as const)),
+  "type": S.Literal("authentication_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "authentication_error" as const)
+  )
 }) {}
 
-export class BillingErrorType extends S.Literal("billing_error") {}
-
-export class BillingError extends S.Struct({
-  "message": S.String,
-  "type": BillingErrorType
+export class BillingError extends S.Class<BillingError>("BillingError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Billing error" as const)),
+  "type": S.Literal("billing_error").pipe(S.propertySignature, S.withConstructorDefault(() => "billing_error" as const))
 }) {}
 
-export class PermissionErrorType extends S.Literal("permission_error") {}
-
-export class PermissionError extends S.Struct({
-  "message": S.String,
-  "type": PermissionErrorType
+export class PermissionError extends S.Class<PermissionError>("PermissionError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Permission denied" as const)),
+  "type": S.Literal("permission_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "permission_error" as const)
+  )
 }) {}
 
-export class NotFoundErrorType extends S.Literal("not_found_error") {}
-
-export class NotFoundError extends S.Struct({
-  "message": S.String,
-  "type": NotFoundErrorType
+export class NotFoundError extends S.Class<NotFoundError>("NotFoundError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Not found" as const)),
+  "type": S.Literal("not_found_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "not_found_error" as const)
+  )
 }) {}
 
-export class RateLimitErrorType extends S.Literal("rate_limit_error") {}
-
-export class RateLimitError extends S.Struct({
-  "message": S.String,
-  "type": RateLimitErrorType
+export class RateLimitError extends S.Class<RateLimitError>("RateLimitError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Rate limited" as const)),
+  "type": S.Literal("rate_limit_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "rate_limit_error" as const)
+  )
 }) {}
 
-export class GatewayTimeoutErrorType extends S.Literal("timeout_error") {}
-
-export class GatewayTimeoutError extends S.Struct({
-  "message": S.String,
-  "type": GatewayTimeoutErrorType
+export class GatewayTimeoutError extends S.Class<GatewayTimeoutError>("GatewayTimeoutError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Request timeout" as const)),
+  "type": S.Literal("timeout_error").pipe(S.propertySignature, S.withConstructorDefault(() => "timeout_error" as const))
 }) {}
 
-export class APIErrorType extends S.Literal("api_error") {}
-
-export class APIError extends S.Struct({
-  "message": S.String,
-  "type": APIErrorType
+export class APIError extends S.Class<APIError>("APIError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Internal server error" as const)),
+  "type": S.Literal("api_error").pipe(S.propertySignature, S.withConstructorDefault(() => "api_error" as const))
 }) {}
 
-export class OverloadedErrorType extends S.Literal("overloaded_error") {}
-
-export class OverloadedError extends S.Struct({
-  "message": S.String,
-  "type": OverloadedErrorType
+export class OverloadedError extends S.Class<OverloadedError>("OverloadedError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Overloaded" as const)),
+  "type": S.Literal("overloaded_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "overloaded_error" as const)
+  )
 }) {}
-
-export class ErrorResponseType extends S.Literal("error") {}
 
 export class ErrorResponse extends S.Class<ErrorResponse>("ErrorResponse")({
   "error": S.Union(
@@ -662,508 +1205,972 @@ export class ErrorResponse extends S.Class<ErrorResponse>("ErrorResponse")({
     APIError,
     OverloadedError
   ),
-  "type": ErrorResponseType
+  "request_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+  "type": S.Literal("error").pipe(S.propertySignature, S.withConstructorDefault(() => "error" as const))
 }) {}
 
 export class CompletePostParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class CompletionRequest extends S.Class<CompletionRequest>("CompletionRequest")({
-  "model": S.Union(S.String, Model),
+  "model": Model,
+  /**
+   * The prompt that you want Claude to complete.
+   *
+   * For proper response generation you will need to format your prompt using alternating `\n\nHuman:` and `\n\nAssistant:` conversational turns. For example:
+   *
+   * ```
+   * "\n\nHuman: {userQuestion}\n\nAssistant:"
+   * ```
+   *
+   * See [prompt validation](https://docs.anthropic.com/en/api/prompt-validation) and our guide to [prompt design](https://docs.anthropic.com/en/docs/intro-to-prompting) for more details.
+   */
   "prompt": S.String.pipe(S.minLength(1)),
+  /**
+   * The maximum number of tokens to generate before stopping.
+   *
+   * Note that our models may stop _before_ reaching this maximum. This parameter only specifies the absolute maximum number of tokens to generate.
+   */
   "max_tokens_to_sample": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+  /**
+   * Sequences that will cause the model to stop generating.
+   *
+   * Our models stop on `"\n\nHuman:"`, and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.
+   */
   "stop_sequences": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Amount of randomness injected into the response.
+   *
+   * Defaults to `1.0`. Ranges from `0.0` to `1.0`. Use `temperature` closer to `0.0` for analytical / multiple choice, and closer to `1.0` for creative and generative tasks.
+   *
+   * Note that even with `temperature` of `0.0`, the results will not be fully deterministic.
+   */
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
+  /**
+   * Use nucleus sampling.
+   *
+   * In nucleus sampling, we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by `top_p`. You should either alter `temperature` or `top_p`, but not both.
+   *
+   * Recommended for advanced use cases only. You usually only need to use `temperature`.
+   */
   "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
+  /**
+   * Only sample from the top K options for each subsequent token.
+   *
+   * Used to remove "long tail" low probability responses. [Learn more technical details here](https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277).
+   *
+   * Recommended for advanced use cases only. You usually only need to use `temperature`.
+   */
   "top_k": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
+  /**
+   * An object describing metadata about the request.
+   */
   "metadata": S.optionalWith(Metadata, { nullable: true }),
+  /**
+   * Whether to incrementally stream the response using server-sent events.
+   *
+   * See [streaming](https://docs.anthropic.com/en/api/streaming) for details.
+   */
   "stream": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
-export class CompletionResponseType extends S.Literal("completion") {}
-
 export class CompletionResponse extends S.Class<CompletionResponse>("CompletionResponse")({
+  /**
+   * The resulting completion up to and excluding the stop sequences.
+   */
   "completion": S.String,
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
-  "model": S.Union(S.String, Model),
-  "stop_reason": S.Union(S.String, S.Null),
-  "type": CompletionResponseType
+  "model": Model,
+  /**
+   * The reason that we stopped.
+   *
+   * This may be one the following values:
+   * * `"stop_sequence"`: we reached a stop sequence — either provided by you via the `stop_sequences` parameter, or a stop sequence built into the model
+   * * `"max_tokens"`: we exceeded `max_tokens_to_sample` or the model's maximum
+   */
+  "stop_reason": S.NullOr(S.String),
+  /**
+   * Object type.
+   *
+   * For Text Completions, this is always `"completion"`.
+   */
+  "type": S.Literal("completion").pipe(S.propertySignature, S.withConstructorDefault(() => "completion" as const))
 }) {}
 
 export class ModelsListParams extends S.Struct({
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately before this object.
+   */
   "before_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately after this object.
+   */
   "after_id": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class ModelInfoType extends S.Literal("model") {}
-
-export class ModelInfo extends S.Struct({
+export class ModelInfo extends S.Class<ModelInfo>("ModelInfo")({
+  /**
+   * RFC 3339 datetime string representing the time at which the model was released. May be set to an epoch value if the release date is unknown.
+   */
   "created_at": S.String,
+  /**
+   * A human-readable name for the model.
+   */
   "display_name": S.String,
+  /**
+   * Unique model identifier.
+   */
   "id": S.String,
-  "type": ModelInfoType
+  /**
+   * Object type.
+   *
+   * For Models, this is always `"model"`.
+   */
+  "type": S.Literal("model").pipe(S.propertySignature, S.withConstructorDefault(() => "model" as const))
 }) {}
 
 export class ListResponseModelInfo extends S.Class<ListResponseModelInfo>("ListResponseModelInfo")({
   "data": S.Array(ModelInfo),
-  "first_id": S.Union(S.String, S.Null),
+  /**
+   * First ID in the `data` list. Can be used as the `before_id` for the previous page.
+   */
+  "first_id": S.NullOr(S.String),
+  /**
+   * Indicates if there are more results in the requested page direction.
+   */
   "has_more": S.Boolean,
-  "last_id": S.Union(S.String, S.Null)
+  /**
+   * Last ID in the `data` list. Can be used as the `after_id` for the next page.
+   */
+  "last_id": S.NullOr(S.String)
 }) {}
 
 export class ModelsGetParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class MessageBatchesListParams extends S.Struct({
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately before this object.
+   */
   "before_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately after this object.
+   */
   "after_id": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+/**
+ * Processing status of the Message Batch.
+ */
 export class MessageBatchProcessingStatus extends S.Literal("in_progress", "canceling", "ended") {}
 
-export class RequestCounts extends S.Struct({
-  "canceled": S.Int,
-  "errored": S.Int,
-  "expired": S.Int,
-  "processing": S.Int,
-  "succeeded": S.Int
+export class RequestCounts extends S.Class<RequestCounts>("RequestCounts")({
+  /**
+   * Number of requests in the Message Batch that have been canceled.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "canceled": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that encountered an error.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "errored": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that have expired.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "expired": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that are processing.
+   */
+  "processing": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that have completed successfully.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "succeeded": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const))
 }) {}
 
-export class MessageBatchType extends S.Literal("message_batch") {}
-
-export class MessageBatch extends S.Struct({
-  "archived_at": S.Union(S.String, S.Null),
-  "cancel_initiated_at": S.Union(S.String, S.Null),
+export class MessageBatch extends S.Class<MessageBatch>("MessageBatch")({
+  /**
+   * RFC 3339 datetime string representing the time at which the Message Batch was archived and its results became unavailable.
+   */
+  "archived_at": S.NullOr(S.String),
+  /**
+   * RFC 3339 datetime string representing the time at which cancellation was initiated for the Message Batch. Specified only if cancellation was initiated.
+   */
+  "cancel_initiated_at": S.NullOr(S.String),
+  /**
+   * RFC 3339 datetime string representing the time at which the Message Batch was created.
+   */
   "created_at": S.String,
-  "ended_at": S.Union(S.String, S.Null),
+  /**
+   * RFC 3339 datetime string representing the time at which processing for the Message Batch ended. Specified only once processing ends.
+   *
+   * Processing ends when every request in a Message Batch has either succeeded, errored, canceled, or expired.
+   */
+  "ended_at": S.NullOr(S.String),
+  /**
+   * RFC 3339 datetime string representing the time at which the Message Batch will expire and end processing, which is 24 hours after creation.
+   */
   "expires_at": S.String,
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
+  /**
+   * Processing status of the Message Batch.
+   */
   "processing_status": MessageBatchProcessingStatus,
+  /**
+   * Tallies requests within the Message Batch, categorized by their status.
+   *
+   * Requests start as `processing` and move to one of the other statuses only once processing of the entire batch ends. The sum of all values always matches the total number of requests in the batch.
+   */
   "request_counts": RequestCounts,
-  "results_url": S.Union(S.String, S.Null),
-  "type": MessageBatchType
+  /**
+   * URL to a `.jsonl` file containing the results of the Message Batch requests. Specified only once processing ends.
+   *
+   * Results in the file are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
+   */
+  "results_url": S.NullOr(S.String),
+  /**
+   * Object type.
+   *
+   * For Message Batches, this is always `"message_batch"`.
+   */
+  "type": S.Literal("message_batch").pipe(S.propertySignature, S.withConstructorDefault(() => "message_batch" as const))
 }) {}
 
 export class ListResponseMessageBatch extends S.Class<ListResponseMessageBatch>("ListResponseMessageBatch")({
   "data": S.Array(MessageBatch),
-  "first_id": S.Union(S.String, S.Null),
+  /**
+   * First ID in the `data` list. Can be used as the `before_id` for the previous page.
+   */
+  "first_id": S.NullOr(S.String),
+  /**
+   * Indicates if there are more results in the requested page direction.
+   */
   "has_more": S.Boolean,
-  "last_id": S.Union(S.String, S.Null)
+  /**
+   * Last ID in the `data` list. Can be used as the `after_id` for the next page.
+   */
+  "last_id": S.NullOr(S.String)
 }) {}
 
 export class MessageBatchesPostParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class MessageBatchIndividualRequestParams extends S.Struct({
-  "custom_id": S.String.pipe(S.minLength(1), S.maxLength(64), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,64}$"))),
-  "params": CreateMessageParams
-}) {}
+export class MessageBatchIndividualRequestParams
+  extends S.Class<MessageBatchIndividualRequestParams>("MessageBatchIndividualRequestParams")({
+    /**
+     * Developer-provided ID created for each request in a Message Batch. Useful for matching results to requests, as results may be given out of request order.
+     *
+     * Must be unique for each request within the Message Batch.
+     */
+    "custom_id": S.String.pipe(S.minLength(1), S.maxLength(64), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,64}$"))),
+    /**
+     * Messages API creation parameters for the individual request.
+     *
+     * See the [Messages API reference](/en/api/messages) for full documentation on available parameters.
+     */
+    "params": CreateMessageParams
+  })
+{}
 
 export class CreateMessageBatchParams extends S.Class<CreateMessageBatchParams>("CreateMessageBatchParams")({
-  "requests": S.Array(MessageBatchIndividualRequestParams).pipe(S.minItems(1), S.maxItems(10000))
+  /**
+   * List of requests for prompt completion. Each is an individual request to create a Message.
+   */
+  "requests": S.NonEmptyArray(MessageBatchIndividualRequestParams).pipe(S.minItems(1), S.maxItems(10000))
 }) {}
 
 export class MessageBatchesRetrieveParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class MessageBatchesDeleteParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class DeleteMessageBatchResponseType extends S.Literal("message_batch_deleted") {}
-
 export class DeleteMessageBatchResponse extends S.Class<DeleteMessageBatchResponse>("DeleteMessageBatchResponse")({
+  /**
+   * ID of the Message Batch.
+   */
   "id": S.String,
-  "type": DeleteMessageBatchResponseType
+  /**
+   * Deleted object type.
+   *
+   * For Message Batches, this is always `"message_batch_deleted"`.
+   */
+  "type": S.Literal("message_batch_deleted").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "message_batch_deleted" as const)
+  )
 }) {}
 
 export class MessageBatchesCancelParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class MessageBatchesResultsParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class MessagesCountTokensPostParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class CountMessageTokensParams extends S.Class<CountMessageTokensParams>("CountMessageTokensParams")({
+  /**
+   * Input messages.
+   *
+   * Our models are trained to operate on alternating `user` and `assistant` conversational turns. When creating a new `Message`, you specify the prior conversational turns with the `messages` parameter, and the model then generates the next `Message` in the conversation. Consecutive `user` or `assistant` turns in your request will be combined into a single turn.
+   *
+   * Each input message must be an object with a `role` and `content`. You can specify a single `user`-role message, or you can include multiple `user` and `assistant` messages.
+   *
+   * If the final message uses the `assistant` role, the response content will continue immediately from the content in that message. This can be used to constrain part of the model's response.
+   *
+   * Example with a single `user` message:
+   *
+   * ```json
+   * [{"role": "user", "content": "Hello, Claude"}]
+   * ```
+   *
+   * Example with multiple conversational turns:
+   *
+   * ```json
+   * [
+   *   {"role": "user", "content": "Hello there."},
+   *   {"role": "assistant", "content": "Hi, I'm Claude. How can I help you?"},
+   *   {"role": "user", "content": "Can you explain LLMs in plain English?"},
+   * ]
+   * ```
+   *
+   * Example with a partially-filled response from Claude:
+   *
+   * ```json
+   * [
+   *   {"role": "user", "content": "What's the Greek name for Sun? (A) Sol (B) Helios (C) Sun"},
+   *   {"role": "assistant", "content": "The best answer is ("},
+   * ]
+   * ```
+   *
+   * Each input message `content` may be either a single `string` or an array of content blocks, where each block has a specific `type`. Using a `string` for `content` is shorthand for an array of one content block of type `"text"`. The following input messages are equivalent:
+   *
+   * ```json
+   * {"role": "user", "content": "Hello, Claude"}
+   * ```
+   *
+   * ```json
+   * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
+   * ```
+   *
+   * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+   *
+   * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+   *
+   * There is a limit of 100,000 messages in a single request.
+   */
   "messages": S.Array(InputMessage),
-  "model": S.Union(S.String, Model),
+  "model": Model,
+  /**
+   * System prompt.
+   *
+   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+   */
   "system": S.optionalWith(S.Union(S.String, S.Array(RequestTextBlock)), { nullable: true }),
   "thinking": S.optionalWith(ThinkingConfigParam, { nullable: true }),
   "tool_choice": S.optionalWith(ToolChoice, { nullable: true }),
+  /**
+   * Definitions of tools that the model may use.
+   *
+   * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
+   *
+   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+   *
+   * Each tool definition includes:
+   *
+   * * `name`: Name of the tool.
+   * * `description`: Optional, but strongly-recommended description of the tool.
+   * * `input_schema`: [JSON schema](https://json-schema.org/draft/2020-12) for the tool `input` shape that the model will produce in `tool_use` output content blocks.
+   *
+   * For example, if you defined `tools` as:
+   *
+   * ```json
+   * [
+   *   {
+   *     "name": "get_stock_price",
+   *     "description": "Get the current stock price for a given ticker symbol.",
+   *     "input_schema": {
+   *       "type": "object",
+   *       "properties": {
+   *         "ticker": {
+   *           "type": "string",
+   *           "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+   *         }
+   *       },
+   *       "required": ["ticker"]
+   *     }
+   *   }
+   * ]
+   * ```
+   *
+   * And then asked the model "What's the S&P 500 at today?", the model might produce `tool_use` content blocks in the response like this:
+   *
+   * ```json
+   * [
+   *   {
+   *     "type": "tool_use",
+   *     "id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+   *     "name": "get_stock_price",
+   *     "input": { "ticker": "^GSPC" }
+   *   }
+   * ]
+   * ```
+   *
+   * You might then run your `get_stock_price` tool with `{"ticker": "^GSPC"}` as an input, and return the following back to the model in a subsequent `user` message:
+   *
+   * ```json
+   * [
+   *   {
+   *     "type": "tool_result",
+   *     "tool_use_id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+   *     "content": "259.75 USD"
+   *   }
+   * ]
+   * ```
+   *
+   * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
+   *
+   * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+   */
   "tools": S.optionalWith(
-    S.Array(S.Union(Tool, BashTool20250124, TextEditor20250124, TextEditor20250429, WebSearchTool20250305)),
+    S.Array(
+      S.Union(Tool, BashTool20250124, TextEditor20250124, TextEditor20250429, TextEditor20250728, WebSearchTool20250305)
+    ),
     { nullable: true }
   )
 }) {}
 
 export class CountMessageTokensResponse extends S.Class<CountMessageTokensResponse>("CountMessageTokensResponse")({
+  /**
+   * The total number of tokens across the provided list of messages, system prompt, and tools.
+   */
   "input_tokens": S.Int
 }) {}
 
 export class ListFilesV1FilesGetParams extends S.Struct({
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately before this object.
+   */
   "before_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately after this object.
+   */
   "after_id": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class FileMetadataSchemaType extends S.Literal("file") {}
-
-export class FileMetadataSchema extends S.Struct({
+export class FileMetadataSchema extends S.Class<FileMetadataSchema>("FileMetadataSchema")({
+  /**
+   * RFC 3339 datetime string representing when the file was created.
+   */
   "created_at": S.String,
-  "downloadable": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Whether the file can be downloaded.
+   */
+  "downloadable": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  /**
+   * Original filename of the uploaded file.
+   */
   "filename": S.String.pipe(S.minLength(1), S.maxLength(500)),
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
+  /**
+   * MIME type of the file.
+   */
   "mime_type": S.String.pipe(S.minLength(1), S.maxLength(255)),
+  /**
+   * Size of the file in bytes.
+   */
   "size_bytes": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": FileMetadataSchemaType
+  /**
+   * Object type.
+   *
+   * For files, this is always `"file"`.
+   */
+  "type": S.Literal("file")
 }) {}
 
 export class FileListResponse extends S.Class<FileListResponse>("FileListResponse")({
+  /**
+   * List of file metadata objects.
+   */
   "data": S.Array(FileMetadataSchema),
-  "first_id": S.optionalWith(S.Union(S.String, S.Null), { nullable: true }),
-  "has_more": S.optionalWith(S.Boolean, { nullable: true }),
-  "last_id": S.optionalWith(S.Union(S.String, S.Null), { nullable: true })
+  /**
+   * ID of the first file in this page of results.
+   */
+  "first_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Whether there are more results available.
+   */
+  "has_more": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  /**
+   * ID of the last file in this page of results.
+   */
+  "last_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UploadFileV1FilesPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+export class UploadFileV1FilesPostRequest
+  extends S.Class<UploadFileV1FilesPostRequest>("UploadFileV1FilesPostRequest")({
+    /**
+     * The file to upload
+     */
+    "file": S.instanceOf(globalThis.Blob)
+  })
+{}
+
 export class GetFileMetadataV1FilesFileIdGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class DeleteFileV1FilesFileIdDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class FileDeleteResponseType extends S.Literal("file_deleted") {}
-
 export class FileDeleteResponse extends S.Class<FileDeleteResponse>("FileDeleteResponse")({
+  /**
+   * ID of the deleted file.
+   */
   "id": S.String,
-  "type": S.optionalWith(FileDeleteResponseType, { nullable: true })
+  /**
+   * Deleted object type.
+   *
+   * For file deletion, this is always `"file_deleted"`.
+   */
+  "type": S.optionalWith(S.Literal("file_deleted"), { nullable: true, default: () => "file_deleted" as const })
 }) {}
 
 export class DownloadFileV1FilesFileIdContentGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaMessagesPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+/**
+ * The time-to-live for the cache control breakpoint.
+ *
+ * This may be one the following values:
+ * - `5m`: 5 minutes
+ * - `1h`: 1 hour
+ *
+ * Defaults to `5m`.
+ */
 export class BetaCacheControlEphemeralTtl extends S.Literal("5m", "1h") {}
 
-export class BetaCacheControlEphemeralType extends S.Literal("ephemeral") {}
-
-export class BetaCacheControlEphemeral extends S.Struct({
+export class BetaCacheControlEphemeral extends S.Class<BetaCacheControlEphemeral>("BetaCacheControlEphemeral")({
+  /**
+   * The time-to-live for the cache control breakpoint.
+   *
+   * This may be one the following values:
+   * - `5m`: 5 minutes
+   * - `1h`: 1 hour
+   *
+   * Defaults to `5m`.
+   */
   "ttl": S.optionalWith(BetaCacheControlEphemeralTtl, { nullable: true }),
-  "type": BetaCacheControlEphemeralType
+  "type": S.Literal("ephemeral")
 }) {}
 
-export class BetaRequestServerToolUseBlockName extends S.Literal("web_search", "code_execution") {}
-
-export class BetaRequestServerToolUseBlockType extends S.Literal("server_tool_use") {}
-
-export class BetaRequestServerToolUseBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": BetaRequestServerToolUseBlockName,
-  "type": BetaRequestServerToolUseBlockType
-}) {}
-
-export class BetaRequestWebSearchResultBlockType extends S.Literal("web_search_result") {}
-
-export class BetaRequestWebSearchResultBlock extends S.Struct({
-  "encrypted_content": S.String,
-  "page_age": S.optionalWith(S.Union(S.String, S.Null), { nullable: true }),
-  "title": S.String,
-  "type": BetaRequestWebSearchResultBlockType,
-  "url": S.String
-}) {}
-
-export class BetaWebSearchToolResultErrorCode
-  extends S.Literal("invalid_tool_input", "unavailable", "max_uses_exceeded", "too_many_requests", "query_too_long")
+export class BetaRequestCharLocationCitation
+  extends S.Class<BetaRequestCharLocationCitation>("BetaRequestCharLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(255))),
+    "end_char_index": S.Int,
+    "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("char_location")
+  })
 {}
 
-export class BetaRequestWebSearchToolResultErrorType extends S.Literal("web_search_tool_result_error") {}
-
-export class BetaRequestWebSearchToolResultError extends S.Struct({
-  "error_code": BetaWebSearchToolResultErrorCode,
-  "type": BetaRequestWebSearchToolResultErrorType
-}) {}
-
-export class BetaRequestWebSearchToolResultBlockType extends S.Literal("web_search_tool_result") {}
-
-export class BetaRequestWebSearchToolResultBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "content": S.Union(S.Array(BetaRequestWebSearchResultBlock), BetaRequestWebSearchToolResultError),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "type": BetaRequestWebSearchToolResultBlockType
-}) {}
-
-export class BetaCodeExecutionToolResultErrorCode
-  extends S.Literal("invalid_tool_input", "unavailable", "too_many_requests", "execution_time_exceeded")
+export class BetaRequestPageLocationCitation
+  extends S.Class<BetaRequestPageLocationCitation>("BetaRequestPageLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(255))),
+    "end_page_number": S.Int,
+    "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+    "type": S.Literal("page_location")
+  })
 {}
 
-export class BetaRequestCodeExecutionToolResultErrorType extends S.Literal("code_execution_tool_result_error") {}
+export class BetaRequestContentBlockLocationCitation
+  extends S.Class<BetaRequestContentBlockLocationCitation>("BetaRequestContentBlockLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(255))),
+    "end_block_index": S.Int,
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("content_block_location")
+  })
+{}
 
-export class BetaRequestCodeExecutionToolResultError extends S.Struct({
-  "error_code": BetaCodeExecutionToolResultErrorCode,
-  "type": BetaRequestCodeExecutionToolResultErrorType
-}) {}
+export class BetaRequestWebSearchResultLocationCitation
+  extends S.Class<BetaRequestWebSearchResultLocationCitation>("BetaRequestWebSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "encrypted_index": S.String,
+    "title": S.NullOr(S.String.pipe(S.minLength(1), S.maxLength(512))),
+    "type": S.Literal("web_search_result_location"),
+    "url": S.String.pipe(S.minLength(1), S.maxLength(2048))
+  })
+{}
 
-export class BetaRequestCodeExecutionOutputBlockType extends S.Literal("code_execution_output") {}
+export class BetaRequestSearchResultLocationCitation
+  extends S.Class<BetaRequestSearchResultLocationCitation>("BetaRequestSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "end_block_index": S.Int,
+    "search_result_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "source": S.String,
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "title": S.NullOr(S.String),
+    "type": S.Literal("search_result_location")
+  })
+{}
 
-export class BetaRequestCodeExecutionOutputBlock extends S.Struct({
-  "file_id": S.String,
-  "type": BetaRequestCodeExecutionOutputBlockType
-}) {}
-
-export class BetaRequestCodeExecutionResultBlockType extends S.Literal("code_execution_result") {}
-
-export class BetaRequestCodeExecutionResultBlock extends S.Struct({
-  "content": S.Array(BetaRequestCodeExecutionOutputBlock),
-  "return_code": S.Int,
-  "stderr": S.String,
-  "stdout": S.String,
-  "type": BetaRequestCodeExecutionResultBlockType
-}) {}
-
-export class BetaRequestCodeExecutionToolResultBlockType extends S.Literal("code_execution_tool_result") {}
-
-export class BetaRequestCodeExecutionToolResultBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "content": S.Union(BetaRequestCodeExecutionToolResultError, BetaRequestCodeExecutionResultBlock),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "type": BetaRequestCodeExecutionToolResultBlockType
-}) {}
-
-export class BetaRequestMCPToolUseBlockType extends S.Literal("mcp_tool_use") {}
-
-export class BetaRequestMCPToolUseBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": S.String,
-  "server_name": S.String,
-  "type": BetaRequestMCPToolUseBlockType
-}) {}
-
-export class BetaRequestCharLocationCitationType extends S.Literal("char_location") {}
-
-export class BetaRequestCharLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "end_char_index": S.Int,
-  "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": BetaRequestCharLocationCitationType
-}) {}
-
-export class BetaRequestPageLocationCitationType extends S.Literal("page_location") {}
-
-export class BetaRequestPageLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "end_page_number": S.Int,
-  "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "type": BetaRequestPageLocationCitationType
-}) {}
-
-export class BetaRequestContentBlockLocationCitationType extends S.Literal("content_block_location") {}
-
-export class BetaRequestContentBlockLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "end_block_index": S.Int,
-  "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": BetaRequestContentBlockLocationCitationType
-}) {}
-
-export class BetaRequestWebSearchResultLocationCitationType extends S.Literal("web_search_result_location") {}
-
-export class BetaRequestWebSearchResultLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "encrypted_index": S.String,
-  "title": S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null),
-  "type": BetaRequestWebSearchResultLocationCitationType,
-  "url": S.String.pipe(S.minLength(1), S.maxLength(2048))
-}) {}
-
-export class BetaRequestTextBlockType extends S.Literal("text") {}
-
-export class BetaRequestTextBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+export class BetaRequestTextBlock extends S.Class<BetaRequestTextBlock>("BetaRequestTextBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
   "citations": S.optionalWith(
-    S.Union(
-      S.Array(
-        S.Union(
-          BetaRequestCharLocationCitation,
-          BetaRequestPageLocationCitation,
-          BetaRequestContentBlockLocationCitation,
-          BetaRequestWebSearchResultLocationCitation
-        )
-      ),
-      S.Null
+    S.Array(
+      S.Union(
+        BetaRequestCharLocationCitation,
+        BetaRequestPageLocationCitation,
+        BetaRequestContentBlockLocationCitation,
+        BetaRequestWebSearchResultLocationCitation,
+        BetaRequestSearchResultLocationCitation
+      )
     ),
     { nullable: true }
   ),
   "text": S.String.pipe(S.minLength(1)),
-  "type": BetaRequestTextBlockType
-}) {}
-
-export class BetaRequestMCPToolResultBlockType extends S.Literal("mcp_tool_result") {}
-
-export class BetaRequestMCPToolResultBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "content": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
-  "is_error": S.optionalWith(S.Boolean, { nullable: true }),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "type": BetaRequestMCPToolResultBlockType
+  "type": S.Literal("text")
 }) {}
 
 export class BetaBase64ImageSourceMediaType extends S.Literal("image/jpeg", "image/png", "image/gif", "image/webp") {}
 
-export class BetaBase64ImageSourceType extends S.Literal("base64") {}
-
-export class BetaBase64ImageSource extends S.Struct({
+export class BetaBase64ImageSource extends S.Class<BetaBase64ImageSource>("BetaBase64ImageSource")({
   "data": S.String,
   "media_type": BetaBase64ImageSourceMediaType,
-  "type": BetaBase64ImageSourceType
+  "type": S.Literal("base64")
 }) {}
 
-export class BetaURLImageSourceType extends S.Literal("url") {}
-
-export class BetaURLImageSource extends S.Struct({
-  "type": BetaURLImageSourceType,
+export class BetaURLImageSource extends S.Class<BetaURLImageSource>("BetaURLImageSource")({
+  "type": S.Literal("url"),
   "url": S.String
 }) {}
 
-export class BetaFileImageSourceType extends S.Literal("file") {}
-
-export class BetaFileImageSource extends S.Struct({
+export class BetaFileImageSource extends S.Class<BetaFileImageSource>("BetaFileImageSource")({
   "file_id": S.String,
-  "type": BetaFileImageSourceType
+  "type": S.Literal("file")
 }) {}
 
-export class BetaRequestImageBlockType extends S.Literal("image") {}
-
-export class BetaRequestImageBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+export class BetaRequestImageBlock extends S.Class<BetaRequestImageBlock>("BetaRequestImageBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
   "source": S.Union(BetaBase64ImageSource, BetaURLImageSource, BetaFileImageSource),
-  "type": BetaRequestImageBlockType
+  "type": S.Literal("image")
 }) {}
 
-export class BetaRequestToolUseBlockType extends S.Literal("tool_use") {}
-
-export class BetaRequestToolUseBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": S.String.pipe(S.minLength(1), S.maxLength(200)),
-  "type": BetaRequestToolUseBlockType
-}) {}
-
-export class BetaRequestToolResultBlockType extends S.Literal("tool_result") {}
-
-export class BetaRequestToolResultBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "content": S.optionalWith(S.Union(S.String, S.Array(S.Union(BetaRequestTextBlock, BetaRequestImageBlock))), {
-    nullable: true
-  }),
-  "is_error": S.optionalWith(S.Boolean, { nullable: true }),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "type": BetaRequestToolResultBlockType
-}) {}
-
-export class BetaRequestCitationsConfig extends S.Struct({
+export class BetaRequestCitationsConfig extends S.Class<BetaRequestCitationsConfig>("BetaRequestCitationsConfig")({
   "enabled": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
-export class BetaBase64PDFSourceMediaType extends S.Literal("application/pdf") {}
-
-export class BetaBase64PDFSourceType extends S.Literal("base64") {}
-
-export class BetaBase64PDFSource extends S.Struct({
+export class BetaBase64PDFSource extends S.Class<BetaBase64PDFSource>("BetaBase64PDFSource")({
   "data": S.String,
-  "media_type": BetaBase64PDFSourceMediaType,
-  "type": BetaBase64PDFSourceType
+  "media_type": S.Literal("application/pdf"),
+  "type": S.Literal("base64")
 }) {}
 
-export class BetaPlainTextSourceMediaType extends S.Literal("text/plain") {}
-
-export class BetaPlainTextSourceType extends S.Literal("text") {}
-
-export class BetaPlainTextSource extends S.Struct({
+export class BetaPlainTextSource extends S.Class<BetaPlainTextSource>("BetaPlainTextSource")({
   "data": S.String,
-  "media_type": BetaPlainTextSourceMediaType,
-  "type": BetaPlainTextSourceType
+  "media_type": S.Literal("text/plain"),
+  "type": S.Literal("text")
 }) {}
 
-export class BetaContentBlockSourceType extends S.Literal("content") {}
-
-export class BetaContentBlockSource extends S.Struct({
+export class BetaContentBlockSource extends S.Class<BetaContentBlockSource>("BetaContentBlockSource")({
   "content": S.Union(S.String, S.Array(S.Union(BetaRequestTextBlock, BetaRequestImageBlock))),
-  "type": BetaContentBlockSourceType
+  "type": S.Literal("content")
 }) {}
 
-export class BetaURLPDFSourceType extends S.Literal("url") {}
-
-export class BetaURLPDFSource extends S.Struct({
-  "type": BetaURLPDFSourceType,
+export class BetaURLPDFSource extends S.Class<BetaURLPDFSource>("BetaURLPDFSource")({
+  "type": S.Literal("url"),
   "url": S.String
 }) {}
 
-export class BetaFileDocumentSourceType extends S.Literal("file") {}
-
-export class BetaFileDocumentSource extends S.Struct({
+export class BetaFileDocumentSource extends S.Class<BetaFileDocumentSource>("BetaFileDocumentSource")({
   "file_id": S.String,
-  "type": BetaFileDocumentSourceType
+  "type": S.Literal("file")
 }) {}
 
-export class BetaRequestDocumentBlockType extends S.Literal("document") {}
-
-export class BetaRequestDocumentBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+export class BetaRequestDocumentBlock extends S.Class<BetaRequestDocumentBlock>("BetaRequestDocumentBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
   "citations": S.optionalWith(BetaRequestCitationsConfig, { nullable: true }),
-  "context": S.optionalWith(S.Union(S.String.pipe(S.minLength(1)), S.Null), { nullable: true }),
+  "context": S.optionalWith(S.String.pipe(S.minLength(1)), { nullable: true }),
   "source": S.Union(
     BetaBase64PDFSource,
     BetaPlainTextSource,
@@ -1171,588 +2178,1560 @@ export class BetaRequestDocumentBlock extends S.Struct({
     BetaURLPDFSource,
     BetaFileDocumentSource
   ),
-  "title": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(500)), S.Null), { nullable: true }),
-  "type": BetaRequestDocumentBlockType
+  "title": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(500)), { nullable: true }),
+  "type": S.Literal("document")
 }) {}
 
-export class BetaRequestThinkingBlockType extends S.Literal("thinking") {}
+export class BetaRequestSearchResultBlock
+  extends S.Class<BetaRequestSearchResultBlock>("BetaRequestSearchResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "citations": S.optionalWith(BetaRequestCitationsConfig, { nullable: true }),
+    "content": S.Array(BetaRequestTextBlock),
+    "source": S.String,
+    "title": S.String,
+    "type": S.Literal("search_result")
+  })
+{}
 
-export class BetaRequestThinkingBlock extends S.Struct({
+export class BetaRequestThinkingBlock extends S.Class<BetaRequestThinkingBlock>("BetaRequestThinkingBlock")({
   "signature": S.String,
   "thinking": S.String,
-  "type": BetaRequestThinkingBlockType
+  "type": S.Literal("thinking")
 }) {}
 
-export class BetaRequestRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
+export class BetaRequestRedactedThinkingBlock
+  extends S.Class<BetaRequestRedactedThinkingBlock>("BetaRequestRedactedThinkingBlock")({
+    "data": S.String,
+    "type": S.Literal("redacted_thinking")
+  })
+{}
 
-export class BetaRequestRedactedThinkingBlock extends S.Struct({
-  "data": S.String,
-  "type": BetaRequestRedactedThinkingBlockType
+export class BetaRequestToolUseBlock extends S.Class<BetaRequestToolUseBlock>("BetaRequestToolUseBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+  "input": S.Record({ key: S.String, value: S.Unknown }),
+  "name": S.String.pipe(S.minLength(1), S.maxLength(200)),
+  "type": S.Literal("tool_use")
 }) {}
 
-export class BetaRequestContainerUploadBlockType extends S.Literal("container_upload") {}
-
-export class BetaRequestContainerUploadBlock extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "file_id": S.String,
-  "type": BetaRequestContainerUploadBlockType
+export class BetaRequestToolResultBlock extends S.Class<BetaRequestToolResultBlock>("BetaRequestToolResultBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  "content": S.optionalWith(
+    S.Union(S.String, S.Array(S.Union(BetaRequestTextBlock, BetaRequestImageBlock, BetaRequestSearchResultBlock))),
+    { nullable: true }
+  ),
+  "is_error": S.optionalWith(S.Boolean, { nullable: true }),
+  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+  "type": S.Literal("tool_result")
 }) {}
+
+export class BetaRequestServerToolUseBlockName
+  extends S.Literal("web_search", "code_execution", "bash_code_execution", "text_editor_code_execution")
+{}
+
+export class BetaRequestServerToolUseBlock
+  extends S.Class<BetaRequestServerToolUseBlock>("BetaRequestServerToolUseBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "input": S.Record({ key: S.String, value: S.Unknown }),
+    "name": BetaRequestServerToolUseBlockName,
+    "type": S.Literal("server_tool_use")
+  })
+{}
+
+export class BetaRequestWebSearchResultBlock
+  extends S.Class<BetaRequestWebSearchResultBlock>("BetaRequestWebSearchResultBlock")({
+    "encrypted_content": S.String,
+    "page_age": S.optionalWith(S.String, { nullable: true }),
+    "title": S.String,
+    "type": S.Literal("web_search_result"),
+    "url": S.String
+  })
+{}
+
+export class BetaWebSearchToolResultErrorCode
+  extends S.Literal("invalid_tool_input", "unavailable", "max_uses_exceeded", "too_many_requests", "query_too_long")
+{}
+
+export class BetaRequestWebSearchToolResultError
+  extends S.Class<BetaRequestWebSearchToolResultError>("BetaRequestWebSearchToolResultError")({
+    "error_code": BetaWebSearchToolResultErrorCode,
+    "type": S.Literal("web_search_tool_result_error")
+  })
+{}
+
+export class BetaRequestWebSearchToolResultBlock
+  extends S.Class<BetaRequestWebSearchToolResultBlock>("BetaRequestWebSearchToolResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "content": S.Union(S.Array(BetaRequestWebSearchResultBlock), BetaRequestWebSearchToolResultError),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("web_search_tool_result")
+  })
+{}
+
+export class BetaCodeExecutionToolResultErrorCode
+  extends S.Literal("invalid_tool_input", "unavailable", "too_many_requests", "execution_time_exceeded")
+{}
+
+export class BetaRequestCodeExecutionToolResultError
+  extends S.Class<BetaRequestCodeExecutionToolResultError>("BetaRequestCodeExecutionToolResultError")({
+    "error_code": BetaCodeExecutionToolResultErrorCode,
+    "type": S.Literal("code_execution_tool_result_error")
+  })
+{}
+
+export class BetaRequestCodeExecutionOutputBlock
+  extends S.Class<BetaRequestCodeExecutionOutputBlock>("BetaRequestCodeExecutionOutputBlock")({
+    "file_id": S.String,
+    "type": S.Literal("code_execution_output")
+  })
+{}
+
+export class BetaRequestCodeExecutionResultBlock
+  extends S.Class<BetaRequestCodeExecutionResultBlock>("BetaRequestCodeExecutionResultBlock")({
+    "content": S.Array(BetaRequestCodeExecutionOutputBlock),
+    "return_code": S.Int,
+    "stderr": S.String,
+    "stdout": S.String,
+    "type": S.Literal("code_execution_result")
+  })
+{}
+
+export class BetaRequestCodeExecutionToolResultBlock
+  extends S.Class<BetaRequestCodeExecutionToolResultBlock>("BetaRequestCodeExecutionToolResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "content": S.Union(BetaRequestCodeExecutionToolResultError, BetaRequestCodeExecutionResultBlock),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("code_execution_tool_result")
+  })
+{}
+
+export class BetaBashCodeExecutionToolResultErrorCode extends S.Literal(
+  "invalid_tool_input",
+  "unavailable",
+  "too_many_requests",
+  "execution_time_exceeded",
+  "output_file_too_large"
+) {}
+
+export class BetaRequestBashCodeExecutionToolResultError
+  extends S.Class<BetaRequestBashCodeExecutionToolResultError>("BetaRequestBashCodeExecutionToolResultError")({
+    "error_code": BetaBashCodeExecutionToolResultErrorCode,
+    "type": S.Literal("bash_code_execution_tool_result_error")
+  })
+{}
+
+export class BetaRequestBashCodeExecutionOutputBlock
+  extends S.Class<BetaRequestBashCodeExecutionOutputBlock>("BetaRequestBashCodeExecutionOutputBlock")({
+    "file_id": S.String,
+    "type": S.Literal("bash_code_execution_output")
+  })
+{}
+
+export class BetaRequestBashCodeExecutionResultBlock
+  extends S.Class<BetaRequestBashCodeExecutionResultBlock>("BetaRequestBashCodeExecutionResultBlock")({
+    "content": S.Array(BetaRequestBashCodeExecutionOutputBlock),
+    "return_code": S.Int,
+    "stderr": S.String,
+    "stdout": S.String,
+    "type": S.Literal("bash_code_execution_result")
+  })
+{}
+
+export class BetaRequestBashCodeExecutionToolResultBlock
+  extends S.Class<BetaRequestBashCodeExecutionToolResultBlock>("BetaRequestBashCodeExecutionToolResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "content": S.Union(BetaRequestBashCodeExecutionToolResultError, BetaRequestBashCodeExecutionResultBlock),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("bash_code_execution_tool_result")
+  })
+{}
+
+export class BetaTextEditorCodeExecutionToolResultErrorCode extends S.Literal(
+  "invalid_tool_input",
+  "unavailable",
+  "too_many_requests",
+  "execution_time_exceeded",
+  "file_not_found"
+) {}
+
+export class BetaRequestTextEditorCodeExecutionToolResultError
+  extends S.Class<BetaRequestTextEditorCodeExecutionToolResultError>(
+    "BetaRequestTextEditorCodeExecutionToolResultError"
+  )({
+    "error_code": BetaTextEditorCodeExecutionToolResultErrorCode,
+    "error_message": S.optionalWith(S.String, { nullable: true }),
+    "type": S.Literal("text_editor_code_execution_tool_result_error")
+  })
+{}
+
+export class BetaRequestTextEditorCodeExecutionViewResultBlockFileType extends S.Literal("text", "image", "pdf") {}
+
+export class BetaRequestTextEditorCodeExecutionViewResultBlock
+  extends S.Class<BetaRequestTextEditorCodeExecutionViewResultBlock>(
+    "BetaRequestTextEditorCodeExecutionViewResultBlock"
+  )({
+    "content": S.String,
+    "file_type": BetaRequestTextEditorCodeExecutionViewResultBlockFileType,
+    "num_lines": S.optionalWith(S.Int, { nullable: true }),
+    "start_line": S.optionalWith(S.Int, { nullable: true }),
+    "total_lines": S.optionalWith(S.Int, { nullable: true }),
+    "type": S.Literal("text_editor_code_execution_view_result")
+  })
+{}
+
+export class BetaRequestTextEditorCodeExecutionCreateResultBlock
+  extends S.Class<BetaRequestTextEditorCodeExecutionCreateResultBlock>(
+    "BetaRequestTextEditorCodeExecutionCreateResultBlock"
+  )({
+    "is_file_update": S.Boolean,
+    "type": S.Literal("text_editor_code_execution_create_result")
+  })
+{}
+
+export class BetaRequestTextEditorCodeExecutionStrReplaceResultBlock
+  extends S.Class<BetaRequestTextEditorCodeExecutionStrReplaceResultBlock>(
+    "BetaRequestTextEditorCodeExecutionStrReplaceResultBlock"
+  )({
+    "lines": S.optionalWith(S.Array(S.String), { nullable: true }),
+    "new_lines": S.optionalWith(S.Int, { nullable: true }),
+    "new_start": S.optionalWith(S.Int, { nullable: true }),
+    "old_lines": S.optionalWith(S.Int, { nullable: true }),
+    "old_start": S.optionalWith(S.Int, { nullable: true }),
+    "type": S.Literal("text_editor_code_execution_str_replace_result")
+  })
+{}
+
+export class BetaRequestTextEditorCodeExecutionToolResultBlock
+  extends S.Class<BetaRequestTextEditorCodeExecutionToolResultBlock>(
+    "BetaRequestTextEditorCodeExecutionToolResultBlock"
+  )({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "content": S.Union(
+      BetaRequestTextEditorCodeExecutionToolResultError,
+      BetaRequestTextEditorCodeExecutionViewResultBlock,
+      BetaRequestTextEditorCodeExecutionCreateResultBlock,
+      BetaRequestTextEditorCodeExecutionStrReplaceResultBlock
+    ),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("text_editor_code_execution_tool_result")
+  })
+{}
+
+export class BetaRequestMCPToolUseBlock extends S.Class<BetaRequestMCPToolUseBlock>("BetaRequestMCPToolUseBlock")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+  "input": S.Record({ key: S.String, value: S.Unknown }),
+  "name": S.String,
+  /**
+   * The name of the MCP server
+   */
+  "server_name": S.String,
+  "type": S.Literal("mcp_tool_use")
+}) {}
+
+export class BetaRequestMCPToolResultBlock
+  extends S.Class<BetaRequestMCPToolResultBlock>("BetaRequestMCPToolResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "content": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
+    "is_error": S.optionalWith(S.Boolean, { nullable: true }),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+    "type": S.Literal("mcp_tool_result")
+  })
+{}
+
+/**
+ * A content block that represents a file to be uploaded to the container
+ * Files uploaded via this block will be available in the container's input directory.
+ */
+export class BetaRequestContainerUploadBlock
+  extends S.Class<BetaRequestContainerUploadBlock>("BetaRequestContainerUploadBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "file_id": S.String,
+    "type": S.Literal("container_upload")
+  })
+{}
 
 export class BetaInputContentBlock extends S.Union(
+  /**
+   * Regular text content.
+   */
+  BetaRequestTextBlock,
+  /**
+   * Image content specified directly as base64 data or as a reference via a URL.
+   */
+  BetaRequestImageBlock,
+  /**
+   * Document content, either specified directly as base64 data, as text, or as a reference via a URL.
+   */
+  BetaRequestDocumentBlock,
+  /**
+   * A search result block containing source, title, and content from search operations.
+   */
+  BetaRequestSearchResultBlock,
+  /**
+   * A block specifying internal thinking by the model.
+   */
+  BetaRequestThinkingBlock,
+  /**
+   * A block specifying internal, redacted thinking by the model.
+   */
+  BetaRequestRedactedThinkingBlock,
+  /**
+   * A block indicating a tool use by the model.
+   */
+  BetaRequestToolUseBlock,
+  /**
+   * A block specifying the results of a tool use by the model.
+   */
+  BetaRequestToolResultBlock,
   BetaRequestServerToolUseBlock,
   BetaRequestWebSearchToolResultBlock,
   BetaRequestCodeExecutionToolResultBlock,
+  BetaRequestBashCodeExecutionToolResultBlock,
+  BetaRequestTextEditorCodeExecutionToolResultBlock,
   BetaRequestMCPToolUseBlock,
   BetaRequestMCPToolResultBlock,
-  BetaRequestTextBlock,
-  BetaRequestImageBlock,
-  BetaRequestToolUseBlock,
-  BetaRequestToolResultBlock,
-  BetaRequestDocumentBlock,
-  BetaRequestThinkingBlock,
-  BetaRequestRedactedThinkingBlock,
   BetaRequestContainerUploadBlock
 ) {}
 
 export class BetaInputMessageRole extends S.Literal("user", "assistant") {}
 
-export class BetaInputMessage extends S.Struct({
+export class BetaInputMessage extends S.Class<BetaInputMessage>("BetaInputMessage")({
   "content": S.Union(S.String, S.Array(BetaInputContentBlock)),
   "role": BetaInputMessageRole
 }) {}
 
-export class BetaRequestMCPServerToolConfiguration extends S.Struct({
-  "allowed_tools": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "enabled": S.optionalWith(S.Union(S.Boolean, S.Null), { nullable: true })
+export class BetaRequestMCPServerToolConfiguration
+  extends S.Class<BetaRequestMCPServerToolConfiguration>("BetaRequestMCPServerToolConfiguration")({
+    "allowed_tools": S.optionalWith(S.Array(S.String), { nullable: true }),
+    "enabled": S.optionalWith(S.Boolean, { nullable: true })
+  })
+{}
+
+export class BetaRequestMCPServerURLDefinition
+  extends S.Class<BetaRequestMCPServerURLDefinition>("BetaRequestMCPServerURLDefinition")({
+    "authorization_token": S.optionalWith(S.String, { nullable: true }),
+    "name": S.String,
+    "tool_configuration": S.optionalWith(BetaRequestMCPServerToolConfiguration, { nullable: true }),
+    "type": S.Literal("url"),
+    "url": S.String
+  })
+{}
+
+export class BetaMetadata extends S.Class<BetaMetadata>("BetaMetadata")({
+  /**
+   * An external identifier for the user who is associated with the request.
+   *
+   * This should be a uuid, hash value, or other opaque identifier. Anthropic may use this id to help detect abuse. Do not include any identifying information such as name, email address, or phone number.
+   */
+  "user_id": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true })
 }) {}
 
-export class BetaRequestMCPServerURLDefinitionType extends S.Literal("url") {}
-
-export class BetaRequestMCPServerURLDefinition extends S.Struct({
-  "authorization_token": S.optionalWith(S.Union(S.String, S.Null), { nullable: true }),
-  "name": S.String,
-  "tool_configuration": S.optionalWith(S.Union(BetaRequestMCPServerToolConfiguration, S.Null), { nullable: true }),
-  "type": BetaRequestMCPServerURLDefinitionType,
-  "url": S.String
-}) {}
-
-export class BetaMetadata extends S.Struct({
-  "user_id": S.optionalWith(S.Union(S.String.pipe(S.maxLength(256)), S.Null), { nullable: true })
-}) {}
-
+/**
+ * Determines whether to use priority capacity (if available) or standard capacity for this request.
+ *
+ * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+ */
 export class BetaCreateMessageParamsServiceTier extends S.Literal("auto", "standard_only") {}
 
-export class BetaThinkingConfigEnabledType extends S.Literal("enabled") {}
-
-export class BetaThinkingConfigEnabled extends S.Struct({
+export class BetaThinkingConfigEnabled extends S.Class<BetaThinkingConfigEnabled>("BetaThinkingConfigEnabled")({
+  /**
+   * Determines how many tokens Claude can use for its internal reasoning process. Larger budgets can enable more thorough analysis for complex problems, improving response quality.
+   *
+   * Must be ≥1024 and less than `max_tokens`.
+   *
+   * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+   */
   "budget_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1024)),
-  "type": BetaThinkingConfigEnabledType
+  "type": S.Literal("enabled")
 }) {}
 
-export class BetaThinkingConfigDisabledType extends S.Literal("disabled") {}
-
-export class BetaThinkingConfigDisabled extends S.Struct({
-  "type": BetaThinkingConfigDisabledType
+export class BetaThinkingConfigDisabled extends S.Class<BetaThinkingConfigDisabled>("BetaThinkingConfigDisabled")({
+  "type": S.Literal("disabled")
 }) {}
 
+/**
+ * Configuration for enabling Claude's extended thinking.
+ *
+ * When enabled, responses include `thinking` content blocks showing Claude's thinking process before the final answer. Requires a minimum budget of 1,024 tokens and counts towards your `max_tokens` limit.
+ *
+ * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+ */
 export class BetaThinkingConfigParam extends S.Union(BetaThinkingConfigEnabled, BetaThinkingConfigDisabled) {}
 
-export class BetaToolChoiceAutoType extends S.Literal("auto") {}
-
-export class BetaToolChoiceAuto extends S.Struct({
+/**
+ * The model will automatically decide whether to use tools.
+ */
+export class BetaToolChoiceAuto extends S.Class<BetaToolChoiceAuto>("BetaToolChoiceAuto")({
+  /**
+   * Whether to disable parallel tool use.
+   *
+   * Defaults to `false`. If set to `true`, the model will output at most one tool use.
+   */
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true }),
-  "type": BetaToolChoiceAutoType
+  "type": S.Literal("auto")
 }) {}
 
-export class BetaToolChoiceAnyType extends S.Literal("any") {}
-
-export class BetaToolChoiceAny extends S.Struct({
+/**
+ * The model will use any available tools.
+ */
+export class BetaToolChoiceAny extends S.Class<BetaToolChoiceAny>("BetaToolChoiceAny")({
+  /**
+   * Whether to disable parallel tool use.
+   *
+   * Defaults to `false`. If set to `true`, the model will output exactly one tool use.
+   */
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true }),
-  "type": BetaToolChoiceAnyType
+  "type": S.Literal("any")
 }) {}
 
-export class BetaToolChoiceToolType extends S.Literal("tool") {}
-
-export class BetaToolChoiceTool extends S.Struct({
+/**
+ * The model will use the specified tool with `tool_choice.name`.
+ */
+export class BetaToolChoiceTool extends S.Class<BetaToolChoiceTool>("BetaToolChoiceTool")({
+  /**
+   * Whether to disable parallel tool use.
+   *
+   * Defaults to `false`. If set to `true`, the model will output exactly one tool use.
+   */
   "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * The name of the tool to use.
+   */
   "name": S.String,
-  "type": BetaToolChoiceToolType
+  "type": S.Literal("tool")
 }) {}
 
-export class BetaToolChoiceNoneType extends S.Literal("none") {}
-
-export class BetaToolChoiceNone extends S.Struct({
-  "type": BetaToolChoiceNoneType
+/**
+ * The model will not be allowed to use tools.
+ */
+export class BetaToolChoiceNone extends S.Class<BetaToolChoiceNone>("BetaToolChoiceNone")({
+  "type": S.Literal("none")
 }) {}
 
+/**
+ * How the model should use the provided tools. The model can use a specific tool, any available tool, decide by itself, or not use tools at all.
+ */
 export class BetaToolChoice
   extends S.Union(BetaToolChoiceAuto, BetaToolChoiceAny, BetaToolChoiceTool, BetaToolChoiceNone)
 {}
 
-export class BetaToolTypeEnum extends S.Literal("custom") {}
-
-export class BetaInputSchemaType extends S.Literal("object") {}
-
-export class BetaInputSchema extends S.Struct({
-  "properties": S.optionalWith(S.Union(S.Record({ key: S.String, value: S.Unknown }), S.Null), { nullable: true }),
-  "required": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "type": BetaInputSchemaType
+export class BetaInputSchema extends S.Class<BetaInputSchema>("BetaInputSchema")({
+  "properties": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "required": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "type": S.Literal("object")
 }) {}
 
-export class BetaTool extends S.Struct({
-  "type": S.optionalWith(S.Union(S.Null, BetaToolTypeEnum), { nullable: true }),
+export class BetaTool extends S.Class<BetaTool>("BetaTool")({
+  "type": S.optionalWith(S.Literal("custom"), { nullable: true }),
+  /**
+   * Description of what this tool does.
+   *
+   * Tool descriptions should be as detailed as possible. The more information that the model has about what the tool is and how to use it, the better it will perform. You can use natural language descriptions to reinforce important aspects of the tool input JSON schema.
+   */
   "description": S.optionalWith(S.String, { nullable: true }),
-  "name": S.String.pipe(S.minLength(1), S.maxLength(64), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,64}$"))),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.String.pipe(S.minLength(1), S.maxLength(128), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,128}$"))),
+  /**
+   * [JSON schema](https://json-schema.org/draft/2020-12) for this tool's input.
+   *
+   * This defines the shape of the `input` that your tool accepts and that the model will produce.
+   */
   "input_schema": BetaInputSchema,
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true })
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true })
 }) {}
 
-export class BetaComputerUseTool20241022Name extends S.Literal("computer") {}
+export class BetaBashTool20241022 extends S.Class<BetaBashTool20241022>("BetaBashTool20241022")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("bash"),
+  "type": S.Literal("bash_20241022")
+}) {}
 
-export class BetaComputerUseTool20241022Type extends S.Literal("computer_20241022") {}
+export class BetaBashTool20250124 extends S.Class<BetaBashTool20250124>("BetaBashTool20250124")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("bash"),
+  "type": S.Literal("bash_20250124")
+}) {}
 
-export class BetaComputerUseTool20241022 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+export class BetaCodeExecutionTool20250522
+  extends S.Class<BetaCodeExecutionTool20250522>("BetaCodeExecutionTool20250522")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    /**
+     * Name of the tool.
+     *
+     * This is how the tool will be called by the model and in `tool_use` blocks.
+     */
+    "name": S.Literal("code_execution"),
+    "type": S.Literal("code_execution_20250522")
+  })
+{}
+
+export class BetaCodeExecutionTool20250825
+  extends S.Class<BetaCodeExecutionTool20250825>("BetaCodeExecutionTool20250825")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    /**
+     * Name of the tool.
+     *
+     * This is how the tool will be called by the model and in `tool_use` blocks.
+     */
+    "name": S.Literal("code_execution"),
+    "type": S.Literal("code_execution_20250825")
+  })
+{}
+
+export class BetaComputerUseTool20241022 extends S.Class<BetaComputerUseTool20241022>("BetaComputerUseTool20241022")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * The height of the display in pixels.
+   */
   "display_height_px": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "display_number": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), { nullable: true }),
+  /**
+   * The X11 display number (e.g. 0, 1) for the display.
+   */
+  "display_number": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
+  /**
+   * The width of the display in pixels.
+   */
   "display_width_px": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "name": BetaComputerUseTool20241022Name,
-  "type": BetaComputerUseTool20241022Type
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("computer"),
+  "type": S.Literal("computer_20241022")
 }) {}
 
-export class BetaBashTool20241022Name extends S.Literal("bash") {}
-
-export class BetaBashTool20241022Type extends S.Literal("bash_20241022") {}
-
-export class BetaBashTool20241022 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BetaBashTool20241022Name,
-  "type": BetaBashTool20241022Type
-}) {}
-
-export class BetaTextEditor20241022Name extends S.Literal("str_replace_editor") {}
-
-export class BetaTextEditor20241022Type extends S.Literal("text_editor_20241022") {}
-
-export class BetaTextEditor20241022 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BetaTextEditor20241022Name,
-  "type": BetaTextEditor20241022Type
-}) {}
-
-export class BetaComputerUseTool20250124Name extends S.Literal("computer") {}
-
-export class BetaComputerUseTool20250124Type extends S.Literal("computer_20250124") {}
-
-export class BetaComputerUseTool20250124 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
+export class BetaComputerUseTool20250124 extends S.Class<BetaComputerUseTool20250124>("BetaComputerUseTool20250124")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * The height of the display in pixels.
+   */
   "display_height_px": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "display_number": S.optionalWith(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null), { nullable: true }),
+  /**
+   * The X11 display number (e.g. 0, 1) for the display.
+   */
+  "display_number": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
+  /**
+   * The width of the display in pixels.
+   */
   "display_width_px": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "name": BetaComputerUseTool20250124Name,
-  "type": BetaComputerUseTool20250124Type
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("computer"),
+  "type": S.Literal("computer_20250124")
 }) {}
 
-export class BetaBashTool20250124Name extends S.Literal("bash") {}
-
-export class BetaBashTool20250124Type extends S.Literal("bash_20250124") {}
-
-export class BetaBashTool20250124 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BetaBashTool20250124Name,
-  "type": BetaBashTool20250124Type
+export class BetaTextEditor20241022 extends S.Class<BetaTextEditor20241022>("BetaTextEditor20241022")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_editor"),
+  "type": S.Literal("text_editor_20241022")
 }) {}
 
-export class BetaTextEditor20250124Name extends S.Literal("str_replace_editor") {}
-
-export class BetaTextEditor20250124Type extends S.Literal("text_editor_20250124") {}
-
-export class BetaTextEditor20250124 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BetaTextEditor20250124Name,
-  "type": BetaTextEditor20250124Type
+export class BetaTextEditor20250124 extends S.Class<BetaTextEditor20250124>("BetaTextEditor20250124")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_editor"),
+  "type": S.Literal("text_editor_20250124")
 }) {}
 
-export class BetaTextEditor20250429Name extends S.Literal("str_replace_based_edit_tool") {}
-
-export class BetaTextEditor20250429Type extends S.Literal("text_editor_20250429") {}
-
-export class BetaTextEditor20250429 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BetaTextEditor20250429Name,
-  "type": BetaTextEditor20250429Type
+export class BetaTextEditor20250429 extends S.Class<BetaTextEditor20250429>("BetaTextEditor20250429")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_based_edit_tool"),
+  "type": S.Literal("text_editor_20250429")
 }) {}
 
-export class BetaWebSearchTool20250305Name extends S.Literal("web_search") {}
-
-export class BetaWebSearchTool20250305Type extends S.Literal("web_search_20250305") {}
-
-export class BetaUserLocationType extends S.Literal("approximate") {}
-
-export class BetaUserLocation extends S.Struct({
-  "city": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
-  "country": S.optionalWith(S.Union(S.String.pipe(S.minLength(2), S.maxLength(2)), S.Null), { nullable: true }),
-  "region": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
-  "timezone": S.optionalWith(S.Union(S.String.pipe(S.minLength(1), S.maxLength(255)), S.Null), { nullable: true }),
-  "type": BetaUserLocationType
+export class BetaTextEditor20250728 extends S.Class<BetaTextEditor20250728>("BetaTextEditor20250728")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Maximum number of characters to display when viewing a file. If not specified, defaults to displaying the full file.
+   */
+  "max_characters": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("str_replace_based_edit_tool"),
+  "type": S.Literal("text_editor_20250728")
 }) {}
 
-export class BetaWebSearchTool20250305 extends S.Struct({
-  "allowed_domains": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "blocked_domains": S.optionalWith(S.Union(S.Array(S.String), S.Null), { nullable: true }),
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "max_uses": S.optionalWith(S.Union(S.Int.pipe(S.greaterThan(0)), S.Null), { nullable: true }),
-  "name": BetaWebSearchTool20250305Name,
-  "type": BetaWebSearchTool20250305Type,
-  "user_location": S.optionalWith(S.Union(BetaUserLocation, S.Null), { nullable: true })
+export class BetaUserLocation extends S.Class<BetaUserLocation>("BetaUserLocation")({
+  /**
+   * The city of the user.
+   */
+  "city": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(255)), { nullable: true }),
+  /**
+   * The two letter [ISO country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) of the user.
+   */
+  "country": S.optionalWith(S.String.pipe(S.minLength(2), S.maxLength(2)), { nullable: true }),
+  /**
+   * The region of the user.
+   */
+  "region": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(255)), { nullable: true }),
+  /**
+   * The [IANA timezone](https://nodatime.org/TimeZones) of the user.
+   */
+  "timezone": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(255)), { nullable: true }),
+  "type": S.Literal("approximate")
 }) {}
 
-export class BetaCodeExecutionTool20250522Name extends S.Literal("code_execution") {}
-
-export class BetaCodeExecutionTool20250522Type extends S.Literal("code_execution_20250522") {}
-
-export class BetaCodeExecutionTool20250522 extends S.Struct({
-  "cache_control": S.optionalWith(S.Union(BetaCacheControlEphemeral, S.Null), { nullable: true }),
-  "name": BetaCodeExecutionTool20250522Name,
-  "type": BetaCodeExecutionTool20250522Type
+export class BetaWebSearchTool20250305 extends S.Class<BetaWebSearchTool20250305>("BetaWebSearchTool20250305")({
+  /**
+   * If provided, only these domains will be included in results. Cannot be used alongside `blocked_domains`.
+   */
+  "allowed_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * If provided, these domains will never appear in results. Cannot be used alongside `allowed_domains`.
+   */
+  "blocked_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Maximum number of times the tool can be used in the API request.
+   */
+  "max_uses": S.optionalWith(S.Int.pipe(S.greaterThan(0)), { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("web_search"),
+  "type": S.Literal("web_search_20250305"),
+  /**
+   * Parameters for the user's location. Used to provide more relevant search results.
+   */
+  "user_location": S.optionalWith(BetaUserLocation, { nullable: true })
 }) {}
 
 export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("BetaCreateMessageParams")({
-  "model": S.Union(S.String, Model),
+  "model": Model,
+  /**
+   * Input messages.
+   *
+   * Our models are trained to operate on alternating `user` and `assistant` conversational turns. When creating a new `Message`, you specify the prior conversational turns with the `messages` parameter, and the model then generates the next `Message` in the conversation. Consecutive `user` or `assistant` turns in your request will be combined into a single turn.
+   *
+   * Each input message must be an object with a `role` and `content`. You can specify a single `user`-role message, or you can include multiple `user` and `assistant` messages.
+   *
+   * If the final message uses the `assistant` role, the response content will continue immediately from the content in that message. This can be used to constrain part of the model's response.
+   *
+   * Example with a single `user` message:
+   *
+   * ```json
+   * [{"role": "user", "content": "Hello, Claude"}]
+   * ```
+   *
+   * Example with multiple conversational turns:
+   *
+   * ```json
+   * [
+   *   {"role": "user", "content": "Hello there."},
+   *   {"role": "assistant", "content": "Hi, I'm Claude. How can I help you?"},
+   *   {"role": "user", "content": "Can you explain LLMs in plain English?"},
+   * ]
+   * ```
+   *
+   * Example with a partially-filled response from Claude:
+   *
+   * ```json
+   * [
+   *   {"role": "user", "content": "What's the Greek name for Sun? (A) Sol (B) Helios (C) Sun"},
+   *   {"role": "assistant", "content": "The best answer is ("},
+   * ]
+   * ```
+   *
+   * Each input message `content` may be either a single `string` or an array of content blocks, where each block has a specific `type`. Using a `string` for `content` is shorthand for an array of one content block of type `"text"`. The following input messages are equivalent:
+   *
+   * ```json
+   * {"role": "user", "content": "Hello, Claude"}
+   * ```
+   *
+   * ```json
+   * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
+   * ```
+   *
+   * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+   *
+   * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+   *
+   * There is a limit of 100,000 messages in a single request.
+   */
   "messages": S.Array(BetaInputMessage),
-  "container": S.optionalWith(S.Union(S.String, S.Null), { nullable: true }),
+  /**
+   * Container identifier for reuse across requests.
+   */
+  "container": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The maximum number of tokens to generate before stopping.
+   *
+   * Note that our models may stop _before_ reaching this maximum. This parameter only specifies the absolute maximum number of tokens to generate.
+   *
+   * Different models have different maximum values for this parameter.  See [models](https://docs.anthropic.com/en/docs/models-overview) for details.
+   */
   "max_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+  /**
+   * MCP servers to be utilized in this request
+   */
   "mcp_servers": S.optionalWith(S.Array(BetaRequestMCPServerURLDefinition).pipe(S.maxItems(20)), { nullable: true }),
+  /**
+   * An object describing metadata about the request.
+   */
   "metadata": S.optionalWith(BetaMetadata, { nullable: true }),
+  /**
+   * Determines whether to use priority capacity (if available) or standard capacity for this request.
+   *
+   * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+   */
   "service_tier": S.optionalWith(BetaCreateMessageParamsServiceTier, { nullable: true }),
+  /**
+   * Custom text sequences that will cause the model to stop generating.
+   *
+   * Our models will normally stop when they have naturally completed their turn, which will result in a response `stop_reason` of `"end_turn"`.
+   *
+   * If you want the model to stop generating when it encounters custom strings of text, you can use the `stop_sequences` parameter. If the model encounters one of the custom sequences, the response `stop_reason` value will be `"stop_sequence"` and the response `stop_sequence` value will contain the matched stop sequence.
+   */
   "stop_sequences": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Whether to incrementally stream the response using server-sent events.
+   *
+   * See [streaming](https://docs.anthropic.com/en/api/messages-streaming) for details.
+   */
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * System prompt.
+   *
+   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+   */
   "system": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
+  /**
+   * Amount of randomness injected into the response.
+   *
+   * Defaults to `1.0`. Ranges from `0.0` to `1.0`. Use `temperature` closer to `0.0` for analytical / multiple choice, and closer to `1.0` for creative and generative tasks.
+   *
+   * Note that even with `temperature` of `0.0`, the results will not be fully deterministic.
+   */
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   "thinking": S.optionalWith(BetaThinkingConfigParam, { nullable: true }),
   "tool_choice": S.optionalWith(BetaToolChoice, { nullable: true }),
+  /**
+   * Definitions of tools that the model may use.
+   *
+   * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
+   *
+   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+   *
+   * Each tool definition includes:
+   *
+   * * `name`: Name of the tool.
+   * * `description`: Optional, but strongly-recommended description of the tool.
+   * * `input_schema`: [JSON schema](https://json-schema.org/draft/2020-12) for the tool `input` shape that the model will produce in `tool_use` output content blocks.
+   *
+   * For example, if you defined `tools` as:
+   *
+   * ```json
+   * [
+   *   {
+   *     "name": "get_stock_price",
+   *     "description": "Get the current stock price for a given ticker symbol.",
+   *     "input_schema": {
+   *       "type": "object",
+   *       "properties": {
+   *         "ticker": {
+   *           "type": "string",
+   *           "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+   *         }
+   *       },
+   *       "required": ["ticker"]
+   *     }
+   *   }
+   * ]
+   * ```
+   *
+   * And then asked the model "What's the S&P 500 at today?", the model might produce `tool_use` content blocks in the response like this:
+   *
+   * ```json
+   * [
+   *   {
+   *     "type": "tool_use",
+   *     "id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+   *     "name": "get_stock_price",
+   *     "input": { "ticker": "^GSPC" }
+   *   }
+   * ]
+   * ```
+   *
+   * You might then run your `get_stock_price` tool with `{"ticker": "^GSPC"}` as an input, and return the following back to the model in a subsequent `user` message:
+   *
+   * ```json
+   * [
+   *   {
+   *     "type": "tool_result",
+   *     "tool_use_id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+   *     "content": "259.75 USD"
+   *   }
+   * ]
+   * ```
+   *
+   * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
+   *
+   * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+   */
   "tools": S.optionalWith(
     S.Array(
       S.Union(
         BetaTool,
-        BetaComputerUseTool20241022,
         BetaBashTool20241022,
-        BetaTextEditor20241022,
-        BetaComputerUseTool20250124,
         BetaBashTool20250124,
+        BetaCodeExecutionTool20250522,
+        BetaCodeExecutionTool20250825,
+        BetaComputerUseTool20241022,
+        BetaComputerUseTool20250124,
+        BetaTextEditor20241022,
         BetaTextEditor20250124,
         BetaTextEditor20250429,
-        BetaWebSearchTool20250305,
-        BetaCodeExecutionTool20250522
+        BetaTextEditor20250728,
+        BetaWebSearchTool20250305
       )
     ),
     { nullable: true }
   ),
+  /**
+   * Only sample from the top K options for each subsequent token.
+   *
+   * Used to remove "long tail" low probability responses. [Learn more technical details here](https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277).
+   *
+   * Recommended for advanced use cases only. You usually only need to use `temperature`.
+   */
   "top_k": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
+  /**
+   * Use nucleus sampling.
+   *
+   * In nucleus sampling, we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by `top_p`. You should either alter `temperature` or `top_p`, but not both.
+   *
+   * Recommended for advanced use cases only. You usually only need to use `temperature`.
+   */
   "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true })
 }) {}
 
-export class BetaMessageType extends S.Literal("message") {}
-
-export class BetaMessageRole extends S.Literal("assistant") {}
-
-export class BetaResponseCharLocationCitationType extends S.Literal("char_location") {}
-
-export class BetaResponseCharLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String, S.Null),
-  "end_char_index": S.Int,
-  "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": BetaResponseCharLocationCitationType
-}) {}
-
-export class BetaResponsePageLocationCitationType extends S.Literal("page_location") {}
-
-export class BetaResponsePageLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String, S.Null),
-  "end_page_number": S.Int,
-  "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
-  "type": BetaResponsePageLocationCitationType
-}) {}
-
-export class BetaResponseContentBlockLocationCitationType extends S.Literal("content_block_location") {}
-
-export class BetaResponseContentBlockLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "document_title": S.Union(S.String, S.Null),
-  "end_block_index": S.Int,
-  "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": BetaResponseContentBlockLocationCitationType
-}) {}
-
-export class BetaResponseWebSearchResultLocationCitationType extends S.Literal("web_search_result_location") {}
-
-export class BetaResponseWebSearchResultLocationCitation extends S.Struct({
-  "cited_text": S.String,
-  "encrypted_index": S.String,
-  "title": S.Union(S.String, S.Null),
-  "type": BetaResponseWebSearchResultLocationCitationType,
-  "url": S.String
-}) {}
-
-export class BetaResponseTextBlockType extends S.Literal("text") {}
-
-export class BetaResponseTextBlock extends S.Struct({
-  "citations": S.optional(S.NullOr(
-    S.Array(
-      S.Union(
-        BetaResponseCharLocationCitation,
-        BetaResponsePageLocationCitation,
-        BetaResponseContentBlockLocationCitation,
-        BetaResponseWebSearchResultLocationCitation
-      )
+export class BetaResponseCharLocationCitation
+  extends S.Class<BetaResponseCharLocationCitation>("BetaResponseCharLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String),
+    "end_char_index": S.Int,
+    "file_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "start_char_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("char_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "char_location" as const)
     )
-  )),
+  })
+{}
+
+export class BetaResponsePageLocationCitation
+  extends S.Class<BetaResponsePageLocationCitation>("BetaResponsePageLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String),
+    "end_page_number": S.Int,
+    "file_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "start_page_number": S.Int.pipe(S.greaterThanOrEqualTo(1)),
+    "type": S.Literal("page_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "page_location" as const)
+    )
+  })
+{}
+
+export class BetaResponseContentBlockLocationCitation
+  extends S.Class<BetaResponseContentBlockLocationCitation>("BetaResponseContentBlockLocationCitation")({
+    "cited_text": S.String,
+    "document_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "document_title": S.NullOr(S.String),
+    "end_block_index": S.Int,
+    "file_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "type": S.Literal("content_block_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "content_block_location" as const)
+    )
+  })
+{}
+
+export class BetaResponseWebSearchResultLocationCitation
+  extends S.Class<BetaResponseWebSearchResultLocationCitation>("BetaResponseWebSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "encrypted_index": S.String,
+    "title": S.NullOr(S.String.pipe(S.maxLength(512))),
+    "type": S.Literal("web_search_result_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_result_location" as const)
+    ),
+    "url": S.String
+  })
+{}
+
+export class BetaResponseSearchResultLocationCitation
+  extends S.Class<BetaResponseSearchResultLocationCitation>("BetaResponseSearchResultLocationCitation")({
+    "cited_text": S.String,
+    "end_block_index": S.Int,
+    "search_result_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "source": S.String,
+    "start_block_index": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    "title": S.NullOr(S.String),
+    "type": S.Literal("search_result_location").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "search_result_location" as const)
+    )
+  })
+{}
+
+export class BetaResponseTextBlock extends S.Class<BetaResponseTextBlock>("BetaResponseTextBlock")({
+  /**
+   * Citations supporting the text block.
+   *
+   * The type of citation returned will depend on the type of document being cited. Citing a PDF results in `page_location`, plain text results in `char_location`, and content document results in `content_block_location`.
+   */
+  "citations": S.optionalWith(
+    S.NullOr(
+      S.Array(
+        S.Union(
+          BetaResponseCharLocationCitation,
+          BetaResponsePageLocationCitation,
+          BetaResponseContentBlockLocationCitation,
+          BetaResponseWebSearchResultLocationCitation,
+          BetaResponseSearchResultLocationCitation
+        )
+      )
+    ),
+    { default: () => null }
+  ),
   "text": S.String.pipe(S.minLength(0), S.maxLength(5000000)),
-  "type": BetaResponseTextBlockType
+  "type": S.Literal("text").pipe(S.propertySignature, S.withConstructorDefault(() => "text" as const))
 }) {}
 
-export class BetaResponseToolUseBlockType extends S.Literal("tool_use") {}
+export class BetaResponseThinkingBlock extends S.Class<BetaResponseThinkingBlock>("BetaResponseThinkingBlock")({
+  "signature": S.String,
+  "thinking": S.String,
+  "type": S.Literal("thinking").pipe(S.propertySignature, S.withConstructorDefault(() => "thinking" as const))
+}) {}
 
-export class BetaResponseToolUseBlock extends S.Struct({
+export class BetaResponseRedactedThinkingBlock
+  extends S.Class<BetaResponseRedactedThinkingBlock>("BetaResponseRedactedThinkingBlock")({
+    "data": S.String,
+    "type": S.Literal("redacted_thinking").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "redacted_thinking" as const)
+    )
+  })
+{}
+
+export class BetaResponseToolUseBlock extends S.Class<BetaResponseToolUseBlock>("BetaResponseToolUseBlock")({
   "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
   "input": S.Record({ key: S.String, value: S.Unknown }),
   "name": S.String.pipe(S.minLength(1)),
-  "type": BetaResponseToolUseBlockType
+  "type": S.Literal("tool_use").pipe(S.propertySignature, S.withConstructorDefault(() => "tool_use" as const))
 }) {}
 
-export class BetaResponseServerToolUseBlockName extends S.Literal("web_search", "code_execution") {}
+export class BetaResponseServerToolUseBlockName
+  extends S.Literal("web_search", "code_execution", "bash_code_execution", "text_editor_code_execution")
+{}
 
-export class BetaResponseServerToolUseBlockType extends S.Literal("server_tool_use") {}
+export class BetaResponseServerToolUseBlock
+  extends S.Class<BetaResponseServerToolUseBlock>("BetaResponseServerToolUseBlock")({
+    "id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "input": S.Record({ key: S.String, value: S.Unknown }),
+    "name": BetaResponseServerToolUseBlockName,
+    "type": S.Literal("server_tool_use").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "server_tool_use" as const)
+    )
+  })
+{}
 
-export class BetaResponseServerToolUseBlock extends S.Struct({
-  "id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "input": S.Record({ key: S.String, value: S.Unknown }),
-  "name": BetaResponseServerToolUseBlockName,
-  "type": BetaResponseServerToolUseBlockType
-}) {}
+export class BetaResponseWebSearchToolResultError
+  extends S.Class<BetaResponseWebSearchToolResultError>("BetaResponseWebSearchToolResultError")({
+    "error_code": BetaWebSearchToolResultErrorCode,
+    "type": S.Literal("web_search_tool_result_error").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_tool_result_error" as const)
+    )
+  })
+{}
 
-export class BetaResponseWebSearchToolResultErrorType extends S.Literal("web_search_tool_result_error") {}
+export class BetaResponseWebSearchResultBlock
+  extends S.Class<BetaResponseWebSearchResultBlock>("BetaResponseWebSearchResultBlock")({
+    "encrypted_content": S.String,
+    "page_age": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "title": S.String,
+    "type": S.Literal("web_search_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_result" as const)
+    ),
+    "url": S.String
+  })
+{}
 
-export class BetaResponseWebSearchToolResultError extends S.Struct({
-  "error_code": BetaWebSearchToolResultErrorCode,
-  "type": BetaResponseWebSearchToolResultErrorType
-}) {}
+export class BetaResponseWebSearchToolResultBlock
+  extends S.Class<BetaResponseWebSearchToolResultBlock>("BetaResponseWebSearchToolResultBlock")({
+    "content": S.Union(BetaResponseWebSearchToolResultError, S.Array(BetaResponseWebSearchResultBlock)),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("web_search_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_search_tool_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseWebSearchResultBlockType extends S.Literal("web_search_result") {}
+export class BetaResponseCodeExecutionToolResultError
+  extends S.Class<BetaResponseCodeExecutionToolResultError>("BetaResponseCodeExecutionToolResultError")({
+    "error_code": BetaCodeExecutionToolResultErrorCode,
+    "type": S.Literal("code_execution_tool_result_error").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "code_execution_tool_result_error" as const)
+    )
+  })
+{}
 
-export class BetaResponseWebSearchResultBlock extends S.Struct({
-  "encrypted_content": S.String,
-  "page_age": S.NullOr(S.Union(S.String, S.Null)),
-  "title": S.String,
-  "type": BetaResponseWebSearchResultBlockType,
-  "url": S.String
-}) {}
+export class BetaResponseCodeExecutionOutputBlock
+  extends S.Class<BetaResponseCodeExecutionOutputBlock>("BetaResponseCodeExecutionOutputBlock")({
+    "file_id": S.String,
+    "type": S.Literal("code_execution_output").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "code_execution_output" as const)
+    )
+  })
+{}
 
-export class BetaResponseWebSearchToolResultBlockType extends S.Literal("web_search_tool_result") {}
+export class BetaResponseCodeExecutionResultBlock
+  extends S.Class<BetaResponseCodeExecutionResultBlock>("BetaResponseCodeExecutionResultBlock")({
+    "content": S.Array(BetaResponseCodeExecutionOutputBlock),
+    "return_code": S.Int,
+    "stderr": S.String,
+    "stdout": S.String,
+    "type": S.Literal("code_execution_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "code_execution_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseWebSearchToolResultBlock extends S.Struct({
-  "content": S.Union(BetaResponseWebSearchToolResultError, S.Array(BetaResponseWebSearchResultBlock)),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "type": BetaResponseWebSearchToolResultBlockType
-}) {}
+export class BetaResponseCodeExecutionToolResultBlock
+  extends S.Class<BetaResponseCodeExecutionToolResultBlock>("BetaResponseCodeExecutionToolResultBlock")({
+    "content": S.Union(BetaResponseCodeExecutionToolResultError, BetaResponseCodeExecutionResultBlock),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("code_execution_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "code_execution_tool_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionToolResultErrorType extends S.Literal("code_execution_tool_result_error") {}
+export class BetaResponseBashCodeExecutionToolResultError
+  extends S.Class<BetaResponseBashCodeExecutionToolResultError>("BetaResponseBashCodeExecutionToolResultError")({
+    "error_code": BetaBashCodeExecutionToolResultErrorCode,
+    "type": S.Literal("bash_code_execution_tool_result_error").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "bash_code_execution_tool_result_error" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionToolResultError extends S.Struct({
-  "error_code": BetaCodeExecutionToolResultErrorCode,
-  "type": BetaResponseCodeExecutionToolResultErrorType
-}) {}
+export class BetaResponseBashCodeExecutionOutputBlock
+  extends S.Class<BetaResponseBashCodeExecutionOutputBlock>("BetaResponseBashCodeExecutionOutputBlock")({
+    "file_id": S.String,
+    "type": S.Literal("bash_code_execution_output").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "bash_code_execution_output" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionOutputBlockType extends S.Literal("code_execution_output") {}
+export class BetaResponseBashCodeExecutionResultBlock
+  extends S.Class<BetaResponseBashCodeExecutionResultBlock>("BetaResponseBashCodeExecutionResultBlock")({
+    "content": S.Array(BetaResponseBashCodeExecutionOutputBlock),
+    "return_code": S.Int,
+    "stderr": S.String,
+    "stdout": S.String,
+    "type": S.Literal("bash_code_execution_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "bash_code_execution_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionOutputBlock extends S.Struct({
-  "file_id": S.String,
-  "type": BetaResponseCodeExecutionOutputBlockType
-}) {}
+export class BetaResponseBashCodeExecutionToolResultBlock
+  extends S.Class<BetaResponseBashCodeExecutionToolResultBlock>("BetaResponseBashCodeExecutionToolResultBlock")({
+    "content": S.Union(BetaResponseBashCodeExecutionToolResultError, BetaResponseBashCodeExecutionResultBlock),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("bash_code_execution_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "bash_code_execution_tool_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionResultBlockType extends S.Literal("code_execution_result") {}
+export class BetaResponseTextEditorCodeExecutionToolResultError
+  extends S.Class<BetaResponseTextEditorCodeExecutionToolResultError>(
+    "BetaResponseTextEditorCodeExecutionToolResultError"
+  )({
+    "error_code": BetaTextEditorCodeExecutionToolResultErrorCode,
+    "error_message": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "type": S.Literal("text_editor_code_execution_tool_result_error").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "text_editor_code_execution_tool_result_error" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionResultBlock extends S.Struct({
-  "content": S.Array(BetaResponseCodeExecutionOutputBlock),
-  "return_code": S.Int,
-  "stderr": S.String,
-  "stdout": S.String,
-  "type": BetaResponseCodeExecutionResultBlockType
-}) {}
+export class BetaResponseTextEditorCodeExecutionViewResultBlockFileType extends S.Literal("text", "image", "pdf") {}
 
-export class BetaResponseCodeExecutionToolResultBlockType extends S.Literal("code_execution_tool_result") {}
+export class BetaResponseTextEditorCodeExecutionViewResultBlock
+  extends S.Class<BetaResponseTextEditorCodeExecutionViewResultBlock>(
+    "BetaResponseTextEditorCodeExecutionViewResultBlock"
+  )({
+    "content": S.String,
+    "file_type": BetaResponseTextEditorCodeExecutionViewResultBlockFileType,
+    "num_lines": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "start_line": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "total_lines": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "type": S.Literal("text_editor_code_execution_view_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "text_editor_code_execution_view_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseCodeExecutionToolResultBlock extends S.Struct({
-  "content": S.Union(BetaResponseCodeExecutionToolResultError, BetaResponseCodeExecutionResultBlock),
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
-  "type": BetaResponseCodeExecutionToolResultBlockType
-}) {}
+export class BetaResponseTextEditorCodeExecutionCreateResultBlock
+  extends S.Class<BetaResponseTextEditorCodeExecutionCreateResultBlock>(
+    "BetaResponseTextEditorCodeExecutionCreateResultBlock"
+  )({
+    "is_file_update": S.Boolean,
+    "type": S.Literal("text_editor_code_execution_create_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "text_editor_code_execution_create_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseMCPToolUseBlockType extends S.Literal("mcp_tool_use") {}
+export class BetaResponseTextEditorCodeExecutionStrReplaceResultBlock
+  extends S.Class<BetaResponseTextEditorCodeExecutionStrReplaceResultBlock>(
+    "BetaResponseTextEditorCodeExecutionStrReplaceResultBlock"
+  )({
+    "lines": S.optionalWith(S.NullOr(S.Array(S.String)), { default: () => null }),
+    "new_lines": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "new_start": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "old_lines": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "old_start": S.optionalWith(S.NullOr(S.Int), { default: () => null }),
+    "type": S.Literal("text_editor_code_execution_str_replace_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "text_editor_code_execution_str_replace_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseMCPToolUseBlock extends S.Struct({
+export class BetaResponseTextEditorCodeExecutionToolResultBlock
+  extends S.Class<BetaResponseTextEditorCodeExecutionToolResultBlock>(
+    "BetaResponseTextEditorCodeExecutionToolResultBlock"
+  )({
+    "content": S.Union(
+      BetaResponseTextEditorCodeExecutionToolResultError,
+      BetaResponseTextEditorCodeExecutionViewResultBlock,
+      BetaResponseTextEditorCodeExecutionCreateResultBlock,
+      BetaResponseTextEditorCodeExecutionStrReplaceResultBlock
+    ),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("text_editor_code_execution_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "text_editor_code_execution_tool_result" as const)
+    )
+  })
+{}
+
+export class BetaResponseMCPToolUseBlock extends S.Class<BetaResponseMCPToolUseBlock>("BetaResponseMCPToolUseBlock")({
   "id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
   "input": S.Record({ key: S.String, value: S.Unknown }),
+  /**
+   * The name of the MCP tool
+   */
   "name": S.String,
+  /**
+   * The name of the MCP server
+   */
   "server_name": S.String,
-  "type": BetaResponseMCPToolUseBlockType
+  "type": S.Literal("mcp_tool_use").pipe(S.propertySignature, S.withConstructorDefault(() => "mcp_tool_use" as const))
 }) {}
 
-export class BetaResponseMCPToolResultBlockType extends S.Literal("mcp_tool_result") {}
+export class BetaResponseMCPToolResultBlock
+  extends S.Class<BetaResponseMCPToolResultBlock>("BetaResponseMCPToolResultBlock")({
+    "content": S.Union(S.String, S.Array(BetaResponseTextBlock)),
+    "is_error": S.Boolean.pipe(S.propertySignature, S.withConstructorDefault(() => false as const)),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
+    "type": S.Literal("mcp_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "mcp_tool_result" as const)
+    )
+  })
+{}
 
-export class BetaResponseMCPToolResultBlock extends S.Struct({
-  "content": S.Union(S.String, S.Array(BetaResponseTextBlock)),
-  "is_error": S.Boolean,
-  "tool_use_id": S.String.pipe(S.pattern(new RegExp("^[a-zA-Z0-9_-]+$"))),
-  "type": BetaResponseMCPToolResultBlockType
-}) {}
-
-export class BetaResponseContainerUploadBlockType extends S.Literal("container_upload") {}
-
-export class BetaResponseContainerUploadBlock extends S.Struct({
-  "file_id": S.String,
-  "type": BetaResponseContainerUploadBlockType
-}) {}
-
-export class BetaResponseThinkingBlockType extends S.Literal("thinking") {}
-
-export class BetaResponseThinkingBlock extends S.Struct({
-  "signature": S.String,
-  "thinking": S.String,
-  "type": BetaResponseThinkingBlockType
-}) {}
-
-export class BetaResponseRedactedThinkingBlockType extends S.Literal("redacted_thinking") {}
-
-export class BetaResponseRedactedThinkingBlock extends S.Struct({
-  "data": S.String,
-  "type": BetaResponseRedactedThinkingBlockType
-}) {}
+/**
+ * Response model for a file uploaded to the container.
+ */
+export class BetaResponseContainerUploadBlock
+  extends S.Class<BetaResponseContainerUploadBlock>("BetaResponseContainerUploadBlock")({
+    "file_id": S.String,
+    "type": S.Literal("container_upload").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "container_upload" as const)
+    )
+  })
+{}
 
 export class BetaContentBlock extends S.Union(
   BetaResponseTextBlock,
+  BetaResponseThinkingBlock,
+  BetaResponseRedactedThinkingBlock,
   BetaResponseToolUseBlock,
   BetaResponseServerToolUseBlock,
   BetaResponseWebSearchToolResultBlock,
   BetaResponseCodeExecutionToolResultBlock,
+  BetaResponseBashCodeExecutionToolResultBlock,
+  BetaResponseTextEditorCodeExecutionToolResultBlock,
   BetaResponseMCPToolUseBlock,
   BetaResponseMCPToolResultBlock,
-  BetaResponseContainerUploadBlock,
-  BetaResponseThinkingBlock,
-  BetaResponseRedactedThinkingBlock
+  BetaResponseContainerUploadBlock
 ) {}
 
 export class BetaStopReason
   extends S.Literal("end_turn", "max_tokens", "stop_sequence", "tool_use", "pause_turn", "refusal")
 {}
 
-export class BetaCacheCreation extends S.Struct({
-  "ephemeral_1h_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "ephemeral_5m_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0))
+export class BetaCacheCreation extends S.Class<BetaCacheCreation>("BetaCacheCreation")({
+  /**
+   * The number of input tokens used to create the 1 hour cache entry.
+   */
+  "ephemeral_1h_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  ),
+  /**
+   * The number of input tokens used to create the 5 minute cache entry.
+   */
+  "ephemeral_5m_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  )
 }) {}
 
-export class BetaServerToolUsage extends S.Struct({
-  "web_search_requests": S.Int.pipe(S.greaterThanOrEqualTo(0))
+export class BetaServerToolUsage extends S.Class<BetaServerToolUsage>("BetaServerToolUsage")({
+  /**
+   * The number of web search tool requests.
+   */
+  "web_search_requests": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  )
 }) {}
 
 export class BetaUsageServiceTierEnum extends S.Literal("standard", "priority", "batch") {}
 
-export class BetaUsage extends S.Struct({
-  "cache_creation": S.NullOr(S.Union(BetaCacheCreation, S.Null)),
-  "cache_creation_input_tokens": S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)),
-  "cache_read_input_tokens": S.NullOr(S.Union(S.Int.pipe(S.greaterThanOrEqualTo(0)), S.Null)),
+export class BetaUsage extends S.Class<BetaUsage>("BetaUsage")({
+  /**
+   * Breakdown of cached tokens by TTL
+   */
+  "cache_creation": S.optionalWith(S.NullOr(BetaCacheCreation), { default: () => null }),
+  /**
+   * The number of input tokens used to create the cache entry.
+   */
+  "cache_creation_input_tokens": S.optionalWith(S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(0))), {
+    default: () => null
+  }),
+  /**
+   * The number of input tokens read from the cache.
+   */
+  "cache_read_input_tokens": S.optionalWith(S.NullOr(S.Int.pipe(S.greaterThanOrEqualTo(0))), { default: () => null }),
+  /**
+   * The number of input tokens which were used.
+   */
   "input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+  /**
+   * The number of output tokens which were used.
+   */
   "output_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "server_tool_use": S.optional(S.NullOr(BetaServerToolUsage)),
-  "service_tier": S.NullOr(S.Union(BetaUsageServiceTierEnum, S.Null))
+  /**
+   * The number of server tool requests.
+   */
+  "server_tool_use": S.optionalWith(S.NullOr(BetaServerToolUsage), { default: () => null }),
+  /**
+   * If the request used the priority, standard, or batch tier.
+   */
+  "service_tier": S.optionalWith(S.NullOr(BetaUsageServiceTierEnum), { default: () => null })
 }) {}
 
-export class BetaContainer extends S.Struct({
+/**
+ * Information about the container used in the request (for the code execution tool)
+ */
+export class BetaContainer extends S.Class<BetaContainer>("BetaContainer")({
+  /**
+   * The time at which the container will expire.
+   */
   "expires_at": S.String,
+  /**
+   * Identifier for the container used in this request
+   */
   "id": S.String
 }) {}
 
 export class BetaMessage extends S.Class<BetaMessage>("BetaMessage")({
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
-  "type": BetaMessageType,
-  "role": BetaMessageRole,
+  /**
+   * Object type.
+   *
+   * For Messages, this is always `"message"`.
+   */
+  "type": S.Literal("message").pipe(S.propertySignature, S.withConstructorDefault(() => "message" as const)),
+  /**
+   * Conversational role of the generated message.
+   *
+   * This will always be `"assistant"`.
+   */
+  "role": S.Literal("assistant").pipe(S.propertySignature, S.withConstructorDefault(() => "assistant" as const)),
+  /**
+   * Content generated by the model.
+   *
+   * This is an array of content blocks, each of which has a `type` that determines its shape.
+   *
+   * Example:
+   *
+   * ```json
+   * [{"type": "text", "text": "Hi, I'm Claude."}]
+   * ```
+   *
+   * If the request input `messages` ended with an `assistant` turn, then the response `content` will continue directly from that last turn. You can use this to constrain the model's output.
+   *
+   * For example, if the input `messages` were:
+   * ```json
+   * [
+   *   {"role": "user", "content": "What's the Greek name for Sun? (A) Sol (B) Helios (C) Sun"},
+   *   {"role": "assistant", "content": "The best answer is ("}
+   * ]
+   * ```
+   *
+   * Then the response `content` might be:
+   *
+   * ```json
+   * [{"type": "text", "text": "B)"}]
+   * ```
+   */
   "content": S.Array(BetaContentBlock),
-  "model": S.Union(S.String, Model),
-  "stop_reason": S.Union(BetaStopReason, S.Null),
-  "stop_sequence": S.NullOr(S.Union(S.String, S.Null)),
+  "model": Model,
+  /**
+   * The reason that we stopped.
+   *
+   * This may be one the following values:
+   * * `"end_turn"`: the model reached a natural stopping point
+   * * `"max_tokens"`: we exceeded the requested `max_tokens` or the model's maximum
+   * * `"stop_sequence"`: one of your provided custom `stop_sequences` was generated
+   * * `"tool_use"`: the model invoked one or more tools
+   * * `"pause_turn"`: we paused a long-running turn. You may provide the response back as-is in a subsequent request to let the model continue.
+   * * `"refusal"`: when streaming classifiers intervene to handle potential policy violations
+   *
+   * In non-streaming mode this value is always non-null. In streaming mode, it is null in the `message_start` event and non-null otherwise.
+   */
+  "stop_reason": S.NullOr(BetaStopReason),
+  /**
+   * Which custom stop sequence was generated, if any.
+   *
+   * This value will be a non-null string if one of your custom stop sequences was generated.
+   */
+  "stop_sequence": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+  /**
+   * Billing and rate-limit usage.
+   *
+   * Anthropic's API bills and rate-limits by token counts, as tokens represent the underlying cost to our systems.
+   *
+   * Under the hood, the API transforms requests into a format suitable for the model. The model's output then goes through a parsing stage before becoming an API response. As a result, the token counts in `usage` will not match one-to-one with the exact visible content of an API request or response.
+   *
+   * For example, `output_tokens` will be non-zero, even for an empty string response from Claude.
+   *
+   * Total input tokens in a request is the summation of `input_tokens`, `cache_creation_input_tokens`, and `cache_read_input_tokens`.
+   */
   "usage": BetaUsage,
-  "container": S.NullOr(S.Union(BetaContainer, S.Null))
+  /**
+   * Information about the container used in this request.
+   *
+   * This will be non-null if a container tool (e.g. code execution) was used.
+   */
+  "container": S.optionalWith(S.NullOr(BetaContainer), { default: () => null })
 }) {}
 
-export class BetaInvalidRequestErrorType extends S.Literal("invalid_request_error") {}
-
-export class BetaInvalidRequestError extends S.Struct({
-  "message": S.String,
-  "type": BetaInvalidRequestErrorType
+export class BetaInvalidRequestError extends S.Class<BetaInvalidRequestError>("BetaInvalidRequestError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Invalid request" as const)),
+  "type": S.Literal("invalid_request_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "invalid_request_error" as const)
+  )
 }) {}
 
-export class BetaAuthenticationErrorType extends S.Literal("authentication_error") {}
-
-export class BetaAuthenticationError extends S.Struct({
-  "message": S.String,
-  "type": BetaAuthenticationErrorType
+export class BetaAuthenticationError extends S.Class<BetaAuthenticationError>("BetaAuthenticationError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Authentication error" as const)),
+  "type": S.Literal("authentication_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "authentication_error" as const)
+  )
 }) {}
 
-export class BetaBillingErrorType extends S.Literal("billing_error") {}
-
-export class BetaBillingError extends S.Struct({
-  "message": S.String,
-  "type": BetaBillingErrorType
+export class BetaBillingError extends S.Class<BetaBillingError>("BetaBillingError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Billing error" as const)),
+  "type": S.Literal("billing_error").pipe(S.propertySignature, S.withConstructorDefault(() => "billing_error" as const))
 }) {}
 
-export class BetaPermissionErrorType extends S.Literal("permission_error") {}
-
-export class BetaPermissionError extends S.Struct({
-  "message": S.String,
-  "type": BetaPermissionErrorType
+export class BetaPermissionError extends S.Class<BetaPermissionError>("BetaPermissionError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Permission denied" as const)),
+  "type": S.Literal("permission_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "permission_error" as const)
+  )
 }) {}
 
-export class BetaNotFoundErrorType extends S.Literal("not_found_error") {}
-
-export class BetaNotFoundError extends S.Struct({
-  "message": S.String,
-  "type": BetaNotFoundErrorType
+export class BetaNotFoundError extends S.Class<BetaNotFoundError>("BetaNotFoundError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Not found" as const)),
+  "type": S.Literal("not_found_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "not_found_error" as const)
+  )
 }) {}
 
-export class BetaRateLimitErrorType extends S.Literal("rate_limit_error") {}
-
-export class BetaRateLimitError extends S.Struct({
-  "message": S.String,
-  "type": BetaRateLimitErrorType
+export class BetaRateLimitError extends S.Class<BetaRateLimitError>("BetaRateLimitError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Rate limited" as const)),
+  "type": S.Literal("rate_limit_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "rate_limit_error" as const)
+  )
 }) {}
 
-export class BetaGatewayTimeoutErrorType extends S.Literal("timeout_error") {}
-
-export class BetaGatewayTimeoutError extends S.Struct({
-  "message": S.String,
-  "type": BetaGatewayTimeoutErrorType
+export class BetaGatewayTimeoutError extends S.Class<BetaGatewayTimeoutError>("BetaGatewayTimeoutError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Request timeout" as const)),
+  "type": S.Literal("timeout_error").pipe(S.propertySignature, S.withConstructorDefault(() => "timeout_error" as const))
 }) {}
 
-export class BetaAPIErrorType extends S.Literal("api_error") {}
-
-export class BetaAPIError extends S.Struct({
-  "message": S.String,
-  "type": BetaAPIErrorType
+export class BetaAPIError extends S.Class<BetaAPIError>("BetaAPIError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Internal server error" as const)),
+  "type": S.Literal("api_error").pipe(S.propertySignature, S.withConstructorDefault(() => "api_error" as const))
 }) {}
 
-export class BetaOverloadedErrorType extends S.Literal("overloaded_error") {}
-
-export class BetaOverloadedError extends S.Struct({
-  "message": S.String,
-  "type": BetaOverloadedErrorType
+export class BetaOverloadedError extends S.Class<BetaOverloadedError>("BetaOverloadedError")({
+  "message": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "Overloaded" as const)),
+  "type": S.Literal("overloaded_error").pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "overloaded_error" as const)
+  )
 }) {}
-
-export class BetaErrorResponseType extends S.Literal("error") {}
 
 export class BetaErrorResponse extends S.Class<BetaErrorResponse>("BetaErrorResponse")({
   "error": S.Union(
@@ -1766,157 +3745,547 @@ export class BetaErrorResponse extends S.Class<BetaErrorResponse>("BetaErrorResp
     BetaAPIError,
     BetaOverloadedError
   ),
-  "type": BetaErrorResponseType
+  "request_id": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+  "type": S.Literal("error").pipe(S.propertySignature, S.withConstructorDefault(() => "error" as const))
 }) {}
 
 export class BetaModelsListParams extends S.Struct({
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately before this object.
+   */
   "before_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately after this object.
+   */
   "after_id": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class BetaModelInfoType extends S.Literal("model") {}
-
-export class BetaModelInfo extends S.Struct({
+export class BetaModelInfo extends S.Class<BetaModelInfo>("BetaModelInfo")({
+  /**
+   * RFC 3339 datetime string representing the time at which the model was released. May be set to an epoch value if the release date is unknown.
+   */
   "created_at": S.String,
+  /**
+   * A human-readable name for the model.
+   */
   "display_name": S.String,
+  /**
+   * Unique model identifier.
+   */
   "id": S.String,
-  "type": BetaModelInfoType
+  /**
+   * Object type.
+   *
+   * For Models, this is always `"model"`.
+   */
+  "type": S.Literal("model").pipe(S.propertySignature, S.withConstructorDefault(() => "model" as const))
 }) {}
 
 export class BetaListResponseModelInfo extends S.Class<BetaListResponseModelInfo>("BetaListResponseModelInfo")({
   "data": S.Array(BetaModelInfo),
-  "first_id": S.Union(S.String, S.Null),
+  /**
+   * First ID in the `data` list. Can be used as the `before_id` for the previous page.
+   */
+  "first_id": S.NullOr(S.String),
+  /**
+   * Indicates if there are more results in the requested page direction.
+   */
   "has_more": S.Boolean,
-  "last_id": S.Union(S.String, S.Null)
+  /**
+   * Last ID in the `data` list. Can be used as the `after_id` for the next page.
+   */
+  "last_id": S.NullOr(S.String)
 }) {}
 
 export class BetaModelsGetParams extends S.Struct({
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaMessageBatchesListParams extends S.Struct({
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately before this object.
+   */
   "before_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately after this object.
+   */
   "after_id": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+/**
+ * Processing status of the Message Batch.
+ */
 export class BetaMessageBatchProcessingStatus extends S.Literal("in_progress", "canceling", "ended") {}
 
-export class BetaRequestCounts extends S.Struct({
-  "canceled": S.Int,
-  "errored": S.Int,
-  "expired": S.Int,
-  "processing": S.Int,
-  "succeeded": S.Int
+export class BetaRequestCounts extends S.Class<BetaRequestCounts>("BetaRequestCounts")({
+  /**
+   * Number of requests in the Message Batch that have been canceled.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "canceled": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that encountered an error.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "errored": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that have expired.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "expired": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that are processing.
+   */
+  "processing": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const)),
+  /**
+   * Number of requests in the Message Batch that have completed successfully.
+   *
+   * This is zero until processing of the entire Message Batch has ended.
+   */
+  "succeeded": S.Int.pipe(S.propertySignature, S.withConstructorDefault(() => 0 as const))
 }) {}
 
-export class BetaMessageBatchType extends S.Literal("message_batch") {}
-
-export class BetaMessageBatch extends S.Struct({
-  "archived_at": S.Union(S.String, S.Null),
-  "cancel_initiated_at": S.Union(S.String, S.Null),
+export class BetaMessageBatch extends S.Class<BetaMessageBatch>("BetaMessageBatch")({
+  /**
+   * RFC 3339 datetime string representing the time at which the Message Batch was archived and its results became unavailable.
+   */
+  "archived_at": S.NullOr(S.String),
+  /**
+   * RFC 3339 datetime string representing the time at which cancellation was initiated for the Message Batch. Specified only if cancellation was initiated.
+   */
+  "cancel_initiated_at": S.NullOr(S.String),
+  /**
+   * RFC 3339 datetime string representing the time at which the Message Batch was created.
+   */
   "created_at": S.String,
-  "ended_at": S.Union(S.String, S.Null),
+  /**
+   * RFC 3339 datetime string representing the time at which processing for the Message Batch ended. Specified only once processing ends.
+   *
+   * Processing ends when every request in a Message Batch has either succeeded, errored, canceled, or expired.
+   */
+  "ended_at": S.NullOr(S.String),
+  /**
+   * RFC 3339 datetime string representing the time at which the Message Batch will expire and end processing, which is 24 hours after creation.
+   */
   "expires_at": S.String,
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
+  /**
+   * Processing status of the Message Batch.
+   */
   "processing_status": BetaMessageBatchProcessingStatus,
+  /**
+   * Tallies requests within the Message Batch, categorized by their status.
+   *
+   * Requests start as `processing` and move to one of the other statuses only once processing of the entire batch ends. The sum of all values always matches the total number of requests in the batch.
+   */
   "request_counts": BetaRequestCounts,
-  "results_url": S.Union(S.String, S.Null),
-  "type": BetaMessageBatchType
+  /**
+   * URL to a `.jsonl` file containing the results of the Message Batch requests. Specified only once processing ends.
+   *
+   * Results in the file are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
+   */
+  "results_url": S.NullOr(S.String),
+  /**
+   * Object type.
+   *
+   * For Message Batches, this is always `"message_batch"`.
+   */
+  "type": S.Literal("message_batch").pipe(S.propertySignature, S.withConstructorDefault(() => "message_batch" as const))
 }) {}
 
 export class BetaListResponseMessageBatch
   extends S.Class<BetaListResponseMessageBatch>("BetaListResponseMessageBatch")({
     "data": S.Array(BetaMessageBatch),
-    "first_id": S.Union(S.String, S.Null),
+    /**
+     * First ID in the `data` list. Can be used as the `before_id` for the previous page.
+     */
+    "first_id": S.NullOr(S.String),
+    /**
+     * Indicates if there are more results in the requested page direction.
+     */
     "has_more": S.Boolean,
-    "last_id": S.Union(S.String, S.Null)
+    /**
+     * Last ID in the `data` list. Can be used as the `after_id` for the next page.
+     */
+    "last_id": S.NullOr(S.String)
   })
 {}
 
 export class BetaMessageBatchesPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class BetaMessageBatchIndividualRequestParams extends S.Struct({
-  "custom_id": S.String.pipe(S.minLength(1), S.maxLength(64), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,64}$"))),
-  "params": BetaCreateMessageParams
-}) {}
+export class BetaMessageBatchIndividualRequestParams
+  extends S.Class<BetaMessageBatchIndividualRequestParams>("BetaMessageBatchIndividualRequestParams")({
+    /**
+     * Developer-provided ID created for each request in a Message Batch. Useful for matching results to requests, as results may be given out of request order.
+     *
+     * Must be unique for each request within the Message Batch.
+     */
+    "custom_id": S.String.pipe(S.minLength(1), S.maxLength(64), S.pattern(new RegExp("^[a-zA-Z0-9_-]{1,64}$"))),
+    /**
+     * Messages API creation parameters for the individual request.
+     *
+     * See the [Messages API reference](/en/api/messages) for full documentation on available parameters.
+     */
+    "params": BetaCreateMessageParams
+  })
+{}
 
 export class BetaCreateMessageBatchParams
   extends S.Class<BetaCreateMessageBatchParams>("BetaCreateMessageBatchParams")({
-    "requests": S.Array(BetaMessageBatchIndividualRequestParams).pipe(S.minItems(1), S.maxItems(10000))
+    /**
+     * List of requests for prompt completion. Each is an individual request to create a Message.
+     */
+    "requests": S.NonEmptyArray(BetaMessageBatchIndividualRequestParams).pipe(S.minItems(1), S.maxItems(10000))
   })
 {}
 
 export class BetaMessageBatchesRetrieveParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaMessageBatchesDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class BetaDeleteMessageBatchResponseType extends S.Literal("message_batch_deleted") {}
-
 export class BetaDeleteMessageBatchResponse
   extends S.Class<BetaDeleteMessageBatchResponse>("BetaDeleteMessageBatchResponse")({
+    /**
+     * ID of the Message Batch.
+     */
     "id": S.String,
-    "type": BetaDeleteMessageBatchResponseType
+    /**
+     * Deleted object type.
+     *
+     * For Message Batches, this is always `"message_batch_deleted"`.
+     */
+    "type": S.Literal("message_batch_deleted").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "message_batch_deleted" as const)
+    )
   })
 {}
 
 export class BetaMessageBatchesCancelParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaMessageBatchesResultsParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaMessagesCountTokensPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaCountMessageTokensParams
   extends S.Class<BetaCountMessageTokensParams>("BetaCountMessageTokensParams")({
+    /**
+     * MCP servers to be utilized in this request
+     */
     "mcp_servers": S.optionalWith(S.Array(BetaRequestMCPServerURLDefinition).pipe(S.maxItems(20)), { nullable: true }),
+    /**
+     * Input messages.
+     *
+     * Our models are trained to operate on alternating `user` and `assistant` conversational turns. When creating a new `Message`, you specify the prior conversational turns with the `messages` parameter, and the model then generates the next `Message` in the conversation. Consecutive `user` or `assistant` turns in your request will be combined into a single turn.
+     *
+     * Each input message must be an object with a `role` and `content`. You can specify a single `user`-role message, or you can include multiple `user` and `assistant` messages.
+     *
+     * If the final message uses the `assistant` role, the response content will continue immediately from the content in that message. This can be used to constrain part of the model's response.
+     *
+     * Example with a single `user` message:
+     *
+     * ```json
+     * [{"role": "user", "content": "Hello, Claude"}]
+     * ```
+     *
+     * Example with multiple conversational turns:
+     *
+     * ```json
+     * [
+     *   {"role": "user", "content": "Hello there."},
+     *   {"role": "assistant", "content": "Hi, I'm Claude. How can I help you?"},
+     *   {"role": "user", "content": "Can you explain LLMs in plain English?"},
+     * ]
+     * ```
+     *
+     * Example with a partially-filled response from Claude:
+     *
+     * ```json
+     * [
+     *   {"role": "user", "content": "What's the Greek name for Sun? (A) Sol (B) Helios (C) Sun"},
+     *   {"role": "assistant", "content": "The best answer is ("},
+     * ]
+     * ```
+     *
+     * Each input message `content` may be either a single `string` or an array of content blocks, where each block has a specific `type`. Using a `string` for `content` is shorthand for an array of one content block of type `"text"`. The following input messages are equivalent:
+     *
+     * ```json
+     * {"role": "user", "content": "Hello, Claude"}
+     * ```
+     *
+     * ```json
+     * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
+     * ```
+     *
+     * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+     *
+     * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+     *
+     * There is a limit of 100,000 messages in a single request.
+     */
     "messages": S.Array(BetaInputMessage),
-    "model": S.Union(S.String, Model),
+    "model": Model,
+    /**
+     * System prompt.
+     *
+     * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+     */
     "system": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
     "thinking": S.optionalWith(BetaThinkingConfigParam, { nullable: true }),
     "tool_choice": S.optionalWith(BetaToolChoice, { nullable: true }),
+    /**
+     * Definitions of tools that the model may use.
+     *
+     * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
+     *
+     * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+     *
+     * Each tool definition includes:
+     *
+     * * `name`: Name of the tool.
+     * * `description`: Optional, but strongly-recommended description of the tool.
+     * * `input_schema`: [JSON schema](https://json-schema.org/draft/2020-12) for the tool `input` shape that the model will produce in `tool_use` output content blocks.
+     *
+     * For example, if you defined `tools` as:
+     *
+     * ```json
+     * [
+     *   {
+     *     "name": "get_stock_price",
+     *     "description": "Get the current stock price for a given ticker symbol.",
+     *     "input_schema": {
+     *       "type": "object",
+     *       "properties": {
+     *         "ticker": {
+     *           "type": "string",
+     *           "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+     *         }
+     *       },
+     *       "required": ["ticker"]
+     *     }
+     *   }
+     * ]
+     * ```
+     *
+     * And then asked the model "What's the S&P 500 at today?", the model might produce `tool_use` content blocks in the response like this:
+     *
+     * ```json
+     * [
+     *   {
+     *     "type": "tool_use",
+     *     "id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+     *     "name": "get_stock_price",
+     *     "input": { "ticker": "^GSPC" }
+     *   }
+     * ]
+     * ```
+     *
+     * You might then run your `get_stock_price` tool with `{"ticker": "^GSPC"}` as an input, and return the following back to the model in a subsequent `user` message:
+     *
+     * ```json
+     * [
+     *   {
+     *     "type": "tool_result",
+     *     "tool_use_id": "toolu_01D7FLrfh4GYq7yT1ULFeyMV",
+     *     "content": "259.75 USD"
+     *   }
+     * ]
+     * ```
+     *
+     * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
+     *
+     * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+     */
     "tools": S.optionalWith(
       S.Array(
         S.Union(
           BetaTool,
-          BetaComputerUseTool20241022,
           BetaBashTool20241022,
-          BetaTextEditor20241022,
-          BetaComputerUseTool20250124,
           BetaBashTool20250124,
+          BetaCodeExecutionTool20250522,
+          BetaCodeExecutionTool20250825,
+          BetaComputerUseTool20241022,
+          BetaComputerUseTool20250124,
+          BetaTextEditor20241022,
           BetaTextEditor20250124,
           BetaTextEditor20250429,
-          BetaWebSearchTool20250305,
-          BetaCodeExecutionTool20250522
+          BetaTextEditor20250728,
+          BetaWebSearchTool20250305
         )
       ),
       { nullable: true }
@@ -1926,65 +4295,202 @@ export class BetaCountMessageTokensParams
 
 export class BetaCountMessageTokensResponse
   extends S.Class<BetaCountMessageTokensResponse>("BetaCountMessageTokensResponse")({
+    /**
+     * The total number of tokens across the provided list of messages, system prompt, and tools.
+     */
     "input_tokens": S.Int
   })
 {}
 
 export class BetaListFilesV1FilesGetParams extends S.Struct({
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately before this object.
+   */
   "before_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * ID of the object to use as a cursor for pagination. When provided, returns the page of results immediately after this object.
+   */
   "after_id": S.optionalWith(S.String, { nullable: true }),
-  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class BetaFileMetadataSchemaType extends S.Literal("file") {}
-
-export class BetaFileMetadataSchema extends S.Struct({
+export class BetaFileMetadataSchema extends S.Class<BetaFileMetadataSchema>("BetaFileMetadataSchema")({
+  /**
+   * RFC 3339 datetime string representing when the file was created.
+   */
   "created_at": S.String,
-  "downloadable": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Whether the file can be downloaded.
+   */
+  "downloadable": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  /**
+   * Original filename of the uploaded file.
+   */
   "filename": S.String.pipe(S.minLength(1), S.maxLength(500)),
+  /**
+   * Unique object identifier.
+   *
+   * The format and length of IDs may change over time.
+   */
   "id": S.String,
+  /**
+   * MIME type of the file.
+   */
   "mime_type": S.String.pipe(S.minLength(1), S.maxLength(255)),
+  /**
+   * Size of the file in bytes.
+   */
   "size_bytes": S.Int.pipe(S.greaterThanOrEqualTo(0)),
-  "type": BetaFileMetadataSchemaType
+  /**
+   * Object type.
+   *
+   * For files, this is always `"file"`.
+   */
+  "type": S.Literal("file")
 }) {}
 
 export class BetaFileListResponse extends S.Class<BetaFileListResponse>("BetaFileListResponse")({
+  /**
+   * List of file metadata objects.
+   */
   "data": S.Array(BetaFileMetadataSchema),
-  "first_id": S.optionalWith(S.Union(S.String, S.Null), { nullable: true }),
-  "has_more": S.optionalWith(S.Boolean, { nullable: true }),
-  "last_id": S.optionalWith(S.Union(S.String, S.Null), { nullable: true })
+  /**
+   * ID of the first file in this page of results.
+   */
+  "first_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Whether there are more results available.
+   */
+  "has_more": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  /**
+   * ID of the last file in this page of results.
+   */
+  "last_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaUploadFileV1FilesPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+export class BetaUploadFileV1FilesPostRequest
+  extends S.Class<BetaUploadFileV1FilesPostRequest>("BetaUploadFileV1FilesPostRequest")({
+    /**
+     * The file to upload
+     */
+    "file": S.instanceOf(globalThis.Blob)
+  })
+{}
+
 export class BetaGetFileMetadataV1FilesFileIdGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaDeleteFileV1FilesFileIdDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class BetaFileDeleteResponseType extends S.Literal("file_deleted") {}
-
 export class BetaFileDeleteResponse extends S.Class<BetaFileDeleteResponse>("BetaFileDeleteResponse")({
+  /**
+   * ID of the deleted file.
+   */
   "id": S.String,
-  "type": S.optionalWith(BetaFileDeleteResponseType, { nullable: true })
+  /**
+   * Deleted object type.
+   *
+   * For file deletion, this is always `"file_deleted"`.
+   */
+  "type": S.optionalWith(S.Literal("file_deleted"), { nullable: true, default: () => "file_deleted" as const })
 }) {}
 
 export class BetaDownloadFileV1FilesFileIdContentGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Anthropic API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -1994,697 +4500,478 @@ export const make = (
     readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
   } = {}
 ): Client => {
-  const unexpectedStatus = (
-    request: HttpClientRequest.HttpClientRequest,
-    response: HttpClientResponse.HttpClientResponse
-  ) =>
+  const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
-      Effect.orElseSucceed(response.text, () => "Unexpected status code"),
+      Effect.orElseSucceed(response.json, () => "Unexpected status code"),
       (description) =>
         Effect.fail(
           new HttpClientError.ResponseError({
-            request,
+            request: response.request,
             response,
             reason: "StatusCode",
-            description
+            description: typeof description === "string" ? description : JSON.stringify(description)
           })
         )
     )
-  const applyClientTransform = (client: HttpClient.HttpClient): Effect.Effect<HttpClient.HttpClient> =>
-    options.transformClient ? options.transformClient(client) : Effect.succeed(client)
-  const decodeError = <A, I, R>(response: HttpClientResponse.HttpClientResponse, schema: S.Schema<A, I, R>) =>
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(schema)(response), Effect.fail)
+  const withResponse: <A, E>(
+    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E>
+  ) => (
+    request: HttpClientRequest.HttpClientRequest
+  ) => Effect.Effect<any, any> = options.transformClient
+    ? (f) => (request) =>
+      Effect.flatMap(
+        Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
+        f
+      )
+    : (f) => (request) => Effect.flatMap(httpClient.execute(request), f)
+  const decodeSuccess = <A, I, R>(schema: S.Schema<A, I, R>) => (response: HttpClientResponse.HttpClientResponse) =>
+    HttpClientResponse.schemaBodyJson(schema)(response)
+  const decodeError =
+    <const Tag extends string, A, I, R>(tag: Tag, schema: S.Schema<A, I, R>) =>
+    (response: HttpClientResponse.HttpClientResponse) =>
+      Effect.flatMap(
+        HttpClientResponse.schemaBodyJson(schema)(response),
+        (cause) => Effect.fail(ClientError(tag, cause, response))
+      )
   return {
     httpClient,
     "messagesPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/messages`).pipe(
+      HttpClientRequest.post(`/v1/messages`).pipe(
         HttpClientRequest.setHeaders({ "anthropic-version": options.params?.["anthropic-version"] ?? undefined }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(Message)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Message),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "completePost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/complete`).pipe(
+      HttpClientRequest.post(`/v1/complete`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-version": options.params?.["anthropic-version"] ?? undefined,
           "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined
         }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(CompletionResponse)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CompletionResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "modelsList": (options) =>
-      HttpClientRequest.make("GET")(`/v1/models`).pipe(
+      HttpClientRequest.get(`/v1/models`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options?.["before_id"] as UrlParams.Coercible,
-          "after_id": options?.["after_id"] as UrlParams.Coercible,
-          "limit": options?.["limit"] as UrlParams.Coercible
+          "before_id": options?.["before_id"] as any,
+          "after_id": options?.["after_id"] as any,
+          "limit": options?.["limit"] as any
         }),
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined,
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(ListResponseModelInfo)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListResponseModelInfo),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "modelsGet": (modelId, options) =>
-      HttpClientRequest.make("GET")(`/v1/models/${modelId}`).pipe(
+      HttpClientRequest.get(`/v1/models/${modelId}`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined,
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(ModelInfo)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ModelInfo),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messageBatchesList": (options) =>
-      HttpClientRequest.make("GET")(`/v1/messages/batches`).pipe(
+      HttpClientRequest.get(`/v1/messages/batches`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options?.["before_id"] as UrlParams.Coercible,
-          "after_id": options?.["after_id"] as UrlParams.Coercible,
-          "limit": options?.["limit"] as UrlParams.Coercible
+          "before_id": options?.["before_id"] as any,
+          "after_id": options?.["after_id"] as any,
+          "limit": options?.["limit"] as any
         }),
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(ListResponseMessageBatch)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListResponseMessageBatch),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messageBatchesPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/messages/batches`).pipe(
+      HttpClientRequest.post(`/v1/messages/batches`).pipe(
         HttpClientRequest.setHeaders({ "anthropic-version": options.params?.["anthropic-version"] ?? undefined }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(MessageBatch)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(MessageBatch),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messageBatchesRetrieve": (messageBatchId, options) =>
-      HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}`).pipe(
+      HttpClientRequest.get(`/v1/messages/batches/${messageBatchId}`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(MessageBatch)(r),
-                  "4xx": (r) => decodeError(r, ErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(MessageBatch),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messageBatchesDelete": (messageBatchId, options) =>
-      HttpClientRequest.make("DELETE")(`/v1/messages/batches/${messageBatchId}`).pipe(
+      HttpClientRequest.del(`/v1/messages/batches/${messageBatchId}`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(DeleteMessageBatchResponse)(r),
-                  "4xx": (r) => decodeError(r, ErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeleteMessageBatchResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messageBatchesCancel": (messageBatchId, options) =>
-      HttpClientRequest.make("POST")(`/v1/messages/batches/${messageBatchId}/cancel`).pipe(
+      HttpClientRequest.post(`/v1/messages/batches/${messageBatchId}/cancel`).pipe(
         HttpClientRequest.setHeaders({ "anthropic-version": options?.["anthropic-version"] ?? undefined }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(MessageBatch)(r),
-                  "4xx": (r) => decodeError(r, ErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(MessageBatch),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messageBatchesResults": (messageBatchId, options) =>
-      HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}/results`).pipe(
+      HttpClientRequest.get(`/v1/messages/batches/${messageBatchId}/results`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "4xx": (r) => decodeError(r, ErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "messagesCountTokensPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/messages/count_tokens`).pipe(
+      HttpClientRequest.post(`/v1/messages/count_tokens`).pipe(
         HttpClientRequest.setHeaders({ "anthropic-version": options.params?.["anthropic-version"] ?? undefined }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(CountMessageTokensResponse)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CountMessageTokensResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "listFilesV1FilesGet": (options) =>
-      HttpClientRequest.make("GET")(`/v1/files`).pipe(
+      HttpClientRequest.get(`/v1/files`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options?.["before_id"] as UrlParams.Coercible,
-          "after_id": options?.["after_id"] as UrlParams.Coercible,
-          "limit": options?.["limit"] as UrlParams.Coercible
+          "before_id": options?.["before_id"] as any,
+          "after_id": options?.["after_id"] as any,
+          "limit": options?.["limit"] as any
         }),
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(FileListResponse)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FileListResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "uploadFileV1FilesPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/files`).pipe(
+      HttpClientRequest.post(`/v1/files`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options.params?.["anthropic-version"] ?? undefined
         }),
-        HttpClientRequest.bodyFormData(options.payload),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(FileMetadataSchema)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyFormDataRecord(options.payload as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FileMetadataSchema),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "getFileMetadataV1FilesFileIdGet": (fileId, options) =>
-      HttpClientRequest.make("GET")(`/v1/files/${fileId}`).pipe(
+      HttpClientRequest.get(`/v1/files/${fileId}`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(FileMetadataSchema)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FileMetadataSchema),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "deleteFileV1FilesFileIdDelete": (fileId, options) =>
-      HttpClientRequest.make("DELETE")(`/v1/files/${fileId}`).pipe(
+      HttpClientRequest.del(`/v1/files/${fileId}`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(FileDeleteResponse)(r),
-                "4xx": (r) => decodeError(r, ErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FileDeleteResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "downloadFileV1FilesFileIdContentGet": (fileId, options) =>
-      HttpClientRequest.make("GET")(`/v1/files/${fileId}/content`).pipe(
+      HttpClientRequest.get(`/v1/files/${fileId}/content`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessagesPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/messages?beta=true`).pipe(
+      HttpClientRequest.post(`/v1/messages?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options.params?.["anthropic-version"] ?? undefined
         }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessage)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaMessage),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaModelsList": (options) =>
-      HttpClientRequest.make("GET")(`/v1/models?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/models?beta=true`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options?.["before_id"] as UrlParams.Coercible,
-          "after_id": options?.["after_id"] as UrlParams.Coercible,
-          "limit": options?.["limit"] as UrlParams.Coercible
+          "before_id": options?.["before_id"] as any,
+          "after_id": options?.["after_id"] as any,
+          "limit": options?.["limit"] as any
         }),
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined,
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaListResponseModelInfo)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaListResponseModelInfo),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaModelsGet": (modelId, options) =>
-      HttpClientRequest.make("GET")(`/v1/models/${modelId}?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/models/${modelId}?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined,
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaModelInfo)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaModelInfo),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessageBatchesList": (options) =>
-      HttpClientRequest.make("GET")(`/v1/messages/batches?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/messages/batches?beta=true`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options?.["before_id"] as UrlParams.Coercible,
-          "after_id": options?.["after_id"] as UrlParams.Coercible,
-          "limit": options?.["limit"] as UrlParams.Coercible
+          "before_id": options?.["before_id"] as any,
+          "after_id": options?.["after_id"] as any,
+          "limit": options?.["limit"] as any
         }),
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaListResponseMessageBatch)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaListResponseMessageBatch),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessageBatchesPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/messages/batches?beta=true`).pipe(
+      HttpClientRequest.post(`/v1/messages/batches?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options.params?.["anthropic-version"] ?? undefined
         }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessageBatch)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaMessageBatch),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessageBatchesRetrieve": (messageBatchId, options) =>
-      HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/messages/batches/${messageBatchId}?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessageBatch)(r),
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaMessageBatch),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessageBatchesDelete": (messageBatchId, options) =>
-      HttpClientRequest.make("DELETE")(`/v1/messages/batches/${messageBatchId}?beta=true`).pipe(
+      HttpClientRequest.del(`/v1/messages/batches/${messageBatchId}?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(BetaDeleteMessageBatchResponse)(r),
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaDeleteMessageBatchResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessageBatchesCancel": (messageBatchId, options) =>
-      HttpClientRequest.make("POST")(`/v1/messages/batches/${messageBatchId}/cancel?beta=true`).pipe(
+      HttpClientRequest.post(`/v1/messages/batches/${messageBatchId}/cancel?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(BetaMessageBatch)(r),
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaMessageBatch),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessageBatchesResults": (messageBatchId, options) =>
-      HttpClientRequest.make("GET")(`/v1/messages/batches/${messageBatchId}/results?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/messages/batches/${messageBatchId}/results?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaMessagesCountTokensPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/messages/count_tokens?beta=true`).pipe(
+      HttpClientRequest.post(`/v1/messages/count_tokens?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options.params?.["anthropic-version"] ?? undefined
         }),
-        (req) => Effect.orDie(HttpClientRequest.bodyJson(req, options.payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(BetaCountMessageTokensResponse)(r),
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaCountMessageTokensResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaListFilesV1FilesGet": (options) =>
-      HttpClientRequest.make("GET")(`/v1/files?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/files?beta=true`).pipe(
         HttpClientRequest.setUrlParams({
-          "before_id": options?.["before_id"] as UrlParams.Coercible,
-          "after_id": options?.["after_id"] as UrlParams.Coercible,
-          "limit": options?.["limit"] as UrlParams.Coercible
+          "before_id": options?.["before_id"] as any,
+          "after_id": options?.["after_id"] as any,
+          "limit": options?.["limit"] as any
         }),
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaFileListResponse)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaFileListResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaUploadFileV1FilesPost": (options) =>
-      HttpClientRequest.make("POST")(`/v1/files?beta=true`).pipe(
+      HttpClientRequest.post(`/v1/files?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options.params?.["anthropic-version"] ?? undefined
         }),
-        HttpClientRequest.bodyFormData(options.payload),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (r) => HttpClientResponse.schemaBodyJson(BetaFileMetadataSchema)(r),
-                "4xx": (r) => decodeError(r, BetaErrorResponse),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
+        HttpClientRequest.bodyFormDataRecord(options.payload as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaFileMetadataSchema),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaGetFileMetadataV1FilesFileIdGet": (fileId, options) =>
-      HttpClientRequest.make("GET")(`/v1/files/${fileId}?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/files/${fileId}?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(BetaFileMetadataSchema)(r),
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaFileMetadataSchema),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaDeleteFileV1FilesFileIdDelete": (fileId, options) =>
-      HttpClientRequest.make("DELETE")(`/v1/files/${fileId}?beta=true`).pipe(
+      HttpClientRequest.del(`/v1/files/${fileId}?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  "200": (r) => HttpClientResponse.schemaBodyJson(BetaFileDeleteResponse)(r),
-                  "4xx": (r) => decodeError(r, BetaErrorResponse),
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaFileDeleteResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       ),
     "betaDownloadFileV1FilesFileIdContentGet": (fileId, options) =>
-      HttpClientRequest.make("GET")(`/v1/files/${fileId}/content?beta=true`).pipe(
+      HttpClientRequest.get(`/v1/files/${fileId}/content?beta=true`).pipe(
         HttpClientRequest.setHeaders({
           "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
           "anthropic-version": options?.["anthropic-version"] ?? undefined,
           "x-api-key": options?.["x-api-key"] ?? undefined
         }),
-        Effect.succeed,
-        Effect.flatMap((request) =>
-          Effect.flatMap(
-            applyClientTransform(httpClient),
-            (httpClient) =>
-              Effect.flatMap(
-                httpClient.execute(request),
-                HttpClientResponse.matchStatus({
-                  orElse: (response) => unexpectedStatus(request, response)
-                })
-              )
-          )
-        )
+        withResponse(HttpClientResponse.matchStatus({
+          orElse: unexpectedStatus
+        }))
       )
   }
 }
 
 export interface Client {
   readonly httpClient: HttpClient.HttpClient
+  /**
+   * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
+   *
+   * The Messages API can be used for either single queries or stateless multi-turn conversations.
+   *
+   * Learn more about the Messages API in our [user guide](/en/docs/initial-setup)
+   */
   readonly "messagesPost": (
     options: {
       readonly params?: typeof MessagesPostParams.Encoded | undefined
       readonly payload: typeof CreateMessageParams.Encoded
     }
-  ) => Effect.Effect<typeof Message.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  ) => Effect.Effect<
+    typeof Message.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * [Legacy] Create a Text Completion.
+   *
+   * The Text Completions API is a legacy API. We recommend using the [Messages API](https://docs.anthropic.com/en/api/messages) going forward.
+   *
+   * Future models and features will not be compatible with Text Completions. See our [migration guide](https://docs.anthropic.com/en/api/migrating-from-text-completions-to-messages) for guidance in migrating from Text Completions to Messages.
+   */
   readonly "completePost": (
     options: {
       readonly params?: typeof CompletePostParams.Encoded | undefined
@@ -2692,49 +4979,119 @@ export interface Client {
     }
   ) => Effect.Effect<
     typeof CompletionResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * List available models.
+   *
+   * The Models API response can be used to determine which models are available for use in the API. More recently released models are listed first.
+   */
   readonly "modelsList": (
     options?: typeof ModelsListParams.Encoded | undefined
   ) => Effect.Effect<
     typeof ListResponseModelInfo.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Get a specific model.
+   *
+   * The Models API response can be used to determine information about a specific model or resolve a model alias to a model ID.
+   */
   readonly "modelsGet": (
     modelId: string,
     options?: typeof ModelsGetParams.Encoded | undefined
-  ) => Effect.Effect<typeof ModelInfo.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  ) => Effect.Effect<
+    typeof ModelInfo.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * List all Message Batches within a Workspace. Most recently created batches are returned first.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "messageBatchesList": (
     options?: typeof MessageBatchesListParams.Encoded | undefined
   ) => Effect.Effect<
     typeof ListResponseMessageBatch.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Send a batch of Message creation requests.
+   *
+   * The Message Batches API can be used to process multiple Messages API requests at once. Once a Message Batch is created, it begins processing immediately. Batches can take up to 24 hours to complete.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "messageBatchesPost": (
     options: {
       readonly params?: typeof MessageBatchesPostParams.Encoded | undefined
       readonly payload: typeof CreateMessageBatchParams.Encoded
     }
-  ) => Effect.Effect<typeof MessageBatch.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  ) => Effect.Effect<
+    typeof MessageBatch.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * This endpoint is idempotent and can be used to poll for Message Batch completion. To access the results of a Message Batch, make a request to the `results_url` field in the response.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "messageBatchesRetrieve": (
     messageBatchId: string,
     options?: typeof MessageBatchesRetrieveParams.Encoded | undefined
-  ) => Effect.Effect<typeof MessageBatch.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  ) => Effect.Effect<
+    typeof MessageBatch.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Delete a Message Batch.
+   *
+   * Message Batches can only be deleted once they've finished processing. If you'd like to delete an in-progress batch, you must first cancel it.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "messageBatchesDelete": (
     messageBatchId: string,
     options?: typeof MessageBatchesDeleteParams.Encoded | undefined
   ) => Effect.Effect<
     typeof DeleteMessageBatchResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Batches may be canceled any time before processing ends. Once cancellation is initiated, the batch enters a `canceling` state, at which time the system may complete any in-progress, non-interruptible requests before finalizing cancellation.
+   *
+   * The number of canceled requests is specified in `request_counts`. To determine which requests were canceled, check the individual results within the batch. Note that cancellation may not result in any canceled requests if they were non-interruptible.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "messageBatchesCancel": (
     messageBatchId: string,
     options?: typeof MessageBatchesCancelParams.Encoded | undefined
-  ) => Effect.Effect<typeof MessageBatch.Type, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  ) => Effect.Effect<
+    typeof MessageBatch.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Streams the results of a Message Batch as a `.jsonl` file.
+   *
+   * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "messageBatchesResults": (
     messageBatchId: string,
     options?: typeof MessageBatchesResultsParams.Encoded | undefined
-  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type>
+  ) => Effect.Effect<
+    void,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Count the number of tokens in a Message.
+   *
+   * The Token Count API can be used to count the number of tokens in a Message, including tools, images, and documents, without creating it.
+   *
+   * Learn more about token counting in our [user guide](/en/docs/build-with-claude/token-counting)
+   */
   readonly "messagesCountTokensPost": (
     options: {
       readonly params?: typeof MessagesCountTokensPostParams.Encoded | undefined
@@ -2742,41 +5099,63 @@ export interface Client {
     }
   ) => Effect.Effect<
     typeof CountMessageTokensResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * List Files
+   */
   readonly "listFilesV1FilesGet": (
     options?: typeof ListFilesV1FilesGetParams.Encoded | undefined
   ) => Effect.Effect<
     typeof FileListResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Upload File
+   */
   readonly "uploadFileV1FilesPost": (
     options: {
       readonly params?: typeof UploadFileV1FilesPostParams.Encoded | undefined
-      readonly payload: globalThis.FormData
+      readonly payload: typeof UploadFileV1FilesPostRequest.Encoded
     }
   ) => Effect.Effect<
     typeof FileMetadataSchema.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Get File Metadata
+   */
   readonly "getFileMetadataV1FilesFileIdGet": (
     fileId: string,
     options?: typeof GetFileMetadataV1FilesFileIdGetParams.Encoded | undefined
   ) => Effect.Effect<
     typeof FileMetadataSchema.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Delete File
+   */
   readonly "deleteFileV1FilesFileIdDelete": (
     fileId: string,
     options?: typeof DeleteFileV1FilesFileIdDeleteParams.Encoded | undefined
   ) => Effect.Effect<
     typeof FileDeleteResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof ErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
+  /**
+   * Download File
+   */
   readonly "downloadFileV1FilesFileIdContentGet": (
     fileId: string,
     options?: typeof DownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
   ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
+   *
+   * The Messages API can be used for either single queries or stateless multi-turn conversations.
+   *
+   * Learn more about the Messages API in our [user guide](/en/docs/initial-setup)
+   */
   readonly "betaMessagesPost": (
     options: {
       readonly params?: typeof BetaMessagesPostParams.Encoded | undefined
@@ -2784,27 +5163,49 @@ export interface Client {
     }
   ) => Effect.Effect<
     typeof BetaMessage.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * List available models.
+   *
+   * The Models API response can be used to determine which models are available for use in the API. More recently released models are listed first.
+   */
   readonly "betaModelsList": (
     options?: typeof BetaModelsListParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaListResponseModelInfo.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Get a specific model.
+   *
+   * The Models API response can be used to determine information about a specific model or resolve a model alias to a model ID.
+   */
   readonly "betaModelsGet": (
     modelId: string,
     options?: typeof BetaModelsGetParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaModelInfo.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * List all Message Batches within a Workspace. Most recently created batches are returned first.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "betaMessageBatchesList": (
     options?: typeof BetaMessageBatchesListParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaListResponseMessageBatch.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Send a batch of Message creation requests.
+   *
+   * The Message Batches API can be used to process multiple Messages API requests at once. Once a Message Batch is created, it begins processing immediately. Batches can take up to 24 hours to complete.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "betaMessageBatchesPost": (
     options: {
       readonly params?: typeof BetaMessageBatchesPostParams.Encoded | undefined
@@ -2812,33 +5213,69 @@ export interface Client {
     }
   ) => Effect.Effect<
     typeof BetaMessageBatch.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * This endpoint is idempotent and can be used to poll for Message Batch completion. To access the results of a Message Batch, make a request to the `results_url` field in the response.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "betaMessageBatchesRetrieve": (
     messageBatchId: string,
     options?: typeof BetaMessageBatchesRetrieveParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaMessageBatch.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Delete a Message Batch.
+   *
+   * Message Batches can only be deleted once they've finished processing. If you'd like to delete an in-progress batch, you must first cancel it.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "betaMessageBatchesDelete": (
     messageBatchId: string,
     options?: typeof BetaMessageBatchesDeleteParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaDeleteMessageBatchResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Batches may be canceled any time before processing ends. Once cancellation is initiated, the batch enters a `canceling` state, at which time the system may complete any in-progress, non-interruptible requests before finalizing cancellation.
+   *
+   * The number of canceled requests is specified in `request_counts`. To determine which requests were canceled, check the individual results within the batch. Note that cancellation may not result in any canceled requests if they were non-interruptible.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "betaMessageBatchesCancel": (
     messageBatchId: string,
     options?: typeof BetaMessageBatchesCancelParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaMessageBatch.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Streams the results of a Message Batch as a `.jsonl` file.
+   *
+   * Each line in the file is a JSON object containing the result of a single request in the Message Batch. Results are not guaranteed to be in the same order as requests. Use the `custom_id` field to match results to requests.
+   *
+   * Learn more about the Message Batches API in our [user guide](/en/docs/build-with-claude/batch-processing)
+   */
   readonly "betaMessageBatchesResults": (
     messageBatchId: string,
     options?: typeof BetaMessageBatchesResultsParams.Encoded | undefined
-  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type>
+  ) => Effect.Effect<
+    void,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Count the number of tokens in a Message.
+   *
+   * The Token Count API can be used to count the number of tokens in a Message, including tools, images, and documents, without creating it.
+   *
+   * Learn more about token counting in our [user guide](/en/docs/build-with-claude/token-counting)
+   */
   readonly "betaMessagesCountTokensPost": (
     options: {
       readonly params?: typeof BetaMessagesCountTokensPostParams.Encoded | undefined
@@ -2846,39 +5283,80 @@ export interface Client {
     }
   ) => Effect.Effect<
     typeof BetaCountMessageTokensResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * List Files
+   */
   readonly "betaListFilesV1FilesGet": (
     options?: typeof BetaListFilesV1FilesGetParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaFileListResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Upload File
+   */
   readonly "betaUploadFileV1FilesPost": (
     options: {
       readonly params?: typeof BetaUploadFileV1FilesPostParams.Encoded | undefined
-      readonly payload: globalThis.FormData
+      readonly payload: typeof BetaUploadFileV1FilesPostRequest.Encoded
     }
   ) => Effect.Effect<
     typeof BetaFileMetadataSchema.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Get File Metadata
+   */
   readonly "betaGetFileMetadataV1FilesFileIdGet": (
     fileId: string,
     options?: typeof BetaGetFileMetadataV1FilesFileIdGetParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaFileMetadataSchema.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Delete File
+   */
   readonly "betaDeleteFileV1FilesFileIdDelete": (
     fileId: string,
     options?: typeof BetaDeleteFileV1FilesFileIdDeleteParams.Encoded | undefined
   ) => Effect.Effect<
     typeof BetaFileDeleteResponse.Type,
-    HttpClientError.HttpClientError | ParseError | typeof BetaErrorResponse.Type
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
   >
+  /**
+   * Download File
+   */
   readonly "betaDownloadFileV1FilesFileIdContentGet": (
     fileId: string,
     options?: typeof BetaDownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
   ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
 }
+
+export interface ClientError<Tag extends string, E> {
+  readonly _tag: Tag
+  readonly request: HttpClientRequest.HttpClientRequest
+  readonly response: HttpClientResponse.HttpClientResponse
+  readonly cause: E
+}
+
+class ClientErrorImpl extends Data.Error<{
+  _tag: string
+  cause: any
+  request: HttpClientRequest.HttpClientRequest
+  response: HttpClientResponse.HttpClientResponse
+}> {}
+
+export const ClientError = <Tag extends string, E>(
+  tag: Tag,
+  cause: E,
+  response: HttpClientResponse.HttpClientResponse
+): ClientError<Tag, E> =>
+  new ClientErrorImpl({
+    _tag: tag,
+    cause,
+    response,
+    request: response.request
+  }) as any

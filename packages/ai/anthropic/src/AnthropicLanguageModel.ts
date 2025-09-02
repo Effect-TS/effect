@@ -2,33 +2,29 @@
  * @since 1.0.0
  */
 import { AiError } from "@effect/ai/AiError"
-import * as AiLanguageModel from "@effect/ai/AiLanguageModel"
 import * as AiModel from "@effect/ai/AiModel"
-import type * as AiPrompt from "@effect/ai/AiPrompt"
-import * as AiResponse from "@effect/ai/AiResponse"
-import { addGenAIAnnotations } from "@effect/ai/AiTelemetry"
-import type * as Tokenizer from "@effect/ai/Tokenizer"
-import * as HttpBody from "@effect/platform/HttpBody"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as Content from "@effect/ai/Content"
+import * as IdGenerator from "@effect/ai/IdGenerator"
+import * as LanguageModel from "@effect/ai/LanguageModel"
+import * as Prompt from "@effect/ai/Prompt"
+import { addGenAIAnnotations } from "@effect/ai/Telemetry"
+import * as Tool from "@effect/ai/Tool"
+import type { HttpClientError } from "@effect/platform/HttpClientError"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
-import { dual, pipe } from "effect/Function"
+import { dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type { ParseError } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
-import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
-import { AnthropicClient } from "./AnthropicClient.js"
-import * as AnthropicTokenizer from "./AnthropicTokenizer.js"
+import { AnthropicClient, type MessageStreamEvent } from "./AnthropicClient.js"
 import type * as Generated from "./Generated.js"
-import type { MessageStreamEvent } from "./internal/message-stream-event.js"
 import * as InternalUtilities from "./internal/utilities.js"
-
-const constDisableValidation: Schema.MakeOptions = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
@@ -74,7 +70,9 @@ export declare namespace Config {
         >
       >
     >
-  {}
+  {
+    readonly disableParallelToolCalls?: boolean
+  }
 }
 
 // =============================================================================
@@ -119,36 +117,43 @@ export declare namespace ProviderOptions {
    * @since 1.0.0
    * @category Provider Metadata
    */
-  export interface Service {
-    readonly [AiPrompt.ProviderOptions.UserMessage]: {
+  export interface Service extends Prompt.AnyProviderOptions {
+    readonly system: {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly [AiPrompt.ProviderOptions.AssistantMessage]: {
+    readonly user: {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly [AiPrompt.ProviderOptions.ToolMessage]: {
+    readonly assistant: {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly [AiPrompt.ProviderOptions.TextPart]: {
+    readonly tool: {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly [AiPrompt.ProviderOptions.FilePart]: {
+    readonly text: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
+    }
+
+    readonly file: {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
@@ -171,7 +176,7 @@ export declare namespace ProviderOptions {
       readonly documentContext?: typeof Generated.RequestDocumentBlock.fields.context.from.Encoded
     }
 
-    readonly [AiPrompt.ProviderOptions.ReasoningPart]: Simplify<
+    readonly reasoning: Simplify<
       AnthropicReasoningMetadata & {
         /**
          * A breakpoint which marks the end of reusable content eligible for caching.
@@ -180,14 +185,14 @@ export declare namespace ProviderOptions {
       }
     >
 
-    readonly [AiPrompt.ProviderOptions.ToolCallPart]: {
+    readonly "tool-call": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly [AiPrompt.ProviderOptions.ToolCallResultPart]: {
+    readonly "tool-result": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
@@ -213,10 +218,14 @@ export declare namespace ProviderMetadata {
    * @since 1.0.0
    * @category Provider Metadata
    */
-  export interface Service {
-    readonly [AiResponse.ProviderMetadata.ReasoningPart]: AnthropicReasoningMetadata
+  export interface Service extends Content.AnyProviderMetadata {
+    readonly reasoning: AnthropicReasoningMetadata
 
-    readonly [AiResponse.ProviderMetadata.FinishPart]: {
+    readonly "reasoning-start": AnthropicReasoningMetadata
+
+    readonly "reasoning-delta": AnthropicReasoningMetadata
+
+    readonly finish: {
       /**
        * Additional usage information provided by the Anthropic API.
        */
@@ -224,7 +233,7 @@ export declare namespace ProviderMetadata {
         /**
          * The breakdown of cached tokens by TTL.
          */
-        readonly cacheCreation: {
+        readonly cacheCreation?: {
           /**
            * The number of input tokens used to create the 5 minute cache entry.
            */
@@ -237,11 +246,11 @@ export declare namespace ProviderMetadata {
         /**
          * The number of input tokens utilized to create the cache entry.
          */
-        readonly cacheCreationInputTokens: number | undefined
+        readonly cacheCreationInputTokens?: number | undefined
         /**
          * The number of server tool requests.
          */
-        readonly serverToolUse: {
+        readonly serverToolUse?: {
           /**
            * The number of web search tool requests.
            */
@@ -250,7 +259,7 @@ export declare namespace ProviderMetadata {
         /**
          * The service tier the request used, if specified.
          */
-        readonly serviceTier: typeof Generated.UsageServiceTierEnum.Encoded | undefined
+        readonly serviceTier?: typeof Generated.UsageServiceTierEnum.Encoded | undefined
       }
       /**
        * Which custom stop sequence was generated, if any.
@@ -261,7 +270,8 @@ export declare namespace ProviderMetadata {
       readonly stopSequence: string | undefined
     }
 
-    readonly [AiResponse.ProviderMetadata.DocumentSourcePart]: {
+    readonly "source": {
+      readonly sourceType: "document"
       readonly type: "char_location"
       /**
        * The text that was cited in the response.
@@ -276,6 +286,7 @@ export declare namespace ProviderMetadata {
        */
       readonly endCharIndex: number
     } | {
+      readonly sourceType: "document"
       readonly type: "page_location"
       /**
        * The text that was cited in the response.
@@ -289,9 +300,8 @@ export declare namespace ProviderMetadata {
        * The exclusive ending position of the pages that were cited.
        */
       readonly endPageNumber: number
-    }
-
-    readonly [AiResponse.ProviderMetadata.UrlSourcePart]: {
+    } | {
+      readonly sourceType: "url"
       /**
        * Up to 150 characters of the text content that was referenced from the
        * URL source material.
@@ -317,17 +327,17 @@ export declare namespace ProviderMetadata {
 export const model = (
   model: (string & {}) | Model,
   config?: Omit<Config.Service, "model">
-): AiModel.AiModel<AiLanguageModel.AiLanguageModel, AnthropicClient> => AiModel.make(layer({ model, config }))
+): AiModel.AiModel<LanguageModel.LanguageModel, AnthropicClient> => AiModel.make(layer({ model, config }))
 
-/**
- * @since 1.0.0
- * @category AiModels
- */
-export const modelWithTokenizer = (
-  model: (string & {}) | Model,
-  config?: Omit<Config.Service, "model">
-): AiModel.AiModel<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
-  AiModel.make(layerWithTokenizer({ model, config }))
+// /**
+//  * @since 1.0.0
+//  * @category AiModels
+//  */
+// export const modelWithTokenizer = (
+//   model: (string & {}) | Model,
+//   config?: Omit<Config.Service, "model">
+// ): AiModel.AiModel<LanguageModel.LanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
+//   AiModel.make(layerWithTokenizer({ model, config }))
 
 /**
  * @since 1.0.0
@@ -339,298 +349,32 @@ export const make = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* AnthropicClient
 
-  const prepareProviderDefinedTool: (
-    tool: AiLanguageModel.ProviderDefinedTool
-  ) => Effect.Effect<typeof AnthropicAiTool.BuiltInTools.Encoded, AiError> = Effect.fnUntraced(
-    function*(tool) {
-      switch (tool.id) {
-        case "anthropic.web_search_20250305": {
-          const args = yield* Schema.encodeUnknown(AnthropicAiTool.WebSearch20250305Args)(tool.args)
-          return {
-            name: "web_search",
-            type: "web_search_20250305",
-            ...args
-          } satisfies typeof Generated.BetaWebSearchTool20250305.Encoded
-        }
-        default: {
-          const toolStr = JSON.stringify(tool, undefined, 2)
-          return yield* Effect.dieMessage(
-            `AnthropicLanguageModel.prepareTools: unknown built-in tool detected:\n${toolStr}`
-          )
-        }
-      }
-    },
-    Effect.mapError((cause) =>
-      new AiError({
-        module: "AnthropicLanguageModel",
-        method: "prepareProviderDefinedTool",
-        description: "Failed to encode built-in tool arguments",
-        cause
-      })
-    )
-  )
-
-  const prepareUserDefinedTool = (tool: AiLanguageModel.UserDefinedTool): typeof Generated.Tool.Encoded => ({
-    name: tool.name,
-    description: tool.description,
-    input_schema: tool.parameters as any
-  })
-
-  const prepareTools = Effect.fnUntraced(function*(options: {
-    tools: AiLanguageModel.ProviderOptions["tools"]
-    toolChoice: AiLanguageModel.ProviderOptions["toolChoice"]
-    useStructured: boolean
-  }) {
-    if (options.tools.length === 0) {
-      return undefined
-    }
-    if (options.useStructured) {
-      const tool = prepareUserDefinedTool(options.tools[0] as AiLanguageModel.UserDefinedTool)
-      return [tool]
-    }
-    const tools: Mutable<typeof Generated.BetaCreateMessageParams.Encoded["tools"]> = []
-    for (const tool of options.tools) {
-      switch (tool._tag) {
-        case "ProviderDefinedTool": {
-          tools.push(yield* prepareProviderDefinedTool(tool))
-          break
-        }
-        case "UserDefinedTool": {
-          tools.push(prepareUserDefinedTool(tool))
-          break
-        }
-      }
-    }
-    return tools
-  })
-
-  const prepareToolChoice = (options: {
-    tools: AiLanguageModel.ProviderOptions["tools"]
-    toolChoice: AiLanguageModel.ProviderOptions["toolChoice"]
-    useStructured: boolean
-  }) => {
-    let toolChoice: typeof Generated.ToolChoice.Encoded | undefined = undefined
-    if (options.useStructured) {
-      toolChoice = { type: "tool", name: options.tools[0].name }
-    } else if (options.tools.length > 0) {
-      if (options.toolChoice === "required") {
-        toolChoice = { type: "any" }
-      } else if (typeof options.toolChoice === "object") {
-        toolChoice = { type: "tool", name: options.toolChoice.tool }
-      } else {
-        toolChoice = { type: options.toolChoice }
-      }
-    }
-    return toolChoice
-  }
-
   const makeRequest = Effect.fnUntraced(
-    function*(method: string, { prompt, toolChoice, tools }: AiLanguageModel.ProviderOptions) {
+    function*(method: string, providerOptions: LanguageModel.ProviderOptions) {
       const context = yield* Effect.context<never>()
       const config = { ...options.config, ...context.unsafeMap.get(Config.key) }
-      const useStructured = tools.length === 1 && tools[0]._tag === "UserDefinedTool" && tools[0].structured
-      const messages = yield* makeMessages(method, prompt)
-      return {
+      const { prompt } = yield* makeMessages(method, providerOptions.prompt)
+      const { betas: _betas, toolChoice, tools } = yield* prepareTools(config, providerOptions)
+      return identity<typeof Generated.CreateMessageParams.Encoded>({
         model: options.model,
         max_tokens: 4096,
         ...config,
-        messages,
-        tools: yield* prepareTools({ tools, toolChoice, useStructured }),
-        tool_choice: prepareToolChoice({ tools, toolChoice, useStructured })
-      } satisfies typeof Generated.CreateMessageParams.Encoded
-    }
-  )
-
-  const makeStreamRequest = Effect.fnUntraced(
-    function*(method: string, options: AiLanguageModel.ProviderOptions) {
-      // Construct the API request
-      const request = yield* makeRequest(method, options)
-      annotateRequest(options.span, request)
-      const httpRequest = HttpClientRequest.post("v1/messages", {
-        body: HttpBody.unsafeJson({ ...request, stream: true })
+        system: prompt.system,
+        messages: prompt.messages,
+        tools,
+        tool_choice: toolChoice
       })
-
-      // Setup all the state we need to resolve the event stream
-      const citableDocuments = extractCitableDocuments(options.prompt)
-      const usage: Mutable<AiResponse.Usage> = {
-        inputTokens: undefined,
-        outputTokens: undefined,
-        totalTokens: undefined
-      }
-      let contentBlockType: typeof Generated.ContentBlock.Type["type"] | undefined = undefined
-      const contentBlocks: Record<
-        number,
-        | {
-          readonly type: "text"
-          readonly text: string
-          readonly providerMetadata: Record<string, Record<string, unknown>>
-        }
-        | {
-          readonly type: "reasoning"
-          readonly text: string
-          readonly providerMetadata: Record<string, Record<string, unknown>>
-        }
-        | {
-          readonly type: "tool-call"
-          readonly id: string
-          readonly mode: AiResponse.ToolCallPart["mode"]
-          readonly name: string
-          readonly params: unknown
-        }
-      > = {}
-      let finishReason: AiResponse.FinishReason = "unknown"
-      const finishMetadata: DeepMutable<ProviderMetadata.Service[AiResponse.ProviderMetadata.FinishPart]> = {
-        stopSequence: undefined,
-        usage: {
-          cacheCreation: undefined,
-          cacheCreationInputTokens: undefined,
-          serviceTier: undefined,
-          serverToolUse: undefined
-        }
-      }
-
-      // Resolve the response
-      return client.streamRequest<MessageStreamEvent>(httpRequest).pipe(
-        Stream.filterMapEffect((event) => {
-          const parts: Array<AiResponse.Part> = []
-
-          switch (event.type) {
-            case "ping": {
-              break
-            }
-
-            case "message_start": {
-              // Handle standard usage information
-              usage.inputTokens = event.message.usage.input_tokens
-              if (Predicate.isNotNullable(event.message.usage.cache_read_input_tokens)) {
-                usage.cachedInputTokens = event.message.usage.cache_read_input_tokens
-              }
-
-              // Handle provider-specific usage information
-              if (Predicate.isNotNullable(event.message.usage.cache_creation_input_tokens)) {
-                finishMetadata.usage.cacheCreationInputTokens = event.message.usage.cache_creation_input_tokens
-              }
-
-              // Add the part to the response
-              parts.push(
-                new AiResponse.MetadataPart({
-                  id: event.message.id,
-                  modelId: event.message.model
-                }, constDisableValidation)
-              )
-
-              break
-            }
-
-            case "content_block_start": {
-              contentBlockType = event.content_block.type
-              switch (event.content_block.type) {
-                case "text": {
-                  // The text part is always empty when starting a content block
-                  break
-                }
-                case "thinking": {
-                  parts.push(
-                    new AiResponse.ReasoningPart({
-                      text: event.content_block.thinking
-                    }, constDisableValidation)
-                  )
-                  break
-                }
-                case "redacted_thinking": {
-                  let part = new AiResponse.ReasoningPart({
-                    text: ""
-                  }, constDisableValidation)
-                  part = part.setProviderMetadata(ProviderMetadata, {
-                    type: "redacted_thinking",
-                    redactedData: event.content_block.data
-                  })
-                  parts.push(part)
-                  break
-                }
-              }
-              break
-            }
-
-            case "content_block_delta": {
-              switch (event.delta.type) {
-                case "text_delta": {
-                  parts.push(
-                    new AiResponse.TextPart({
-                      text: event.delta.text
-                    }, constDisableValidation)
-                  )
-                  break
-                }
-                case "thinking_delta": {
-                  parts.push(
-                    new AiResponse.ReasoningPart({
-                      text: event.delta.thinking
-                    }, constDisableValidation)
-                  )
-                  break
-                }
-                case "signature_delta": {
-                  let part = new AiResponse.ReasoningPart({
-                    text: ""
-                  }, constDisableValidation)
-                  part = part.setProviderMetadata(ProviderMetadata, {
-                    type: "thinking",
-                    signature: event.delta.signature
-                  })
-                  parts.push(part)
-                  break
-                }
-                case "input_json_delta": {
-                  break
-                }
-                case "citations_delta": {
-                  break
-                }
-              }
-              break
-            }
-
-            case "content_block_stop": {
-              break
-            }
-
-            case "message_delta": {
-              usage.outputTokens = event.usage.output_tokens
-              usage.totalTokens = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0)
-              if (Predicate.isNotNullable(event.delta.stop_sequence)) {
-                finishMetadata.stopSequence = event.delta.stop_sequence
-              }
-              finishReason = InternalUtilities.resolveFinishReason(event.delta.stop_reason)
-              break
-            }
-
-            case "message_stop": {
-              let part = new AiResponse.FinishPart({
-                reason: finishReason,
-                usage
-              }, constDisableValidation)
-              part = part.setProviderMetadata(ProviderMetadata, finishMetadata)
-              parts.push(part)
-              break
-            }
-          }
-
-          return Option.some(Effect.succeed(AiResponse.empty))
-        })
-      )
     }
   )
 
-  return yield* AiLanguageModel.make({
+  return yield* LanguageModel.make({
     generateText: Effect.fnUntraced(
       function*(options) {
         const request = yield* makeRequest("generateText", options)
         annotateRequest(options.span, request)
         const rawResponse = yield* client.client.messagesPost({ params: {}, payload: request })
-        annotateChatResponse(options.span, rawResponse)
-        const response = yield* makeResponse(rawResponse)
-        return response
+        annotateResponse(options.span, rawResponse)
+        return yield* makeResponse(rawResponse, options)
       },
       Effect.catchAll((cause) =>
         AiError.is(cause) ? cause : new AiError({
@@ -640,12 +384,15 @@ export const make = Effect.fnUntraced(function*(options: {
           cause
         })
       )
-    ),
-    streamText(options) {
-      return makeRequest("streamText", options).pipe(
-        Effect.tap((request) => annotateRequest(options.span, request)),
-        Effect.map(streamRequest),
-        Stream.unwrap,
+    ) as any,
+
+    streamText: (options) =>
+      Stream.fromEffect(Effect.gen(function*() {
+        const request = yield* makeRequest("streamText", options)
+        annotateRequest(options.span, request)
+        return client.createMessageStream(request)
+      })).pipe(
+        Stream.flatMap((stream) => makeStreamResponse(stream, options), { switch: true }),
         Stream.map((response) => {
           annotateStreamResponse(options.span, response)
           return response
@@ -660,8 +407,7 @@ export const make = Effect.fnUntraced(function*(options: {
             })
           )
         )
-      )
-    }
+      ) as any
   })
 })
 
@@ -672,18 +418,18 @@ export const make = Effect.fnUntraced(function*(options: {
 export const layer = (options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, AnthropicClient> =>
-  Layer.effect(AiLanguageModel.AiLanguageModel, make({ model: options.model, config: options.config }))
+}): Layer.Layer<LanguageModel.LanguageModel, never, AnthropicClient> =>
+  Layer.effect(LanguageModel.LanguageModel, make({ model: options.model, config: options.config }))
 
-/**
- * @since 1.0.0
- * @category Layers
- */
-export const layerWithTokenizer = (options: {
-  readonly model: (string & {}) | Model
-  readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
-  Layer.merge(layer(options), AnthropicTokenizer.layer)
+// /**
+//  * @since 1.0.0
+//  * @category Layers
+//  */
+// export const layerWithTokenizer = (options: {
+//   readonly model: (string & {}) | Model
+//   readonly config?: Omit<Config.Service, "model">
+// }): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
+//   Layer.merge(layer(options), AnthropicTokenizer.layer)
 
 /**
  * @since 1.0.0
@@ -705,23 +451,36 @@ export const withConfigOverride: {
 // Utilities
 // =============================================================================
 
-type ContentGroup = AssistantMessageGroup | UserMessageGroup
+type ContentGroup = SystemMessageGroup | AssistantMessageGroup | UserMessageGroup
+
+interface SystemMessageGroup {
+  readonly type: "system"
+  readonly messages: Array<Prompt.SystemMessage>
+}
 
 interface AssistantMessageGroup {
   readonly type: "assistant"
-  readonly messages: Array<AiPrompt.AssistantMessage>
+  readonly messages: Array<Prompt.AssistantMessage>
 }
 
 interface UserMessageGroup {
   readonly type: "user"
-  readonly messages: Array<AiPrompt.ToolMessage | AiPrompt.UserMessage>
+  readonly messages: Array<Prompt.ToolMessage | Prompt.UserMessage>
 }
 
-const groupMessages = (prompt: AiPrompt.AiPrompt): Array<ContentGroup> => {
+const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
   const messages: Array<ContentGroup> = []
   let current: ContentGroup | undefined = undefined
   for (const message of prompt.content) {
     switch (message.role) {
+      case "system": {
+        if (current?.type !== "system") {
+          current = { type: "system", messages: [] }
+          messages.push(current)
+        }
+        current.messages.push(message)
+        break
+      }
       case "assistant": {
         if (current?.type !== "assistant") {
           current = { type: "assistant", messages: [] }
@@ -744,261 +503,793 @@ const groupMessages = (prompt: AiPrompt.AiPrompt): Array<ContentGroup> => {
   return messages
 }
 
-const makeMessages = Effect.fnUntraced(
-  function*(method: string, prompt: AiPrompt.AiPrompt) {
-    const messages: Array<typeof Generated.InputMessage.Encoded> = []
+// =============================================================================
+// Prompt Conversion
+// =============================================================================
+
+const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
+  {
+    readonly betas: ReadonlySet<string>
+    readonly prompt: {
+      readonly system: ReadonlyArray<typeof Generated.RequestTextBlock.Encoded> | undefined
+      readonly messages: ReadonlyArray<typeof Generated.InputMessage.Encoded>
+    }
+  },
+  AiError
+> = Effect.fnUntraced(
+  function*(method: string, prompt: Prompt.Prompt) {
+    const betas = new Set<string>()
     const groups = groupMessages(prompt)
+
+    let system: Array<typeof Generated.RequestTextBlock.Encoded> | undefined = undefined
+    const messages: Array<typeof Generated.InputMessage.Encoded> = []
+
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i]
       const isLastGroup = i === groups.length - 1
+
       switch (group.type) {
-        case "assistant": {
-          const content: Array<typeof Generated.InputContentBlock.Encoded> = []
-          for (let j = 0; j < group.messages.length; j++) {
-            const message = group.messages[j]
-            const isLastMessage = j === group.messages.length - 1
-            for (let k = 0; k < message.parts.length; k++) {
-              const part = message.parts[k]
-              const isLastPart = k === message.parts.length - 1
-              switch (part._tag) {
-                case "ReasoningPart": {
-                  content.push({
-                    type: "thinking",
-                    thinking: part.reasoningText,
-                    signature: part.signature!
-                  })
-                  break
-                }
-                case "RedactedReasoningPart": {
-                  content.push({
-                    type: "redacted_thinking",
-                    data: part.redactedText
-                  })
-                  break
-                }
-                case "TextPart": {
-                  content.push({
-                    type: "text",
-                    text:
-                      // Anthropic does not allow trailing whitespace in assistant
-                      // content blocks
-                      isLastGroup && isLastMessage && isLastPart
-                        ? part.text.trim()
-                        : part.text
-                  })
-                  break
-                }
-                case "ToolCallPart": {
-                  content.push({
-                    type: "tool_use",
-                    id: part.id,
-                    name: part.name,
-                    input: part.params as any
-                  })
-                  break
-                }
-              }
-            }
-          }
-          messages.push({ role: "assistant", content })
+        case "system": {
+          system = group.messages.map((message) => ({
+            type: "text",
+            text: message.content,
+            cache_control: getCacheControl(message)
+          }))
           break
         }
+
         case "user": {
           const content: Array<typeof Generated.InputContentBlock.Encoded> = []
-          for (let j = 0; j < group.messages.length; j++) {
-            const message = group.messages[j]
-            switch (message._tag) {
-              case "ToolMessage": {
-                for (let k = 0; k < message.parts.length; k++) {
-                  const part = message.parts[k]
-                  // TODO: support advanced tool result content parts
+
+          for (const message of group.messages) {
+            switch (message.role) {
+              case "user": {
+                for (let j = 0; j < message.content.length; j++) {
+                  const part = message.content[j]
+                  const isLastPart = j === message.content.length - 1
+
+                  // Attempt to get the cache control from the part first. If
+                  // the part does not have cache control defined and we are
+                  // evaluating the last part for this message, also check the
+                  // message for cache control.
+                  const cacheControl = getCacheControl(part) ?? (
+                    isLastPart ? getCacheControl(message) : undefined
+                  )
+
+                  switch (part.type) {
+                    case "text": {
+                      content.push({
+                        type: "text",
+                        text: part.text,
+                        cache_control: cacheControl
+                      })
+                      break
+                    }
+
+                    case "file": {
+                      if (part.mediaType.startsWith("image/")) {
+                        const source = part.data instanceof URL ?
+                          {
+                            type: "url",
+                            url: part.data.toString()
+                          } as const :
+                          {
+                            type: "base64",
+                            media_type: part.mediaType === "image/*"
+                              ? "image/jpeg"
+                              : (part.mediaType as typeof Generated.Base64ImageSourceMediaType.Encoded),
+                            data: typeof part.data === "string" ? part.data : Encoding.encodeBase64(part.data)
+                          } as const
+
+                        content.push({
+                          type: "image",
+                          source,
+                          cache_control: cacheControl
+                        })
+                      } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
+                        if (part.mediaType === "application/pdf") {
+                          betas.add("pdfs-2024-09-25")
+                        }
+
+                        const enableCitations = shouldEnableCitations(part)
+                        const documentOptions = getDocumentMetadata(part)
+
+                        const source = part.data instanceof URL
+                          ? {
+                            type: "url",
+                            url: part.data.toString()
+                          } as const
+                          : part.mediaType === "application/pdf"
+                          ? {
+                            type: "base64",
+                            media_type: "application/pdf",
+                            data: typeof part.data === "string"
+                              ? part.data
+                              : Encoding.encodeBase64(part.data)
+                          } as const
+                          : {
+                            type: "text",
+                            media_type: "text/plain",
+                            data: typeof part.data === "string"
+                              ? part.data
+                              : Encoding.encodeBase64(part.data)
+                          } as const
+
+                        content.push({
+                          type: "document",
+                          source,
+                          title: documentOptions?.title ?? Option.getOrUndefined(part.fileName),
+                          ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
+                          ...(enableCitations ? { citations: { enabled: true } } : undefined),
+                          cache_control: cacheControl
+                        })
+                      } else {
+                        return yield* new AiError({
+                          module: "AnthropicLanguageModel",
+                          method,
+                          description: `Detected unsupported media type for file: '${part.mediaType}'`
+                        })
+                      }
+                      break
+                    }
+                  }
+                }
+
+                break
+              }
+
+              // TODO: advanced tool result content parts
+              case "tool": {
+                for (const part of message.content) {
                   content.push({
                     type: "tool_result",
                     tool_use_id: part.id,
                     content: JSON.stringify(part.result)
                   })
                 }
-                break
-              }
-              case "UserMessage": {
-                for (let k = 0; k < message.parts.length; k++) {
-                  const part = message.parts[k]
-                  switch (part._tag) {
-                    case "FilePart": {
-                      if (Predicate.isUndefined(part.mediaType) || part.mediaType !== "application/pdf") {
-                        return yield* new AiError({
-                          module: "AnthropicLanguageModel",
-                          method,
-                          description: "AnthropicLanguageModel only supports PDF file inputs"
-                        })
-                      }
-                      content.push({
-                        type: "document",
-                        source: {
-                          type: "base64",
-                          media_type: "application/pdf",
-                          data: Encoding.encodeBase64(part.data)
-                        }
-                      })
-                      break
-                    }
-                    case "FileUrlPart": {
-                      content.push({
-                        type: "document",
-                        source: {
-                          type: "url",
-                          url: part.url.toString()
-                        }
-                      })
-                      break
-                    }
-                    case "TextPart": {
-                      content.push({
-                        type: "text",
-                        text: part.text
-                      })
-                      break
-                    }
-                    case "ImagePart": {
-                      content.push({
-                        type: "image",
-                        source: {
-                          type: "base64",
-                          media_type: part.mediaType ?? "image/jpeg" as any,
-                          data: Encoding.encodeBase64(part.data)
-                        }
-                      })
-                      break
-                    }
-                    case "ImageUrlPart": {
-                      content.push({
-                        type: "image",
-                        source: {
-                          type: "url",
-                          url: part.url.toString()
-                        }
-                      })
-                      break
-                    }
-                  }
-                }
+
                 break
               }
             }
           }
+
           messages.push({ role: "user", content })
+
+          break
+        }
+
+        case "assistant": {
+          const content: Array<typeof Generated.InputContentBlock.Encoded> = []
+
+          for (let j = 0; j < group.messages.length; j++) {
+            const message = group.messages[j]
+            const isLastMessage = j === group.messages.length - 1
+
+            for (let k = 0; k < message.content.length; k++) {
+              const part = message.content[k]
+              const isLastPart = k === message.content.length - 1
+
+              // Attempt to get the cache control from the part first. If
+              // the part does not have cache control defined and we are
+              // evaluating the last part for this message, also check the
+              // message for cache control.
+              const cacheControl = getCacheControl(part) ?? (
+                isLastPart ? getCacheControl(message) : undefined
+              )
+
+              switch (part.type) {
+                case "text": {
+                  content.push({
+                    type: "text",
+                    // Anthropic does not allow trailing whitespace in assistant
+                    // content blocks
+                    text: isLastGroup && isLastMessage && isLastPart
+                      ? part.text.trim()
+                      : part.text
+                  })
+                  break
+                }
+
+                case "reasoning": {
+                  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
+                  if (Predicate.isNotUndefined(providerOptions)) {
+                    if (providerOptions.type === "thinking") {
+                      content.push({
+                        type: "thinking",
+                        thinking: part.text,
+                        signature: providerOptions.signature
+                      })
+                    } else {
+                      content.push({
+                        type: "redacted_thinking",
+                        data: providerOptions.redactedData
+                      })
+                    }
+                  }
+                  break
+                }
+
+                case "tool-call": {
+                  if (part.isProviderDefined) {
+                    if (part.name === "web_search") {
+                      content.push({
+                        type: "server_tool_use",
+                        id: part.id,
+                        name: "web_search",
+                        input: part.params as any,
+                        cache_control: cacheControl
+                      })
+                    }
+                    // TODO(Max): add support for beta provider-defined tool calls
+                    // if (part.name === "code_execution") {
+                    // }
+                  } else {
+                    content.push({
+                      type: "tool_use",
+                      id: part.id,
+                      name: part.name,
+                      input: part.params as any,
+                      cache_control: cacheControl
+                    })
+                  }
+                  break
+                }
+              }
+            }
+          }
+
+          messages.push({ role: "assistant", content })
+
           break
         }
       }
     }
-    if (Arr.isNonEmptyReadonlyArray(messages)) {
-      return messages
+
+    return {
+      prompt: { system, messages },
+      betas
     }
-    return yield* new AiError({
-      module: "AnthropicLanguageModel",
-      method,
-      description: "Prompt contained no messages"
-    })
   }
 )
 
-const makeResponse = Effect.fnUntraced(
-  function*(response: Generated.Message) {
-    const parts: Array<AiResponse.Part> = []
-    parts.push(
-      new AiResponse.MetadataPart({
-        id: response.id,
-        model: response.model
-      }, constDisableValidation)
-    )
+// =============================================================================
+// Response Conversion
+// =============================================================================
+
+const makeResponse: (
+  response: Generated.Message,
+  options: LanguageModel.ProviderOptions
+) => Effect.Effect<
+  Array<Content.ResponsePart<any>>,
+  AiError,
+  IdGenerator.IdGenerator
+> = Effect.fnUntraced(
+  function*(response: Generated.Message, options: LanguageModel.ProviderOptions) {
+    const idGenerator = yield* IdGenerator.IdGenerator
+    const parts: Array<Content.ResponsePart<any>> = []
+    const citableDocuments = extractCitableDocuments(options.prompt)
+
+    const responseMetadata = Content.responseMetadataPart({
+      id: Option.some(response.id),
+      modelId: Option.some(response.model),
+      timestamp: Option.none()
+    })
+
+    parts.push(responseMetadata)
+
     for (const part of response.content) {
       switch (part.type) {
         case "text": {
-          parts.push(
-            new AiResponse.TextPart({
-              text: part.text
-            }, constDisableValidation)
-          )
+          // The text parts should only be added to the response here if the
+          // response format is `"text"`. If the response format is `"json"`,
+          // then the text parts must instead be added to the response when a
+          // tool call is received.
+          if (options.responseFormat.type === "text") {
+            parts.push(Content.textPart({ text: part.text }))
+
+            if (Predicate.isNotNullable(part.citations)) {
+              for (const citation of part.citations) {
+                const source = yield* processCitation(citation, citableDocuments, idGenerator)
+                if (Predicate.isNotUndefined(source)) {
+                  parts.push(source)
+                }
+              }
+            }
+          }
+
           break
         }
+
+        case "thinking": {
+          const metadata = {
+            type: "thinking",
+            signature: part.signature
+          } satisfies AnthropicReasoningMetadata
+
+          const reasoning = Content.reasoningPart({
+            text: part.thinking
+          })
+
+          Content.unsafeSetProviderMetadata(reasoning, ProviderMetadata, metadata)
+
+          parts.push(reasoning)
+
+          break
+        }
+
+        case "redacted_thinking": {
+          const metadata = {
+            type: "redacted_thinking",
+            redactedData: part.data
+          } satisfies AnthropicReasoningMetadata
+
+          const reasoning = Content.reasoningPart({ text: "" })
+
+          Content.unsafeSetProviderMetadata(reasoning, ProviderMetadata, metadata)
+
+          parts.push(reasoning)
+
+          break
+        }
+
         case "tool_use": {
-          parts.push(
-            AiResponse.ToolCallPart.fromUnknown({
+          // When a `"json"` response format is requested, the JSON that we need
+          // will be returned by the tool call injected into the request
+          if (options.responseFormat.type === "json") {
+            parts.push(Content.textPart({
+              text: JSON.stringify(part.input)
+            }))
+          } else {
+            parts.push(Content.toolCallPart({
               id: part.id,
               name: part.name,
-              params: part.input
+              params: part.input,
+              isProviderDefined: false
+            }))
+          }
+
+          break
+        }
+
+        case "server_tool_use": {
+          // TODO(Max): add support for beta provider-defined tool calls
+          if (part.name === "web_search" /*|| part.name === "code_execution"*/) {
+            const toolCall = Content.toolCallPart({
+              id: part.id,
+              name: part.name,
+              params: part.input,
+              isProviderDefined: true
             })
-          )
+
+            parts.push(toolCall)
+          }
+
           break
         }
-        case "thinking": {
-          parts.push(
-            new AiResponse.ReasoningPart({
-              reasoningText: part.thinking,
-              signature: part.signature
-            }, constDisableValidation)
-          )
-          break
-        }
-        case "redacted_thinking": {
-          parts.push(
-            new AiResponse.RedactedReasoningPart({
-              redactedText: part.data
-            }, constDisableValidation)
-          )
+
+        // TODO(Max): add support for beta provider-defined tool calls
+        // case "code_execution_tool_result": {
+        //   break
+        // }
+
+        case "web_search_tool_result": {
+          const toolName = "web_search"
+          const tool = options.tools.find((tool) => tool.name === toolName) as Tool.AnyProviderDefined | undefined
+
+          if (Predicate.isUndefined(tool)) {
+            return yield* new AiError({
+              module: "AnthropicLanguageModel",
+              method: "makeResponse",
+              description: `Recevied web search tool result but corresponding tool not present in provided toolkit`
+            })
+          }
+
+          const result = yield* tool.decodeResult(part.content)
+
+          const toolResultPart = Content.toolResultPart({
+            id: part.tool_use_id,
+            name: toolName,
+            result,
+            isProviderDefined: true
+          })
+
+          parts.push(toolResultPart)
+
           break
         }
       }
     }
-    const metadata: Mutable<ProviderMetadata.Service> = {}
-    if (response.stop_sequence !== null) {
-      metadata.stopSequence = response.stop_sequence
-    }
-    parts.push(
-      new AiResponse.FinishPart({
-        // Anthropic always returns a non-null `stop_reason` for non-streaming responses
-        reason: InternalUtilities.resolveFinishReason(response.stop_reason!),
-        usage: new AiResponse.Usage({
-          inputTokens: response.usage.input_tokens,
-          outputTokens: response.usage.output_tokens,
-          totalTokens: response.usage.input_tokens + response.usage.output_tokens,
-          reasoningTokens: 0,
-          cacheReadInputTokens: response.usage.cache_read_input_tokens ?? 0,
-          cacheWriteInputTokens: response.usage.cache_creation_input_tokens ?? 0
-        }),
-        providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
-      }, constDisableValidation)
+
+    // Anthropic always returns a non-null `stop_reason` for non-streaming responses
+    const finishReason = InternalUtilities.resolveFinishReason(
+      response.stop_reason!,
+      options.responseFormat.type === "json"
     )
-    return new AiResponse.AiResponse({
-      parts
-    }, constDisableValidation)
+    const usage = new Content.Usage({
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      totalTokens: response.usage.input_tokens + response.usage.output_tokens,
+      cachedInputTokens: response.usage.cache_read_input_tokens ?? undefined
+    })
+
+    const finish = Content.finishPart({ reason: finishReason, usage })
+    const metadata = { stopSequence: response.stop_sequence } as const
+
+    Content.unsafeSetProviderMetadata(finish, ProviderMetadata, metadata)
+
+    parts.push(finish)
+
+    return parts
   }
 )
 
-const isCitationPart = (part: AiPrompt.UserMessagePart): part is AiPrompt.FilePart => {
-  if (part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")) {
-    const metadata = Option.getOrUndefined(part.getProviderOptions(ProviderOptions))
-    return metadata?.citations?.enabled ?? false
-  }
-  return false
-}
+const makeStreamResponse: (
+  stream: Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never>,
+  options: LanguageModel.ProviderOptions
+) => Stream.Stream<
+  Content.StreamResponsePart<any>,
+  AiError | HttpClientError | ParseError,
+  IdGenerator.IdGenerator
+> = Effect.fnUntraced(
+  function*(stream, options) {
+    const idGenerator = yield* IdGenerator.IdGenerator
+    const citableDocuments = extractCitableDocuments(options.prompt)
 
-const extractCitableDocuments = (prompt: AiPrompt.AiPrompt) => {
-  return pipe(
-    prompt.content,
-    Arr.filter((message) => message.role === "user"),
-    Arr.flatMap((message) => message.content),
-    Arr.filterMap((part) =>
-      isCitationPart(part)
-        ? Option.some({
-          title: part.filename ?? "Untitled Document",
-          filename: part.filename,
-          mediaType: part.mediaType
-        })
-        : Option.none()
+    // Setup all requisite state for the streaming response
+    let finishReason: Content.FinishReason = "unknown"
+    const contentBlocks: Record<
+      number,
+      | {
+        readonly type: "text"
+      }
+      | {
+        readonly type: "reasoning"
+      }
+      | {
+        readonly type: "tool-call"
+        readonly id: string
+        readonly name: string
+        params: string
+        readonly isProviderDefined: boolean
+      }
+    > = {}
+    let blockType:
+      | "text"
+      | "thinking"
+      | "redacted_thinking"
+      | "tool_use"
+      | "server_tool_use"
+      | "web_search_tool_result"
+      | "code_execution_tool_result"
+      | undefined = undefined
+    const usage: Mutable<typeof Content.Usage.Encoded> = {
+      inputTokens: undefined,
+      outputTokens: undefined,
+      totalTokens: undefined
+    }
+    const metadata: DeepMutable<ProviderMetadata.Service["finish"]> = {
+      usage: {},
+      stopSequence: undefined
+    }
+
+    return stream.pipe(
+      Stream.mapEffect(Effect.fnUntraced(function*(event: MessageStreamEvent) {
+        const parts: Array<Content.StreamResponsePart<any>> = []
+
+        switch (event.type) {
+          case "ping": {
+            break
+          }
+
+          case "message_start": {
+            // Track usage metadata
+            usage.inputTokens = event.message.usage.input_tokens
+            if (Predicate.isNotNullable(event.message.usage.cache_read_input_tokens)) {
+              usage.cachedInputTokens = event.message.usage.cache_read_input_tokens
+            }
+            if (Predicate.isNotNullable(event.message.usage.service_tier)) {
+              metadata.usage.serviceTier = event.message.usage.service_tier
+            }
+            if (Predicate.isNotNullable(event.message.usage.cache_creation_input_tokens)) {
+              metadata.usage.cacheCreationInputTokens = event.message.usage.cache_creation_input_tokens
+            }
+            if (Predicate.isNotNullable(event.message.usage.cache_creation)) {
+              metadata.usage.cacheCreation = {
+                ephemeral5mInputTokens: event.message.usage.cache_creation.ephemeral_5m_input_tokens,
+                ephemeral1hInputTokens: event.message.usage.cache_creation.ephemeral_1h_input_tokens
+              }
+            }
+            if (Predicate.isNotNullable(event.message.usage.server_tool_use)) {
+              metadata.usage.serverToolUse = {
+                webSearchRequests: event.message.usage.server_tool_use.web_search_requests
+              }
+            }
+
+            // Track response metadata
+            const responseMetadata = Content.responseMetadataPart({
+              id: Option.some(event.message.id),
+              modelId: Option.some(event.message.model),
+              timestamp: Option.none()
+            })
+
+            parts.push(responseMetadata)
+
+            break
+          }
+
+          case "message_delta": {
+            // Track usage metadata
+            if (Predicate.isNotNullable(event.usage.output_tokens)) {
+              usage.outputTokens = event.usage.output_tokens
+            }
+            usage.totalTokens = (usage.inputTokens ?? 0) + (event.usage.output_tokens ?? 0)
+
+            // Track stop sequence metadata
+            if (Predicate.isNotNullable(event.delta.stop_sequence)) {
+              metadata.stopSequence = event.delta.stop_sequence
+            }
+
+            // Track the response finish reason
+            if (Predicate.isNotNullable(event.delta.stop_reason)) {
+              finishReason = InternalUtilities.resolveFinishReason(event.delta.stop_reason)
+            }
+
+            break
+          }
+
+          case "message_stop": {
+            const finishPart = Content.finishPart({
+              reason: finishReason,
+              usage: new Content.Usage(usage)
+            })
+
+            Content.unsafeSetProviderMetadata(finishPart, ProviderMetadata, metadata)
+
+            parts.push(finishPart)
+
+            break
+          }
+
+          case "content_block_start": {
+            blockType = event.content_block.type
+
+            switch (event.content_block.type) {
+              case "text": {
+                contentBlocks[event.index] = { type: "text" }
+
+                parts.push(Content.textStartPart({ id: event.index.toString() }))
+
+                break
+              }
+
+              case "thinking": {
+                contentBlocks[event.index] = { type: "reasoning" }
+
+                parts.push(Content.reasoningStartPart({ id: event.index.toString() }))
+
+                break
+              }
+
+              case "redacted_thinking": {
+                contentBlocks[event.index] = { type: "reasoning" }
+
+                const reasoningPart = Content.reasoningStartPart({ id: event.index.toString() })
+
+                const metadata: AnthropicReasoningMetadata = {
+                  type: "redacted_thinking",
+                  redactedData: event.content_block.data
+                }
+
+                Content.unsafeSetProviderMetadata(reasoningPart, ProviderMetadata, metadata)
+
+                parts.push(reasoningPart)
+
+                break
+              }
+
+              case "tool_use": {
+                contentBlocks[event.index] = {
+                  type: "tool-call",
+                  id: event.content_block.id,
+                  name: event.content_block.name,
+                  params: "",
+                  isProviderDefined: false
+                }
+
+                parts.push(Content.toolParamsStartPart({
+                  id: event.content_block.id,
+                  name: event.content_block.name,
+                  isProviderDefined: false
+                }))
+
+                break
+              }
+
+              case "server_tool_use": {
+                if (
+                  // TODO(Max): add support for beta provider-defined tool calls
+                  /*event.content_block.name === "code_execution" ||*/
+                  event.content_block.name === "web_search"
+                ) {
+                  contentBlocks[event.index] = {
+                    type: "tool-call",
+                    id: event.content_block.id,
+                    name: event.content_block.name,
+                    params: "",
+                    isProviderDefined: true
+                  }
+
+                  parts.push(Content.toolParamsStartPart({
+                    id: event.content_block.id,
+                    name: event.content_block.name,
+                    isProviderDefined: true
+                  }))
+                }
+
+                break
+              }
+
+              // TODO(Max): add support for beta provider-defined tool calls
+              // case "code_execution_tool_result": {
+              //   break
+              // }
+
+              case "web_search_tool_result": {
+                const toolName = "web_search"
+                const tool = options.tools.find((tool) => tool.name === toolName) as
+                  | Tool.AnyProviderDefined
+                  | undefined
+
+                if (Predicate.isUndefined(tool)) {
+                  return yield* new AiError({
+                    module: "AnthropicLanguageModel",
+                    method: "makeResponse",
+                    description:
+                      `Recevied web search tool result but corresponding tool not present in provided toolkit`
+                  })
+                }
+
+                const result = yield* tool.decodeResult(event.content_block.content)
+
+                const toolResultPart = Content.toolResultPart({
+                  id: event.content_block.tool_use_id,
+                  name: toolName,
+                  result,
+                  isProviderDefined: true
+                })
+
+                parts.push(toolResultPart)
+
+                break
+              }
+            }
+
+            break
+          }
+
+          case "content_block_delta": {
+            switch (event.delta.type) {
+              case "text_delta": {
+                parts.push(Content.textDeltaPart({
+                  id: event.index.toString(),
+                  delta: event.delta.text
+                }))
+
+                break
+              }
+
+              case "thinking_delta": {
+                parts.push(Content.reasoningDeltaPart({
+                  id: event.index.toString(),
+                  delta: event.delta.thinking
+                }))
+
+                break
+              }
+
+              case "signature_delta": {
+                if (blockType === "thinking") {
+                  const part = Content.reasoningDeltaPart({
+                    id: event.index.toString(),
+                    delta: ""
+                  })
+
+                  const metadata: AnthropicReasoningMetadata = {
+                    type: "thinking",
+                    signature: event.delta.signature
+                  }
+
+                  Content.unsafeSetProviderMetadata(part, ProviderMetadata, metadata)
+
+                  parts.push(part)
+                }
+
+                break
+              }
+
+              case "input_json_delta": {
+                const contentBlock = contentBlocks[event.index]
+                const delta = event.delta.partial_json
+
+                if (contentBlock.type === "tool-call") {
+                  parts.push(Content.toolParamsDeltaPart({
+                    id: contentBlock.id,
+                    delta
+                  }))
+
+                  contentBlock.params += delta
+                }
+
+                break
+              }
+
+              case "citations_delta": {
+                const citation = event.delta.citation
+
+                const source = yield* processCitation(citation, citableDocuments, idGenerator)
+                if (Predicate.isNotUndefined(source)) {
+                  parts.push(source)
+                }
+              }
+            }
+
+            break
+          }
+
+          case "content_block_stop": {
+            if (Predicate.isNotNullable(contentBlocks[event.index])) {
+              const contentBlock = contentBlocks[event.index]
+
+              switch (contentBlock.type) {
+                case "text": {
+                  parts.push(Content.textEndPart({ id: event.index.toString() }))
+                  break
+                }
+
+                case "reasoning": {
+                  parts.push(Content.reasoningEndPart({ id: event.index.toString() }))
+                  break
+                }
+
+                case "tool-call": {
+                  parts.push(Content.toolParamsEndPart({
+                    id: contentBlock.id
+                  }))
+
+                  // If the tool call has no parameters, an empty string is returned
+                  const params = contentBlock.params.length === 0 ? "{}" : contentBlock.params
+
+                  parts.push(Content.toolCallPart({
+                    id: contentBlock.id,
+                    name: contentBlock.name,
+                    params: JSON.parse(params),
+                    isProviderDefined: contentBlock.isProviderDefined
+                  }))
+
+                  break
+                }
+              }
+
+              delete contentBlocks[event.index]
+            }
+
+            blockType = undefined
+
+            break
+          }
+        }
+
+        return parts
+      })),
+      Stream.flattenIterables
     )
-  )
-}
+  },
+  Stream.unwrap
+)
+
+// =============================================================================
+// Telemetry
+// =============================================================================
 
 const annotateRequest = (
   span: Span,
@@ -1020,7 +1311,7 @@ const annotateRequest = (
   })
 }
 
-const annotateChatResponse = (
+const annotateResponse = (
   span: Span,
   response: typeof Generated.Message.Encoded
 ): void => {
@@ -1037,21 +1328,255 @@ const annotateChatResponse = (
   })
 }
 
-const annotateStreamResponse = (
-  span: Span,
-  response: AiResponse.AiResponse
-) => {
-  const metadataPart = response.parts.find((part) => part.type === "metadata")
-  const finishPart = response.parts.find((part) => part.type === "finish")
-  addGenAIAnnotations(span, {
-    response: {
-      id: metadataPart?.id,
-      model: metadataPart?.modelId,
-      finishReasons: finishPart?.reason ? [finishPart.reason] : undefined
-    },
-    usage: {
-      inputTokens: finishPart?.usage.inputTokens,
-      outputTokens: finishPart?.usage.outputTokens
-    }
-  })
+const annotateStreamResponse = (span: Span, part: Content.StreamResponsePart<any>) => {
+  if (part.type === "response-metadata") {
+    addGenAIAnnotations(span, {
+      response: {
+        id: Option.getOrUndefined(part.id),
+        model: Option.getOrUndefined(part.modelId)
+      }
+    })
+  }
+  if (part.type === "finish") {
+    addGenAIAnnotations(span, {
+      response: {
+        finishReasons: [part.reason]
+      },
+      usage: {
+        inputTokens: part.usage.inputTokens,
+        outputTokens: part.usage.outputTokens
+      }
+    })
+  }
 }
+
+// =============================================================================
+// Tool Calling
+// =============================================================================
+
+const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOptions) => Effect.Effect<{
+  readonly betas: ReadonlySet<string> | undefined
+  readonly tools: ReadonlyArray<typeof Generated.Tool.Encoded> | undefined
+  readonly toolChoice: typeof Generated.ToolChoice.Encoded | undefined
+}, AiError> = Effect.fnUntraced(function*(config, options) {
+  // If a JSON response format was requested, create a tool and force its use
+  if (options.responseFormat.type === "json") {
+    const name = options.responseFormat.name
+    const ast = options.responseFormat.schema.ast
+    const jsonResponseTool: typeof Generated.Tool.Encoded = {
+      name,
+      description: Tool.getDescriptionFromSchemaAst(ast) ?? "Response with a JSON object",
+      input_schema: Tool.getJsonSchemaFromSchemaAst(ast) as any
+    }
+    return {
+      betas: undefined,
+      tools: [jsonResponseTool],
+      toolChoice: { type: "tool", name, disable_parallel_tool_use: true }
+    }
+  }
+
+  // Return immediately if no tools are in the toolkit or a tool choice of
+  // "none" was specified
+  if (options.tools.length === 0 || options.toolChoice === "none") {
+    return { betas: undefined, tools: undefined, toolChoice: undefined }
+  }
+
+  const betas = new Set<string>()
+  let tools: Array<typeof Generated.Tool.Encoded> = []
+  let toolChoice: typeof Generated.ToolChoice.Encoded | undefined = undefined
+
+  // Convert the tools in the toolkit to the provider-defined format
+  for (const tool of options.tools) {
+    if (Tool.isUserDefined(tool)) {
+      tools.push({
+        name: tool.name,
+        description: Tool.getDescription(tool as any),
+        input_schema: Tool.getJsonSchema(tool as any) as any
+      })
+    }
+
+    if (Tool.isProviderDefined(tool)) {
+      // Ensure that the arguments passed to the provider-defined tool are valid
+      const args = yield* tool.encodeArgs
+      switch (tool.id) {
+        case "anthropic.web_search_20250305": {
+          tools.push({ name: "web_search", type: "web_search_20250305", ...args })
+
+          break
+        }
+        default: {
+          return yield* new AiError({
+            module: "AnthropicLanguageModel",
+            method: "prepareTools",
+            description: `Received request to call unknown provider-defined tool '${tool.name}'`
+          })
+        }
+      }
+    }
+  }
+
+  // Convert the tool choice to the provider-defined format
+  if (options.toolChoice === "auto") {
+    toolChoice = {
+      type: "auto",
+      disable_parallel_tool_use: config.disableParallelToolCalls
+    }
+  } else if (options.toolChoice === "required") {
+    toolChoice = {
+      type: "any",
+      disable_parallel_tool_use: config.disableParallelToolCalls
+    }
+  } else if ("tool" in options.toolChoice) {
+    toolChoice = {
+      type: "tool",
+      name: options.toolChoice.tool,
+      disable_parallel_tool_use: config.disableParallelToolCalls
+    }
+  } else {
+    const allowedTools = new Set(options.toolChoice.oneOf)
+    tools = tools.filter((tool) => allowedTools.has(tool.name))
+    toolChoice = {
+      type: options.toolChoice.mode === "required" ? "any" : "auto",
+      disable_parallel_tool_use: config.disableParallelToolCalls
+    }
+  }
+
+  return { betas, tools, toolChoice }
+})
+
+// =============================================================================
+// Utilities
+// =============================================================================
+
+const isCitationPart = (part: Prompt.UserMessage["content"][number]): part is Prompt.FilePart => {
+  if (part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")) {
+    const metadata = Prompt.getProviderOptions(part, ProviderOptions)
+    return metadata?.citations?.enabled ?? false
+  }
+  return false
+}
+
+interface CitableDocument {
+  readonly title: string
+  readonly fileName: string | undefined
+  readonly mediaType: string
+}
+
+const extractCitableDocuments = (prompt: Prompt.Prompt): ReadonlyArray<CitableDocument> => {
+  const citableDocuments: Array<CitableDocument> = []
+  for (const message of prompt.content) {
+    if (message.role === "user") {
+      for (const part of message.content) {
+        if (isCitationPart(part)) {
+          const fileName = Option.getOrUndefined(part.fileName)
+          citableDocuments.push({
+            title: fileName ?? "Untitled Document",
+            fileName,
+            mediaType: part.mediaType
+          })
+        }
+      }
+    }
+  }
+  return citableDocuments
+}
+
+const getCacheControl = (
+  part:
+    | Prompt.SystemMessage
+    | Prompt.UserMessage
+    | Prompt.AssistantMessage
+    | Prompt.ToolMessage
+    | Prompt.UserMessage["content"][number]
+    | Prompt.AssistantMessage["content"][number]
+    | Prompt.ToolMessage["content"][number]
+): typeof Generated.CacheControlEphemeral.Encoded | undefined => {
+  const providerOptions: {
+    readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
+  } | undefined = Prompt.getProviderOptions(part, ProviderOptions)
+  return providerOptions?.cacheControl
+}
+
+const getDocumentMetadata = (part: Prompt.FilePart): {
+  readonly title: string | undefined
+  readonly context: string | undefined
+} | undefined => {
+  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
+  if (Predicate.isNotUndefined(providerOptions)) {
+    return {
+      title: providerOptions.documentTitle ?? undefined,
+      context: providerOptions.documentContext ?? undefined
+    }
+  }
+  return undefined
+}
+
+const shouldEnableCitations = (part: Prompt.FilePart): boolean => {
+  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
+  return providerOptions?.citations?.enabled ?? false
+}
+
+const processCitation = Effect.fnUntraced(function*(
+  citation:
+    | Generated.ResponseCharLocationCitation
+    | Generated.ResponsePageLocationCitation
+    | Generated.ResponseContentBlockLocationCitation
+    | Generated.ResponseWebSearchResultLocationCitation
+    | Generated.ResponseSearchResultLocationCitation,
+  citableDocuments: ReadonlyArray<CitableDocument>,
+  idGenerator: IdGenerator.Service
+) {
+  if (citation.type === "page_location" || citation.type === "char_location") {
+    const citedDocument = citableDocuments[citation.document_index]
+    if (Predicate.isNotUndefined(citedDocument)) {
+      const id = yield* idGenerator.generateId()
+
+      const metadata = citation.type === "char_location"
+        ? {
+          type: citation.type,
+          sourceType: "document",
+          citedText: citation.cited_text,
+          startCharIndex: citation.start_char_index,
+          endCharIndex: citation.end_char_index
+        } as const
+        : {
+          type: citation.type,
+          sourceType: "document",
+          citedText: citation.cited_text,
+          startPageNumber: citation.start_page_number,
+          endPageNumber: citation.end_page_number
+        } as const
+
+      const source = Content.documentSourcePart({
+        id,
+        mediaType: citedDocument.mediaType,
+        title: citation.document_title ?? citedDocument.title,
+        fileName: citedDocument.fileName
+      })
+
+      Content.unsafeSetProviderMetadata(source, ProviderMetadata, metadata)
+
+      return source
+    }
+  }
+
+  if (citation.type === "web_search_result_location") {
+    const id = yield* idGenerator.generateId()
+
+    const metadata = {
+      sourceType: "url",
+      citedText: citation.cited_text,
+      encryptedIndex: citation.encrypted_index
+    } as const
+
+    const source = Content.urlSourcePart({
+      id,
+      url: new URL(citation.url),
+      title: citation.title ?? "Untitled"
+    })
+
+    Content.unsafeSetProviderMetadata(source, ProviderMetadata, metadata)
+
+    return source
+  }
+})

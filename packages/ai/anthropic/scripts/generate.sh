@@ -26,4 +26,5 @@ pnpm openapi-gen -s "${temp_dir}/anthropic.yaml" >> src/Generated.ts
 
 pnpm eslint --fix src/Generated.ts
 
-git apply --reject --whitespace=fix "${SCRIPT_DIR}/generated.patch"
+# No patch required at this time
+# git apply --reject --whitespace=fix "${SCRIPT_DIR}/generated.patch"
