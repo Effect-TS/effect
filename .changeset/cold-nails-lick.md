@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Simplify raceAll implementation
+Simplify Effect.raceAll implementation, ensure children fibers are awaited
