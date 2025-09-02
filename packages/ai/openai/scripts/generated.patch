@@ -1,5 +1,5 @@
 diff --git a/packages/ai/openai/src/Generated.ts b/packages/ai/openai/src/Generated.ts
-index 5e06e0ff8..6db790217 100644
+index 5e06e0ff8..55ad4d7c5 100644
 --- a/packages/ai/openai/src/Generated.ts
 +++ b/packages/ai/openai/src/Generated.ts
 @@ -374,7 +374,7 @@ export class AssistantSupportedModels extends S.Literal(
@@ -11,6 +11,15 @@ index 5e06e0ff8..6db790217 100644
  
  export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
    /**
+@@ -779,7 +779,7 @@ export class CreateTranscriptionResponseVerboseJson
+ {}
+ 
+ export class CreateTranscription200
+-  extends S.Union(CreateTranscriptionResponseJson, CreateTranscriptionResponseVerboseJson)
++  extends S.Union(CreateTranscriptionResponseVerboseJson, CreateTranscriptionResponseJson)
+ {}
+ 
+ export class CreateTranslationRequestModelEnum extends S.Literal("whisper-1") {}
 @@ -1229,7 +1229,7 @@ export class ChatCompletionTokenLogprob extends S.Class<ChatCompletionTokenLogpr
   *
   *   When this parameter is set, the response body will include the `service_tier` utilized.
@@ -38,19 +47,19 @@ index 5e06e0ff8..6db790217 100644
      })),
      /**
       * The Unix timestamp (in seconds) of when the chat completion was created.
-@@ -2065,6 +2065,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
+@@ -2064,6 +2064,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
+    */
    "model": ModelIdsShared,
    "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
-   "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
 +  /**
 +   * Constrains the verbosity of the model's response. Lower values will result
 +   * in more concise responseswhile higher values will result in more verbose
 +   * responses.
 +   */
 +  "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true, default: () => "medium" as const }),
+   "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
    /**
     * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
-    */
 @@ -3111,7 +3117,7 @@ export class Eval extends S.Class<Eval>("Eval")({
        EvalPythonGrader,
        EvalScoreModelGrader
