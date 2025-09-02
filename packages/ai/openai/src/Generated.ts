@@ -779,7 +779,7 @@ export class CreateTranscriptionResponseVerboseJson
 {}
 
 export class CreateTranscription200
-  extends S.Union(CreateTranscriptionResponseJson, CreateTranscriptionResponseVerboseJson)
+  extends S.Union(CreateTranscriptionResponseVerboseJson, CreateTranscriptionResponseJson)
 {}
 
 export class CreateTranslationRequestModelEnum extends S.Literal("whisper-1") {}
@@ -2064,13 +2064,13 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
    */
   "model": ModelIdsShared,
   "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   /**
    * Constrains the verbosity of the model's response. Lower values will result
    * in more concise responseswhile higher values will result in more verbose
    * responses.
    */
   "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true, default: () => "medium" as const }),
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
   /**
    * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
    */
