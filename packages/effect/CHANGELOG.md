@@ -1,5 +1,13 @@
 # effect
 
+## 3.17.11
+
+### Patch Changes
+
+- [#5449](https://github.com/Effect-TS/effect/pull/5449) [`fb5e414`](https://github.com/Effect-TS/effect/commit/fb5e414943df05654db90952eb4f5339fc8cd9a1) Thanks @tim-smart! - Simplify Effect.raceAll implementation, ensure children fibers are awaited
+
+- [#5451](https://github.com/Effect-TS/effect/pull/5451) [`018363b`](https://github.com/Effect-TS/effect/commit/018363b9cbe3cdd553d59592cb24a0fc0fa47bdd) Thanks @mikearnaldi! - Fix Predicate.isIterable to allow strings
+
 ## 3.17.10
 
 ### Patch Changes
