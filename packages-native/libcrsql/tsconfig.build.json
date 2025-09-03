@@ -6,5 +6,5 @@
     "declarationDir": "build/dts",
     "stripInternal": true
   },
-  "exclude": ["src/effect.ts"]
+  "exclude": []
 }

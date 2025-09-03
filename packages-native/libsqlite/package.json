@@ -35,7 +35,8 @@
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
-    "coverage": "vitest --coverage"
+    "coverage": "vitest --coverage",
+    "prepublishOnly": "pnpm build && node scripts/verify-exports.mjs"
   },
   "peerDependencies": {
     "effect": "*"
@@ -44,5 +45,15 @@
     "effect": {
       "optional": true
     }
-  }
+  },
+  "files": [
+    "build",
+    "dist",
+    "src",
+    "lib",
+    "scripts/verify-exports.mjs",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
 }
