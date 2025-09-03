@@ -1,5 +1,16 @@
 # @effect-native/libcrsql Changelog
 
+## 0.16.302
+
+### Patch Changes
+
+- [#84](https://github.com/effect-native/effect-native/pull/84) [`c9b303a`](https://github.com/effect-native/effect-native/commit/c9b303a3cc23f34eb10fdaa80e217475046edb55) Thanks @subtleGradient! - README example how to embed and use libsqlite and crsqlite in a compiled Bun single file executable
+
+- [#87](https://github.com/effect-native/effect-native/pull/87) [`ddac582`](https://github.com/effect-native/effect-native/commit/ddac5829f4280305092dd552f99e0d691ad25399) Thanks @subtleGradient! - Include the `./effect` subpath in the published build and guard it prepublish.
+  - Remove `src/effect.ts` from `tsconfig.build.json` exclusions so ESM/CJS/DTS are emitted.
+  - Add `scripts/verify-exports.mjs` and wire `prepublishOnly` to build + verify.
+  - Prevents `ERR_MODULE_NOT_FOUND` for `@effect-native/libcrsql/effect`.
+
 ## 0.16.301
 
 ### Patch Changes
