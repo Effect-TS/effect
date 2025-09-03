@@ -207,7 +207,6 @@ export const make = (
               try: () => db.loadExtension(path),
               catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
             }),
-            // Newly loaded extension may affect query planning, so clear the cache to ensure all queries are re-planned
             () => prepareCache.invalidateAll
           )
         }
