@@ -326,6 +326,11 @@ export const Service = <Self>() =>
   } | {
     readonly layers: Record<string, Layer.Layer<any, any, any>>
   },
+  const PreloadKeys extends
+    | Iterable<
+      Lookup extends { readonly lookup: (key: infer K) => any } ? K : never
+    >
+    | undefined = undefined,
   const Deps extends ReadonlyArray<Layer.Layer<any, any, any>> = [],
   const Preload extends boolean = false
 >(
@@ -337,7 +342,7 @@ export const Service = <Self>() =>
       readonly idleTimeToLive?: Duration.DurationInput | undefined
     }
     & (Lookup extends { readonly lookup: (key: infer K) => any } ? {
-        readonly preloadKeys?: Iterable<K> | undefined
+        readonly preloadKeys?: PreloadKeys
         readonly preload?: never
       } :
       {
@@ -353,7 +358,7 @@ export const Service = <Self>() =>
   Service.Success<Lookup>,
   Preload extends true ? never : Service.Error<Lookup>,
   Service.Context<Lookup>,
-  Preload extends true ? Service.Error<Lookup> : never,
+  Preload extends true ? Service.Error<Lookup> : PreloadKeys extends undefined ? never : Service.Error<Lookup>,
   Deps[number]
 > => {
   const Err = globalThis.Error as any
