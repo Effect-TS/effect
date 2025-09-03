@@ -12,7 +12,7 @@ import * as Layer from "./Layer.js"
 import * as RcMap from "./RcMap.js"
 import * as Runtime from "./Runtime.js"
 import * as Scope from "./Scope.js"
-import type { Mutable } from "./Types.js"
+import type { Mutable, NoExcessProperties } from "./Types.js"
 
 /**
  * @since 3.14.0
@@ -321,45 +321,40 @@ export interface TagClass<
 export const Service = <Self>() =>
 <
   const Id extends string,
-  Lookup extends {
-    readonly lookup: (key: any) => Layer.Layer<any, any, any>
-  } | {
-    readonly layers: Record<string, Layer.Layer<any, any, any>>
-  },
-  const PreloadKeys extends
-    | Iterable<
-      Lookup extends { readonly lookup: (key: infer K) => any } ? K : never
+  Options extends
+    | NoExcessProperties<
+      {
+        readonly lookup: (key: any) => Layer.Layer<any, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>>
+        readonly idleTimeToLive?: Duration.DurationInput | undefined
+        readonly preloadKeys?:
+          | Iterable<Options extends { readonly lookup: (key: infer K) => any } ? K : never>
+          | undefined
+      },
+      Options
     >
-    | undefined = undefined,
-  const Deps extends ReadonlyArray<Layer.Layer<any, any, any>> = [],
-  const Preload extends boolean = false
+    | NoExcessProperties<{
+      readonly layers: Record<string, Layer.Layer<any, any, any>>
+      readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>>
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+      readonly preload?: boolean
+    }, Options>
 >(
   id: Id,
-  options:
-    & Lookup
-    & {
-      readonly dependencies?: Deps | undefined
-      readonly idleTimeToLive?: Duration.DurationInput | undefined
-    }
-    & (Lookup extends { readonly lookup: (key: infer K) => any } ? {
-        readonly preloadKeys?: PreloadKeys
-        readonly preload?: never
-      } :
-      {
-        readonly preloadKeys?: never
-        readonly preload?: Preload | undefined
-      })
+  options: Options
 ): TagClass<
   Self,
   Id,
-  Lookup extends { readonly lookup: (key: infer K) => any } ? K
-    : Lookup extends { readonly layers: infer Layers } ? keyof Layers
+  Options extends { readonly lookup: (key: infer K) => any } ? K
+    : Options extends { readonly layers: infer Layers } ? keyof Layers
     : never,
-  Service.Success<Lookup>,
-  Preload extends true ? never : Service.Error<Lookup>,
-  Service.Context<Lookup>,
-  Preload extends true ? Service.Error<Lookup> : PreloadKeys extends undefined ? never : Service.Error<Lookup>,
-  Deps[number]
+  Service.Success<Options>,
+  Options extends { readonly preload: true } ? never : Service.Error<Options>,
+  Service.Context<Options>,
+  Options extends { readonly preload: true } ? Service.Error<Options>
+    : Options extends { readonly preloadKey: Iterable<any> } ? Service.Error<Options>
+    : never,
+  Options extends { readonly dependencies: ReadonlyArray<any> } ? Options["dependencies"][number] : never
 > => {
   const Err = globalThis.Error as any
   const limit = Err.stackTraceLimit
