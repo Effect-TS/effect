@@ -245,6 +245,20 @@ describe("Options", () => {
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p("'abc' is not a integer")))
     }).pipe(runEffect))
 
+  it("should take the value of the last withDefault if option is not passed", () =>
+    Effect.gen(function*() {
+      const option = pipe(Options.integer("t"), Options.withDefault(0), Options.withDefault(1))
+      const result = yield* process(option, [], CliConfig.defaultConfig)
+      expect(result).toEqual([[], 1])
+    }).pipe(runEffect))
+
+  it("should allow to overwrite the default of a boolean option", () =>
+    Effect.gen(function*() {
+      const option = pipe(Options.boolean("b"), Options.withDefault(true))
+      const result = yield* process(option, [], CliConfig.defaultConfig)
+      expect(result).toEqual([[], true])
+    }).pipe(runEffect))
+
   it("validates with case-sensitive configuration", () =>
     Effect.gen(function*() {
       const config = CliConfig.make({ isCaseSensitive: true, autoCorrectLimit: 2 })
