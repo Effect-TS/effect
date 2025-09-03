@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.13
+
+### Patch Changes
+
+- [#5462](https://github.com/Effect-TS/effect/pull/5462) [`51bfc78`](https://github.com/Effect-TS/effect/commit/51bfc78a7003e663f24941f7bc18485abf4caf15) Thanks @tim-smart! - ensure tracerLogger does not drop message items
+
 ## 3.17.12
 
 ### Patch Changes
