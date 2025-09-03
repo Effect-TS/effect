@@ -46,6 +46,7 @@
     "coverage": "vitest --coverage"
   },
   "devDependencies": {
+    "@effect-native/libcrsql": "^0.16.303",
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",
