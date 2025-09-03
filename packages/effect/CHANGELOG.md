@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.12
+
+### Patch Changes
+
+- [#5456](https://github.com/Effect-TS/effect/pull/5456) [`b359bdc`](https://github.com/Effect-TS/effect/commit/b359bdca4fe25bf0485d0f744c54ec3fed48af70) Thanks @tim-smart! - add preload options to LayerMap
+
 ## 3.17.11
 
 ### Patch Changes
