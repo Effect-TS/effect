@@ -1,5 +1,14 @@
 # @effect-native/libsqlite
 
+## 3.50.203
+
+### Patch Changes
+
+- [#90](https://github.com/effect-native/effect-native/pull/90) [`4c4e1ca`](https://github.com/effect-native/effect-native/commit/4c4e1ca61f34cdf30133827d018c0b5f68eb0611) Thanks @subtleGradient! - Add prepublish verification for the `./effect` subpath artifacts.
+  - Introduce `scripts/verify-exports.mjs` that checks `dist/dist/{esm,cjs,dts}/effect.*` and attempts an ESM import.
+  - Wire `prepublishOnly` to build + verify and whitelist the script in `files`.
+  - Prevents publishing a package where `@effect-native/libsqlite/effect` fails to resolve.
+
 ## 3.50.202
 
 ### Patch Changes

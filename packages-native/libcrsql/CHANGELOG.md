@@ -1,5 +1,14 @@
 # @effect-native/libcrsql Changelog
 
+## 0.16.303
+
+### Patch Changes
+
+- [#90](https://github.com/effect-native/effect-native/pull/90) [`4c4e1ca`](https://github.com/effect-native/effect-native/commit/4c4e1ca61f34cdf30133827d018c0b5f68eb0611) Thanks @subtleGradient! - Include the `./effect` subpath in the published build and guard it prepublish.
+  - Remove `src/effect.ts` from `tsconfig.build.json` exclusions so ESM/CJS/DTS are emitted.
+  - Add `scripts/verify-exports.mjs` and wire `prepublishOnly` to build + verify.
+  - Prevents `ERR_MODULE_NOT_FOUND` for `@effect-native/libcrsql/effect`.
+
 ## 0.16.302
 
 ### Patch Changes
