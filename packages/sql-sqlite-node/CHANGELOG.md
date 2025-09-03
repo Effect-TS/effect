@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-node
 
+## 0.45.2
+
+### Patch Changes
+
+- [#5459](https://github.com/Effect-TS/effect/pull/5459) [`5fa7404`](https://github.com/Effect-TS/effect/commit/5fa7404a3764a74937b3327cfdd265f3dd936016) Thanks @subtleGradient! - Invalidate the prepared-statement cache after `loadExtension`.
+
+- Updated dependencies [[`b359bdc`](https://github.com/Effect-TS/effect/commit/b359bdca4fe25bf0485d0f744c54ec3fed48af70)]:
+  - effect@3.17.12
+
 ## 0.45.1
 
 ### Patch Changes
