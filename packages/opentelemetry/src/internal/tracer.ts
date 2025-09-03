@@ -22,6 +22,21 @@ const kindMap = {
   "consumer": OtelApi.SpanKind.CONSUMER
 }
 
+const getOtelParent = (tracer: OtelApi.TraceAPI, otelContext: OtelApi.Context, context: Context.Context<never>) => {
+  const active = tracer.getSpan(otelContext)
+  const otelParent = active ? active.spanContext() : undefined
+  return otelParent
+    ? Option.some(
+      EffectTracer.externalSpan({
+        spanId: otelParent.spanId,
+        traceId: otelParent.traceId,
+        sampled: (otelParent.traceFlags & 1) === 1,
+        context
+      })
+    )
+    : Option.none()
+}
+
 /** @internal */
 export class OtelSpan implements EffectTracer.Span {
   readonly [OtelSpanTypeId]: typeof OtelSpanTypeId
@@ -32,20 +47,28 @@ export class OtelSpan implements EffectTracer.Span {
   readonly traceId: string
   readonly attributes = new Map<string, unknown>()
   readonly sampled: boolean
+  readonly parent: Option.Option<EffectTracer.AnySpan>
   status: EffectTracer.SpanStatus
 
   constructor(
     contextApi: OtelApi.ContextAPI,
+    traceApi: OtelApi.TraceAPI,
     tracer: OtelApi.Tracer,
     readonly name: string,
-    readonly parent: Option.Option<EffectTracer.AnySpan>,
+    effectParent: Option.Option<EffectTracer.AnySpan>,
     readonly context: Context.Context<never>,
     readonly links: Array<EffectTracer.SpanLink>,
     startTime: bigint,
-    readonly kind: EffectTracer.SpanKind
+    readonly kind: EffectTracer.SpanKind,
+    options?: EffectTracer.SpanOptions
   ) {
     this[OtelSpanTypeId] = OtelSpanTypeId
     const active = contextApi.active()
+    this.parent = effectParent._tag === "Some"
+      ? effectParent
+      : (options?.root !== true)
+      ? getOtelParent(traceApi, active, context)
+      : Option.none()
     this.span = tracer.startSpan(
       name,
       {
@@ -58,8 +81,8 @@ export class OtelSpan implements EffectTracer.Span {
           : undefined as any,
         kind: kindMap[this.kind]
       },
-      parent._tag === "Some"
-        ? populateContext(active, parent.value, context)
+      this.parent._tag === "Some"
+        ? populateContext(active, this.parent.value, context)
         : OtelApi.trace.deleteSpan(active)
     )
     const spanContext = this.span.spanContext()
@@ -143,16 +166,18 @@ export const Tracer = Context.GenericTag<OtelTracer, OtelApi.Tracer>("@effect/op
 /** @internal */
 export const make = Effect.map(Tracer, (tracer) =>
   EffectTracer.make({
-    span(name, parent, context, links, startTime, kind) {
+    span(name, parent, context, links, startTime, kind, options) {
       return new OtelSpan(
         OtelApi.context,
+        OtelApi.trace,
         tracer,
         name,
         parent,
         context,
         links.slice(),
         startTime,
-        kind
+        kind,
+        options
       )
     },
     context(execution, fiber) {
