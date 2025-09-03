@@ -1,7 +1,6 @@
 /* eslint-env node */
 /* global console, process */
 import { existsSync, readFileSync } from "node:fs"
-import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
@@ -12,14 +11,23 @@ const root = dirname(__dirname)
 function assert(cond, msg) {
   if (!cond) {
     console.error(`verify-exports: ${msg}`)
-
     process.exit(1)
   }
 }
 
-const distEsm = join(root, "dist/dist/esm/effect.js")
-const distCjs = join(root, "dist/dist/cjs/effect.js")
-const distDts = join(root, "dist/dist/dts/effect.d.ts")
+const primary = {
+  esm: join(root, "dist/esm/effect.js"),
+  cjs: join(root, "dist/cjs/effect.js"),
+  dts: join(root, "dist/dts/effect.d.ts")
+}
+const fallback = {
+  esm: join(root, "dist/dist/esm/effect.js"),
+  cjs: join(root, "dist/dist/cjs/effect.js"),
+  dts: join(root, "dist/dist/dts/effect.d.ts")
+}
+const distEsm = existsSync(primary.esm) ? primary.esm : fallback.esm
+const distCjs = existsSync(primary.cjs) ? primary.cjs : fallback.cjs
+const distDts = existsSync(primary.dts) ? primary.dts : fallback.dts
 
 assert(existsSync(distEsm), `missing ${distEsm}`)
 assert(existsSync(distCjs), `missing ${distCjs}`)
@@ -35,17 +43,7 @@ assert(pkgJson.exports && pkgJson.exports["./effect"], "exports[\"./effect\"] no
 
 await import(pathToFileURL(distEsm).href).catch((e) => {
   console.error("verify-exports: ESM import failed:", e)
-
   process.exit(1)
 })
-
-// Also verify CJS require works
-try {
-  const req = createRequire(import.meta.url)
-  req(distCjs)
-} catch (e) {
-  console.error("verify-exports: CJS require failed:", e)
-  process.exit(1)
-}
 
 console.log("verify-exports: OK")

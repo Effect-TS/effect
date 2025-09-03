@@ -28,6 +28,35 @@ This is the **effect-native fork** of the Effect TypeScript framework. It mainta
 - **Always use `return yield*`** for errors and interrupts
 - **100% JSDoc coverage required** with working examples
 
+### Story Before Action
+
+Before taking any action (running commands, editing files, pushing commits, or invoking tools), briefly print the story, then proceed immediately — do not pause to ask for permission beyond the existing approval system. This keeps your pair programmer in the loop without blocking work:
+
+- Goal: what outcome you are aiming for.
+- Obstacle: what’s blocking or risky.
+- Options: 2–3 plausible approaches considered.
+- Chosen path: the approach you will take now.
+- Why: why this is the best path to the goal.
+
+Guidance:
+- Keep each item concise (one short sentence), total under ~6 lines.
+- Place the story immediately before the action (e.g., before shell/tool calls or large edits).
+- Favor clarity over verbosity; update the story when the plan changes.
+- Do not ask for extra confirmation; print the story and execute (the approval system handles sensitive operations).
+
+### Identity and Push Safety
+
+- Public identity: Never take public action in the name of anyone other than yourself. Do not misrepresent who is speaking. When commenting on PRs or public threads, clearly indicate your identity (e.g., note that you are the automation agent when applicable).
+- Push discipline: Never run `git push` without explicit direction from the user/maintainer.
+
+### Pre‑Push Review Gate
+
+Before any `git push` (when explicitly directed to push):
+- Fetch PR comments and CI status for the branch.
+- Ensure all failed checks are resolved or re‑run and passing.
+- Ensure all reviewer feedback is addressed in code or accompanied by clear, inline code comments explaining the resolution or rationale.
+- If any item remains unresolved, refuse to push and report what needs attention instead.
+
 ### Local CI Parity
 
 - Always run `pnpm ok` after making changes and before pushing. This mirrors our GitHub checks (types, lint, circular, codegen + diff, test-types target, docgen, codemod, build) so failures show up locally first.
