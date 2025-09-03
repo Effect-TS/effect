@@ -1531,7 +1531,7 @@ export const tracerLogger = globalValue(
       }
 
       span.value.event(
-        Inspectable.toStringUnknown(Array.isArray(message) ? message[0] : message),
+        Inspectable.toStringUnknown(Array.isArray(message) && message.length === 1 ? message[0] : message),
         clockService.unsafeCurrentTimeNanos(),
         attributes
       )
