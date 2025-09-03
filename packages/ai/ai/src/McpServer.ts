@@ -76,6 +76,7 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
   {
     readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerNotificationRpcs>>
     readonly notificationsMailbox: Mailbox.ReadonlyMailbox<RpcMessage.Request<any>>
+    readonly initializedClients: Set<number>
 
     readonly tools: ReadonlyArray<Tool>
     readonly addTool: (options: {
@@ -192,6 +193,7 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
     return McpServer.of({
       notifications: notifications.client,
       notificationsMailbox,
+      initializedClients: new Set<number>(),
       get tools() {
         return tools
       },
@@ -405,7 +407,11 @@ export const run: (
         payload: encoded
       } as any
       const clientIds = yield* patchedProtocol.clientIds
-      for (const clientId of clientIds) {
+      for (const clientId of server.initializedClients) {
+        if (!clientIds.has(clientId)) {
+          server.initializedClients.delete(clientId)
+          continue
+        }
         yield* patchedProtocol.send(clientId, message as any)
       }
     })),
@@ -1137,7 +1143,7 @@ const layerHandlers = (serverInfo: {
       return {
         // Requests
         ping: () => Effect.succeed({}),
-        initialize(params) {
+        initialize(params, { clientId }) {
           const requestedVersion = params.protocolVersion
           const capabilities: Types.DeepMutable<typeof ServerCapabilities.Type> = {
             completions: {}
@@ -1154,6 +1160,7 @@ const layerHandlers = (serverInfo: {
           if (server.prompts.length > 0) {
             capabilities.prompts = { listChanged: true }
           }
+          server.initializedClients.add(clientId)
           return Effect.succeed({
             capabilities,
             serverInfo,
