@@ -7,6 +7,8 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
 import { Database } from "bun:sqlite"
+import * as Cache from "effect/Cache"
+import * as Duration from "effect/Duration"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -98,23 +100,41 @@ export const make = (
         db.run("PRAGMA journal_mode = WAL;")
       }
 
+      const prepareCache = yield* Cache.make({
+        capacity: 200,
+        timeToLive: Duration.minutes(10),
+        lookup: (sql: string) =>
+          Effect.try({
+            try: () => db.query(sql),
+            catch: (cause) => new SqlError({ cause, message: "Failed to prepare statement" })
+          })
+      })
+
       const run = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
-        Effect.try({
-          try: () => (db.query(sql).all(...(params as any)) ?? []) as Array<any>,
-          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
-        })
+        Effect.flatMap(
+          prepareCache.get(sql),
+          (statement) =>
+            Effect.try({
+              try: () => (statement.all(...(params as any)) ?? []) as Array<any>,
+              catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+            })
+        )
 
       const runValues = (
         sql: string,
         params: ReadonlyArray<Statement.Primitive> = []
       ) =>
-        Effect.try({
-          try: () => (db.query(sql).values(...(params as any)) ?? []) as Array<any>,
-          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
-        })
+        Effect.flatMap(
+          prepareCache.get(sql),
+          (statement) =>
+            Effect.try({
+              try: () => (statement.values(...(params as any)) ?? []) as Array<any>,
+              catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+            })
+        )
 
       return identity<SqliteConnection>({
         execute(sql, params, transformRows) {
@@ -139,10 +159,13 @@ export const make = (
           catch: (cause) => new SqlError({ cause, message: "Failed to export database" })
         }),
         loadExtension: (path) =>
-          Effect.try({
-            try: () => db.loadExtension(path),
-            catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
-          })
+          Effect.tap(
+            Effect.try({
+              try: () => db.loadExtension(path),
+              catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
+            }),
+            () => prepareCache.invalidateAll
+          )
       })
     })
 
