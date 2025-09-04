@@ -169,12 +169,15 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const useStructured = tools.length === 1 && tools[0].structured
       let tool_choice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
-      if (Predicate.isNotUndefined(toolChoice) && !useStructured && tools.length > 0) {
+      const hasUnallowedTools = typeof toolChoice === "object" && "oneOf" in toolChoice
+      if (Predicate.isNotUndefined(toolChoice) && !useStructured && !hasUnallowedTools && tools.length > 0) {
         if (toolChoice === "auto" || toolChoice === "required") {
           tool_choice = toolChoice
         } else if (typeof toolChoice === "object") {
           tool_choice = { type: "function", function: { name: toolChoice.tool } }
         }
+      } else if (hasUnallowedTools && !useStructured) {
+        tool_choice = toolChoice.mode ?? "auto"
       }
       const messages = yield* makeMessages(method, system, prompt)
       return {
