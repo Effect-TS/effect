@@ -323,7 +323,7 @@ export const make = <
         const context = yield* Effect.context<WorkflowEngine>()
         const engine = Context.get(context, EngineTag)
         yield* engine.register(self, (payload, executionId) =>
-          execute(payload, executionId).pipe(
+          Effect.suspend(() => execute(payload, executionId)).pipe(
             Effect.mapInputContext((input) => Context.merge(context, input))
           ) as any)
         return EngineTag.context(engine)
