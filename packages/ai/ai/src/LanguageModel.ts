@@ -11,9 +11,9 @@ import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Concurrency, Mutable, NoExcessProperties } from "effect/Types"
 import { AiError } from "./AiError.js"
-import * as Content from "./Content.js"
 import { defaultIdGenerator, IdGenerator } from "./IdGenerator.js"
 import * as Prompt from "./Prompt.js"
+import * as Response from "./Response.js"
 import type { SpanTransformer } from "./Telemetry.js"
 import { CurrentSpanTransformer } from "./Telemetry.js"
 import type * as Tool from "./Tool.js"
@@ -46,7 +46,7 @@ export interface Service {
     Tools extends Record<string, Tool.Any>,
     Options extends NoExcessProperties<GenerateTextOptions<Tools>, Options>
   >(options: Options & GenerateTextOptions<Tools>) => Stream.Stream<
-    Content.StreamResponsePart<Tools>,
+    Response.StreamPart<Tools>,
     ExtractError<Options>,
     ExtractContext<Options>
   >
@@ -149,16 +149,16 @@ export type ToolChoice<Tools extends string> = "auto" | "none" | "required" | {
   readonly oneOf: ReadonlyArray<Tools>
 }
 
-export interface BaseResponse<Part extends Content.AnyPart> {
+export interface BaseResponse<Part extends Response.AnyPart> {
   readonly content: Array<Part>
 }
 
 export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
-  implements BaseResponse<Content.ResponsePart<Tools>>
+  implements BaseResponse<Response.Part<Tools>>
 {
-  readonly content: Array<Content.ResponsePart<Tools>>
+  readonly content: Array<Response.Part<Tools>>
 
-  constructor(content: Array<Content.ResponsePart<Tools>>) {
+  constructor(content: Array<Response.Part<Tools>>) {
     this.content = content
   }
 
@@ -172,7 +172,7 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
     return text.join("")
   }
 
-  get reasoning(): Array<Content.ReasoningPart> {
+  get reasoning(): Array<Response.ReasoningPart> {
     return this.content.filter((part) => part.type === "reasoning")
   }
 
@@ -186,23 +186,23 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
     return text.length === 0 ? undefined : text.join("")
   }
 
-  get toolCalls(): Array<Content.ToolCallParts<Tools>> {
+  get toolCalls(): Array<Response.ToolCallParts<Tools>> {
     return this.content.filter((part) => part.type === "tool-call")
   }
 
-  get toolResults(): Array<Content.ToolResultParts<Tools>> {
+  get toolResults(): Array<Response.ToolResultParts<Tools>> {
     return this.content.filter((part) => part.type === "tool-result")
   }
 
-  get finishReason(): Content.FinishReason {
+  get finishReason(): Response.FinishReason {
     const finishPart = this.content.find((part) => part.type === "finish")
     return Predicate.isUndefined(finishPart) ? "unknown" : finishPart.reason
   }
 
-  get usage(): Content.Usage {
+  get usage(): Response.Usage {
     const finishPart = this.content.find((part) => part.type === "finish")
     if (Predicate.isUndefined(finishPart)) {
-      return new Content.Usage({
+      return new Response.Usage({
         inputTokens: undefined,
         outputTokens: undefined,
         totalTokens: undefined,
@@ -214,11 +214,11 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
   }
 }
 
-export class GenerateObjectResponse<A> implements BaseResponse<Content.ResponsePart<never>> {
+export class GenerateObjectResponse<A> implements BaseResponse<Response.Part<never>> {
   readonly value: A
-  readonly content: Array<Content.ResponsePart<never>>
+  readonly content: Array<Response.Part<never>>
 
-  constructor(value: A, content: Array<Content.ResponsePart<never>>) {
+  constructor(value: A, content: Array<Response.Part<never>>) {
     this.value = value
     this.content = content
   }
@@ -336,7 +336,7 @@ export interface ConstructorParams {
    * provider has finished text generation.
    */
   readonly generateText: (options: ProviderOptions) => Effect.Effect<
-    Array<Content.ResponsePart<any>>,
+    Array<Response.Part<any>>,
     AiError,
     IdGenerator
   >
@@ -349,7 +349,7 @@ export interface ConstructorParams {
    * provider and accumulated into an `AiResponse`.
    */
   readonly streamText: (options: ProviderOptions) => Stream.Stream<
-    Content.StreamResponsePart<any>,
+    Response.StreamPart<any>,
     AiError,
     IdGenerator
   >
@@ -438,7 +438,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       Tools extends Record<string, Tool.Any>,
       Options extends NoExcessProperties<GenerateTextOptions<Tools>, Options>
     >(options: Options & GenerateTextOptions<Tools>) => Stream.Stream<
-      Content.StreamResponsePart<Tools>,
+      Response.StreamPart<Tools>,
       ExtractError<Options>,
       ExtractContext<Options>
     > = Effect.fnUntraced(
@@ -490,7 +490,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
                 concurrency
               }),
               (toolResults) => Chunk.unsafeFromArray([...content, toolResults])
-            )) as Stream.Stream<Content.StreamResponsePart<any>, AiError, IdGenerator>,
+            )) as Stream.Stream<Response.StreamPart<any>, AiError, IdGenerator>,
           providerOptions
         ] as const
       },
@@ -501,7 +501,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
           return stream
         }
 
-        let response: Array<Content.StreamResponsePart<any>> = []
+        let response: Array<Response.StreamPart<any>> = []
         return stream.pipe(
           Stream.map((content) => {
             response = [...response, content]
@@ -637,7 +637,7 @@ export const streamText = <
 >(
   options: Options & GenerateTextOptions<Tools>
 ): Stream.Stream<
-  Content.StreamResponsePart<Tools>,
+  Response.StreamPart<Tools>,
   ExtractError<Options>,
   LanguageModel | ExtractContext<Options>
 > => Stream.unwrap(LanguageModel.pipe(Effect.map((model) => model.streamText(options))))
@@ -647,7 +647,7 @@ export const streamText = <
 // =============================================================================
 
 const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
-  readonly content: ReadonlyArray<Content.AllParts<any>>
+  readonly content: ReadonlyArray<Response.AllParts<any>>
   readonly toolkit: Toolkit.WithHandler<Tools>
   readonly concurrency: Concurrency | undefined
   readonly method: string
@@ -657,7 +657,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
   Tool.Requirements<Tools[keyof Tools]>
 > => {
   const toolNames: Array<string> = []
-  const toolCalls: Array<Content.ToolCallPart<string, any>> = []
+  const toolCalls: Array<Response.ToolCallPart<string, any>> = []
 
   for (const part of options.content) {
     if (part.type === "tool-call") {
@@ -685,7 +685,7 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
 
 const applySpanTransformer = (
   transformer: Option.Option<SpanTransformer>,
-  response: ReadonlyArray<Content.AllParts<any>>,
+  response: ReadonlyArray<Response.AllParts<any>>,
   options: ProviderOptions
 ): void => {
   if (Option.isSome(transformer)) {

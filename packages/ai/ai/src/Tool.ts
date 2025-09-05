@@ -122,8 +122,8 @@ export interface Tool<
     schema: ParametersSchema
   ): Tool<Name, {
     readonly parameters: ParametersSchema extends Schema.Struct<infer _> ? ParametersSchema
-      : ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
-      : never
+    : ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
+    : never
     readonly success: Config["success"]
     readonly failure: Config["failure"]
   }, Requirements>
@@ -335,8 +335,7 @@ export interface FromTaggedRequest<S extends AnyTaggedRequestSchema> extends
       readonly success: S["success"]
       readonly failure: S["failure"]
     }
-  >
-{}
+  > { }
 
 /**
  * A utility type to extract the `Name` type from an `Tool`.
@@ -742,39 +741,39 @@ export const providerDefined = <
    */
   readonly failure?: Failure
 }) =>
-(args: Schema.Simplify<Schema.Struct.Type<Args>>): ProviderDefined<
-  Name,
-  {
-    readonly args: Schema.Struct<Args>
-    readonly parameters: Schema.Struct<Parameters>
-    readonly success: Success
-    readonly failure: Failure
+  (args: Schema.Simplify<Schema.Struct.Type<Args>>): ProviderDefined<
+    Name,
+    {
+      readonly args: Schema.Struct<Args>
+      readonly parameters: Schema.Struct<Parameters>
+      readonly success: Success
+      readonly failure: Failure
+    }
+  > => {
+    const successSchema = options?.success ?? Schema.Void
+    const failureSchema = options?.failure ?? Schema.Never
+    return providerDefinedProto({
+      id: options.id,
+      name: options.name,
+      args,
+      argsSchema: Schema.Struct(options.args as any),
+      encodeArgs: Schema.encode(Schema.Struct(options.args as any))(args).pipe(
+        Effect.mapError((cause) =>
+          new AiError({
+            module: "Tool",
+            method: "ProviderDefined.encodeArgs",
+            description: `Invalid arguments passed to provider-defined tool '${options.name}'`,
+            cause
+          })
+        )
+      ) as any,
+      parametersSchema: options?.parameters
+        ? Schema.Struct(options?.parameters as any)
+        : constEmptyStruct,
+      successSchema,
+      failureSchema
+    }) as any
   }
-> => {
-  const successSchema = options?.success ?? Schema.Void
-  const failureSchema = options?.failure ?? Schema.Never
-  return providerDefinedProto({
-    id: options.id,
-    name: options.name,
-    args,
-    argsSchema: Schema.Struct(options.args as any),
-    encodeArgs: Schema.encode(Schema.Struct(options.args as any))(args).pipe(
-      Effect.mapError((cause) =>
-        new AiError({
-          module: "Tool",
-          method: "ProviderDefined.encodeArgs",
-          description: `Invalid arguments passed to provider-defined tool '${options.name}'`,
-          cause
-        })
-      )
-    ) as any,
-    parametersSchema: options?.parameters
-      ? Schema.Struct(options?.parameters as any)
-      : constEmptyStruct,
-    successSchema,
-    failureSchema
-  }) as any
-}
 
 /**
  * Constructs a new `Tool` from a `Schema.TaggedRequest`.
@@ -849,7 +848,7 @@ export const getJsonSchemaFromSchemaAst = (ast: AST.AST): JsonSchema.JsonSchema7
     topLevelReferenceStrategy: "skip"
   })
   if (Object.keys($defs).length === 0) return schema
-  ;(schema as any).$defs = $defs
+    ; (schema as any).$defs = $defs
   return schema
 }
 
@@ -861,7 +860,7 @@ export const getJsonSchemaFromSchemaAst = (ast: AST.AST): JsonSchema.JsonSchema7
  * @since 1.0.0
  * @category Annotations
  */
-export class Title extends Context.Tag("@effect/ai/Tool/Title")<Title, string>() {}
+export class Title extends Context.Tag("@effect/ai/Tool/Title")<Title, string>() { }
 
 /**
  * @since 1.0.0
@@ -869,7 +868,7 @@ export class Title extends Context.Tag("@effect/ai/Tool/Title")<Title, string>()
  */
 export class Readonly extends Context.Reference<Readonly>()("@effect/ai/Tool/Readonly", {
   defaultValue: constFalse
-}) {}
+}) { }
 
 /**
  * @since 1.0.0
@@ -877,7 +876,7 @@ export class Readonly extends Context.Reference<Readonly>()("@effect/ai/Tool/Rea
  */
 export class Destructive extends Context.Reference<Destructive>()("@effect/ai/Tool/Destructive", {
   defaultValue: constTrue
-}) {}
+}) { }
 
 /**
  * @since 1.0.0
@@ -885,7 +884,7 @@ export class Destructive extends Context.Reference<Destructive>()("@effect/ai/To
  */
 export class Idempotent extends Context.Reference<Idempotent>()("@effect/ai/Tool/Idempotent", {
   defaultValue: constFalse
-}) {}
+}) { }
 
 /**
  * @since 1.0.0
@@ -893,4 +892,4 @@ export class Idempotent extends Context.Reference<Idempotent>()("@effect/ai/Tool
  */
 export class OpenWorld extends Context.Reference<OpenWorld>()("@effect/ai/Tool/OpenWorld", {
   defaultValue: constTrue
-}) {}
+}) { }
