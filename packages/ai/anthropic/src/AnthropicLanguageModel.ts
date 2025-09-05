@@ -3,10 +3,10 @@
  */
 import { AiError } from "@effect/ai/AiError"
 import * as AiModel from "@effect/ai/AiModel"
-import * as Content from "@effect/ai/Content"
 import * as IdGenerator from "@effect/ai/IdGenerator"
 import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as Prompt from "@effect/ai/Prompt"
+import * as Response from "@effect/ai/Response"
 import { addGenAIAnnotations } from "@effect/ai/Telemetry"
 import * as Tool from "@effect/ai/Tool"
 import type { HttpClientError } from "@effect/platform/HttpClientError"
@@ -218,7 +218,7 @@ export declare namespace ProviderMetadata {
    * @since 1.0.0
    * @category Provider Metadata
    */
-  export interface Service extends Content.AnyProviderMetadata {
+  export interface Service extends Response.AnyProviderMetadata {
     readonly reasoning: AnthropicReasoningMetadata
 
     readonly "reasoning-start": AnthropicReasoningMetadata
@@ -759,17 +759,13 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
 const makeResponse: (
   response: Generated.Message,
   options: LanguageModel.ProviderOptions
-) => Effect.Effect<
-  Array<Content.ResponsePart<any>>,
-  AiError,
-  IdGenerator.IdGenerator
-> = Effect.fnUntraced(
+) => Effect.Effect<Array<Response.Part<any>>, AiError, IdGenerator.IdGenerator> = Effect.fnUntraced(
   function*(response: Generated.Message, options: LanguageModel.ProviderOptions) {
     const idGenerator = yield* IdGenerator.IdGenerator
-    const parts: Array<Content.ResponsePart<any>> = []
+    const parts: Array<Response.Part<any>> = []
     const citableDocuments = extractCitableDocuments(options.prompt)
 
-    const responseMetadata = Content.responseMetadataPart({
+    const responseMetadata = Response.responseMetadataPart({
       id: Option.some(response.id),
       modelId: Option.some(response.model),
       timestamp: Option.none()
@@ -785,7 +781,7 @@ const makeResponse: (
           // then the text parts must instead be added to the response when a
           // tool call is received.
           if (options.responseFormat.type === "text") {
-            parts.push(Content.textPart({ text: part.text }))
+            parts.push(Response.textPart({ text: part.text }))
 
             if (Predicate.isNotNullable(part.citations)) {
               for (const citation of part.citations) {
@@ -806,11 +802,11 @@ const makeResponse: (
             signature: part.signature
           } satisfies AnthropicReasoningMetadata
 
-          const reasoning = Content.reasoningPart({
+          const reasoning = Response.reasoningPart({
             text: part.thinking
           })
 
-          Content.unsafeSetProviderMetadata(reasoning, ProviderMetadata, metadata)
+          Response.unsafeSetProviderMetadata(reasoning, ProviderMetadata, metadata)
 
           parts.push(reasoning)
 
@@ -823,9 +819,9 @@ const makeResponse: (
             redactedData: part.data
           } satisfies AnthropicReasoningMetadata
 
-          const reasoning = Content.reasoningPart({ text: "" })
+          const reasoning = Response.reasoningPart({ text: "" })
 
-          Content.unsafeSetProviderMetadata(reasoning, ProviderMetadata, metadata)
+          Response.unsafeSetProviderMetadata(reasoning, ProviderMetadata, metadata)
 
           parts.push(reasoning)
 
@@ -836,11 +832,11 @@ const makeResponse: (
           // When a `"json"` response format is requested, the JSON that we need
           // will be returned by the tool call injected into the request
           if (options.responseFormat.type === "json") {
-            parts.push(Content.textPart({
+            parts.push(Response.textPart({
               text: JSON.stringify(part.input)
             }))
           } else {
-            parts.push(Content.toolCallPart({
+            parts.push(Response.toolCallPart({
               id: part.id,
               name: part.name,
               params: part.input,
@@ -854,7 +850,7 @@ const makeResponse: (
         case "server_tool_use": {
           // TODO(Max): add support for beta provider-defined tool calls
           if (part.name === "web_search" /*|| part.name === "code_execution"*/) {
-            const toolCall = Content.toolCallPart({
+            const toolCall = Response.toolCallPart({
               id: part.id,
               name: part.name,
               params: part.input,
@@ -886,7 +882,7 @@ const makeResponse: (
 
           const result = yield* tool.decodeResult(part.content)
 
-          const toolResultPart = Content.toolResultPart({
+          const toolResultPart = Response.toolResultPart({
             id: part.tool_use_id,
             name: toolName,
             result,
@@ -905,17 +901,17 @@ const makeResponse: (
       response.stop_reason!,
       options.responseFormat.type === "json"
     )
-    const usage = new Content.Usage({
+    const usage = new Response.Usage({
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       totalTokens: response.usage.input_tokens + response.usage.output_tokens,
       cachedInputTokens: response.usage.cache_read_input_tokens ?? undefined
     })
 
-    const finish = Content.finishPart({ reason: finishReason, usage })
+    const finish = Response.finishPart({ reason: finishReason, usage })
     const metadata = { stopSequence: response.stop_sequence } as const
 
-    Content.unsafeSetProviderMetadata(finish, ProviderMetadata, metadata)
+    Response.unsafeSetProviderMetadata(finish, ProviderMetadata, metadata)
 
     parts.push(finish)
 
@@ -927,7 +923,7 @@ const makeStreamResponse: (
   stream: Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never>,
   options: LanguageModel.ProviderOptions
 ) => Stream.Stream<
-  Content.StreamResponsePart<any>,
+  Response.StreamPart<any>,
   AiError | HttpClientError | ParseError,
   IdGenerator.IdGenerator
 > = Effect.fnUntraced(
@@ -936,7 +932,7 @@ const makeStreamResponse: (
     const citableDocuments = extractCitableDocuments(options.prompt)
 
     // Setup all requisite state for the streaming response
-    let finishReason: Content.FinishReason = "unknown"
+    let finishReason: Response.FinishReason = "unknown"
     const contentBlocks: Record<
       number,
       | {
@@ -962,7 +958,7 @@ const makeStreamResponse: (
       | "web_search_tool_result"
       | "code_execution_tool_result"
       | undefined = undefined
-    const usage: Mutable<typeof Content.Usage.Encoded> = {
+    const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
       outputTokens: undefined,
       totalTokens: undefined
@@ -974,7 +970,7 @@ const makeStreamResponse: (
 
     return stream.pipe(
       Stream.mapEffect(Effect.fnUntraced(function*(event: MessageStreamEvent) {
-        const parts: Array<Content.StreamResponsePart<any>> = []
+        const parts: Array<Response.StreamPart<any>> = []
 
         switch (event.type) {
           case "ping": {
@@ -1006,7 +1002,7 @@ const makeStreamResponse: (
             }
 
             // Track response metadata
-            const responseMetadata = Content.responseMetadataPart({
+            const responseMetadata = Response.responseMetadataPart({
               id: Option.some(event.message.id),
               modelId: Option.some(event.message.model),
               timestamp: Option.none()
@@ -1038,12 +1034,12 @@ const makeStreamResponse: (
           }
 
           case "message_stop": {
-            const finishPart = Content.finishPart({
+            const finishPart = Response.finishPart({
               reason: finishReason,
-              usage: new Content.Usage(usage)
+              usage: new Response.Usage(usage)
             })
 
-            Content.unsafeSetProviderMetadata(finishPart, ProviderMetadata, metadata)
+            Response.unsafeSetProviderMetadata(finishPart, ProviderMetadata, metadata)
 
             parts.push(finishPart)
 
@@ -1057,7 +1053,7 @@ const makeStreamResponse: (
               case "text": {
                 contentBlocks[event.index] = { type: "text" }
 
-                parts.push(Content.textStartPart({ id: event.index.toString() }))
+                parts.push(Response.textStartPart({ id: event.index.toString() }))
 
                 break
               }
@@ -1065,7 +1061,7 @@ const makeStreamResponse: (
               case "thinking": {
                 contentBlocks[event.index] = { type: "reasoning" }
 
-                parts.push(Content.reasoningStartPart({ id: event.index.toString() }))
+                parts.push(Response.reasoningStartPart({ id: event.index.toString() }))
 
                 break
               }
@@ -1073,14 +1069,14 @@ const makeStreamResponse: (
               case "redacted_thinking": {
                 contentBlocks[event.index] = { type: "reasoning" }
 
-                const reasoningPart = Content.reasoningStartPart({ id: event.index.toString() })
+                const reasoningPart = Response.reasoningStartPart({ id: event.index.toString() })
 
                 const metadata: AnthropicReasoningMetadata = {
                   type: "redacted_thinking",
                   redactedData: event.content_block.data
                 }
 
-                Content.unsafeSetProviderMetadata(reasoningPart, ProviderMetadata, metadata)
+                Response.unsafeSetProviderMetadata(reasoningPart, ProviderMetadata, metadata)
 
                 parts.push(reasoningPart)
 
@@ -1096,7 +1092,7 @@ const makeStreamResponse: (
                   isProviderDefined: false
                 }
 
-                parts.push(Content.toolParamsStartPart({
+                parts.push(Response.toolParamsStartPart({
                   id: event.content_block.id,
                   name: event.content_block.name,
                   isProviderDefined: false
@@ -1119,7 +1115,7 @@ const makeStreamResponse: (
                     isProviderDefined: true
                   }
 
-                  parts.push(Content.toolParamsStartPart({
+                  parts.push(Response.toolParamsStartPart({
                     id: event.content_block.id,
                     name: event.content_block.name,
                     isProviderDefined: true
@@ -1151,7 +1147,7 @@ const makeStreamResponse: (
 
                 const result = yield* tool.decodeResult(event.content_block.content)
 
-                const toolResultPart = Content.toolResultPart({
+                const toolResultPart = Response.toolResultPart({
                   id: event.content_block.tool_use_id,
                   name: toolName,
                   result,
@@ -1170,7 +1166,7 @@ const makeStreamResponse: (
           case "content_block_delta": {
             switch (event.delta.type) {
               case "text_delta": {
-                parts.push(Content.textDeltaPart({
+                parts.push(Response.textDeltaPart({
                   id: event.index.toString(),
                   delta: event.delta.text
                 }))
@@ -1179,7 +1175,7 @@ const makeStreamResponse: (
               }
 
               case "thinking_delta": {
-                parts.push(Content.reasoningDeltaPart({
+                parts.push(Response.reasoningDeltaPart({
                   id: event.index.toString(),
                   delta: event.delta.thinking
                 }))
@@ -1189,7 +1185,7 @@ const makeStreamResponse: (
 
               case "signature_delta": {
                 if (blockType === "thinking") {
-                  const part = Content.reasoningDeltaPart({
+                  const part = Response.reasoningDeltaPart({
                     id: event.index.toString(),
                     delta: ""
                   })
@@ -1199,7 +1195,7 @@ const makeStreamResponse: (
                     signature: event.delta.signature
                   }
 
-                  Content.unsafeSetProviderMetadata(part, ProviderMetadata, metadata)
+                  Response.unsafeSetProviderMetadata(part, ProviderMetadata, metadata)
 
                   parts.push(part)
                 }
@@ -1212,7 +1208,7 @@ const makeStreamResponse: (
                 const delta = event.delta.partial_json
 
                 if (contentBlock.type === "tool-call") {
-                  parts.push(Content.toolParamsDeltaPart({
+                  parts.push(Response.toolParamsDeltaPart({
                     id: contentBlock.id,
                     delta
                   }))
@@ -1242,24 +1238,24 @@ const makeStreamResponse: (
 
               switch (contentBlock.type) {
                 case "text": {
-                  parts.push(Content.textEndPart({ id: event.index.toString() }))
+                  parts.push(Response.textEndPart({ id: event.index.toString() }))
                   break
                 }
 
                 case "reasoning": {
-                  parts.push(Content.reasoningEndPart({ id: event.index.toString() }))
+                  parts.push(Response.reasoningEndPart({ id: event.index.toString() }))
                   break
                 }
 
                 case "tool-call": {
-                  parts.push(Content.toolParamsEndPart({
+                  parts.push(Response.toolParamsEndPart({
                     id: contentBlock.id
                   }))
 
                   // If the tool call has no parameters, an empty string is returned
                   const params = contentBlock.params.length === 0 ? "{}" : contentBlock.params
 
-                  parts.push(Content.toolCallPart({
+                  parts.push(Response.toolCallPart({
                     id: contentBlock.id,
                     name: contentBlock.name,
                     params: JSON.parse(params),
@@ -1328,7 +1324,7 @@ const annotateResponse = (
   })
 }
 
-const annotateStreamResponse = (span: Span, part: Content.StreamResponsePart<any>) => {
+const annotateStreamResponse = (span: Span, part: Response.StreamPart<any>) => {
   if (part.type === "response-metadata") {
     addGenAIAnnotations(span, {
       response: {
@@ -1547,14 +1543,14 @@ const processCitation = Effect.fnUntraced(function*(
           endPageNumber: citation.end_page_number
         } as const
 
-      const source = Content.documentSourcePart({
+      const source = Response.documentSourcePart({
         id,
         mediaType: citedDocument.mediaType,
         title: citation.document_title ?? citedDocument.title,
         fileName: citedDocument.fileName
       })
 
-      Content.unsafeSetProviderMetadata(source, ProviderMetadata, metadata)
+      Response.unsafeSetProviderMetadata(source, ProviderMetadata, metadata)
 
       return source
     }
@@ -1569,13 +1565,13 @@ const processCitation = Effect.fnUntraced(function*(
       encryptedIndex: citation.encrypted_index
     } as const
 
-    const source = Content.urlSourcePart({
+    const source = Response.urlSourcePart({
       id,
       url: new URL(citation.url),
       title: citation.title ?? "Untitled"
     })
 
-    Content.unsafeSetProviderMetadata(source, ProviderMetadata, metadata)
+    Response.unsafeSetProviderMetadata(source, ProviderMetadata, metadata)
 
     return source
   }

@@ -63,7 +63,7 @@ export type AllPartsEncoded<Tools extends Record<string, Tool.Any>> =
 // Generate Parts
 // =============================================================================
 
-export type ResponsePart<Tools extends Record<string, Tool.Any>> =
+export type Part<Tools extends Record<string, Tool.Any>> =
   | TextPart
   | ReasoningPart
   | ToolCallParts<Tools>
@@ -74,7 +74,7 @@ export type ResponsePart<Tools extends Record<string, Tool.Any>> =
   | ResponseMetadataPart
   | FinishPart
 
-export type ResponsePartEncoded<Tools extends Record<string, Tool.Any>> =
+export type PartEncoded<Tools extends Record<string, Tool.Any>> =
   | TextPartEncoded
   | ReasoningPartEncoded
   | ReasoningDeltaPartEncoded
@@ -87,9 +87,9 @@ export type ResponsePartEncoded<Tools extends Record<string, Tool.Any>> =
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
 
-export const ResponsePart = <T extends Toolkit.Any>(toolkit: T): Schema.Schema<
-  ResponsePart<Toolkit.Tools<T>>,
-  ResponsePartEncoded<Toolkit.Tools<T>>
+export const Part = <T extends Toolkit.Any>(toolkit: T): Schema.Schema<
+  Part<Toolkit.Tools<T>>,
+  PartEncoded<Toolkit.Tools<T>>
 > => {
   const toolCalls: Array<Schema.Schema<ToolCallPart<string, any>, ToolCallPartEncoded<string, any>>> = []
   const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any>, ToolResultPartEncoded<string, any>>> = []
@@ -114,7 +114,7 @@ export const ResponsePart = <T extends Toolkit.Any>(toolkit: T): Schema.Schema<
 // Stream Parts
 // =============================================================================
 
-export type StreamResponsePart<Tools extends Record<string, Tool.Any>> =
+export type StreamPart<Tools extends Record<string, Tool.Any>> =
   | TextStartPart
   | TextDeltaPart
   | TextEndPart
@@ -132,7 +132,7 @@ export type StreamResponsePart<Tools extends Record<string, Tool.Any>> =
   | ResponseMetadataPart
   | FinishPart
 
-export type StreamResponsePartEncoded<Tools extends Record<string, Tool.Any>> =
+export type StreamPartEncoded<Tools extends Record<string, Tool.Any>> =
   | TextStartPartEncoded
   | TextDeltaPartEncoded
   | TextEndPartEncoded
@@ -150,9 +150,9 @@ export type StreamResponsePartEncoded<Tools extends Record<string, Tool.Any>> =
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
 
-export const StreamResponsePart = <T extends Toolkit.Any>(toolkit: T): Schema.Schema<
-  StreamResponsePart<Toolkit.Tools<T>>,
-  StreamResponsePartEncoded<Toolkit.Tools<T>>
+export const StreamPart = <T extends Toolkit.Any>(toolkit: T): Schema.Schema<
+  StreamPart<Toolkit.Tools<T>>,
+  StreamPartEncoded<Toolkit.Tools<T>>
 > => {
   const toolCalls: Array<Schema.Schema<ToolCallPart<string, any>, ToolCallPartEncoded<string, any>>> = []
   const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any>, ToolResultPartEncoded<string, any>>> = []

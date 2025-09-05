@@ -7,8 +7,8 @@ import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
-import type * as Content from "./Content.js"
 import type { ProviderOptions } from "./LanguageModel.js"
+import type * as Response from "./Response.js"
 
 /**
  * The attributes used to describe telemetry in the context of Generative
@@ -290,7 +290,7 @@ export const addGenAIAnnotations: {
 export interface SpanTransformer {
   (
     options: ProviderOptions & {
-      readonly response: ReadonlyArray<Content.AllParts<any>>
+      readonly response: ReadonlyArray<Response.AllParts<any>>
     }
   ): void
 }
