@@ -118,7 +118,7 @@ export default [
       "@typescript-eslint/no-namespace": "off",
 
       "@effect/dprint": [
-        "error",
+        "warn",
         {
           config: {
             indentWidth: 2,

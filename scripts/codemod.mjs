@@ -4,8 +4,8 @@ import Jscodeshift from "jscodeshift/src/Runner.js"
 import * as Path from "node:path"
 
 // Look up files in all workspace packages including those nested in
-// sub-packages (e.g. `packages/ai/openapi`).
-const pattern = "packages-native/{*,*/*}/src/**/*.ts"
+// sub-packages (e.g. `packages/ai/openapi`) and packages-native.
+const pattern = "packages-native/*/src/**/*.ts"
 
 const paths = Glob.globSync(pattern, {
   ignore: ["**/internal/**"]

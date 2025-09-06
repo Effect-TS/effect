@@ -8,9 +8,10 @@
       // Use ESLint's --fix:
       "source.fixAll.eslint": true,
       // Organize imports on save:
-      "source.organizeImports": true
+      "source.organizeImports": false
     }
   },
+  "language_servers": ["!biome","..."],
   "lsp": {
     "eslint": {
       "initialization_options": {

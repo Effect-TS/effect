@@ -3,7 +3,6 @@
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
-    "@effect-native/bun-test": "workspace:*",
     "@types/bun": "latest"
   },
   "peerDependencies": {
@@ -11,6 +10,47 @@
   },
   "workspaces": [
     "../packages-native/*",
+    "../packages/ai/*",
     "../packages/*"
-  ]
+  ],
+  "dependencies": {
+    "@effect/ai": "workspace:*",
+    "@effect/ai-amazon-bedrock": "workspace:*",
+    "@effect/ai-anthropic": "workspace:*",
+    "@effect/ai-google": "workspace:*",
+    "@effect/ai-openai": "workspace:*",
+    "@effect/cli": "workspace:*",
+    "@effect/cluster": "workspace:*",
+    "@effect/experimental": "workspace:*",
+    "@effect/opentelemetry": "workspace:*",
+    "@effect/platform": "workspace:*",
+    "@effect/platform-browser": "workspace:*",
+    "@effect/platform-bun": "workspace:*",
+    "@effect/platform-node": "workspace:*",
+    "@effect/platform-node-shared": "workspace:*",
+    "@effect/printer": "workspace:*",
+    "@effect/printer-ansi": "workspace:*",
+    "@effect/rpc": "workspace:*",
+    "@effect/sql": "workspace:*",
+    "@effect/sql-clickhouse": "workspace:*",
+    "@effect/sql-d1": "workspace:*",
+    "@effect/sql-drizzle": "workspace:*",
+    "@effect/sql-kysely": "workspace:*",
+    "@effect/sql-libsql": "workspace:*",
+    "@effect/sql-mssql": "workspace:*",
+    "@effect/sql-mysql2": "workspace:*",
+    "@effect/sql-pg": "workspace:*",
+    "@effect/sql-sqlite-bun": "workspace:*",
+    "@effect/sql-sqlite-do": "workspace:*",
+    "@effect/sql-sqlite-node": "workspace:*",
+    "@effect/sql-sqlite-react-native": "workspace:*",
+    "@effect/sql-sqlite-wasm": "workspace:*",
+    "@effect/typeclass": "workspace:*",
+    "@effect/vitest": "workspace:*",
+    "@effect/workflow": "workspace:*",
+    "@effect-native/bun-test": "workspace:*",
+    "@effect-native/crsql": "workspace:*",
+    "@effect-native/libsqlite": "workspace:*",
+    "effect": "workspace:*"
+  }
 }

@@ -2,22 +2,37 @@ import * as Fs from "node:fs"
 import * as Path from "node:path"
 
 function packages() {
-  return Fs.readdirSync("packages")
-    .concat(Fs.readdirSync("packages/ai").map((dir) => Path.join("ai", dir)))
-    .filter((_) => Fs.existsSync(Path.join("packages", _, "docs/modules")))
+  const packagesInMain = Fs.readdirSync("packages")
+  const packagesInAi = Fs.readdirSync("packages/ai").map((dir) => ({
+    name: Path.join("ai", dir),
+    basePath: Path.join("packages", "ai", dir)
+  }))
+
+  const packagesInNative = Fs.existsSync("packages-native")
+    ? Fs.readdirSync("packages-native").map((dir) => ({
+      name: Path.join("native", dir), // Safe identifier without ../
+      basePath: Path.join("packages-native", dir)
+    }))
+    : []
+
+  const mainPackages = packagesInMain.map((dir) => ({
+    name: dir,
+    basePath: Path.join("packages", dir)
+  }))
+
+  return [...mainPackages, ...packagesInAi, ...packagesInNative]
+    .filter((pkg) => Fs.existsSync(Path.join(pkg.basePath, "docs/modules")))
 }
 
 function pkgName(pkg) {
-  const packageJson = Fs.readFileSync(
-    Path.join("packages", pkg, "package.json")
-  )
+  const packageJson = Fs.readFileSync(Path.join(pkg.basePath, "package.json"))
   return JSON.parse(packageJson).name
 }
 
 function copyFiles(pkg) {
   const name = pkgName(pkg)
-  const docs = Path.join("packages", pkg, "docs/modules")
-  const dest = Path.join("docs", pkg)
+  const docs = Path.join(pkg.basePath, "docs/modules")
+  const dest = Path.join("docs", pkg.name) // Safe: no path traversal possible
   const files = Fs.readdirSync(docs, { withFileTypes: true })
 
   function handleFiles(root, files) {
@@ -39,6 +54,13 @@ function copyFiles(pkg) {
     }
   }
 
+  // CRITICAL: Validate dest is within docs/ before deletion
+  const resolvedDest = Path.resolve(dest)
+  const docsRoot = Path.resolve("docs")
+  if (!resolvedDest.startsWith(docsRoot + Path.sep)) {
+    throw new Error(`Unsafe deletion target: ${dest} resolves outside docs/`)
+  }
+
   Fs.rmSync(dest, { recursive: true, force: true })
   Fs.mkdirSync(dest, { recursive: true })
   handleFiles("", files)
@@ -49,17 +71,31 @@ function generateIndex(pkg, order) {
   const content = `---
 title: "${name}"
 has_children: true
-permalink: /docs/${pkg}
+permalink: /docs/${pkg.name}
 nav_order: ${order}
 ---
 `
 
-  Fs.writeFileSync(Path.join("docs", pkg, "index.md"), content)
+  Fs.writeFileSync(Path.join("docs", pkg.name, "index.md"), content)
 }
 
 packages().forEach((pkg, i) => {
-  Fs.rmSync(Path.join("docs", pkg), { recursive: true, force: true })
-  Fs.mkdirSync(Path.join("docs", pkg), { recursive: true })
-  copyFiles(pkg)
-  generateIndex(pkg, i + 2)
+  const docsModulesPath = Path.join(pkg.basePath, "docs/modules")
+
+  // Only process packages that have docs/modules directory
+  if (Fs.existsSync(docsModulesPath)) {
+    // CRITICAL: Double-check the target before deletion
+    const target = Path.join("docs", pkg.name)
+    const resolvedTarget = Path.resolve(target)
+    const docsRoot = Path.resolve("docs")
+
+    if (!resolvedTarget.startsWith(docsRoot + Path.sep)) {
+      throw new Error(`Unsafe deletion target: ${target} resolves outside docs/`)
+    }
+
+    Fs.rmSync(target, { recursive: true, force: true })
+    Fs.mkdirSync(target, { recursive: true })
+    copyFiles(pkg)
+    generateIndex(pkg, i + 2)
+  }
 })

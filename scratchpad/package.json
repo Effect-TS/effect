@@ -4,6 +4,10 @@
   "type": "module",
   "version": "0.0.0",
   "dependencies": {
+    "@effect-native/bun-test": "workspace:*",
+    "@effect-native/crsql": "workspace:*",
+    "@effect-native/libcrsql": "workspace:^",
+    "@effect-native/libsqlite": "workspace:^",
     "@effect/ai": "latest",
     "@effect/ai-amazon-bedrock": "latest",
     "@effect/ai-anthropic": "latest",
@@ -38,6 +42,8 @@
     "@effect/typeclass": "latest",
     "@effect/vitest": "latest",
     "@effect/workflow": "latest",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.2.0",
     "effect": "latest"
   },
   "peerDependencies": {

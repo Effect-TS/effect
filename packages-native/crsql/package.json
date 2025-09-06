@@ -1,0 +1,55 @@
+{
+  "name": "@effect-native/crsql",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "CR-SQLite prepared statements and service for Effect SQL",
+  "homepage": "https://github.com/effect-native/effect-native/tree/main/packages-native/crsql",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-native/effect-native",
+    "directory": "packages-native/crsql"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "directory": "dist",
+    "linkDirectory": false
+  },
+  "scripts": {
+    "codegen": "build-utils prepare-v3",
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "peerDependencies": {
+    "@effect/sql": "^0.44.2",
+    "effect": "^3.17.9"
+  },
+  "devDependencies": {
+    "@effect-native/libcrsql": "workspace:^",
+    "@effect/experimental": "^0.54.6",
+    "@effect/platform": "^0.90.6",
+    "@effect/platform-node": "^0.96.0",
+    "@effect/sql": "^0.44.2",
+    "@effect/vitest": "^0.25.1",
+    "effect": "^3.17.9"
+  },
+  "dependencies": {
+    "@vlcn.io/crsqlite": "^0.16.3"
+  },
+  "optionalDependencies": {
+    "@effect/sql-sqlite-bun": "^0.45.1",
+    "@effect/sql-sqlite-node": "^0.45.1"
+  }
+}

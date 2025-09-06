@@ -1,279 +1,112 @@
-This file provides guidance when working with code in this repository.
+# Agent Contribution Rules
 
-## Repository Overview
+This repository enforces a fail-fast, evidence-first workflow. Agents and contributors must not hide defects behind optional guards or conditional logic in tests.
 
-This is the **effect-native fork** of the Effect TypeScript framework. It maintains custom packages while allowing contributions back to upstream Effect-TS/effect.
+## Hard-Fail Policy (Never Hide Defects)
 
-### Fork-Specific Setup
+- NEVER add conditional wrappers (feature-detection, try/catch fallbacks, dynamic-import guards, environment sniffing, etc.) to silence or skip integration tests. If a dependency is missing or misconfigured (e.g., native modules like `better-sqlite3`), tests MUST FAIL LOUDLY.
+- NEVER convert hard failures into no-ops (e.g., returning `Effect.void` or “skip” behavior) without an explicit repository decision recorded in a PR description and this file. The default is fail-fast.
+- NEVER obfuscate errors or swallow exceptions in test setup. Prefer explicit, early failures that surface configuration issues.
 
-- **Git remotes**: `origin` points to `effect-native/effect`, `upstream` points to `Effect-TS/effect`
-- **Branch strategy**:
-  - `main`: Clean mirror of upstream for contributions
-  - `effect-native/main`: Fork's branch with custom packages
-- **Custom packages**: Located in `packages-native/`, use `@effect-native/` namespace
-- **Pre-push hook**: Prevents accidentally pushing custom packages to upstream
+## Rationale
 
-## Critical Development Rules
+Failing fast makes defects visible early, prevents silent regressions, and aligns local behavior with CI. Any environment constraints should be resolved by fixing the environment or adjusting the build matrix — not by weakening tests.
 
-⚠️ **Mandatory workflow for any TypeScript development:**
-1. Create/modify function
-2. Run `pnpm lint --fix` immediately after editing
-3. Check TypeScript compilation
-4. Write comprehensive tests with `@effect/vitest`
-5. Validate JSDoc documentation compiles with `pnpm docgen`
+## Evidence-First Expectations
 
-⚠️ **Never violate these patterns:**
-- **Never use `try-catch` in `Effect.gen`** - use Effect error handling
-- **Never use type assertions** (`as never`, `as any`) - maintain type safety
-- **Always use `return yield*`** for errors and interrupts
-- **100% JSDoc coverage required** with working examples
+- When changing tests or infrastructure:
+  - Provide concrete file paths and code references for the behavior being asserted.
+  - If a failure requires an environment change, document the exact steps to reproduce and remediate (e.g., reinstall `better-sqlite3` for the current Node version).
+- All changes must keep `pnpm ok` green unless a failing test is intentionally introduced as part of a RED phase in a TDD cycle (and is clearly marked as such in the PR).
 
-### Story Before Action
+## Examples of Disallowed Patterns
 
-Before taking any action (running commands, editing files, pushing commits, or invoking tools), briefly print the story, then proceed immediately — do not pause to ask for permission beyond the existing approval system. This keeps your pair programmer in the loop without blocking work:
+- Dynamic import guards to skip tests when a module is missing:
+  ```ts
+  // ❌ Do not do this
+  Effect.tryPromise(() => import("better-sqlite3")).pipe(
+    Effect.flatMap((ok) => (ok ? test : Effect.void))
+  )
+  ```
 
-- Goal: what outcome you are aiming for.
-- Obstacle: what’s blocking or risky.
-- Options: 2–3 plausible approaches considered.
-- Chosen path: the approach you will take now.
-- Why: why this is the best path to the goal.
+- Swallowing initialization failures:
+  ```ts
+  // ❌ Do not do this
+  client.loadExtension(ext).pipe(Effect.orDie) // hides misconfiguration
+  ```
 
-Guidance:
-- Keep each item concise (one short sentence), total under ~6 lines.
-- Place the story immediately before the action (e.g., before shell/tool calls or large edits).
-- Favor clarity over verbosity; update the story when the plan changes.
-- Do not ask for extra confirmation; print the story and execute (the approval system handles sensitive operations).
+## Positive Patterns
 
-### Identity and Push Safety
+- Ensure native dependencies match the current runtime. If installing is not possible in a given matrix, mark tests with a clear CI job exclusion rather than weakening test logic.
+- Keep integration tests using the real drivers and environments; prefer realistic failure modes over mocks for critical paths.
 
-- Public identity: Never take public action in the name of anyone other than yourself. Do not misrepresent who is speaking. When commenting on PRs or public threads, clearly indicate your identity (e.g., note that you are the automation agent when applicable).
-- Push discipline: Never run `git push` without explicit direction from the user/maintainer.
+## TypeScript Type Assertions (`as`) Policy
 
-### Pre‑Push Review Gate
+- Prefer type inference and precise types. Avoid assertions that "lie about reality" by widening or narrowing without proof.
+- "as const" is explicitly allowed and encouraged: it narrows values (e.g., tuples and object literals) and increases strictness. This does not misrepresent runtime values.
+- "as any" is explicitly banned. It disables type safety and is a foot cannon.
+- Double assertions (e.g., `as unknown as T`) and other unsafe up/down casts are banned by default unless narrowly justified.
+- Rare exceptions must be explicitly justified:
+  - Place a one‑line comment immediately above the assertion with:
+    - `Justification:` short, concrete rationale explaining why the assertion is safe and unavoidable.
+    - `Approved‑by:` the handle of a specific engineer who reviewed the line (not an agent; do not impersonate anyone). Include a link to the PR or issue.
+  - Example (allowed):
+    ```ts
+    // Justification: upstream API returns branded string at runtime; Approved-by: @eng-handle (PR #123)
+    const id = value as Brand<Id>
+    ```
+  - Example (forbidden):
+    ```ts
+    // "works on my machine"
+    const x = foo as any // ❌ banned
+    ```
+- Agents MUST NOT self‑approve or forge approvals. Do not use the repository owner's name or identity; never impersonate a human reviewer.
 
-Before any `git push` (when explicitly directed to push):
-- Fetch PR comments and CI status for the branch.
-- Ensure all failed checks are resolved or re‑run and passing.
-- Ensure all reviewer feedback is addressed in code or accompanied by clear, inline code comments explaining the resolution or rationale.
-- If any item remains unresolved, refuse to push and report what needs attention instead.
+## Modern Effect Patterns (v3.17+)
 
-### Local CI Parity
+This project uses the latest Effect `^3.17.11` which supports modern error handling patterns. Code reviews and agents should expect and accept these patterns:
 
-- Always run `pnpm ok` after making changes and before pushing. This mirrors our GitHub checks (types, lint, circular, codegen + diff, test-types target, docgen, codemod, build) so failures show up locally first.
+- **Error Creation**: Effect v3.17+ supports direct yielding of Error constructors:
+  ```ts
+  // ✅ Modern Effect v3.17+ (preferred)
+  return yield* new SqliteClientError({ cause: "..." })
 
-## Development Commands
+  // ✅ Legacy syntax (technically valid but unnecessarily verbose)
+  return yield* Effect.fail(new SqliteClientError({ cause: "..." }))
+  ```
 
-### Building
-```bash
-pnpm build              # Build all packages
-pnpm codegen           # Re-generate package entrypoints
-pnpm clean             # Clean build artifacts
-```
+- **Rationale**: Modern Effect Error classes implement the necessary protocols to be yielded directly, making code more concise while maintaining full type safety and error propagation.
 
-### Testing
-```bash
-pnpm test              # Run all tests
-pnpm test <pattern>    # Run tests matching pattern
-pnpm coverage          # Run tests with coverage
+- **Review Expectation**: Contributors and automated reviews should NOT flag the modern `yield* new Error()` syntax as incorrect. It is the current standard for this project's Effect version.
 
-# Run single test file
-pnpm vitest test/Effect.test.ts
+## Nix Development Environment
 
-# Run tests for specific package
-cd packages/effect && pnpm test
-```
+This project uses Nix for dependency management and reproducible builds. All development commands should be run within the Nix development shell:
 
-### Code Quality
-```bash
-pnpm check             # TypeScript type checking
-pnpm lint              # ESLint
-pnpm lint-fix          # Auto-fix lint issues
-pnpm circular          # Check for circular dependencies
-pnpm test-types        # Run type-level tests (tstyche)
-```
+- **Command Prefix**: Always prefix package manager and build commands with `nix develop --command` or run `nix develop` first to enter the shell:
+  ```bash
+  # ✅ Preferred
+  nix develop --command pnpm install
+  nix develop --command pnpm ok
+  nix develop --command pnpm test
 
-### Documentation
-```bash
-pnpm docgen            # Generate API documentation
-pnpm changeset         # Create changeset for changes
-```
+  # ✅ Alternative (enter shell first)
+  nix develop
+  pnpm install
+  pnpm ok
+  ```
 
-## Architecture
+- **Rationale**: The Nix shell ensures consistent Node.js versions, native dependencies, and build tools across all environments, preventing "works on my machine" issues.
 
-### Package Structure
+- **CI Alignment**: This matches the CI environment which also runs commands within the Nix development shell.
 
-The monorepo uses pnpm workspaces with packages organized in:
-- `packages/`: Upstream Effect packages (effect, platform, cli, etc.)
-- `packages/ai/`: AI-related packages (openai, anthropic, etc.)
-- `packages-native/`: Fork-specific custom packages
+### Native Modules (better-sqlite3) ABI Mismatch
 
-### Core Design Patterns
+- Symptom: Errors like "was compiled against a different Node.js version" or mismatched `NODE_MODULE_VERSION` (e.g., 131 vs 137) when running tests that use `better-sqlite3`.
+- Cause: Running install/build/test outside the Nix shell compiles native addons against the wrong Node version/ABI.
+- Resolution: Always run installs and tests inside the Nix dev shell. When in doubt, clean and rebuild inside `nix develop`:
+  - `nix develop --command pnpm -w install`
+  - `nix develop --command pnpm -w rebuild better-sqlite3`
+  - Then re-run tests: `nix develop --command pnpm test`
 
-1. **Effect System**: All async operations use the Effect type for composable error handling and dependency injection
-2. **Layers**: Dependencies are provided through Layer composition
-3. **Services**: Use Context.Tag for type-safe dependency injection
-4. **Schemas**: Data validation and serialization via Schema module
-5. **Pipeable API**: All modules follow pipe-first functional programming style
-
-### Essential Effect Patterns
-
-**Concurrency & Control Flow:**
-- Use `Effect.all` for concurrent operations (not sequential await)
-- Use `Effect.forEach` over manual loops for collections
-- Use `Effect.raceAll` for timeout scenarios
-- Use `Fiber` for advanced concurrency control
-- Use `Queue` for producer/consumer patterns
-
-**Error Handling:**
-- Use `Effect.catchTag` for specific error handling
-- Define custom error types extending `Data.TaggedError`
-- Use `return yield*` for errors and interrupts (never throw)
-- Implement proper error context with custom error types
-
-**Resource Management:**
-- Use `Effect.acquireUseRelease` for proper cleanup
-- Use `Ref` for mutable state management in Effect context
-- Use `Effect.cached` for expensive computations
-- Implement proper batching with `Effect.forEach` options
-
-**Type Safety:**
-- Use branded types for domain-specific values
-- Always validate inputs with `Schema`
-- Use proper variance annotations (`in`/`out`)
-- Leverage `Schema` for runtime validation and type inference
-
-### Common Pitfalls to Avoid
-
-- **Never mix Promise-based and Effect-based code directly**
-- **Never use `Effect.runSync` in production code**
-- **Never create Effects inside loops without proper batching**
-- **Never ignore fiber interruption in long-running operations**
-- **Never create circular dependencies between services**
-
-### Key Modules
-
-- **Effect**: Core effect system for async operations, error handling, and concurrency
-- **Stream**: Streaming data processing with backpressure
-- **Layer**: Dependency injection and resource management
-- **Schema**: Runtime type validation and serialization
-- **Platform**: Cross-platform I/O operations (HTTP, FileSystem, etc.)
-
-### Testing Approach
-
-- Tests use `@effect/vitest` with custom configuration in `vitest.shared.ts`
-- Test files located in `test/` directories
-- Use `it.effect` pattern for Effect-based tests
-- Use `Effect.gen` for readable async test code
-- Use `assert` methods instead of `expect` for Effect tests
-- Utilize `TestClock` for time-dependent testing
-- Prefer property-based testing with FastCheck where applicable
-
-### Build System
-
-- TypeScript project references for incremental compilation
-- `@effect/build-utils` handles package bundling
-- Each package has standard tsconfig files:
-  - `tsconfig.json`: Main config
-  - `tsconfig.src.json`: Source compilation
-  - `tsconfig.test.json`: Test compilation
-  - `tsconfig.build.json`: Build references
-
-### packages-native isolation rule
-
-- Do NOT reference workspace upstream packages from `packages-native/*` TypeScript configs.
-  For example, do not add project references to `../../packages/effect/tsconfig.build.json` or
-  `../../packages/platform/tsconfig.build.json`.
-- `packages-native/*` must depend on released versions of upstream packages via peer/dev dependencies as appropriate,
-  not on workspace source. This keeps native forks isolated from upstream internals and prevents
-  workspace-wide compile spillover in CI builds.
-
-## Fork Workflows
-
-### Contributing to Upstream
-```bash
-git checkout main
-git pull upstream main
-git checkout -b feature/my-contribution
-# Work in packages/ only
-git push origin feature/my-contribution
-# Create PR to Effect-TS/effect
-```
-
-### Working on Custom Packages
-```bash
-git checkout effect-native/main
-# Work in packages-native/
-git push origin effect-native/main
-```
-
-### Syncing with Upstream
-```bash
-git checkout main
-git pull upstream main
-git checkout effect-native/main
-git merge main
-```
-
-## Package Conventions
-
-### Creating New Packages
-
-Custom packages in `packages-native/` should:
-1. Use `@effect-native/` namespace in package.json
-2. Follow same structure as packages in `packages/`
-3. Include standard configs (tsconfig, vitest, docgen)
-4. Use `@effect/build-utils` for building
-5. Depend on `effect` as peer dependency
-
-### JSDoc Requirements
-
-All public APIs must include:
-- `@since` tag with version
-- `@example` tag with **compilable** usage example
-- Brief description of functionality
-- `@category` tag for documentation organization (optional)
-- Proper import patterns in examples
-- Real-world, practical usage demonstrations
-- **100% JSDoc coverage** - no exceptions
-- All examples must compile with `pnpm docgen`
-
-### Changeset Process
-
-Before committing features:
-1. Run `pnpm changeset`
-2. Select appropriate semver level (patch/minor/major)
-3. Write clear changeset description
-4. Reference issues with "closes #123" in commit messages
-
-## Advanced Development Patterns
-
-### Performance & Resource Management
-- Use `Effect.cached` for expensive computations
-- Use `Semaphore` for controlling concurrent access
-- Implement structured concurrency with `Effect.fork`
-- Use `Effect.acquireUseRelease` for proper resource cleanup
-- Use streaming (`Stream`) for memory-efficient large data processing
-
-### Type-Level Programming
-- Use branded types for domain-specific type safety
-- Implement phantom types for compile-time constraints
-- Leverage conditional types for complex type constraints
-- Use proper variance annotations (`in`/`out`)
-
-### Error Architecture
-- Create hierarchical error types with `Data.TaggedError`
-- Use `Effect.mapError` for translating between error layers
-- Implement centralized error translation strategies
-- Never mix Promise-based and Effect-based error handling
-
-### Debugging & Development
-- Use `Effect.tap` for side-effect debugging without changing flow
-- Use `Logger` service for structured logging in development
-- Use `TestClock` and `TestContext` for deterministic testing
-- Use `Effect.gen` with proper yielding for readable async code
-
-### Service Design
-- Create platform-agnostic service interfaces
-- Use `Context.Tag` with proper type constraints
-- Design services to be composable through Layer composition
-- Avoid circular dependencies between services
+In practice: relying on `nix develop` 100% of the time avoids ABI mismatches and “everything just works.”

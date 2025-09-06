@@ -202,10 +202,13 @@ export const make = (
           })
         },
         loadExtension(path) {
-          return Effect.try({
-            try: () => db.loadExtension(path),
-            catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
-          })
+          return Effect.flatMap(
+            Effect.try({
+              try: () => db.loadExtension(path),
+              catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
+            }),
+            () => prepareCache.invalidateAll
+          )
         }
       })
     })
