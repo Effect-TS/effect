@@ -92,9 +92,8 @@ export const make = <E, R>(options: {
     const makeClient = yield* CronEntity.client
     return {
       run(request) {
-        return Effect.ensuring(
-          effect(request.payload.dateTime),
-          Effect.gen(function*() {
+        return effect(request.payload.dateTime).pipe(
+          Effect.ensuring(Effect.gen(function*() {
             const now = yield* DateTime.now
             const next = DateTime.unsafeFromDate(Cron.next(
               options.cron,
@@ -102,17 +101,18 @@ export const make = <E, R>(options: {
             ))
             const client = makeClient(DateTime.formatIso(next))
             return yield* client.run({ dateTime: next }, { discard: true }).pipe(
+              Effect.tapErrorCause((cause) => Effect.logWarning("Failed to schedule next run, retrying", cause)),
               Effect.sandbox,
-              Effect.retry(retryPolicy)
+              Effect.retry(retryPolicy),
+              Effect.orDie
             )
-          }).pipe(
-            Effect.catchAllCause(Effect.logWarning),
-            Effect.annotateLogs({
-              module: "ClusterCron",
-              name: options.name,
-              dateTime: request.payload.dateTime
-            })
-          )
+          })),
+          Effect.catchAllCause(Effect.logWarning),
+          Effect.annotateLogs({
+            module: "ClusterCron",
+            name: options.name,
+            dateTime: request.payload.dateTime
+          })
         )
       }
     }
