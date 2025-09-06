@@ -141,6 +141,7 @@ export const make = (options: {
                   cacheWriteInputTokens: chunk.message.usage.cache_creation_input_tokens ?? 0,
                   cacheReadInputTokens: chunk.message.usage.cache_read_input_tokens ?? 0
                 }
+                console.error("message_start", JSON.stringify(usage, null, 2))
                 parts.push(
                   new AiResponse.MetadataPart(
                     {
@@ -158,6 +159,7 @@ export const make = (options: {
                   outputTokens: chunk.usage.output_tokens,
                   totalTokens: usage.inputTokens + chunk.usage.output_tokens
                 }
+                console.error("message_delta", JSON.stringify(usage, null, 2))
                 if (Predicate.isNotNullable(chunk.delta.stop_sequence)) {
                   metadata.stopSequence = chunk.delta.stop_sequence
                 }
