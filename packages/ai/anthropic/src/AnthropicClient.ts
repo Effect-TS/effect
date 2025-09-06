@@ -155,7 +155,8 @@ export const make = (options: {
               case "message_delta": {
                 usage = {
                   ...usage,
-                  outputTokens: chunk.usage.output_tokens
+                  outputTokens: chunk.usage.output_tokens,
+                  totalTokens: usage.inputTokens + chunk.usage.output_tokens
                 }
                 if (Predicate.isNotNullable(chunk.delta.stop_sequence)) {
                   metadata.stopSequence = chunk.delta.stop_sequence
