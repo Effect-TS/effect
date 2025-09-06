@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.16.1
+
+### Patch Changes
+
+- [#5474](https://github.com/Effect-TS/effect/pull/5474) [`5f5ae17`](https://github.com/Effect-TS/effect/commit/5f5ae1730510a372f229426aff832ba1c5c5145b) Thanks @IMax153! - Ensure that the finish part is emitted when streaming text from Anthropic
+
 ## 0.16.0
 
 ### Patch Changes
