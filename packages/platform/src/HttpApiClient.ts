@@ -548,15 +548,17 @@ const bodyFromPayload = (ast: AST.AST) => {
       encode(toI, _, ast) {
         switch (encoding.kind) {
           case "Json": {
-            return HttpBody.json(toI).pipe(
-              ParseResult.mapError((error) => new ParseResult.Type(ast, toI, `Could not encode as JSON: ${error}`))
-            )
+            try {
+              return ParseResult.succeed(HttpBody.text(JSON.stringify(toI), encoding.contentType))
+            } catch {
+              return ParseResult.fail(new ParseResult.Type(ast, toI, "Could not encode as JSON"))
+            }
           }
           case "Text": {
             if (typeof toI !== "string") {
               return ParseResult.fail(new ParseResult.Type(ast, toI, "Expected a string"))
             }
-            return ParseResult.succeed(HttpBody.text(toI))
+            return ParseResult.succeed(HttpBody.text(toI, encoding.contentType))
           }
           case "UrlParams": {
             return ParseResult.succeed(HttpBody.urlParams(UrlParams.fromInput(toI as any)))
@@ -565,7 +567,7 @@ const bodyFromPayload = (ast: AST.AST) => {
             if (!(toI instanceof Uint8Array)) {
               return ParseResult.fail(new ParseResult.Type(ast, toI, "Expected a Uint8Array"))
             }
-            return ParseResult.succeed(HttpBody.uint8Array(toI))
+            return ParseResult.succeed(HttpBody.uint8Array(toI, encoding.contentType))
           }
         }
       }

@@ -772,7 +772,7 @@ export class Protocol extends Context.Tag("@effect/rpc/RpcServer/Protocol")<Prot
     transferables?: ReadonlyArray<globalThis.Transferable>
   ) => Effect.Effect<void>
   readonly end: (clientId: number) => Effect.Effect<void>
-  readonly clientIds: Effect.Effect<Iterable<number>>
+  readonly clientIds: Effect.Effect<ReadonlySet<number>>
   readonly initialMessage: Effect.Effect<Option.Option<unknown>>
   readonly supportsAck: boolean
   readonly supportsTransferables: boolean
@@ -932,6 +932,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     readonly write: (bytes: FromServerEncoded) => Effect.Effect<void>
     readonly end: Effect.Effect<void>
   }>()
+  const clientIds = new Set<number>()
 
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
@@ -945,6 +946,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     const offer = (data: Uint8Array | string) =>
       typeof data === "string" ? mailbox.offer(encoder.encode(data)) : mailbox.offer(data)
 
+    clientIds.add(id)
     clients.set(id, {
       write: (response) => {
         try {
@@ -983,6 +985,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     if (!includesFraming) {
       let done = false
       yield* Effect.addFinalizer(() => {
+        clientIds.delete(id)
         clients.delete(id)
         disconnects.unsafeOffer(id)
         if (done) return Effect.void
@@ -1005,6 +1008,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
     return HttpServerResponse.stream(
       Stream.ensuringWith(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>), (exit) => {
+        clientIds.delete(id)
         clients.delete(id)
         disconnects.unsafeOffer(id)
         if (!Exit.isInterrupted(exit)) return Effect.void
@@ -1032,7 +1036,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         if (!client) return Effect.void
         return client.end
       },
-      clientIds: Effect.sync(() => clients.keys()),
+      clientIds: Effect.sync(() => clientIds),
       initialMessage: Effect.succeedNone,
       supportsAck: false,
       supportsTransferables: false,
@@ -1118,7 +1122,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
     end(_clientId) {
       return Effect.void
     },
-    clientIds: Effect.sync(() => clientIds.values()),
+    clientIds: Effect.sync(() => clientIds),
     initialMessage: Effect.asSome(Deferred.await(initialMessage)),
     supportsAck: true,
     supportsTransferables: true,
@@ -1328,7 +1332,7 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
       end(_clientId) {
         return mailbox.end
       },
-      clientIds: Effect.succeed([0]),
+      clientIds: Effect.succeed(new Set([0])),
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,
@@ -1359,6 +1363,7 @@ const makeSocketProtocol = Effect.gen(function*() {
   const clients = new Map<number, {
     readonly write: (bytes: FromServerEncoded) => Effect.Effect<void>
   }>()
+  const clientIds = new Set<number>()
 
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
 
@@ -1367,6 +1372,7 @@ const makeSocketProtocol = Effect.gen(function*() {
     const parser = serialization.unsafeMake()
     const id = clientId++
     yield* Scope.addFinalizerExit(scope, () => {
+      clientIds.delete(id)
       clients.delete(id)
       return disconnects.offer(id)
     })
@@ -1385,6 +1391,7 @@ const makeSocketProtocol = Effect.gen(function*() {
         )
       }
     }
+    clientIds.add(id)
     clients.set(id, { write })
 
     yield* socket.runRaw((data) => {
@@ -1425,7 +1432,7 @@ const makeSocketProtocol = Effect.gen(function*() {
       end(_clientId) {
         return Effect.void
       },
-      clientIds: Effect.sync(() => clients.keys()),
+      clientIds: Effect.sync(() => clientIds),
       initialMessage: Effect.succeedNone,
       supportsAck: true,
       supportsTransferables: false,

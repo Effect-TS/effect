@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.69.2
+
+### Patch Changes
+
+- [#5453](https://github.com/Effect-TS/effect/pull/5453) [`d6887d5`](https://github.com/Effect-TS/effect/commit/d6887d54a6ec57778cf536b69c2cf96123cb38a6) Thanks @tim-smart! - wait for client to initialize before sending notifications
+
 ## 0.69.1
 
 ### Patch Changes

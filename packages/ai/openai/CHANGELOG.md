@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.29.1
+
+### Patch Changes
+
+- [#5450](https://github.com/Effect-TS/effect/pull/5450) [`e7aa8c2`](https://github.com/Effect-TS/effect/commit/e7aa8c2bf95bd36294e4549afbface1aac0fe879) Thanks @IMax153! - Ensure that the verbose json transcription schema is tried before the standard json schema
+
 ## 0.29.0
 
 ### Patch Changes

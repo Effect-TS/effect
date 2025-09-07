@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.56.5
+
+### Patch Changes
+
+- [#5444](https://github.com/Effect-TS/effect/pull/5444) [`8f8c401`](https://github.com/Effect-TS/effect/commit/8f8c4011f4b90c540c08efd2e850fe7b265e098c) Thanks @mikearnaldi! - Propagate spanId and traceId to otel logs
+
 ## 0.56.4
 
 ### Patch Changes

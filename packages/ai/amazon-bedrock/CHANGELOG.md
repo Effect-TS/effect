@@ -1,5 +1,14 @@
 # @effect/ai-amazon-bedrock
 
+## 0.6.2
+
+### Patch Changes
+
+- [#5438](https://github.com/Effect-TS/effect/pull/5438) [`0065a12`](https://github.com/Effect-TS/effect/commit/0065a12bb82e05cb7766de3c6c9c30fabf883fd9) Thanks @IMax153! - Fix the InferenceConfiguration schema in the Amazon Bedrock AI provider package
+
+- Updated dependencies [[`3b26094`](https://github.com/Effect-TS/effect/commit/3b2609409ac1e8c6939d699584f00b1b99c47e2e), [`a33e491`](https://github.com/Effect-TS/effect/commit/a33e49153d944abd183fed93267fa7e52abae68b)]:
+  - effect@3.17.10
+
 ## 0.6.1
 
 ### Patch Changes

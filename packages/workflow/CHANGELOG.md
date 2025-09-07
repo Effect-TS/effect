@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.9.3
+
+### Patch Changes
+
+- [#5470](https://github.com/Effect-TS/effect/pull/5470) [`e0d79c6`](https://github.com/Effect-TS/effect/commit/e0d79c63c9b824ac3dbd345ef0eda6facea1ad6d) Thanks @tim-smart! - suspend workflow execution to ensure defects don't escape
+
 ## 0.9.2
 
 ### Patch Changes

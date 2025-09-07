@@ -8,8 +8,11 @@ import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberId from "effect/FiberId"
+import * as FiberRef from "effect/FiberRef"
+import * as FiberRefs from "effect/FiberRefs"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
+import * as Tracer from "effect/Tracer"
 import { unknownToAttributeValue } from "./internal/utils.js"
 import { Resource } from "./Resource.js"
 
@@ -41,6 +44,17 @@ export const make: Effect.Effect<
     const attributes: Record<string, any> = {
       fiberId: FiberId.threadName(options.fiberId)
     }
+
+    const maybeSpan = Context.getOption(
+      FiberRefs.getOrDefault(options.context, FiberRef.currentContext),
+      Tracer.ParentSpan
+    )
+
+    if (maybeSpan._tag === "Some") {
+      attributes.spanId = maybeSpan.value.spanId
+      attributes.traceId = maybeSpan.value.traceId
+    }
+
     for (const [key, value] of options.annotations) {
       attributes[key] = unknownToAttributeValue(value)
     }

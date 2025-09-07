@@ -12,7 +12,7 @@ import * as Layer from "./Layer.js"
 import * as RcMap from "./RcMap.js"
 import * as Runtime from "./Runtime.js"
 import * as Scope from "./Scope.js"
-import type { Mutable } from "./Types.js"
+import type { Mutable, NoExcessProperties } from "./Types.js"
 
 /**
  * @since 3.14.0
@@ -113,11 +113,13 @@ export interface LayerMap<in K, in out I, out E = never> {
  */
 export const make: <
   K,
-  L extends Layer.Layer<any, any, any>
+  L extends Layer.Layer<any, any, any>,
+  PreloadKeys extends Iterable<K> | undefined = undefined
 >(
   lookup: (key: K) => L,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly preloadKeys?: PreloadKeys
   } | undefined
 ) => Effect.Effect<
   LayerMap<
@@ -125,12 +127,13 @@ export const make: <
     L extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never,
     L extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
   >,
-  never,
+  PreloadKeys extends undefined ? never : L extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never,
   Scope.Scope | (L extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
 > = Effect.fnUntraced(function*<I, K, EL, RL>(
   lookup: (key: K) => Layer.Layer<I, EL, RL>,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly preloadKeys?: Iterable<K> | undefined
   } | undefined
 ) {
   const context = yield* Effect.context<never>()
@@ -174,6 +177,12 @@ export const make: <
     idleTimeToLive: options?.idleTimeToLive
   })
 
+  if (options?.preloadKeys) {
+    for (const key of options.preloadKeys) {
+      yield* (RcMap.get(rcMap, key) as Effect.Effect<any, EL, RL | Scope.Scope>)
+    }
+  }
+
   return identity<LayerMap<K, Exclude<I, Scope.Scope>, any>>({
     [TypeId]: TypeId,
     rcMap,
@@ -189,21 +198,27 @@ export const make: <
  * @experimental
  */
 export const fromRecord = <
-  const Layers extends Record<string, Layer.Layer<any, any, any>>
+  const Layers extends Record<string, Layer.Layer<any, any, any>>,
+  const Preload extends boolean = false
 >(
   layers: Layers,
   options?: {
     readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly preload?: Preload | undefined
   } | undefined
 ): Effect.Effect<
   LayerMap<
     keyof Layers,
     Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never,
-    Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
+    Preload extends true ? never : Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
   >,
-  never,
+  Preload extends true ? never : Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never,
   Scope.Scope | (Layers[keyof Layers] extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
-> => make((key: keyof Layers) => layers[key], options)
+> =>
+  make((key: keyof Layers) => layers[key], {
+    ...options,
+    preloadKeys: options?.preload ? Object.keys(layers) : undefined
+  }) as any
 
 /**
  * @since 3.14.0
@@ -216,6 +231,7 @@ export interface TagClass<
   in out I,
   in out E,
   in out R,
+  in out LE,
   in out Deps extends Layer.Layer<any, any, any>
 > extends Context.TagClass<Self, Id, LayerMap<K, I, E>> {
   /**
@@ -223,7 +239,7 @@ export interface TagClass<
    */
   readonly Default: Layer.Layer<
     Self,
-    (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never),
+    (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never) | LE,
     | Exclude<R, (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never)>
     | (Deps extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never)
   >
@@ -231,7 +247,7 @@ export interface TagClass<
   /**
    * A default layer for the `LayerMap` service without the dependencies provided.
    */
-  readonly DefaultWithoutDependencies: Layer.Layer<Self, never, R>
+  readonly DefaultWithoutDependencies: Layer.Layer<Self, LE, R>
 
   /**
    * Retrieves a Layer for the resources associated with the key.
@@ -305,28 +321,40 @@ export interface TagClass<
 export const Service = <Self>() =>
 <
   const Id extends string,
-  Lookup extends {
-    readonly lookup: (key: any) => Layer.Layer<any, any, any>
-  } | {
-    readonly layers: Record<string, Layer.Layer<any, any, any>>
-  },
-  const Deps extends ReadonlyArray<Layer.Layer<any, any, any>> = []
+  Options extends
+    | NoExcessProperties<
+      {
+        readonly lookup: (key: any) => Layer.Layer<any, any, any>
+        readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>>
+        readonly idleTimeToLive?: Duration.DurationInput | undefined
+        readonly preloadKeys?:
+          | Iterable<Options extends { readonly lookup: (key: infer K) => any } ? K : never>
+          | undefined
+      },
+      Options
+    >
+    | NoExcessProperties<{
+      readonly layers: Record<string, Layer.Layer<any, any, any>>
+      readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>>
+      readonly idleTimeToLive?: Duration.DurationInput | undefined
+      readonly preload?: boolean
+    }, Options>
 >(
   id: Id,
-  options: Lookup & {
-    readonly dependencies?: Deps | undefined
-    readonly idleTimeToLive?: Duration.DurationInput | undefined
-  }
+  options: Options
 ): TagClass<
   Self,
   Id,
-  Lookup extends { readonly lookup: (key: infer K) => any } ? K
-    : Lookup extends { readonly layers: infer Layers } ? keyof Layers
+  Options extends { readonly lookup: (key: infer K) => any } ? K
+    : Options extends { readonly layers: infer Layers } ? keyof Layers
     : never,
-  Service.Success<Lookup>,
-  Service.Error<Lookup>,
-  Service.Context<Lookup>,
-  Deps[number]
+  Service.Success<Options>,
+  Options extends { readonly preload: true } ? never : Service.Error<Options>,
+  Service.Context<Options>,
+  Options extends { readonly preload: true } ? Service.Error<Options>
+    : Options extends { readonly preloadKey: Iterable<any> } ? Service.Error<Options>
+    : never,
+  Options extends { readonly dependencies: ReadonlyArray<any> } ? Options["dependencies"][number] : never
 > => {
   const Err = globalThis.Error as any
   const limit = Err.stackTraceLimit
@@ -335,7 +363,7 @@ export const Service = <Self>() =>
   Err.stackTraceLimit = limit
 
   function TagClass() {}
-  const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, string, any, any, any, any>>
+  const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, string, any, any, any, any, any>>
   Object.setPrototypeOf(TagClass, Object.getPrototypeOf(Context.GenericTag<Self, any>(id)))
   TagClass.key = id
   Object.defineProperty(TagClass, "stack", {

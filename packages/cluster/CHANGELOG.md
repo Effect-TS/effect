@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.3
+
+### Patch Changes
+
+- [#5472](https://github.com/Effect-TS/effect/pull/5472) [`fb00cd6`](https://github.com/Effect-TS/effect/commit/fb00cd6cf20da70592125c0c682225de51a977d5) Thanks @tim-smart! - ensure defects don't cause loops in ClusterCron
+
 ## 0.48.2
 
 ### Patch Changes

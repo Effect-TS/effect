@@ -131,11 +131,24 @@ export const interruptAll = (fibers: Iterable<Fiber.Fiber<any, any>>): Effect.Ef
 export const interruptAllAs = dual<
   (fiberId: FiberId.FiberId) => (fibers: Iterable<Fiber.Fiber<any, any>>) => Effect.Effect<void>,
   (fibers: Iterable<Fiber.Fiber<any, any>>, fiberId: FiberId.FiberId) => Effect.Effect<void>
->(2, (fibers, fiberId) =>
-  pipe(
-    core.forEachSequentialDiscard(fibers, interruptAsFork(fiberId)),
-    core.zipRight(pipe(fibers, core.forEachSequentialDiscard(_await)))
-  ))
+>(
+  2,
+  core.fnUntraced(function*(fibers, fiberId) {
+    for (const fiber of fibers) {
+      if (isRuntimeFiber(fiber)) {
+        fiber.unsafeInterruptAsFork(fiberId)
+        continue
+      }
+      yield* fiber.interruptAsFork(fiberId)
+    }
+    for (const fiber of fibers) {
+      if (isRuntimeFiber(fiber) && fiber.unsafePoll()) {
+        continue
+      }
+      yield* fiber.await
+    }
+  })
+)
 
 /** @internal */
 export const interruptAsFork = dual<
