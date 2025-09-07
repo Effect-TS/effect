@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.16.2
+
+### Patch Changes
+
+- [#5476](https://github.com/Effect-TS/effect/pull/5476) [`18ec398`](https://github.com/Effect-TS/effect/commit/18ec39853b493795fd0bff01a67f36e142cb6f4e) Thanks @richburdon! - fix total token count
+
 ## 0.16.1
 
 ### Patch Changes
