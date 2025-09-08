@@ -168,7 +168,6 @@ export namespace Vitest {
         }
     ) => void
   }
-
   /**
    * @since 1.0.0
    */
@@ -219,8 +218,26 @@ export namespace Vitest {
     readonly live: Vitest.Tester<R>
     readonly scopedLive: Vitest.Tester<Scope.Scope | R>
   }
-  export interface Methods<R = never> extends LiveMethods<R> {
-    concurrent: LiveMethods<R>
+
+  // We can't use the plain Omit from typescript because it doesn't take into account Function types
+  // and erases the Function type from the parameter instead of keeping it
+  type FixedOmit<T, K extends PropertyKey> =
+    & (T extends (...args: infer A) => infer R ? (...args: A) => R : unknown)
+    & Omit<T, K>
+  type RemoveConcurrent<T> = FixedOmit<T, "concurrent">
+  export type Methods<R = never> = FixedOmit<LiveMethods<R>, "effect" | "live" | "scopedLive" | "scoped"> & {
+    readonly effect: RemoveConcurrent<LiveMethods<R>["effect"]> & {
+      readonly concurrent: LiveMethods<R>["effect"]
+    }
+    readonly live: RemoveConcurrent<LiveMethods<R>["live"]> & {
+      readonly concurrent: LiveMethods<R>["live"]
+    }
+    readonly scoped: RemoveConcurrent<LiveMethods<R>["scoped"]> & {
+      readonly concurrent: LiveMethods<R>["scoped"]
+    }
+    readonly scopedLive: RemoveConcurrent<LiveMethods<R>["scopedLive"]> & {
+      readonly concurrent: LiveMethods<R>["scopedLive"]
+    }
   }
 }
 
@@ -232,22 +249,22 @@ export const addEqualityTesters: () => void = internal.addEqualityTesters
 /**
  * @since 1.0.0
  */
-export const effect: Vitest.Tester<TestServices.TestServices> = internal.effect
+export const effect: Vitest.Methods["effect"] = internal.effect
 
 /**
  * @since 1.0.0
  */
-export const scoped: Vitest.Tester<TestServices.TestServices | Scope.Scope> = internal.scoped
+export const scoped: Vitest.Methods["scoped"] = internal.scoped
 
 /**
  * @since 1.0.0
  */
-export const live: Vitest.Tester<never> = internal.live
+export const live: Vitest.Methods["live"] = internal.live
 
 /**
  * @since 1.0.0
  */
-export const scopedLive: Vitest.Tester<Scope.Scope> = internal.scopedLive
+export const scopedLive: Vitest.Methods["scopedLive"] = internal.scopedLive
 
 /**
  * Share a `Layer` between multiple tests, optionally wrapping
@@ -319,15 +336,9 @@ export const prop: Vitest.Methods["prop"] = internal.prop
 /**
  * @since 1.0.0
  */
-export const concurrent: Vitest.Methods["concurrent"] = internal.concurrent
-
-/**
- * @since 1.0.0
- */
 
 /** @ignored */
-const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop, concurrent } as const
-
+const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as const
 /**
  * @since 1.0.0
  */

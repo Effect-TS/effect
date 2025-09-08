@@ -1,4 +1,3 @@
-/* eslint-disable @effect/dprint */
 /**
  * @since 1.0.0
  */
@@ -20,10 +19,10 @@ import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as TestEnvironment from "effect/TestContext"
 import type * as TestServices from "effect/TestServices"
+import type * as Types from "effect/Types"
 import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "../index.js"
-import type * as Types from "effect/Types"
 
 function assignDefaults<T extends object, U extends object>(target: T, source: U): Types.MergeLeft<T, U> {
   for (const key in source) {
@@ -204,7 +203,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
   )
 }
 /** @internal */
-export const propConcurrent: Vitest.Vitest.Methods["concurrent"]["prop"] = (name, arbitraries, self, timeout) => {
+export const propConcurrent: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
   if (Array.isArray(arbitraries)) {
     const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
     return V.it.concurrent(
@@ -339,22 +338,24 @@ export const flakyTest = <A, E, R>(
 export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods => {
   const itConcurrent = createConcurrentVitestAPI(it)
   return Object.assign(it, {
-    concurrent: Object.assign(itConcurrent, {
-      effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), itConcurrent),
-      scoped: makeTester<TestServices.TestServices | Scope.Scope>(
-        flow(Effect.scoped, Effect.provide(TestEnv)),
-        itConcurrent
-      ),
-      live: makeTester<never>(identity, itConcurrent),
-      scopedLive: makeTester<Scope.Scope>(Effect.scoped, itConcurrent),
-      prop: propConcurrent,
-      layer,
-      flakyTest
+    effect: Object.assign(makeTester<TestServices.TestServices>(Effect.provide(TestEnv), it), {
+      concurrent: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), itConcurrent)
     }),
-    effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), it),
-    scoped: makeTester<TestServices.TestServices | Scope.Scope>(flow(Effect.scoped, Effect.provide(TestEnv)), it),
-    live: makeTester<never>(identity, it),
-    scopedLive: makeTester<Scope.Scope>(Effect.scoped, it),
+    scoped: Object.assign(
+      makeTester<TestServices.TestServices | Scope.Scope>(flow(Effect.scoped, Effect.provide(TestEnv)), it),
+      {
+        concurrent: makeTester<TestServices.TestServices | Scope.Scope>(
+          flow(Effect.scoped, Effect.provide(TestEnv)),
+          itConcurrent
+        )
+      }
+    ),
+    live: Object.assign(makeTester<never>(identity, it), {
+      concurrent: makeTester<never>(identity, itConcurrent)
+    }),
+    scopedLive: Object.assign(makeTester<Scope.Scope>(Effect.scoped, it), {
+      concurrent: makeTester<Scope.Scope>(Effect.scoped, itConcurrent)
+    }),
     flakyTest,
     layer,
     prop
@@ -363,8 +364,6 @@ export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods => {
 
 /** @internal */
 export const {
-  /** @internal */
-  concurrent,
   /** @internal */
   effect,
   /** @internal */
