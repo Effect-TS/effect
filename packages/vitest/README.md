@@ -35,7 +35,7 @@ This import enhances the standard `it` function from `vitest` with several power
 | `it.scoped`     | Allows running an Effect program that requires a `Scope`.                                                             |
 | `it.scopedLive` | Combines the features of `scoped` and `live`, using a live Effect environment that requires a `Scope`.                |
 | `it.flakyTest`  | Facilitates the execution of tests that might occasionally fail.                                                      |
-| `it.concurrent` | Has the same methods as `it` (`effect`, `live`, `scoped`, `scopedLive`), but tests are marked to be run in parallel   |
+| `it.effect.concurrent` | Has the same methods as `it` (`effect`, `live`, `scoped`, `scopedLive`), but tests are marked to be run in parallel   |
 
 # Writing Tests with `it.effect`
 
@@ -303,16 +303,16 @@ it.scoped("run with scope", () =>
 
 # Writing Tests with `it.concurrent`
 
-The `it.concurrent` namespace contains the same methods as `it`, but all tests will use vitest's `it.concurrent`, causing tests marked with `.concurrent` to be run concurrently (that means to be ran at the same time) without having to wait for other tests
+The `it.*.concurrent` makes `@effect/vitest` use `it.concurrent` so the test is run concurrently (that means to be ran at the same time) without having to wait for other tests.
 
-**Example** (Using `it.concurrent` to run tests concurrently)
+**Example** (Using `it.effect.concurrent` to run tests concurrently)
 
 ```ts
-
+import { Console } from "effect";
 import { it } from "@effect/vitest"
 
-it.concurrent.effect("Concurrent test 1", () => ...)
-it.concurrent.effect("Concurrent test 2", () => ...)
+it.effect.concurrent("Concurrent test 1", () => Console.log("test1"))
+it.effect.concurrent("Concurrent test 2", () => Console.log("test2"))
 ```
 
 # Writing Tests with `it.flakyTest`
