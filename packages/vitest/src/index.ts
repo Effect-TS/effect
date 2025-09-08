@@ -212,7 +212,7 @@ export namespace Vitest {
   }
 
   /**
-   * @since 1.0.0
+   * @since 1.1.0
    */
   export interface LiveMethods<R = never> extends MethodsNonLive<R> {
     readonly live: Vitest.Tester<R>
@@ -226,20 +226,35 @@ export namespace Vitest {
     & Omit<T, K>
   type RemoveConcurrent<T> = FixedOmit<T, "concurrent">
 
+  /**
+   * @since 1.0.0
+   */
   export type Methods<R = never> =
     & TestCollectorCallable
     & Omit<LiveMethods<R>, "effect" | "live" | "scopedLive" | "scoped">
     & {
       readonly effect: RemoveConcurrent<LiveMethods<R>["effect"]> & {
+        /**
+         * @since 1.1.0
+         */
         readonly concurrent: LiveMethods<R>["effect"]
       }
       readonly live: RemoveConcurrent<LiveMethods<R>["live"]> & {
+        /**
+         * @since 1.1.0
+         */
         readonly concurrent: LiveMethods<R>["live"]
       }
       readonly scoped: RemoveConcurrent<LiveMethods<R>["scoped"]> & {
+        /**
+         * @since 1.1.0
+         */
         readonly concurrent: LiveMethods<R>["scoped"]
       }
       readonly scopedLive: RemoveConcurrent<LiveMethods<R>["scopedLive"]> & {
+        /**
+         * @since 1.1.0
+         */
         readonly concurrent: LiveMethods<R>["scopedLive"]
       }
     }
