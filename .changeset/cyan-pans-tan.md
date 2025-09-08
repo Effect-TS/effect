@@ -1,6 +1,6 @@
 ---
 
-"@effect/vitest": patch
+"@effect/vitest": minor
 
 ---
 
