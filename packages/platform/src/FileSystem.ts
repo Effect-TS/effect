@@ -369,6 +369,7 @@ export interface MakeTempDirectoryOptions {
 export interface MakeTempFileOptions {
   readonly directory?: string
   readonly prefix?: string
+  readonly suffix?: string
 }
 
 /**
