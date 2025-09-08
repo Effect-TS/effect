@@ -1,3 +1,4 @@
+/* eslint-disable @effect/dprint */
 /**
  * @since 1.0.0
  */
@@ -22,8 +23,19 @@ import type * as TestServices from "effect/TestServices"
 import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "../index.js"
+import type * as Types from "effect/Types"
 
-const defaultApi = Object.assign(V.it, { scopedFixtures: V.it.scoped })
+function assignDefaults<T extends object, U extends object>(target: T, source: U): Types.MergeLeft<T, U> {
+  for (const key in source) {
+    if (!Object.prototype.hasOwnProperty.call(target, key)) (target as any)[key] = source[key]
+  }
+  return target as Types.MergeLeft<T, U>
+}
+
+const createVitestAPI = (it: typeof V.it) => (Object.assign(it, { scopedFixtures: it.scoped }) satisfies Vitest.API)
+const createConcurrentVitestAPI = (it: Vitest.API) => assignDefaults(it.concurrent, it) as Vitest.API
+
+const defaultApi = createVitestAPI(V.it)
 
 const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
@@ -87,7 +99,7 @@ const makeTester = <R>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
   it: Vitest.API = defaultApi
 ): Vitest.Vitest.Tester<R> => {
-  const run = <A, E, TestArgs extends Array<unknown>>(
+  const run = <A, E, TestArgs extends ReadonlyArray<unknown>>(
     ctx: V.TestContext & object,
     args: TestArgs,
     self: Vitest.Vitest.TestFunction<A, E, R, TestArgs>
@@ -112,7 +124,14 @@ const makeTester = <R>(
     it.for(cases)(
       name,
       testOptions(timeout),
-      (args, ctx) => run(ctx, [args], self) as any
+      (args, ctx) => run(ctx, (args instanceof Array ? args : [args]) as any, self) as any
+    )
+
+  const forr: Vitest.Vitest.Tester<R>["for"] = (cases) => (name, self, timeout) =>
+    it.for(cases)(
+      name,
+      testOptions(timeout),
+      (args, ctx) => run(ctx, [args, ctx], self) as any
     )
 
   const fails: Vitest.Vitest.Tester<R>["fails"] = (name, self, timeout) =>
@@ -155,7 +174,7 @@ const makeTester = <R>(
     )
   }
 
-  return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop })
+  return Object.assign(f, { skip, skipIf, runIf, only, each, fails, prop, for: forr })
 }
 
 /** @internal */
@@ -178,6 +197,32 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
   )
 
   return V.it(
+    name,
+    testOptions(timeout),
+    // @ts-ignore
+    (ctx) => fc.assert(fc.property(arbs, (as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {})
+  )
+}
+/** @internal */
+export const propConcurrent: Vitest.Vitest.Methods["concurrent"]["prop"] = (name, arbitraries, self, timeout) => {
+  if (Array.isArray(arbitraries)) {
+    const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
+    return V.it.concurrent(
+      name,
+      testOptions(timeout),
+      // @ts-ignore
+      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {})
+    )
+  }
+
+  const arbs = fc.record(
+    Object.keys(arbitraries).reduce(function(result, key) {
+      result[key] = Schema.isSchema(arbitraries[key]) ? Arbitrary.make(arbitraries[key]) : arbitraries[key]
+      return result
+    }, {} as Record<string, fc.Arbitrary<any>>)
+  )
+
+  return V.it.concurrent(
     name,
     testOptions(timeout),
     // @ts-ignore
@@ -290,10 +335,22 @@ export const flakyTest = <A, E, R>(
     ),
     Effect.orDie
   )
-
 /** @internal */
-export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods =>
-  Object.assign(it, {
+export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods => {
+  const itConcurrent = createConcurrentVitestAPI(it)
+  return Object.assign(it, {
+    concurrent: Object.assign(itConcurrent, {
+      effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), itConcurrent),
+      scoped: makeTester<TestServices.TestServices | Scope.Scope>(
+        flow(Effect.scoped, Effect.provide(TestEnv)),
+        itConcurrent
+      ),
+      live: makeTester<never>(identity, itConcurrent),
+      scopedLive: makeTester<Scope.Scope>(Effect.scoped, itConcurrent),
+      prop: propConcurrent,
+      layer,
+      flakyTest
+    }),
     effect: makeTester<TestServices.TestServices>(Effect.provide(TestEnv), it),
     scoped: makeTester<TestServices.TestServices | Scope.Scope>(flow(Effect.scoped, Effect.provide(TestEnv)), it),
     live: makeTester<never>(identity, it),
@@ -302,9 +359,12 @@ export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods =>
     layer,
     prop
   })
+}
 
 /** @internal */
 export const {
+  /** @internal */
+  concurrent,
   /** @internal */
   effect,
   /** @internal */
@@ -317,4 +377,7 @@ export const {
 
 /** @internal */
 export const describeWrapped = (name: string, f: (it: Vitest.Vitest.Methods) => void): V.SuiteCollector =>
-  V.describe(name, (it) => f(makeMethods(Object.assign(it, { scopedFixtures: it.scoped }))))
+  V.describe(
+    name,
+    (it) => f(makeMethods(createVitestAPI(it)))
+  )

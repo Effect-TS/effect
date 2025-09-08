@@ -64,7 +64,7 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+  export interface TestFunction<A, E, R, TestArgs extends ReadonlyArray<any>> {
     (...args: TestArgs): Effect.Effect<A, E, R>
   }
 
@@ -90,13 +90,58 @@ export namespace Vitest {
    * @since 1.0.0
    */
   export interface Tester<R> extends Vitest.Test<R> {
+    /**
+     * Prints the name of the test when running the suite, but doesn't run it
+     */
     skip: Vitest.Test<R>
+    /**
+     * Ignores a test if a certain condition is met (for example you might want to skip tests depending on the environment)
+     */
     skipIf: (condition: unknown) => Vitest.Test<R>
+    /**
+     * Only runs a test if a certain condition is met
+     */
     runIf: (condition: unknown) => Vitest.Test<R>
+    /**
+     * Only runs tests marked with `.only` and ignores the rest
+     */
     only: Vitest.Test<R>
-    each: <T>(
-      cases: ReadonlyArray<T>
-    ) => <A, E>(name: string, self: TestFunction<A, E, R, Array<T>>, timeout?: number | V.TestOptions) => void
+    /**
+     * Use test.each when you need to run the same test with different variables. You can inject parameters with printf formatting in the test name in the order of the test function parameters.
+     * - %s: string
+     * - %d: number
+     * - %i: integer
+     * - %f: floating point value
+     * - %j: json
+     * - %o: object
+     * - %#: 0-based index of the test case
+     * - %$: 1-based index of the test case
+     * - %%: single percent sign ('%')
+     * @see https://vitest.dev/api/#test-each
+     */
+    each: <Case>(
+      cases: ReadonlyArray<Case>
+    ) => <A, E>(
+      name: string,
+      self: TestFunction<A, E, R, Case extends ReadonlyArray<any> ? Case : [Case]>,
+      timeout?: number | V.TestOptions
+    ) => void
+
+    /**
+     * The same as `.each`, but is specific to vitest and allows accessing the context and doesn't spread nested arrays in the arguments.
+     * @see https://vitest.dev/api/#test-for
+     */
+    for: <Case>(
+      cases: ReadonlyArray<Case>
+    ) => <A, E>(
+      name: string,
+      self: TestFunction<A, E, R, [Case, V.TestContext]>,
+      timeout?: number | V.TestOptions
+    ) => void
+
+    /**
+     * Inverts the test result (success becomes failure and failure becomes success). Or in other words, expects the test to fail.
+     */
     fails: Vitest.Test<R>
 
     /**
@@ -129,6 +174,7 @@ export namespace Vitest {
    */
   export interface MethodsNonLive<R = never, ExcludeTestServices extends boolean = false> extends API {
     readonly effect: Vitest.Tester<(ExcludeTestServices extends true ? never : TestServices.TestServices) | R>
+
     readonly flakyTest: <A, E, R2>(
       self: Effect.Effect<A, E, R2>,
       timeout?: Duration.DurationInput
@@ -169,9 +215,12 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface Methods<R = never> extends MethodsNonLive<R> {
+  export interface LiveMethods<R = never> extends MethodsNonLive<R> {
     readonly live: Vitest.Tester<R>
     readonly scopedLive: Vitest.Tester<Scope.Scope | R>
+  }
+  export interface Methods<R = never> extends LiveMethods<R> {
+    concurrent: LiveMethods<R>
   }
 }
 
@@ -270,9 +319,14 @@ export const prop: Vitest.Methods["prop"] = internal.prop
 /**
  * @since 1.0.0
  */
+export const concurrent: Vitest.Methods["concurrent"] = internal.concurrent
+
+/**
+ * @since 1.0.0
+ */
 
 /** @ignored */
-const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as const
+const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop, concurrent } as const
 
 /**
  * @since 1.0.0
