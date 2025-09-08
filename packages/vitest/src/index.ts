@@ -225,20 +225,24 @@ export namespace Vitest {
     & (T extends (...args: infer A) => infer R ? (...args: A) => R : unknown)
     & Omit<T, K>
   type RemoveConcurrent<T> = FixedOmit<T, "concurrent">
-  export type Methods<R = never> = FixedOmit<LiveMethods<R>, "effect" | "live" | "scopedLive" | "scoped"> & {
-    readonly effect: RemoveConcurrent<LiveMethods<R>["effect"]> & {
-      readonly concurrent: LiveMethods<R>["effect"]
+
+  export type Methods<R = never> =
+    & TestCollectorCallable
+    & Omit<LiveMethods<R>, "effect" | "live" | "scopedLive" | "scoped">
+    & {
+      readonly effect: RemoveConcurrent<LiveMethods<R>["effect"]> & {
+        readonly concurrent: LiveMethods<R>["effect"]
+      }
+      readonly live: RemoveConcurrent<LiveMethods<R>["live"]> & {
+        readonly concurrent: LiveMethods<R>["live"]
+      }
+      readonly scoped: RemoveConcurrent<LiveMethods<R>["scoped"]> & {
+        readonly concurrent: LiveMethods<R>["scoped"]
+      }
+      readonly scopedLive: RemoveConcurrent<LiveMethods<R>["scopedLive"]> & {
+        readonly concurrent: LiveMethods<R>["scopedLive"]
+      }
     }
-    readonly live: RemoveConcurrent<LiveMethods<R>["live"]> & {
-      readonly concurrent: LiveMethods<R>["live"]
-    }
-    readonly scoped: RemoveConcurrent<LiveMethods<R>["scoped"]> & {
-      readonly concurrent: LiveMethods<R>["scoped"]
-    }
-    readonly scopedLive: RemoveConcurrent<LiveMethods<R>["scopedLive"]> & {
-      readonly concurrent: LiveMethods<R>["scopedLive"]
-    }
-  }
 }
 
 /**
@@ -346,7 +350,6 @@ export const it: Vitest.Methods = Object.assign(V.it, {
   ...methods,
   scopedFixtures: V.it.scoped.bind(V.it)
 })
-
 /**
  * @since 1.0.0
  */
