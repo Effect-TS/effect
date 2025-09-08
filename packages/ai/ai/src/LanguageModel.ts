@@ -17,7 +17,7 @@ import * as Response from "./Response.js"
 import type { SpanTransformer } from "./Telemetry.js"
 import { CurrentSpanTransformer } from "./Telemetry.js"
 import type * as Tool from "./Tool.js"
-import type * as Toolkit from "./Toolkit.js"
+import * as Toolkit from "./Toolkit.js"
 
 // =============================================================================
 // Service Definition
@@ -38,9 +38,17 @@ export interface Service {
     ExtractContext<Options>
   >
 
-  readonly generateObject: <A, I extends Record<string, unknown>, R>(
-    options: GenerateObjectOptions<A, I, R>
-  ) => Effect.Effect<GenerateObjectResponse<A>, AiError, R>
+  readonly generateObject: <
+    Tools extends Record<string, Tool.Any>,
+    A,
+    I extends Record<string, unknown>,
+    R,
+    Options extends NoExcessProperties<GenerateObjectOptions<Tools, A, I, R>, Options>
+  >(options: Options & GenerateObjectOptions<Tools, A, I, R>) => Effect.Effect<
+    GenerateObjectResponse<Tools, A>,
+    ExtractError<Options>,
+    R | ExtractContext<Options>
+  >
 
   readonly streamText: <
     Tools extends Record<string, Tool.Any>,
@@ -107,17 +115,14 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
  * @since 1.0.0
  * @category Models
  */
-export interface GenerateObjectOptions<A, I extends Record<string, unknown>, R> {
-  /**
-   * The prompt input to use to generate text.
-   */
-  readonly prompt: Prompt.RawInput
-
+export interface GenerateObjectOptions<Tools extends Record<string, Tool.Any>, A, I extends Record<string, unknown>, R>
+  extends GenerateTextOptions<Tools>
+{
   /**
    * The name of the structured output that should be generated. Used by some
    * large language model providers to provide additional guidance to the model.
    */
-  readonly name?: string | undefined
+  readonly objectName?: string | undefined
 
   /**
    * The schema to be used to specify the structure of the object to generate.
@@ -149,12 +154,8 @@ export type ToolChoice<Tools extends string> = "auto" | "none" | "required" | {
   readonly oneOf: ReadonlyArray<Tools>
 }
 
-export interface BaseResponse<Part extends Response.AnyPart> {
-  readonly content: Array<Part>
-}
-
 export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
-  implements BaseResponse<Response.Part<Tools>>
+  implements Response.WithContentParts<Response.Part<Tools>>
 {
   readonly content: Array<Response.Part<Tools>>
 
@@ -214,11 +215,13 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
   }
 }
 
-export class GenerateObjectResponse<A> implements BaseResponse<Response.Part<never>> {
+export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A>
+  implements Response.WithContentParts<Response.Part<Tools>>
+{
   readonly value: A
-  readonly content: Array<Response.Part<never>>
+  readonly content: Array<Response.Part<Tools>>
 
-  constructor(value: A, content: Array<Response.Part<never>>) {
+  constructor(value: A, content: Array<Response.Part<Tools>>) {
     this.value = value
     this.content = content
   }
@@ -336,7 +339,7 @@ export interface ConstructorParams {
    * provider has finished text generation.
    */
   readonly generateText: (options: ProviderOptions) => Effect.Effect<
-    Array<Response.Part<any>>,
+    Array<Response.PartEncoded>,
     AiError,
     IdGenerator
   >
@@ -349,7 +352,7 @@ export interface ConstructorParams {
    * provider and accumulated into an `AiResponse`.
    */
   readonly streamText: (options: ProviderOptions) => Stream.Stream<
-    Response.StreamPart<any>,
+    Response.StreamPartEncoded,
     AiError,
     IdGenerator
   >
@@ -391,7 +394,9 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
             // If there is no toolkit, the response can be returned immediately
             if (Predicate.isUndefined(options.toolkit)) {
-              const content = yield* params.generateText(providerOptions)
+              const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
+              const rawContent = yield* params.generateText(providerOptions)
+              const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
               const response = new GenerateTextResponse(content)
               applySpanTransformer(spanTransformer, content, providerOptions)
               return response
@@ -399,32 +404,49 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
             // If there is a toolkit resolve and apply it to the provider options
             const toolkit = yield* resolveToolkit<Tools, any, any>(options.toolkit)
+
+            // If the resolved toolkit is empty, return immediately
+            if (Object.values(toolkit.tools).length === 0) {
+              const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
+              const rawContent = yield* params.generateText(providerOptions)
+              const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+              const response = new GenerateTextResponse(content)
+              applySpanTransformer(spanTransformer, content, providerOptions)
+              return response
+            }
+
             const tools = typeof toolChoice === "object" && "oneOf" in toolChoice
               ? Object.values(toolkit.tools).filter((tool) => toolChoice.oneOf.includes(tool.name))
               : Object.values(toolkit.tools)
             providerOptions.tools = tools
             providerOptions.toolChoice = toolChoice
 
-            const content = yield* params.generateText(providerOptions)
-
             // If tool call resolution is disabled, return the response without
             // resolving the tool calls that were generated
             if (options.disableToolCallResolution === true) {
+              const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
+              const rawContent = yield* params.generateText(providerOptions)
+              const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
               const response = new GenerateTextResponse(content)
               applySpanTransformer(spanTransformer, content, providerOptions)
               return response
             }
 
+            const rawContent = yield* params.generateText(providerOptions)
+
             // Resolve the generated tool calls
             const toolResults = yield* resolveToolCalls({
               method: "generateText",
-              content,
+              content: rawContent,
               toolkit,
               concurrency
             })
 
+            const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
+            const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+
             // Return the final response
-            const finalContent = [...content, ...toolResults]
+            const finalContent: Array<Response.Part<any>> = [...content, ...toolResults]
             const response = new GenerateTextResponse(finalContent)
             applySpanTransformer(spanTransformer, finalContent, providerOptions)
             return response
@@ -461,36 +483,61 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
         // If there is no toolkit, return immediately
         if (Predicate.isUndefined(options.toolkit)) {
-          return [params.streamText(providerOptions), providerOptions] as const
+          const schema = Schema.Chunk(Response.StreamPart(Toolkit.empty))
+          const decode = Schema.decodeUnknown(schema)
+          const stream = params.streamText(providerOptions).pipe(
+            Stream.mapChunksEffect(decode)
+          )
+          return [stream, providerOptions] as const
         }
 
         // If there is a toolkit resolve and apply it to the provider options
         const toolkit = yield* resolveToolkit<Tools, any, any>(options.toolkit)
+
+        // If the toolkit is empty, return immediately
+        if (Object.values(toolkit.tools).length === 0) {
+          const schema = Schema.Chunk(Response.StreamPart(Toolkit.empty))
+          const decode = Schema.decodeUnknown(schema)
+          const stream = params.streamText(providerOptions).pipe(
+            Stream.mapChunksEffect(decode)
+          )
+          return [stream, providerOptions] as const
+        }
+
         const tools = typeof toolChoice === "object" && "oneOf" in toolChoice
           ? Object.values(toolkit.tools).filter((tool) => toolChoice.oneOf.includes(tool.name))
           : Object.values(toolkit.tools)
         providerOptions.tools = tools
         providerOptions.toolChoice = toolChoice
 
-        const stream = params.streamText(providerOptions)
-
         // If tool call resolution is disabled, return the response without
         // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
+          const schema = Schema.Chunk(Response.StreamPart(toolkit))
+          const decode = Schema.decodeUnknown(schema)
+          const stream = params.streamText(providerOptions).pipe(
+            Stream.mapChunksEffect(decode)
+          )
           return [stream, providerOptions] as const
         }
 
+        const ResponseSchema = Schema.Chunk(Response.StreamPart(toolkit))
+        const decode = Schema.decodeUnknown(ResponseSchema)
         return [
-          Stream.mapChunksEffect(stream, (content) =>
-            Effect.map(
-              resolveToolCalls({
+          params.streamText(providerOptions).pipe(
+            Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
+              const rawContent = Chunk.toArray(chunk)
+              const toolResults = yield* resolveToolCalls({
                 method: "streamText",
-                content: Chunk.toReadonlyArray(content),
+                content: rawContent,
                 toolkit,
                 concurrency
-              }),
-              (toolResults) => Chunk.unsafeFromArray([...content, toolResults])
-            )) as Stream.Stream<Response.StreamPart<any>, AiError, IdGenerator>,
+              })
+              const content = yield* decode(rawContent)
+              const finalContent: Array<Response.StreamPart<any>> = [...content, ...toolResults]
+              return Chunk.unsafeFromArray(finalContent)
+            }))
+          ) as Stream.Stream<Response.StreamPart<{}>, AiError, IdGenerator>,
           providerOptions
         ] as const
       },
@@ -516,64 +563,111 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       Stream.provideService(IdGenerator, idGenerator)
     ) as any
 
-    const generateObject = <A, I extends Record<string, unknown>, R>(
-      options: GenerateObjectOptions<A, I, R>
-    ): Effect.Effect<GenerateObjectResponse<A>, AiError, R> => {
-      const name: string = Predicate.isNotUndefined(options.name)
-        ? options.name
-        : "_tag" in options.schema
-        ? options.schema._tag as string
-        : "identifier" in options.schema
-        ? options.schema.identifier as string
+    const generateObject = <
+      Tools extends Record<string, Tool.Any>,
+      A,
+      I extends Record<string, unknown>,
+      R,
+      Options extends NoExcessProperties<GenerateObjectOptions<Tools, A, I, R>, Options>
+    >({
+      concurrency,
+      schema,
+      toolChoice = "auto",
+      ...options
+    }: Options & GenerateObjectOptions<Tools, A, I, R>): Effect.Effect<
+      GenerateObjectResponse<Tools, A>,
+      ExtractError<Options>,
+      R | ExtractContext<Options>
+    > => {
+      const name: string = Predicate.isNotUndefined(options.objectName)
+        ? options.objectName
+        : "_tag" in schema
+        ? schema._tag as string
+        : "identifier" in schema
+        ? schema.identifier as string
         : "generateObject"
       return Effect.useSpan(
         "LanguageModel.generateObject",
-        { captureStackTrace: false, attributes: { name } },
+        { captureStackTrace: false, attributes: { name, concurrency, toolChoice } },
         Effect.fnUntraced(
           function*(span) {
             const prompt = Prompt.make(options.prompt)
             const spanTransformer = yield* getSpanTransformer
-            const decode = Schema.decodeUnknown(Schema.parseJson(options.schema))
-
-            const providerOptions: ProviderOptions = {
+            const providerOptions: Mutable<ProviderOptions> = {
               prompt,
               tools: [],
               toolChoice: "none",
-              responseFormat: { type: "json", name, schema: options.schema },
+              responseFormat: { type: "json", name, schema },
               span
             }
-            const response = yield* params.generateText(providerOptions)
-            applySpanTransformer(spanTransformer, response, providerOptions)
 
-            const text: Array<string> = []
-            for (const part of response) {
-              if (part.type === "text") {
-                text.push(part.text)
-              }
+            // If there is no toolkit, the response can be returned immediately
+            if (Predicate.isUndefined(options.toolkit)) {
+              const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
+              const rawContent = yield* params.generateText(providerOptions)
+              const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+              const value = yield* resolveStructuredOutput(content, schema)
+              const response = new GenerateObjectResponse(value, content)
+              applySpanTransformer(spanTransformer, content, providerOptions)
+              return response
             }
 
-            if (text.length === 0) {
-              return yield* new AiError({
-                module: "LanguageModel",
-                method: "generateObject",
-                description: "No object was generated by the large language model"
-              })
+            // If there is a toolkit resolve and apply it to the provider options
+            const toolkit = yield* resolveToolkit<Tools, any, any>(options.toolkit)
+
+            // If the resolved toolkit is empty, return immediately
+            if (Object.values(toolkit.tools).length === 0) {
+              const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
+              const rawContent = yield* params.generateText(providerOptions)
+              const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+              const value = yield* resolveStructuredOutput(content, schema)
+              const response = new GenerateObjectResponse(value, content)
+              applySpanTransformer(spanTransformer, content, providerOptions)
+              return response
             }
 
-            const value = yield* Effect.mapError(decode(text.join("")), (cause) =>
-              new AiError({
-                module: "LanguageModel",
-                method: "generateObject",
-                description: "Generated object failed to conform to provided schema",
-                cause
-              }))
+            const tools = typeof toolChoice === "object" && "oneOf" in toolChoice
+              ? Object.values(toolkit.tools).filter((tool) => toolChoice.oneOf.includes(tool.name))
+              : Object.values(toolkit.tools)
+            providerOptions.tools = tools
+            providerOptions.toolChoice = toolChoice
 
-            return new GenerateObjectResponse(value, response as any)
+            // If tool call resolution is disabled, return the response without
+            // resolving the tool calls that were generated
+            if (options.disableToolCallResolution === true) {
+              const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
+              const rawContent = yield* params.generateText(providerOptions)
+              const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+              const value = yield* resolveStructuredOutput(content, schema)
+              const response = new GenerateObjectResponse(value, content)
+              applySpanTransformer(spanTransformer, content, providerOptions)
+              return response
+            }
+
+            const rawContent = yield* params.generateText(providerOptions)
+
+            // Resolve the generated tool calls
+            const toolResults = yield* resolveToolCalls({
+              method: "generateText",
+              content: rawContent,
+              toolkit,
+              concurrency
+            })
+
+            const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
+            const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+
+            // Return the final response
+            const finalContent: Array<Response.Part<any>> = [...content, ...toolResults]
+            const value = yield* resolveStructuredOutput(finalContent, schema)
+            const response = new GenerateObjectResponse(value, finalContent)
+            applySpanTransformer(spanTransformer, finalContent, providerOptions)
+            return response
           },
           (effect, span) => Effect.withParentSpan(effect, span),
           Effect.provideService(IdGenerator, idGenerator)
         )
-      )
+      ) as any
     }
 
     return {
@@ -613,12 +707,16 @@ export const generateText: <
  * @since 1.0.0
  * @category Functions
  */
-export const generateObject: <A, I extends Record<string, unknown>, R>(
-  options: GenerateObjectOptions<A, I, R>
-) => Effect.Effect<
-  GenerateObjectResponse<A>,
-  AiError,
-  LanguageModel | R
+export const generateObject: <
+  Tools extends Record<string, Tool.Any>,
+  A,
+  I extends Record<string, unknown>,
+  R,
+  Options extends NoExcessProperties<GenerateObjectOptions<Tools, A, I, R>, Options>
+>(options: Options & GenerateObjectOptions<Tools, A, I, R>) => Effect.Effect<
+  GenerateObjectResponse<Tools, A>,
+  ExtractError<Options>,
+  LanguageModel | R | ExtractContext<Options>
 > = Effect.serviceFunctionEffect(LanguageModel, (model) => model.generateObject)
 
 /**
@@ -647,17 +745,17 @@ export const streamText = <
 // =============================================================================
 
 const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
-  readonly content: ReadonlyArray<Response.AllParts<any>>
+  readonly content: ReadonlyArray<Response.AllPartsEncoded>
   readonly toolkit: Toolkit.WithHandler<Tools>
   readonly concurrency: Concurrency | undefined
   readonly method: string
 }): Effect.Effect<
-  ReadonlyArray<Tool.Success<Tools[keyof Tools]>>,
+  ReadonlyArray<Response.ToolResultPart<Tool.Name<Tools[keyof Tools]>, Tool.Success<Tools[keyof Tools]>>>,
   Tool.Failure<Tools[keyof Tools]>,
   Tool.Requirements<Tools[keyof Tools]>
 > => {
   const toolNames: Array<string> = []
-  const toolCalls: Array<Response.ToolCallPart<string, any>> = []
+  const toolCalls: Array<Response.ToolCallPartEncoded> = []
 
   for (const part of options.content) {
     if (part.type === "tool-call") {
@@ -669,8 +767,17 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
   }
 
   return Effect.forEach(toolCalls, (toolCall) => {
-    return options.toolkit.handle(toolCall.name, toolCall.params).pipe(
-      Effect.map(({ result }) => result)
+    return options.toolkit.handle(toolCall.name, toolCall.params as any).pipe(
+      Effect.map(({ encodedResult, result }) =>
+        Response.makePart("tool-result", {
+          id: toolCall.id,
+          name: toolCall.name,
+          result,
+          encodedResult,
+          // Tool calls that are resolved by the SDK are _always_ user-defined
+          isProviderDefined: false
+        })
+      )
     )
   }, { concurrency: options.concurrency })
 }
@@ -682,6 +789,37 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
 const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
   toolkit: Toolkit.WithHandler<Tools> | Effect.Effect<Toolkit.WithHandler<Tools>, E, R>
 ): Effect.Effect<Toolkit.WithHandler<Tools>, E, R> => Effect.isEffect(toolkit) ? toolkit : Effect.succeed(toolkit)
+
+const resolveStructuredOutput = Effect.fnUntraced(
+  function*<A, I, R>(
+    response: ReadonlyArray<Response.AllParts<any>>,
+    ResultSchema: Schema.Schema<A, I, R>
+  ) {
+    const text: Array<string> = []
+    for (const part of response) {
+      if (part.type === "text") {
+        text.push(part.text)
+      }
+    }
+
+    if (text.length === 0) {
+      return yield* new AiError({
+        module: "LanguageModel",
+        method: "generateObject",
+        description: "No object was generated by the large language model"
+      })
+    }
+
+    const decode = Schema.decode(Schema.parseJson(ResultSchema))
+    return yield* Effect.mapError(decode(text.join("")), (cause) =>
+      new AiError({
+        module: "LanguageModel",
+        method: "generateObject",
+        description: "Generated object failed to conform to provided schema",
+        cause
+      }))
+  }
+)
 
 const applySpanTransformer = (
   transformer: Option.Option<SpanTransformer>,

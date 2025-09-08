@@ -27,8 +27,6 @@ import type { Sink } from "effect/Sink"
 import type { Stream } from "effect/Stream"
 import type * as Types from "effect/Types"
 import * as FindMyWay from "find-my-way-ts"
-import * as AiTool from "./AiTool.js"
-import type * as AiToolkit from "./AiToolkit.js"
 import type {
   Annotations,
   CallTool,
@@ -66,6 +64,8 @@ import {
   Tool,
   ToolAnnotations
 } from "./McpSchema.js"
+import * as AiTool from "./Tool.js"
+import type * as Toolkit from "./Toolkit.js"
 
 /**
  * @since 1.0.0
@@ -705,7 +705,7 @@ export const layerHttpRouter = (options: {
  * @category Tools
  */
 export const registerToolkit: <Tools extends Record<string, AiTool.Any>>(
-  toolkit: AiToolkit.AiToolkit<Tools>
+  toolkit: Toolkit.Toolkit<Tools>
 ) => Effect.Effect<
   void,
   never,
@@ -713,11 +713,11 @@ export const registerToolkit: <Tools extends Record<string, AiTool.Any>>(
   | AiTool.HandlersFor<Tools>
   | Exclude<AiTool.Requirements<Tools>, McpServerClient>
 > = Effect.fnUntraced(function*<Tools extends Record<string, AiTool.Any>>(
-  toolkit: AiToolkit.AiToolkit<Tools>
+  toolkit: Toolkit.Toolkit<Tools>
 ) {
   const registry = yield* McpServer
   const built = yield* toolkit as any as Effect.Effect<
-    AiToolkit.WithHandlers<Tools>,
+    Toolkit.WithHandler<Tools>,
     never,
     Exclude<AiTool.HandlersFor<Tools>, McpServerClient>
   >
@@ -741,7 +741,7 @@ export const registerToolkit: <Tools extends Record<string, AiTool.Any>>(
     yield* registry.addTool({
       tool: mcpTool,
       handle(payload) {
-        return built.handleUserDefined(tool.name as any, payload).pipe(
+        return built.handle(tool.name as any, payload).pipe(
           Effect.provide(context as Context.Context<any>),
           Effect.match({
             onFailure: (error) =>
@@ -782,7 +782,7 @@ export const registerToolkit: <Tools extends Record<string, AiTool.Any>>(
  * @category Tools
  */
 export const toolkit = <Tools extends Record<string, AiTool.Any>>(
-  toolkit: AiToolkit.AiToolkit<Tools>
+  toolkit: Toolkit.Toolkit<Tools>
 ): Layer.Layer<
   never,
   never,

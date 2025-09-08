@@ -289,6 +289,8 @@ const resolveInput = <Tools extends ReadonlyArray<Tool.Any>>(
   return output
 }
 
+export const empty: Toolkit<{}> = makeProto({})
+
 /**
  * Constructs a new `Toolkit` from the specified tools.
  *
@@ -298,8 +300,6 @@ const resolveInput = <Tools extends ReadonlyArray<Tool.Any>>(
 export const make = <Tools extends ReadonlyArray<Tool.Any>>(
   ...tools: Tools
 ): Toolkit<ToolsByName<Tools>> => makeProto(resolveInput(...tools)) as any
-
-export const empty: Toolkit<{}> = make()
 
 /**
  * A utility type which simplifies a record type.

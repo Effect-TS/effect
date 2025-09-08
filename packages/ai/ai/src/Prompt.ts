@@ -6,6 +6,7 @@ import { constFalse, dual } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as Response from "./Response.js"
 
 // =============================================================================
 // Metadata
@@ -182,8 +183,8 @@ export const toolCallPart = (params: {
   readonly id: string
   readonly name: string
   readonly params: unknown
-  readonly isProviderDefined: boolean
   readonly metadata?: Metadata | undefined
+  readonly isProviderDefined: boolean
 }): ToolCallPart => makePart("tool-call", params)
 
 // =============================================================================
@@ -290,12 +291,16 @@ export const systemMessage = (params: {
 // =============================================================================
 
 export interface UserMessage extends BaseMessage<"user"> {
-  readonly content: ReadonlyArray<TextPart | FilePart>
+  readonly content: ReadonlyArray<UserMessagePart>
 }
 
+export type UserMessagePart = TextPart | FilePart
+
 export interface UserMessageEncoded extends BaseMessageEncoded<"user"> {
-  readonly content: ReadonlyArray<TextPartEncoded | FilePartEncoded>
+  readonly content: ReadonlyArray<UserMessagePartEncoded>
 }
+
+export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
 
 export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schema.Struct({
   content: Schema.Array(Schema.Union(TextPart, FilePart))
@@ -314,24 +319,26 @@ export const userMessage = (params: {
 // =============================================================================
 
 export interface AssistantMessage extends BaseMessage<"assistant"> {
-  readonly content: ReadonlyArray<
-    | TextPart
-    | FilePart
-    | ReasoningPart
-    | ToolCallPart
-    | ToolResultPart
-  >
+  readonly content: ReadonlyArray<AssistantMessagePart>
 }
 
+export type AssistantMessagePart =
+  | TextPart
+  | FilePart
+  | ReasoningPart
+  | ToolCallPart
+  | ToolResultPart
+
 export interface AssistantMessageEncoded extends BaseMessageEncoded<"assistant"> {
-  readonly content: ReadonlyArray<
-    | TextPartEncoded
-    | FilePartEncoded
-    | ReasoningPartEncoded
-    | ToolCallPartEncoded
-    | ToolResultPartEncoded
-  >
+  readonly content: ReadonlyArray<AssistantMessagePartEncoded>
 }
+
+export type AssistantMessagePartEncoded =
+  | TextPartEncoded
+  | FilePartEncoded
+  | ReasoningPartEncoded
+  | ToolCallPartEncoded
+  | ToolResultPartEncoded
 
 export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageEncoded> = Schema.Struct({
   content: Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart))
@@ -350,12 +357,16 @@ export const assistantMessage = (params: {
 // =============================================================================
 
 export interface ToolMessage extends BaseMessage<"tool"> {
-  readonly content: ReadonlyArray<ToolResultPart>
+  readonly content: ReadonlyArray<ToolMessagePart>
 }
 
+export type ToolMessagePart = ToolResultPart
+
 export interface ToolMessageEncoded extends BaseMessageEncoded<"tool"> {
-  readonly content: ReadonlyArray<ToolResultPartEncoded>
+  readonly content: ReadonlyArray<ToolMessagePartEncoded>
 }
+
+export type ToolMessagePartEncoded = ToolResultPartEncoded
 
 export const ToolMessage: Schema.Schema<ToolMessage, ToolMessageEncoded> = Schema.Struct({
   content: Schema.Array(ToolResultPart)
@@ -415,6 +426,8 @@ export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
   content: Schema.Array(Message)
 }).pipe(Schema.attachPropertySignature(TypeId, TypeId))
 
+export const FromJson = Schema.parseJson(Prompt)
+
 /**
  * Represents raw input types which can be converted into an `AiPrompt`.
  *
@@ -425,6 +438,7 @@ export type RawInput =
   | string
   | Iterable<MessageEncoded>
   | Prompt
+  | Response.WithContentParts<Response.AnyPart>
 
 const makePrompt = (content: ReadonlyArray<Message>): Prompt => ({
   [TypeId]: TypeId,
@@ -432,6 +446,8 @@ const makePrompt = (content: ReadonlyArray<Message>): Prompt => ({
 })
 
 const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
+
+export const empty: Prompt = makePrompt([])
 
 export const make = (input: RawInput): Prompt => {
   if (Predicate.isString(input)) {
@@ -445,8 +461,144 @@ export const make = (input: RawInput): Prompt => {
     return makePrompt(content)
   }
 
-  return input
+  if (isPrompt(input)) {
+    return input
+  }
+
+  return fromResponseParts(input.content)
 }
+
+export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePrompt(messages)
+
+const VALID_RESPONSE_PART_MAP = {
+  "response-metadata": false,
+  "text": true,
+  "text-start": false,
+  "text-delta": true,
+  "text-end": false,
+  "reasoning": true,
+  "reasoning-start": false,
+  "reasoning-delta": true,
+  "reasoning-end": false,
+  "file": false,
+  "source": false,
+  "tool-params-start": false,
+  "tool-params-delta": false,
+  "tool-params-end": false,
+  "tool-call": true,
+  "tool-result": true,
+  "finish": false
+} as const satisfies Record<Response.AnyPart["type"], boolean>
+
+type ValidResponseParts = typeof VALID_RESPONSE_PART_MAP
+
+type ValidResponsePart = {
+  [Type in keyof ValidResponseParts]: ValidResponseParts[Type] extends true ? Extract<Response.AnyPart, { type: Type }>
+    : never
+}[keyof typeof VALID_RESPONSE_PART_MAP]
+
+const isValidPart = (part: Response.AnyPart): part is ValidResponsePart => {
+  return VALID_RESPONSE_PART_MAP[part.type]
+}
+
+export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Prompt => {
+  if (parts.length === 0) {
+    return empty
+  }
+
+  const content: Array<AssistantMessagePart> = []
+
+  const textDeltas: Array<string> = []
+  function flushTextDeltas() {
+    if (textDeltas.length > 0) {
+      const text = textDeltas.join("")
+      if (text.length > 0) {
+        content.push(textPart({ text }))
+      }
+      textDeltas.length = 0
+    }
+  }
+
+  const reasoningDeltas: Array<string> = []
+  function flushReasoningDeltas() {
+    if (reasoningDeltas.length > 0) {
+      const text = reasoningDeltas.join("")
+      if (text.length > 0) {
+        content.push(reasoningPart({ text }))
+      }
+      reasoningDeltas.length = 0
+    }
+  }
+
+  function flushDeltas() {
+    flushTextDeltas()
+    flushReasoningDeltas()
+  }
+
+  for (const part of parts) {
+    if (isValidPart(part)) {
+      switch (part.type) {
+        case "text": {
+          flushDeltas()
+          content.push(textPart({ text: part.text }))
+          break
+        }
+        case "text-delta": {
+          flushReasoningDeltas()
+          textDeltas.push(part.delta)
+          break
+        }
+        case "reasoning": {
+          flushDeltas()
+          content.push(reasoningPart({ text: part.text }))
+          break
+        }
+        case "reasoning-delta": {
+          flushTextDeltas()
+          reasoningDeltas.push(part.delta)
+          break
+        }
+        case "tool-call": {
+          flushDeltas()
+          content.push(toolCallPart({
+            id: part.id,
+            name: part.name,
+            params: part.params,
+            isProviderDefined: part.isProviderDefined ?? false
+          }))
+          break
+        }
+        case "tool-result": {
+          flushDeltas()
+          content.push(toolResultPart({
+            id: part.id,
+            name: part.name,
+            result: part.encoded
+          }))
+          break
+        }
+      }
+    }
+  }
+
+  flushDeltas()
+
+  const message = assistantMessage({ content })
+
+  return makePrompt([message])
+}
+
+// =============================================================================
+// Merging Prompts
+// =============================================================================
+
+export const merge: {
+  (other: Prompt): (self: Prompt) => Prompt
+  (self: Prompt, other: Prompt): Prompt
+} = dual<
+  (other: Prompt) => (self: Prompt) => Prompt,
+  (self: Prompt, other: Prompt) => Prompt
+>(2, (self, other) => fromMessages([...self.content, ...other.content]))
 
 // =============================================================================
 // Provider Options

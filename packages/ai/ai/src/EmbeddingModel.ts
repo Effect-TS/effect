@@ -17,41 +17,30 @@ import { AiError } from "./AiError.js"
  * @since 1.0.0
  * @category Context
  */
-export class AiEmbeddingModel extends Context.Tag("@effect/ai/AiEmbeddingModel")<
-  AiEmbeddingModel,
-  AiEmbeddingModel.Service
+export class EmbeddingModel extends Context.Tag("@effect/ai/EmbeddingModel")<
+  EmbeddingModel,
+  Service
 >() {}
 
 /**
  * @since 1.0.0
+ * @category Models
  */
-export declare namespace AiEmbeddingModel {
-  /**
-   * @since 1.0.0
-   * @category Models
-   */
-  export interface Service {
-    readonly embed: (input: string) => Effect.Effect<Array<number>, AiError>
-    readonly embedMany: (input: ReadonlyArray<string>, options?: {
-      /**
-       * The concurrency level to use while batching requests.
-       */
-      readonly concurrency?: Concurrency | undefined
-    }) => Effect.Effect<Array<Array<number>>, AiError>
-  }
+export interface Service {
+  readonly embed: (input: string) => Effect.Effect<Array<number>, AiError>
+}
 
-  /**
-   * @since 1.0.0
-   * @category Models
-   */
-  export interface Result {
-    readonly index: number
-    readonly embeddings: Array<number>
-  }
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export interface Result {
+  readonly index: number
+  readonly embeddings: Array<number>
 }
 
 class EmbeddingRequest extends Schema.TaggedRequest<EmbeddingRequest>(
-  "@effect/ai/AiEmbeddingModel/Request"
+  "@effect/ai/EmbeddingModel/Request"
 )("EmbeddingRequest", {
   failure: AiError,
   success: Schema.mutable(Schema.Array(Schema.Number)),
@@ -59,7 +48,7 @@ class EmbeddingRequest extends Schema.TaggedRequest<EmbeddingRequest>(
 }) {}
 
 const makeBatchedResolver = (
-  embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<AiEmbeddingModel.Result>, AiError>
+  embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<Result>, AiError>
 ) =>
   RequestResolver.makeBatched(
     (requests: ReadonlyArray<EmbeddingRequest>) =>
@@ -85,7 +74,7 @@ const makeBatchedResolver = (
  * @category Constructors
  */
 export const make = (options: {
-  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<AiEmbeddingModel.Result>, AiError>
+  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<Result>, AiError>
   readonly maxBatchSize?: number
   readonly cache?: {
     readonly capacity: number
@@ -111,20 +100,11 @@ export const make = (options: {
             Effect.withRequestCaching(true),
             Effect.withRequestCache(cache)
           )
-      }).pipe(Effect.withSpan("AiEmbeddingModel.embed", { captureStackTrace: false }))
+      }).pipe(Effect.withSpan("EmbeddingModel.embed", { captureStackTrace: false }))
     }
 
-    function embedMany(inputs: ReadonlyArray<string>, options?: {
-      readonly concurrency?: Concurrency | undefined
-    }) {
-      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
-        Effect.withSpan("AiEmbeddingModel.embedMany", { captureStackTrace: false })
-      )
-    }
-
-    return AiEmbeddingModel.of({
-      embed,
-      embedMany
+    return EmbeddingModel.of({
+      embed
     })
   })
 
@@ -137,7 +117,7 @@ export const make = (options: {
  * @category Constructors
  */
 export const makeDataLoader = (options: {
-  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<AiEmbeddingModel.Result>, AiError>
+  readonly embedMany: (input: ReadonlyArray<string>) => Effect.Effect<Array<Result>, AiError>
   readonly window: Duration.DurationInput
   readonly maxBatchSize?: number
 }) =>
@@ -150,20 +130,11 @@ export const makeDataLoader = (options: {
 
     function embed(input: string) {
       return Effect.request(new EmbeddingRequest({ input }), resolverDelayed).pipe(
-        Effect.withSpan("AiEmbeddingModel.embed", { captureStackTrace: false })
+        Effect.withSpan("EmbeddingModel.embed", { captureStackTrace: false })
       )
     }
 
-    function embedMany(inputs: ReadonlyArray<string>, options?: {
-      readonly concurrency?: Concurrency | undefined
-    }) {
-      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
-        Effect.withSpan("AiEmbeddingModel.embedMany", { captureStackTrace: false })
-      )
-    }
-
-    return AiEmbeddingModel.of({
-      embed,
-      embedMany
+    return EmbeddingModel.of({
+      embed
     })
   })
