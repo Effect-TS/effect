@@ -64,7 +64,7 @@ export namespace Vitest {
   /**
    * @since 1.0.0
    */
-  export interface TestFunction<A, E, R, TestArgs extends ReadonlyArray<any>> {
+  export interface TestFunction<A, E, R, TestArgs extends Array<any>> {
     (...args: TestArgs): Effect.Effect<A, E, R>
   }
 
@@ -123,7 +123,7 @@ export namespace Vitest {
       cases: ReadonlyArray<Case>
     ) => <A, E>(
       name: string,
-      self: TestFunction<A, E, R, Case extends ReadonlyArray<any> ? Case : [Case]>,
+      self: TestFunction<A, E, R, Case extends ReadonlyArray<any> ? [...Case] : [Case]>,
       timeout?: number | V.TestOptions
     ) => void
 
