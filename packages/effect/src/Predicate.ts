@@ -334,8 +334,7 @@ export const isMap = (input: unknown): input is Map<unknown, unknown> => input i
 export const isString = (input: unknown): input is string => typeof input === "string"
 
 /**
- * A refinement that checks if a value is a `number`. Note that this
- * check returns `false` for `NaN`.
+ * A refinement that checks if a value is a `number`.
  *
  * @example
  * ```ts
@@ -345,9 +344,9 @@ export const isString = (input: unknown): input is string => typeof input === "s
  * assert.strictEqual(isNumber(123), true)
  * assert.strictEqual(isNumber(0), true)
  * assert.strictEqual(isNumber(-1.5), true)
+ * assert.strictEqual(isNumber(NaN), true)
  *
  * assert.strictEqual(isNumber("123"), false)
- * assert.strictEqual(isNumber(NaN), false) // Special case: NaN is a number type but returns false
  * ```
  *
  * @category guards
