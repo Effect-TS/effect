@@ -1,24 +1,64 @@
 /**
  * @since 1.0.0
  */
-export * as AiChat from "./AiChat.js"
-
-/**
- * @since 1.0.0
- */
-export * as AiEmbeddingModel from "./AiEmbeddingModel.js"
-
-/**
- * @since 1.0.0
- */
 export * as AiError from "./AiError.js"
 
 /**
  * @since 1.0.0
  */
-export * as AiModel from "./AiModel.js"
+export * as Chat from "./Chat.js"
 
 /**
+ * @since 1.0.0
+ */
+export * as EmbeddingModel from "./EmbeddingModel.js"
+
+/**
+ * The `IdGenerator` module provides a pluggable system for generating unique identifiers
+ * for tool calls and other items in the Effect AI SDKs.
+ *
+ * This module offers a flexible and configurable approach to ID generation, supporting
+ * custom alphabets, prefixes, separators, and sizes.
+ *
+ * @example
+ * ```ts
+ * import { IdGenerator } from "@effect/ai"
+ * import { Effect, Layer } from "effect"
+ *
+ * // Using the default ID generator
+ * const program = Effect.gen(function* () {
+ *   const idGen = yield* IdGenerator
+ *   const toolCallId = yield* idGen.generateId()
+ *   console.log(toolCallId) // "id_A7xK9mP2qR5tY8uV"
+ *   return toolCallId
+ * }).pipe(
+ *   Effect.provide(Layer.succeed(IdGenerator, IdGenerator.defaultIdGenerator))
+ * )
+ * ```
+ *
+ * @example
+ * ```ts
+ * import { IdGenerator } from "@effect/ai"
+ * import { Effect, Layer } from "effect"
+ *
+ * // Creating a custom ID generator for AI tool calls
+ * const customLayer = IdGenerator.layer({
+ *   alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+ *   prefix: "tool_call",
+ *   separator: "-",
+ *   size: 12
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   const idGen = yield* IdGenerator
+ *   const id = yield* idGen.generateId()
+ *   console.log(id) // "tool_call-A7XK9MP2QR5T"
+ *   return id
+ * }).pipe(
+ *   Effect.provide(customLayer)
+ * )
+ * ```
+ *
  * @since 1.0.0
  */
 export * as IdGenerator from "./IdGenerator.js"
@@ -37,6 +77,11 @@ export * as McpSchema from "./McpSchema.js"
  * @since 1.0.0
  */
 export * as McpServer from "./McpServer.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as Model from "./Model.js"
 
 /**
  * @since 1.0.0

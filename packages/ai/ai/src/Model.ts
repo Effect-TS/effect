@@ -11,7 +11,7 @@ import * as Layer from "effect/Layer"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for("@effect/ai/AiModel")
+export const TypeId: unique symbol = Symbol.for("@effect/ai/Model")
 
 /**
  * @since 1.0.0
@@ -23,13 +23,13 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export interface AiModel<in out Provides, in out Requires>
+export interface Model<in out Provides, in out Requires>
   extends Layer.Layer<Provides, never, Requires>, Effect.Effect<Layer.Layer<Provides>, never, Requires>
 {
   readonly [TypeId]: TypeId
 }
 
-const AiModelProto = {
+const ModelProto = {
   ...CommitPrototype,
   [TypeId]: TypeId,
   [Layer.LayerTypeId]: {
@@ -37,7 +37,7 @@ const AiModelProto = {
     _E: identity,
     _RIn: identity
   },
-  commit(this: AiModel<any, any>) {
+  commit(this: Model<any, any>) {
     return Effect.contextWith((context: Context.Context<never>) => {
       return Layer.provide(this, Layer.succeedContext(context))
     })
@@ -50,4 +50,4 @@ const AiModelProto = {
  */
 export const make = <Provides, Requires>(
   layer: Layer.Layer<Provides, never, Requires>
-): AiModel<Provides, Requires> => Object.assign(Object.create(AiModelProto), layer)
+): Model<Provides, Requires> => Object.assign(Object.create(ModelProto), layer)
