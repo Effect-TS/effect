@@ -195,34 +195,53 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
 
   type StorageRequestEntry = {
     readonly latch: Effect.Latch
+    doneLatch: Effect.Latch | undefined
+    readonly messages: Array<Message.OutgoingRequest<any>>
     replies: Array<Reply.Reply<any>>
   }
   const storageRequests = new Map<Snowflake.Snowflake, StorageRequestEntry>()
   const waitingStorageRequests = new Map<Snowflake.Snowflake, Message.OutgoingRequest<any>>()
   const replyFromStorage = Effect.fnUntraced(
     function*(message: Message.OutgoingRequest<any>) {
-      const entry: StorageRequestEntry = {
-        latch: Effect.unsafeMakeLatch(false),
-        replies: []
+      let entry = storageRequests.get(message.envelope.requestId)
+      if (!entry) {
+        entry = {
+          latch: Effect.unsafeMakeLatch(false),
+          doneLatch: undefined,
+          replies: [],
+          messages: []
+        }
+        storageRequests.set(message.envelope.requestId, entry)
       }
-      storageRequests.set(message.envelope.requestId, entry)
+      entry.messages.push(message)
+      if (entry.messages.length > 1) {
+        entry.doneLatch ??= Effect.unsafeMakeLatch(false)
+        return yield* entry.doneLatch.await
+      }
 
       while (true) {
         // wait for the storage loop to notify us
         entry.latch.unsafeClose()
         waitingStorageRequests.set(message.envelope.requestId, message)
-        yield* storageLatch.open
+        storageLatch.unsafeOpen()
         yield* entry.latch.await
 
         // send the replies back
-        for (const reply of entry.replies) {
+        for (let i = 0; i < entry.replies.length; i++) {
+          const reply = entry.replies[i]
           // we have reached the end
           if (reply._tag === "WithExit") {
-            return yield* message.respond(reply)
+            for (let j = 0; j < entry.messages.length; j++) {
+              yield* entry.messages[j].respond(reply)
+            }
+            entry.doneLatch?.unsafeOpen()
+            return
           }
 
           entry.latch.unsafeClose()
-          yield* message.respond(reply)
+          for (let i = 0; i < entry.messages.length; i++) {
+            yield* entry.messages[i].respond(reply)
+          }
           yield* entry.latch.await
         }
         entry.replies = []
@@ -261,7 +280,8 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         const foundRequests = new Set<StorageRequestEntry>()
 
         // put the replies into the storage requests and then open the latches
-        for (const reply of replies) {
+        for (let i = 0; i < replies.length; i++) {
+          const reply = replies[i]
           const entry = storageRequests.get(reply.requestId)
           if (!entry) continue
           entry.replies.push(reply)
@@ -269,9 +289,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           foundRequests.add(entry)
         }
 
-        for (const entry of foundRequests) {
-          entry.latch.unsafeOpen()
-        }
+        foundRequests.forEach((entry) => entry.latch.unsafeOpen())
       }
     }).pipe(
       Effect.interruptible,
