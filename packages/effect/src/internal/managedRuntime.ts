@@ -93,7 +93,7 @@ export const make = <R, ER>(
       return Scope.close(self.scope, core.exitVoid)
     }),
     [Symbol.dispose](): void {
-      return internalRuntime.unsafeRunSyncEffect(self.disposeEffect)
+      internalRuntime.unsafeRunEffect(self.disposeEffect)
     },
     [Symbol.asyncDispose](): Promise<void> {
       return self.dispose()
