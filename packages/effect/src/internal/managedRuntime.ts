@@ -92,6 +92,12 @@ export const make = <R, ER>(
       self.cachedRuntime = undefined
       return Scope.close(self.scope, core.exitVoid)
     }),
+    [Symbol.dispose](): void {
+      return internalRuntime.unsafeRunSyncEffect(self.disposeEffect)
+    },
+    [Symbol.asyncDispose](): Promise<void> {
+      return self.dispose()
+    },
     runFork<A, E>(effect: Effect.Effect<A, E, R>, options?: Runtime.RunForkOptions): Fiber.RuntimeFiber<A, E | ER> {
       return self.cachedRuntime === undefined ?
         internalRuntime.unsafeForkEffect(provide(self, effect), options) :
