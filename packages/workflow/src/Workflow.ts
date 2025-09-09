@@ -84,6 +84,18 @@ export interface Workflow<
   >
 
   /**
+   * Poll a workflow execution for its current status.
+   *
+   * If the workflow has not run yet, it will return `undefined`, otherwise it
+   * will return the current `Workflow.Result`.
+   */
+  readonly poll: (executionId: string) => Effect.Effect<
+    Result<Success["Type"], Error["Type"]> | undefined,
+    never,
+    WorkflowEngine | Success["Context"] | Error["Context"]
+  >
+
+  /**
    * Interrupt a workflow execution for the given execution ID.
    */
   readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine>
@@ -295,6 +307,17 @@ export const make = <
         }
       },
       Effect.withSpan(`${options.name}.execute`, { captureStackTrace: false })
+    ),
+    poll: Effect.fnUntraced(
+      function*(executionId: string) {
+        const engine = yield* EngineTag
+        return yield* engine.poll({ workflow: self, executionId })
+      },
+      (effect, executionId) =>
+        Effect.withSpan(effect, `${options.name}.poll`, {
+          captureStackTrace: false,
+          attributes: { executionId }
+        })
     ),
     interrupt: Effect.fnUntraced(
       function*(executionId: string) {

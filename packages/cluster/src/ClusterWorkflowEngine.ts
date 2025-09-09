@@ -12,8 +12,10 @@ import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import * as PrimaryKey from "effect/PrimaryKey"
 import * as RcMap from "effect/RcMap"
 import * as Record from "effect/Record"
@@ -319,6 +321,24 @@ export const make = Effect.gen(function*() {
         Effect.scoped
       )
     },
+
+    poll: Effect.fnUntraced(function*({ executionId, workflow }) {
+      const entity = ensureEntity(workflow)
+      const exitSchema = Rpc.exitSchema(entity.protocol.requests.get("run")!)
+      const oreply = yield* requestReply({
+        workflow,
+        entityType: `Workflow/${workflow.name}`,
+        executionId,
+        tag: "run",
+        id: ""
+      })
+      if (Option.isNone(oreply)) return undefined
+      const exit = yield* (Schema.decode(exitSchema)(oreply.value.exit) as Effect.Effect<
+        Exit.Exit<any, any>,
+        ParseResult.ParseError
+      >)
+      return yield* exit
+    }, Effect.orDie),
 
     interrupt: Effect.fnUntraced(
       function*(this: WorkflowEngine["Type"], workflow, executionId) {
