@@ -16,7 +16,13 @@ export class MessagesPostParams extends S.Struct({
    *
    * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
    */
-  "anthropic-version": S.optionalWith(S.String, { nullable: true })
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**

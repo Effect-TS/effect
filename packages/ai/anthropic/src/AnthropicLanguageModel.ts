@@ -15,7 +15,7 @@ import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
-import { dual, identity } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
@@ -24,6 +24,7 @@ import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
 import { AnthropicClient, type MessageStreamEvent } from "./AnthropicClient.js"
+import * as AnthropicTool from "./AnthropicTool.js"
 import type * as Generated from "./Generated.js"
 import * as InternalUtilities from "./internal/utilities.js"
 
@@ -328,7 +329,8 @@ export declare namespace ProviderMetadata {
 export const model = (
   model: (string & {}) | Model,
   config?: Omit<Config.Service, "model">
-): AiModel.Model<LanguageModel.LanguageModel, AnthropicClient> => AiModel.make(layer({ model, config }))
+): AiModel.Model<"anthropic", LanguageModel.LanguageModel, AnthropicClient> =>
+  AiModel.make("anthropic", layer({ model, config }))
 
 // /**
 //  * @since 1.0.0
@@ -355,8 +357,8 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const config = { ...options.config, ...context.unsafeMap.get(Config.key) }
       const { prompt } = yield* makeMessages(method, providerOptions.prompt)
-      const { betas: _betas, toolChoice, tools } = yield* prepareTools(config, providerOptions)
-      return identity<typeof Generated.CreateMessageParams.Encoded>({
+      const { betas, toolChoice, tools } = yield* prepareTools(config, providerOptions)
+      const request: typeof Generated.BetaCreateMessageParams.Encoded = {
         model: options.model,
         max_tokens: 4096,
         ...config,
@@ -364,16 +366,23 @@ export const make = Effect.fnUntraced(function*(options: {
         messages: prompt.messages,
         tools,
         tool_choice: toolChoice
-      })
+      }
+      return { betas, request }
     }
   )
 
   return yield* LanguageModel.make({
     generateText: Effect.fnUntraced(
       function*(options) {
-        const request = yield* makeRequest("generateText", options)
+        const { betas, request } = yield* makeRequest("generateText", options)
+        console.dir({ betas, request }, { depth: null, colors: true })
         annotateRequest(options.span, request)
-        const rawResponse = yield* client.client.messagesPost({ params: {}, payload: request })
+        const rawResponse = yield* client.client.betaMessagesPost({
+          params: {
+            "anthropic-beta": betas.size > 0 ? Array.from(betas).join(",") : undefined
+          },
+          payload: request
+        })
         annotateResponse(options.span, rawResponse)
         return yield* makeResponse(rawResponse, options)
       },
@@ -389,7 +398,7 @@ export const make = Effect.fnUntraced(function*(options: {
 
     streamText: (options) =>
       Stream.fromEffect(Effect.gen(function*() {
-        const request = yield* makeRequest("streamText", options)
+        const { request } = yield* makeRequest("streamText", options)
         annotateRequest(options.span, request)
         return client.createMessageStream(request)
       })).pipe(
@@ -512,8 +521,8 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
   {
     readonly betas: ReadonlySet<string>
     readonly prompt: {
-      readonly system: ReadonlyArray<typeof Generated.RequestTextBlock.Encoded> | undefined
-      readonly messages: ReadonlyArray<typeof Generated.InputMessage.Encoded>
+      readonly system: ReadonlyArray<typeof Generated.BetaRequestTextBlock.Encoded> | undefined
+      readonly messages: ReadonlyArray<typeof Generated.BetaInputMessage.Encoded>
     }
   },
   AiError
@@ -522,8 +531,8 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
     const betas = new Set<string>()
     const groups = groupMessages(prompt)
 
-    let system: Array<typeof Generated.RequestTextBlock.Encoded> | undefined = undefined
-    const messages: Array<typeof Generated.InputMessage.Encoded> = []
+    let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
+    const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
 
     for (let i = 0; i < groups.length; i++) {
       const group = groups[i]
@@ -540,7 +549,7 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
         }
 
         case "user": {
-          const content: Array<typeof Generated.InputContentBlock.Encoded> = []
+          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
 
           for (const message of group.messages) {
             switch (message.role) {
@@ -660,7 +669,7 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
         }
 
         case "assistant": {
-          const content: Array<typeof Generated.InputContentBlock.Encoded> = []
+          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
 
           for (let j = 0; j < group.messages.length; j++) {
             const message = group.messages[j]
@@ -712,7 +721,7 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
 
                 case "tool-call": {
                   if (part.isProviderDefined) {
-                    if (part.name === "web_search") {
+                    if (part.name === "anthropic.web_search") {
                       content.push({
                         type: "server_tool_use",
                         id: part.id,
@@ -721,9 +730,15 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
                         cache_control: cacheControl
                       })
                     }
-                    // TODO(Max): add support for beta provider-defined tool calls
-                    // if (part.name === "code_execution") {
-                    // }
+                    if (part.name === "anthropic.code_execution") {
+                      content.push({
+                        type: "server_tool_use",
+                        id: part.id,
+                        name: "code_execution",
+                        input: part.params as any,
+                        cache_control: cacheControl
+                      })
+                    }
                   } else {
                     content.push({
                       type: "tool_use",
@@ -758,10 +773,10 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
 // =============================================================================
 
 const makeResponse: (
-  response: Generated.Message,
+  response: Generated.BetaMessage,
   options: LanguageModel.ProviderOptions
 ) => Effect.Effect<Array<Response.PartEncoded>, AiError, IdGenerator.IdGenerator> = Effect.fnUntraced(
-  function*(response: Generated.Message, options: LanguageModel.ProviderOptions) {
+  function*(response: Generated.BetaMessage, options: LanguageModel.ProviderOptions) {
     const idGenerator = yield* IdGenerator.IdGenerator
     const parts: Array<Response.PartEncoded> = []
     const citableDocuments = extractCitableDocuments(options.prompt)
@@ -838,12 +853,16 @@ const makeResponse: (
               text: JSON.stringify(part.input)
             })
           } else {
+            const providerTool = AnthropicTool.getProviderDefinedToolName(part.name)
+            const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name
+            const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined
             parts.push({
               type: "tool-call",
               id: part.id,
-              name: part.name,
+              name,
               params: part.input,
-              isProviderDefined: false
+              providerName,
+              providerExecuted: false
             })
           }
 
@@ -851,32 +870,44 @@ const makeResponse: (
         }
 
         case "server_tool_use": {
-          // TODO(Max): add support for beta provider-defined tool calls
-          if (part.name === "web_search" /*|| part.name === "code_execution"*/) {
+          const providerTool = AnthropicTool.getProviderDefinedToolName(part.name)
+          if (Predicate.isNotUndefined(providerTool)) {
             parts.push({
               type: "tool-call",
               id: part.id,
-              name: part.name,
+              name: providerTool,
               params: part.input,
-              isProviderDefined: true
+              providerName: part.name,
+              providerExecuted: true
             })
           }
 
           break
         }
 
-        // TODO(Max): add support for beta provider-defined tool calls
-        // case "code_execution_tool_result": {
-        //   break
-        // }
+        case "code_execution_tool_result":
+        case "bash_code_execution_tool_result":
+        case "text_editor_code_execution_tool_result": {
+          parts.push({
+            type: "tool-result",
+            id: part.tool_use_id,
+            name: "AnthropicCodeExecution",
+            result: part.content,
+            providerName: "code_execution",
+            providerExecuted: true
+          })
+
+          break
+        }
 
         case "web_search_tool_result": {
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
-            name: "web_search",
+            name: "AnthropicWebSearch",
             result: part.content,
-            isProviderDefined: true
+            providerName: "web_search",
+            providerExecuted: true
           })
 
           break
@@ -934,7 +965,8 @@ const makeStreamResponse: (
         readonly id: string
         readonly name: string
         params: string
-        readonly isProviderDefined: boolean
+        readonly providerName: string | undefined
+        readonly providerExecuted: boolean
       }
     > = {}
     let blockType:
@@ -945,6 +977,11 @@ const makeStreamResponse: (
       | "server_tool_use"
       | "web_search_tool_result"
       | "code_execution_tool_result"
+      | "bash_code_execution_tool_result"
+      | "text_editor_code_execution_tool_result"
+      | "mcp_tool_use"
+      | "mcp_tool_result"
+      | "container_upload"
       | undefined = undefined
     const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
@@ -1075,75 +1112,79 @@ const makeStreamResponse: (
               }
 
               case "tool_use": {
+                const toolName = event.content_block.name
+                const providerTool = AnthropicTool.getProviderDefinedToolName(toolName)
+                const name = Predicate.isNotUndefined(providerTool) ? providerTool : toolName
+                const providerName = Predicate.isNotUndefined(providerTool) ? toolName : undefined
+
                 contentBlocks[event.index] = {
                   type: "tool-call",
                   id: event.content_block.id,
-                  name: event.content_block.name,
+                  name,
                   params: "",
-                  isProviderDefined: false
+                  providerName,
+                  providerExecuted: false
                 }
 
                 parts.push({
                   type: "tool-params-start",
                   id: event.content_block.id,
-                  name: event.content_block.name,
-                  isProviderDefined: false
+                  name: toolName,
+                  providerName,
+                  providerExecuted: false
                 })
 
                 break
               }
 
               case "server_tool_use": {
-                if (
-                  // TODO(Max): add support for beta provider-defined tool calls
-                  /*event.content_block.name === "code_execution" ||*/
-                  event.content_block.name === "web_search"
-                ) {
+                const toolName = event.content_block.name
+                const providerTool = AnthropicTool.getProviderDefinedToolName(toolName)
+                if (Predicate.isNotUndefined(providerTool)) {
                   contentBlocks[event.index] = {
                     type: "tool-call",
                     id: event.content_block.id,
-                    name: event.content_block.name,
+                    name: providerTool,
                     params: "",
-                    isProviderDefined: true
+                    providerName: toolName,
+                    providerExecuted: true
                   }
 
                   parts.push({
                     type: "tool-params-start",
                     id: event.content_block.id,
-                    name: event.content_block.name,
-                    isProviderDefined: true
+                    name: providerTool,
+                    providerName: toolName,
+                    providerExecuted: true
                   })
                 }
 
                 break
               }
 
-              // TODO(Max): add support for beta provider-defined tool calls
-              // case "code_execution_tool_result": {
-              //   break
-              // }
-
-              case "web_search_tool_result": {
-                const toolName = "web_search"
-                const tool = options.tools.find((tool) => tool.name === toolName) as
-                  | Tool.AnyProviderDefined
-                  | undefined
-
-                if (Predicate.isUndefined(tool)) {
-                  return yield* new AiError({
-                    module: "AnthropicLanguageModel",
-                    method: "makeResponse",
-                    description:
-                      `Recevied web search tool result but corresponding tool not present in provided toolkit`
-                  })
-                }
-
+              case "code_execution_tool_result":
+              case "bash_code_execution_tool_result":
+              case "text_editor_code_execution_tool_result": {
                 parts.push({
                   type: "tool-result",
                   id: event.content_block.tool_use_id,
-                  name: toolName,
+                  name: "AnthropicCodeExecution",
                   result: event.content_block.content,
-                  isProviderDefined: true
+                  providerName: "code_execution",
+                  providerExecuted: true
+                })
+
+                break
+              }
+
+              case "web_search_tool_result": {
+                parts.push({
+                  type: "tool-result",
+                  id: event.content_block.tool_use_id,
+                  name: "AnthropicWebSearch",
+                  result: event.content_block.content,
+                  providerName: "web_search",
+                  providerExecuted: true
                 })
 
                 break
@@ -1258,7 +1299,8 @@ const makeStreamResponse: (
                     id: contentBlock.id,
                     name: contentBlock.name,
                     params: JSON.parse(params),
-                    isProviderDefined: contentBlock.isProviderDefined
+                    providerName: contentBlock.providerName,
+                    providerExecuted: contentBlock.providerExecuted
                   })
 
                   break
@@ -1288,7 +1330,7 @@ const makeStreamResponse: (
 
 const annotateRequest = (
   span: Span,
-  request: typeof Generated.CreateMessageParams.Encoded
+  request: typeof Generated.BetaCreateMessageParams.Encoded
 ): void => {
   addGenAIAnnotations(span, {
     system: "anthropic",
@@ -1308,7 +1350,7 @@ const annotateRequest = (
 
 const annotateResponse = (
   span: Span,
-  response: typeof Generated.Message.Encoded
+  response: typeof Generated.BetaMessage.Encoded
 ): void => {
   addGenAIAnnotations(span, {
     response: {
@@ -1349,10 +1391,21 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
 // Tool Calling
 // =============================================================================
 
+type AnthropicTools =
+  | typeof Generated.BetaTool.Encoded
+  | typeof Generated.BetaBashTool20241022.Encoded
+  | typeof Generated.BetaBashTool20250124.Encoded
+  | typeof Generated.BetaComputerUseTool20241022.Encoded
+  | typeof Generated.BetaComputerUseTool20250124.Encoded
+  | typeof Generated.BetaTextEditor20241022.Encoded
+  | typeof Generated.BetaTextEditor20250124.Encoded
+  | typeof Generated.BetaTextEditor20250429.Encoded
+  | typeof Generated.BetaTextEditor20250728.Encoded
+
 const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOptions) => Effect.Effect<{
-  readonly betas: ReadonlySet<string> | undefined
-  readonly tools: ReadonlyArray<typeof Generated.Tool.Encoded> | undefined
-  readonly toolChoice: typeof Generated.ToolChoice.Encoded | undefined
+  readonly betas: ReadonlySet<string>
+  readonly tools: ReadonlyArray<AnthropicTools> | undefined
+  readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
 }, AiError> = Effect.fnUntraced(function*(config, options) {
   // If a JSON response format was requested, create a tool and force its use
   if (options.responseFormat.type === "json") {
@@ -1364,7 +1417,7 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
       input_schema: Tool.getJsonSchemaFromSchemaAst(ast) as any
     }
     return {
-      betas: undefined,
+      betas: new Set(),
       tools: [jsonResponseTool],
       toolChoice: { type: "tool", name, disable_parallel_tool_use: true }
     }
@@ -1373,12 +1426,12 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
   // Return immediately if no tools are in the toolkit or a tool choice of
   // "none" was specified
   if (options.tools.length === 0 || options.toolChoice === "none") {
-    return { betas: undefined, tools: undefined, toolChoice: undefined }
+    return { betas: new Set(), tools: undefined, toolChoice: undefined }
   }
 
   const betas = new Set<string>()
-  let tools: Array<typeof Generated.Tool.Encoded> = []
-  let toolChoice: typeof Generated.ToolChoice.Encoded | undefined = undefined
+  let tools: Array<AnthropicTools> = []
+  let toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined = undefined
 
   // Convert the tools in the toolkit to the provider-defined format
   for (const tool of options.tools) {
@@ -1393,11 +1446,94 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
     if (Tool.isProviderDefined(tool)) {
       // Ensure that the arguments passed to the provider-defined tool are valid
       switch (tool.id) {
+        case "anthropic.bash_20241022": {
+          betas.add("computer-use-2024-10-22")
+          tools.push({
+            name: "bash",
+            type: "bash_20241022"
+          })
+          break
+        }
+        case "anthropic.bash_20250124": {
+          betas.add("computer-use-2025-01-24")
+          tools.push({
+            name: "bash",
+            type: "bash_20250124"
+          })
+          break
+        }
+        case "anthropic.code_execution_20250522": {
+          betas.add("code-execution-2025-05-22")
+          tools.push({
+            ...tool.args,
+            name: "code_execution",
+            type: "code_execution_2025522"
+          })
+          break
+        }
+        case "anthropic.code_execution_20250825": {
+          betas.add("code-execution-2025-08-25")
+          tools.push({
+            ...tool.args,
+            name: "code_execution",
+            type: "code_execution_20250825"
+          })
+          break
+        }
+        case "anthropic.computer_use_20241022": {
+          betas.add("computer-use-2025-10-22")
+          tools.push({
+            ...tool.args,
+            name: "computer",
+            type: "computer_20241022"
+          })
+          break
+        }
+        case "anthropic.computer_use_20250124": {
+          betas.add("computer-use-2025-01-24")
+          tools.push({
+            ...tool.args,
+            name: "computer",
+            type: "computer_20250124"
+          })
+          break
+        }
+        case "anthropic.text_editor_20241022": {
+          betas.add("computer-use-2024-10-22")
+          tools.push({
+            name: "str_replace_editor",
+            type: "text_editor_20241022"
+          })
+          break
+        }
+        case "anthropic.text_editor_20250124": {
+          betas.add("computer-use-2025-01-24")
+          tools.push({
+            name: "str_replace_editor",
+            type: "text_editor_20250124"
+          })
+          break
+        }
+        case "anthropic.text_editor_20250429": {
+          betas.add("computer-use-2025-01-24")
+          tools.push({
+            name: "str_replace_based_edit_tool",
+            type: "text_editor_20250429"
+          })
+          break
+        }
+        case "anthropic.text_editor_20250728": {
+          tools.push({
+            name: "str_replace_based_edit_tool",
+            type: "text_editor_20250728"
+          })
+          break
+        }
         case "anthropic.web_search_20250305": {
           tools.push({
+            ...tool.args,
             name: "web_search",
-            type: "web_search_20250305",
-            ...tool.args
+            type: "web_search_20250305"
           })
           break
         }

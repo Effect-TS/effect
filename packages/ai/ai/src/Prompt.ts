@@ -3,21 +3,21 @@
  */
 import type * as Context from "effect/Context"
 import { constFalse, dual } from "effect/Function"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Response from "./Response.js"
 
 // =============================================================================
-// Metadata
+// Options
 // =============================================================================
 
-export const Metadata = Schema.Record({
+export const Options = Schema.Record({
   key: Schema.String,
   value: Schema.Record({ key: Schema.String, value: Schema.Unknown })
 })
 
-export type Metadata = typeof Metadata.Type
+export type Options = typeof Options.Type
 
 // =============================================================================
 // Base Part
@@ -41,34 +41,25 @@ export type PartEncoded =
 export interface BasePart<Type extends string> {
   readonly [PartTypeId]: PartTypeId
   readonly type: Type
-  readonly metadata: Metadata
+  readonly options?: Options | undefined
 }
 
 export interface BasePartEncoded<Type extends string> {
   readonly type: Type
-  readonly metadata?: Metadata | undefined
+  readonly options?: Options | undefined
 }
 
-export const BasePart = <const Type extends string>(
-  type: Type
-): Schema.Schema<BasePart<Type>, BasePartEncoded<Type>> =>
-  Schema.Struct({
-    [PartTypeId]: Schema.optionalWith(Schema.Literal(PartTypeId), { default: () => PartTypeId }),
-    type: Schema.Literal(type),
-    metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
-  })
-
-const makePart = <const Type extends Part["type"]>(
+export const makePart = <const Type extends Part["type"]>(
   type: Type,
-  params: Omit<Extract<Part, { type: Type }>, PartTypeId | "type" | "metadata"> & {
-    readonly metadata?: Metadata | undefined
+  params: Omit<Extract<Part, { type: Type }>, PartTypeId | "type" | "options"> & {
+    readonly options?: Options | undefined
   }
-) =>
+): Extract<Part, { type: Type }> =>
   ({
     ...params,
     [PartTypeId]: PartTypeId,
     type,
-    metadata: params.metadata ?? {}
+    options: params.options ?? {}
   }) as any
 
 // =============================================================================
@@ -84,16 +75,13 @@ export interface TextPartEncoded extends BasePartEncoded<"text"> {
 }
 
 export const TextPart: Schema.Schema<TextPart, TextPartEncoded> = Schema.Struct({
-  text: Schema.String
+  type: Schema.Literal("text"),
+  text: Schema.String,
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BasePart("text")),
+  Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "TextPart" })
 )
-
-export const textPart = (params: {
-  readonly text: string
-  readonly metadata?: Metadata | undefined
-}): TextPart => makePart("text", params)
 
 // =============================================================================
 // Reasoning Part
@@ -108,16 +96,13 @@ export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning"> {
 }
 
 export const ReasoningPart: Schema.Schema<ReasoningPart, ReasoningPartEncoded> = Schema.Struct({
-  text: Schema.String
+  type: Schema.Literal("reasoning"),
+  text: Schema.String,
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BasePart("reasoning")),
+  Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningPart" })
 )
-
-export const reasoningPart = (params: {
-  readonly text: string
-  readonly metadata?: Metadata | undefined
-}): ReasoningPart => makePart("text", params)
 
 // =============================================================================
 // File Part
@@ -136,20 +121,15 @@ export interface FilePartEncoded extends BasePartEncoded<"file"> {
 }
 
 export const FilePart: Schema.Schema<FilePart, FilePartEncoded> = Schema.Struct({
+  type: Schema.Literal("file"),
   mediaType: Schema.String,
   fileName: Schema.optionalWith(Schema.String, { as: "Option" }),
-  data: Schema.Union(Schema.String, Schema.Uint8ArrayFromSelf, Schema.URLFromSelf)
+  data: Schema.Union(Schema.String, Schema.Uint8ArrayFromSelf, Schema.URLFromSelf),
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BasePart("file")),
+  Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "FilePart" })
 )
-
-export const filePart = (params: {
-  readonly mediaType: string
-  readonly fileName: Option.Option<string>
-  readonly data: string | Uint8Array | URL
-  readonly metadata?: Metadata | undefined
-}): FilePart => makePart("file", params)
 
 // =============================================================================
 // Tool Call Part
@@ -159,33 +139,27 @@ export interface ToolCallPart extends BasePart<"tool-call"> {
   readonly id: string
   readonly name: string
   readonly params: unknown
-  readonly isProviderDefined: boolean
+  readonly providerExecuted: boolean
 }
 
 export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call"> {
   readonly id: string
   readonly name: string
   readonly params: unknown
-  readonly isProviderDefined?: boolean | undefined
+  readonly providerExecuted?: boolean | undefined
 }
 
 export const ToolCallPart: Schema.Schema<ToolCallPart, ToolCallPartEncoded> = Schema.Struct({
+  type: Schema.Literal("tool-call"),
   id: Schema.String,
   name: Schema.String,
   params: Schema.Unknown,
-  isProviderDefined: Schema.optionalWith(Schema.Boolean, { default: constFalse })
+  providerExecuted: Schema.optionalWith(Schema.Boolean, { default: constFalse }),
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BasePart("tool-call")),
+  Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolCallPart" })
 )
-
-export const toolCallPart = (params: {
-  readonly id: string
-  readonly name: string
-  readonly params: unknown
-  readonly metadata?: Metadata | undefined
-  readonly isProviderDefined: boolean
-}): ToolCallPart => makePart("tool-call", params)
 
 // =============================================================================
 // Tool Result Part
@@ -204,20 +178,15 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result"> {
 }
 
 export const ToolResultPart: Schema.Schema<ToolResultPart, ToolResultPartEncoded> = Schema.Struct({
+  type: Schema.Literal("tool-result"),
   id: Schema.String,
   name: Schema.String,
-  result: Schema.Unknown
+  result: Schema.Unknown,
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BasePart("tool-result")),
+  Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolResultPart" })
 )
-
-export const toolResultPart = (params: {
-  readonly id: string
-  readonly name: string
-  readonly result: unknown
-  readonly metadata?: Metadata | undefined
-}): ToolResultPart => makePart("tool-result", params)
 
 // =============================================================================
 // Base Message
@@ -232,34 +201,25 @@ export const isMessage = (u: unknown): u is Message => Predicate.hasProperty(u, 
 export interface BaseMessage<Role extends string> {
   readonly [MessageTypeId]: MessageTypeId
   readonly role: Role
-  readonly metadata: Metadata
+  readonly options?: Options | undefined
 }
 
 export interface BaseMessageEncoded<Role extends string> {
   readonly role: Role
-  readonly metadata?: Metadata | undefined
+  readonly options?: Options | undefined
 }
-
-export const BaseMessage = <const Role extends string>(
-  role: Role
-): Schema.Schema<BaseMessage<Role>, BaseMessageEncoded<Role>> =>
-  Schema.Struct({
-    [MessageTypeId]: Schema.optionalWith(Schema.Literal(MessageTypeId), { default: () => MessageTypeId }),
-    role: Schema.Literal(role),
-    metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
-  })
 
 const makeMessage = <const Role extends Message["role"]>(
   role: Role,
-  params: Omit<Extract<Message, { role: Role }>, MessageTypeId | "role" | "metadata"> & {
-    readonly metadata?: Metadata | undefined
+  params: Omit<Extract<Message, { role: Role }>, MessageTypeId | "role" | "options"> & {
+    readonly options?: Options | undefined
   }
-) =>
+): Extract<Message, { role: Role }> =>
   ({
     ...params,
     [MessageTypeId]: MessageTypeId,
     role,
-    metadata: params.metadata ?? {}
+    options: params.options ?? {}
   }) as any
 
 // =============================================================================
@@ -275,16 +235,13 @@ export interface SystemMessageEncoded extends BaseMessageEncoded<"system"> {
 }
 
 export const SystemMessage: Schema.Schema<SystemMessage, SystemMessageEncoded> = Schema.Struct({
-  content: Schema.String
+  role: Schema.Literal("system"),
+  content: Schema.String,
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BaseMessage("system")),
+  Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "SystemMessage" })
 )
-
-export const systemMessage = (params: {
-  readonly content: string
-  readonly metadata?: Metadata | undefined
-}): SystemMessage => makeMessage("system", params)
 
 // =============================================================================
 // User Message
@@ -303,16 +260,13 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user"> {
 export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
 
 export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schema.Struct({
-  content: Schema.Array(Schema.Union(TextPart, FilePart))
+  role: Schema.Literal("user"),
+  content: Schema.Array(Schema.Union(TextPart, FilePart)),
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BaseMessage("user")),
+  Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "UserMessage" })
 )
-
-export const userMessage = (params: {
-  readonly content: ReadonlyArray<TextPart | FilePart>
-  readonly metadata?: Metadata | undefined
-}): UserMessage => makeMessage("user", params)
 
 // =============================================================================
 // Assistant Message
@@ -341,16 +295,13 @@ export type AssistantMessagePartEncoded =
   | ToolResultPartEncoded
 
 export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageEncoded> = Schema.Struct({
-  content: Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart))
+  role: Schema.Literal("assistant"),
+  content: Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart)),
+  options: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BaseMessage("assistant")),
+  Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "AssistantMessage" })
 )
-
-export const assistantMessage = (params: {
-  readonly content: ReadonlyArray<TextPart | FilePart | ReasoningPart | ToolCallPart | ToolResultPart>
-  readonly metadata?: Metadata | undefined
-}): AssistantMessage => makeMessage("assistant", params)
 
 // =============================================================================
 // Tool Message
@@ -369,16 +320,13 @@ export interface ToolMessageEncoded extends BaseMessageEncoded<"tool"> {
 export type ToolMessagePartEncoded = ToolResultPartEncoded
 
 export const ToolMessage: Schema.Schema<ToolMessage, ToolMessageEncoded> = Schema.Struct({
-  content: Schema.Array(ToolResultPart)
+  role: Schema.Literal("tool"),
+  content: Schema.Array(ToolResultPart),
+  metadata: Schema.optional(Options)
 }).pipe(
-  Schema.extend(BaseMessage("tool")),
+  Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "ToolMessage" })
 )
-
-export const toolMessage = (params: {
-  readonly content: ReadonlyArray<ToolResultPart>
-  readonly metadata?: Metadata | undefined
-}): ToolMessage => makeMessage("tool", params)
 
 // =============================================================================
 // Message
@@ -437,8 +385,8 @@ export const FromJson = Schema.parseJson(Prompt)
 export type RawInput =
   | string
   | Iterable<MessageEncoded>
+  | Iterable<Response.AnyPart>
   | Prompt
-  | Response.WithContentParts<Response.AnyPart>
 
 const makePrompt = (content: ReadonlyArray<Message>): Prompt => ({
   [TypeId]: TypeId,
@@ -451,21 +399,22 @@ export const empty: Prompt = makePrompt([])
 
 export const make = (input: RawInput): Prompt => {
   if (Predicate.isString(input)) {
-    const part = textPart({ text: input })
-    const message = userMessage({ content: [part] })
+    const part = makePart("text", { text: input })
+    const message = makeMessage("user", { content: [part] })
     return makePrompt([message])
   }
 
   if (Predicate.isIterable(input)) {
-    const content = decodeMessagesSync(Array.from(input), { errors: "all" })
-    return makePrompt(content)
+    try {
+      return makePrompt(decodeMessagesSync(Array.from(input as Iterable<MessageEncoded>), {
+        errors: "all"
+      }))
+    } catch {
+      return fromResponseParts(Array.from(input as Iterable<Response.AnyPart>))
+    }
   }
 
-  if (isPrompt(input)) {
-    return input
-  }
-
-  return fromResponseParts(input.content)
+  return input as Prompt
 }
 
 export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePrompt(messages)
@@ -513,7 +462,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     if (textDeltas.length > 0) {
       const text = textDeltas.join("")
       if (text.length > 0) {
-        content.push(textPart({ text }))
+        content.push(makePart("text", { text }))
       }
       textDeltas.length = 0
     }
@@ -524,7 +473,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     if (reasoningDeltas.length > 0) {
       const text = reasoningDeltas.join("")
       if (text.length > 0) {
-        content.push(reasoningPart({ text }))
+        content.push(makePart("reasoning", { text }))
       }
       reasoningDeltas.length = 0
     }
@@ -540,7 +489,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       switch (part.type) {
         case "text": {
           flushDeltas()
-          content.push(textPart({ text: part.text }))
+          content.push(makePart("text", { text: part.text }))
           break
         }
         case "text-delta": {
@@ -550,7 +499,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         }
         case "reasoning": {
           flushDeltas()
-          content.push(reasoningPart({ text: part.text }))
+          content.push(makePart("reasoning", { text: part.text }))
           break
         }
         case "reasoning-delta": {
@@ -560,20 +509,20 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         }
         case "tool-call": {
           flushDeltas()
-          content.push(toolCallPart({
+          content.push(makePart("tool-call", {
             id: part.id,
-            name: part.name,
+            name: part.providerName ?? part.name,
             params: part.params,
-            isProviderDefined: part.isProviderDefined ?? false
+            providerExecuted: part.providerExecuted ?? false
           }))
           break
         }
         case "tool-result": {
           flushDeltas()
-          content.push(toolResultPart({
+          content.push(makePart("tool-result", {
             id: part.id,
-            name: part.name,
-            result: part.encoded
+            name: part.providerName ?? part.name,
+            result: part.encodedResult
           }))
           break
         }
@@ -583,7 +532,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   flushDeltas()
 
-  const message = assistantMessage({ content })
+  const message = makeMessage("assistant", { content })
 
   return makePrompt([message])
 }
@@ -604,67 +553,84 @@ export const merge: {
 // Provider Options
 // =============================================================================
 
-export type AnyProviderOptions = {
-  readonly [Type in Message["role"] | Part["type"]]?: unknown
-}
-
 export type GetOptionDiscriminator<P extends Message | Part> = P extends Message ? P["role"]
   : P extends Part ? P["type"]
   : never
 
+export type ExtractProviderOptions<
+  P extends Message | Part,
+  ProviderOptions,
+  Discriminator extends GetOptionDiscriminator<P> = GetOptionDiscriminator<P>
+> = ProviderOptions extends Record<string, any> ?
+  Discriminator extends keyof ProviderOptions ? Option.Option<ProviderOptions[Discriminator]>
+  : never
+  : never
+
+export type AllowedProviderOptions<
+  P extends Message | Part,
+  ProviderOptions,
+  Discriminator extends GetOptionDiscriminator<P> = GetOptionDiscriminator<P>
+> = ProviderOptions extends Record<string, any> ?
+  Discriminator extends keyof ProviderOptions ? ProviderOptions[Discriminator]
+  : never
+  : never
+
 export const getProviderOptions: {
-  <Identifier, ProviderOptions extends AnyProviderOptions>(
+  <Identifier, ProviderOptions>(
     tag: Context.Tag<Identifier, ProviderOptions>
   ): <P extends Message | Part>(
     part: P
-  ) => ProviderOptions[GetOptionDiscriminator<P>] | undefined
-  <P extends Message | Part, Identifier, ProviderOptions extends AnyProviderOptions>(
+  ) => ExtractProviderOptions<P, ProviderOptions>
+  <P extends Message | Part, Identifier, ProviderOptions>(
     part: P,
     tag: Context.Tag<Identifier, ProviderOptions>
-  ): ProviderOptions[GetOptionDiscriminator<P>] | undefined
+  ): ExtractProviderOptions<P, ProviderOptions>
 } = dual<
-  <Identifier, ProviderOptions extends AnyProviderOptions>(
+  <Identifier, ProviderOptions>(
     tag: Context.Tag<Identifier, ProviderOptions>
   ) => <P extends Message | Part>(
     part: P
-  ) => ProviderOptions[GetOptionDiscriminator<P>] | undefined,
-  <P extends Message | Part, Identifier, ProviderOptions extends AnyProviderOptions>(
+  ) => ExtractProviderOptions<P, ProviderOptions>,
+  <P extends Message | Part, Identifier, ProviderOptions>(
     part: P,
     tag: Context.Tag<Identifier, ProviderOptions>
-  ) => ProviderOptions[GetOptionDiscriminator<P>] | undefined
->(2, (part, tag) => {
-  const metadata = part.metadata[tag.key]
-  return "role" in part ? metadata?.[part.role] : metadata?.[part.type]
-})
+  ) => ExtractProviderOptions<P, ProviderOptions>
+>(2, (part, tag) =>
+  Option.fromNullable(part.options).pipe(
+    Option.flatMapNullable((options) => options[tag.key]),
+    Option.flatMapNullable((options) => "role" in part ? options[part.role] : options[part.type])
+  ) as any)
 
 export const unsafeSetProviderOptions: {
-  <P extends Message | Part, Identifier, ProviderOptions extends AnyProviderOptions>(
+  <P extends Message | Part, Identifier, ProviderOptions>(
     tag: Context.Tag<Identifier, ProviderOptions>,
-    metadata: ProviderOptions[GetOptionDiscriminator<P>]
+    options: AllowedProviderOptions<P, ProviderOptions>
   ): (part: P) => void
-  <P extends Message | Part, Identifier, ProviderOptions extends AnyProviderOptions>(
+  <P extends Message | Part, Identifier, ProviderOptions>(
     part: P,
     tag: Context.Tag<Identifier, ProviderOptions>,
-    metadata: ProviderOptions[GetOptionDiscriminator<P>]
+    options: AllowedProviderOptions<P, ProviderOptions>
   ): void
 } = dual<
-  <P extends Message | Part, Identifier, ProviderMetadata extends AnyProviderOptions>(
-    tag: Context.Tag<Identifier, ProviderMetadata>,
-    metadata: ProviderMetadata[GetOptionDiscriminator<P>]
+  <P extends Message | Part, Identifier, ProviderOptions>(
+    tag: Context.Tag<Identifier, ProviderOptions>,
+    options: AllowedProviderOptions<P, ProviderOptions>
   ) => (part: P) => void,
-  <P extends Message | Part, Identifier, ProviderMetadata extends AnyProviderOptions>(
+  <P extends Message | Part, Identifier, ProviderOptions>(
     part: P,
-    tag: Context.Tag<Identifier, ProviderMetadata>,
-    metadata: ProviderMetadata[GetOptionDiscriminator<P>]
+    tag: Context.Tag<Identifier, ProviderOptions>,
+    options: AllowedProviderOptions<P, ProviderOptions>
   ) => void
->(3, (part, tag, metadata) => {
-  // Sanity check, shouldn't hit this case if the part was properly decoded
-  if (Predicate.isUndefined(part.metadata[tag.key])) {
-    ;(part.metadata[tag.key] as any) = {}
+>(3, (part, tag, options) => {
+  if (Predicate.isUndefined(part.options)) {
+    ;(part.options as any) = {}
+  }
+  if (Predicate.isUndefined(part.options![tag.key])) {
+    ;(part.options![tag.key] as any) = {}
   }
   if ("role" in part) {
-    ;(part.metadata[tag.key][part.role] as any) = metadata
+    ;(part.options![tag.key][part.role] as any) = options
   } else {
-    ;(part.metadata[tag.key][part.type] as any) = metadata
+    ;(part.options![tag.key][part.type] as any) = options
   }
 })
