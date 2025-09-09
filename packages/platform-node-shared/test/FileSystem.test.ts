@@ -53,6 +53,44 @@ describe("FileSystem", () => {
       assert(error._tag === "SystemError" && error.reason === "NotFound")
     })))
 
+  it("makeTempFile", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* (Fs.FileSystem)
+      let file = ""
+      yield* pipe(
+        Effect.gen(function*() {
+          file = yield* fs.makeTempFile({
+            "suffix": ".txt"
+          })
+          expect(file.endsWith(".txt")).toBe(true)
+          const stat = yield* fs.stat(file)
+          expect(stat.type).toEqual("File")
+        }),
+        Effect.scoped
+      )
+      const stat = yield* fs.stat(file)
+      expect(stat.type).toEqual("File")
+    })))
+
+  it("makeTempFileScoped", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* (Fs.FileSystem)
+      let file = ""
+      yield* pipe(
+        Effect.gen(function*() {
+          file = yield* fs.makeTempFileScoped({
+            "suffix": ".txt"
+          })
+          expect(file.endsWith(".txt")).toBe(true)
+          const stat = yield* fs.stat(file)
+          expect(stat.type).toEqual("File")
+        }),
+        Effect.scoped
+      )
+      const error = yield* Effect.flip(fs.stat(file))
+      assert(error._tag === "SystemError" && error.reason === "NotFound")
+    })))
+
   it("truncate", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem

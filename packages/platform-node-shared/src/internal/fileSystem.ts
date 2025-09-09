@@ -382,7 +382,7 @@ const makeTempFileFactory = (method: string) => {
   return (options?: FileSystem.MakeTempFileOptions) =>
     pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
-      Effect.map(([directory, random]) => Path.join(directory, random)),
+      Effect.map(([directory, random]) => Path.join(directory, random + (options?.suffix ?? ""))),
       Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" })))
     )
 }
