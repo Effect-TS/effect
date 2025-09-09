@@ -31,7 +31,7 @@ function assignDefaults<T extends object, U extends object>(target: T, source: U
   return target as Types.MergeLeft<T, U>
 }
 
-const createVitestAPI = (it: typeof V.it) => (Object.assign(it, { scopedFixtures: it.scoped }) satisfies Vitest.API)
+const createVitestAPI = (it: typeof V.it) => (Object.assign((...args: any[]) => it(...args), { ...it, scopedFixtures: it.scoped }) as Vitest.API)
 const createConcurrentVitestAPI = (it: Vitest.API) => assignDefaults(it.concurrent, it) as Vitest.API
 
 const defaultApi = createVitestAPI(V.it)
@@ -268,7 +268,8 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
   )
 
   const makeIt = (it: Vitest.API): Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices> =>
-    Object.assign(it, {
+    Object.assign((...args: any[]) => it(...args), {
+      ...it,
       effect: makeTester<TestServices.TestServices | R>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
         it
