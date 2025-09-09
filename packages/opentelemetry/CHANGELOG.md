@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.56.6
+
+### Patch Changes
+
+- [#5485](https://github.com/Effect-TS/effect/pull/5485) [`f8b8d3d`](https://github.com/Effect-TS/effect/commit/f8b8d3db1a3a53069a134eaad9f4fb42117193c7) Thanks @tim-smart! - fix traceFlags propagation when set to 0
+
+- Updated dependencies [[`333be04`](https://github.com/Effect-TS/effect/commit/333be046b50e8300f5cb70b871448e0628b7b37c)]:
+  - @effect/platform@0.90.8
+
 ## 0.56.5
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @effect/platform-node-shared
 
+## 0.49.1
+
+### Patch Changes
+
+- [#5481](https://github.com/Effect-TS/effect/pull/5481) [`333be04`](https://github.com/Effect-TS/effect/commit/333be046b50e8300f5cb70b871448e0628b7b37c) Thanks @jpowersdev! - Allow user to set extension of file created using `FileSystem.makeTempFile`
+
+- Updated dependencies [[`333be04`](https://github.com/Effect-TS/effect/commit/333be046b50e8300f5cb70b871448e0628b7b37c), [`0a9ec23`](https://github.com/Effect-TS/effect/commit/0a9ec23dca104ac6fd7ea5841e98f5fa7796be40)]:
+  - @effect/platform@0.90.8
+  - @effect/cluster@0.48.4
+
 ## 0.49.0
 
 ### Patch Changes
