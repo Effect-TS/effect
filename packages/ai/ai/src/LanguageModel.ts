@@ -154,9 +154,7 @@ export type ToolChoice<Tools extends string> = "auto" | "none" | "required" | {
   readonly oneOf: ReadonlyArray<Tools>
 }
 
-export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
-  implements Response.WithContentParts<Response.Part<Tools>>
-{
+export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
   readonly content: Array<Response.Part<Tools>>
 
   constructor(content: Array<Response.Part<Tools>>) {
@@ -215,15 +213,12 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>>
   }
 }
 
-export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A>
-  implements Response.WithContentParts<Response.Part<Tools>>
-{
+export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A> extends GenerateTextResponse<Tools> {
   readonly value: A
-  readonly content: Array<Response.Part<Tools>>
 
   constructor(value: A, content: Array<Response.Part<Tools>>) {
+    super(content)
     this.value = value
-    this.content = content
   }
 }
 
@@ -240,7 +235,10 @@ export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A>
  */
 export type ExtractError<Options> = Options extends {
   readonly disableToolCallResolution: true
-} ? AiError :
+} ? Options extends {
+    readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
+  } ? AiError | _E :
+  AiError :
   Options extends {
     readonly toolkit: Toolkit.WithHandler<infer _Tools>
   } ? AiError | Tool.Failure<_Tools[keyof _Tools]>
@@ -483,8 +481,8 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
         // If there is no toolkit, return immediately
         if (Predicate.isUndefined(options.toolkit)) {
-          const schema = Schema.Chunk(Response.StreamPart(Toolkit.empty))
-          const decode = Schema.decodeUnknown(schema)
+          const schema = Schema.ChunkFromSelf(Response.StreamPart(Toolkit.empty))
+          const decode = Schema.decode(schema)
           const stream = params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(decode)
           )
@@ -496,8 +494,8 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
         // If the toolkit is empty, return immediately
         if (Object.values(toolkit.tools).length === 0) {
-          const schema = Schema.Chunk(Response.StreamPart(Toolkit.empty))
-          const decode = Schema.decodeUnknown(schema)
+          const schema = Schema.ChunkFromSelf(Response.StreamPart(Toolkit.empty))
+          const decode = Schema.decode(schema)
           const stream = params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(decode)
           )
@@ -513,8 +511,8 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         // If tool call resolution is disabled, return the response without
         // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
-          const schema = Schema.Chunk(Response.StreamPart(toolkit))
-          const decode = Schema.decodeUnknown(schema)
+          const schema = Schema.ChunkFromSelf(Response.StreamPart(toolkit))
+          const decode = Schema.decode(schema)
           const stream = params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(decode)
           )
@@ -522,7 +520,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         }
 
         const ResponseSchema = Schema.Chunk(Response.StreamPart(toolkit))
-        const decode = Schema.decodeUnknown(ResponseSchema)
+        const decode = Schema.decode(ResponseSchema)
         return [
           params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
@@ -561,7 +559,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       })),
       Stream.unwrapScoped,
       Stream.provideService(IdGenerator, idGenerator)
-    ) as any
+    )
 
     const generateObject = <
       Tools extends Record<string, Tool.Any>,
@@ -760,9 +758,10 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
   for (const part of options.content) {
     if (part.type === "tool-call") {
       toolNames.push(part.name)
-      if (!part.isProviderDefined) {
-        toolCalls.push(part)
+      if (part.providerExecuted === true) {
+        continue
       }
+      toolCalls.push(part)
     }
   }
 
@@ -774,8 +773,8 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(options: {
           name: toolCall.name,
           result,
           encodedResult,
-          // Tool calls that are resolved by the SDK are _always_ user-defined
-          isProviderDefined: false
+          providerName: toolCall.providerName,
+          providerExecuted: false
         })
       )
     )
@@ -791,10 +790,7 @@ const resolveToolkit = <Tools extends Record<string, Tool.Any>, E, R>(
 ): Effect.Effect<Toolkit.WithHandler<Tools>, E, R> => Effect.isEffect(toolkit) ? toolkit : Effect.succeed(toolkit)
 
 const resolveStructuredOutput = Effect.fnUntraced(
-  function*<A, I, R>(
-    response: ReadonlyArray<Response.AllParts<any>>,
-    ResultSchema: Schema.Schema<A, I, R>
-  ) {
+  function*<A, I, R>(response: ReadonlyArray<Response.AllParts<any>>, ResultSchema: Schema.Schema<A, I, R>) {
     const text: Array<string> = []
     for (const part of response) {
       if (part.type === "text") {

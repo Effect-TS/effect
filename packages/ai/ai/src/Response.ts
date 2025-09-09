@@ -13,14 +13,6 @@ import type * as Tool from "./Tool.js"
 import type * as Toolkit from "./Toolkit.js"
 
 // =============================================================================
-// Base Response
-// =============================================================================
-
-export interface WithContentParts<Part extends AnyPart> {
-  readonly content: Array<Part>
-}
-
-// =============================================================================
 // All Parts
 // =============================================================================
 
@@ -291,7 +283,7 @@ export type Metadata = typeof Metadata.Type
 export interface BasePart<Type extends string> {
   readonly [PartTypeId]: PartTypeId
   readonly type: Type
-  readonly metadata: Metadata
+  readonly metadata?: Metadata | undefined
 }
 
 export interface BasePartEncoded<Type extends string> {
@@ -304,12 +296,12 @@ export const makePart = <const Type extends AnyPart["type"]>(
   params: Omit<Extract<AnyPart, { type: Type }>, PartTypeId | "type" | "metadata"> & {
     readonly metadata?: Metadata | undefined
   }
-) =>
+): Extract<AnyPart, { type: Type }> =>
   ({
     ...params,
     [PartTypeId]: PartTypeId,
     type,
-    metadata: params.metadata ?? {}
+    metadata: params.metadata
   }) as any
 
 // =============================================================================
@@ -327,7 +319,7 @@ export interface TextPartEncoded extends BasePartEncoded<"text"> {
 export const TextPart: Schema.Schema<TextPart, TextPartEncoded> = Schema.Struct({
   type: Schema.Literal("text"),
   text: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "TextPart" })
@@ -348,7 +340,7 @@ export interface TextStartPartEncoded extends BasePartEncoded<"text-start"> {
 export const TextStartPart: Schema.Schema<TextStartPart, TextStartPartEncoded> = Schema.Struct({
   type: Schema.Literal("text-start"),
   id: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "TextStartPart" })
@@ -372,7 +364,7 @@ export const TextDeltaPart: Schema.Schema<TextDeltaPart, TextDeltaPartEncoded> =
   type: Schema.Literal("text-delta"),
   id: Schema.String,
   delta: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "TextDeltaPart" })
@@ -393,7 +385,7 @@ export interface TextEndPartEncoded extends BasePartEncoded<"text-end"> {
 export const TextEndPart: Schema.Schema<TextEndPart, TextEndPartEncoded> = Schema.Struct({
   type: Schema.Literal("text-end"),
   id: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "TextEndPart" })
@@ -414,7 +406,7 @@ export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning"> {
 export const ReasoningPart: Schema.Schema<ReasoningPart, ReasoningPartEncoded> = Schema.Struct({
   type: Schema.Literal("reasoning"),
   text: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningPart" })
@@ -435,7 +427,7 @@ export interface ReasoningStartPartEncoded extends BasePartEncoded<"reasoning-st
 export const ReasoningStartPart: Schema.Schema<ReasoningStartPart, ReasoningStartPartEncoded> = Schema.Struct({
   type: Schema.Literal("reasoning-start"),
   id: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningStartPart" })
@@ -459,7 +451,7 @@ export const ReasoningDeltaPart: Schema.Schema<ReasoningDeltaPart, ReasoningDelt
   type: Schema.Literal("reasoning-delta"),
   id: Schema.String,
   delta: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningDeltaPart" })
@@ -480,7 +472,7 @@ export interface ReasoningEndPartEncoded extends BasePartEncoded<"reasoning-end"
 export const ReasoningEndPart: Schema.Schema<ReasoningEndPart, ReasoningEndPartEncoded> = Schema.Struct({
   type: Schema.Literal("reasoning-end"),
   id: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningEndPart" })
@@ -493,21 +485,24 @@ export const ReasoningEndPart: Schema.Schema<ReasoningEndPart, ReasoningEndPartE
 export interface ToolParamsStartPart extends BasePart<"tool-params-start"> {
   readonly id: string
   readonly name: string
-  readonly isProviderDefined: boolean
+  readonly providerName?: string | undefined
+  readonly providerExecuted: boolean
 }
 
 export interface ToolParamsStartPartEncoded extends BasePartEncoded<"tool-params-start"> {
   readonly id: string
   readonly name: string
-  readonly isProviderDefined?: boolean
+  readonly providerName?: string | undefined
+  readonly providerExecuted?: boolean
 }
 
 export const ToolParamsStartPart: Schema.Schema<ToolParamsStartPart, ToolParamsStartPartEncoded> = Schema.Struct({
   type: Schema.Literal("tool-params-start"),
   id: Schema.String,
   name: Schema.String,
-  isProviderDefined: Schema.optionalWith(Schema.Boolean, { default: constFalse }),
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  providerName: Schema.optional(Schema.String),
+  providerExecuted: Schema.optionalWith(Schema.Boolean, { default: constFalse }),
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolParamsStartPart" })
@@ -531,7 +526,7 @@ export const ToolParamsDeltaPart: Schema.Schema<ToolParamsDeltaPart, ToolParamsD
   type: Schema.Literal("tool-params-delta"),
   id: Schema.String,
   delta: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolParamsDeltaPart" })
@@ -552,7 +547,7 @@ export interface ToolParamsEndPartEncoded extends BasePartEncoded<"tool-params-e
 export const ToolParamsEndPart: Schema.Schema<ToolParamsEndPart, ToolParamsEndPartEncoded> = Schema.Struct({
   type: Schema.Literal("tool-params-end"),
   id: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolParamsEndPart" })
@@ -566,14 +561,16 @@ export interface ToolCallPart<Name extends string, Params extends Schema.Struct.
   readonly id: string
   readonly name: Name
   readonly params: Schema.Struct.Type<Params>
-  readonly isProviderDefined: boolean
+  readonly providerName?: string | undefined
+  readonly providerExecuted: boolean
 }
 
 export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call"> {
   readonly id: string
   readonly name: string
   readonly params: unknown
-  readonly isProviderDefined?: boolean | undefined
+  readonly providerName?: string | undefined
+  readonly providerExecuted?: boolean | undefined
 }
 
 export const ToolCallPart = <const Name extends string, Params extends Schema.Struct.Fields>(
@@ -585,8 +582,9 @@ export const ToolCallPart = <const Name extends string, Params extends Schema.St
     id: Schema.String,
     name: Schema.Literal(name),
     params,
-    isProviderDefined: Schema.optionalWith(Schema.Boolean, { default: constFalse }),
-    metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+    providerName: Schema.optional(Schema.String),
+    providerExecuted: Schema.optionalWith(Schema.Boolean, { default: constFalse }),
+    metadata: Schema.optional(Metadata)
   }).pipe(
     Schema.attachPropertySignature(PartTypeId, PartTypeId),
     Schema.annotations({ identifier: "ToolCallPart" })
@@ -601,14 +599,16 @@ export interface ToolResultPart<Name extends string, Result> extends BasePart<"t
   readonly name: Name
   readonly result: Result
   readonly encodedResult: unknown
-  readonly isProviderDefined: boolean
+  readonly providerName?: string | undefined
+  readonly providerExecuted: boolean
 }
 
 export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result"> {
   readonly id: string
   readonly name: string
   readonly result: unknown
-  readonly isProviderDefined?: boolean | undefined
+  readonly providerName?: string | undefined
+  readonly providerExecuted?: boolean | undefined
 }
 
 export const ToolResultPart = <const Name extends string, Result extends Schema.Schema.Any>(
@@ -620,14 +620,15 @@ export const ToolResultPart = <const Name extends string, Result extends Schema.
 > => {
   const Base = Schema.Struct({
     id: Schema.String,
-    type: Schema.Literal("tool-result")
+    type: Schema.Literal("tool-result"),
+    providerName: Schema.optional(Schema.String),
+    metadata: Schema.optional(Metadata)
   })
   const Encoded = Schema.Struct({
     ...Base.fields,
     name: Schema.String,
     result: Schema.encodedSchema(result),
-    metadata: Schema.optional(Metadata),
-    isProviderDefined: Schema.optional(Schema.Boolean)
+    providerExecuted: Schema.optional(Schema.Boolean)
   })
   const Decoded = Schema.Struct({
     ...Base.fields,
@@ -635,8 +636,7 @@ export const ToolResultPart = <const Name extends string, Result extends Schema.
     name: Schema.Literal(name),
     result: Schema.typeSchema(result),
     encodedResult: Schema.encodedSchema(result),
-    metadata: Metadata,
-    isProviderDefined: Schema.Boolean
+    providerExecuted: Schema.Boolean
   })
   const decodeParams = ParseResult.decode<any, any, never>(result as any)
   const encodeParams = ParseResult.encode<any, any, never>(result as any)
@@ -647,28 +647,22 @@ export const ToolResultPart = <const Name extends string, Result extends Schema.
       strict: true,
       decode: Effect.fnUntraced(function*(encoded) {
         const decoded = yield* decodeParams(encoded.result)
-        const metadata = encoded.metadata ?? {}
-        const isProviderDefined = encoded.isProviderDefined ?? false
+        const providerExecuted = encoded.providerExecuted ?? false
         return {
+          ...encoded,
           [PartTypeId]: PartTypeId,
-          id: encoded.id,
           name: encoded.name as Name,
-          type: encoded.type,
           result: decoded,
           encodedResult: encoded.result,
-          metadata,
-          isProviderDefined
+          providerExecuted
         } as const
       }),
       encode: Effect.fnUntraced(function*(decoded) {
         const encoded = yield* encodeParams(decoded.result)
         return {
-          id: decoded.id,
-          type: decoded.type,
-          name: decoded.name,
+          ...decoded,
           result: encoded,
-          ...(Object.entries(decoded.metadata).length > 0 ? { metadata: decoded.metadata } : {}),
-          ...(decoded.isProviderDefined ? { isProviderDefined: true } : {})
+          ...(decoded.providerExecuted ? { providerExecuted: true } : {})
         }
       })
     }
@@ -693,7 +687,7 @@ export const FilePart: Schema.Schema<FilePart, FilePartEncoded> = Schema.Struct(
   type: Schema.Literal("file"),
   mediaType: Schema.String,
   data: Schema.Uint8ArrayFromBase64,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "FilePart" })
@@ -726,7 +720,7 @@ export const DocumentSourcePart: Schema.Schema<DocumentSourcePart, DocumentSourc
   mediaType: Schema.String,
   title: Schema.String,
   fileName: Schema.optional(Schema.String),
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "DocumentSourcePart" })
@@ -756,7 +750,7 @@ export const UrlSourcePart: Schema.Schema<UrlSourcePart, UrlSourcePartEncoded> =
   id: Schema.String,
   url: Schema.URL,
   title: Schema.String,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "UrlSourcePart" })
@@ -783,7 +777,7 @@ export const ResponseMetadataPart: Schema.Schema<ResponseMetadataPart, ResponseM
   id: Schema.optionalWith(Schema.String, { as: "Option" }),
   modelId: Schema.optionalWith(Schema.String, { as: "Option" }),
   timestamp: Schema.optionalWith(Schema.DateTimeUtc, { as: "Option" }),
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ResponseMetadataPart" })
@@ -885,7 +879,7 @@ export const FinishPart: Schema.Schema<FinishPart, FinishPartEncoded> = Schema.S
   type: Schema.Literal("finish"),
   reason: FinishReason,
   usage: Usage,
-  metadata: Schema.optionalWith(Metadata, { default: () => ({}) })
+  metadata: Schema.optional(Metadata)
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "FinishPart" })
@@ -921,7 +915,7 @@ export const getProviderMetadata: {
     tag: Context.Tag<Identifier, ProviderMetadata>
   ) => ExtractProviderMetadata<Part, ProviderMetadata> | undefined
 >(2, (part, tag) => {
-  const metadata = part.metadata[tag.key]
+  const metadata = part.metadata?.[tag.key]
   return metadata?.[part.type] as any
 })
 
@@ -946,9 +940,11 @@ export const unsafeSetProviderMetadata: {
     metadata: ExtractProviderMetadata<Part, ProviderMetadata>
   ) => void
 >(3, (part, tag, metadata) => {
-  // Sanity check, shouldn't hit this case if the part was properly decoded
-  if (Predicate.isUndefined(part.metadata[tag.key])) {
-    ;(part.metadata[tag.key] as any) = {}
+  if (Predicate.isUndefined(part.metadata)) {
+    ;(part.metadata as any) = {}
   }
-  ;(part.metadata[tag.key][part.type] as any) = metadata
+  if (Predicate.isUndefined(part.metadata![tag.key])) {
+    ;(part.metadata![tag.key] as any) = {}
+  }
+  ;(part.metadata![tag.key][part.type] as any) = metadata
 })

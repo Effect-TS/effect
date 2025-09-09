@@ -57,7 +57,7 @@ export interface Service {
    */
   readonly generateText: <
     Tools extends Record<string, Tool.Any>,
-    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<any>, Options>
+    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<Tools>, Options>
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Effect.Effect<
     LanguageModel.GenerateTextResponse<Tools>,
     LanguageModel.ExtractError<Options>,
@@ -75,7 +75,7 @@ export interface Service {
    */
   readonly streamText: <
     Tools extends Record<string, Tool.Any>,
-    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<any>, Options>
+    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<Tools>, Options>
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Stream.Stream<
     Response.StreamPart<Tools>,
     LanguageModel.ExtractError<Options>,
@@ -161,18 +161,14 @@ export const fromPrompt = Effect.fnUntraced(function*(
     ),
     streamText: Effect.fnUntraced(
       function*(options) {
-        const toolkit = Predicate.isNotUndefined(options.toolkit)
-          ? yield* resolveToolkit(options.toolkit)
-          : undefined
-
         let combined: Prompt.Prompt = Prompt.empty
         return Stream.fromChannel(Channel.acquireUseRelease(
           semaphore.take(1).pipe(
             Effect.zipRight(Ref.get(history)),
             Effect.map((history) => Prompt.merge(history, Prompt.make(options.prompt)))
           ),
-          (parts) =>
-            languageModel.streamText({ ...options, toolkit, prompt: parts }).pipe(
+          (prompt) =>
+            languageModel.streamText({ ...options, prompt }).pipe(
               Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
                 const parts = Array.from(chunk)
                 combined = Prompt.merge(combined, Prompt.fromResponseParts(parts))

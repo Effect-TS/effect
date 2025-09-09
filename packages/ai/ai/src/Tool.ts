@@ -189,12 +189,15 @@ export interface ProviderDefined<
     readonly parameters: Schema.Struct<{}>
     readonly success: typeof Schema.Void
     readonly failure: typeof Schema.Never
-  }
+  },
+  RequiresHandler extends boolean = false
 > extends
   Tool<Name, {
     readonly parameters: Config["parameters"]
-    success: Schema.Either<Config["success"], Config["failure"]>
-    failure: typeof Schema.Never
+    success: RequiresHandler extends true ? Config["success"]
+      : Schema.Either<Config["success"], Config["failure"]>
+    failure: RequiresHandler extends true ? Config["failure"]
+      : typeof Schema.Never
   }>,
   Tool.ProviderDefinedProto
 {
@@ -208,6 +211,13 @@ export interface ProviderDefined<
    * be used to configure the behavior of the provider-defined tool.
    */
   readonly argsSchema: Config["args"]
+
+  /**
+   * If set to `true`, this provider-defined tool will require a user-defined
+   * tool call handler to be provided when converting the `Toolkit` containing
+   * this tool into a `Layer`.
+   */
+  readonly requiresHandler: RequiresHandler
 
   /**
    * Decodes the result received after the provider-defined tool is called.
@@ -294,6 +304,7 @@ export interface Any extends Pipeable {
 export interface AnyProviderDefined extends Any {
   readonly args: any
   readonly argsSchema: AnyStructSchema
+  readonly requiresHandler: boolean
   readonly decodeResult: (result: unknown) => Effect.Effect<any, AiError>
 }
 
@@ -516,6 +527,16 @@ export type HandlersFor<Tools extends Record<string, Any>> = {
   [K in keyof Tools]: Handler<Tools[K]["name"]>
 }[keyof Tools]
 
+/**
+ * A utility type to determine if the specified tool requires a user-defined
+ * handler to be implemented.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type RequiresHandler<Tool extends Any> = Tool extends
+  ProviderDefined<infer _Name, infer _Config, infer _RequiresHandler> ? _RequiresHandler : true
+
 // =============================================================================
 // Constructors
 // =============================================================================
@@ -601,7 +622,7 @@ const userDefinedProto = <
   }
 > => {
   const self = Object.assign(Object.create(Proto), options)
-  self.key = `@effect/ai/Tool/${options.name}`
+  self.id = `@effect/ai/Tool/${options.name}`
   return self
 }
 
@@ -610,12 +631,15 @@ const providerDefinedProto = <
   Args extends AnyStructSchema,
   Parameters extends AnyStructSchema,
   Success extends Schema.Schema.Any,
-  Failure extends Schema.Schema.All
+  Failure extends Schema.Schema.All,
+  RequiresHandler extends boolean
 >(options: {
   readonly id: string
   readonly name: Name
+  readonly providerName: string
   readonly args: Args["Encoded"]
   readonly argsSchema: Args
+  readonly requiresHandler: RequiresHandler
   readonly parametersSchema: Parameters
   readonly successSchema: Success
   readonly failureSchema: Failure
@@ -626,12 +650,9 @@ const providerDefinedProto = <
     readonly parameters: Parameters
     readonly success: Success
     readonly failure: Failure
-  }
-> => {
-  const self = Object.assign(Object.create(ProviderDefinedProto), options)
-  self.key = options.id
-  return self
-}
+  },
+  RequiresHandler
+> => Object.assign(Object.create(ProviderDefinedProto), options)
 
 const constEmptyStruct = Schema.Struct({})
 
@@ -657,22 +678,22 @@ export const make = <
    * A `Schema` representing the type of the parameters that a tool call
    * handler must be provided with.
    */
-  readonly parameters?: Parameters
+  readonly parameters?: Parameters | undefined
   /**
    * A `Schema` representing the type that a tool returns from its handler if
    * successful.
    */
-  readonly success?: Success
+  readonly success?: Success | undefined
   /**
    * A `Schema` representing the type that a tool returns from its handler if
    * it fails.
    */
-  readonly failure?: Failure
+  readonly failure?: Failure | undefined
   /**
    * A set of `Tag`s representing the services that the implementation of the
    * tool will require when called.
    */
-  readonly dependencies?: Dependencies
+  readonly dependencies?: Dependencies | undefined
 }): Tool<
   Name,
   {
@@ -708,7 +729,8 @@ export const providerDefined = <
   Args extends Schema.Struct.Fields = {},
   Parameters extends Schema.Struct.Fields = {},
   Success extends Schema.Schema.Any = typeof Schema.Void,
-  Failure extends Schema.Schema.All = typeof Schema.Never
+  Failure extends Schema.Schema.All = typeof Schema.Never,
+  RequiresHandler extends boolean = false
 >(options: {
   /**
    * A unique identifier which can be used internally to discriminate between
@@ -718,29 +740,41 @@ export const providerDefined = <
    */
   readonly id: `${string}.${string}`
   /**
-   * The name of the provider-defined tool.
+   * The name of the provider-defined tool that will be used by the `Toolkit`
+   * to identify the tool.
    */
-  readonly name: Name
+  readonly toolkitName: Name
+  /**
+   * The name of the provider-defined tool as returned by the large language
+   * model provider.
+   */
+  readonly providerName: string
   /**
    * A `Schema` representing the arguments provided by the end-user used to
    * configure the behavior of the provider-defined tool.
    */
   readonly args: Args
   /**
+   * If set to `true`, this provider-defined tool will require a user-defined
+   * tool call handler to be provided when converting the `Toolkit` containing
+   * this tool into a `Layer`.
+   */
+  readonly requiresHandler?: RequiresHandler | undefined
+  /**
    * A `Schema` representing the tool call parameters generated by the model
    * provider which tool call was invoked with.
    */
-  readonly parameters?: Parameters
+  readonly parameters?: Parameters | undefined
   /**
    * A `Schema` representing the result of a successful invocation of the
    * provider-defined tool.
    */
-  readonly success?: Success
+  readonly success?: Success | undefined
   /**
    * A `Schema` representing the result of a failed invocation of the
    * provider-defined tool.
    */
-  readonly failure?: Failure
+  readonly failure?: Failure | undefined
 }) =>
 (args: Schema.Simplify<Schema.Struct.Encoded<Args>>): ProviderDefined<
   Name,
@@ -749,21 +783,24 @@ export const providerDefined = <
     readonly parameters: Schema.Struct<Parameters>
     readonly success: Success
     readonly failure: Failure
-  }
+  },
+  RequiresHandler
 > => {
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
   const resultSchema = Schema.EitherFromUnion({ right: successSchema, left: failureSchema })
   return providerDefinedProto({
     id: options.id,
-    name: options.name,
+    name: options.toolkitName,
+    providerName: options.providerName,
     args,
     argsSchema: Schema.Struct(options.args as any),
+    requiresHandler: options.requiresHandler ?? false,
     parametersSchema: options?.parameters
       ? Schema.Struct(options?.parameters as any)
       : constEmptyStruct,
-    successSchema: resultSchema,
-    failureSchema: Schema.Never
+    successSchema: options.requiresHandler === true ? successSchema : resultSchema,
+    failureSchema: options.requiresHandler === true ? failureSchema : Schema.Never
   }) as any
 }
 

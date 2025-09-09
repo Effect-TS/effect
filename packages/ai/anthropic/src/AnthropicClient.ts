@@ -66,7 +66,7 @@ export interface Service {
   ) => Stream.Stream<A, HttpClientError | ParseError, R>
 
   readonly createMessageStream: (
-    options: Omit<typeof Generated.CreateMessageParams.Encoded, "stream">
+    options: Omit<typeof Generated.BetaCreateMessageParams.Encoded, "stream">
   ) => Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never>
 }
 
@@ -234,7 +234,7 @@ export const make = (options: {
     }
 
     const createMessageStream = (
-      options: Omit<typeof Generated.CreateMessageParams.Encoded, "stream">
+      options: Omit<typeof Generated.BetaCreateMessageParams.Encoded, "stream">
     ): Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never> => {
       const request = HttpClientRequest.post("/v1/messages", {
         body: HttpBody.unsafeJson({ ...options, stream: true })
@@ -385,7 +385,7 @@ export class ContentBlockStartEvent extends Schema.Class<ContentBlockStartEvent>
 )({
   type: Schema.Literal("content_block_start"),
   index: Schema.Int,
-  content_block: Generated.ContentBlock
+  content_block: Generated.BetaContentBlock
 }) {}
 
 export class CitationsDelta extends Schema.Class<CitationsDelta>(
@@ -393,11 +393,11 @@ export class CitationsDelta extends Schema.Class<CitationsDelta>(
 )({
   type: Schema.Literal("citations_delta"),
   citation: Schema.Union(
-    Generated.ResponseCharLocationCitation,
-    Generated.ResponsePageLocationCitation,
-    Generated.ResponseContentBlockLocationCitation,
-    Generated.ResponseWebSearchResultLocationCitation,
-    Generated.ResponseSearchResultLocationCitation
+    Generated.BetaResponseCharLocationCitation,
+    Generated.BetaResponsePageLocationCitation,
+    Generated.BetaResponseContentBlockLocationCitation,
+    Generated.BetaResponseWebSearchResultLocationCitation,
+    Generated.BetaResponseSearchResultLocationCitation
   )
 }) {}
 

@@ -20,7 +20,7 @@ import * as Tool from "./Tool.js"
  * @since 1.0.0
  * @category Type Ids
  */
-export const TypeId: unique symbol = Symbol.for("@effect/ai/Toolkit")
+export const TypeId = "~@effect/ai/Toolkit"
 
 /**
  * @since 1.0.0
@@ -116,13 +116,13 @@ export type ToolsByName<Tools> = Tools extends Record<string, Tool.Any> ?
  * @category Utility Types
  */
 export type HandlersFrom<Tools extends Record<string, Tool.Any>> = {
-  readonly [Name in keyof Tools as Tools[Name] extends Tool.AnyProviderDefined ? never : Name]: Tools[Name] extends
-    Tool.AnyProviderDefined ? never :
-    (params: Tool.Parameters<Tools[Name]>) => Effect.Effect<
-      Tool.Success<Tools[Name]>,
-      Tool.Failure<Tools[Name]>,
-      Tool.Requirements<Tools[Name]>
-    >
+  readonly [Name in keyof Tools as Tool.RequiresHandler<Tools[Name]> extends true ? Name : never]: (
+    params: Tool.Parameters<Tools[Name]>
+  ) => Effect.Effect<
+    Tool.Success<Tools[Name]>,
+    Tool.Failure<Tools[Name]>,
+    Tool.Requirements<Tools[Name]>
+  >
 }
 
 /**
@@ -212,7 +212,15 @@ const Proto = {
       const handle = Effect.fn("Toolkit.handle", { captureStackTrace: false })(
         function*(name: string, params: unknown) {
           yield* Effect.annotateCurrentSpan({ tool: name, parameters: params })
-          const tool = tools[name]!
+          const tool = tools[name]
+          if (Predicate.isUndefined(tool)) {
+            const toolNames = Object.keys(tools).join(",")
+            return yield* new AiError({
+              module: "Toolkit",
+              method: `${name}.handle`,
+              description: `Failed to find tool with name '${name}' in toolkit - available tools: ${toolNames}`
+            })
+          }
           const schemas = getSchemas(tool)
           const decodedParams = yield* Effect.mapError(
             schemas.decodeParameters(params),
