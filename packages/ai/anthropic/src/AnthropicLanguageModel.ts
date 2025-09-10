@@ -1392,7 +1392,7 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
 }, AiError.AiError> = Effect.fnUntraced(function*(config, options) {
   // If a JSON response format was requested, create a tool and force its use
   if (options.responseFormat.type === "json") {
-    const name = options.responseFormat.name
+    const name = options.responseFormat.objectName
     const ast = options.responseFormat.schema.ast
     const jsonResponseTool: typeof Generated.Tool.Encoded = {
       name,

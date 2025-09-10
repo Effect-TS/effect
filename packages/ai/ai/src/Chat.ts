@@ -195,8 +195,8 @@ export interface Service {
    * ```
    */
   readonly generateText: <
-    Tools extends Record<string, Tool.Any>,
-    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<Tools>, Options>
+    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<any>, Options>,
+    Tools extends Record<string, Tool.Any> = {}
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Effect.Effect<
     LanguageModel.GenerateTextResponse<Tools>,
     LanguageModel.ExtractError<Options>,
@@ -230,8 +230,8 @@ export interface Service {
    * ```
    */
   readonly streamText: <
-    Tools extends Record<string, Tool.Any>,
-    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<Tools>, Options>
+    Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<any>, Options>,
+    Tools extends Record<string, Tool.Any> = {}
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Stream.Stream<
     Response.StreamPart<Tools>,
     LanguageModel.ExtractError<Options>,
@@ -272,11 +272,11 @@ export interface Service {
    * ```
    */
   readonly generateObject: <
-    Tools extends Record<string, Tool.Any>,
     A,
     I extends Record<string, unknown>,
     R,
-    Options extends NoExcessProperties<LanguageModel.GenerateObjectOptions<Tools, A, I, R>, Options>
+    Options extends NoExcessProperties<LanguageModel.GenerateObjectOptions<any, A, I, R>, Options>,
+    Tools extends Record<string, Tool.Any> = {}
   >(options: Options & LanguageModel.GenerateObjectOptions<Tools, A, I, R>) => Effect.Effect<
     LanguageModel.GenerateObjectResponse<Tools, A>,
     LanguageModel.ExtractError<Options>,
