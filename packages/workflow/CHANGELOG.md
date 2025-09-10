@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.9.5
+
+### Patch Changes
+
+- [#5488](https://github.com/Effect-TS/effect/pull/5488) [`92fd3ca`](https://github.com/Effect-TS/effect/commit/92fd3caac581160ee4add14c16cd3a393be0bcc0) Thanks @tim-smart! - return executionId from Workflow.execute + discard
+
 ## 0.9.4
 
 ### Patch Changes
