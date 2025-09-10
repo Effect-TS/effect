@@ -1,7 +1,35 @@
+/**
+ * The `Tool` module provides functionality for defining and managing tools
+ * that language models can call to augment their capabilities.
+ *
+ * This module enables creation of both user-defined and provider-defined tools,
+ * with full schema validation, type safety, and handler support. Tools allow
+ * AI models to perform actions like searching databases, calling APIs, or
+ * executing code within your application context.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * // Define a simple calculator tool
+ * const Calculator = Tool.make("Calculator", {
+ *   description: "Performs basic arithmetic operations",
+ *   parameters: {
+ *     operation: Schema.Literal("add", "subtract", "multiply", "divide"),
+ *     a: Schema.Number,
+ *     b: Schema.Number
+ *   },
+ *   success: Schema.Number
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { constFalse, constTrue, identity } from "effect/Function"
-import * as JsonSchema from "effect/JsonSchema"
+import * as JsonSchema from "effect/JSONSchema"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import { pipeArguments } from "effect/Pipeable"
@@ -9,31 +37,39 @@ import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { Covariant } from "effect/Types"
-import { AiError } from "./AiError.js"
+import * as AiError from "./AiError.js"
 
 // =============================================================================
 // Type Ids
 // =============================================================================
 
 /**
+ * Unique identifier for user-defined tools.
+ *
  * @since 1.0.0
  * @category Type Ids
  */
 export const TypeId = "~@effect/ai/Tool"
 
 /**
+ * Type-level representation of the user-defined tool identifier.
+ *
  * @since 1.0.0
  * @category Type Ids
  */
 export type TypeId = typeof TypeId
 
 /**
+ * Unique identifier for provider-defined tools.
+ *
  * @since 1.0.0
  * @category Type Ids
  */
 export const ProviderDefinedTypeId = "~@effect/ai/Tool/ProviderDefined"
 
 /**
+ * Type-level representation of the provider-defined tool identifier.
+ *
  * @since 1.0.0
  * @category Type Ids
  */
@@ -44,9 +80,31 @@ export type ProviderDefinedTypeId = typeof ProviderDefinedTypeId
 // =============================================================================
 
 /**
- * A `Tool` represents a user-defined action that a large language model can
- * take within your application. The results of a tool call can be returned back
- * to the large language model to be incorporated into its next response.
+ * A user-defined tool that language models can call to perform actions.
+ *
+ * Tools represent actionable capabilities that large language models can invoke
+ * to extend their functionality beyond text generation. Each tool has a defined
+ * schema for parameters, results, and failures.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * // Create a weather lookup tool
+ * const GetWeather = Tool.make("GetWeather", {
+ *   description: "Get current weather for a location",
+ *   parameters: {
+ *     location: Schema.String,
+ *     units: Schema.Literal("celsius", "fahrenheit")
+ *   },
+ *   success: Schema.Struct({
+ *     temperature: Schema.Number,
+ *     condition: Schema.String,
+ *     humidity: Schema.Number
+ *   })
+ * })
+ * ```
  *
  * @since 1.0.0
  * @category Models
@@ -166,13 +224,35 @@ export interface Tool<
 }
 
 /**
- * A `ProviderDefined` tool represents an action that a large language model can
- * take that is built in to the corresponding provider. These tools are executed
- * by the model provider, and thus do not require a handler to be specified.
+ * A provider-defined tool is a tool which is built into a large language model
+ * provider (e.g. web search, code execution).
  *
- * For example, many providers of large language models provide built-in tools
- * for searching the web or executing code, without your application needing
- * to provide a corresponding handler for such functionality.
+ * These tools are executed by the large language model provider rather than
+ * by your application. However, they can optionally require custom handlers
+ * implemented in your application to process provider generated results.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * // Define a web search tool provided by OpenAI
+ * const WebSearch = Tool.providerDefined({
+ *   id: "openai.web_search",
+ *   toolkitName: "WebSearch",
+ *   providerName: "web_search",
+ *   args: {
+ *     query: Schema.String
+ *   },
+ *   success: Schema.Struct({
+ *     results: Schema.Array(Schema.Struct({
+ *       title: Schema.String,
+ *       url: Schema.String,
+ *       snippet: Schema.String
+ *     }))
+ *   })
+ * })
+ * ```
  *
  * @since 1.0.0
  * @category Models
@@ -222,7 +302,7 @@ export interface ProviderDefined<
   /**
    * Decodes the result received after the provider-defined tool is called.
    */
-  decodeResult(args: unknown): Effect.Effect<Config["success"]["Type"], AiError>
+  decodeResult(args: unknown): Effect.Effect<Config["success"]["Type"], AiError.AiError>
 }
 
 /**
@@ -259,6 +339,43 @@ export declare namespace Tool {
 // =============================================================================
 
 /**
+ * Type guard to check if a value is a user-defined tool.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * const UserDefinedTool = Tool.make("Calculator", {
+ *   description: "Performs basic arithmetic operations",
+ *   parameters: {
+ *     operation: Schema.Literal("add", "subtract", "multiply", "divide"),
+ *     a: Schema.Number,
+ *     b: Schema.Number
+ *   },
+ *   success: Schema.Number
+ * })
+ *
+ * const ProviderDefinedTool = Tool.providerDefined({
+ *   id: "openai.web_search",
+ *   toolkitName: "WebSearch",
+ *   providerName: "web_search",
+ *   args: {
+ *     query: Schema.String
+ *   },
+ *   success: Schema.Struct({
+ *     results: Schema.Array(Schema.Struct({
+ *       title: Schema.String,
+ *       url: Schema.String,
+ *       snippet: Schema.String
+ *     }))
+ *   })
+ * })
+ *
+ * console.log(Tool.isUserDefined(UserDefinedTool))      // true
+ * console.log(Tool.isUserDefined(ProviderDefinedTool))  // false
+ * ```
+ *
  * @since 1.0.0
  * @category Guards
  */
@@ -266,6 +383,46 @@ export const isUserDefined = (u: unknown): u is Tool<any, any, any> =>
   Predicate.hasProperty(u, TypeId) && !isProviderDefined(u)
 
 /**
+ * Type guard to check if a value is a provider-defined tool.
+ *
+ * @param u - The value to check
+ * @returns `true` if the value is a provider-defined `Tool`, `false` otherwise
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * const UserDefinedTool = Tool.make("Calculator", {
+ *   description: "Performs basic arithmetic operations",
+ *   parameters: {
+ *     operation: Schema.Literal("add", "subtract", "multiply", "divide"),
+ *     a: Schema.Number,
+ *     b: Schema.Number
+ *   },
+ *   success: Schema.Number
+ * })
+ *
+ * const ProviderDefinedTool = Tool.providerDefined({
+ *   id: "openai.web_search",
+ *   toolkitName: "WebSearch",
+ *   providerName: "web_search",
+ *   args: {
+ *     query: Schema.String
+ *   },
+ *   success: Schema.Struct({
+ *     results: Schema.Array(Schema.Struct({
+ *       title: Schema.String,
+ *       url: Schema.String,
+ *       snippet: Schema.String
+ *     }))
+ *   })
+ * })
+ *
+ * console.log(Tool.isUserDefined(UserDefinedTool))      // false
+ * console.log(Tool.isUserDefined(ProviderDefinedTool))  // true
+ * ```
+ *
  * @since 1.0.0
  * @category Guards
  */
@@ -305,7 +462,7 @@ export interface AnyProviderDefined extends Any {
   readonly args: any
   readonly argsSchema: AnyStructSchema
   readonly requiresHandler: boolean
-  readonly decodeResult: (result: unknown) => Effect.Effect<any, AiError>
+  readonly decodeResult: (result: unknown) => Effect.Effect<any, AiError.AiError>
 }
 
 /**
@@ -590,7 +747,7 @@ const ProviderDefinedProto = {
     return Schema.decodeUnknown(this.successSchema)(result).pipe(
       Effect.orElse(() => Schema.decodeUnknown(this.failureSchema as any)(result)),
       Effect.mapError((cause) =>
-        new AiError({
+        new AiError.MalformedOutput({
           module: "Tool",
           method: "ProviderDefined.decodeResult",
           description: `Failed to decode the result of provider-defined tool '${this.name}'`,
@@ -657,11 +814,26 @@ const providerDefinedProto = <
 const constEmptyStruct = Schema.Struct({})
 
 /**
- * Constructs an `Tool` from a name and, optionally, a specification for the
- * tool call protocol.
+ * Creates a user-defined tool with the specified name and configuration.
+ *
+ * This is the primary constructor for creating custom tools that AI models
+ * can call. The tool definition includes parameter validation, success/failure
+ * schemas, and optional service dependencies.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * // Simple tool with no parameters
+ * const GetCurrentTime = Tool.make("GetCurrentTime", {
+ *   description: "Returns the current timestamp",
+ *   success: Schema.Number
+ * })
+ * ```
  *
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = <
   const Name extends string,
@@ -669,32 +841,34 @@ export const make = <
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Failure extends Schema.Schema.All = typeof Schema.Never,
   Dependencies extends Array<Context.Tag<any, any>> = []
->(name: Name, options?: {
+>(
   /**
-   * An optional description of the tool.
+   * The unique name identifier for this tool.
    */
-  readonly description?: string | undefined
-  /**
-   * A `Schema` representing the type of the parameters that a tool call
-   * handler must be provided with.
-   */
-  readonly parameters?: Parameters | undefined
-  /**
-   * A `Schema` representing the type that a tool returns from its handler if
-   * successful.
-   */
-  readonly success?: Success | undefined
-  /**
-   * A `Schema` representing the type that a tool returns from its handler if
-   * it fails.
-   */
-  readonly failure?: Failure | undefined
-  /**
-   * A set of `Tag`s representing the services that the implementation of the
-   * tool will require when called.
-   */
-  readonly dependencies?: Dependencies | undefined
-}): Tool<
+  name: Name,
+  options?: {
+    /**
+     * An optional description explaining what the tool does.
+     */
+    readonly description?: string | undefined
+    /**
+     * Schema defining the parameters this tool accepts.
+     */
+    readonly parameters?: Parameters | undefined
+    /**
+     * Schema for successful tool execution results.
+     */
+    readonly success?: Success | undefined
+    /**
+     * Schema for tool execution failures.
+     */
+    readonly failure?: Failure | undefined
+    /**
+     * Service dependencies required by the tool handler.
+     */
+    readonly dependencies?: Dependencies | undefined
+  }
+): Tool<
   Name,
   {
     readonly parameters: Schema.Struct<Parameters>
@@ -718,11 +892,38 @@ export const make = <
 }
 
 /**
- * Constructs an `ProviderDefined` tool from a specification for the tool
- * call protocol.
+ * Creates a provider-defined tool which leverages functionality built into a
+ * large language model provider (e.g. web search, code execution).
+ *
+ * These tools are executed by the large language model provider rather than
+ * by your application. However, they can optionally require custom handlers
+ * implemented in your application to process provider generated results.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * // Web search tool provided by OpenAI
+ * const WebSearch = Tool.providerDefined({
+ *   id: "openai.web_search",
+ *   toolkitName: "WebSearch",
+ *   providerName: "web_search",
+ *   args: {
+ *     query: Schema.String
+ *   },
+ *   success: Schema.Struct({
+ *     results: Schema.Array(Schema.Struct({
+ *       title: Schema.String,
+ *       url: Schema.String,
+ *       content: Schema.String
+ *     }))
+ *   })
+ * })
+ * ```
  *
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const providerDefined = <
   const Name extends string,
@@ -733,46 +934,35 @@ export const providerDefined = <
   RequiresHandler extends boolean = false
 >(options: {
   /**
-   * A unique identifier which can be used internally to discriminate between
-   * different provider-defined tools.
-   *
-   * Should follow the format `<provider>.<unique-tool-name>`.
+   * Unique identifier following format `<provider>.<tool-name>`.
    */
   readonly id: `${string}.${string}`
   /**
-   * The name of the provider-defined tool that will be used by the `Toolkit`
-   * to identify the tool.
+   * Name used by the Toolkit to identify this tool.
    */
   readonly toolkitName: Name
   /**
-   * The name of the provider-defined tool as returned by the large language
-   * model provider.
+   * Name of the tool as recognized by the AI provider.
    */
   readonly providerName: string
   /**
-   * A `Schema` representing the arguments provided by the end-user used to
-   * configure the behavior of the provider-defined tool.
+   * Schema for user-provided configuration arguments.
    */
   readonly args: Args
   /**
-   * If set to `true`, this provider-defined tool will require a user-defined
-   * tool call handler to be provided when converting the `Toolkit` containing
-   * this tool into a `Layer`.
+   * Whether this tool requires a custom handler implementation.
    */
   readonly requiresHandler?: RequiresHandler | undefined
   /**
-   * A `Schema` representing the tool call parameters generated by the model
-   * provider which tool call was invoked with.
+   * Schema for parameters the provider sends when calling the tool.
    */
   readonly parameters?: Parameters | undefined
   /**
-   * A `Schema` representing the result of a successful invocation of the
-   * provider-defined tool.
+   * Schema for successful tool execution results.
    */
   readonly success?: Success | undefined
   /**
-   * A `Schema` representing the result of a failed invocation of the
-   * provider-defined tool.
+   * Schema for failed tool execution results.
    */
   readonly failure?: Failure | undefined
 }) =>
@@ -805,10 +995,39 @@ export const providerDefined = <
 }
 
 /**
- * Constructs a new `Tool` from a `Schema.TaggedRequest`.
+ * Creates a Tool from a Schema.TaggedRequest.
+ *
+ * This utility function converts Effect's TaggedRequest schemas into Tool
+ * definitions, automatically mapping the request parameters, success, and
+ * failure schemas.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * // Define a tagged request for user operations
+ * class GetUser extends Schema.TaggedRequest<GetUser>()("GetUser", {
+ *   success: Schema.Struct({
+ *     id: Schema.Number,
+ *     name: Schema.String,
+ *     email: Schema.String
+ *   }),
+ *   failure: Schema.Struct({
+ *     error: Schema.Literal("UserNotFound", "DatabaseError"),
+ *     message: Schema.String
+ *   }),
+ *   payload: {
+ *     userId: Schema.Number
+ *   }
+ * }) {}
+ *
+ * // Convert to a Tool
+ * const getUserTool = Tool.fromTaggedRequest(GetUser)
+ * ```
  *
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
   schema: S
@@ -826,6 +1045,27 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
 // Utilities
 // =============================================================================
 
+/**
+ * Extracts the description from a tool's metadata.
+ *
+ * Returns the tool's description if explicitly set, otherwise attempts to
+ * extract it from the parameter schema's AST annotations.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ *
+ * const myTool = Tool.make("example", {
+ *   description: "This is an example tool"
+ * })
+ *
+ * const description = Tool.getDescription(myTool)
+ * console.log(description) // "This is an example tool"
+ * ```
+ *
+ * @since 1.0.0
+ * @category Utilities
+ */
 export const getDescription = <
   Name extends string,
   Config extends {
@@ -833,13 +1073,22 @@ export const getDescription = <
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
   }
->(tool: Tool<Name, Config>): string | undefined => {
+>(
+  /**
+   * The tool to get the description from.
+   */
+  tool: Tool<Name, Config>
+): string | undefined => {
   if (Predicate.isNotUndefined(tool.description)) {
     return tool.description
   }
   return getDescriptionFromSchemaAst(tool.parametersSchema.ast)
 }
 
+/**
+ * @since 1.0.0
+ * @category Utilities
+ */
 export const getDescriptionFromSchemaAst = (ast: AST.AST): string | undefined => {
   const annotations = ast._tag === "Transformation" ?
     {
@@ -852,6 +1101,39 @@ export const getDescriptionFromSchemaAst = (ast: AST.AST): string | undefined =>
     undefined
 }
 
+/**
+ * Generates a JSON Schema for the tool's parameter validation.
+ *
+ * This function creates a JSON Schema representation that can be used by
+ * AI providers for parameter validation and documentation generation.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ * import { Schema } from "effect"
+ *
+ * const weatherTool = Tool.make("get_weather", {
+ *   parameters: {
+ *     location: Schema.String,
+ *     units: Schema.optional(Schema.Literal("celsius", "fahrenheit"))
+ *   }
+ * })
+ *
+ * const jsonSchema = Tool.getJsonSchema(weatherTool)
+ * console.log(jsonSchema)
+ * // {
+ * //   type: "object",
+ * //   properties: {
+ * //     location: { type: "string" },
+ * //     units: { type: "string", enum: ["celsius", "fahrenheit"] }
+ * //   },
+ * //   required: ["location"]
+ * // }
+ * ```
+ *
+ * @since 1.0.0
+ * @category Utilities
+ */
 export const getJsonSchema = <
   Name extends string,
   Config extends {
@@ -859,8 +1141,17 @@ export const getJsonSchema = <
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
   }
->(tool: Tool<Name, Config>): JsonSchema.JsonSchema7 => getJsonSchemaFromSchemaAst(tool.parametersSchema.ast)
+>(
+  /**
+   * The tool to generate JSON schema for.
+   */
+  tool: Tool<Name, Config>
+): JsonSchema.JsonSchema7 => getJsonSchemaFromSchemaAst(tool.parametersSchema.ast)
 
+/**
+ * @since 1.0.0
+ * @category Utilities
+ */
 export const getJsonSchemaFromSchemaAst = (ast: AST.AST): JsonSchema.JsonSchema7 => {
   const props = AST.getPropertySignatures(ast)
   if (props.length === 0) {
@@ -886,12 +1177,32 @@ export const getJsonSchemaFromSchemaAst = (ast: AST.AST): JsonSchema.JsonSchema7
 // =============================================================================
 
 /**
+ * Annotation for providing a human-readable title for tools.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ *
+ * const myTool = Tool.make("calculate_tip")
+ *   .annotate(Tool.Title, "Tip Calculator")
+ * ```
+ *
  * @since 1.0.0
  * @category Annotations
  */
 export class Title extends Context.Tag("@effect/ai/Tool/Title")<Title, string>() {}
 
 /**
+ * Annotation indicating whether a tool only reads data without making changes.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ *
+ * const readOnlyTool = Tool.make("get_user_info")
+ *   .annotate(Tool.Readonly, true)
+ * ```
+ *
  * @since 1.0.0
  * @category Annotations
  */
@@ -900,6 +1211,16 @@ export class Readonly extends Context.Reference<Readonly>()("@effect/ai/Tool/Rea
 }) {}
 
 /**
+ * Annotation indicating whether a tool performs destructive operations.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ *
+ * const safeTool = Tool.make("search_database")
+ *   .annotate(Tool.Destructive, false)
+ * ```
+ *
  * @since 1.0.0
  * @category Annotations
  */
@@ -908,6 +1229,16 @@ export class Destructive extends Context.Reference<Destructive>()("@effect/ai/To
 }) {}
 
 /**
+ * Annotation indicating whether a tool can be called multiple times safely.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ *
+ * const idempotentTool = Tool.make("get_current_time")
+ *   .annotate(Tool.Idempotent, true)
+ * ```
+ *
  * @since 1.0.0
  * @category Annotations
  */
@@ -916,6 +1247,16 @@ export class Idempotent extends Context.Reference<Idempotent>()("@effect/ai/Tool
 }) {}
 
 /**
+ * Annotation indicating whether a tool can handle arbitrary external data.
+ *
+ * @example
+ * ```ts
+ * import { Tool } from "@effect/ai"
+ *
+ * const restrictedTool = Tool.make("internal_operation")
+ *   .annotate(Tool.OpenWorld, false)
+ * ```
+ *
  * @since 1.0.0
  * @category Annotations
  */

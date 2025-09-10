@@ -1,29 +1,29 @@
 /**
  * @since 1.0.0
  */
-import { AiError } from "@effect/ai/AiError"
+import * as AiError from "@effect/ai/AiError"
 import * as IdGenerator from "@effect/ai/IdGenerator"
 import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as AiModel from "@effect/ai/Model"
 import * as Prompt from "@effect/ai/Prompt"
 import type * as Response from "@effect/ai/Response"
 import { addGenAIAnnotations } from "@effect/ai/Telemetry"
+import type * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Tool from "@effect/ai/Tool"
-import type { HttpClientError } from "@effect/platform/HttpClientError"
 import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
-import { dual } from "effect/Function"
+import { constFalse, dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type { ParseError } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
 import { AnthropicClient, type MessageStreamEvent } from "./AnthropicClient.js"
+import * as AnthropicTokenizer from "./AnthropicTokenizer.js"
 import * as AnthropicTool from "./AnthropicTool.js"
 import type * as Generated from "./Generated.js"
 import * as InternalUtilities from "./internal/utilities.js"
@@ -119,7 +119,7 @@ export declare namespace ProviderOptions {
    * @since 1.0.0
    * @category Provider Metadata
    */
-  export interface Service extends Prompt.AnyProviderOptions {
+  export interface Service {
     readonly system: {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
@@ -332,15 +332,15 @@ export const model = (
 ): AiModel.Model<"anthropic", LanguageModel.LanguageModel, AnthropicClient> =>
   AiModel.make("anthropic", layer({ model, config }))
 
-// /**
-//  * @since 1.0.0
-//  * @category AiModels
-//  */
-// export const modelWithTokenizer = (
-//   model: (string & {}) | Model,
-//   config?: Omit<Config.Service, "model">
-// ): AiModel.AiModel<LanguageModel.LanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
-//   AiModel.make(layerWithTokenizer({ model, config }))
+/**
+ * @since 1.0.0
+ * @category AiModels
+ */
+export const modelWithTokenizer = (
+  model: (string & {}) | Model,
+  config?: Omit<Config.Service, "model">
+): AiModel.Model<"anthropic", LanguageModel.LanguageModel | Tokenizer.Tokenizer, AnthropicClient> =>
+  AiModel.make("anthropic", layerWithTokenizer({ model, config }))
 
 /**
  * @since 1.0.0
@@ -353,71 +353,54 @@ export const make = Effect.fnUntraced(function*(options: {
   const client = yield* AnthropicClient
 
   const makeRequest = Effect.fnUntraced(
-    function*(method: string, providerOptions: LanguageModel.ProviderOptions) {
+    function*(providerOptions: LanguageModel.ProviderOptions) {
       const context = yield* Effect.context<never>()
       const config = { ...options.config, ...context.unsafeMap.get(Config.key) }
-      const { prompt } = yield* makeMessages(method, providerOptions.prompt)
-      const { betas, toolChoice, tools } = yield* prepareTools(config, providerOptions)
+      const { betas: messageBetas, messages, system } = yield* makeMessages(providerOptions.prompt)
+      const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(config, providerOptions)
       const request: typeof Generated.BetaCreateMessageParams.Encoded = {
         model: options.model,
         max_tokens: 4096,
         ...config,
-        system: prompt.system,
-        messages: prompt.messages,
+        system,
+        messages,
         tools,
         tool_choice: toolChoice
       }
-      return { betas, request }
+      return { betas: new Set([...messageBetas, ...toolBetas]), request }
     }
   )
 
   return yield* LanguageModel.make({
     generateText: Effect.fnUntraced(
       function*(options) {
-        const { betas, request } = yield* makeRequest("generateText", options)
-        console.dir({ betas, request }, { depth: null, colors: true })
+        const { betas, request } = yield* makeRequest(options)
         annotateRequest(options.span, request)
-        const rawResponse = yield* client.client.betaMessagesPost({
-          params: {
-            "anthropic-beta": betas.size > 0 ? Array.from(betas).join(",") : undefined
-          },
+        const rawResponse = yield* client.createMessage({
+          params: { "anthropic-beta": betas.size > 0 ? Array.from(betas).join(",") : undefined },
           payload: request
         })
         annotateResponse(options.span, rawResponse)
         return yield* makeResponse(rawResponse, options)
-      },
-      Effect.catchAll((cause) =>
-        AiError.is(cause) ? cause : new AiError({
-          module: "AnthropicLanguageModel",
-          method: "generateText",
-          description: "An error occurred",
-          cause
-        })
-      )
-    ) as any,
+      }
+    ),
 
-    streamText: (options) =>
-      Stream.fromEffect(Effect.gen(function*() {
-        const { request } = yield* makeRequest("streamText", options)
+    streamText: Effect.fnUntraced(
+      function*(options) {
+        const { request } = yield* makeRequest(options)
         annotateRequest(options.span, request)
         return client.createMessageStream(request)
-      })).pipe(
-        Stream.flatMap((stream) => makeStreamResponse(stream, options), { switch: true }),
-        Stream.map((response) => {
-          annotateStreamResponse(options.span, response)
-          return response
-        }),
-        Stream.catchAll((cause) =>
-          AiError.is(cause) ? Effect.fail(cause) : Effect.fail(
-            new AiError({
-              module: "AnthropicLanguageModel",
-              method: "streamText",
-              description: "An error occurred",
-              cause
-            })
-          )
+      },
+      (effect, options) =>
+        effect.pipe(
+          Effect.map((stream) => makeStreamResponse(stream, options)),
+          Stream.unwrap,
+          Stream.map((response) => {
+            annotateStreamResponse(options.span, response)
+            return response
+          })
         )
-      ) as any
+    )
   })
 })
 
@@ -431,15 +414,15 @@ export const layer = (options: {
 }): Layer.Layer<LanguageModel.LanguageModel, never, AnthropicClient> =>
   Layer.effect(LanguageModel.LanguageModel, make({ model: options.model, config: options.config }))
 
-// /**
-//  * @since 1.0.0
-//  * @category Layers
-//  */
-// export const layerWithTokenizer = (options: {
-//   readonly model: (string & {}) | Model
-//   readonly config?: Omit<Config.Service, "model">
-// }): Layer.Layer<AiLanguageModel.AiLanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
-//   Layer.merge(layer(options), AnthropicTokenizer.layer)
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerWithTokenizer = (options: {
+  readonly model: (string & {}) | Model
+  readonly config?: Omit<Config.Service, "model">
+}): Layer.Layer<LanguageModel.LanguageModel | Tokenizer.Tokenizer, never, AnthropicClient> =>
+  Layer.merge(layer(options), AnthropicTokenizer.layer)
 
 /**
  * @since 1.0.0
@@ -517,17 +500,12 @@ const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
 // Prompt Conversion
 // =============================================================================
 
-const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
-  {
-    readonly betas: ReadonlySet<string>
-    readonly prompt: {
-      readonly system: ReadonlyArray<typeof Generated.BetaRequestTextBlock.Encoded> | undefined
-      readonly messages: ReadonlyArray<typeof Generated.BetaInputMessage.Encoded>
-    }
-  },
-  AiError
-> = Effect.fnUntraced(
-  function*(method: string, prompt: Prompt.Prompt) {
+const makeMessages: (prompt: Prompt.Prompt) => Effect.Effect<{
+  readonly betas: ReadonlySet<string>
+  readonly system: ReadonlyArray<typeof Generated.BetaRequestTextBlock.Encoded> | undefined
+  readonly messages: ReadonlyArray<typeof Generated.BetaInputMessage.Encoded>
+}, AiError.AiError> = Effect.fnUntraced(
+  function*(prompt: Prompt.Prompt) {
     const betas = new Set<string>()
     const groups = groupMessages(prompt)
 
@@ -634,9 +612,9 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
                           cache_control: cacheControl
                         })
                       } else {
-                        return yield* new AiError({
+                        return yield* new AiError.MalformedInput({
                           module: "AnthropicLanguageModel",
-                          method,
+                          method: "makeMessages",
                           description: `Detected unsupported media type for file: '${part.mediaType}'`
                         })
                       }
@@ -702,17 +680,17 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
 
                 case "reasoning": {
                   const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-                  if (Predicate.isNotUndefined(providerOptions)) {
-                    if (providerOptions.type === "thinking") {
+                  if (Option.isSome(providerOptions)) {
+                    if (providerOptions.value.type === "thinking") {
                       content.push({
                         type: "thinking",
                         thinking: part.text,
-                        signature: providerOptions.signature
+                        signature: providerOptions.value.signature
                       })
                     } else {
                       content.push({
                         type: "redacted_thinking",
-                        data: providerOptions.redactedData
+                        data: providerOptions.value.redactedData
                       })
                     }
                   }
@@ -720,8 +698,8 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
                 }
 
                 case "tool-call": {
-                  if (part.isProviderDefined) {
-                    if (part.name === "anthropic.web_search") {
+                  if (part.providerExecuted) {
+                    if (part.name === "AnthropicWebSearch") {
                       content.push({
                         type: "server_tool_use",
                         id: part.id,
@@ -730,7 +708,7 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
                         cache_control: cacheControl
                       })
                     }
-                    if (part.name === "anthropic.code_execution") {
+                    if (part.name === "AnthropicCodeExecution") {
                       content.push({
                         type: "server_tool_use",
                         id: part.id,
@@ -762,7 +740,8 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
     }
 
     return {
-      prompt: { system, messages },
+      system,
+      messages,
       betas
     }
   }
@@ -775,7 +754,11 @@ const makeMessages: (method: string, prompt: Prompt.Prompt) => Effect.Effect<
 const makeResponse: (
   response: Generated.BetaMessage,
   options: LanguageModel.ProviderOptions
-) => Effect.Effect<Array<Response.PartEncoded>, AiError, IdGenerator.IdGenerator> = Effect.fnUntraced(
+) => Effect.Effect<
+  Array<Response.PartEncoded>,
+  never,
+  IdGenerator.IdGenerator
+> = Effect.fnUntraced(
   function*(response: Generated.BetaMessage, options: LanguageModel.ProviderOptions) {
     const idGenerator = yield* IdGenerator.IdGenerator
     const parts: Array<Response.PartEncoded> = []
@@ -939,11 +922,11 @@ const makeResponse: (
 )
 
 const makeStreamResponse: (
-  stream: Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never>,
+  stream: Stream.Stream<MessageStreamEvent, AiError.AiError, never>,
   options: LanguageModel.ProviderOptions
 ) => Stream.Stream<
   Response.StreamPartEncoded,
-  AiError | HttpClientError | ParseError,
+  AiError.AiError,
   IdGenerator.IdGenerator
 > = Effect.fnUntraced(
   function*(stream, options) {
@@ -1406,7 +1389,7 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
   readonly betas: ReadonlySet<string>
   readonly tools: ReadonlyArray<AnthropicTools> | undefined
   readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
-}, AiError> = Effect.fnUntraced(function*(config, options) {
+}, AiError.AiError> = Effect.fnUntraced(function*(config, options) {
   // If a JSON response format was requested, create a tool and force its use
   if (options.responseFormat.type === "json") {
     const name = options.responseFormat.name
@@ -1538,7 +1521,7 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
           break
         }
         default: {
-          return yield* new AiError({
+          return yield* new AiError.MalformedInput({
             module: "AnthropicLanguageModel",
             method: "prepareTools",
             description: `Received request to call unknown provider-defined tool '${tool.name}'`
@@ -1583,8 +1566,10 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
 
 const isCitationPart = (part: Prompt.UserMessage["content"][number]): part is Prompt.FilePart => {
   if (part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")) {
-    const metadata = Prompt.getProviderOptions(part, ProviderOptions)
-    return metadata?.citations?.enabled ?? false
+    return Prompt.getProviderOptions(part, ProviderOptions).pipe(
+      Option.flatMapNullable((options) => options.citations?.enabled),
+      Option.getOrElse(constFalse)
+    )
   }
   return false
 }
@@ -1624,10 +1609,13 @@ const getCacheControl = (
     | Prompt.AssistantMessage["content"][number]
     | Prompt.ToolMessage["content"][number]
 ): typeof Generated.CacheControlEphemeral.Encoded | undefined => {
-  const providerOptions: {
+  const providerOptions: Option.Option<{
     readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-  } | undefined = Prompt.getProviderOptions(part, ProviderOptions)
-  return providerOptions?.cacheControl
+  }> = Prompt.getProviderOptions(part, ProviderOptions)
+  return providerOptions.pipe(
+    Option.flatMapNullable((options) => options.cacheControl),
+    Option.getOrUndefined
+  )
 }
 
 const getDocumentMetadata = (part: Prompt.FilePart): {
@@ -1635,10 +1623,10 @@ const getDocumentMetadata = (part: Prompt.FilePart): {
   readonly context: string | undefined
 } | undefined => {
   const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-  if (Predicate.isNotUndefined(providerOptions)) {
+  if (Option.isSome(providerOptions)) {
     return {
-      title: providerOptions.documentTitle ?? undefined,
-      context: providerOptions.documentContext ?? undefined
+      title: providerOptions.value.documentTitle ?? undefined,
+      context: providerOptions.value.documentContext ?? undefined
     }
   }
   return undefined
@@ -1646,7 +1634,10 @@ const getDocumentMetadata = (part: Prompt.FilePart): {
 
 const shouldEnableCitations = (part: Prompt.FilePart): boolean => {
   const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-  return providerOptions?.citations?.enabled ?? false
+  return providerOptions.pipe(
+    Option.flatMapNullable((options) => options.citations?.enabled),
+    Option.getOrElse(constFalse)
+  )
 }
 
 const processCitation: (

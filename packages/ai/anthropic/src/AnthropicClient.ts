@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
+import * as AiError from "@effect/ai/AiError"
 import * as Sse from "@effect/experimental/Sse"
 import * as Headers from "@effect/platform/Headers"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
-import type { HttpClientError } from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
@@ -14,7 +14,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import type { ParseError } from "effect/ParseResult"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
@@ -63,11 +62,16 @@ export interface Service {
   readonly streamRequest: <A, I, R>(
     request: HttpClientRequest.HttpClientRequest,
     schema: Schema.Schema<A, I, R>
-  ) => Stream.Stream<A, HttpClientError | ParseError, R>
+  ) => Stream.Stream<A, AiError.AiError, R>
+
+  readonly createMessage: (options: {
+    readonly params?: typeof Generated.BetaMessagesPostParams.Encoded | undefined
+    readonly payload: typeof Generated.BetaCreateMessageParams.Encoded
+  }) => Effect.Effect<Generated.BetaMessage, AiError.AiError>
 
   readonly createMessageStream: (
     options: Omit<typeof Generated.BetaCreateMessageParams.Encoded, "stream">
-  ) => Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never>
+  ) => Stream.Stream<MessageStreamEvent, AiError.AiError, never>
 }
 
 /**
@@ -221,7 +225,7 @@ export const make = (options: {
     const streamRequest = <A, I, R>(
       request: HttpClientRequest.HttpClientRequest,
       schema: Schema.Schema<A, I, R>
-    ): Stream.Stream<A, HttpClientError | ParseError, R> => {
+    ): Stream.Stream<A, AiError.AiError, R> => {
       const decodeEvent = Schema.decode(Schema.parseJson(schema))
       return httpClient.execute(request).pipe(
         Effect.map((r) => r.stream),
@@ -229,20 +233,91 @@ export const make = (options: {
         Stream.decodeText(),
         Stream.pipeThroughChannel(Sse.makeChannel()),
         Stream.takeUntil((event) => event.event === "message_stop"),
-        Stream.mapEffect((event) => decodeEvent(event.data))
+        Stream.mapEffect((event) => decodeEvent(event.data)),
+        Stream.catchTags({
+          RequestError: (error) =>
+            AiError.HttpRequestError.fromRequestError({
+              module: "AnthropicClient",
+              method: "streamRequest",
+              error
+            }),
+          ResponseError: (error) =>
+            AiError.HttpResponseError.fromResponseError({
+              module: "AnthropicClient",
+              method: "streamRequest",
+              error
+            }),
+          ParseError: (error) =>
+            AiError.MalformedOutput.fromParseError({
+              module: "AnthropicClient",
+              method: "createMessage",
+              error
+            })
+        })
       )
     }
 
+    const createMessage = (options: {
+      readonly params?: typeof Generated.BetaMessagesPostParams.Encoded | undefined
+      readonly payload: typeof Generated.BetaCreateMessageParams.Encoded
+    }): Effect.Effect<Generated.BetaMessage, AiError.AiError> =>
+      client.betaMessagesPost(options).pipe(
+        Effect.catchTags({
+          RequestError: (error) =>
+            AiError.HttpRequestError.fromRequestError({
+              module: "AnthropicClient",
+              method: "createMessage",
+              error
+            }),
+          ResponseError: (error) =>
+            AiError.HttpResponseError.fromResponseError({
+              module: "AnthropicClient",
+              method: "createMessage",
+              error
+            }),
+          BetaErrorResponse: (error) => {
+            return new AiError.HttpResponseError({
+              module: "AnthropicClient",
+              method: "createMessage",
+              cause: error.cause,
+              reason: "StatusCode",
+              request: {
+                hash: error.request.hash,
+                headers: error.request.headers,
+                method: error.request.method,
+                url: error.request.url,
+                urlParams: error.request.urlParams
+              },
+              response: {
+                headers: error.response.headers,
+                status: error.response.status
+              }
+            })
+          },
+          ParseError: (error) =>
+            AiError.MalformedOutput.fromParseError({
+              module: "AnthropicClient",
+              method: "createMessage",
+              error
+            })
+        })
+      )
+
     const createMessageStream = (
       options: Omit<typeof Generated.BetaCreateMessageParams.Encoded, "stream">
-    ): Stream.Stream<MessageStreamEvent, HttpClientError | ParseError, never> => {
+    ): Stream.Stream<MessageStreamEvent, AiError.AiError, never> => {
       const request = HttpClientRequest.post("/v1/messages", {
         body: HttpBody.unsafeJson({ ...options, stream: true })
       })
-      return streamRequest(request, MessageStreamEvent)
+      return streamRequest(request, MessageStreamEvent).pipe()
     }
 
-    return AnthropicClient.of({ client, streamRequest, createMessageStream })
+    return AnthropicClient.of({
+      client,
+      streamRequest,
+      createMessage,
+      createMessageStream
+    })
   })
 
 export class PingEvent extends Schema.Class<PingEvent>(

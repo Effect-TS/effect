@@ -1,4 +1,51 @@
 /**
+ * The `LanguageModel` module provides AI text generation capabilities with tool
+ * calling support.
+ *
+ * This module offers a comprehensive interface for interacting with large
+ * language models, supporting both streaming and non-streaming text generation,
+ * structured output generation, and tool calling functionality. It provides a
+ * unified API that can be implemented by different AI providers while
+ * maintaining type safety and effect management.
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * // Basic text generation
+ * const program = Effect.gen(function* () {
+ *   const response = yield* LanguageModel.generateText({
+ *     prompt: "Explain quantum computing"
+ *   })
+ *
+ *   console.log(response.text)
+ *
+ *   return response
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect, Schema } from "effect"
+ *
+ * // Structured output generation
+ * const ContactSchema = Schema.Struct({
+ *   name: Schema.String,
+ *   email: Schema.String
+ * })
+ *
+ * const extractContact = Effect.gen(function* () {
+ *   const response = yield* LanguageModel.generateObject({
+ *     prompt: "Extract contact: John Doe, john@example.com",
+ *     schema: ContactSchema
+ *   })
+ *
+ *   return response.value
+ * })
+ * ```
+ *
  * @since 1.0.0
  */
 import * as Chunk from "effect/Chunk"
@@ -10,7 +57,7 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Concurrency, Mutable, NoExcessProperties } from "effect/Types"
-import { AiError } from "./AiError.js"
+import * as AiError from "./AiError.js"
 import { defaultIdGenerator, IdGenerator } from "./IdGenerator.js"
 import * as Prompt from "./Prompt.js"
 import * as Response from "./Response.js"
@@ -23,12 +70,48 @@ import * as Toolkit from "./Toolkit.js"
 // Service Definition
 // =============================================================================
 
+/**
+ * The `LanguageModel` service tag for dependency injection.
+ *
+ * This tag provides access to language model functionality throughout your
+ * application, enabling text generation, streaming, and structured output
+ * capabilities.
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * const useLanguageModel = Effect.gen(function* () {
+ *   const model = yield* LanguageModel
+ *   const response = yield* model.generateText({
+ *     prompt: "What is machine learning?"
+ *   })
+ *   return response.text
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Context
+ */
 export class LanguageModel extends Context.Tag("@effect/ai/LanguageModel")<
   LanguageModel,
   Service
->() {}
+>() { }
 
+/**
+ * The service interface for language model operations.
+ *
+ * Defines the contract that all language model implementations must fulfill,
+ * providing text generation, structured output, and streaming capabilities.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
 export interface Service {
+  /**
+   * Generate text using the language model.
+   */
   readonly generateText: <
     Tools extends Record<string, Tool.Any>,
     Options extends NoExcessProperties<GenerateTextOptions<Tools>, Options>
@@ -38,6 +121,9 @@ export interface Service {
     ExtractContext<Options>
   >
 
+  /**
+   * Generate a structured object using the language model and schema.
+   */
   readonly generateObject: <
     Tools extends Record<string, Tool.Any>,
     A,
@@ -50,6 +136,9 @@ export interface Service {
     R | ExtractContext<Options>
   >
 
+  /**
+   * Generate text using the language model with streaming output.
+   */
   readonly streamText: <
     Tools extends Record<string, Tool.Any>,
     Options extends NoExcessProperties<GenerateTextOptions<Tools>, Options>
@@ -60,6 +149,12 @@ export interface Service {
   >
 }
 
+/**
+ * Configuration options for text generation.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
 export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
   /**
    * The prompt input to use to generate text.
@@ -74,21 +169,22 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
 
   /**
    * The tool choice mode for the language model.
-   *
    * - `auto` (default): The model can decide whether or not to call tools, as
    *   well as which tools to call.
-   * - `required`: The model **must** call a tool but can decide which tool will be called.
+   * - `required`: The model **must** call a tool but can decide which tool will
+   *   be called.
    * - `none`: The model **must not** call a tool.
    * - `{ tool: <tool_name> }`: The model must call the specified tool.
    * - `{ mode?: "auto" (default) | "required", "oneOf": [<tool-names>] }`: The
-   *   model is restricted to the subset of tools specified by `oneOf`. When `mode`
-   *   is `"auto"` or omitted, the model can decide whether or not a tool from the
-   *   allowed subset of tools can be called. When `mode` is `"required"`, the
-   *   model **must** call one tool from the allowed subset of tools.
+   *   model is restricted to the subset of tools specified by `oneOf`. When
+   *   `mode` is `"auto"` or omitted, the model can decide whether or not a tool
+   *   from the allowed subset of tools can be called. When `mode` is
+   *   `"required"`, the model **must** call one tool from the allowed subset of
+   *   tools.
    */
   readonly toolChoice?:
-    | ToolChoice<{ [Name in keyof Tools]: Tools[Name]["name"] }[keyof Tools]>
-    | undefined
+  | ToolChoice<{ [Name in keyof Tools]: Tools[Name]["name"] }[keyof Tools]>
+  | undefined
 
   /**
    * The concurrency level for resolving tool calls.
@@ -110,14 +206,13 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
 }
 
 /**
- * Options for generating a structured object using a large language model.
+ * Configuration options for structured object generation.
  *
  * @since 1.0.0
  * @category Models
  */
 export interface GenerateObjectOptions<Tools extends Record<string, Tool.Any>, A, I extends Record<string, unknown>, R>
-  extends GenerateTextOptions<Tools>
-{
+  extends GenerateTextOptions<Tools> {
   /**
    * The name of the structured output that should be generated. Used by some
    * large language model providers to provide additional guidance to the model.
@@ -132,17 +227,18 @@ export interface GenerateObjectOptions<Tools extends Record<string, Tool.Any>, A
 
 /**
  * The tool choice mode for the language model.
- *
  * - `auto` (default): The model can decide whether or not to call tools, as
  *   well as which tools to call.
- * - `required`: The model **must** call a tool but can decide which tool will be called.
+ * - `required`: The model **must** call a tool but can decide which tool will
+ *   be called.
  * - `none`: The model **must not** call a tool.
  * - `{ tool: <tool_name> }`: The model must call the specified tool.
  * - `{ mode?: "auto" (default) | "required", "oneOf": [<tool-names>] }`: The
- *   model is restricted to the subset of tools specified by `oneOf`. When `mode`
- *   is `"auto"` or omitted, the model can decide whether or not a tool from the
- *   allowed subset of tools can be called. When `mode` is `"required"`, the
- *   model **must** call one tool from the allowed subset of tools.
+ *   model is restricted to the subset of tools specified by `oneOf`. When
+ *   `mode` is `"auto"` or omitted, the model can decide whether or not a tool
+ *   from the allowed subset of tools can be called. When `mode` is
+ *   `"required"`, the model **must** call one tool from the allowed subset of
+ *   tools.
  *
  * @since 1.0.0
  * @category Models
@@ -154,6 +250,34 @@ export type ToolChoice<Tools extends string> = "auto" | "none" | "required" | {
   readonly oneOf: ReadonlyArray<Tools>
 }
 
+/**
+ * Response class for text generation operations.
+ *
+ * Contains the generated content and provides convenient accessors for
+ * extracting different types of response parts like text, tool calls, and usage
+ * information.
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function* () {
+ *   const response = yield* LanguageModel.generateText({
+ *     prompt: "Explain photosynthesis"
+ *   })
+ *
+ *   console.log(response.text) // Generated text content
+ *   console.log(response.finishReason) // "stop", "length", etc.
+ *   console.log(response.usage) // Usage information
+ *
+ *   return response
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Models
+ */
 export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
   readonly content: Array<Response.Part<Tools>>
 
@@ -161,6 +285,9 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
     this.content = content
   }
 
+  /**
+   * Extracts and concatenates all text parts from the response.
+   */
   get text(): string {
     const text: Array<string> = []
     for (const part of this.content) {
@@ -171,10 +298,16 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
     return text.join("")
   }
 
+  /**
+   * Returns all reasoning parts from the response.
+   */
   get reasoning(): Array<Response.ReasoningPart> {
     return this.content.filter((part) => part.type === "reasoning")
   }
 
+  /**
+   * Extracts and concatenates all reasoning text, or undefined if none exists.
+   */
   get reasoningText(): string | undefined {
     const text: Array<string> = []
     for (const part of this.content) {
@@ -185,19 +318,31 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
     return text.length === 0 ? undefined : text.join("")
   }
 
+  /**
+   * Returns all tool call parts from the response.
+   */
   get toolCalls(): Array<Response.ToolCallParts<Tools>> {
     return this.content.filter((part) => part.type === "tool-call")
   }
 
+  /**
+   * Returns all tool result parts from the response.
+   */
   get toolResults(): Array<Response.ToolResultParts<Tools>> {
     return this.content.filter((part) => part.type === "tool-result")
   }
 
+  /**
+   * The reason why text generation finished.
+   */
   get finishReason(): Response.FinishReason {
     const finishPart = this.content.find((part) => part.type === "finish")
     return Predicate.isUndefined(finishPart) ? "unknown" : finishPart.reason
   }
 
+  /**
+   * Token usage statistics for the generation request.
+   */
   get usage(): Response.Usage {
     const finishPart = this.content.find((part) => part.type === "finish")
     if (Predicate.isUndefined(finishPart)) {
@@ -213,7 +358,39 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
   }
 }
 
+/**
+ * Response class for structured object generation operations.
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect, Schema } from "effect"
+ *
+ * const UserSchema = Schema.Struct({
+ *   name: Schema.String,
+ *   email: Schema.String
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   const response = yield* LanguageModel.generateObject({
+ *     prompt: "Create user: John Doe, john@example.com",
+ *     schema: UserSchema
+ *   })
+ *
+ *   console.log(response.value) // { name: "John Doe", email: "john@example.com" }
+ *   console.log(response.text) // Raw generated text
+ *
+ *   return response.value
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Models
+ */
 export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A> extends GenerateTextResponse<Tools> {
+  /**
+   * The parsed structured object that conforms to the provided schema.
+   */
   readonly value: A
 
   constructor(value: A, content: Array<Response.Part<Tools>>) {
@@ -227,8 +404,10 @@ export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A> e
 // =============================================================================
 
 /**
- * A utility type to extract the error type for the text generation methods
- * of `LanguageModel` from the provided options.
+ * Utility type that extracts the error type from LanguageModel options.
+ *
+ * Automatically infers the possible error types based on toolkit configuration
+ * and tool call resolution settings.
  *
  * @since 1.0.0
  * @category Utility Types
@@ -236,20 +415,21 @@ export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A> e
 export type ExtractError<Options> = Options extends {
   readonly disableToolCallResolution: true
 } ? Options extends {
-    readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
-  } ? AiError | _E :
-  AiError :
+  readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
+} ? AiError.AiError | _E :
+  AiError.AiError :
   Options extends {
     readonly toolkit: Toolkit.WithHandler<infer _Tools>
-  } ? AiError | Tool.Failure<_Tools[keyof _Tools]>
+  } ? AiError.AiError | Tool.Failure<_Tools[keyof _Tools]>
   : Options extends {
     readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
-  } ? AiError | Tool.Failure<_Tools[keyof _Tools]> | _E :
-  AiError
+  } ? AiError.AiError | Tool.Failure<_Tools[keyof _Tools]> | _E :
+  AiError.AiError
 
 /**
- * A utility type to extract the context type for the text generation methods
- * of `LanguageModel` from the provided options.
+ * Utility type that extracts the context requirements from LanguageModel options.
+ *
+ * Automatically infers the required services based on the toolkit configuration.
  *
  * @since 1.0.0
  * @category Utility Types
@@ -267,8 +447,12 @@ export type ExtractContext<Options> = Options extends {
 // =============================================================================
 
 /**
- * Represents the set of options received by the provider when constructing an
- * implementation of `AiLanguageModel`.
+ * Configuration options passed along to language model provider
+ * implementations.
+ *
+ * This interface defines the normalized options that are passed to the
+ * underlying provider implementation, regardless of the specific provider being
+ * used.
  *
  * @since 1.0.0
  * @category Models
@@ -297,22 +481,29 @@ export interface ProviderOptions {
    * Defaults to `{ type: "text" }`.
    */
   readonly responseFormat:
-    | {
-      readonly type: "text"
-    }
-    | {
-      readonly type: "json"
-      readonly name: string
-      readonly schema: Schema.Schema.Any
-    }
+  | {
+    readonly type: "text"
+  }
+  | {
+    readonly type: "json"
+    readonly name: string
+    readonly schema: Schema.Schema.Any
+  }
 
   /**
    * The tool choice mode for the language model.
-   *
-   * - `auto` (default): The model can decide whether or not to call tools, as well as which tools to call.
-   * - `required`: The model **must** call a tool but can decide which tool will be called.
+   * - `auto` (default): The model can decide whether or not to call tools, as
+   *   well as which tools to call.
+   * - `required`: The model **must** call a tool but can decide which tool will
+   *   be called.
    * - `none`: The model **must not** call a tool.
    * - `{ tool: <tool_name> }`: The model must call the specified tool.
+   * - `{ mode?: "auto" (default) | "required", "oneOf": [<tool-names>] }`: The
+   *   model is restricted to the subset of tools specified by `oneOf`. When
+   *   `mode` is `"auto"` or omitted, the model can decide whether or not a tool
+   *   from the allowed subset of tools can be called. When `mode` is
+   *   `"required"`, the model **must** call one tool from the allowed subset of
+   *   tools.
    */
   readonly toolChoice: ToolChoice<any>
 
@@ -323,7 +514,7 @@ export interface ProviderOptions {
 }
 
 /**
- * Represents the parameters required to construct an `AiLanguageModel`.
+ * Parameters required to construct a LanguageModel service.
  *
  * @since 1.0.0
  * @category Models
@@ -333,12 +524,12 @@ export interface ConstructorParams {
    * A method which requests text generation from the large language model
    * provider.
    *
-   * The final result is returned as an only once the large language model
-   * provider has finished text generation.
+   * The final result is returned when the large language model provider
+   * finishes text generation.
    */
   readonly generateText: (options: ProviderOptions) => Effect.Effect<
     Array<Response.PartEncoded>,
-    AiError,
+    AiError.AiError,
     IdGenerator
   >
 
@@ -346,18 +537,26 @@ export interface ConstructorParams {
    * A method which requests text generation from the large language model
    * provider.
    *
-   * Intermediate results should be streamed from the large language model
-   * provider and accumulated into an `AiResponse`.
+   * Intermediate results are streamed from the large language model provider.
    */
   readonly streamText: (options: ProviderOptions) => Stream.Stream<
     Response.StreamPartEncoded,
-    AiError,
+    AiError.AiError,
     IdGenerator
   >
 }
 
+/**
+ * Creates a LanguageModel service from provider-specific implementations.
+ *
+ * This constructor takes provider-specific implementations for text generation
+ * and streaming text generation and returns a LanguageModel service.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
 export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effect.fnUntraced(
-  function*(params) {
+  function* (params) {
     const parentSpanTransformer = yield* Effect.serviceOption(CurrentSpanTransformer)
     const getSpanTransformer = Effect.serviceOption(CurrentSpanTransformer).pipe(
       Effect.map(Option.orElse(() => parentSpanTransformer))
@@ -379,7 +578,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         "AiLanguageModel.generateText",
         { captureStackTrace: false, attributes: { concurrency, toolChoice } },
         Effect.fnUntraced(
-          function*(span) {
+          function* (span) {
             const prompt = Prompt.make(options.prompt)
             const spanTransformer = yield* getSpanTransformer
             const providerOptions: Mutable<ProviderOptions> = {
@@ -523,7 +722,7 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         const decode = Schema.decode(ResponseSchema)
         return [
           params.streamText(providerOptions).pipe(
-            Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
+            Stream.mapChunksEffect(Effect.fnUntraced(function* (chunk) {
               const rawContent = Chunk.toArray(chunk)
               const toolResults = yield* resolveToolCalls({
                 method: "streamText",
@@ -535,11 +734,11 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
               const finalContent: Array<Response.StreamPart<any>> = [...content, ...toolResults]
               return Chunk.unsafeFromArray(finalContent)
             }))
-          ) as Stream.Stream<Response.StreamPart<{}>, AiError, IdGenerator>,
+          ) as Stream.Stream<Response.StreamPart<{}>, AiError.AiError, IdGenerator>,
           providerOptions
         ] as const
       },
-      Effect.flatMap(Effect.fnUntraced(function*([stream, options]) {
+      Effect.flatMap(Effect.fnUntraced(function* ([stream, options]) {
         const spanTransformer = yield* getSpanTransformer
 
         if (Option.isNone(spanTransformer)) {
@@ -580,15 +779,15 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
       const name: string = Predicate.isNotUndefined(options.objectName)
         ? options.objectName
         : "_tag" in schema
-        ? schema._tag as string
-        : "identifier" in schema
-        ? schema.identifier as string
-        : "generateObject"
+          ? schema._tag as string
+          : "identifier" in schema
+            ? schema.identifier as string
+            : "generateObject"
       return Effect.useSpan(
         "LanguageModel.generateObject",
         { captureStackTrace: false, attributes: { name, concurrency, toolChoice } },
         Effect.fnUntraced(
-          function*(span) {
+          function* (span) {
             const prompt = Prompt.make(options.prompt)
             const spanTransformer = yield* getSpanTransformer
             const providerOptions: Mutable<ProviderOptions> = {
@@ -681,10 +880,25 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 // =============================================================================
 
 /**
- * Generate text using a large language model for the specified `prompt`.
+ * Generate text using a language model.
  *
- * If a `toolkit` is specified, the large language model will additionally
- * be able to perform tool calls to augment its response.
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * const program = Effect.gen(function* () {
+ *   const response = yield* LanguageModel.generateText({
+ *     prompt: "Write a haiku about programming",
+ *     toolChoice: "none"
+ *   })
+ *
+ *   console.log(response.text)
+ *   console.log(response.usage.totalTokens)
+ *
+ *   return response
+ * })
+ * ```
  *
  * @since 1.0.0
  * @category Functions
@@ -699,8 +913,32 @@ export const generateText: <
 > = Effect.serviceFunctionEffect(LanguageModel, (model) => model.generateText)
 
 /**
- * Generate a structured object for the specified prompt and schema using a
- * large language model.
+ * Generate a structured object from a schema using a language model.
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect, Schema } from "effect"
+ *
+ * const EventSchema = Schema.Struct({
+ *   title: Schema.String,
+ *   date: Schema.String,
+ *   location: Schema.String
+ * })
+ *
+ * const program = Effect.gen(function* () {
+ *   const response = yield* LanguageModel.generateObject({
+ *     prompt: "Extract event info: Tech Conference on March 15th in San Francisco",
+ *     schema: EventSchema,
+ *     objectName: "event"
+ *   })
+ *
+ *   console.log(response.value)
+ *   // { title: "Tech Conference", date: "March 15th", location: "San Francisco" }
+ *
+ *   return response.value
+ * })
+ * ```
  *
  * @since 1.0.0
  * @category Functions
@@ -718,11 +956,25 @@ export const generateObject: <
 > = Effect.serviceFunctionEffect(LanguageModel, (model) => model.generateObject)
 
 /**
- * Generate text using a large language model for the specified `prompt`,
- * streaming output from the model as soon as it is available.
+ * Generate text using a language model with streaming output.
  *
- * If a `toolkit` is specified, the large language model will additionally
- * be able to perform tool calls to augment its response.
+ * Returns a stream of response parts that are emitted as soon as they are
+ * available from the model, enabling real-time text generation experiences.
+ *
+ * @example
+ * ```ts
+ * import { LanguageModel } from "@effect/ai"
+ * import { Effect, Stream, Console } from "effect"
+ *
+ * const program = LanguageModel.streamText({
+ *   prompt: "Write a story about a space explorer"
+ * }).pipe(Stream.runForEach((part) => {
+ *   if (part.type === "text-delta") {
+ *     return Console.log(part.delta)
+ *   }
+ *   return Effect.void
+ * }))
+ * ```
  *
  * @since 1.0.0
  * @category Functions
@@ -730,9 +982,7 @@ export const generateObject: <
 export const streamText = <
   Tools extends Record<string, Tool.Any>,
   Options extends NoExcessProperties<GenerateTextOptions<Tools>, Options>
->(
-  options: Options & GenerateTextOptions<Tools>
-): Stream.Stream<
+>(options: Options & GenerateTextOptions<Tools>): Stream.Stream<
   Response.StreamPart<Tools>,
   ExtractError<Options>,
   LanguageModel | ExtractContext<Options>
@@ -799,7 +1049,7 @@ const resolveStructuredOutput = Effect.fnUntraced(
     }
 
     if (text.length === 0) {
-      return yield* new AiError({
+      return yield* new AiError.MalformedOutput({
         module: "LanguageModel",
         method: "generateObject",
         description: "No object was generated by the large language model"
@@ -808,7 +1058,7 @@ const resolveStructuredOutput = Effect.fnUntraced(
 
     const decode = Schema.decode(Schema.parseJson(ResultSchema))
     return yield* Effect.mapError(decode(text.join("")), (cause) =>
-      new AiError({
+      new AiError.MalformedOutput({
         module: "LanguageModel",
         method: "generateObject",
         description: "Generated object failed to conform to provided schema",
