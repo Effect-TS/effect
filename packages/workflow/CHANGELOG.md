@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.9.4
+
+### Patch Changes
+
+- [#5486](https://github.com/Effect-TS/effect/pull/5486) [`85a60a0`](https://github.com/Effect-TS/effect/commit/85a60a0f06e596991dec1d64bdfccac8df880f84) Thanks @tim-smart! - add Workflow.poll api
+
 ## 0.9.3
 
 ### Patch Changes
