@@ -10,6 +10,8 @@ export const ProviderMetadataKey = "@effect/ai-anthropic/AnthropicLanguageModel/
 const finishReasonMap: Record<string, Response.FinishReason> = {
   end_turn: "stop",
   max_tokens: "length",
+  pause_turn: "pause",
+  refusal: "content-filter",
   stop_sequence: "stop",
   tool_use: "tool-calls"
 }

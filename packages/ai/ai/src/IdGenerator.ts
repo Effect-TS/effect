@@ -12,12 +12,15 @@
  *
  * // Using the default ID generator
  * const program = Effect.gen(function* () {
- *   const idGen = yield* IdGenerator
+ *   const idGen = yield* IdGenerator.IdGenerator
  *   const toolCallId = yield* idGen.generateId()
  *   console.log(toolCallId) // "id_A7xK9mP2qR5tY8uV"
  *   return toolCallId
  * }).pipe(
- *   Effect.provide(Layer.succeed(IdGenerator, IdGenerator.defaultIdGenerator))
+ *   Effect.provide(Layer.succeed(
+ *     IdGenerator.IdGenerator,
+ *     IdGenerator.defaultIdGenerator
+ *   ))
  * )
  * ```
  *
@@ -35,7 +38,7 @@
  * })
  *
  * const program = Effect.gen(function* () {
- *   const idGen = yield* IdGenerator
+ *   const idGen = yield* IdGenerator.IdGenerator
  *   const id = yield* idGen.generateId()
  *   console.log(id) // "tool_call-A7XK9MP2QR5T"
  *   return id
@@ -66,7 +69,7 @@ import * as Random from "effect/Random"
  * import { Effect } from "effect"
  *
  * const useIdGenerator = Effect.gen(function* () {
- *   const idGenerator = yield* IdGenerator
+ *   const idGenerator = yield* IdGenerator.IdGenerator
  *   const newId = yield* idGenerator.generateId()
  *   return newId
  * })
@@ -114,11 +117,6 @@ export interface Service {
 /**
  * Configuration options for creating custom ID generators.
  *
- * @param alphabet - The character set to use for generating the random portion of IDs
- * @param prefix - Optional prefix to prepend to generated IDs
- * @param separator - Character used to separate the prefix from the random portion
- * @param size - Length of the random portion of the generated ID
- *
  * @example
  * ```ts
  * import { IdGenerator } from "@effect/ai"
@@ -138,9 +136,21 @@ export interface Service {
  * @category Models
  */
 export interface MakeOptions {
+  /**
+   * The character set to use for generating the random portion of IDs.
+   */
   readonly alphabet: string
+  /**
+   * Optional prefix to prepend to generated IDs.
+   */
   readonly prefix?: string | undefined
+  /**
+   * Character used to separate the prefix from the random portion.
+   */
   readonly separator: string
+  /**
+   * Length of the random portion of the generated ID.
+   */
   readonly size: number
 }
 
@@ -171,8 +181,9 @@ const makeGenerator = ({
 /**
  * Default ID generator service implementation.
  *
- * Uses the standard configuration with "id" prefix and generates IDs in the format
- * "id_XXXXXXXXXXXXXXXX" where X represents random alphanumeric characters.
+ * Uses the standard configuration with "id" prefix and generates IDs in the
+ * format "id_XXXXXXXXXXXXXXXX" where X represents random alphanumeric
+ * characters.
  *
  * @example
  * ```ts
@@ -185,9 +196,12 @@ const makeGenerator = ({
  *   return id
  * })
  *
- * // Or provide as a layer
+ * // Or provide it as a service
  * const withDefault = program.pipe(
- *   Effect.provide(Layer.succeed(IdGenerator, IdGenerator.defaultIdGenerator))
+ *   Effect.provideService(
+ *     IdGenerator.IdGenerator,
+ *     IdGenerator.defaultIdGenerator
+ *   )
  * )
  * ```
  *
@@ -201,11 +215,8 @@ export const defaultIdGenerator: Service = {
 /**
  * Creates a custom ID generator service with the specified options.
  *
- * Validates the configuration to ensure the separator is not part of the alphabet,
- * which would cause ambiguity in parsing generated IDs.
- *
- * @param options - Configuration options for the ID generator
- * @returns Effect that yields a configured Service or fails with IllegalArgumentException
+ * Validates the configuration to ensure the separator is not part of the
+ * alphabet, which would cause ambiguity in parsing generated IDs.
  *
  * @example
  * ```ts
@@ -272,13 +283,12 @@ export const make = Effect.fnUntraced(function*({
 })
 
 /**
- * Creates a Layer that provides the IdGenerator service with custom configuration.
+ * Creates a Layer that provides the IdGenerator service with custom
+ * configuration.
  *
- * This is the recommended way to provide ID generation capabilities to your application.
- * The layer will fail during construction if the configuration is invalid.
- *
- * @param options - Configuration options for the ID generator
- * @returns Layer that provides IdGenerator service or fails with IllegalArgumentException
+ * This is the recommended way to provide ID generation capabilities to your
+ * application. The layer will fail during construction if the configuration is
+ * invalid.
  *
  * @example
  * ```ts
@@ -294,42 +304,12 @@ export const make = Effect.fnUntraced(function*({
  * })
  *
  * const program = Effect.gen(function* () {
- *   const idGen = yield* IdGenerator
+ *   const idGen = yield* IdGenerator.IdGenerator
  *   const toolCallId = yield* idGen.generateId()
  *   console.log(toolCallId) // "tool_call_A7XK9MP2QR5T"
  *   return toolCallId
  * }).pipe(
  *   Effect.provide(toolCallIdLayer)
- * )
- * ```
- *
- * @example
- * ```ts
- * import { IdGenerator } from "@effect/ai"
- * import { Effect, Layer, Console } from "effect"
- *
- * // Multiple ID generators in the same app
- * const userIdLayer = IdGenerator.layer({
- *   alphabet: "0123456789",
- *   prefix: "user",
- *   separator: "_",
- *   size: 8
- * })
- *
- * const sessionIdLayer = IdGenerator.layer({
- *   alphabet: "0123456789ABCDEF",
- *   prefix: "session",
- *   separator: "-",
- *   size: 16
- * })
- *
- * const program = Effect.gen(function* () {
- *   const idGen = yield* IdGenerator
- *   const userId = yield* idGen.generateId()
- *   yield* Console.log(`Generated user ID: ${userId}`)
- *   return userId
- * }).pipe(
- *   Effect.provide(userIdLayer)
  * )
  * ```
  *

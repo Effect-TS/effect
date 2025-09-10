@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import { getTokenizer } from "@anthropic-ai/tokenizer"
-import { AiError } from "@effect/ai/AiError"
+import * as AiError from "@effect/ai/AiError"
 import type * as Prompt from "@effect/ai/Prompt"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
@@ -42,7 +42,7 @@ export const make = Tokenizer.make({
         return Array.from(encoded)
       },
       catch: (cause) =>
-        new AiError({
+        new AiError.UnknownError({
           module: "AnthropicTokenizer",
           method: "tokenize",
           description: "Could not tokenize",
