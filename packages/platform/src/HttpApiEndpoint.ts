@@ -771,8 +771,8 @@ const Proto = {
     return makeProto({
       ...this,
       errorSchema: HttpApiSchema.UnionUnify(
+        annotations?.status ? schema.annotations(HttpApiSchema.annotations({ status: annotations.status })) : schema,
         this.errorSchema,
-        annotations?.status ? schema.annotations(HttpApiSchema.annotations({ status: annotations.status })) : schema
       )
     })
   },
