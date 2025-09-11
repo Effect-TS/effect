@@ -1336,7 +1336,8 @@ const provideSomeLayer = dual<
     )
   ))
 
-const provideSomeRuntime = dual<
+/** @internal */
+export const provideSomeRuntime = dual<
   <R>(context: Runtime.Runtime<R>) => <A, E, R1>(self: Effect.Effect<A, E, R1>) => Effect.Effect<A, E, Exclude<R1, R>>,
   <A, E, R1, R>(self: Effect.Effect<A, E, R1>, context: Runtime.Runtime<R>) => Effect.Effect<A, E, Exclude<R1, R>>
 >(2, (self, rt) => {

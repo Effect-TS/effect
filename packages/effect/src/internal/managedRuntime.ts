@@ -128,6 +128,9 @@ export const make = <R, ER>(
       return self.cachedRuntime === undefined ?
         internalRuntime.unsafeRunPromiseEffect(provide(self, effect), options) :
         internalRuntime.unsafeRunPromise(self.cachedRuntime)(effect, options)
+    },
+    provide<A, E, R1>(effect: Effect.Effect<A, E, R1>): Effect.Effect<A, E | ER, Exclude<R1, R>> {
+      return core.flatMap(runtimeEffect, (_) => internalLayer.provideSomeRuntime(effect, _))
     }
   })
   return self

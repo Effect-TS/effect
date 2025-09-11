@@ -127,6 +127,11 @@ export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runt
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
 
+  /**
+   * Provides the runtime to an effect
+   */
+  readonly provide: <A, E, R1>(effect: Effect.Effect<A, E, R1>) => Effect.Effect<A, E | ER, Exclude<R1, R>>
+
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: ManagedRuntimeUnify<this>
   readonly [Unify.ignoreSymbol]?: ManagedRuntimeUnifyIgnore
