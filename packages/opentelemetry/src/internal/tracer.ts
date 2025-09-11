@@ -188,7 +188,7 @@ export const makeExternalSpan = (options: {
 }): EffectTracer.ExternalSpan => {
   let context = Context.empty()
 
-  if (options.traceFlags) {
+  if (options.traceFlags !== undefined) {
     context = Context.add(context, traceFlagsTag, options.traceFlags)
   }
 
@@ -205,7 +205,7 @@ export const makeExternalSpan = (options: {
     _tag: "ExternalSpan",
     traceId: options.traceId,
     spanId: options.spanId,
-    sampled: options.traceFlags
+    sampled: options.traceFlags !== undefined
       ? (options.traceFlags & OtelApi.TraceFlags.SAMPLED) === OtelApi.TraceFlags.SAMPLED
       : true,
     context

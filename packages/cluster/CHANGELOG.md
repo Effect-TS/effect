@@ -1,5 +1,23 @@
 # @effect/cluster
 
+## 0.48.5
+
+### Patch Changes
+
+- [#5486](https://github.com/Effect-TS/effect/pull/5486) [`85a60a0`](https://github.com/Effect-TS/effect/commit/85a60a0f06e596991dec1d64bdfccac8df880f84) Thanks @tim-smart! - add Workflow.poll api
+
+- Updated dependencies [[`85a60a0`](https://github.com/Effect-TS/effect/commit/85a60a0f06e596991dec1d64bdfccac8df880f84)]:
+  - @effect/workflow@0.9.4
+
+## 0.48.4
+
+### Patch Changes
+
+- [#5484](https://github.com/Effect-TS/effect/pull/5484) [`0a9ec23`](https://github.com/Effect-TS/effect/commit/0a9ec23dca104ac6fd7ea5841e98f5fa7796be40) Thanks @tim-smart! - fix multiple persisted requests subscribing to the same id
+
+- Updated dependencies [[`333be04`](https://github.com/Effect-TS/effect/commit/333be046b50e8300f5cb70b871448e0628b7b37c)]:
+  - @effect/platform@0.90.8
+
 ## 0.48.3
 
 ### Patch Changes

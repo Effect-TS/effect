@@ -77,6 +77,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         to: "bob@example.com"
       })
       expect(driver.requests.size).toEqual(10)
+
+      // test poll
+      expect(yield* EmailWorkflow.poll(executionId)).toEqual(new Workflow.Complete({ exit: Exit.void }))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("interrupt", () =>

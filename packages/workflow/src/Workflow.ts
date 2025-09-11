@@ -78,9 +78,21 @@ export interface Workflow<
       readonly discard?: Discard
     }
   ) => Effect.Effect<
-    Discard extends true ? void : Success["Type"],
+    Discard extends true ? string : Success["Type"],
     Discard extends true ? never : Error["Type"],
     WorkflowEngine | Payload["Context"] | Success["Context"] | Error["Context"]
+  >
+
+  /**
+   * Poll a workflow execution for its current status.
+   *
+   * If the workflow has not run yet, it will return `undefined`, otherwise it
+   * will return the current `Workflow.Result`.
+   */
+  readonly poll: (executionId: string) => Effect.Effect<
+    Result<Success["Type"], Error["Type"]> | undefined,
+    never,
+    WorkflowEngine | Success["Context"] | Error["Context"]
   >
 
   /**
@@ -258,12 +270,13 @@ export const make = <
         const executionId = yield* makeExecutionId(payload)
         yield* Effect.annotateCurrentSpan({ executionId })
         if (opts?.discard) {
-          return yield* engine.execute({
+          yield* engine.execute({
             workflow: self,
             executionId,
             payload,
             discard: true
           })
+          return executionId
         }
         const parentInstance = yield* Effect.serviceOption(InstanceTag)
         const run = engine.execute({
@@ -295,6 +308,17 @@ export const make = <
         }
       },
       Effect.withSpan(`${options.name}.execute`, { captureStackTrace: false })
+    ),
+    poll: Effect.fnUntraced(
+      function*(executionId: string) {
+        const engine = yield* EngineTag
+        return yield* engine.poll({ workflow: self, executionId })
+      },
+      (effect, executionId) =>
+        Effect.withSpan(effect, `${options.name}.poll`, {
+          captureStackTrace: false,
+          attributes: { executionId }
+        })
     ),
     interrupt: Effect.fnUntraced(
       function*(executionId: string) {

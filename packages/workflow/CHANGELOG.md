@@ -1,5 +1,17 @@
 # @effect/workflow
 
+## 0.9.5
+
+### Patch Changes
+
+- [#5488](https://github.com/Effect-TS/effect/pull/5488) [`92fd3ca`](https://github.com/Effect-TS/effect/commit/92fd3caac581160ee4add14c16cd3a393be0bcc0) Thanks @tim-smart! - return executionId from Workflow.execute + discard
+
+## 0.9.4
+
+### Patch Changes
+
+- [#5486](https://github.com/Effect-TS/effect/pull/5486) [`85a60a0`](https://github.com/Effect-TS/effect/commit/85a60a0f06e596991dec1d64bdfccac8df880f84) Thanks @tim-smart! - add Workflow.poll api
+
 ## 0.9.3
 
 ### Patch Changes

@@ -43,6 +43,19 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
     ) => Effect.Effect<Discard extends true ? void : Workflow.Result<unknown, unknown>>
 
     /**
+     * Poll a registered workflow for its current status.
+     *
+     * If the workflow has not run yet, it will return `undefined`, otherwise it
+     * will return the current `Workflow.Result`.
+     */
+    readonly poll: (
+      options: {
+        readonly workflow: Workflow.Any
+        readonly executionId: string
+      }
+    ) => Effect.Effect<Workflow.Result<unknown, unknown> | undefined>
+
+    /**
      * Interrupt a registered workflow.
      */
     readonly interrupt: (

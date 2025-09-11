@@ -1,5 +1,17 @@
 # @effect/platform
 
+## 0.90.9
+
+### Patch Changes
+
+- [#5492](https://github.com/Effect-TS/effect/pull/5492) [`0421c8c`](https://github.com/Effect-TS/effect/commit/0421c8ce2ee614ae46b5684c850ab6aab8fa02e9) Thanks @tim-smart! - provide http span to global middleware
+
+## 0.90.8
+
+### Patch Changes
+
+- [#5481](https://github.com/Effect-TS/effect/pull/5481) [`333be04`](https://github.com/Effect-TS/effect/commit/333be046b50e8300f5cb70b871448e0628b7b37c) Thanks @jpowersdev! - Allow user to set extension of file created using `FileSystem.makeTempFile`
+
 ## 0.90.7
 
 ### Patch Changes
