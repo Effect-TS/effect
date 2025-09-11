@@ -332,7 +332,9 @@ const hasProcessStdout = typeof process === "object" &&
   process.stdout !== null
 const processStdoutIsTTY = hasProcessStdout &&
   process.stdout.isTTY === true
+const isWorkerd = typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers"
 const hasProcessStdoutOrDeno = hasProcessStdout || "Deno" in globalThis
+const shouldUseTTYMode = hasProcessStdoutOrDeno || isWorkerd
 
 /** @internal */
 export const prettyLogger = (options?: {
@@ -342,7 +344,7 @@ export const prettyLogger = (options?: {
   readonly mode?: "browser" | "tty" | "auto" | undefined
 }) => {
   const mode_ = options?.mode ?? "auto"
-  const mode = mode_ === "auto" ? (hasProcessStdoutOrDeno ? "tty" : "browser") : mode_
+  const mode = mode_ === "auto" ? (shouldUseTTYMode ? "tty" : "browser") : mode_
   const isBrowser = mode === "browser"
   const showColors = typeof options?.colors === "boolean" ? options.colors : processStdoutIsTTY || isBrowser
   const formatDate = options?.formatDate ?? defaultDateFormat
@@ -357,6 +359,7 @@ const prettyLoggerTty = (options: {
   readonly formatDate: (date: Date) => string
 }) => {
   const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
+  const supportsConsoleGroup = !processIsBun && !isWorkerd
   const color = options.colors ? withColor : withColorNoop
   return makeLogger<unknown, void>(
     ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
@@ -389,7 +392,7 @@ const prettyLoggerTty = (options: {
       }
 
       log(firstLine)
-      if (!processIsBun) console.group()
+      if (supportsConsoleGroup) console.group()
 
       if (!Cause.isEmpty(cause)) {
         log(Cause.pretty(cause, { renderErrorCause: true }))
@@ -407,7 +410,7 @@ const prettyLoggerTty = (options: {
         }
       }
 
-      if (!processIsBun) console.groupEnd()
+      if (supportsConsoleGroup) console.groupEnd()
     }
   )
 }
