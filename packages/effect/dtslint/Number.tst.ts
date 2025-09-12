@@ -19,7 +19,7 @@ describe("Number", () => {
     const numOrString: number | string = 123
     if (Number.isNumber(numOrString)) {
       expect(numOrString).type.toBe<number>()
-      expect(numOrString).type.not.toBeAssignableWith<string>()
+      expect(numOrString).type.not.toBeAssignableFrom<string>()
     }
   })
 
@@ -29,8 +29,8 @@ describe("Number", () => {
     type DataFirst = typeof Number.sum
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.sum(a, b)).type.toBe<number>()
@@ -43,8 +43,8 @@ describe("Number", () => {
     type DataFirst = typeof Number.subtract
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.subtract(a, b)).type.toBe<number>()
@@ -57,9 +57,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.multiply
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.multiply(a, b)).type.toBe<number>()
@@ -72,9 +72,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.divide
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.divide(a, b)).type.toBe<Option.Option<number>>()
@@ -87,9 +87,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.unsafeDivide
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.unsafeDivide(a, b)).type.toBe<number>()
@@ -100,7 +100,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.increment
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.increment(a)).type.toBe<number>()
@@ -111,7 +111,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.decrement
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.decrement(a)).type.toBe<number>()
@@ -122,7 +122,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.Equivalence
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
     // test the output type
     expect(Number.Equivalence(a, b)).type.toBe<boolean>()
@@ -132,7 +132,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.Order
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
     // test the output type
     expect(Number.Order(a, b)).type.toBe<-1 | 0 | 1>()
@@ -144,8 +144,8 @@ describe("Number", () => {
     type DataFirst = typeof Number.lessThan
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.lessThan(a, b)).type.toBe<boolean>()
@@ -158,9 +158,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.lessThanOrEqualTo
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.lessThanOrEqualTo(a, b)).type.toBe<boolean>()
@@ -173,9 +173,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.greaterThan
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.greaterThan(a, b)).type.toBe<boolean>()
@@ -188,9 +188,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.greaterThanOrEqualTo
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.greaterThanOrEqualTo(a, b)).type.toBe<boolean>()
@@ -205,11 +205,11 @@ describe("Number", () => {
     type DataFirst = typeof Number.between
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<
       [number, { minimum: number; maximum: number }]
     >()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.between(a, options)).type.toBe<boolean>()
@@ -224,11 +224,11 @@ describe("Number", () => {
     type DataFirst = typeof Number.clamp
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<
       [number, { minimum: number; maximum: number }]
     >()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.clamp(a, options)).type.toBe<number>()
@@ -241,9 +241,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.min
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.min(a, b)).type.toBe<number>()
@@ -256,9 +256,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.max
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.max(a, b)).type.toBe<number>()
@@ -269,7 +269,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.sign
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.sign(a)).type.toBe<-1 | 0 | 1>()
@@ -279,7 +279,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.sumAll
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<
       [Iterable<number>]
     >()
 
@@ -292,7 +292,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.multiplyAll
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<
       [Iterable<number>]
     >()
 
@@ -309,9 +309,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.remainder
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.remainder(a, b)).type.toBe<number>()
@@ -322,7 +322,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.nextPow2
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.nextPow2(a)).type.toBe<number>()
@@ -332,7 +332,7 @@ describe("Number", () => {
     type DataFirst = typeof Number.parse
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[string]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[string]>()
 
     // test the output type
     expect(Number.parse("123")).type.toBe<Option.Option<number>>()
@@ -344,9 +344,9 @@ describe("Number", () => {
     type DataFirst = typeof Number.round
 
     // test the input type
-    expect<Parameters<DataFirst>>().type.toBeAssignableWith<[number, number]>()
+    expect<Parameters<DataFirst>>().type.toBeAssignableFrom<[number, number]>()
 
-    expect<Parameters<DataLast>>().type.toBeAssignableWith<[number]>()
+    expect<Parameters<DataLast>>().type.toBeAssignableFrom<[number]>()
 
     // test the output type
     expect(Number.round(a, 2)).type.toBe<number>()

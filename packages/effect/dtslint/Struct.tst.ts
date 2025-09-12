@@ -245,8 +245,8 @@ describe("Struct", () => {
       expect(pipe(sr, Struct.pick("a")))
         .type.toBe<{ a: boolean }>()
 
-      // TODO: this doesn't work but it should
-      expect.fail(Struct.pick).type.not.toBeCallableWith(sr, "b")
+      // @tstyche fixme -- This doesn't work but it should
+      expect(Struct.pick).type.not.toBeCallableWith(sr, "b")
 
       when(pipe).isCalledWith(
         sr,

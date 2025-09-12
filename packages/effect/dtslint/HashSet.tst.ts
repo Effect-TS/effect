@@ -11,10 +11,10 @@ describe("HashSet", () => {
     if (HashSet.every(numberOrString, Predicate.isString)) {
       expect(numberOrString).type.toBe<HashSet.HashSet<string>>()
     }
-    // TODO
-    // if (pipe(numberOrString, HashSet.every(Predicate.isString))) {
-    //   expect(numberOrString).type.toBe<HashSet.HashSet<string>>()
-    // }
+    if (pipe(numberOrString, HashSet.every(Predicate.isString))) {
+      // @tstyche fixme -- This doesn't work but it should
+      expect(numberOrString).type.toBe<HashSet.HashSet<string>>()
+    }
     if (HashSet.every(Predicate.isString)(numberOrString)) {
       expect(numberOrString).type.toBe<HashSet.HashSet<string>>()
     }
