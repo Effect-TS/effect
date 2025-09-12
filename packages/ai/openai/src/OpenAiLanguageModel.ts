@@ -263,7 +263,7 @@ export const make = Effect.fnUntraced(function*(options: {
     ),
     streamText(_options) {
       return Stream.empty
-      // return makeRequest( options).pipe(
+      // return makeRequest(options).pipe(
       //   Effect.tap((request) => annotateRequest(options.span, request)),
       //   Effect.map(client.stream),
       //   Stream.unwrap,

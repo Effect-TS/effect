@@ -16,7 +16,16 @@ const finishReasonMap: Record<string, Response.FinishReason> = {
 }
 
 /** @internal */
-export const resolveFinishReason = (finishReason: string): Response.FinishReason => {
+export const resolveFinishReason = (
+  finishReason: string | undefined,
+  hasToolCalls: boolean
+): Response.FinishReason => {
+  if (Predicate.isNullable(finishReason)) {
+    return hasToolCalls ? "tool-calls" : "stop"
+  }
   const reason = finishReasonMap[finishReason]
-  return Predicate.isUndefined(reason) ? "unknown" : reason
+  if (Predicate.isNullable(reason)) {
+    return hasToolCalls ? "tool-calls" : "unknown"
+  }
+  return reason
 }
