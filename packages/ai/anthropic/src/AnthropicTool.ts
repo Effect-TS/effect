@@ -6,8 +6,6 @@ import * as Schema from "effect/Schema"
 import * as Struct from "effect/Struct"
 import * as Generated from "./Generated.js"
 
-// TODO(Max): is_error????
-
 /**
  * @since 1.0.0
  * @category Schemas

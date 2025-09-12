@@ -293,6 +293,11 @@ export interface ProviderDefined<
   readonly argsSchema: Config["args"]
 
   /**
+   * Name of the tool as recognized by the large language model provider.
+   */
+  readonly providerName: string
+
+  /**
    * If set to `true`, this provider-defined tool will require a user-defined
    * tool call handler to be provided when converting the `Toolkit` containing
    * this tool into a `Layer`.
@@ -379,7 +384,7 @@ export declare namespace Tool {
  * @since 1.0.0
  * @category Guards
  */
-export const isUserDefined = (u: unknown): u is Tool<any, any, any> =>
+export const isUserDefined = (u: unknown): u is Tool<string, any, any> =>
   Predicate.hasProperty(u, TypeId) && !isProviderDefined(u)
 
 /**
@@ -426,7 +431,7 @@ export const isUserDefined = (u: unknown): u is Tool<any, any, any> =>
  * @since 1.0.0
  * @category Guards
  */
-export const isProviderDefined = (u: unknown): u is ProviderDefined<any, any> =>
+export const isProviderDefined = (u: unknown): u is ProviderDefined<string, any> =>
   Predicate.hasProperty(u, ProviderDefinedTypeId)
 
 // =============================================================================
@@ -462,6 +467,7 @@ export interface AnyProviderDefined extends Any {
   readonly args: any
   readonly argsSchema: AnyStructSchema
   readonly requiresHandler: boolean
+  readonly providerName: string
   readonly decodeResult: (result: unknown) => Effect.Effect<any, AiError.AiError>
 }
 

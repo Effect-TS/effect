@@ -12,7 +12,8 @@ cleanup() {
 
 trap cleanup EXIT
 
-openapi_spec_url="https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/manual_spec/openapi.yaml"
+# openapi_spec_url="https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/manual_spec/openapi.yaml"
+openapi_spec_url="https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml"
 temp_file="${temp_dir}/openai.yaml"
 
 touch "${temp_file}"
@@ -20,10 +21,10 @@ curl "${openapi_spec_url}" > "${temp_file}"
 
 echo "/**
  * @since 1.0.0
- */" > src/Generated.ts
+ */" > src/Generated-new.ts
 
-pnpm openapi-gen -s "${temp_file}" >> src/Generated.ts
+pnpm openapi-gen -s "${temp_file}" >> src/Generated-new.ts
 
-pnpm eslint --fix src/Generated.ts
+pnpm eslint --fix src/Generated-new.ts
 
-git apply --reject --whitespace=fix "${SCRIPT_DIR}/generated.patch"
+# git apply --reject --whitespace=fix "${SCRIPT_DIR}/generated.patch"

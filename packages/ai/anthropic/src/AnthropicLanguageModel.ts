@@ -83,7 +83,7 @@ export declare namespace Config {
 
 /**
  * @since 1.0.0
- * @category Provider Metadata
+ * @category Provider Options
  */
 export class ProviderOptions extends Context.Tag(InternalUtilities.ProviderOptionsKey)<
   ProviderOptions,
@@ -112,12 +112,11 @@ export type AnthropicReasoningMetadata = {
 
 /**
  * @since 1.0.0
- * @category Provider Metadata
  */
 export declare namespace ProviderOptions {
   /**
    * @since 1.0.0
-   * @category Provider Metadata
+   * @category Provider Options
    */
   export interface Service {
     readonly system: {
@@ -324,7 +323,7 @@ export declare namespace ProviderMetadata {
 
 /**
  * @since 1.0.0
- * @category AiModels
+ * @category Ai Models
  */
 export const model = (
   model: (string & {}) | Model,
@@ -334,7 +333,7 @@ export const model = (
 
 /**
  * @since 1.0.0
- * @category AiModels
+ * @category Ai Models
  */
 export const modelWithTokenizer = (
   model: (string & {}) | Model,
@@ -355,11 +354,10 @@ export const make = Effect.fnUntraced(function*(options: {
   const makeRequest = Effect.fnUntraced(
     function*(providerOptions: LanguageModel.ProviderOptions) {
       const context = yield* Effect.context<never>()
-      const config = { ...options.config, ...context.unsafeMap.get(Config.key) }
+      const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const { betas: messageBetas, messages, system } = yield* makeMessages(providerOptions.prompt)
-      const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(config, providerOptions)
+      const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(providerOptions, config)
       const request: typeof Generated.BetaCreateMessageParams.Encoded = {
-        model: options.model,
         max_tokens: 4096,
         ...config,
         system,
@@ -759,7 +757,7 @@ const makeResponse: (
   never,
   IdGenerator.IdGenerator
 > = Effect.fnUntraced(
-  function*(response: Generated.BetaMessage, options: LanguageModel.ProviderOptions) {
+  function*(response, options) {
     const idGenerator = yield* IdGenerator.IdGenerator
     const parts: Array<Response.PartEncoded> = []
     const citableDocuments = extractCitableDocuments(options.prompt)
@@ -1331,10 +1329,7 @@ const annotateRequest = (
   })
 }
 
-const annotateResponse = (
-  span: Span,
-  response: typeof Generated.BetaMessage.Encoded
-): void => {
+const annotateResponse = (span: Span, response: Generated.BetaMessage): void => {
   addGenAIAnnotations(span, {
     response: {
       id: response.id,
@@ -1385,11 +1380,11 @@ type AnthropicTools =
   | typeof Generated.BetaTextEditor20250429.Encoded
   | typeof Generated.BetaTextEditor20250728.Encoded
 
-const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOptions) => Effect.Effect<{
+const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Service) => Effect.Effect<{
   readonly betas: ReadonlySet<string>
   readonly tools: ReadonlyArray<AnthropicTools> | undefined
   readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
-}, AiError.AiError> = Effect.fnUntraced(function*(config, options) {
+}, AiError.AiError> = Effect.fnUntraced(function*(options, config) {
   // If a JSON response format was requested, create a tool and force its use
   if (options.responseFormat.type === "json") {
     const name = options.responseFormat.objectName
@@ -1427,7 +1422,6 @@ const prepareTools: (config: Config.Service, options: LanguageModel.ProviderOpti
     }
 
     if (Tool.isProviderDefined(tool)) {
-      // Ensure that the arguments passed to the provider-defined tool are valid
       switch (tool.id) {
         case "anthropic.bash_20241022": {
           betas.add("computer-use-2024-10-22")

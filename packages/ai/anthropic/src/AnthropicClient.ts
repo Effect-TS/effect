@@ -33,7 +33,7 @@ export class AnthropicClient extends Context.Tag(
  * Represents the interface that the `AnthropicClient` service provides.
  *
  * This service abstracts the complexity of communicating with Anthropic's API,
- * providing both high-level AI completion methods and low-level HTTP access
+ * providing both high-level text generation methods and low-level HTTP access
  * for advanced use cases.
  *
  * @since 1.0.0
@@ -71,7 +71,7 @@ export interface Service {
 
   readonly createMessageStream: (
     options: Omit<typeof Generated.BetaCreateMessageParams.Encoded, "stream">
-  ) => Stream.Stream<MessageStreamEvent, AiError.AiError, never>
+  ) => Stream.Stream<MessageStreamEvent, AiError.AiError>
 }
 
 /**
@@ -232,7 +232,6 @@ export const make = (options: {
         Stream.unwrapScoped,
         Stream.decodeText(),
         Stream.pipeThroughChannel(Sse.makeChannel()),
-        Stream.takeUntil((event) => event.event === "message_stop"),
         Stream.mapEffect((event) => decodeEvent(event.data)),
         Stream.catchTags({
           RequestError: (error) =>
@@ -305,11 +304,13 @@ export const make = (options: {
 
     const createMessageStream = (
       options: Omit<typeof Generated.BetaCreateMessageParams.Encoded, "stream">
-    ): Stream.Stream<MessageStreamEvent, AiError.AiError, never> => {
+    ): Stream.Stream<MessageStreamEvent, AiError.AiError> => {
       const request = HttpClientRequest.post("/v1/messages", {
         body: HttpBody.unsafeJson({ ...options, stream: true })
       })
-      return streamRequest(request, MessageStreamEvent).pipe()
+      return streamRequest(request, MessageStreamEvent).pipe(
+        Stream.takeUntil((event) => event.type === "message_stop")
+      )
     }
 
     return AnthropicClient.of({
@@ -320,14 +321,18 @@ export const make = (options: {
     })
   })
 
+// =============================================================================
+// Message Stream Schema
+// =============================================================================
+
 export class PingEvent extends Schema.Class<PingEvent>(
-  "@effect/ai-anthropic/Ping"
+  "@effect/ai-anthropic/PingEvent"
 )({
   type: Schema.Literal("ping")
 }) {}
 
 export class ErrorEvent extends Schema.Class<ErrorEvent>(
-  "@effect/ai-anthropic/Error"
+  "@effect/ai-anthropic/ErrorEvent"
 )({
   type: Schema.Literal("error"),
   error: Schema.Struct({
