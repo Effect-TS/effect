@@ -117,11 +117,11 @@ export const make = (
                 try: () => db.executeAsync(sql, params as Array<any>),
                 catch: (cause) => new SqlError({ cause, message: "Failed to execute statement (async)" })
               }),
-              (result) => result.rows?._array ?? []
+              (result) => result.rows ?? []
             )
           }
           return Effect.try({
-            try: () => db.execute(sql, params as Array<any>).rows?._array ?? [],
+            try: () => db.executeSync(sql, params as Array<any>).rows ?? [],
             catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
           })
         })
