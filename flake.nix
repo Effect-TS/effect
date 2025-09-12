@@ -36,15 +36,7 @@
             nodejs-slim_23
             python3
             yq-go
-          ] ++ [ 
-            sqlite-cr.packages.${system}.default 
-            sqlite-cr.packages.${system}.crsqlite
           ];
-          
-          shellHook = ''
-            export CRSQLITE_PATH="${sqlite-cr.packages.${system}.crsqlite}/lib/libcrsqlite${if pkgs.stdenv.isDarwin then ".dylib" else ".so"}"
-            echo "CR-SQLite extension available at: $CRSQLITE_PATH"
-          '';
         };
       });
     };
