@@ -20,19 +20,19 @@ it.scopedLive(
 
 // each
 
-it.live.each([1, 2, 3])(
+it.live.for([1, 2, 3])(
   "live each %s",
   (n) => Effect.sync(() => expect(n).toEqual(n))
 )
-it.effect.each([1, 2, 3])(
+it.effect.for([1, 2, 3])(
   "effect each %s",
   (n) => Effect.sync(() => expect(n).toEqual(n))
 )
-it.scoped.each([1, 2, 3])(
+it.scoped.for([1, 2, 3])(
   "scoped each %s",
   (n) => Effect.acquireRelease(Effect.sync(() => expect(n).toEqual(n)), () => Effect.void)
 )
-it.scopedLive.each([1, 2, 3])(
+it.scopedLive.for([1, 2, 3])(
   "scopedLive each %s",
   (n) => Effect.acquireRelease(Effect.sync(() => expect(n).toEqual(n)), () => Effect.void)
 )

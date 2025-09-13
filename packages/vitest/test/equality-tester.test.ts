@@ -44,7 +44,7 @@ describe("toMatchObject", () => {
   })
 })
 
-describe.each(["toStrictEqual", "toEqual"] as const)("%s", (matcher) => {
+describe.for(["toStrictEqual", "toEqual"] as const)("%s", (matcher) => {
   it("either", () => {
     expect(Either.right(1))[matcher](Either.right(1))
     expect(Either.left(1))[matcher](Either.left(1))

@@ -463,7 +463,7 @@ describe("DateTime", () => {
   })
 
   describe("Disambiguation", () => {
-    it.each<{
+    it.for<{
       zone: string
       time: Partial<DateTime.DateTime.Parts>
       description: string

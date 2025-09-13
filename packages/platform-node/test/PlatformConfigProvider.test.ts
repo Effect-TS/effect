@@ -9,7 +9,7 @@ describe("dotenv", () => {
     number: Config.number("NUMBER")
   })
 
-  it.scopedLive.each([
+  it.scopedLive.for([
     {
       name: "Simple variables",
       config: ExampleConfig,
