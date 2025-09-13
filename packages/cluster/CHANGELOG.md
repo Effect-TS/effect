@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.6
+
+### Patch Changes
+
+- [#5501](https://github.com/Effect-TS/effect/pull/5501) [`a874567`](https://github.com/Effect-TS/effect/commit/a874567c59fa1b135268d8e86222a4afd693ae12) Thanks @tim-smart! - don't remove entities from map on shutdown
+
 ## 0.48.5
 
 ### Patch Changes
