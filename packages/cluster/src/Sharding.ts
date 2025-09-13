@@ -1148,7 +1148,6 @@ const make = Effect.gen(function*() {
         manager
       })
 
-      yield* Scope.addFinalizer(scope, Effect.sync(() => entityManagers.delete(entity.type)))
       yield* PubSub.publish(events, EntityRegistered({ entity }))
     }
   )
