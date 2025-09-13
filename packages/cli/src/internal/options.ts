@@ -1056,6 +1056,13 @@ const makeWithDefault = <A, const B>(
   options: Options.Options<A>,
   fallback: B
 ): Options.Options<A | B> => {
+  if (isInstruction(options) && options._tag === "WithDefault") {
+    const op = Object.create(proto)
+    op._tag = "WithDefault"
+    op.options = options.options
+    op.fallback = fallback
+    return op
+  }
   const op = Object.create(proto)
   op._tag = "WithDefault"
   op.options = options
