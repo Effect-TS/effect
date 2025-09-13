@@ -158,7 +158,8 @@ export const make = Effect.fnUntraced(function*(options: {
         ? "application/json"
         : (options.config?.generationConfig?.responseMimeType ?? perRequestConfig?.generationConfig?.responseMimeType)
       let toolConfig: typeof Generated.ToolConfig.Encoded | undefined = options.config?.toolConfig
-      if (Predicate.isNotUndefined(toolChoice) && !useStructured && tools.length > 0) {
+      const hasUnallowedTools = typeof toolChoice === "object" && "oneOf" in toolChoice
+      if (Predicate.isNotUndefined(toolChoice) && !useStructured && !hasUnallowedTools && tools.length > 0) {
         if (toolChoice === "none") {
           toolConfig = { functionCallingConfig: { ...toolConfig?.functionCallingConfig, mode: "NONE" } }
         } else if (toolChoice === "auto") {
@@ -167,6 +168,12 @@ export const make = Effect.fnUntraced(function*(options: {
           toolConfig = { functionCallingConfig: { ...toolConfig?.functionCallingConfig, mode: "ANY" } }
         } else {
           toolConfig = { functionCallingConfig: { allowedFunctionNames: [toolChoice.tool], mode: "ANY" } }
+        }
+      } else if (hasUnallowedTools && !useStructured) {
+        if (toolChoice.mode === "required") {
+          toolConfig = { functionCallingConfig: { ...toolConfig?.functionCallingConfig, mode: "ANY" } }
+        } else {
+          toolConfig = { functionCallingConfig: { ...toolConfig?.functionCallingConfig, mode: "AUTO" } }
         }
       }
       const contents = yield* makeContents(method, prompt)
