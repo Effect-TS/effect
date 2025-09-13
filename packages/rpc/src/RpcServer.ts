@@ -249,7 +249,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
 
     let responded = false
     let effect = Effect.uninterruptible(Effect.matchCauseEffect(
-      Effect.interruptible(applyMiddleware(
+      Effect.interruptible(Effect.scoped(applyMiddleware(
         rpc,
         context,
         client.id,
@@ -258,7 +258,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         isStream
           ? streamEffect(client, request, streamOrEffect)
           : streamOrEffect as Effect.Effect<any>
-      )),
+      ))),
       {
         onSuccess: (value) => {
           responded = true
@@ -417,7 +417,7 @@ const applyMiddleware = <A, E, R>(
   clientId: number,
   payload: A,
   headers: Headers.Headers,
-  handler: Effect.Effect<A, E, R>
+  handler: Effect.Effect<A, E, R | Scope.Scope>
 ) => {
   if (rpc.middlewares.size === 0) {
     return handler
