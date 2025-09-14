@@ -18,8 +18,8 @@ import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Mutable, Simplify } from "effect/Types"
-import type * as Generated from "./Generated.js"
-import { GoogleAiClient } from "./GoogleAiClient.js"
+import type * as Generated from "./Generated-old.js"
+import { GoogleClient } from "./GoogleClient.js"
 import * as InternalUtilities from "./internal/utilities.js"
 
 const constDisableValidation = { disableValidation: true }
@@ -38,7 +38,7 @@ export type Model = string
  * @since 1.0.0
  * @category Context
  */
-export class Config extends Context.Tag("@effect/ai-google/GoogleAiLanguageModel/Config")<
+export class Config extends Context.Tag("@effect/ai-google/GoogleLanguageModel/Config")<
   Config,
   Config.Service
 >() {
@@ -137,7 +137,7 @@ export declare namespace ProviderMetadata {
 export const model = (
   model: (string & {}) | Model,
   config?: Omit<Config.Service, "model">
-): AiModel.AiModel<AiLanguageModel.AiLanguageModel, GoogleAiClient> => AiModel.make(layer({ model, config }))
+): AiModel.AiModel<AiLanguageModel.AiLanguageModel, GoogleClient> => AiModel.make(layer({ model, config }))
 
 /**
  * @since 1.0.0
@@ -147,7 +147,7 @@ export const make = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
 }) {
-  const client = yield* GoogleAiClient
+  const client = yield* GoogleClient
 
   const makeRequest = Effect.fnUntraced(
     function*(method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
@@ -250,7 +250,7 @@ export const make = Effect.fnUntraced(function*(options: {
 export const layer = (options: {
   readonly model: (string & {}) | Model
   readonly config?: Omit<Config.Service, "model">
-}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, GoogleAiClient> =>
+}): Layer.Layer<AiLanguageModel.AiLanguageModel, never, GoogleClient> =>
   Layer.effect(AiLanguageModel.AiLanguageModel, make({ model: options.model, config: options.config }))
 
 const makeContents = Effect.fnUntraced(function*(
@@ -360,7 +360,7 @@ const makeResponse = Effect.fnUntraced(
     const candidate = response.candidates?.[0]
     if (Predicate.isUndefined(candidate)) {
       return yield* new AiError({
-        module: "GoogleAiLanguageModel",
+        module: "GoogleLanguageModel",
         method: "generateText",
         description: "Response contained no candidates"
       })
@@ -368,7 +368,7 @@ const makeResponse = Effect.fnUntraced(
     const content = candidate.content
     if (Predicate.isUndefined(content)) {
       return yield* new AiError({
-        module: "GoogleAiLanguageModel",
+        module: "GoogleLanguageModel",
         method: "generateText",
         description: "Response contained no content"
       })

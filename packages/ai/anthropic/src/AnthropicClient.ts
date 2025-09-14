@@ -8,6 +8,7 @@ import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Arr from "effect/Array"
+import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -226,13 +227,13 @@ export const make: (options: {
     request: HttpClientRequest.HttpClientRequest,
     schema: Schema.Schema<A, I, R>
   ): Stream.Stream<A, AiError.AiError, R> => {
-    const decodeEvent = Schema.decode(Schema.parseJson(schema))
+    const decodeEvents = Schema.decode(Schema.ChunkFromSelf(Schema.parseJson(schema)))
     return httpClient.execute(request).pipe(
       Effect.map((r) => r.stream),
       Stream.unwrapScoped,
       Stream.decodeText(),
       Stream.pipeThroughChannel(Sse.makeChannel()),
-      Stream.mapEffect((event) => decodeEvent(event.data)),
+      Stream.mapChunksEffect((chunk) => decodeEvents(Chunk.map(chunk, (event) => event.data))),
       Stream.catchTags({
         RequestError: (error) =>
           AiError.HttpRequestError.fromRequestError({
@@ -249,7 +250,7 @@ export const make: (options: {
         ParseError: (error) =>
           AiError.MalformedOutput.fromParseError({
             module: "AnthropicClient",
-            method: "createMessage",
+            method: "streamRequest",
             error
           })
       })
