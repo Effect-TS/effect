@@ -21,4 +21,9 @@ export * as AmazonBedrockSchema from "./AmazonBedrockSchema.js"
 /**
  * @since 1.0.0
  */
+export * as AmazonBedrockTool from "./AmazonBedrockTool.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as EventStreamEncoding from "./EventStreamEncoding.js"

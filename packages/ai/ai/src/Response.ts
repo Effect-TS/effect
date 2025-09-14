@@ -1818,11 +1818,11 @@ export class Usage extends Schema.Class<Usage>("@effect/ai/AiResponse/Usage")({
    * The number of reasoning tokens that the model used to generate the output
    * for the request.
    */
-  reasoningTokens: Schema.optionalWith(Schema.Number, { exact: true }),
+  reasoningTokens: Schema.optional(Schema.Number),
   /**
    * The number of input tokens read from the prompt cache for the request.
    */
-  cachedInputTokens: Schema.optionalWith(Schema.Number, { exact: true })
+  cachedInputTokens: Schema.optional(Schema.Number)
 }) {}
 
 /**

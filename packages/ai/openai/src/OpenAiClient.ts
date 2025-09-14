@@ -628,7 +628,7 @@ export class ResponseOutputTextAnnotationAddedEvent extends Schema.Class<Respons
   /**
    * The annotation object being added. (See annotation schema for details.)
    */
-  annotation: Schema.Struct({})
+  annotation: Generated.Annotation
 }) {}
 
 /**
@@ -1024,7 +1024,7 @@ export class ResponseReasoningSummaryTextDeltaEvent extends Schema.Class<Respons
   /**
    * The type of the event. Always `"response.reasoning_summary_text.delta"`.
    */
-  type: Schema.Literal("response.reasoning_summary_delta.delta"),
+  type: Schema.Literal("response.reasoning_summary_text.delta"),
   /**
    * The sequence number for this event.
    */

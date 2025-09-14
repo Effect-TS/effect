@@ -22,6 +22,7 @@ import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import * as InternalUtilities from "./internal/utilities.js"
+import type { ResponseStreamEvent } from "./OpenAiClient.js"
 import { OpenAiClient } from "./OpenAiClient.js"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.js"
 import * as OpenAiTokenizer from "./OpenAiTokenizer.js"
@@ -31,7 +32,7 @@ import * as OpenAiTool from "./OpenAiTool.js"
  * @since 1.0.0
  * @category Models
  */
-export type Model = typeof Generated.ModelIdsResponsesEnum.Encoded
+export type Model = typeof Generated.ChatModel.Encoded | typeof Generated.ModelIdsResponsesEnum.Encoded
 
 // =============================================================================
 // Configuration
@@ -149,10 +150,24 @@ export declare namespace ProviderMetadata {
    */
   export interface Service {
     "finish": {
-      readonly serviceTier: "default" | "auto" | "flex" | "scale" | "priority"
+      readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | undefined
     }
 
     "reasoning": {
+      readonly itemId?: string | undefined
+      readonly encryptedContent?: string | undefined
+    }
+
+    "reasoning-start": {
+      readonly itemId?: string | undefined
+      readonly encryptedContent?: string | undefined
+    }
+
+    "reasoning-delta": {
+      readonly itemId?: string | undefined
+    }
+
+    "reasoning-end": {
       readonly itemId?: string | undefined
       readonly encryptedContent?: string | undefined
     }
@@ -183,6 +198,10 @@ export declare namespace ProviderMetadata {
        * part.
        */
       readonly refusal?: string | undefined
+    }
+
+    "text-start": {
+      readonly itemId?: string | undefined
     }
 
     "tool-call": {
@@ -234,7 +253,7 @@ export const make = Effect.fnUntraced(function*(options: {
     function*(providerOptions: LanguageModel.ProviderOptions) {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
-      const messages = yield* makeMessages(providerOptions, config)
+      const messages = yield* prepareMessages(providerOptions, config)
       const { toolChoice, tools } = yield* prepareTools(providerOptions)
       const include = prepareInclude(providerOptions, config)
       const responseFormat = prepareResponseFormat(providerOptions)
@@ -257,30 +276,26 @@ export const make = Effect.fnUntraced(function*(options: {
         const request = yield* makeRequest(options)
         annotateRequest(options.span, request)
         const rawResponse = yield* client.createResponse(request)
-        annotateChatResponse(options.span, rawResponse)
+        annotateResponse(options.span, rawResponse)
         return yield* makeResponse(rawResponse, options)
       }
     ),
-    streamText(_options) {
-      return Stream.empty
-      // return makeRequest(options).pipe(
-      //   Effect.tap((request) => annotateRequest(options.span, request)),
-      //   Effect.map(client.stream),
-      //   Stream.unwrap,
-      //   Stream.map((response) => {
-      //     annotateStreamResponse(options.span, response)
-      //     return response
-      //   }),
-      //   Stream.catchAll((cause) =>
-      //     AiError.is(cause) ? cause : new AiError({
-      //       module: "OpenAiLanguageModel",
-      //       method: "streamText",
-      //       description: "An error occurred",
-      //       cause
-      //     })
-      //   )
-      // )
-    }
+    streamText: Effect.fnUntraced(
+      function*(options) {
+        const request = yield* makeRequest(options)
+        annotateRequest(options.span, request)
+        return client.createResponseStream(request)
+      },
+      (effect, options) =>
+        effect.pipe(
+          Effect.flatMap((stream) => makeStreamResponse(stream, options)),
+          Stream.unwrap,
+          Stream.map((response) => {
+            annotateStreamResponse(options.span, response)
+            return response
+          })
+        )
+    )
   })
 })
 
@@ -332,7 +347,7 @@ const getSystemMessageMode = (model: string): "system" | "developer" =>
     ? "developer"
     : "system"
 
-const makeMessages: (
+const prepareMessages: (
   options: LanguageModel.ProviderOptions,
   config: Config.Service
 ) => Effect.Effect<
@@ -402,7 +417,7 @@ const makeMessages: (
 
               return yield* new AiError.MalformedInput({
                 module: "OpenAiLanguageModel",
-                method: "makeMessages",
+                method: "prepareMessages",
                 description: `Detected unsupported media type for file: '${part.mediaType}'`
               })
             }
@@ -749,6 +764,369 @@ export const makeResponse: (
   }
 )
 
+const makeStreamResponse: (
+  stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>,
+  options: LanguageModel.ProviderOptions
+) => Effect.Effect<
+  Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
+  never,
+  IdGenerator.IdGenerator
+> = Effect.fnUntraced(
+  function*(stream, options) {
+    const idGenerator = yield* IdGenerator.IdGenerator
+
+    let hasToolCalls = false
+
+    const activeReasoning: Record<string, {
+      readonly summaryParts: Array<number>
+      readonly encryptedContent: string | undefined
+    }> = {}
+
+    const activeToolCalls: Record<number, {
+      readonly id: string
+      readonly name: string
+    }> = {}
+
+    const webSearchTool = options.tools.find((tool) =>
+      Tool.isProviderDefined(tool) &&
+      (tool.id === "openai.web_search" ||
+        tool.id === "openai.web_search_preview")
+    ) as Tool.AnyProviderDefined | undefined
+
+    return stream.pipe(
+      Stream.mapEffect(Effect.fnUntraced(function*(event) {
+        const parts: Array<Response.StreamPartEncoded> = []
+
+        switch (event.type) {
+          case "response.created": {
+            const createdAt = new Date(event.response.created_at * 1000)
+            parts.push({
+              type: "response-metadata",
+              id: event.response.id,
+              modelId: event.response.model,
+              timestamp: DateTime.formatIso(DateTime.unsafeFromDate(createdAt))
+            })
+            break
+          }
+
+          case "error": {
+            // TODO(Max): errors
+            break
+          }
+
+          case "response.completed":
+          case "response.incomplete":
+          case "response.failed": {
+            parts.push({
+              type: "finish",
+              reason: InternalUtilities.resolveFinishReason(
+                event.response.incomplete_details?.reason,
+                hasToolCalls
+              ),
+              usage: {
+                inputTokens: event.response.usage?.input_tokens,
+                outputTokens: event.response.usage?.output_tokens,
+                totalTokens: (event.response.usage?.input_tokens ?? 0) + (event.response.usage?.output_tokens ?? 0),
+                reasoningTokens: event.response.usage?.output_tokens_details?.reasoning_tokens,
+                cachedInputTokens: event.response.usage?.input_tokens_details?.cached_tokens
+              },
+              metadata: { [ProviderMetadata.key]: { serviceTier: event.response.service_tier } }
+            })
+            break
+          }
+
+          case "response.output_item.added": {
+            switch (event.item.type) {
+              case "computer_call": {
+                // TODO(Max): support computer use
+                break
+              }
+
+              case "file_search_call": {
+                activeToolCalls[event.output_index] = {
+                  id: event.item.id,
+                  name: "OpenAiFileSearch"
+                }
+                parts.push({
+                  type: "tool-params-start",
+                  id: event.item.id,
+                  name: "OpenAiFileSearch",
+                  providerName: "file_search",
+                  providerExecuted: true
+                })
+                break
+              }
+
+              case "function_call": {
+                activeToolCalls[event.output_index] = {
+                  id: event.item.call_id,
+                  name: event.item.name
+                }
+                parts.push({
+                  type: "tool-params-start",
+                  id: event.item.call_id,
+                  name: event.item.name
+                })
+                break
+              }
+
+              case "message": {
+                parts.push({
+                  type: "text-start",
+                  id: event.item.id,
+                  metadata: { [ProviderMetadata.key]: { itemId: event.item.id } }
+                })
+                break
+              }
+
+              case "reasoning": {
+                activeReasoning[event.item.id] = {
+                  summaryParts: [0],
+                  encryptedContent: event.item.encrypted_content
+                }
+                parts.push({
+                  type: "reasoning-start",
+                  id: `${event.item.id}:0`,
+                  metadata: {
+                    [ProviderMetadata.key]: {
+                      itemId: event.item.id,
+                      encryptedContent: event.item.encrypted_content
+                    }
+                  }
+                })
+                break
+              }
+
+              case "web_search_call": {
+                activeToolCalls[event.output_index] = {
+                  id: event.item.id,
+                  name: webSearchTool?.name ?? "OpenAiWebSearch"
+                }
+                parts.push({
+                  type: "tool-params-start",
+                  id: event.item.id,
+                  name: webSearchTool?.name ?? "OpenAiWebSearch",
+                  providerName: webSearchTool?.providerName ?? "web_search",
+                  providerExecuted: true
+                })
+                break
+              }
+            }
+
+            break
+          }
+
+          case "response.output_item.done": {
+            switch (event.item.type) {
+              case "code_interpreter_call": {
+                parts.push({
+                  type: "tool-call",
+                  id: event.item.id,
+                  name: "OpenAiCodeInterpreter",
+                  params: { code: event.item.code, container_id: event.item.container_id },
+                  providerName: "code_interpreter",
+                  providerExecuted: true
+                })
+                parts.push({
+                  type: "tool-result",
+                  id: event.item.id,
+                  name: "OpenAiCodeInterpreter",
+                  result: { outputs: event.item.outputs },
+                  providerName: "code_interpreter",
+                  providerExecuted: true
+                })
+                break
+              }
+
+              // TODO(Max): support computer use
+              case "computer_call": {
+                break
+              }
+
+              case "file_search_call": {
+                delete activeToolCalls[event.output_index]
+                parts.push({
+                  type: "tool-params-end",
+                  id: event.item.id
+                })
+                parts.push({
+                  type: "tool-call",
+                  id: event.item.id,
+                  name: "OpenAiFileSearch",
+                  params: {},
+                  providerName: "file_search",
+                  providerExecuted: true
+                })
+                parts.push({
+                  type: "tool-result",
+                  id: event.item.id,
+                  name: "OpenAiFileSearch",
+                  result: {
+                    status: event.item.status,
+                    queries: event.item.queries,
+                    ...(event.item.results && { results: event.item.results })
+                  },
+                  providerName: "file_search",
+                  providerExecuted: true
+                })
+                break
+              }
+
+              case "function_call": {
+                hasToolCalls = true
+                delete activeToolCalls[event.output_index]
+                parts.push({
+                  type: "tool-params-end",
+                  id: event.item.call_id
+                })
+                parts.push({
+                  type: "tool-call",
+                  id: event.item.call_id,
+                  name: event.item.name,
+                  params: JSON.parse(event.item.arguments),
+                  metadata: { [ProviderMetadata.key]: { itemId: event.item.id } }
+                })
+                break
+              }
+
+              case "message": {
+                parts.push({
+                  type: "text-end",
+                  id: event.item.id
+                })
+                break
+              }
+
+              case "reasoning": {
+                const reasoningPart = activeReasoning[event.item.id]
+                for (const summaryIndex of reasoningPart.summaryParts) {
+                  parts.push({
+                    type: "reasoning-end",
+                    id: `${event.item.id}:${summaryIndex}`,
+                    metadata: {
+                      [ProviderMetadata.key]: {
+                        itemId: event.item.id,
+                        encryptedContent: event.item.encrypted_content
+                      }
+                    }
+                  })
+                }
+                delete activeReasoning[event.item.id]
+                break
+              }
+
+              case "web_search_call": {
+                delete activeToolCalls[event.output_index]
+                parts.push({
+                  type: "tool-params-end",
+                  id: event.item.id
+                })
+                parts.push({
+                  type: "tool-call",
+                  id: event.item.id,
+                  name: "OpenAiWebSearch",
+                  params: { action: event.item.action },
+                  providerName: "web_search",
+                  providerExecuted: true
+                })
+                parts.push({
+                  type: "tool-result",
+                  id: event.item.id,
+                  name: "OpenAiWebSearch",
+                  result: { status: event.item.status },
+                  providerName: "web_search",
+                  providerExecuted: true
+                })
+                break
+              }
+            }
+
+            break
+          }
+
+          case "response.output_text.delta": {
+            parts.push({
+              type: "text-delta",
+              id: event.item_id,
+              delta: event.delta
+            })
+            break
+          }
+
+          case "response.output_text.annotation.added": {
+            if (event.annotation.type === "file_citation") {
+              parts.push({
+                type: "source",
+                sourceType: "document",
+                id: yield* idGenerator.generateId(),
+                mediaType: "text/plain",
+                title: event.annotation.filename ?? "Untitled Document",
+                fileName: event.annotation.filename ?? event.annotation.file_id
+              })
+            }
+            if (event.annotation.type === "url_citation") {
+              parts.push({
+                type: "source",
+                sourceType: "url",
+                id: yield* idGenerator.generateId(),
+                url: event.annotation.url,
+                title: event.annotation.title
+              })
+            }
+            break
+          }
+
+          case "response.function_call_arguments.delta": {
+            const toolCallPart = activeToolCalls[event.output_index]
+            if (Predicate.isNotUndefined(toolCallPart)) {
+              parts.push({
+                type: "tool-params-delta",
+                id: toolCallPart.id,
+                delta: event.delta
+              })
+            }
+            break
+          }
+
+          case "response.reasoning_summary_part.added": {
+            // The first reasoning start is pushed in the `response.output_item.added` block
+            if (event.summary_index > 0) {
+              const reasoningPart = activeReasoning[event.item_id]
+              if (Predicate.isNotUndefined(reasoningPart)) {
+                reasoningPart.summaryParts.push(event.summary_index)
+              }
+              parts.push({
+                type: "reasoning-start",
+                id: `${event.item_id}:${event.summary_index}`,
+                metadata: {
+                  [ProviderMetadata.key]: {
+                    itemId: event.item_id,
+                    encryptedContent: reasoningPart?.encryptedContent
+                  }
+                }
+              })
+            }
+            break
+          }
+
+          case "response.reasoning_summary_text.delta": {
+            parts.push({
+              type: "reasoning-delta",
+              id: `${event.item_id}:${event.summary_index}`,
+              delta: event.delta,
+              metadata: { [ProviderMetadata.key]: { itemId: event.item_id } }
+            })
+            break
+          }
+        }
+
+        return parts
+      })),
+      Stream.flattenIterables
+    )
+  }
+)
+
 // =============================================================================
 // Telemetry
 // =============================================================================
@@ -775,12 +1153,13 @@ const annotateRequest = (
   })
 }
 
-const annotateChatResponse = (span: Span, response: Generated.Response): void => {
+const annotateResponse = (span: Span, response: Generated.Response): void => {
+  const finishReason = response.incomplete_details?.reason
   addGenAIAnnotations(span, {
     response: {
       id: response.id,
       model: response.model,
-      finishReasons: response.incomplete_details?.reason
+      finishReasons: Predicate.isNotUndefined(finishReason) ? [finishReason] : undefined
     },
     usage: {
       inputTokens: response.usage?.input_tokens,
@@ -794,28 +1173,31 @@ const annotateChatResponse = (span: Span, response: Generated.Response): void =>
   })
 }
 
-// const annotateStreamResponse = (span: Span, response: Response.StreamPart<any>) => {
-//   const metadataPart = response.parts.find((part) => part._tag === "MetadataPart")
-//   const finishPart = response.parts.find((part) => part._tag === "FinishPart")
-//   const providerMetadata = finishPart?.providerMetadata[ProviderMetadata.key]
-//   addGenAIAnnotations(span, {
-//     response: {
-//       id: metadataPart?.id,
-//       model: metadataPart?.model,
-//       finishReasons: finishPart?.reason ? [finishPart.reason] : undefined
-//     },
-//     usage: {
-//       inputTokens: finishPart?.usage.inputTokens,
-//       outputTokens: finishPart?.usage.outputTokens
-//     },
-//     openai: {
-//       response: {
-//         serviceTier: providerMetadata?.serviceTier as string | undefined,
-//         systemFingerprint: providerMetadata?.systemFingerprint as string | undefined
-//       }
-//     }
-//   })
-// }
+const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) => {
+  if (part.type === "response-metadata") {
+    addGenAIAnnotations(span, {
+      response: {
+        id: part.id,
+        model: part.modelId
+      }
+    })
+  }
+  if (part.type === "finish") {
+    const serviceTier = part.metadata?.[ProviderMetadata.key]?.serviceTier as string | undefined
+    addGenAIAnnotations(span, {
+      response: {
+        finishReasons: [part.reason]
+      },
+      usage: {
+        inputTokens: part.usage.inputTokens,
+        outputTokens: part.usage.outputTokens
+      },
+      openai: {
+        response: { serviceTier }
+      }
+    })
+  }
+}
 
 // =============================================================================
 // Tool Calling

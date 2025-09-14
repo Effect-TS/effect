@@ -47,12 +47,14 @@
   },
   "peerDependencies": {
     "@effect/ai": "workspace:^",
+    "@effect/ai-anthropic": "workspace:^",
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/ai": "workspace:^",
+    "@effect/ai-anthropic": "workspace:^",
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",

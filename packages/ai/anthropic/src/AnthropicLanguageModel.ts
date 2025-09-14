@@ -119,42 +119,42 @@ export declare namespace ProviderOptions {
    * @category Provider Options
    */
   export interface Service {
-    readonly system: {
+    readonly "system": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly user: {
+    readonly "user": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly assistant: {
+    readonly "assistant": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly tool: {
+    readonly "tool": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly text: {
+    readonly "text": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
       readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
     }
 
-    readonly file: {
+    readonly "file": {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
@@ -177,7 +177,7 @@ export declare namespace ProviderOptions {
       readonly documentContext?: typeof Generated.RequestDocumentBlock.fields.context.from.Encoded
     }
 
-    readonly reasoning: Simplify<
+    readonly "reasoning": Simplify<
       AnthropicReasoningMetadata & {
         /**
          * A breakpoint which marks the end of reusable content eligible for caching.
@@ -220,13 +220,13 @@ export declare namespace ProviderMetadata {
    * @category Provider Metadata
    */
   export interface Service {
-    readonly reasoning: AnthropicReasoningMetadata
+    readonly "reasoning": AnthropicReasoningMetadata
 
     readonly "reasoning-start": AnthropicReasoningMetadata
 
     readonly "reasoning-delta": AnthropicReasoningMetadata
 
-    readonly finish: {
+    readonly "finish": {
       /**
        * Additional usage information provided by the Anthropic API.
        */
@@ -355,15 +355,28 @@ export const make = Effect.fnUntraced(function*(options: {
     function*(providerOptions: LanguageModel.ProviderOptions) {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
-      const { betas: messageBetas, messages, system } = yield* makeMessages(providerOptions.prompt)
+      const { betas: messageBetas, messages, system } = yield* prepareMessages(providerOptions)
       const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(providerOptions, config)
+      const responseFormat = providerOptions.responseFormat
       const request: typeof Generated.BetaCreateMessageParams.Encoded = {
         max_tokens: 4096,
         ...config,
         system,
         messages,
-        tools,
-        tool_choice: toolChoice
+        tools: responseFormat.type === "text"
+          ? tools
+          : [{
+            name: responseFormat.objectName,
+            description: Tool.getDescriptionFromSchemaAst(responseFormat.schema.ast) ?? "Respond with a JSON object",
+            input_schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast) as any
+          }],
+        tool_choice: responseFormat.type === "text"
+          ? toolChoice
+          : {
+            type: "tool",
+            name: responseFormat.objectName,
+            disable_parallel_tool_use: true
+          }
       }
       return { betas: new Set([...messageBetas, ...toolBetas]), request }
     }
@@ -374,8 +387,9 @@ export const make = Effect.fnUntraced(function*(options: {
       function*(options) {
         const { betas, request } = yield* makeRequest(options)
         annotateRequest(options.span, request)
+        const anthropicBeta = betas.size > 0 ? Array.from(betas).join(",") : undefined
         const rawResponse = yield* client.createMessage({
-          params: { "anthropic-beta": betas.size > 0 ? Array.from(betas).join(",") : undefined },
+          params: { "anthropic-beta": anthropicBeta },
           payload: request
         })
         annotateResponse(options.span, rawResponse)
@@ -385,13 +399,17 @@ export const make = Effect.fnUntraced(function*(options: {
 
     streamText: Effect.fnUntraced(
       function*(options) {
-        const { request } = yield* makeRequest(options)
+        const { betas, request } = yield* makeRequest(options)
         annotateRequest(options.span, request)
-        return client.createMessageStream(request)
+        const anthropicBeta = betas.size > 0 ? Array.from(betas).join(",") : undefined
+        return client.createMessageStream({
+          params: { "anthropic-beta": anthropicBeta },
+          payload: request
+        })
       },
       (effect, options) =>
         effect.pipe(
-          Effect.map((stream) => makeStreamResponse(stream, options)),
+          Effect.flatMap((stream) => makeStreamResponse(stream, options)),
           Stream.unwrap,
           Stream.map((response) => {
             annotateStreamResponse(options.span, response)
@@ -439,311 +457,253 @@ export const withConfigOverride: {
   ))
 
 // =============================================================================
-// Utilities
-// =============================================================================
-
-type ContentGroup = SystemMessageGroup | AssistantMessageGroup | UserMessageGroup
-
-interface SystemMessageGroup {
-  readonly type: "system"
-  readonly messages: Array<Prompt.SystemMessage>
-}
-
-interface AssistantMessageGroup {
-  readonly type: "assistant"
-  readonly messages: Array<Prompt.AssistantMessage>
-}
-
-interface UserMessageGroup {
-  readonly type: "user"
-  readonly messages: Array<Prompt.ToolMessage | Prompt.UserMessage>
-}
-
-const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
-  const messages: Array<ContentGroup> = []
-  let current: ContentGroup | undefined = undefined
-  for (const message of prompt.content) {
-    switch (message.role) {
-      case "system": {
-        if (current?.type !== "system") {
-          current = { type: "system", messages: [] }
-          messages.push(current)
-        }
-        current.messages.push(message)
-        break
-      }
-      case "assistant": {
-        if (current?.type !== "assistant") {
-          current = { type: "assistant", messages: [] }
-          messages.push(current)
-        }
-        current.messages.push(message)
-        break
-      }
-      case "tool":
-      case "user": {
-        if (current?.type !== "user") {
-          current = { type: "user", messages: [] }
-          messages.push(current)
-        }
-        current.messages.push(message)
-        break
-      }
-    }
-  }
-  return messages
-}
-
-// =============================================================================
 // Prompt Conversion
 // =============================================================================
 
-const makeMessages: (prompt: Prompt.Prompt) => Effect.Effect<{
+const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
   readonly betas: ReadonlySet<string>
   readonly system: ReadonlyArray<typeof Generated.BetaRequestTextBlock.Encoded> | undefined
   readonly messages: ReadonlyArray<typeof Generated.BetaInputMessage.Encoded>
-}, AiError.AiError> = Effect.fnUntraced(
-  function*(prompt: Prompt.Prompt) {
-    const betas = new Set<string>()
-    const groups = groupMessages(prompt)
+}, AiError.AiError> = Effect.fnUntraced(function*(options) {
+  const betas = new Set<string>()
+  const groups = groupMessages(options.prompt)
 
-    let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
-    const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
+  let system: Array<typeof Generated.BetaRequestTextBlock.Encoded> | undefined = undefined
+  const messages: Array<typeof Generated.BetaInputMessage.Encoded> = []
 
-    for (let i = 0; i < groups.length; i++) {
-      const group = groups[i]
-      const isLastGroup = i === groups.length - 1
+  for (let i = 0; i < groups.length; i++) {
+    const group = groups[i]
+    const isLastGroup = i === groups.length - 1
 
-      switch (group.type) {
-        case "system": {
-          system = group.messages.map((message) => ({
-            type: "text",
-            text: message.content,
-            cache_control: getCacheControl(message)
-          }))
-          break
-        }
+    switch (group.type) {
+      case "system": {
+        system = group.messages.map((message) => ({
+          type: "text",
+          text: message.content,
+          cache_control: getCacheControl(message)
+        }))
+        break
+      }
 
-        case "user": {
-          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
+      case "user": {
+        const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
 
-          for (const message of group.messages) {
-            switch (message.role) {
-              case "user": {
-                for (let j = 0; j < message.content.length; j++) {
-                  const part = message.content[j]
-                  const isLastPart = j === message.content.length - 1
+        for (const message of group.messages) {
+          switch (message.role) {
+            case "user": {
+              for (let j = 0; j < message.content.length; j++) {
+                const part = message.content[j]
+                const isLastPart = j === message.content.length - 1
 
-                  // Attempt to get the cache control from the part first. If
-                  // the part does not have cache control defined and we are
-                  // evaluating the last part for this message, also check the
-                  // message for cache control.
-                  const cacheControl = getCacheControl(part) ?? (
-                    isLastPart ? getCacheControl(message) : undefined
-                  )
+                // Attempt to get the cache control from the part first. If
+                // the part does not have cache control defined and we are
+                // evaluating the last part for this message, also check the
+                // message for cache control.
+                const cacheControl = getCacheControl(part) ?? (
+                  isLastPart ? getCacheControl(message) : undefined
+                )
 
-                  switch (part.type) {
-                    case "text": {
+                switch (part.type) {
+                  case "text": {
+                    content.push({
+                      type: "text",
+                      text: part.text,
+                      cache_control: cacheControl
+                    })
+                    break
+                  }
+
+                  case "file": {
+                    if (part.mediaType.startsWith("image/")) {
+                      const source = part.data instanceof URL ?
+                        {
+                          type: "url",
+                          url: part.data.toString()
+                        } as const :
+                        {
+                          type: "base64",
+                          media_type: part.mediaType === "image/*"
+                            ? "image/jpeg"
+                            : (part.mediaType as typeof Generated.Base64ImageSourceMediaType.Encoded),
+                          data: typeof part.data === "string" ? part.data : Encoding.encodeBase64(part.data)
+                        } as const
+
                       content.push({
-                        type: "text",
-                        text: part.text,
+                        type: "image",
+                        source,
                         cache_control: cacheControl
                       })
-                      break
-                    }
-
-                    case "file": {
-                      if (part.mediaType.startsWith("image/")) {
-                        const source = part.data instanceof URL ?
-                          {
-                            type: "url",
-                            url: part.data.toString()
-                          } as const :
-                          {
-                            type: "base64",
-                            media_type: part.mediaType === "image/*"
-                              ? "image/jpeg"
-                              : (part.mediaType as typeof Generated.Base64ImageSourceMediaType.Encoded),
-                            data: typeof part.data === "string" ? part.data : Encoding.encodeBase64(part.data)
-                          } as const
-
-                        content.push({
-                          type: "image",
-                          source,
-                          cache_control: cacheControl
-                        })
-                      } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
-                        if (part.mediaType === "application/pdf") {
-                          betas.add("pdfs-2024-09-25")
-                        }
-
-                        const enableCitations = shouldEnableCitations(part)
-                        const documentOptions = getDocumentMetadata(part)
-
-                        const source = part.data instanceof URL
-                          ? {
-                            type: "url",
-                            url: part.data.toString()
-                          } as const
-                          : part.mediaType === "application/pdf"
-                          ? {
-                            type: "base64",
-                            media_type: "application/pdf",
-                            data: typeof part.data === "string"
-                              ? part.data
-                              : Encoding.encodeBase64(part.data)
-                          } as const
-                          : {
-                            type: "text",
-                            media_type: "text/plain",
-                            data: typeof part.data === "string"
-                              ? part.data
-                              : Encoding.encodeBase64(part.data)
-                          } as const
-
-                        content.push({
-                          type: "document",
-                          source,
-                          title: documentOptions?.title ?? Option.getOrUndefined(part.fileName),
-                          ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
-                          ...(enableCitations ? { citations: { enabled: true } } : undefined),
-                          cache_control: cacheControl
-                        })
-                      } else {
-                        return yield* new AiError.MalformedInput({
-                          module: "AnthropicLanguageModel",
-                          method: "makeMessages",
-                          description: `Detected unsupported media type for file: '${part.mediaType}'`
-                        })
+                    } else if (part.mediaType === "application/pdf" || part.mediaType === "text/plain") {
+                      if (part.mediaType === "application/pdf") {
+                        betas.add("pdfs-2024-09-25")
                       }
-                      break
-                    }
-                  }
-                }
 
-                break
-              }
+                      const enableCitations = shouldEnableCitations(part)
+                      const documentOptions = getDocumentMetadata(part)
 
-              // TODO: advanced tool result content parts
-              case "tool": {
-                for (const part of message.content) {
-                  content.push({
-                    type: "tool_result",
-                    tool_use_id: part.id,
-                    content: JSON.stringify(part.result)
-                  })
-                }
+                      const source = part.data instanceof URL
+                        ? {
+                          type: "url",
+                          url: part.data.toString()
+                        } as const
+                        : part.mediaType === "application/pdf"
+                        ? {
+                          type: "base64",
+                          media_type: "application/pdf",
+                          data: typeof part.data === "string"
+                            ? part.data
+                            : Encoding.encodeBase64(part.data)
+                        } as const
+                        : {
+                          type: "text",
+                          media_type: "text/plain",
+                          data: typeof part.data === "string"
+                            ? part.data
+                            : Encoding.encodeBase64(part.data)
+                        } as const
 
-                break
-              }
-            }
-          }
-
-          messages.push({ role: "user", content })
-
-          break
-        }
-
-        case "assistant": {
-          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
-
-          for (let j = 0; j < group.messages.length; j++) {
-            const message = group.messages[j]
-            const isLastMessage = j === group.messages.length - 1
-
-            for (let k = 0; k < message.content.length; k++) {
-              const part = message.content[k]
-              const isLastPart = k === message.content.length - 1
-
-              // Attempt to get the cache control from the part first. If
-              // the part does not have cache control defined and we are
-              // evaluating the last part for this message, also check the
-              // message for cache control.
-              const cacheControl = getCacheControl(part) ?? (
-                isLastPart ? getCacheControl(message) : undefined
-              )
-
-              switch (part.type) {
-                case "text": {
-                  content.push({
-                    type: "text",
-                    // Anthropic does not allow trailing whitespace in assistant
-                    // content blocks
-                    text: isLastGroup && isLastMessage && isLastPart
-                      ? part.text.trim()
-                      : part.text
-                  })
-                  break
-                }
-
-                case "reasoning": {
-                  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-                  if (Option.isSome(providerOptions)) {
-                    if (providerOptions.value.type === "thinking") {
                       content.push({
-                        type: "thinking",
-                        thinking: part.text,
-                        signature: providerOptions.value.signature
+                        type: "document",
+                        source,
+                        title: documentOptions?.title ?? Option.getOrUndefined(part.fileName),
+                        ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
+                        ...(enableCitations ? { citations: { enabled: true } } : undefined),
+                        cache_control: cacheControl
                       })
                     } else {
-                      content.push({
-                        type: "redacted_thinking",
-                        data: providerOptions.value.redactedData
+                      return yield* new AiError.MalformedInput({
+                        module: "AnthropicLanguageModel",
+                        method: "prepareMessages",
+                        description: `Detected unsupported media type for file: '${part.mediaType}'`
                       })
                     }
+                    break
                   }
-                  break
                 }
+              }
 
-                case "tool-call": {
-                  if (part.providerExecuted) {
-                    if (part.name === "AnthropicWebSearch") {
-                      content.push({
-                        type: "server_tool_use",
-                        id: part.id,
-                        name: "web_search",
-                        input: part.params as any,
-                        cache_control: cacheControl
-                      })
-                    }
-                    if (part.name === "AnthropicCodeExecution") {
-                      content.push({
-                        type: "server_tool_use",
-                        id: part.id,
-                        name: "code_execution",
-                        input: part.params as any,
-                        cache_control: cacheControl
-                      })
-                    }
+              break
+            }
+
+            // TODO: advanced tool result content parts
+            case "tool": {
+              for (const part of message.content) {
+                content.push({
+                  type: "tool_result",
+                  tool_use_id: part.id,
+                  content: JSON.stringify(part.result)
+                })
+              }
+
+              break
+            }
+          }
+        }
+
+        messages.push({ role: "user", content })
+
+        break
+      }
+
+      case "assistant": {
+        const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
+
+        for (let j = 0; j < group.messages.length; j++) {
+          const message = group.messages[j]
+          const isLastMessage = j === group.messages.length - 1
+
+          for (let k = 0; k < message.content.length; k++) {
+            const part = message.content[k]
+            const isLastPart = k === message.content.length - 1
+
+            // Attempt to get the cache control from the part first. If
+            // the part does not have cache control defined and we are
+            // evaluating the last part for this message, also check the
+            // message for cache control.
+            const cacheControl = getCacheControl(part) ?? (
+              isLastPart ? getCacheControl(message) : undefined
+            )
+
+            switch (part.type) {
+              case "text": {
+                content.push({
+                  type: "text",
+                  // Anthropic does not allow trailing whitespace in assistant
+                  // content blocks
+                  text: isLastGroup && isLastMessage && isLastPart
+                    ? part.text.trim()
+                    : part.text
+                })
+                break
+              }
+
+              case "reasoning": {
+                const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
+                if (Option.isSome(providerOptions)) {
+                  if (providerOptions.value.type === "thinking") {
+                    content.push({
+                      type: "thinking",
+                      thinking: part.text,
+                      signature: providerOptions.value.signature
+                    })
                   } else {
                     content.push({
-                      type: "tool_use",
+                      type: "redacted_thinking",
+                      data: providerOptions.value.redactedData
+                    })
+                  }
+                }
+                break
+              }
+
+              case "tool-call": {
+                if (part.providerExecuted) {
+                  if (part.name === "AnthropicWebSearch") {
+                    content.push({
+                      type: "server_tool_use",
                       id: part.id,
-                      name: part.name,
+                      name: "web_search",
                       input: part.params as any,
                       cache_control: cacheControl
                     })
                   }
-                  break
+                  if (part.name === "AnthropicCodeExecution") {
+                    content.push({
+                      type: "server_tool_use",
+                      id: part.id,
+                      name: "code_execution",
+                      input: part.params as any,
+                      cache_control: cacheControl
+                    })
+                  }
+                } else {
+                  content.push({
+                    type: "tool_use",
+                    id: part.id,
+                    name: part.name,
+                    input: part.params as any,
+                    cache_control: cacheControl
+                  })
                 }
+                break
               }
             }
           }
-
-          messages.push({ role: "assistant", content })
-
-          break
         }
+
+        messages.push({ role: "assistant", content })
+
+        break
       }
     }
-
-    return {
-      system,
-      messages,
-      betas
-    }
   }
-)
+
+  return {
+    system,
+    messages,
+    betas
+  }
+})
 
 // =============================================================================
 // Response Conversion
@@ -920,11 +880,11 @@ const makeResponse: (
 )
 
 const makeStreamResponse: (
-  stream: Stream.Stream<MessageStreamEvent, AiError.AiError, never>,
+  stream: Stream.Stream<MessageStreamEvent, AiError.AiError>,
   options: LanguageModel.ProviderOptions
-) => Stream.Stream<
-  Response.StreamPartEncoded,
-  AiError.AiError,
+) => Effect.Effect<
+  Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
+  never,
   IdGenerator.IdGenerator
 > = Effect.fnUntraced(
   function*(stream, options) {
@@ -975,7 +935,7 @@ const makeStreamResponse: (
     }
 
     return stream.pipe(
-      Stream.mapEffect(Effect.fnUntraced(function*(event: MessageStreamEvent) {
+      Stream.mapEffect(Effect.fnUntraced(function*(event) {
         const parts: Array<Response.StreamPartEncoded> = []
 
         switch (event.type) {
@@ -1301,8 +1261,7 @@ const makeStreamResponse: (
       })),
       Stream.flattenIterables
     )
-  },
-  Stream.unwrap
+  }
 )
 
 // =============================================================================
@@ -1369,7 +1328,13 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
 // Tool Calling
 // =============================================================================
 
-type AnthropicTools =
+/**
+ * Represents all possible Anthropic provider-defined tools.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export type AnthropicTools =
   | typeof Generated.BetaTool.Encoded
   | typeof Generated.BetaBashTool20241022.Encoded
   | typeof Generated.BetaBashTool20250124.Encoded
@@ -1380,27 +1345,23 @@ type AnthropicTools =
   | typeof Generated.BetaTextEditor20250429.Encoded
   | typeof Generated.BetaTextEditor20250728.Encoded
 
-const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Service) => Effect.Effect<{
+/**
+ * A helper method which takes in large language model provider options from
+ * the base Effect AI SDK as well as Anthropic request configuration options
+ * and returns the prepared tools, tool choice, and Anthropic betas to include
+ * in a request.
+ *
+ * This method is primarily exposed for use by other Effect provider
+ * integrations which can utilize Anthropic models (i.e. Amazon Bedrock).
+ *
+ * @since 1.0.0
+ * @category Tool Calling
+ */
+export const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Service) => Effect.Effect<{
   readonly betas: ReadonlySet<string>
   readonly tools: ReadonlyArray<AnthropicTools> | undefined
   readonly toolChoice: typeof Generated.BetaToolChoice.Encoded | undefined
 }, AiError.AiError> = Effect.fnUntraced(function*(options, config) {
-  // If a JSON response format was requested, create a tool and force its use
-  if (options.responseFormat.type === "json") {
-    const name = options.responseFormat.objectName
-    const ast = options.responseFormat.schema.ast
-    const jsonResponseTool: typeof Generated.Tool.Encoded = {
-      name,
-      description: Tool.getDescriptionFromSchemaAst(ast) ?? "Response with a JSON object",
-      input_schema: Tool.getJsonSchemaFromSchemaAst(ast) as any
-    }
-    return {
-      betas: new Set(),
-      tools: [jsonResponseTool],
-      toolChoice: { type: "tool", name, disable_parallel_tool_use: true }
-    }
-  }
-
   // Return immediately if no tools are in the toolkit or a tool choice of
   // "none" was specified
   if (options.tools.length === 0 || options.toolChoice === "none") {
@@ -1557,6 +1518,58 @@ const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Serv
 // =============================================================================
 // Utilities
 // =============================================================================
+
+type ContentGroup = SystemMessageGroup | AssistantMessageGroup | UserMessageGroup
+
+interface SystemMessageGroup {
+  readonly type: "system"
+  readonly messages: Array<Prompt.SystemMessage>
+}
+
+interface AssistantMessageGroup {
+  readonly type: "assistant"
+  readonly messages: Array<Prompt.AssistantMessage>
+}
+
+interface UserMessageGroup {
+  readonly type: "user"
+  readonly messages: Array<Prompt.ToolMessage | Prompt.UserMessage>
+}
+
+const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
+  const messages: Array<ContentGroup> = []
+  let current: ContentGroup | undefined = undefined
+  for (const message of prompt.content) {
+    switch (message.role) {
+      case "system": {
+        if (current?.type !== "system") {
+          current = { type: "system", messages: [] }
+          messages.push(current)
+        }
+        current.messages.push(message)
+        break
+      }
+      case "assistant": {
+        if (current?.type !== "assistant") {
+          current = { type: "assistant", messages: [] }
+          messages.push(current)
+        }
+        current.messages.push(message)
+        break
+      }
+      case "tool":
+      case "user": {
+        if (current?.type !== "user") {
+          current = { type: "user", messages: [] }
+          messages.push(current)
+        }
+        current.messages.push(message)
+        break
+      }
+    }
+  }
+  return messages
+}
 
 const isCitationPart = (part: Prompt.UserMessage["content"][number]): part is Prompt.FilePart => {
   if (part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")) {
