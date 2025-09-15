@@ -196,7 +196,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
   type StorageRequestEntry = {
     readonly latch: Effect.Latch
     doneLatch: Effect.Latch | undefined
-    readonly messages: Array<Message.OutgoingRequest<any>>
+    readonly messages: Set<Message.OutgoingRequest<any>>
     replies: Array<Reply.Reply<any>>
   }
   const storageRequests = new Map<Snowflake.Snowflake, StorageRequestEntry>()
@@ -204,19 +204,18 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
   const replyFromStorage = Effect.fnUntraced(
     function*(message: Message.OutgoingRequest<any>) {
       let entry = storageRequests.get(message.envelope.requestId)
-      if (!entry) {
+      if (entry) {
+        entry.messages.add(message)
+        entry.doneLatch ??= Effect.unsafeMakeLatch(false)
+        return yield* entry.doneLatch.await
+      } else {
         entry = {
           latch: Effect.unsafeMakeLatch(false),
           doneLatch: undefined,
           replies: [],
-          messages: []
+          messages: new Set([message])
         }
         storageRequests.set(message.envelope.requestId, entry)
-      }
-      entry.messages.push(message)
-      if (entry.messages.length > 1) {
-        entry.doneLatch ??= Effect.unsafeMakeLatch(false)
-        return yield* entry.doneLatch.await
       }
 
       while (true) {
@@ -231,16 +230,16 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           const reply = entry.replies[i]
           // we have reached the end
           if (reply._tag === "WithExit") {
-            for (let j = 0; j < entry.messages.length; j++) {
-              yield* entry.messages[j].respond(reply)
+            for (const message of entry.messages) {
+              yield* message.respond(reply)
             }
             entry.doneLatch?.unsafeOpen()
             return
           }
 
           entry.latch.unsafeClose()
-          for (let i = 0; i < entry.messages.length; i++) {
-            yield* entry.messages[i].respond(reply)
+          for (const message of entry.messages) {
+            yield* message.respond(reply)
           }
           yield* entry.latch.await
         }
@@ -251,6 +250,11 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
       Effect.ensuring(
         effect,
         Effect.sync(() => {
+          const entry = storageRequests.get(message.envelope.requestId)
+          if (!entry || entry.messages.size > 1) {
+            entry?.messages.delete(message)
+            return
+          }
           storageRequests.delete(message.envelope.requestId)
           waitingStorageRequests.delete(message.envelope.requestId)
         })
