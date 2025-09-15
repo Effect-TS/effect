@@ -66,7 +66,7 @@ describe.sequential("Pg", () => {
     timeout: 60000
   })
 
-  it.effect.only("fail properly for conflict issues", () => {
+  it.effect("fail properly for conflict issues", () => {
     const logs: Array<unknown> = []
     const logger = Logger.make((opts) => {
       globalThis.console.log(opts)
