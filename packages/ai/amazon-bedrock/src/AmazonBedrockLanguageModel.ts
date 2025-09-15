@@ -889,22 +889,27 @@ const makeStreamResponse: (
           }
 
           case "internalServerException": {
+            parts.push({ type: "error", error: event.internalServerException })
             break
           }
 
           case "modelStreamErrorException": {
+            parts.push({ type: "error", error: event.modelStreamErrorException })
             break
           }
 
           case "serviceUnavailableException": {
+            parts.push({ type: "error", error: event.serviceUnavailableException })
             break
           }
 
           case "throttlingException": {
+            parts.push({ type: "error", error: event.throttlingException })
             break
           }
 
           case "validationException": {
+            parts.push({ type: "error", error: event.validationException })
             break
           }
         }

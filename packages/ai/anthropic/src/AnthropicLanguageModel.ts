@@ -1255,6 +1255,12 @@ const makeStreamResponse: (
 
             break
           }
+
+          case "error": {
+            parts.push({ type: "error", error: event.error })
+
+            break
+          }
         }
 
         return parts

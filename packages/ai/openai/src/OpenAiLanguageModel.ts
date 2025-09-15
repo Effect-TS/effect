@@ -814,7 +814,7 @@ const makeStreamResponse: (
           }
 
           case "error": {
-            // TODO(Max): errors
+            parts.push({ type: "error", error: event })
             break
           }
 

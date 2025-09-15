@@ -90,6 +90,7 @@ export type AnyPart =
   | UrlSourcePart
   | ResponseMetadataPart
   | FinishPart
+  | ErrorPart
 
 /**
  * Encoded representation of all possible response content parts for serialization.
@@ -116,6 +117,7 @@ export type AnyPartEncoded =
   | UrlSourcePartEncoded
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
+  | ErrorPartEncoded
 
 /**
  * Union type for all response parts with tool-specific typing.
@@ -142,6 +144,7 @@ export type AllParts<Tools extends Record<string, Tool.Any>> =
   | UrlSourcePart
   | ResponseMetadataPart
   | FinishPart
+  | ErrorPart
 
 /**
  * Encoded representation of all response parts for serialization.
@@ -168,6 +171,7 @@ export type AllPartsEncoded =
   | UrlSourcePartEncoded
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
+  | ErrorPartEncoded
 
 /**
  * Creates a Schema for all response parts based on a toolkit.
@@ -222,6 +226,7 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     UrlSourcePart,
     ResponseMetadataPart,
     FinishPart,
+    ErrorPart,
     ...toolCalls,
     ...toolCallResults
   ) as any
@@ -327,6 +332,7 @@ export type StreamPart<Tools extends Record<string, Tool.Any>> =
   | UrlSourcePart
   | ResponseMetadataPart
   | FinishPart
+  | ErrorPart
 
 /**
  * Encoded representation of streaming response parts for serialization.
@@ -351,6 +357,7 @@ export type StreamPartEncoded =
   | UrlSourcePartEncoded
   | ResponseMetadataPartEncoded
   | FinishPartEncoded
+  | ErrorPartEncoded
 
 /**
  * Creates a Schema for streaming response parts based on a toolkit.
@@ -382,6 +389,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
     UrlSourcePart,
     ResponseMetadataPart,
     FinishPart,
+    ErrorPart,
     ...toolCalls,
     ...toolCallResults
   ) as any
@@ -1887,6 +1895,54 @@ export const FinishPart: Schema.Schema<FinishPart, FinishPartEncoded> = Schema.S
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "FinishPart" })
+)
+
+// =============================================================================
+// Error Part
+// =============================================================================
+
+/**
+ * Response part indicating that an error occurred generating the response.
+ *
+ * @example
+ * ```ts
+ * import { Response } from "@effect/ai"
+ *
+ * const errorPart: Response.ErrorPart = Response.makePart("error", {
+ *   error: new Error("boom")
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ErrorPart extends BasePart<"error"> {
+  readonly error: unknown
+}
+
+/**
+ * Encoded representation of error parts for serialization.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ErrorPartEncoded extends BasePartEncoded<"error"> {
+  readonly error: unknown
+}
+
+/**
+ * Schema for validation and encoding of error parts.
+ *
+ * @since 1.0.0
+ * @category Schemas
+ */
+export const ErrorPart: Schema.Schema<ErrorPart, ErrorPartEncoded> = Schema.Struct({
+  type: Schema.Literal("error"),
+  error: Schema.Unknown,
+  metadata: Schema.optional(Metadata)
+}).pipe(
+  Schema.attachPropertySignature(PartTypeId, PartTypeId),
+  Schema.annotations({ identifier: "ErrorPart" })
 )
 
 // =============================================================================
