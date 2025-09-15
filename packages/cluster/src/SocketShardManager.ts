@@ -41,7 +41,7 @@ export const layer: Layer.Layer<
   | ShardingConfig
 > = ShardManager.layerServer.pipe(
   withLogAddress,
-  Layer.provide(RpcServer.layerProtocolSocketServer),
+  Layer.provide(Layer.fresh(RpcServer.layerProtocolSocketServer)),
   Layer.provideMerge(ShardManager.layer),
   Layer.provide(Runners.layerRpc),
   Layer.provide(MessageStorage.layerNoop)

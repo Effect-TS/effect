@@ -40,7 +40,7 @@ export const layer: Layer.Layer<
   | ShardStorage.ShardStorage
 > = RunnerServer.layerWithClients.pipe(
   withLogAddress,
-  Layer.provide(RpcServer.layerProtocolSocketServer)
+  Layer.provide(Layer.fresh(RpcServer.layerProtocolSocketServer))
 )
 
 /**
