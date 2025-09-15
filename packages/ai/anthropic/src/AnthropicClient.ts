@@ -333,12 +333,20 @@ export const make: (options: {
 // Message Stream Schema
 // =============================================================================
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class PingEvent extends Schema.Class<PingEvent>(
   "@effect/ai-anthropic/PingEvent"
 )({
   type: Schema.Literal("ping")
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ErrorEvent extends Schema.Class<ErrorEvent>(
   "@effect/ai-anthropic/ErrorEvent"
 )({
@@ -358,6 +366,10 @@ export class ErrorEvent extends Schema.Class<ErrorEvent>(
   })
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class MessageStartEvent extends Schema.Class<MessageStartEvent>(
   "@effect/ai-anthropic/MessageStartEvent"
 )({
@@ -365,6 +377,10 @@ export class MessageStartEvent extends Schema.Class<MessageStartEvent>(
   message: Generated.Message
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ServerToolUsage extends Schema.Class<ServerToolUsage>(
   "@effect/ai-anthropic/ServerToolUsage"
 )({
@@ -377,6 +393,10 @@ export class ServerToolUsage extends Schema.Class<ServerToolUsage>(
   )
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class MessageDelta extends Schema.Class<MessageDelta>(
   "@effect/ai-anthropic/MessageDelta"
 )({
@@ -399,6 +419,10 @@ export class MessageDelta extends Schema.Class<MessageDelta>(
   )
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class MessageDeltaUsage extends Schema.Class<MessageDeltaUsage>(
   "@effect/ai-anthropic/MessageDeltaUsage"
 )({
@@ -439,6 +463,10 @@ export class MessageDeltaUsage extends Schema.Class<MessageDeltaUsage>(
   )
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class MessageDeltaEvent extends Schema.Class<MessageDeltaEvent>(
   "@effect/ai-anthropic/MessageDeltaEvent"
 )({
@@ -462,12 +490,20 @@ export class MessageDeltaEvent extends Schema.Class<MessageDeltaEvent>(
   usage: MessageDeltaUsage
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class MessageStopEvent extends Schema.Class<MessageStopEvent>(
   "@effect/ai-anthropic/MessageStopEvent"
 )({
   type: Schema.Literal("message_stop")
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ContentBlockStartEvent extends Schema.Class<ContentBlockStartEvent>(
   "@effect/ai-anthropic/ContentBlockStartEvent"
 )({
@@ -476,6 +512,10 @@ export class ContentBlockStartEvent extends Schema.Class<ContentBlockStartEvent>
   content_block: Generated.BetaContentBlock
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class CitationsDelta extends Schema.Class<CitationsDelta>(
   "@effect/ai-anthropic/CitationsDelta"
 )({
@@ -489,6 +529,10 @@ export class CitationsDelta extends Schema.Class<CitationsDelta>(
   )
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class InputJsonContentBlockDelta extends Schema.Class<InputJsonContentBlockDelta>(
   "@effect/ai-anthropic/InputJsonContentBlockDelta"
 )({
@@ -496,6 +540,10 @@ export class InputJsonContentBlockDelta extends Schema.Class<InputJsonContentBlo
   partial_json: Schema.String
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class SignatureContentBlockDelta extends Schema.Class<SignatureContentBlockDelta>(
   "@effect/ai-anthropic/SignatureContentBlockDelta"
 )({
@@ -503,6 +551,10 @@ export class SignatureContentBlockDelta extends Schema.Class<SignatureContentBlo
   signature: Schema.String
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class TextContentBlockDelta extends Schema.Class<TextContentBlockDelta>(
   "@effect/ai-anthropic/TextContentBlockDelta"
 )({
@@ -510,6 +562,10 @@ export class TextContentBlockDelta extends Schema.Class<TextContentBlockDelta>(
   text: Schema.String
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ThinkingContentBlockDelta extends Schema.Class<ThinkingContentBlockDelta>(
   "@effect/ai-anthropic/ThinkingContentBlockDelta"
 )({
@@ -517,6 +573,10 @@ export class ThinkingContentBlockDelta extends Schema.Class<ThinkingContentBlock
   thinking: Schema.String
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ContentBlockDeltaEvent extends Schema.Class<ContentBlockDeltaEvent>(
   "@effect/ai-anthropic/ContentBlockDeltaEvent"
 )({
@@ -531,6 +591,10 @@ export class ContentBlockDeltaEvent extends Schema.Class<ContentBlockDeltaEvent>
   )
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ContentBlockStopEvent extends Schema.Class<ContentBlockStopEvent>(
   "@effect/ai-anthropic/ContentBlockStopEvent"
 )({
@@ -538,6 +602,10 @@ export class ContentBlockStopEvent extends Schema.Class<ContentBlockStopEvent>(
   index: Schema.Int
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export const MessageStreamEvent = Schema.Union(
   PingEvent,
   ErrorEvent,
@@ -549,6 +617,10 @@ export const MessageStreamEvent = Schema.Union(
   ContentBlockStopEvent
 )
 
+/**
+ * @since 1.0.0
+ * @category Models
+ */
 export type MessageStreamEvent = typeof MessageStreamEvent.Type
 
 /**

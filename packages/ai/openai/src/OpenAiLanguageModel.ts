@@ -115,6 +115,10 @@ export class ProviderOptions extends Context.Tag(InternalUtilities.ProviderOptio
  * @since 1.0.0
  */
 export declare namespace ProviderOptions {
+  /**
+   * @since 1.0.0
+   * @category Provider Options
+   */
   export interface Service {
     "file": {
       readonly imageDetail?: typeof Generated.InputImageContentDetail.Encoded | undefined
@@ -512,7 +516,7 @@ const prepareMessages: (
 // Response Conversion
 // =============================================================================
 
-export const makeResponse: (
+const makeResponse: (
   response: Generated.Response,
   options: LanguageModel.ProviderOptions
 ) => Effect.Effect<

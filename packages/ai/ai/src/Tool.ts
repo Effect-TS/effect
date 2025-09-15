@@ -1108,10 +1108,11 @@ export const getDescriptionFromSchemaAst = (ast: AST.AST): string | undefined =>
 }
 
 /**
- * Generates a JSON Schema for the tool's parameter validation.
+ * Generates a JSON Schema for a tool.
  *
  * This function creates a JSON Schema representation that can be used by
- * AI providers for parameter validation and documentation generation.
+ * large language models to indicate the structure and type of the parameters
+ * that a given tool call should receive.
  *
  * @example
  * ```ts
@@ -1147,12 +1148,7 @@ export const getJsonSchema = <
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
   }
->(
-  /**
-   * The tool to generate JSON schema for.
-   */
-  tool: Tool<Name, Config>
-): JsonSchema.JsonSchema7 => getJsonSchemaFromSchemaAst(tool.parametersSchema.ast)
+>(tool: Tool<Name, Config>): JsonSchema.JsonSchema7 => getJsonSchemaFromSchemaAst(tool.parametersSchema.ast)
 
 /**
  * @since 1.0.0

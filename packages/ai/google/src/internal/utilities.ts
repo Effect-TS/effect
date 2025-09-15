@@ -1,4 +1,4 @@
-import type * as AiResponse from "@effect/ai/AiResponse"
+import type * as Response from "@effect/ai/Response"
 import type {
   JsonSchema7,
   JsonSchema7AnyOf,
@@ -15,9 +15,12 @@ import type { Mutable } from "effect/Types"
 import type { CandidateFinishReason, Schema, Type } from "../Generated.js"
 
 /** @internal */
-export const ProviderMetadataKey = "@effect/ai-google/GoogleGenerativeAiLanguageModel/ProviderMetadata"
+export const ProviderOptionsKey = "@effect/ai-google/GoogleLanguageModel/ProviderOptions"
 
-const finishReasonMap: Record<typeof CandidateFinishReason.Type, AiResponse.FinishReason> = {
+/** @internal */
+export const ProviderMetadataKey = "@effect/ai-google/GoogleLanguageModel/ProviderMetadata"
+
+const finishReasonMap: Record<typeof CandidateFinishReason.Type, Response.FinishReason> = {
   BLOCKLIST: "content-filter",
   FINISH_REASON_UNSPECIFIED: "other",
   IMAGE_SAFETY: "content-filter",
@@ -29,21 +32,28 @@ const finishReasonMap: Record<typeof CandidateFinishReason.Type, AiResponse.Fini
   RECITATION: "content-filter",
   SAFETY: "content-filter",
   SPII: "content-filter",
-  STOP: "stop"
+  STOP: "stop",
+  TOO_MANY_TOOL_CALLS: "error",
+  UNEXPECTED_TOOL_CALL: "error"
 }
 
 /** @internal */
-export const resolveFinishReason = (finishReason: typeof CandidateFinishReason.Type): AiResponse.FinishReason => {
+export const resolveFinishReason = (
+  finishReason: typeof CandidateFinishReason.Type | undefined,
+  hasToolCalls: boolean
+): Response.FinishReason => {
+  if (Predicate.isUndefined(finishReason)) {
+    return "unknown"
+  }
+  if (finishReason === "STOP" && hasToolCalls) {
+    return "tool-calls"
+  }
   const reason = finishReasonMap[finishReason]
   return Predicate.isUndefined(reason) ? "unknown" : reason
 }
 
-/**
- * Converts a JsonSchema7 object to a Gemini API compatible Schema object
- *
- * @internal
- */
-export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded => {
+/** @internal */
+export const jsonSchemaToOpenApiSchema = (schema: JsonSchema7): typeof Schema.Encoded => {
   // Handle special $id types
   if ("$id" in schema) {
     switch (schema.$id) {
@@ -84,6 +94,18 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
     // In a real implementation, you would resolve the reference
     // For now, we'll throw an error indicating this needs to be resolved
     throw new Error(`Reference resolution not implemented: ${schema.$ref}`)
+  }
+
+  // Handle enum
+  if ("enum" in schema) {
+    const enumSchema = schema as JsonSchema7Enum
+    const result: typeof Schema.Encoded = {
+      type: determineEnumType(enumSchema.enum),
+      enum: enumSchema.enum.map(String), // Convert to strings for Gemini
+      ...extractAnnotations(enumSchema)
+    }
+
+    return result
   }
 
   // Handle null type
@@ -162,23 +184,11 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
         // Tuple validation - Gemini doesn't directly support this
         // We'll use the first item type as a simplification
         if (arraySchema.items.length > 0) {
-          result.items = jsonSchemaToOpenApi(arraySchema.items[0])
+          result.items = jsonSchemaToOpenApiSchema(arraySchema.items[0])
         }
       } else {
-        result.items = jsonSchemaToOpenApi(arraySchema.items)
+        result.items = jsonSchemaToOpenApiSchema(arraySchema.items)
       }
-    }
-
-    return result
-  }
-
-  // Handle enum
-  if ("enum" in schema) {
-    const enumSchema = schema as JsonSchema7Enum
-    const result: typeof Schema.Encoded = {
-      type: determineEnumType(enumSchema.enum),
-      enum: enumSchema.enum.map(String), // Convert to strings for Gemini
-      ...extractAnnotations(enumSchema)
     }
 
     return result
@@ -189,7 +199,7 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
     const anyOfSchema = schema as JsonSchema7AnyOf
     const result: typeof Schema.Encoded = {
       type: "OBJECT", // Default type for anyOf
-      anyOf: anyOfSchema.anyOf.map((s) => jsonSchemaToOpenApi(s)),
+      anyOf: anyOfSchema.anyOf.map((s) => jsonSchemaToOpenApiSchema(s)),
       ...extractAnnotations(anyOfSchema)
     }
 
@@ -207,7 +217,7 @@ export const jsonSchemaToOpenApi = (schema: JsonSchema7): typeof Schema.Encoded 
     if (objectSchema.properties) {
       result.properties = {}
       for (const [key, value] of Object.entries(objectSchema.properties)) {
-        ;(result.properties as any)[key] = jsonSchemaToOpenApi(value)
+        ;(result.properties as any)[key] = jsonSchemaToOpenApiSchema(value)
       }
     }
 
