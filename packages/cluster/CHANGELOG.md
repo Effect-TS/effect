@@ -1,5 +1,13 @@
 # @effect/cluster
 
+## 0.48.7
+
+### Patch Changes
+
+- [#5505](https://github.com/Effect-TS/effect/pull/5505) [`1c4b6ae`](https://github.com/Effect-TS/effect/commit/1c4b6ae81daf17bce1f67c0a0bc298dc4ce8f461) Thanks @tim-smart! - ensure ShardManager and Runner get fresh versions of the rpc protocol
+
+- [#5508](https://github.com/Effect-TS/effect/pull/5508) [`26d1267`](https://github.com/Effect-TS/effect/commit/26d12678b08ee3021f5529bed97b63377155a7fe) Thanks @tim-smart! - ensure runner detects when it has been externally unregistered
+
 ## 0.48.6
 
 ### Patch Changes
