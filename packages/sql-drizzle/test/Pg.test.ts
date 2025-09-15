@@ -3,6 +3,8 @@ import * as Pg from "@effect/sql-drizzle/Pg"
 import { assert, describe, it } from "@effect/vitest"
 import * as D from "drizzle-orm/pg-core"
 import { Effect, Layer } from "effect"
+import * as Logger from "effect/Logger"
+import * as LogLevel from "effect/LogLevel"
 import { PgContainer } from "./utils-pg.js"
 import { DrizzlePgLive } from "./utils.js"
 
@@ -63,4 +65,30 @@ describe.sequential("Pg", () => {
     ), {
     timeout: 60000
   })
+
+  it.effect.only("fail properly for conflict issues", () => {
+    const logs: Array<unknown> = []
+    const logger = Logger.make((opts) => {
+      globalThis.console.log(opts)
+      return logs.push(opts.message)
+    })
+    return Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* Pg.PgDrizzle
+
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, snake_case TEXT NOT NULL)`
+      yield* db.insert(users).values({ name: "Alice", snakeCase: "test" })
+      yield* Effect.flip(
+        db.insert(users).values({ name: "Alice", snakeCase: "test" })
+      )
+      assert.deepEqual(logs, [])
+    }).pipe(
+      Effect.provide([
+        DrizzlePgLive,
+        Logger.replace(Logger.defaultLogger, logger),
+        Logger.minimumLogLevel(LogLevel.Debug)
+      ]),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    )
+  }, { timeout: 60000 })
 })
