@@ -36,6 +36,7 @@ import {
   EntityNotManagedByRunner,
   RunnerUnavailable
 } from "./ClusterError.js"
+import * as ClusterError from "./ClusterError.js"
 import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import * as ClusterSchema from "./ClusterSchema.js"
 import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
@@ -830,11 +831,12 @@ const make = Effect.gen(function*() {
 
     yield* Effect.logDebug("Subscribing to sharding events")
     const mailbox = yield* shardManager.shardingEvents(config.runnerAddress)
-    const startedLatch = yield* Deferred.make<void>()
+    const startedLatch = yield* Deferred.make<void, ClusterError.RunnerNotRegistered>()
 
     const eventsFiber = yield* Effect.gen(function*() {
       while (true) {
-        const [events] = yield* mailbox.takeAll
+        const [events, done] = yield* mailbox.takeAll
+        if (done) return
         for (const event of events) {
           yield* Effect.logDebug("Received sharding event", event)
 
@@ -868,11 +870,16 @@ const make = Effect.gen(function*() {
               }
               break
             }
+            case "RunnerUnregistered": {
+              if (!isLocalRunner(event.address)) break
+              return yield* Effect.fail(new ClusterError.RunnerNotRegistered({ address: event.address }))
+            }
           }
         }
       }
     }).pipe(
       Effect.intoDeferred(startedLatch),
+      Effect.zipRight(Effect.dieMessage("Shard manager event stream down")),
       Effect.forkScoped
     )
 
@@ -886,7 +893,7 @@ const make = Effect.gen(function*() {
       Effect.forkScoped
     )
 
-    yield* Fiber.joinAll([eventsFiber, syncFiber])
+    return yield* Fiber.joinAll([eventsFiber, syncFiber])
   }).pipe(
     Effect.scoped,
     Effect.catchAllCause((cause) => Effect.logDebug(cause)),
