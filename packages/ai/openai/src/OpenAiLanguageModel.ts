@@ -5,7 +5,7 @@ import * as AiError from "@effect/ai/AiError"
 import * as IdGenerator from "@effect/ai/IdGenerator"
 import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as AiModel from "@effect/ai/Model"
-import * as Prompt from "@effect/ai/Prompt"
+import type * as Prompt from "@effect/ai/Prompt"
 import type * as Response from "@effect/ai/Response"
 import type * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Tool from "@effect/ai/Tool"
@@ -15,7 +15,6 @@ import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -102,36 +101,47 @@ export declare namespace Config {
 // OpenAI Provider Options / Metadata
 // =============================================================================
 
-/**
- * @since 1.0.0
- * @category Provider Options
- */
-export class ProviderOptions extends Context.Tag(InternalUtilities.ProviderOptionsKey)<
-  ProviderOptions,
-  ProviderOptions.Service
->() {}
-
-/**
- * @since 1.0.0
- */
-export declare namespace ProviderOptions {
-  /**
-   * @since 1.0.0
-   * @category Provider Options
-   */
-  export interface Service {
-    "file": {
+declare module "@effect/ai/Prompt" {
+  export interface FilePartOptions extends ProviderOptions {
+    readonly openai?: {
+      /**
+       * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
+       */
       readonly imageDetail?: typeof Generated.InputImageContentDetail.Encoded | undefined
-    }
+    } | undefined
+  }
 
-    "reasoning": {
+  export interface ReasoningPartOptions extends ProviderOptions {
+    readonly openai?: {
+      /**
+       * The ID of the item to reference.
+       */
       readonly itemId?: string | undefined
+      /**
+       * The encrypted content of the reasoning item - populated when a response
+       * is generated with `reasoning.encrypted_content` in the `include`
+       * parameter.
+       */
       readonly encryptedContent?: string | undefined
-    }
+    } | undefined
+  }
 
-    "text": {
+  export interface ToolCallPartOptions extends ProviderOptions {
+    readonly openai?: {
+      /**
+       * The ID of the item to reference.
+       */
       readonly itemId?: string | undefined
-    }
+    } | undefined
+  }
+
+  export interface TextPartOptions extends ProviderOptions {
+    readonly openai?: {
+      /**
+       * The ID of the item to reference.
+       */
+      readonly itemId?: string | undefined
+    } | undefined
   }
 }
 
@@ -413,7 +423,7 @@ const prepareMessages: (
 
                 if (part.data instanceof Uint8Array) {
                   const base64 = Encoding.encodeBase64(part.data)
-                  const fileName = Option.getOrElse(part.fileName, () => `part-${index}.pdf`)
+                  const fileName = part.fileName ?? `part-${index}.pdf`
                   const fileData = `data:application/pdf;base64,${base64}`
                   content.push({ type: "input_file", filename: fileName, file_data: fileData })
                 }
@@ -448,10 +458,10 @@ const prepareMessages: (
             }
 
             case "reasoning": {
-              const options = Prompt.getProviderOptions(part, ProviderOptions)
+              const options = part.options.openai
 
-              if (Option.isSome(options) && Predicate.isNotUndefined(options.value.itemId)) {
-                const reasoningMessage = reasoningMessages[options.value.itemId]
+              if (Predicate.isNotUndefined(options?.itemId)) {
+                const reasoningMessage = reasoningMessages[options.itemId]
                 const summaryParts: Mutable<typeof Generated.ReasoningItem.fields.summary.Encoded> = []
 
                 if (part.text.length > 0) {
@@ -459,13 +469,13 @@ const prepareMessages: (
                 }
 
                 if (Predicate.isUndefined(reasoningMessage)) {
-                  reasoningMessages[options.value.itemId] = {
-                    id: options.value.itemId,
+                  reasoningMessages[options.itemId] = {
+                    id: options.itemId,
                     type: "reasoning",
                     summary: summaryParts,
-                    encrypted_content: options.value.encryptedContent
+                    encrypted_content: options.encryptedContent
                   }
-                  messages.push(reasoningMessages[options.value.itemId])
+                  messages.push(reasoningMessages[options.itemId])
                 } else {
                   for (const summaryPart of summaryParts) {
                     reasoningMessage.summary.push(summaryPart)
@@ -1309,17 +1319,10 @@ const getItemId = (
   part:
     | Prompt.TextPart
     | Prompt.ToolCallPart
-): string | undefined =>
-  Prompt.getProviderOptions(part, ProviderOptions).pipe(
-    Option.flatMapNullable((options) => options.itemId),
-    Option.getOrUndefined
-  )
+): string | undefined => part.options.openai?.itemId
 
 const getImageDetail = (part: Prompt.FilePart): typeof Generated.InputImageContentDetail.Encoded =>
-  Prompt.getProviderOptions(part, ProviderOptions).pipe(
-    Option.flatMapNullable((options) => options.imageDetail),
-    Option.getOrElse(() => "auto" as const)
-  )
+  part.options.openai?.imageDetail ?? "auto"
 
 const prepareInclude = (
   options: LanguageModel.ProviderOptions,

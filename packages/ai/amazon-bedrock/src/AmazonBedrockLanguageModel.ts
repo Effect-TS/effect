@@ -7,7 +7,7 @@ import * as AiError from "@effect/ai/AiError"
 import type * as IdGenerator from "@effect/ai/IdGenerator"
 import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as AiModel from "@effect/ai/Model"
-import * as Prompt from "@effect/ai/Prompt"
+import type * as Prompt from "@effect/ai/Prompt"
 import type * as Response from "@effect/ai/Response"
 import { addGenAIAnnotations } from "@effect/ai/Telemetry"
 import * as Tool from "@effect/ai/Tool"
@@ -17,7 +17,6 @@ import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -95,14 +94,51 @@ export declare namespace Config {
 // Amazon Bedrock Provider Options / Metadata
 // =============================================================================
 
-/**
- * @since 1.0.0
- * @category Provider Options
- */
-export class ProviderOptions extends Context.Tag(InternalUtilities.ProviderOptionsKey)<
-  ProviderOptions,
-  ProviderOptions.Service
->() {}
+declare module "@effect/ai/Prompt" {
+  export interface SystemMessageOptions extends ProviderOptions {
+    readonly bedrock?: {
+      /**
+       * Defines a section of content to be cached for reuse in subsequent API
+       * calls.
+       */
+      readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
+    } | undefined
+  }
+
+  export interface UserMessageOptions extends ProviderOptions {
+    readonly bedrock?: {
+      /**
+       * Defines a section of content to be cached for reuse in subsequent API
+       * calls.
+       */
+      readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
+    } | undefined
+  }
+
+  export interface AssistantMessageOptions extends ProviderOptions {
+    readonly bedrock?: {
+      /**
+       * Defines a section of content to be cached for reuse in subsequent API
+       * calls.
+       */
+      readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
+    } | undefined
+  }
+
+  export interface ToolMessageOptions extends ProviderOptions {
+    readonly bedrock?: {
+      /**
+       * Defines a section of content to be cached for reuse in subsequent API
+       * calls.
+       */
+      readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
+    } | undefined
+  }
+
+  export interface ReasoningPartOptions extends ProviderOptions {
+    readonly bedrock?: AmazonBedrockReasoningOptions | undefined
+  }
+}
 
 /**
  * @since 1.0.0
@@ -122,36 +158,6 @@ export type AmazonBedrockReasoningOptions = {
    * was therefore encrypted.
    */
   readonly redactedData: string
-}
-
-/**
- * @since 1.0.0
- * @category Provider Options
- */
-export declare namespace ProviderOptions {
-  /**
-   * @since 1.0.0
-   * @category Provider Options
-   */
-  export interface Service {
-    readonly "system": {
-      /**
-       * Defines a section of content to be cached for reuse in subsequent API
-       * calls.
-       */
-      readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
-    }
-
-    readonly "user": {
-      /**
-       * Defines a section of content to be cached for reuse in subsequent API
-       * calls.
-       */
-      readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
-    }
-
-    readonly "reasoning": AmazonBedrockReasoningOptions
-  }
 }
 
 /**
@@ -447,24 +453,24 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                 }
 
                 case "reasoning": {
-                  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-                  if (Option.isSome(providerOptions)) {
-                    if (providerOptions.value.type === "thinking") {
+                  const options = part.options.bedrock
+                  if (Predicate.isNotUndefined(options)) {
+                    if (options.type === "thinking") {
                       content.push({
                         reasoningContent: {
                           reasoningText: {
                             // Amazon Bedrock does not allow trailing whitespace in
                             // assistant content blocks
                             text: trimIfLast(isLastGroup, isLastMessage, isLastPart, part.text),
-                            signature: providerOptions.value.signature
+                            signature: options.signature
                           }
                         }
                       })
                     }
-                    if (providerOptions.value.type === "redacted_thinking") {
+                    if (options.type === "redacted_thinking") {
                       content.push({
                         reasoningContent: {
-                          redactedContent: providerOptions.value.redactedData
+                          redactedContent: options.redactedData
                         }
                       })
                     }
@@ -1159,15 +1165,7 @@ const getCachePoint = (
     | Prompt.UserMessage
     | Prompt.AssistantMessage
     | Prompt.ToolMessage
-): typeof CachePointBlock.Encoded | undefined => {
-  const providerOptions: Option.Option<{
-    readonly cachePoint?: typeof CachePointBlock.Encoded | undefined
-  }> = Prompt.getProviderOptions(part, ProviderOptions)
-  return providerOptions.pipe(
-    Option.flatMapNullable((options) => options.cachePoint),
-    Option.getOrUndefined
-  )
-}
+): typeof CachePointBlock.Encoded | undefined => part.options.bedrock?.cachePoint
 
 const convertToBase64 = (data: string | Uint8Array): string =>
   typeof data === "string" ? data : Encoding.encodeBase64(data)

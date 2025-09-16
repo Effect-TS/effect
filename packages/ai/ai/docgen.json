@@ -18,11 +18,7 @@
       "@effect/platform-node": ["../../../../platform-node/src/index.js"],
       "@effect/platform-node/*": ["../../../../platform-node/src/*.js"],
       "@effect/ai": ["../../../ai/src/index.js"],
-      "@effect/ai/*": ["../../../ai/src/*.js"],
-      "@effect/ai-anthropic": ["../../../anthropic/src/index.js"],
-      "@effect/ai-anthropic/*": ["../../../anthropic/src/*.js"],
-      "@effect/ai-openai": ["../../../openai/src/index.js"],
-      "@effect/ai-openai/*": ["../../../openai/src/*.js"]
+      "@effect/ai/*": ["../../../ai/src/*.js"]
     }
   }
 }

@@ -77,78 +77,13 @@ internally into a user message with a single text content part.
 
 To support specification of provider-specific options when interacting with large 
 language model providers, support has been added for adding provider-specific
-options to the parts of a `Prompt`. This can be done in one of several ways:
-
-**Prompt Module Helper Methods**
-
-When using the helper methods exposed by the `Prompt` module to add provider-specific
-options to a message or a content part, you get type safety on the available options.
-
-```ts
-import { LanguageModel, Prompt } from "@effect/ai"
-import { AnthropicLanguageModel } from "@effect/ai-anthropic"
-
-const textPart = Prompt.makePart("text", {
-  text: "What is machine learning?",
-})
-
-const userMessage = Prompt.makeMessage("user", {
-  content: [textPart],
-})
-
-// Unsafely mutates the user message to add the provider-specific options
-Prompt.unsafeSetProviderOptions(
-  userMessage, 
-  AnthropicLanguageModel.ProviderOptions,
-  { cacheControl: { type: "ephemeral", ttl: "1h" } }
-)
-
-const program = LanguageModel.generateText({
-  prompt: Prompt.fromMessages([userMessage])
-})
-```
-
-**Prompt Constructors**
-
-You can add provider-specific options directly to the messages or content parts of a 
-prompt when using the constructors exposed by the `Prompt` module. 
-
-To add provider-specific options in this manner, use the `.key` property of the 
-`ProviderOptions` tag exposed by the provider you want to add options for:
-
-```ts
-import { LanguageModel, Prompt } from "@effect/ai"
-import { AnthropicLanguageModel } from "@effect/ai-anthropic"
-
-const textPart = Prompt.makePart("text", {
-  text: "What is machine learning?"
-})
-
-const userMessage = Prompt.makeMessage("user", {
-  content: [textPart],
-  options: {
-    [AnthropicLanguageModel.ProviderOptions.key]: {
-      cacheControl: { type: "ephemeral", ttl: "1h" }
-    }
-  }
-})
-
-const program = LanguageModel.generateText({
-  prompt: Prompt.fromMessages([userMessage])
-})
-```
-
-**Raw Prompt Input**
-
-You can also add provider-specific options when constructing a `Prompt` from
-raw prompt messages / content parts.
-
-To add provider-specific options in this manner, use the `.key` property of the 
-`ProviderOptions` tag exposed by the provider you want to add options for:
+options to the parts of a `Prompt`. 
 
 ```ts
 import { LanguageModel } from "@effect/ai"
 import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+
+const Claude = AnthropicLanguageModel.model("claude-sonnet-4-20250514")
 
 const program = LanguageModel.generateText({
   prompt: [
@@ -156,13 +91,11 @@ const program = LanguageModel.generateText({
       role: "user",
       content: [{ type: "text", text: "What is machine learning?" }],
       options: {
-        [AnthropicLanguageModel.ProviderOptions.key]: {
-          cacheControl: { type: "ephemeral", ttl: "1h" }
-        }
+        anthropic: { cacheControl: { type: "ephemeral", ttl: "1h" } }
       }
     }
   ]
-})
+}).pipe(Effect.provide(Claude))
 ```
 
 ## Responses

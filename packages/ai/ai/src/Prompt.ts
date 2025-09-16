@@ -49,79 +49,14 @@
  * const combined = Prompt.merge(systemPrompt, userPrompt)
  * ```
  *
- * This module also provides functionality for adding provider-specific options
- * to the content parts and / or messages of a Prompt.
- *
- * Adding provider-specific options to a content part and / or message allows
- * for adding of provider-specific behavior when handling said content part /
- * message in the provider implementation.
- *
- * To add provider-specific options, each provider exposes a `Context.Tag` which
- * can be used to set and get the provider-specific options from a content
- * part or message. Using a `Context.Tag` allows type-safe access to this
- * information.
- *
- * There are two primary modalities for adding custom options to content parts /
- * messages.
- *
- * 1. Add the provider-specific option when constructing a part:
- *
- * @example
- * ```ts
- * import { Prompt } from "@effect/ai"
- * import { AnthropicLanguageModel } from "@effect/ai-anthropic"
- *
- * const reasoningPart = Prompt.makePart("reasoning", {
- *   text: "Here is my train of thought...",
- *   options: {
- *     // Use the `key` of the `AnthropicLanguageModel.ProviderOptions` tag
- *     [AnthropicLanguageModel.ProviderOptions.key]: {
- *       type: "thinking",
- *       signature: "abcdefg"
- *     }
- *   }
- * })
- *
- * const options = Prompt.getProviderOptions(
- *   reasoningPart,
- *   AnthropicLanguageModel.ProviderOptions
- * )
- * ```
- *
- * 2. Mutate an existing part to add the provider-specific option:
- *
- * @example
- * ```ts
- * import { Prompt } from "@effect/ai"
- * import { AnthropicLanguageModel } from "@effect/ai-anthropic"
- *
- * const reasoningPart = Prompt.makePart("reasoning", {
- *   text: "Here is my train of thought...",
- * })
- *
- * Prompt.unsafeSetProviderOptions(
- *   reasoningPart,
- *   AnthropicLanguageModel.ProviderOptions,
- *   {
- *     type: "thinking",
- *     signature: "abcdefg"
- *   } as const
- * )
- *
- * const options = Prompt.getProviderOptions(
- *   reasoningPart,
- *   AnthropicLanguageModel.ProviderOptions
- * )
- * ```
- *
  * @since 1.0.0
  */
-import type * as Context from "effect/Context"
 import { constFalse, dual } from "effect/Function"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Response from "./Response.js"
+
+const constEmptyObject = () => ({})
 
 // =============================================================================
 // Options
@@ -144,7 +79,7 @@ import type * as Response from "./Response.js"
  * @since 1.0.0
  * @category Models
  */
-export const Options = Schema.Record({
+export const ProviderOptions = Schema.Record({
   key: Schema.String,
   value: Schema.Record({ key: Schema.String, value: Schema.Unknown })
 })
@@ -153,7 +88,7 @@ export const Options = Schema.Record({
  * @since 1.0.0
  * @category Models
  */
-export type Options = typeof Options.Type
+export type ProviderOptions = typeof ProviderOptions.Type
 
 // =============================================================================
 // Base Part
@@ -215,7 +150,7 @@ export type PartEncoded =
  * @since 1.0.0
  * @category Models
  */
-export interface BasePart<Type extends string> {
+export interface BasePart<Type extends string, Options extends ProviderOptions> {
   readonly [PartTypeId]: PartTypeId
   /**
    * The type of this content part.
@@ -224,7 +159,7 @@ export interface BasePart<Type extends string> {
   /**
    * Provider-specific options for this part.
    */
-  readonly options?: Options | undefined
+  readonly options: Options
 }
 
 /**
@@ -233,7 +168,7 @@ export interface BasePart<Type extends string> {
  * @since 1.0.0
  * @category Models
  */
-export interface BasePartEncoded<Type extends string> {
+export interface BasePartEncoded<Type extends string, Options extends ProviderOptions> {
   /**
    * The type of this content part.
    */
@@ -250,7 +185,6 @@ export interface BasePartEncoded<Type extends string> {
  * @example
  * ```ts
  * import { Prompt } from "@effect/ai"
- * import { Option } from "effect"
  *
  * const textPart = Prompt.makePart("text", {
  *   text: "Hello, world!"
@@ -258,7 +192,7 @@ export interface BasePartEncoded<Type extends string> {
  *
  * const filePart = Prompt.makePart("file", {
  *   mediaType: "image/png",
- *   fileName: Option.some("screenshot.png"),
+ *   fileName: "screenshot.png",
  *   data: new Uint8Array([1, 2, 3])
  * })
  * ```
@@ -278,7 +212,7 @@ export const makePart = <const Type extends Part["type"]>(
     /**
      * Optional provider-specific options for this part.
      */
-    readonly options?: Options | undefined
+    readonly options?: Extract<Part, { type: Type }>["options"]
   }
 ): Extract<Part, { type: Type }> =>
   ({
@@ -309,7 +243,7 @@ export const makePart = <const Type extends Part["type"]>(
  * @since 1.0.0
  * @category Models
  */
-export interface TextPart extends BasePart<"text"> {
+export interface TextPart extends BasePart<"text", TextPartOptions> {
   /**
    * The text content.
    */
@@ -322,12 +256,21 @@ export interface TextPart extends BasePart<"text"> {
  * @since 1.0.0
  * @category Models
  */
-export interface TextPartEncoded extends BasePartEncoded<"text"> {
+export interface TextPartEncoded extends BasePartEncoded<"text", TextPartOptions> {
   /**
    * The text content.
    */
   readonly text: string
 }
+
+/**
+ * Represents provider-specific options that can be associated with a
+ * `TextPart` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface TextPartOptions extends ProviderOptions {}
 
 /**
  * Schema for validation and encoding of text parts.
@@ -338,7 +281,7 @@ export interface TextPartEncoded extends BasePartEncoded<"text"> {
 export const TextPart: Schema.Schema<TextPart, TextPartEncoded> = Schema.Struct({
   type: Schema.Literal("text"),
   text: Schema.String,
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "TextPart" })
@@ -363,7 +306,7 @@ export const TextPart: Schema.Schema<TextPart, TextPartEncoded> = Schema.Struct(
  * @since 1.0.0
  * @category Models
  */
-export interface ReasoningPart extends BasePart<"reasoning"> {
+export interface ReasoningPart extends BasePart<"reasoning", ReasoningPartOptions> {
   /**
    * The reasoning or thought process text.
    */
@@ -376,12 +319,21 @@ export interface ReasoningPart extends BasePart<"reasoning"> {
  * @since 1.0.0
  * @category Models
  */
-export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning"> {
+export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning", ReasoningPartOptions> {
   /**
    * The reasoning or thought process text.
    */
   readonly text: string
 }
+
+/**
+ * Represents provider-specific options that can be associated with a
+ * `ReasoningPart` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface ReasoningPartOptions extends ProviderOptions {}
 
 /**
  * Schema for validation and encoding of reasoning parts.
@@ -392,7 +344,7 @@ export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning"> {
 export const ReasoningPart: Schema.Schema<ReasoningPart, ReasoningPartEncoded> = Schema.Struct({
   type: Schema.Literal("reasoning"),
   text: Schema.String,
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningPart" })
@@ -411,17 +363,16 @@ export const ReasoningPart: Schema.Schema<ReasoningPart, ReasoningPartEncoded> =
  * @example
  * ```ts
  * import { Prompt } from "@effect/ai"
- * import { Option } from "effect"
  *
  * const imagePart: Prompt.FilePart = Prompt.makePart("file", {
  *   mediaType: "image/jpeg",
- *   fileName: Option.some("photo.jpg"),
+ *   fileName: "photo.jpg",
  *   data: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ..."
  * })
  *
  * const documentPart: Prompt.FilePart = Prompt.makePart("file", {
  *   mediaType: "application/pdf",
- *   fileName: Option.some("report.pdf"),
+ *   fileName: "report.pdf",
  *   data: new Uint8Array([1, 2, 3])
  * })
  * ```
@@ -429,28 +380,7 @@ export const ReasoningPart: Schema.Schema<ReasoningPart, ReasoningPartEncoded> =
  * @since 1.0.0
  * @category Models
  */
-export interface FilePart extends BasePart<"file"> {
-  /**
-   * MIME type of the file (e.g., "image/jpeg", "application/pdf").
-   */
-  readonly mediaType: string
-  /**
-   * Optional filename for the file.
-   */
-  readonly fileName: Option.Option<string>
-  /**
-   * File data as base64 string of data, a byte array, or a URL.
-   */
-  readonly data: string | Uint8Array | URL
-}
-
-/**
- * Encoded representation of file parts for serialization.
- *
- * @since 1.0.0
- * @category Models
- */
-export interface FilePartEncoded extends BasePartEncoded<"file"> {
+export interface FilePart extends BasePart<"file", FilePartOptions> {
   /**
    * MIME type of the file (e.g., "image/jpeg", "application/pdf").
    */
@@ -466,6 +396,36 @@ export interface FilePartEncoded extends BasePartEncoded<"file"> {
 }
 
 /**
+ * Encoded representation of file parts for serialization.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions> {
+  /**
+   * MIME type of the file (e.g., "image/jpeg", "application/pdf").
+   */
+  readonly mediaType: string
+  /**
+   * Optional filename for the file.
+   */
+  readonly fileName?: string | undefined
+  /**
+   * File data as base64 string of data, a byte array, or a URL.
+   */
+  readonly data: string | Uint8Array | URL
+}
+
+/**
+ * Represents provider-specific options that can be associated with a
+ * `FilePart` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface FilePartOptions extends ProviderOptions {}
+
+/**
  * Schema for validation and encoding of file parts.
  *
  * @since 1.0.0
@@ -474,9 +434,9 @@ export interface FilePartEncoded extends BasePartEncoded<"file"> {
 export const FilePart: Schema.Schema<FilePart, FilePartEncoded> = Schema.Struct({
   type: Schema.Literal("file"),
   mediaType: Schema.String,
-  fileName: Schema.optionalWith(Schema.String, { as: "Option" }),
+  fileName: Schema.optional(Schema.String),
   data: Schema.Union(Schema.String, Schema.Uint8ArrayFromSelf, Schema.URLFromSelf),
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "FilePart" })
@@ -504,7 +464,7 @@ export const FilePart: Schema.Schema<FilePart, FilePartEncoded> = Schema.Struct(
  * @since 1.0.0
  * @category Models
  */
-export interface ToolCallPart extends BasePart<"tool-call"> {
+export interface ToolCallPart extends BasePart<"tool-call", ToolCallPartOptions> {
   /**
    * Unique identifier for this tool call.
    */
@@ -529,7 +489,7 @@ export interface ToolCallPart extends BasePart<"tool-call"> {
  * @since 1.0.0
  * @category Models
  */
-export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call"> {
+export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call", ToolCallPartOptions> {
   /**
    * Unique identifier for this tool call.
    */
@@ -549,6 +509,15 @@ export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call"> {
 }
 
 /**
+ * Represents provider-specific options that can be associated with a
+ * `ToolCallPart` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface ToolCallPartOptions extends ProviderOptions {}
+
+/**
  * Schema for validation and encoding of tool call parts.
  *
  * @since 1.0.0
@@ -560,7 +529,7 @@ export const ToolCallPart: Schema.Schema<ToolCallPart, ToolCallPartEncoded> = Sc
   name: Schema.String,
   params: Schema.Unknown,
   providerExecuted: Schema.optionalWith(Schema.Boolean, { default: constFalse }),
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolCallPart" })
@@ -591,7 +560,7 @@ export const ToolCallPart: Schema.Schema<ToolCallPart, ToolCallPartEncoded> = Sc
  * @since 1.0.0
  * @category Models
  */
-export interface ToolResultPart extends BasePart<"tool-result"> {
+export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOptions> {
   /**
    * Unique identifier matching the original tool call.
    */
@@ -612,7 +581,7 @@ export interface ToolResultPart extends BasePart<"tool-result"> {
  * @since 1.0.0
  * @category Models
  */
-export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result"> {
+export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", ToolResultPartOptions> {
   /**
    * Unique identifier matching the original tool call.
    */
@@ -628,6 +597,15 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result"> {
 }
 
 /**
+ * Represents provider-specific options that can be associated with a
+ * `ToolResultPart` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface ToolResultPartOptions extends ProviderOptions {}
+
+/**
  * Schema for validation and encoding of tool result parts.
  *
  * @since 1.0.0
@@ -638,7 +616,7 @@ export const ToolResultPart: Schema.Schema<ToolResultPart, ToolResultPartEncoded
   id: Schema.String,
   name: Schema.String,
   result: Schema.Unknown,
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolResultPart" })
@@ -680,7 +658,7 @@ export const isMessage = (u: unknown): u is Message => Predicate.hasProperty(u, 
  * @since 1.0.0
  * @category Models
  */
-export interface BaseMessage<Role extends string> {
+export interface BaseMessage<Role extends string, Options extends ProviderOptions> {
   readonly [MessageTypeId]: MessageTypeId
   /**
    * The role of the message participant.
@@ -689,7 +667,7 @@ export interface BaseMessage<Role extends string> {
   /**
    * Provider-specific options for this message.
    */
-  readonly options?: Options | undefined
+  readonly options: Options
 }
 
 /**
@@ -700,7 +678,7 @@ export interface BaseMessage<Role extends string> {
  * @since 1.0.0
  * @category Models
  */
-export interface BaseMessageEncoded<Role extends string> {
+export interface BaseMessageEncoded<Role extends string, Options extends ProviderOptions> {
   /**
    * The role of the message participant.
    */
@@ -733,7 +711,7 @@ export interface BaseMessageEncoded<Role extends string> {
 export const makeMessage = <const Role extends Message["role"]>(
   role: Role,
   params: Omit<Extract<Message, { role: Role }>, MessageTypeId | "role" | "options"> & {
-    readonly options?: Options | undefined
+    readonly options?: Extract<Message, { role: Role }>["options"]
   }
 ): Extract<Message, { role: Role }> =>
   ({
@@ -763,7 +741,7 @@ export const makeMessage = <const Role extends Message["role"]>(
  * @since 1.0.0
  * @category Models
  */
-export interface SystemMessage extends BaseMessage<"system"> {
+export interface SystemMessage extends BaseMessage<"system", SystemMessageOptions> {
   /**
    * The system instruction or context as plain text.
    */
@@ -776,12 +754,21 @@ export interface SystemMessage extends BaseMessage<"system"> {
  * @since 1.0.0
  * @category Models
  */
-export interface SystemMessageEncoded extends BaseMessageEncoded<"system"> {
+export interface SystemMessageEncoded extends BaseMessageEncoded<"system", SystemMessageOptions> {
   /**
    * The system instruction or context as plain text.
    */
   readonly content: string
 }
+
+/**
+ * Represents provider-specific options that can be associated with a
+ * `SystemMessage` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface SystemMessageOptions extends ProviderOptions {}
 
 /**
  * Schema for validation and encoding of system messages.
@@ -792,7 +779,7 @@ export interface SystemMessageEncoded extends BaseMessageEncoded<"system"> {
 export const SystemMessage: Schema.Schema<SystemMessage, SystemMessageEncoded> = Schema.Struct({
   role: Schema.Literal("system"),
   content: Schema.String,
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "SystemMessage" })
@@ -808,7 +795,6 @@ export const SystemMessage: Schema.Schema<SystemMessage, SystemMessageEncoded> =
  * @example
  * ```ts
  * import { Prompt } from "@effect/ai"
- * import { Option } from "effect"
  *
  * const textUserMessage: Prompt.UserMessage = Prompt.makeMessage("user", {
  *   content: [
@@ -825,7 +811,7 @@ export const SystemMessage: Schema.Schema<SystemMessage, SystemMessageEncoded> =
  *     }),
  *     Prompt.makePart("file", {
  *       mediaType: "image/jpeg",
- *       fileName: Option.some("vacation.jpg"),
+ *       fileName: "vacation.jpg",
  *       data: "data:image/jpeg;base64,..."
  *     })
  *   ]
@@ -835,7 +821,7 @@ export const SystemMessage: Schema.Schema<SystemMessage, SystemMessageEncoded> =
  * @since 1.0.0
  * @category Models
  */
-export interface UserMessage extends BaseMessage<"user"> {
+export interface UserMessage extends BaseMessage<"user", UserMessageOptions> {
   /**
    * Array of content parts that make up the user's message.
    */
@@ -856,7 +842,7 @@ export type UserMessagePart = TextPart | FilePart
  * @since 1.0.0
  * @category Models
  */
-export interface UserMessageEncoded extends BaseMessageEncoded<"user"> {
+export interface UserMessageEncoded extends BaseMessageEncoded<"user", UserMessageOptions> {
   /**
    * Array of content parts that make up the user's message.
    */
@@ -872,6 +858,15 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user"> {
 export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
 
 /**
+ * Represents provider-specific options that can be associated with a
+ * `UserMessage` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface UserMessageOptions extends ProviderOptions {}
+
+/**
  * Schema for validation and encoding of user messages.
  *
  * @since 1.0.0
@@ -880,7 +875,7 @@ export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
 export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schema.Struct({
   role: Schema.Literal("user"),
   content: Schema.Array(Schema.Union(TextPart, FilePart)),
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "UserMessage" })
@@ -923,7 +918,7 @@ export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schem
  * @since 1.0.0
  * @category Models
  */
-export interface AssistantMessage extends BaseMessage<"assistant"> {
+export interface AssistantMessage extends BaseMessage<"assistant", AssistantMessageOptions> {
   /**
    * Array of content parts that make up the assistant's response.
    */
@@ -949,7 +944,7 @@ export type AssistantMessagePart =
  * @since 1.0.0
  * @category Models
  */
-export interface AssistantMessageEncoded extends BaseMessageEncoded<"assistant"> {
+export interface AssistantMessageEncoded extends BaseMessageEncoded<"assistant", AssistantMessageOptions> {
   readonly content: ReadonlyArray<AssistantMessagePartEncoded>
 }
 
@@ -967,6 +962,15 @@ export type AssistantMessagePartEncoded =
   | ToolResultPartEncoded
 
 /**
+ * Represents provider-specific options that can be associated with a
+ * `AssistantMessage` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface AssistantMessageOptions extends ProviderOptions {}
+
+/**
  * Schema for validation and encoding of assistant messages.
  *
  * @since 1.0.0
@@ -975,7 +979,7 @@ export type AssistantMessagePartEncoded =
 export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageEncoded> = Schema.Struct({
   role: Schema.Literal("assistant"),
   content: Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart)),
-  options: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "AssistantMessage" })
@@ -1012,7 +1016,7 @@ export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageE
  * @since 1.0.0
  * @category Models
  */
-export interface ToolMessage extends BaseMessage<"tool"> {
+export interface ToolMessage extends BaseMessage<"tool", ToolMessageOptions> {
   /**
    * Array of tool result parts.
    */
@@ -1033,7 +1037,7 @@ export type ToolMessagePart = ToolResultPart
  * @since 1.0.0
  * @category Models
  */
-export interface ToolMessageEncoded extends BaseMessageEncoded<"tool"> {
+export interface ToolMessageEncoded extends BaseMessageEncoded<"tool", ToolMessageOptions> {
   /**
    * Array of tool result parts.
    */
@@ -1049,6 +1053,15 @@ export interface ToolMessageEncoded extends BaseMessageEncoded<"tool"> {
 export type ToolMessagePartEncoded = ToolResultPartEncoded
 
 /**
+ * Represents provider-specific options that can be associated with a
+ * `ToolMessage` through module augmentation.
+ *
+ * @since 1.0.0
+ * @category ProviderOptions
+ */
+export interface ToolMessageOptions extends ProviderOptions {}
+
+/**
  * Schema for validation and encoding of tool messages.
  *
  * @since 1.0.0
@@ -1057,7 +1070,7 @@ export type ToolMessagePartEncoded = ToolResultPartEncoded
 export const ToolMessage: Schema.Schema<ToolMessage, ToolMessageEncoded> = Schema.Struct({
   role: Schema.Literal("tool"),
   content: Schema.Array(ToolResultPart),
-  metadata: Schema.optional(Options)
+  options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "ToolMessage" })
@@ -1168,7 +1181,10 @@ export interface PromptEncoded {
  */
 export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
   content: Schema.Array(Message)
-}).pipe(Schema.attachPropertySignature(TypeId, TypeId))
+}).pipe(
+  Schema.attachPropertySignature(TypeId, TypeId),
+  Schema.annotations({ identifier: "Prompt" })
+)
 
 /**
  * Schema for parsing a Prompt from JSON strings.
@@ -1208,7 +1224,6 @@ export const FromJson = Schema.parseJson(Prompt)
 export type RawInput =
   | string
   | Iterable<MessageEncoded>
-  | Iterable<Response.AnyPart>
   | Prompt
 
 const makePrompt = (content: ReadonlyArray<Message>): Prompt => ({
@@ -1261,12 +1276,7 @@ export const empty: Prompt = makePrompt([])
  * @since 1.0.0
  * @category Constructors
  */
-export const make = (
-  /**
-   * Input to convert into a Prompt. Can be a string, message array, response parts, or existing prompt.
-   */
-  input: RawInput
-): Prompt => {
+export const make = (input: RawInput): Prompt => {
   if (Predicate.isString(input)) {
     const part = makePart("text", { text: input })
     const message = makeMessage("user", { content: [part] })
@@ -1274,16 +1284,12 @@ export const make = (
   }
 
   if (Predicate.isIterable(input)) {
-    try {
-      return makePrompt(decodeMessagesSync(Array.from(input as Iterable<MessageEncoded>), {
-        errors: "all"
-      }))
-    } catch {
-      return fromResponseParts(Array.from(input as Iterable<Response.AnyPart>))
-    }
+    return makePrompt(decodeMessagesSync(Array.from(input), {
+      errors: "all"
+    }))
   }
 
-  return input as Prompt
+  return input
 }
 
 /**
@@ -1500,194 +1506,3 @@ export const merge: {
   (other: Prompt) => (self: Prompt) => Prompt,
   (self: Prompt, other: Prompt) => Prompt
 >(2, (self, other) => fromMessages([...self.content, ...other.content]))
-
-// =============================================================================
-// Provider Options
-// =============================================================================
-
-/**
- * Extracts the discriminator field based upon whether the specified type is
- * a `Message` or a `Part`.
- *
- * For a `Part`, this type extracts the value of the `"type"` field.
- *
- * For a `Message`, this type extracts the value of the `"role"` field.
- *
- * @since 1.0.0
- * @category Type Utilities
- */
-export type GetOptionDiscriminator<P extends Message | Part> = P extends Message ? P["role"]
-  : P extends Part ? P["type"]
-  : never
-
-/**
- * Extracts the provider-specific options from the specified type.
- *
- * If the specified type has provider-specific options registered, an `Option`
- * will be returned which wraps the provider-specific options.
- *
- * If the specified type does not have any provider-specific options registered,
- * `never` is returned.
- *
- * @since 1.0.0
- * @category Type Utilities
- */
-export type ExtractProviderOptions<
-  P extends Message | Part,
-  ProviderOptions,
-  Discriminator extends GetOptionDiscriminator<P> = GetOptionDiscriminator<P>
-> = ProviderOptions extends Record<string, any> ?
-  Discriminator extends keyof ProviderOptions ? Option.Option<ProviderOptions[Discriminator]>
-  : never
-  : never
-
-/**
- * Extracts the allowed provider-specific options for the specified type.
- *
- * If the specified type does not have any allowed provider-specific options,
- * `never` is returned.
- *
- * @since 1.0.0
- * @category Type Utilities
- */
-export type AllowedProviderOptions<
-  P extends Message | Part,
-  ProviderOptions,
-  Discriminator extends GetOptionDiscriminator<P> = GetOptionDiscriminator<P>
-> = ProviderOptions extends Record<string, any> ?
-  Discriminator extends keyof ProviderOptions ? ProviderOptions[Discriminator]
-  : never
-  : never
-
-/**
- * Extracts provider-specific options from a message or part.
- *
- * Retrieves configuration options that are specific to a particular AI provider,
- * allowing for provider-specific behavior while maintaining a unified interface.
- *
- * @example
- * ```ts
- * import { Prompt } from "@effect/ai"
- * import { Context } from "effect"
- *
- * // Define a provider options context
- * class OpenAIProviderOptions extends Context.Tag("OpenAIProviderOptions")<
- *   OpenAIProviderOptions,
- *   {
- *     user: { temperature?: number }
- *     assistant: { max_tokens?: number }
- *   }
- * >() {}
- *
- * const userMessage: Prompt.UserMessage = Prompt.makeMessage("user", {
- *   content: [Prompt.makePart("text", { text: "Hello" })],
- *   options: {
- *     [OpenAIProviderOptions.key]: {
- *       user: { temperature: 0.7 }
- *     }
- *   }
- * })
- *
- * // Extract options for this message
- * const options = Prompt.getProviderOptions(userMessage, OpenAIProviderOptions)
- * // Returns: Option.some({ temperature: 0.7 })
- * ```
- *
- * @since 1.0.0
- * @category Provider Options
- */
-export const getProviderOptions: {
-  <Identifier, ProviderOptions>(
-    tag: Context.Tag<Identifier, ProviderOptions>
-  ): <P extends Message | Part>(
-    part: P
-  ) => ExtractProviderOptions<P, ProviderOptions>
-  <P extends Message | Part, Identifier, ProviderOptions>(
-    part: P,
-    tag: Context.Tag<Identifier, ProviderOptions>
-  ): ExtractProviderOptions<P, ProviderOptions>
-} = dual<
-  <Identifier, ProviderOptions>(
-    tag: Context.Tag<Identifier, ProviderOptions>
-  ) => <P extends Message | Part>(
-    part: P
-  ) => ExtractProviderOptions<P, ProviderOptions>,
-  <P extends Message | Part, Identifier, ProviderOptions>(
-    part: P,
-    tag: Context.Tag<Identifier, ProviderOptions>
-  ) => ExtractProviderOptions<P, ProviderOptions>
->(2, (part, tag) =>
-  Option.fromNullable(part.options).pipe(
-    Option.flatMapNullable((options) => options[tag.key]),
-    Option.flatMapNullable((options) => "role" in part ? options[part.role] : options[part.type])
-  ) as any)
-
-/**
- * Sets provider-specific options on a message or part (mutating operation).
- *
- * **Warning**: This function **mutates** the provided message or part. Use with
- * caution and prefer adding provider-specific options during construction of a
- * content part or message, if possible.
- *
- * @example
- * ```ts
- * import { Prompt } from "@effect/ai"
- * import { Context } from "effect"
- *
- * class OpenAIProviderOptions extends Context.Tag("OpenAIOptions")<
- *   OpenAIProviderOptions,
- *   {
- *     user: { temperature?: number }
- *     assistant: { max_tokens?: number }
- *   }
- * >() {}
- *
- * const userMessage: Prompt.UserMessage = Prompt.makeMessage("user", {
- *   content: [Prompt.makePart("text", { text: "Hello" })],
- * })
- *
- * // Set options for this message (mutates the message)
- * Prompt.unsafeSetProviderOptions(userMessage, OpenAIProviderOptions, {
- *   temperature: 0.8
- * })
- * // userMessage.options now contains the OpenAI-specific options
- * ```
- *
- * @since 1.0.0
- * @category Provider Options
- */
-export const unsafeSetProviderOptions: {
-  <P extends Message | Part, Identifier, ProviderOptions>(
-    tag: Context.Tag<Identifier, ProviderOptions>,
-    options: AllowedProviderOptions<P, ProviderOptions>
-  ): (
-    part: P
-  ) => void
-  <P extends Message | Part, Identifier, ProviderOptions>(
-    part: P,
-    tag: Context.Tag<Identifier, ProviderOptions>,
-    options: AllowedProviderOptions<P, ProviderOptions>
-  ): void
-} = dual<
-  <P extends Message | Part, Identifier, ProviderOptions>(
-    tag: Context.Tag<Identifier, ProviderOptions>,
-    options: AllowedProviderOptions<P, ProviderOptions>
-  ) => (part: P) => void,
-  <P extends Message | Part, Identifier, ProviderOptions>(
-    part: P,
-    tag: Context.Tag<Identifier, ProviderOptions>,
-    options: AllowedProviderOptions<P, ProviderOptions>
-  ) => void
->(3, (part, tag, options) => {
-  if (Predicate.isUndefined(part.options)) {
-    ;(part.options as any) = {}
-  }
-  if (Predicate.isUndefined(part.options![tag.key])) {
-    ;(part.options![tag.key] as any) = {}
-  }
-  if ("role" in part) {
-    ;(part.options![tag.key][part.role] as any) = options
-  } else {
-    ;(part.options![tag.key][part.type] as any) = options
-  }
-})

@@ -5,7 +5,6 @@ import * as AiError from "@effect/ai/AiError"
 import * as IdGenerator from "@effect/ai/IdGenerator"
 import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as AiModel from "@effect/ai/Model"
-import * as Prompt from "@effect/ai/Prompt"
 import type * as Response from "@effect/ai/Response"
 import { addGenAIAnnotations } from "@effect/ai/Telemetry"
 import * as Tool from "@effect/ai/Tool"
@@ -14,7 +13,6 @@ import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -81,35 +79,23 @@ export declare namespace Config {
 // Google Ai Provider Options / Metadata
 // =============================================================================
 
-/**
- * @since 1.0.0
- * @category Provider Options
- */
-export class ProviderOptions extends Context.Tag(InternalUtilities.ProviderOptionsKey)<
-  ProviderOptions,
-  ProviderOptions.Service
->() {}
-
-/**
- * @since 1.0.0
- */
-export declare namespace ProviderOptions {
-  /**
-   * @since 1.0.0
-   * @category Provider Options
-   */
-  export interface Service {
-    "reasoning": {
+declare module "@effect/ai/Prompt" {
+  export interface ReasoningPartOptions extends ProviderOptions {
+    readonly google?: {
       readonly thoughtSignature?: string | undefined
-    }
+    } | undefined
+  }
 
-    "text": {
+  export interface TextPartOptions extends ProviderOptions {
+    readonly google?: {
       readonly thoughtSignature?: string | undefined
-    }
+    } | undefined
+  }
 
-    "tool-call": {
+  export interface ToolCallPartOptions extends ProviderOptions {
+    readonly google?: {
       readonly thoughtSignature?: string | undefined
-    }
+    } | undefined
   }
 }
 
@@ -338,13 +324,9 @@ const prepareMessages: (
             switch (part.type) {
               case "text": {
                 if (part.text.length > 0) {
-                  const thoughtSignature = Prompt.getProviderOptions(part, ProviderOptions).pipe(
-                    Option.flatMapNullable((options) => options.thoughtSignature),
-                    Option.getOrUndefined
-                  )
                   parts.push({
                     text: part.text,
-                    thoughtSignature
+                    thoughtSignature: part.options.google?.thoughtSignature
                   })
                 }
                 break
@@ -377,30 +359,22 @@ const prepareMessages: (
 
               case "reasoning": {
                 if (part.text.length > 0) {
-                  const thoughtSignature = Prompt.getProviderOptions(part, ProviderOptions).pipe(
-                    Option.flatMapNullable((options) => options.thoughtSignature),
-                    Option.getOrUndefined
-                  )
                   parts.push({
                     text: part.text,
                     thought: true,
-                    thoughtSignature
+                    thoughtSignature: part.options.google?.thoughtSignature
                   })
                 }
                 break
               }
 
               case "tool-call": {
-                const thoughtSignature = Prompt.getProviderOptions(part, ProviderOptions).pipe(
-                  Option.flatMapNullable((options) => options.thoughtSignature),
-                  Option.getOrUndefined
-                )
                 parts.push({
                   functionCall: {
                     name: part.name,
                     args: part.params as any
                   },
-                  thoughtSignature
+                  thoughtSignature: part.options.google?.thoughtSignature
                 })
                 break
               }

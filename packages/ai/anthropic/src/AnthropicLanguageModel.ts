@@ -5,7 +5,7 @@ import * as AiError from "@effect/ai/AiError"
 import * as IdGenerator from "@effect/ai/IdGenerator"
 import * as LanguageModel from "@effect/ai/LanguageModel"
 import * as AiModel from "@effect/ai/Model"
-import * as Prompt from "@effect/ai/Prompt"
+import type * as Prompt from "@effect/ai/Prompt"
 import type * as Response from "@effect/ai/Response"
 import { addGenAIAnnotations } from "@effect/ai/Telemetry"
 import type * as Tokenizer from "@effect/ai/Tokenizer"
@@ -15,9 +15,8 @@ import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
-import { constFalse, dual } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -85,10 +84,108 @@ export declare namespace Config {
  * @since 1.0.0
  * @category Provider Options
  */
-export class ProviderOptions extends Context.Tag(InternalUtilities.ProviderOptionsKey)<
-  ProviderOptions,
-  ProviderOptions.Service
->() {}
+declare module "@effect/ai/Prompt" {
+  export interface SystemMessageOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+
+  export interface UserMessageOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+
+  export interface AssistantMessageOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+
+  export interface ToolMessageOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+
+  export interface TextPartOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+
+  export interface ReasoningPartOptions extends ProviderOptions {
+    readonly anthropic?:
+      | Simplify<
+        AnthropicReasoningMetadata & {
+          /**
+           * A breakpoint which marks the end of reusable content eligible for caching.
+           */
+          readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+        }
+      >
+      | undefined
+  }
+
+  export interface FilePartOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+      /**
+       * Whether or not citations should be enabled for the file part.
+       */
+      readonly citations?: typeof Generated.RequestCitationsConfig.Encoded | undefined
+      /**
+       * A custom title to provide to the document. If omitted, the file part's
+       * `fileName` property will be used.
+       */
+      readonly documentTitle?: string | undefined
+      /**
+       * Additional context about the document that will be forwarded to the
+       * large language model, but will not be used towards cited content.
+       *
+       * Useful for storing additional document metadata as text or stringified JSON.
+       */
+      readonly documentContext?: string | undefined
+    } | undefined
+  }
+
+  export interface ToolCallPartOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+
+  export interface ToolResultPartOptions extends ProviderOptions {
+    readonly anthropic?: {
+      /**
+       * A breakpoint which marks the end of reusable content eligible for caching.
+       */
+      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded | undefined
+    } | undefined
+  }
+}
 
 /**
  * @since 1.0.0
@@ -108,98 +205,6 @@ export type AnthropicReasoningMetadata = {
    * was therefore encrypted.
    */
   readonly redactedData: typeof Generated.RequestRedactedThinkingBlock.fields.data.Encoded
-}
-
-/**
- * @since 1.0.0
- */
-export declare namespace ProviderOptions {
-  /**
-   * @since 1.0.0
-   * @category Provider Options
-   */
-  export interface Service {
-    readonly "system": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-
-    readonly "user": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-
-    readonly "assistant": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-
-    readonly "tool": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-
-    readonly "text": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-
-    readonly "file": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-      /**
-       * Whether or not citations should be enabled for the file part.
-       */
-      readonly citations?: typeof Generated.RequestCitationsConfig.Encoded
-      /**
-       * A custom title to provide to the document. If omitted, the file part's
-       * `fileName` property will be used.
-       */
-      readonly documentTitle?: typeof Generated.RequestDocumentBlock.fields.title.from.Encoded
-      /**
-       * Additional context about the document that will be forwarded to the
-       * large language model, but will not be used towards cited content.
-       *
-       * Useful for storing additional document metadata as text or stringified JSON.
-       */
-      readonly documentContext?: typeof Generated.RequestDocumentBlock.fields.context.from.Encoded
-    }
-
-    readonly "reasoning": Simplify<
-      AnthropicReasoningMetadata & {
-        /**
-         * A breakpoint which marks the end of reusable content eligible for caching.
-         */
-        readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-      }
-    >
-
-    readonly "tool-call": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-
-    readonly "tool-result": {
-      /**
-       * A breakpoint which marks the end of reusable content eligible for caching.
-       */
-      readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-    }
-  }
 }
 
 /**
@@ -565,7 +570,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                       content.push({
                         type: "document",
                         source,
-                        title: documentOptions?.title ?? Option.getOrUndefined(part.fileName),
+                        title: documentOptions?.title ?? part.fileName,
                         ...(documentOptions?.context ? { context: documentOptions.context } : undefined),
                         ...(enableCitations ? { citations: { enabled: true } } : undefined),
                         cache_control: cacheControl
@@ -638,18 +643,18 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
               }
 
               case "reasoning": {
-                const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-                if (Option.isSome(providerOptions)) {
-                  if (providerOptions.value.type === "thinking") {
+                const options = part.options.anthropic
+                if (Predicate.isNotUndefined(options)) {
+                  if (options.type === "thinking") {
                     content.push({
                       type: "thinking",
                       thinking: part.text,
-                      signature: providerOptions.value.signature
+                      signature: options.signature
                     })
                   } else {
                     content.push({
                       type: "redacted_thinking",
-                      data: providerOptions.value.redactedData
+                      data: options.redactedData
                     })
                   }
                 }
@@ -1579,10 +1584,7 @@ const groupMessages = (prompt: Prompt.Prompt): Array<ContentGroup> => {
 
 const isCitationPart = (part: Prompt.UserMessage["content"][number]): part is Prompt.FilePart => {
   if (part.type === "file" && (part.mediaType === "application/pdf" || part.mediaType === "text/plain")) {
-    return Prompt.getProviderOptions(part, ProviderOptions).pipe(
-      Option.flatMapNullable((options) => options.citations?.enabled),
-      Option.getOrElse(constFalse)
-    )
+    return part.options.anthropic?.citations?.enabled ?? false
   }
   return false
 }
@@ -1599,10 +1601,9 @@ const extractCitableDocuments = (prompt: Prompt.Prompt): ReadonlyArray<CitableDo
     if (message.role === "user") {
       for (const part of message.content) {
         if (isCitationPart(part)) {
-          const fileName = Option.getOrUndefined(part.fileName)
           citableDocuments.push({
-            title: fileName ?? "Untitled Document",
-            fileName,
+            title: part.fileName ?? "Untitled Document",
+            fileName: part.fileName,
             mediaType: part.mediaType
           })
         }
@@ -1618,40 +1619,26 @@ const getCacheControl = (
     | Prompt.UserMessage
     | Prompt.AssistantMessage
     | Prompt.ToolMessage
-    | Prompt.UserMessage["content"][number]
-    | Prompt.AssistantMessage["content"][number]
-    | Prompt.ToolMessage["content"][number]
-): typeof Generated.CacheControlEphemeral.Encoded | undefined => {
-  const providerOptions: Option.Option<{
-    readonly cacheControl?: typeof Generated.CacheControlEphemeral.Encoded
-  }> = Prompt.getProviderOptions(part, ProviderOptions)
-  return providerOptions.pipe(
-    Option.flatMapNullable((options) => options.cacheControl),
-    Option.getOrUndefined
-  )
-}
+    | Prompt.UserMessagePart
+    | Prompt.AssistantMessagePart
+    | Prompt.ToolMessagePart
+): typeof Generated.CacheControlEphemeral.Encoded | undefined => part.options.anthropic?.cacheControl
 
 const getDocumentMetadata = (part: Prompt.FilePart): {
   readonly title: string | undefined
   readonly context: string | undefined
 } | undefined => {
-  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-  if (Option.isSome(providerOptions)) {
+  const options = part.options.anthropic
+  if (Predicate.isNotUndefined(options)) {
     return {
-      title: providerOptions.value.documentTitle ?? undefined,
-      context: providerOptions.value.documentContext ?? undefined
+      title: options.documentTitle,
+      context: options.documentContext
     }
   }
   return undefined
 }
 
-const shouldEnableCitations = (part: Prompt.FilePart): boolean => {
-  const providerOptions = Prompt.getProviderOptions(part, ProviderOptions)
-  return providerOptions.pipe(
-    Option.flatMapNullable((options) => options.citations?.enabled),
-    Option.getOrElse(constFalse)
-  )
-}
+const shouldEnableCitations = (part: Prompt.FilePart): boolean => part.options.anthropic?.citations?.enabled ?? false
 
 const processCitation: (
   citation:
