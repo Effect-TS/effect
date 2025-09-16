@@ -751,7 +751,9 @@ export const make = Effect.gen(function*() {
       }
       return Effect.tap(PubSub.subscribe(events), () => {
         const isRegistered = MutableHashMap.has(state.allRunners, address.value)
-        if (isRegistered) return
+        if (isRegistered) {
+          return runnerHealthApi.onConnection(address.value)
+        }
         return Effect.fail(new RunnerNotRegistered({ address: address.value }))
       })
     },
