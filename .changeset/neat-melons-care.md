@@ -12,7 +12,7 @@ This pull request contains a complete refactor of the base Effect AI SDK package
 as well as the associated provider integration packages to improve flexibility
 and enhance ergonomics. Major changes are outlined below.
 
-## Module Names
+## Modules
 
 All modules in the base Effect AI SDK have had the leading `Ai` prefix dropped
 from their name (except for the `AiError` module).
@@ -25,47 +25,298 @@ In addition, the `AiInput` module has been renamed to the `Prompt` module.
 
 The `Prompt` module has been completely redesigned with flexibility in mind.
 
-The `Prompt` module's primary `make` constructor, which is used by the methods on
-`LanguageModel`, now supports defining a prompt as an array of content parts, 
+The `Prompt` module now supports building a prompt using either the constructors
+exposed from the `Prompt` module, or using raw prompt content parts / messages, 
 which should be familiar to those coming from other AI SDKs. 
 
 In addition, the `system` option has been removed from all `LanguageModel` methods
 and must now be provided as part of the prompt.
+
+**Prompt Constructors**
+
+```ts
+import { LanguageModel, Prompt } from "@effect/ai"
+
+const textPart = Prompt.makePart("text", {
+  text: "What is machine learning?"
+})
+
+const userMessage = Prompt.makeMessage("user", {
+  content: [textPart]
+})
+
+const systemMessage = Prompt.makeMessage("system", {
+  content: "You are an expert in machine learning"
+})
+
+const program = LanguageModel.generateText({
+  prompt: Prompt.fromMessages([
+    systemMessage,
+    userMessage
+  ])
+})
+```
+
+**Raw Prompt Input**
+
+```ts
+import { LanguageModel } from "@effect/ai"
+
+const program = LanguageModel.generateText({
+  prompt: [
+    { role: "system", content: "You are an expert in machine learning" },
+    { role: "user", content: [{ type: "text", text: "What is machine learning?" }] }
+  ]
+})
+```
+
+**NOTE**: Providing a plain string as a prompt is still supported, and will be converted 
+internally into a user message with a single text content part.
+
+### Provider-Specific Options
+
+To support specification of provider-specific options when interacting with large 
+language model providers, support has been added for adding provider-specific
+options to the parts of a `Prompt`. This can be done in one of several ways:
+
+**Prompt Module Helper Methods**
+
+When using the helper methods exposed by the `Prompt` module to add provider-specific
+options to a message or a content part, you get type safety on the available options.
+
+```ts
+import { LanguageModel, Prompt } from "@effect/ai"
+import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+
+const textPart = Prompt.makePart("text", {
+  text: "What is machine learning?",
+})
+
+const userMessage = Prompt.makeMessage("user", {
+  content: [textPart],
+})
+
+// Unsafely mutates the user message to add the provider-specific options
+Prompt.unsafeSetProviderOptions(
+  userMessage, 
+  AnthropicLanguageModel.ProviderOptions,
+  { cacheControl: { type: "ephemeral", ttl: "1h" } }
+)
+
+const program = LanguageModel.generateText({
+  prompt: Prompt.fromMessages([userMessage])
+})
+```
+
+**Prompt Constructors**
+
+You can add provider-specific options directly to the messages or content parts of a 
+prompt when using the constructors exposed by the `Prompt` module. 
+
+To add provider-specific options in this manner, use the `.key` property of the 
+`ProviderOptions` tag exposed by the provider you want to add options for:
+
+```ts
+import { LanguageModel, Prompt } from "@effect/ai"
+import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+
+const textPart = Prompt.makePart("text", {
+  text: "What is machine learning?"
+})
+
+const userMessage = Prompt.makeMessage("user", {
+  content: [textPart],
+  options: {
+    [AnthropicLanguageModel.ProviderOptions.key]: {
+      cacheControl: { type: "ephemeral", ttl: "1h" }
+    }
+  }
+})
+
+const program = LanguageModel.generateText({
+  prompt: Prompt.fromMessages([userMessage])
+})
+```
+
+**Raw Prompt Input**
+
+You can also add provider-specific options when constructing a `Prompt` from
+raw prompt messages / content parts.
+
+To add provider-specific options in this manner, use the `.key` property of the 
+`ProviderOptions` tag exposed by the provider you want to add options for:
+
+```ts
+import { LanguageModel } from "@effect/ai"
+import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+
+const program = LanguageModel.generateText({
+  prompt: [
+    {
+      role: "user",
+      content: [{ type: "text", text: "What is machine learning?" }],
+      options: {
+        [AnthropicLanguageModel.ProviderOptions.key]: {
+          cacheControl: { type: "ephemeral", ttl: "1h" }
+        }
+      }
+    }
+  ]
+})
+```
 
 ## Responses
 
 The `Response` module has also been completely redesigned to support a wider 
 variety of response parts, particularly when streaming.
 
-The methods of `LanguageModel` no longer return different response types based
-upon whether or not a `Toolkit` was included in the request. Instead, the type
-of tool call parameters and tool call results is directly encoded into the 
-response parts.
+### Streaming Responses
 
-In addition, when streaming text via the `LanguageModel.streamText` method, you
-now receive a stream of content parts instead of a stream of responses.
+When streaming text via the `LanguageModel.streamText` method, you will now 
+receive a stream of content parts instead of a stream of responses, which should
+make it much simpler to filter down the stream to the parts you are interested in.
+
+In addition, additional content parts will be present in the stream to allow you to track,
+for example, when a text content part starts / ends.
+
+### Tool Calls / Tool Call Results
+
+The decoded parts of a `Response` (as returned by the methods of `LanguageModel`)
+are now fully type-safe on tool calls / tool call results. Filtering the content parts of a 
+response to tool calls will narrow the type of the tool call `params` based on the tool
+`name`. Similarly, filtering the response to tool call results will narrow the type of the
+tool call `result` based on the tool `name`.
+
+```ts
+import { LanguageModel, Tool, Toolkit } from "@effect/ai"
+import { Effect, Schema } from "effect"
+
+const DadJokeTool = Tool.make("DadJokeTool", {
+  parameters: { topic: Schema.String },
+  success: Schema.Struct({ joke: Schema.String })
+})
+
+const FooTool = Tool.make("FooTool", {
+  parameters: { foo: Schema.Number },
+  success: Schema.Struct({ bar: Schema.Boolean })
+})
+
+const MyToolkit = Toolkit.make(DadJokeTool, FooTool)
+
+const program = Effect.gen(function*() {
+  const response = yield* LanguageModel.generateText({
+    prompt: "Tell me a dad joke",
+    toolkit: MyToolkit
+  })
+
+  for (const toolCall of response.toolCalls) {
+    if (toolCall.name === "DadJokeTool") {
+      //         ^? "DadJokeTool" | "FooTool"
+      toolCall.params
+      //       ^? { readonly topic: string }
+    }
+  }
+
+  for (const toolResult of response.toolResults) {
+    if (toolResult.name === "DadJokeTool") {
+      //           ^? "DadJokeTool" | "FooTool"
+      toolResult.result
+      //         ^? { readonly joke: string }
+    }
+  }
+})
+```
+
+### Provider Metadata
+
+As with provider-specific options, provider-specific metadata is now returned as
+part of the response from the large language model provider. To extract the 
+provider-specific metadata from a response, you can use the helpers defined in
+the `Response` module:
+
+```ts
+import { LanguageModel, Response } from "@effect/ai"
+import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+import { Effect } from "effect"
+
+const program = Effect.gen(function*() {
+  const response = yield* LanguageModel.generateText({
+    prompt: "What is the meaning of life?"
+  })
+
+  for (const part of response.content) {
+    // When metadata is not defined for a content part, the return type
+    // of `Response.getProviderMetadata` will be `never`
+    if (part.type === "text") {
+      const metadata = Response.getProviderMetadata(
+        part,
+        AnthropicLanguageModel.ProviderMetadata
+      )
+      metadata
+      // ^? never
+    }
+    // When metadata **is** defined for a content part, the return type
+    // will be an `Option` of the possible metadata
+    if (part.type === "reasoning") {
+      const metadata = Response.getProviderMetadata(
+        part,
+        AnthropicLanguageModel.ProviderMetadata
+      )
+      metadata
+      // ^? Option<AnthropicLanguageModel.AnthropicReasoningMetadata>
+    }
+  }
+})
+```
 
 ## Tool Calls
 
 The `Tool` module has been enhanced to support provider-defined tools (e.g.
-web search, computer use, etc.).
-
-Large language model providers which support their own tools now have a separate
-module present in their provider integration packages which contain definitions
-for their tools.
-
-For example, the new `AnthropicTool` module in the `@effect/ai-anthropic` provider
-integration package contains provider-defined tool definitions for web search,
-computer use, code execution, and more.
+web search, computer use, etc.). Large language model providers which support
+calling their own tools now have a separate module present in their provider 
+integration packages which contain definitions for their tools.
 
 These provider-defined tools can be included alongside user-defined tools in 
 existing `Toolkit`s. Provider-defined tools that require a user-space handler
 will be raise a type error in the associated `Toolkit` layer if no such handler
 is defined.
 
-## Provider Options / Provider Metadata
+```ts
+import { LanguageModel, Tool, Toolkit } from "@effect/ai"
+import { AnthropicTool } from "@effect/ai-anthropic"
+import { Schema } from "effect"
 
-To support provider-specific inputs and outputs when interacting with large 
-language model providers, support has been added for adding provider-specific
-options to the parts of a `Prompt`, as well as receiving provider-specific 
-metadata from the parts of a `Response`.
+const DadJokeTool = Tool.make("DadJokeTool", {
+  parameters: { topic: Schema.String },
+  success: Schema.Struct({ joke: Schema.String })
+})
+
+const MyToolkit = Toolkit.make(
+  DadJokeTool,
+  AnthropicTool.WebSearch_20250305({ max_uses: 1 })
+)
+
+const program = LanguageModel.generateText({
+  prompt: "Search the web for a dad joke",
+  toolkit: MyToolkit
+})
+```
+
+## AiError
+
+The `AiError` type has been refactored into a union of different error types 
+which can be raised by the Effect AI SDK. The goal of defining separate error 
+types is to allow providing the end-user with more granular information about
+the error that occurred.
+
+For now, the following errors have been defined. More error types may be added
+over time based upon necessity / use case.
+
+```ts
+type AiError = 
+  | HttpRequestError,
+  | HttpResponseError,
+  | MalformedInput,
+  | MalformedOutput,
+  | UnknownError
+```
