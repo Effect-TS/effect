@@ -535,5 +535,19 @@ const ProviderToolNamesMap: Map<ProviderDefinedTools["name"] | (string & {}), st
   ["web_search", "AnthropicWebSearch"]
 ])
 
-/** @internal */
+/**
+ * A helper method which takes in the name of a tool as returned in the response
+ * from a large language model provider, and returns either the provider-defined
+ * name for of the tool as found in the corresponding `Toolkit`, or `undefined`
+ * if the tool name is not a provider-defined tool.
+ *
+ * For example, if the large language model provider returns the tool name
+ * `"web_search"` in a response, calling this method would return `"AnthropicWebSearch"`.
+ *
+ * This method is primarily exposed for use by other Effect provider
+ * integrations which can utilize Anthropic tools (i.e. Amazon Bedrock).
+ *
+ * @since 1.0.0
+ * @category Tool Calling
+ */
 export const getProviderDefinedToolName = (name: string): string | undefined => ProviderToolNamesMap.get(name)
