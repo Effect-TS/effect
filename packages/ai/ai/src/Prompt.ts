@@ -1327,7 +1327,8 @@ const VALID_RESPONSE_PART_MAP = {
   "tool-params-end": false,
   "tool-call": true,
   "tool-result": true,
-  "finish": false
+  "finish": false,
+  "error": false
 } as const satisfies Record<Response.AnyPart["type"], boolean>
 
 type ValidResponseParts = typeof VALID_RESPONSE_PART_MAP
@@ -1597,24 +1598,12 @@ export type AllowedProviderOptions<
  */
 export const getProviderOptions: {
   <Identifier, ProviderOptions>(
-    /**
-     * Context tag identifying the provider options.
-     */
     tag: Context.Tag<Identifier, ProviderOptions>
   ): <P extends Message | Part>(
-    /**
-     * Message or part to extract options from.
-     */
     part: P
   ) => ExtractProviderOptions<P, ProviderOptions>
   <P extends Message | Part, Identifier, ProviderOptions>(
-    /**
-     * Message or part to extract options from.
-     */
     part: P,
-    /**
-     * Context tag identifying the provider options.
-     */
     tag: Context.Tag<Identifier, ProviderOptions>
   ): ExtractProviderOptions<P, ProviderOptions>
 } = dual<
@@ -1632,6 +1621,7 @@ export const getProviderOptions: {
     Option.flatMapNullable((options) => options[tag.key]),
     Option.flatMapNullable((options) => "role" in part ? options[part.role] : options[part.type])
   ) as any)
+
 /**
  * Sets provider-specific options on a message or part (mutating operation).
  *
@@ -1668,32 +1658,14 @@ export const getProviderOptions: {
  */
 export const unsafeSetProviderOptions: {
   <P extends Message | Part, Identifier, ProviderOptions>(
-    /**
-     * Context tag identifying the provider options.
-     */
     tag: Context.Tag<Identifier, ProviderOptions>,
-    /**
-     * Provider-specific options to set.
-     */
     options: AllowedProviderOptions<P, ProviderOptions>
   ): (
-    /**
-     * Message or part to set options on.
-     */
     part: P
   ) => void
   <P extends Message | Part, Identifier, ProviderOptions>(
-    /**
-     * Message or part to set options on.
-     */
     part: P,
-    /**
-     * Context tag identifying the provider options.
-     */
     tag: Context.Tag<Identifier, ProviderOptions>,
-    /**
-     * Provider-specific options to set.
-     */
     options: AllowedProviderOptions<P, ProviderOptions>
   ): void
 } = dual<

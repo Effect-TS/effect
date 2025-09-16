@@ -31,7 +31,7 @@ import type * as Context from "effect/Context"
 import type * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import { constFalse, dual } from "effect/Function"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Tool from "./Tool.js"
@@ -1958,10 +1958,11 @@ export const ErrorPart: Schema.Schema<ErrorPart, ErrorPartEncoded> = Schema.Stru
  * @since 1.0.0
  * @category Provider Metadata
  */
-export type ExtractProviderMetadata<Part extends AnyPart, ProviderMetadata> = ProviderMetadata extends
-  Record<string, any> ? Part["type"] extends keyof ProviderMetadata ? ProviderMetadata[Part["type"]]
-  : never
-  : never
+export type ExtractProviderMetadata<Part extends AnyPart, ProviderMetadata, Type extends Part["type"] = Part["type"]> =
+  ProviderMetadata extends Record<string, any> ?
+    Type extends keyof ProviderMetadata ? Option.Option<ProviderMetadata[Type]>
+    : never
+    : never
 
 /**
  * Extracts provider-specific metadata from a response part.
@@ -2000,40 +2001,29 @@ export type ExtractProviderMetadata<Part extends AnyPart, ProviderMetadata> = Pr
  */
 export const getProviderMetadata: {
   <Identifier, ProviderMetadata>(
-    /**
-     * Context tag identifying the provider metadata.
-     */
     tag: Context.Tag<Identifier, ProviderMetadata>
   ): <Part extends AnyPart>(
-    /**
-     * Response part to extract metadata from.
-     */
     part: Part
-  ) => ExtractProviderMetadata<Part, ProviderMetadata> | undefined
+  ) => ExtractProviderMetadata<Part, ProviderMetadata>
   <Part extends AnyPart, Identifier, ProviderMetadata>(
-    /**
-     * Response part to extract metadata from.
-     */
     part: Part,
-    /**
-     * Context tag identifying the provider metadata.
-     */
     tag: Context.Tag<Identifier, ProviderMetadata>
-  ): ExtractProviderMetadata<Part, ProviderMetadata> | undefined
+  ): ExtractProviderMetadata<Part, ProviderMetadata>
 } = dual<
   <Identifier, ProviderMetadata>(
     tag: Context.Tag<Identifier, ProviderMetadata>
   ) => <Part extends AnyPart>(
     part: Part
-  ) => ExtractProviderMetadata<Part, ProviderMetadata> | undefined,
+  ) => ExtractProviderMetadata<Part, ProviderMetadata>,
   <Part extends AnyPart, Identifier, ProviderMetadata>(
     part: Part,
     tag: Context.Tag<Identifier, ProviderMetadata>
-  ) => ExtractProviderMetadata<Part, ProviderMetadata> | undefined
->(2, (part, tag) => {
-  const metadata = part.metadata?.[tag.key]
-  return metadata?.[part.type] as any
-})
+  ) => ExtractProviderMetadata<Part, ProviderMetadata>
+>(2, (part, tag) =>
+  Option.fromNullable(part.metadata).pipe(
+    Option.flatMapNullable((metadata) => metadata[tag.key]),
+    Option.flatMapNullable((metadata) => metadata[part.type])
+  ) as any)
 
 /**
  * Sets provider-specific metadata on a response part (mutating operation).
@@ -2071,32 +2061,14 @@ export const getProviderMetadata: {
  */
 export const unsafeSetProviderMetadata: {
   <Part extends AnyPart, Identifier, ProviderMetadata>(
-    /**
-     * Context tag identifying the provider metadata.
-     */
     tag: Context.Tag<Identifier, ProviderMetadata>,
-    /**
-     * Provider-specific metadata to set.
-     */
     metadata: ExtractProviderMetadata<Part, ProviderMetadata>
   ): (
-    /**
-     * Response part to set metadata on.
-     */
     part: Part
   ) => void
   <Part extends AnyPart, Identifier, ProviderMetadata>(
-    /**
-     * Response part to set metadata on.
-     */
     part: Part,
-    /**
-     * Context tag identifying the provider metadata.
-     */
     tag: Context.Tag<Identifier, ProviderMetadata>,
-    /**
-     * Provider-specific metadata to set.
-     */
     metadata: ExtractProviderMetadata<Part, ProviderMetadata>
   ): void
 } = dual<
