@@ -1965,6 +1965,20 @@ export type ExtractProviderMetadata<Part extends AnyPart, ProviderMetadata, Type
     : never
 
 /**
+ * Extracts the allowed provider-specific options for the specified type.
+ *
+ * If the specified type does not have any allowed provider-specific options,
+ * `never` is returned.
+ *
+ * @since 1.0.0
+ * @category Type Utilities
+ */
+export type AllowedProviderMetadata<Part extends AnyPart, ProviderMetadata, Type extends Part["type"] = Part["type"]> =
+  ProviderMetadata extends Record<string, any> ? Type extends keyof ProviderMetadata ? ProviderMetadata[Type]
+    : never
+    : never
+
+/**
  * Extracts provider-specific metadata from a response part.
  *
  * Retrieves configuration metadata that is specific to a particular AI provider,
@@ -2062,24 +2076,24 @@ export const getProviderMetadata: {
 export const unsafeSetProviderMetadata: {
   <Part extends AnyPart, Identifier, ProviderMetadata>(
     tag: Context.Tag<Identifier, ProviderMetadata>,
-    metadata: ExtractProviderMetadata<Part, ProviderMetadata>
+    metadata: AllowedProviderMetadata<Part, ProviderMetadata>
   ): (
     part: Part
   ) => void
   <Part extends AnyPart, Identifier, ProviderMetadata>(
     part: Part,
     tag: Context.Tag<Identifier, ProviderMetadata>,
-    metadata: ExtractProviderMetadata<Part, ProviderMetadata>
+    metadata: AllowedProviderMetadata<Part, ProviderMetadata>
   ): void
 } = dual<
   <Part extends AnyPart, Identifier, ProviderMetadata>(
     tag: Context.Tag<Identifier, ProviderMetadata>,
-    metadata: ExtractProviderMetadata<Part, ProviderMetadata>
+    metadata: AllowedProviderMetadata<Part, ProviderMetadata>
   ) => (part: Part) => void,
   <Part extends AnyPart, Identifier, ProviderMetadata>(
     part: Part,
     tag: Context.Tag<Identifier, ProviderMetadata>,
-    metadata: ExtractProviderMetadata<Part, ProviderMetadata>
+    metadata: AllowedProviderMetadata<Part, ProviderMetadata>
   ) => void
 >(3, (part, tag, metadata) => {
   if (Predicate.isUndefined(part.metadata)) {
