@@ -1,10 +1,9 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    sqlite-cr.url = "github:subtleGradient/sqlite-cr";
   };
   outputs =
-    { nixpkgs, sqlite-cr, ... }:
+    { nixpkgs, ... }:
     let
       forAllSystems =
         function:
