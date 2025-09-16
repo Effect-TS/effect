@@ -81,49 +81,31 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
     readonly tools: ReadonlyArray<Tool>
     readonly addTool: (options: {
       readonly tool: Tool
-      readonly handle: (
-        payload: any
-      ) => Effect.Effect<CallToolResult, never, McpServerClient>
+      readonly handle: (payload: any) => Effect.Effect<CallToolResult, never, McpServerClient>
     }) => Effect.Effect<void>
     readonly callTool: (
       requests: typeof CallTool.payloadSchema.Type
-    ) => Effect.Effect<
-      CallToolResult,
-      InternalError | InvalidParams,
-      McpServerClient
-    >
+    ) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
 
     readonly resources: ReadonlyArray<Resource>
     readonly addResource: (
       resource: Resource,
-      handle: Effect.Effect<
-        typeof ReadResourceResult.Type,
-        InternalError,
-        McpServerClient
-      >
+      handle: Effect.Effect<typeof ReadResourceResult.Type, InternalError, McpServerClient>
     ) => Effect.Effect<void>
 
     readonly resourceTemplates: ReadonlyArray<ResourceTemplate>
     readonly addResourceTemplate: (options: {
       readonly template: ResourceTemplate
       readonly routerPath: string
-      readonly completions: Record<
-        string,
-        (input: string) => Effect.Effect<CompleteResult, InternalError>
-      >
-      readonly handle: (
-        uri: string,
-        params: Array<string>
-      ) => Effect.Effect<
+      readonly completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>
+      readonly handle: (uri: string, params: Array<string>) => Effect.Effect<
         typeof ReadResourceResult.Type,
         InvalidParams | InternalError,
         McpServerClient
       >
     }) => Effect.Effect<void>
 
-    readonly findResource: (
-      uri: string
-    ) => Effect.Effect<
+    readonly findResource: (uri: string) => Effect.Effect<
       typeof ReadResourceResult.Type,
       InvalidParams | InternalError,
       McpServerClient
@@ -134,25 +116,15 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
       readonly prompt: Prompt
       readonly completions: Record<
         string,
-        (
-          input: string
-        ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+        (input: string) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
       >
       readonly handle: (
         params: Record<string, string>
-      ) => Effect.Effect<
-        GetPromptResult,
-        InternalError | InvalidParams,
-        McpServerClient
-      >
+      ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
     }) => Effect.Effect<void>
     readonly getPromptResult: (
       request: typeof GetPrompt.payloadSchema.Type
-    ) => Effect.Effect<
-      GetPromptResult,
-      InternalError | InvalidParams,
-      McpServerClient
-    >
+    ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
 
     readonly completion: (
       complete: typeof Complete.payloadSchema.Type
@@ -169,80 +141,59 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
         readonly handle: (
           uri: string,
           params: Array<string>
-        ) => Effect.Effect<
-          typeof ReadResourceResult.Type,
-          InternalError | InvalidParams,
-          McpServerClient
-        >
+        ) => Effect.Effect<typeof ReadResourceResult.Type, InternalError | InvalidParams, McpServerClient>
       }
       | {
         readonly _tag: "Resource"
-        readonly effect: Effect.Effect<
-          typeof ReadResourceResult.Type,
-          InternalError,
-          McpServerClient
-        >
+        readonly effect: Effect.Effect<typeof ReadResourceResult.Type, InternalError, McpServerClient>
       }
     >()
     const tools = Arr.empty<Tool>()
     const toolMap = new Map<
       string,
-      (
-        payload: any
-      ) => Effect.Effect<CallToolResult, InternalError, McpServerClient>
+      (payload: any) => Effect.Effect<CallToolResult, InternalError, McpServerClient>
     >()
     const resources: Array<Resource> = []
     const resourceTemplates: Array<ResourceTemplate> = []
     const prompts: Array<Prompt> = []
     const promptMap = new Map<
       string,
-      (
-        params: Record<string, string>
-      ) => Effect.Effect<
-        GetPromptResult,
-        InternalError | InvalidParams,
-        McpServerClient
-      >
+      (params: Record<string, string>) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
     >()
     const completionsMap = new Map<
       string,
-      (
-        input: string
-      ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+      (input: string) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
     >()
     const notificationsMailbox = yield* Mailbox.make<RpcMessage.Request<any>>()
     const listChangedHandles = new Map<string, any>()
-    const notifications = yield* RpcClient.makeNoSerialization(
-      ServerNotificationRpcs,
-      {
-        spanPrefix: "McpServer/Notifications",
-        onFromClient(options): Effect.Effect<void> {
-          const message = options.message
-          if (message._tag !== "Request") {
-            return Effect.void
-          }
-          if (message.tag.includes("list_changed")) {
-            if (!listChangedHandles.has(message.tag)) {
-              listChangedHandles.set(
-                message.tag,
-                setTimeout(() => {
-                  notificationsMailbox.unsafeOffer(message)
-                  listChangedHandles.delete(message.tag)
-                }, 0)
-              )
-            }
-          } else {
-            notificationsMailbox.unsafeOffer(message)
-          }
-          return notifications.write({
-            clientId: 0,
-            requestId: message.id,
-            _tag: "Exit",
-            exit: Exit.void as any
-          })
+    const notifications = yield* RpcClient.makeNoSerialization(ServerNotificationRpcs, {
+      spanPrefix: "McpServer/Notifications",
+      onFromClient(options): Effect.Effect<void> {
+        const message = options.message
+        if (message._tag !== "Request") {
+          return Effect.void
         }
+        if (message.tag.includes("list_changed")) {
+          if (!listChangedHandles.has(message.tag)) {
+            listChangedHandles.set(
+              message.tag,
+              setTimeout(() => {
+                notificationsMailbox.unsafeOffer(message)
+                listChangedHandles.delete(message.tag)
+              }, 0)
+            )
+          }
+        } else {
+          notificationsMailbox.unsafeOffer(message)
+        }
+        return notifications.write({
+          clientId: 0,
+          requestId: message.id,
+          _tag: "Exit",
+          exit: Exit.void as any
+        })
       }
-    )
+    })
 
     return McpServer.of({
       notifications: notifications.client,
@@ -258,23 +209,17 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
           return notifications.client["notifications/tools/list_changed"]({})
         }),
       callTool: (request) =>
-        Effect.suspend(
-          (): Effect.Effect<
-            CallToolResult,
-            InternalError | InvalidParams,
-            McpServerClient
-          > => {
-            const handle = toolMap.get(request.name)
-            if (!handle) {
-              return Effect.fail(
-                new InvalidParams({
-                  message: `Tool '${request.name}' not found`
-                })
-              )
-            }
-            return handle(request.arguments)
+        Effect.suspend((): Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient> => {
+          const handle = toolMap.get(request.name)
+          if (!handle) {
+            return Effect.fail(
+              new InvalidParams({
+                message: `Tool '${request.name}' not found`
+              })
+            )
           }
-        ),
+          return handle(request.arguments)
+        }),
       get resources() {
         return resources
       },
@@ -332,10 +277,7 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
           }
           return notifications.client["notifications/prompts/list_changed"]({})
         }),
-      getPromptResult: Effect.fnUntraced(function*({
-        arguments: params,
-        name
-      }) {
+      getPromptResult: Effect.fnUntraced(function*({ arguments: params, name }) {
         const handler = promptMap.get(name)
         if (!handler) {
           return yield* new InvalidParams({
