@@ -57,6 +57,7 @@ import * as Option from "effect/Option"
 import * as Request from "effect/Request"
 import * as RequestResolver from "effect/RequestResolver"
 import * as Schema from "effect/Schema"
+import type * as Types from "effect/Types"
 import * as AiError from "./AiError.js"
 
 /**
@@ -103,6 +104,15 @@ export interface Service {
    * Converts a text string into a vector embedding.
    */
   readonly embed: (input: string) => Effect.Effect<Array<number>, AiError.AiError>
+  /**
+   * Converts a batch of text strings into a chunk of vector embeddings.
+   */
+  readonly embedMany: (input: ReadonlyArray<string>, options?: {
+    /**
+     * The concurrency level to use while batching requests.
+     */
+    readonly concurrency?: Types.Concurrency | undefined
+  }) => Effect.Effect<Array<Array<number>>, AiError.AiError>
 }
 
 /**
@@ -225,8 +235,17 @@ export const make = (options: {
       }).pipe(Effect.withSpan("EmbeddingModel.embed", { captureStackTrace: false }))
     }
 
+    function embedMany(inputs: ReadonlyArray<string>, options?: {
+      readonly concurrency?: Types.Concurrency | undefined
+    }) {
+      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
+        Effect.withSpan("EmbeddingModel.embedMany", { captureStackTrace: false })
+      )
+    }
+
     return EmbeddingModel.of({
-      embed
+      embed,
+      embedMany
     })
   })
 
@@ -271,7 +290,16 @@ export const makeDataLoader = (options: {
       )
     }
 
+    function embedMany(inputs: ReadonlyArray<string>, options?: {
+      readonly concurrency?: Types.Concurrency | undefined
+    }) {
+      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
+        Effect.withSpan("EmbeddingModel.embedMany", { captureStackTrace: false })
+      )
+    }
+
     return EmbeddingModel.of({
-      embed
+      embed,
+      embedMany
     })
   })
