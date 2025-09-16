@@ -593,6 +593,7 @@ export const FinishReason: Schema.Literal<[
   "content-filter",
   "tool-calls",
   "error",
+  "pause",
   "other",
   "unknown"
 ]> = Schema.Literal(
@@ -601,6 +602,7 @@ export const FinishReason: Schema.Literal<[
   "content-filter",
   "tool-calls",
   "error",
+  "pause",
   "other",
   "unknown"
 )
