@@ -1603,7 +1603,7 @@ export class CrSql extends Effect.Service<CrSql>()("CrSql", {
     function*<E, R>(
       params:
         | {
-          sql: SqliteClient.SqliteClient
+          sql: SqlClient.SqlClient
           pathToCrSqliteExtension?: Effect.Effect<string, E, R>
           loadedExtensionInfo?: never
         }
