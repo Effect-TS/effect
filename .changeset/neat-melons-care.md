@@ -163,14 +163,14 @@ const program = Effect.gen(function*() {
 ### Provider Metadata
 
 As with provider-specific options, provider-specific metadata is now returned as
-part of the response from the large language model provider. To extract the 
-provider-specific metadata from a response, you can use the helpers defined in
-the `Response` module:
+part of the response from the large language model provider. 
 
 ```ts
-import { LanguageModel, Response } from "@effect/ai"
+import { LanguageModel } from "@effect/ai"
 import { AnthropicLanguageModel } from "@effect/ai-anthropic"
 import { Effect } from "effect"
+
+const Claude = AnthropicLanguageModel.model("claude-4-sonnet-20250514")
 
 const program = Effect.gen(function*() {
   const response = yield* LanguageModel.generateText({
@@ -178,28 +178,20 @@ const program = Effect.gen(function*() {
   })
 
   for (const part of response.content) {
-    // When metadata is not defined for a content part, the return type
-    // of `Response.getProviderMetadata` will be `never`
+    // When metadata **is not** defined for a content part, accessing the
+    // provider's key on the part's metadata will return an untyped record
     if (part.type === "text") {
-      const metadata = Response.getProviderMetadata(
-        part,
-        AnthropicLanguageModel.ProviderMetadata
-      )
-      metadata
-      // ^? never
+      const metadata = part.metadata.anthropic
+      //    ^? { readonly [x: string]: unknown }
     }
-    // When metadata **is** defined for a content part, the return type
-    // will be an `Option` of the possible metadata
+    // When metadata **is** defined for a content part, accessing the 
+    // provider's key on the part's metadata will return typed metadata
     if (part.type === "reasoning") {
-      const metadata = Response.getProviderMetadata(
-        part,
-        AnthropicLanguageModel.ProviderMetadata
-      )
-      metadata
-      // ^? Option<AnthropicLanguageModel.AnthropicReasoningMetadata>
+      const metadata = part.metadata.anthropic
+      //    ^? AnthropicReasoningInfo | undefined
     }
   }
-})
+}).pipe(Effect.provide(Claude))
 ```
 
 ## Tool Calls

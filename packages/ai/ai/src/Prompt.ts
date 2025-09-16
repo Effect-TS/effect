@@ -212,7 +212,7 @@ export const makePart = <const Type extends Part["type"]>(
     /**
      * Optional provider-specific options for this part.
      */
-    readonly options?: Extract<Part, { type: Type }>["options"]
+    readonly options?: Extract<Part, { type: Type }>["options"] | undefined
   }
 ): Extract<Part, { type: Type }> =>
   ({

@@ -374,7 +374,7 @@ export class MessageStartEvent extends Schema.Class<MessageStartEvent>(
   "@effect/ai-anthropic/MessageStartEvent"
 )({
   type: Schema.Literal("message_start"),
-  message: Generated.Message
+  message: Generated.BetaMessage
 }) {}
 
 /**
