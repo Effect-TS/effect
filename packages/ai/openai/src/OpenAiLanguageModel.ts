@@ -1309,10 +1309,10 @@ const getItemId = (
   part:
     | Prompt.TextPart
     | Prompt.ToolCallPart
-): string =>
+): string | undefined =>
   Prompt.getProviderOptions(part, ProviderOptions).pipe(
     Option.flatMapNullable((options) => options.itemId),
-    Option.getOrThrow
+    Option.getOrUndefined
   )
 
 const getImageDetail = (part: Prompt.FilePart): typeof Generated.InputImageContentDetail.Encoded =>
