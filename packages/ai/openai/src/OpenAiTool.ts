@@ -100,12 +100,10 @@ export const WebSearchPreview = Tool.providerDefined({
 type ProviderToolNames = "code_interpreter" | "file_search" | "web_search" | "web_search_preview"
 
 const ProviderToolNamesMap: Map<ProviderToolNames | (string & {}), string> = new Map([
-  ["bash", "AnthropicBash"],
-  ["code_execution", "AnthropicCodeExecution"],
-  ["computer", "AnthropicComputerUse"],
-  ["str_replace_based_edit_tool", "AnthropicTextEditor"],
-  ["str_replace_editor", "AnthropicTextEditor"],
-  ["web_search", "AnthropicWebSearch"]
+  ["code_interpreter", "OpenAiCodeInterpreter"],
+  ["file_search", "OpenAiFileSearch"],
+  ["web_search", "OpenAiWebSearch"],
+  ["web_search_preview", "OpenAiWebSearchPreview"]
 ])
 
 /** @internal */
