@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.8
+
+### Patch Changes
+
+- [#5510](https://github.com/Effect-TS/effect/pull/5510) [`c2fed22`](https://github.com/Effect-TS/effect/commit/c2fed22a131fbd9ba54482af1886cc1e869a72cd) Thanks @tim-smart! - re-add two phase runner health check
+
 ## 0.48.7
 
 ### Patch Changes
