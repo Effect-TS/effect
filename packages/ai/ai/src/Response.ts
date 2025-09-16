@@ -407,12 +407,10 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  * @since 1.0.0
  * @category Utility Types
  */
-export type ToolCallParts<Tools extends Record<string, Tool.Any>> = Tool.Parameters<Tools[keyof Tools]>
-
-// {
-//   [Name in keyof Tools]: Name extends string ? ToolCallPart<Name, Tool.Parameters<Tools[Name]>>
-//     : never
-// }[keyof Tools]
+export type ToolCallParts<Tools extends Record<string, Tool.Any>> = {
+  [Name in keyof Tools]: Name extends string ? ToolCallPart<Name, Tool.ParametersSchema<Tools[Name]>["fields"]>
+    : never
+}[keyof Tools]
 
 /**
  * Utility type that extracts tool result parts from a set of tools.
