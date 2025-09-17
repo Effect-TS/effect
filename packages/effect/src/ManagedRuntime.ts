@@ -127,6 +127,15 @@ export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runt
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
 
+  /**
+   * Dispose of the resources associated with the runtime.
+   */
+  [Symbol.dispose](): void
+  /**
+   * Dispose of the resources associated with the runtime.
+   */
+  [Symbol.asyncDispose](): Promise<void>
+
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: ManagedRuntimeUnify<this>
   readonly [Unify.ignoreSymbol]?: ManagedRuntimeUnifyIgnore
