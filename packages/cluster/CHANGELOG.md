@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.9
+
+### Patch Changes
+
+- [#5512](https://github.com/Effect-TS/effect/pull/5512) [`934c1d9`](https://github.com/Effect-TS/effect/commit/934c1d9517a7c8bcac1b362908fa474371f7f0fa) Thanks @tim-smart! - backport active shard latch changes from effect 4
+
 ## 0.48.8
 
 ### Patch Changes
