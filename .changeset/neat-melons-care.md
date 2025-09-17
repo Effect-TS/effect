@@ -182,7 +182,7 @@ const program = Effect.gen(function*() {
     // provider's key on the part's metadata will return an untyped record
     if (part.type === "text") {
       const metadata = part.metadata.anthropic
-      //    ^? { readonly [x: string]: unknown }
+      //    ^? { readonly [x: string]: unknown } | undefined
     }
     // When metadata **is** defined for a content part, accessing the 
     // provider's key on the part's metadata will return typed metadata

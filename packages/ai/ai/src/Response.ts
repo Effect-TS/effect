@@ -448,7 +448,10 @@ export type ToolResultParts<Tools extends Record<string, Tool.Any>> = {
  */
 export const ProviderMetadata = Schema.Record({
   key: Schema.String,
-  value: Schema.Record({ key: Schema.String, value: Schema.Unknown })
+  value: Schema.UndefinedOr(Schema.Record({
+    key: Schema.String,
+    value: Schema.Unknown
+  }))
 })
 
 /**
