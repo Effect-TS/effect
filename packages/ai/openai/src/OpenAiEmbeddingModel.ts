@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as AiError from "@effect/ai/AiError"
 import * as EmbeddingModel from "@effect/ai/EmbeddingModel"
 import * as AiModel from "@effect/ai/Model"
 import * as Context from "effect/Context"
@@ -91,7 +90,7 @@ export declare namespace Config {
  */
 export const model = (
   model: (string & {}) | Model,
-  config: Simplify<
+  { mode, ...config }: Simplify<
     (
       | ({ readonly mode: "batched" } & Config.Batched)
       | ({ readonly mode: "data-loader" } & Config.DataLoader)
@@ -100,52 +99,11 @@ export const model = (
 ): AiModel.Model<"openai", EmbeddingModel.EmbeddingModel, OpenAiClient.OpenAiClient> => {
   return AiModel.make(
     "openai",
-    config.mode === "batched"
-      ? layerBatched({ model, config })
-      : layerDataLoader({ model, config })
+    mode === "batched"
+      ? layerBatched({ model, config: config as Config.Batched })
+      : layerDataLoader({ model, config: config as Config.DataLoader })
   )
 }
-
-const makeRequest = (
-  client: OpenAiClient.Service,
-  model: string,
-  input: ReadonlyArray<string>,
-  config: typeof Config.Service | undefined
-) =>
-  Effect.context<never>().pipe(
-    Effect.flatMap((context) => {
-      const perRequestConfig = context.unsafeMap.get(Config.key)
-      return client.client.createEmbedding({
-        input,
-        model,
-        ...config,
-        ...perRequestConfig
-      })
-    }),
-    Effect.map((response) =>
-      response.data.map(({ embedding, index }) => ({
-        embeddings: embedding as Array<number>,
-        index
-      }))
-    ),
-    Effect.mapError((cause) => {
-      const common = {
-        module: "OpenAiEmbeddingModel",
-        method: "embed",
-        cause
-      }
-      if (cause._tag === "ParseError") {
-        return new AiError.MalformedInput({
-          description: "Malformed input detected in request",
-          ...common
-        })
-      }
-      return new AiError.UnknownError({
-        description: "An error occurred with the OpenAI API",
-        ...common
-      })
-    })
-  )
 
 /**
  * @since 1.0.0
@@ -156,12 +114,32 @@ const makeBatched = Effect.fnUntraced(function*(options: {
   readonly config?: Config.Batched
 }) {
   const client = yield* OpenAiClient.OpenAiClient
+
   const { config = {}, model } = options
-  const { cache, maxBatchSize = 2048, ...rest } = config
+  const { cache, maxBatchSize = 2048, ...globalConfig } = config
+
+  const makeRequest = Effect.fnUntraced(
+    function*(input: ReadonlyArray<string>) {
+      const context = yield* Effect.context<never>()
+      const requestConfig = context.unsafeMap.get(Config.key)
+      const request: typeof Generated.CreateEmbeddingRequest.Encoded = {
+        model,
+        ...globalConfig,
+        ...requestConfig,
+        input
+      }
+      return request
+    }
+  )
+
   return yield* EmbeddingModel.make({
     cache,
     maxBatchSize,
-    embedMany: (input) => makeRequest(client, model, input, rest)
+    embedMany: Effect.fnUntraced(function*(input) {
+      const request = yield* makeRequest(input)
+      const response = yield* client.createEmbedding(request)
+      return makeResults(response)
+    })
   })
 })
 
@@ -175,11 +153,30 @@ export const makeDataLoader = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* OpenAiClient.OpenAiClient
   const { config, model } = options
-  const { maxBatchSize = 2048, window, ...rest } = config
+  const { maxBatchSize = 2048, window, ...globalConfig } = config
+
+  const makeRequest = Effect.fnUntraced(
+    function*(input: ReadonlyArray<string>) {
+      const context = yield* Effect.context<never>()
+      const requestConfig = context.unsafeMap.get(Config.key)
+      const request: typeof Generated.CreateEmbeddingRequest.Encoded = {
+        model,
+        ...globalConfig,
+        ...requestConfig,
+        input
+      }
+      return request
+    }
+  )
+
   return yield* EmbeddingModel.makeDataLoader({
     window,
     maxBatchSize,
-    embedMany: (input) => makeRequest(client, model, input, rest)
+    embedMany: Effect.fnUntraced(function*(input) {
+      const request = yield* makeRequest(input)
+      const response = yield* client.createEmbedding(request)
+      return makeResults(response)
+    })
   })
 })
 
@@ -218,3 +215,13 @@ export const withConfigOverride: {
     Config.getOrUndefined,
     (config) => Effect.provideService(self, Config, { ...config, ...overrides })
   ))
+
+// =============================================================================
+// Response Conversion
+// =============================================================================
+
+const makeResults = (response: Generated.CreateEmbeddingResponse): Array<EmbeddingModel.Result> =>
+  response.data.map(({ embedding, index }) => ({
+    embeddings: embedding as Array<number>,
+    index
+  }))

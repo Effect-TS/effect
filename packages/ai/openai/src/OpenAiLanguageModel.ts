@@ -258,13 +258,11 @@ export const make = Effect.fnUntraced(function*(options: {
 }) {
   const client = yield* OpenAiClient
 
-  const makeRequest: (
-    providerOptions: LanguageModel.ProviderOptions
-  ) => Effect.Effect<
+  const makeRequest: (providerOptions: LanguageModel.ProviderOptions) => Effect.Effect<
     typeof Generated.CreateResponse.Encoded,
     AiError.AiError
   > = Effect.fnUntraced(
-    function*(providerOptions: LanguageModel.ProviderOptions) {
+    function*(providerOptions) {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const messages = yield* prepareMessages(providerOptions, config)

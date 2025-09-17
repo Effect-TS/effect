@@ -45,6 +45,10 @@ export interface Service {
   readonly createResponseStream: (
     options: Omit<typeof Generated.CreateResponse.Encoded, "stream">
   ) => Stream.Stream<ResponseStreamEvent, AiError.AiError>
+
+  readonly createEmbedding: (
+    options: typeof Generated.CreateEmbeddingRequest.Encoded
+  ) => Effect.Effect<Generated.CreateEmbeddingResponse, AiError.AiError>
 }
 
 /**
@@ -178,11 +182,38 @@ export const make = (options: {
       )
     }
 
+    const createEmbedding = (
+      options: typeof Generated.CreateEmbeddingRequest.Encoded
+    ): Effect.Effect<Generated.CreateEmbeddingResponse, AiError.AiError> =>
+      client.createEmbedding(options).pipe(
+        Effect.catchTags({
+          RequestError: (error) =>
+            AiError.HttpRequestError.fromRequestError({
+              module: "OpenAiClient",
+              method: "createResponse",
+              error
+            }),
+          ResponseError: (error) =>
+            AiError.HttpResponseError.fromResponseError({
+              module: "OpenAiClient",
+              method: "createResponse",
+              error
+            }),
+          ParseError: (error) =>
+            AiError.MalformedOutput.fromParseError({
+              module: "OpenAiClient",
+              method: "createResponse",
+              error
+            })
+        })
+      )
+
     return OpenAiClient.of({
       client,
       streamRequest,
       createResponse,
-      createResponseStream
+      createResponseStream,
+      createEmbedding
     })
   })
 

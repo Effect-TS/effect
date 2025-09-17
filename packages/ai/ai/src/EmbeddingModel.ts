@@ -223,7 +223,7 @@ export const make = (options: {
       options.maxBatchSize ? RequestResolver.batchN(options.maxBatchSize) : identity
     )
 
-    function embed(input: string) {
+    const embed = (input: string) => {
       const request = Effect.request(new EmbeddingRequest({ input }), resolver)
       return Option.match(cache, {
         onNone: () => request,
@@ -232,20 +232,26 @@ export const make = (options: {
             Effect.withRequestCaching(true),
             Effect.withRequestCache(cache)
           )
-      }).pipe(Effect.withSpan("EmbeddingModel.embed", { captureStackTrace: false }))
+      })
     }
 
-    function embedMany(inputs: ReadonlyArray<string>, options?: {
+    const embedMany = (inputs: ReadonlyArray<string>, options?: {
       readonly concurrency?: Types.Concurrency | undefined
-    }) {
-      return Effect.forEach(inputs, embed, { batching: true, concurrency: options?.concurrency }).pipe(
-        Effect.withSpan("EmbeddingModel.embedMany", { captureStackTrace: false })
-      )
-    }
+    }) =>
+      Effect.forEach(inputs, embed, {
+        batching: true,
+        concurrency: options?.concurrency
+      })
 
     return EmbeddingModel.of({
-      embed,
-      embedMany
+      embed: (input) =>
+        embed(input).pipe(
+          Effect.withSpan("EmbeddingModel.embed", { captureStackTrace: false })
+        ),
+      embedMany: (inputs) =>
+        embedMany(inputs).pipe(
+          Effect.withSpan("EmbeddingModel.embedMany", { captureStackTrace: false })
+        )
     })
   })
 
