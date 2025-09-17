@@ -1678,6 +1678,17 @@ export const logLevelTrace: LogLevel.LogLevel = {
 export const logLevelNone: LogLevel.LogLevel = {
   _tag: "None",
   syslog: 7,
+  label: "NONE",
+  ordinal: Number.MAX_SAFE_INTEGER,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+/** @internal */
+export const logLevelOff: LogLevel.LogLevel = {
+  _tag: "Off",
+  syslog: 7,
   label: "OFF",
   ordinal: Number.MAX_SAFE_INTEGER,
   pipe() {
@@ -1694,7 +1705,8 @@ export const allLogLevels: ReadonlyArray<LogLevel.LogLevel> = [
   logLevelWarning,
   logLevelError,
   logLevelFatal,
-  logLevelNone
+  logLevelNone,
+  logLevelOff
 ]
 
 // -----------------------------------------------------------------------------

@@ -10,6 +10,7 @@ describe("LogLevel", () => {
     strictEqual(LogLevel.fromLiteral("Fatal"), LogLevel.Fatal)
     strictEqual(LogLevel.fromLiteral("Info"), LogLevel.Info)
     strictEqual(LogLevel.fromLiteral("None"), LogLevel.None)
+    strictEqual(LogLevel.fromLiteral("Off"), LogLevel.Off)
     strictEqual(LogLevel.fromLiteral("Trace"), LogLevel.Trace)
     strictEqual(LogLevel.fromLiteral("Warning"), LogLevel.Warning)
   })
