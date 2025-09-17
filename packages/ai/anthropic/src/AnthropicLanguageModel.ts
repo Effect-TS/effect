@@ -142,9 +142,16 @@ export const make = Effect.fnUntraced(function*(options: {
     function*(method: string, { prompt, system, toolChoice, tools }: AiLanguageModel.AiLanguageModelOptions) {
       const context = yield* Effect.context<never>()
       const useStructured = tools.length === 1 && tools[0].structured
+      const hasUnallowedTools = typeof toolChoice === "object" && "oneOf" in toolChoice
       let tool_choice: typeof Generated.ToolChoice.Encoded | undefined = undefined
       if (useStructured) {
         tool_choice = { type: "tool", name: tools[0].name }
+      } else if (hasUnallowedTools) {
+        if (toolChoice.mode === "required") {
+          tool_choice = { type: "any" }
+        } else {
+          tool_choice = { type: "auto" }
+        }
       } else if (tools.length > 0) {
         if (toolChoice === "required") {
           tool_choice = { type: "any" }
