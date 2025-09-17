@@ -1,0 +1,229 @@
+diff --git a/packages/ai/google/src/Generated.ts b/packages/ai/google/src/Generated.ts
+index 52b1a4a9e..47b58417a 100644
+--- a/packages/ai/google/src/Generated.ts
++++ b/packages/ai/google/src/Generated.ts
+@@ -383,102 +383,123 @@ export class Content extends S.Class<Content>("Content")({
+ 
+ export class Type extends S.Literal("TYPE_UNSPECIFIED", "STRING", "NUMBER", "INTEGER", "BOOLEAN", "ARRAY", "OBJECT", "NULL") {}
+ 
++const schemaFields = {
++  /**
++   * Optional. Maximum value of the Type.INTEGER and Type.NUMBER
++   */
++  "maximum": S.optionalWith(S.Number, { nullable: true }),
++  /**
++   * Optional. Minimum number of the properties for Type.OBJECT.
++   */
++  "minProperties": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Required. Data type.
++   */
++  "type": Type,
++  /**
++   * Optional. A brief description of the parameter. This could contain examples of use.
++   * Parameter description may be formatted as Markdown.
++   */
++  "description": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. Maximum number of the elements for Type.ARRAY.
++   */
++  "maxItems": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. The order of the properties.
++   * Not a standard field in open api spec. Used to determine the order of the
++   * properties in the response.
++   */
++  "propertyOrdering": S.optionalWith(S.Array(S.String), { nullable: true }),
++  /**
++   * Optional. The format of the data. This is used only for primitive datatypes.
++   * Supported formats:
++   *  for NUMBER type: float, double
++   *  for INTEGER type: int32, int64
++   *  for STRING type: enum, date-time
++   */
++  "format": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. Maximum length of the Type.STRING
++   */
++  "maxLength": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. The title of the schema.
++   */
++  "title": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. SCHEMA FIELDS FOR TYPE INTEGER and NUMBER
++   * Minimum value of the Type.INTEGER and Type.NUMBER
++   */
++  "minimum": S.optionalWith(S.Number, { nullable: true }),
++  /**
++   * Optional. Maximum number of the properties for Type.OBJECT.
++   */
++  "maxProperties": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. Possible values of the element of Type.STRING with enum format.
++   * For example we can define an Enum Direction as :
++   * {type:STRING, format:enum, enum:["EAST", NORTH", "SOUTH", "WEST"]}
++   */
++  "enum": S.optionalWith(S.Array(S.String), { nullable: true }),
++  /**
++   * Optional. Required properties of Type.OBJECT.
++   */
++  "required": S.optionalWith(S.Array(S.String), { nullable: true }),
++  /**
++   * Optional. Indicates if the value may be null.
++   */
++  "nullable": S.optionalWith(S.Boolean, { nullable: true }),
++  /**
++   * Optional. Properties of Type.OBJECT.
++   */
++  "properties": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
++  /**
++   * Optional. Minimum number of the elements for Type.ARRAY.
++   */
++  "minItems": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. SCHEMA FIELDS FOR TYPE STRING
++   * Minimum length of the Type.STRING
++   */
++  "minLength": S.optionalWith(S.String, { nullable: true }),
++  /**
++   * Optional. Pattern of the Type.STRING to restrict a string to a regular expression.
++   */
++  "pattern": S.optionalWith(S.String, { nullable: true })
++}
++
+ /**
+-* The `Schema` object allows the definition of input and output data types.
+-* These types can be objects, but also primitives and arrays.
+-* Represents a select subset of an [OpenAPI 3.0 schema
+-* object](https://spec.openapis.org/oas/v3.0.3#schema).
+-*/
+-export class Schema extends S.Class<Schema>("Schema")({
+-  /**
+-* Required. Data type.
+-*/
+-"type": Type,
+-  /**
+-* Optional. The format of the data. Any value is allowed, but most do not trigger any
+-* special functionality.
+-*/
+-"format": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. The title of the schema.
+-*/
+-"title": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. A brief description of the parameter. This could contain examples of use.
+-* Parameter description may be formatted as Markdown.
+-*/
+-"description": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. Indicates if the value may be null.
+-*/
+-"nullable": S.optionalWith(S.Boolean, { nullable: true }),
+-  /**
+-* Optional. Possible values of the element of Type.STRING with enum format.
+-* For example we can define an Enum Direction as :
+-* {type:STRING, format:enum, enum:["EAST", NORTH", "SOUTH", "WEST"]}
+-*/
+-"enum": S.optionalWith(S.Array(S.String), { nullable: true }),
+-  /**
+-* Optional. Schema of the elements of Type.ARRAY.
+-*/
+-"items": S.optionalWith(Schema, { nullable: true }),
+-  /**
+-* Optional. Maximum number of the elements for Type.ARRAY.
+-*/
+-"maxItems": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. Minimum number of the elements for Type.ARRAY.
+-*/
+-"minItems": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. Properties of Type.OBJECT.
+-*/
+-"properties": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+-  /**
+-* Optional. Required properties of Type.OBJECT.
+-*/
+-"required": S.optionalWith(S.Array(S.String), { nullable: true }),
+-  /**
+-* Optional. Minimum number of the properties for Type.OBJECT.
+-*/
+-"minProperties": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. Maximum number of the properties for Type.OBJECT.
+-*/
+-"maxProperties": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. SCHEMA FIELDS FOR TYPE INTEGER and NUMBER
+-* Minimum value of the Type.INTEGER and Type.NUMBER
+-*/
+-"minimum": S.optionalWith(S.Number, { nullable: true }),
+-  /**
+-* Optional. Maximum value of the Type.INTEGER and Type.NUMBER
+-*/
+-"maximum": S.optionalWith(S.Number, { nullable: true }),
+-  /**
+-* Optional. SCHEMA FIELDS FOR TYPE STRING
+-* Minimum length of the Type.STRING
+-*/
+-"minLength": S.optionalWith(S.String, { nullable: true }),
+-  /**
+-* Optional. Maximum length of the Type.STRING
+-*/
+-"maxLength": S.optionalWith(S.String, { nullable: true }),
++ * The \`Schema\` object allows the definition of input and output data types.
++ * These types can be objects, but also primitives and arrays.
++ * Represents a select subset of an [OpenAPI 3.0 schema
++ * object](https://spec.openapis.org/oas/v3.0.3#schema).
++ */
++export interface SchemaEncoded extends S.Struct.Encoded<typeof schemaFields> {
+   /**
+-* Optional. Pattern of the Type.STRING to restrict a string to a regular expression.
+-*/
+-"pattern": S.optionalWith(S.String, { nullable: true }),
++   * Optional. The value should be validated against any (one or more) of the subschemas
++   * in the list.
++   */
++  readonly "anyOf"?: ReadonlyArray<SchemaEncoded> | undefined | null
+   /**
+-* Optional. The value should be validated against any (one or more) of the subschemas
+-* in the list.
+-*/
+-"anyOf": S.optionalWith(S.Array(Schema), { nullable: true }),
++   * Optional. Schema of the elements of Type.ARRAY.
++   */
++  readonly "items"?: SchemaEncoded | undefined | null
++}
++
++/**
++ * The \`Schema\` object allows the definition of input and output data types.
++ * These types can be objects, but also primitives and arrays.
++ * Represents a select subset of an [OpenAPI 3.0 schema
++ * object](https://spec.openapis.org/oas/v3.0.3#schema).
++ */
++export class Schema extends S.Class<Schema>("Schema")({
++  ...schemaFields,
++  "anyOf": S.optionalWith(S.Array(S.suspend((): S.Schema<Schema, SchemaEncoded> => Schema)), { nullable: true }),
+   /**
+-* Optional. The order of the properties.
+-* Not a standard field in open api spec. Used to determine the order of the
+-* properties in the response.
+-*/
+-"propertyOrdering": S.optionalWith(S.Array(S.String), { nullable: true })
++   * Optional. Schema of the elements of Type.ARRAY.
++   */
++  "items": S.optionalWith(S.suspend((): S.Schema<Schema, SchemaEncoded> => Schema), { nullable: true })
+ }) {}
+ 
+ /**
+@@ -4237,6 +4258,8 @@ export const make = (
+     <A, I, R>(schema: S.Schema<A, I, R>) =>
+     (response: HttpClientResponse.HttpClientResponse) =>
+       HttpClientResponse.schemaBodyJson(schema)(response)
++  // @ts-expect-error
++  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   const decodeError =
+     <const Tag extends string, A, I, R>(tag: Tag, schema: S.Schema<A, I, R>) =>
+     (response: HttpClientResponse.HttpClientResponse) =>

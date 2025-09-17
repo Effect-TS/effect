@@ -193,6 +193,9 @@ importers:
       '@effect/ai':
         specifier: workspace:^
         version: link:../ai
+      '@effect/ai-anthropic':
+        specifier: workspace:^
+        version: link:../anthropic
       '@effect/experimental':
         specifier: workspace:^
         version: link:../../experimental

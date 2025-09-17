@@ -10,23 +10,23 @@ import { dual } from "effect/Function"
  * @since 1.0.0
  * @category Context
  */
-export class GoogleAiConfig extends Context.Tag("@effect/ai-google/GoogleAiConfig")<
-  GoogleAiConfig,
-  GoogleAiConfig.Service
+export class GoogleConfig extends Context.Tag("@effect/ai-google/GoogleConfig")<
+  GoogleConfig,
+  GoogleConfig.Service
 >() {
   /**
    * @since 1.0.0
    */
-  static readonly getOrUndefined: Effect.Effect<typeof GoogleAiConfig.Service | undefined> = Effect.map(
+  static readonly getOrUndefined: Effect.Effect<typeof GoogleConfig.Service | undefined> = Effect.map(
     Effect.context<never>(),
-    (context) => context.unsafeMap.get(GoogleAiConfig.key)
+    (context) => context.unsafeMap.get(GoogleConfig.key)
   )
 }
 
 /**
  * @since 1.0.0
  */
-export declare namespace GoogleAiConfig {
+export declare namespace GoogleConfig {
   /**
    * @since 1.0.
    * @category Models
@@ -50,7 +50,7 @@ export const withClientTransform: {
   2,
   (self, transformClient) =>
     Effect.flatMap(
-      GoogleAiConfig.getOrUndefined,
-      (config) => Effect.provideService(self, GoogleAiConfig, { ...config, transformClient })
+      GoogleConfig.getOrUndefined,
+      (config) => Effect.provideService(self, GoogleConfig, { ...config, transformClient })
     )
 )

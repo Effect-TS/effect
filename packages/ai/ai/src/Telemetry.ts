@@ -1,4 +1,34 @@
 /**
+ * The `Telemetry` module provides OpenTelemetry integration for operations
+ * performed against a large language model provider by defining telemetry
+ * attributes and utilities that follow the OpenTelemetry GenAI semantic
+ * conventions.
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * // Add telemetry attributes to a span
+ * const addTelemetry = Effect.gen(function* () {
+ *   const span = yield* Effect.currentSpan
+ *
+ *   Telemetry.addGenAIAnnotations(span, {
+ *     system: "openai",
+ *     operation: { name: "chat" },
+ *     request: {
+ *       model: "gpt-4",
+ *       temperature: 0.7,
+ *       maxTokens: 1000
+ *     },
+ *     usage: {
+ *       inputTokens: 100,
+ *       outputTokens: 50
+ *     }
+ *   })
+ * })
+ * ```
+ *
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
@@ -7,8 +37,8 @@ import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
 import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
-import type { AiLanguageModelOptions } from "./AiLanguageModel.js"
-import type { AiResponse } from "./AiResponse.js"
+import type { ProviderOptions } from "./LanguageModel.js"
+import type * as Response from "./Response.js"
 
 /**
  * The attributes used to describe telemetry in the context of Generative
@@ -204,14 +234,54 @@ export type WellKnownSystem =
   | "xai"
 
 /**
+ * Utility type for prefixing attribute names with a namespace.
+ *
+ * Transforms attribute keys by adding a prefix and formatting them according to
+ * OpenTelemetry conventions (camelCase to snake_case).
+ *
+ * @template Attributes - Record type containing the attributes to prefix
+ * @template Prefix - String literal type for the prefix to add
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ *
+ * type RequestAttrs = {
+ *   modelName: string
+ *   maxTokens: number
+ * }
+ *
+ * type PrefixedAttrs = Telemetry.AttributesWithPrefix<RequestAttrs, "gen_ai.request">
+ * // Results in: {
+ * //   "gen_ai.request.model_name": string
+ * //   "gen_ai.request.max_tokens": number
+ * // }
+ * ```
+ *
  * @since 1.0.0
- * @category Models
+ * @category Utility Types
  */
 export type AttributesWithPrefix<Attributes extends Record<string, any>, Prefix extends string> = {
   [Name in keyof Attributes as `${Prefix}.${FormatAttributeName<Name>}`]: Attributes[Name]
 }
 
 /**
+ * Utility type for converting camelCase names to snake_case format.
+ *
+ * This type recursively transforms string literal types from camelCase to
+ * snake_case, which is the standard format for OpenTelemetry attributes.
+ *
+ * @template T - String literal type to format
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ *
+ * type Formatted1 = Telemetry.FormatAttributeName<"modelName">    // "model_name"
+ * type Formatted2 = Telemetry.FormatAttributeName<"maxTokens">    // "max_tokens"
+ * type Formatted3 = Telemetry.FormatAttributeName<"temperature">  // "temperature"
+ * ```
+ *
  * @since 1.0.0
  * @category Utility Types
  */
@@ -222,14 +292,53 @@ export type FormatAttributeName<T extends string | number | symbol> = T extends 
   never
 
 /**
+ * Creates a function to add attributes to a span with a given prefix and key transformation.
+ *
+ * This utility function is used internally to create specialized functions for adding
+ * different types of telemetry attributes to OpenTelemetry spans.
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ * import { String, Tracer } from "effect"
+ *
+ * const addCustomAttributes = Telemetry.addSpanAttributes(
+ *   "custom.ai",
+ *   String.camelToSnake
+ * )
+ *
+ * // Usage with a span
+ * declare const span: Tracer.Span
+ * addCustomAttributes(span, {
+ *   modelName: "gpt-4",
+ *   maxTokens: 1000
+ * })
+ * // Results in attributes: "custom.ai.model_name" and "custom.ai.max_tokens"
+ * ```
+ *
  * @since 1.0.0
  * @category Utilities
  */
 export const addSpanAttributes = (
+  /**
+   * The prefix to add to all attribute keys.
+   */
   keyPrefix: string,
+  /**
+   * Function to transform attribute keys (e.g., camelCase to snake_case).
+   */
   transformKey: (key: string) => string
 ) =>
-<Attributes extends Record<string, any>>(span: Span, attributes: Attributes): void => {
+<Attributes extends Record<string, any>>(
+  /**
+   * The OpenTelemetry span to add attributes to.
+   */
+  span: Span,
+  /**
+   * The attributes to add to the span.
+   */
+  attributes: Attributes
+): void => {
   for (const [key, value] of Object.entries(attributes)) {
     if (Predicate.isNotNullable(value)) {
       span.attribute(`${keyPrefix}.${transformKey(key)}`, value)
@@ -245,28 +354,112 @@ const addSpanTokenAttributes = addSpanAttributes("gen_ai.token", String.camelToS
 const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToSnake)<UsageAttributes>
 
 /**
+ * Configuration options for GenAI telemetry attributes.
+ *
+ * Combines base attributes with optional grouped attributes for comprehensive
+ * telemetry coverage of AI operations.
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ *
+ * const telemetryOptions: Telemetry.GenAITelemetryAttributeOptions = {
+ *   system: "openai",
+ *   operation: {
+ *     name: "chat"
+ *   },
+ *   request: {
+ *     model: "gpt-4-turbo",
+ *     temperature: 0.7,
+ *     maxTokens: 2000
+ *   },
+ *   response: {
+ *     id: "chatcmpl-123",
+ *     model: "gpt-4-turbo-2024-04-09",
+ *     finishReasons: ["stop"]
+ *   },
+ *   usage: {
+ *     inputTokens: 50,
+ *     outputTokens: 25
+ *   }
+ * }
+ * ```
+ *
  * @since 1.0.0
- * @since Models
+ * @category Models
  */
 export type GenAITelemetryAttributeOptions = BaseAttributes & {
+  /**
+   * Operation-specific attributes (e.g., operation name).
+   */
   readonly operation?: OperationAttributes | undefined
+  /**
+   * Request-specific attributes (e.g., model parameters).
+   */
   readonly request?: RequestAttributes | undefined
+  /**
+   * Response-specific attributes (e.g., response metadata).
+   */
   readonly response?: ResponseAttributes | undefined
+  /**
+   * Token-specific attributes.
+   */
   readonly token?: TokenAttributes | undefined
+  /**
+   * Usage statistics attributes (e.g., token counts).
+   */
   readonly usage?: UsageAttributes | undefined
 }
 
 /**
- * Applies the specified GenAI telemetry attributes to the provided `Span`.
+ * Applies GenAI telemetry attributes to an OpenTelemetry span.
  *
- * **NOTE**: This method will mutate the `Span` **in-place**.
+ * This function adds standardized GenAI attributes to a span following OpenTelemetry
+ * semantic conventions. It supports both curried and direct application patterns.
+ *
+ * **Note**: This function mutates the provided span in-place.
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * const directUsage = Effect.gen(function* () {
+ *   const span = yield* Effect.currentSpan
+ *
+ *   Telemetry.addGenAIAnnotations(span, {
+ *     system: "openai",
+ *     request: { model: "gpt-4", temperature: 0.7 },
+ *     usage: { inputTokens: 100, outputTokens: 50 }
+ *   })
+ * })
+ * ```
  *
  * @since 1.0.0
- * @since Utilities
+ * @category Utilities
  */
 export const addGenAIAnnotations: {
-  (options: GenAITelemetryAttributeOptions): (span: Span) => void
-  (span: Span, options: GenAITelemetryAttributeOptions): void
+  (
+    /**
+     * Telemetry attribute options to apply to the span.
+     */
+    options: GenAITelemetryAttributeOptions
+  ): (
+    /**
+     * OpenTelemetry span to add attributes to.
+     */
+    span: Span
+  ) => void
+  (
+    /**
+     * OpenTelemetry span to add attributes to.
+     */
+    span: Span,
+    /**
+     * Telemetry attribute options to apply to the span.
+     */
+    options: GenAITelemetryAttributeOptions
+  ): void
 } = dual<
   (options: GenAITelemetryAttributeOptions) => (span: Span) => void,
   (span: Span, options: GenAITelemetryAttributeOptions) => void
@@ -280,22 +473,75 @@ export const addGenAIAnnotations: {
 })
 
 /**
- * Represents a method which receives the elements of the request / response to
- * a large language model and can be used to modify the span used to trace the
- * API call.
+ * A function that can transform OpenTelemetry spans based on AI operation data.
+ *
+ * Span transformers receive the complete request/response context from AI operations
+ * and can add custom telemetry attributes, metrics, or other observability data.
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ *
+ * const customTransformer: Telemetry.SpanTransformer = (options) => {
+ *   // Add custom attributes based on the response
+ *   const textParts = options.response.filter(part => part.type === "text")
+ *   const totalTextLength = textParts.reduce((sum, part) =>
+ *     sum + (part.type === "text" ? part.text.length : 0), 0
+ *   )
+ *
+ *   // Add custom metrics
+ *   console.log(`Generated ${totalTextLength} characters of text`)
+ * }
+ * ```
  *
  * @since 1.0.0
  * @category Models
  */
 export interface SpanTransformer {
-  (options: AiLanguageModelOptions & { readonly response: AiResponse }): void
+  (
+    options: ProviderOptions & {
+      /**
+       * Array of response parts generated by the AI model.
+       */
+      readonly response: ReadonlyArray<Response.AllParts<any>>
+    }
+  ): void
 }
 
 /**
+ * Context tag for providing a span transformer to large langauge model
+ * operations.
+ *
+ * The CurrentSpanTransformer allows you to inject custom span transformation
+ * logic into AI operations, enabling application-specific telemetry and
+ * observability patterns.
+ *
+ * @example
+ * ```ts
+ * import { Telemetry } from "@effect/ai"
+ * import { Context, Effect } from "effect"
+ *
+ * // Create a custom span transformer
+ * const loggingTransformer: Telemetry.SpanTransformer = (options) => {
+ *   console.log(`AI request completed: ${options.model}`)
+ *   options.response.forEach((part, index) => {
+ *     console.log(`Part ${index}: ${part.type}`)
+ *   })
+ * }
+ *
+ * // Provide the transformer to your AI operations
+ * const program = myAIOperation.pipe(
+ *   Effect.provideService(
+ *     Telemetry.CurrentSpanTransformer,
+ *     Telemetry.CurrentSpanTransformer.of(loggingTransformer)
+ *   )
+ * )
+ * ```
+ *
  * @since 1.0.0
  * @category Context
  */
-export class CurrentSpanTransformer extends Context.Tag("@effect/ai/AiTelemetry/CurrentSpanTransformer")<
+export class CurrentSpanTransformer extends Context.Tag("@effect/ai/Telemetry/CurrentSpanTransformer")<
   CurrentSpanTransformer,
   SpanTransformer
 >() {}
