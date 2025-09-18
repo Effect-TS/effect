@@ -70,12 +70,33 @@ export const make = Effect.gen(function*() {
       | Rpc.Rpc<"resume">
     >
   >()
+  const partialEntities = new Map<
+    string,
+    Entity.Entity<
+      string,
+      | Rpc.Rpc<"deferred", Schema.Struct<{ name: typeof Schema.String; exit: typeof ExitUnknown }>, typeof ExitUnknown>
+      | Rpc.Rpc<
+        "activity",
+        Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
+        Schema.Schema<Workflow.Result<any, any>>
+      >
+      | Rpc.Rpc<"resume">
+    >
+  >()
   const ensureEntity = (workflow: Workflow.Any) => {
     let entity = entities.get(workflow.name)
     if (!entity) {
       entity = makeWorkflowEntity(workflow) as any
       workflows.set(workflow.name, workflow)
       entities.set(workflow.name, entity as any)
+    }
+    return entity!
+  }
+  const ensurePartialEntity = (workflowName: string) => {
+    let entity = partialEntities.get(workflowName)
+    if (!entity) {
+      entity = makePartialWorkflowEntity(workflowName) as any
+      partialEntities.set(workflowName, entity as any)
     }
     return entity!
   }
@@ -91,6 +112,13 @@ export const make = Effect.gen(function*() {
       if (!entity) {
         return yield* Effect.dieMessage(`Workflow ${workflowName} not registered`)
       }
+      return yield* entity.client
+    }),
+    idleTimeToLive: "5 minutes"
+  })
+  const clientsPartial = yield* RcMap.make({
+    lookup: Effect.fnUntraced(function*(workflowName: string) {
+      const entity = entities.get(workflowName) ?? ensurePartialEntity(workflowName)
       return yield* entity.client
     }),
     idleTimeToLive: "5 minutes"
@@ -211,7 +239,7 @@ export const make = Effect.gen(function*() {
     readonly workflowName: string
     readonly executionId: string
   }) {
-    const client = (yield* RcMap.get(clients, options.workflowName))(options.executionId)
+    const client = (yield* RcMap.get(clientsPartial, options.workflowName))(options.executionId)
     return yield* client.resume(void 0, { discard: true })
   }, Effect.scoped)
 
@@ -342,6 +370,7 @@ export const make = Effect.gen(function*() {
 
     interrupt: Effect.fnUntraced(
       function*(this: WorkflowEngine["Type"], workflow, executionId) {
+        ensureEntity(workflow)
         const reply = yield* requestReply({
           workflow,
           entityType: `Workflow/${workflow.name}`,
@@ -403,7 +432,7 @@ export const make = Effect.gen(function*() {
           yield* latch.release
           activityLatches.delete(activityId)
         }
-        const client = (yield* RcMap.get(clients, instance.workflow.name))(instance.executionId)
+        const client = (yield* RcMap.get(clientsPartial, instance.workflow.name))(instance.executionId)
         while (true) {
           const result = yield* Effect.orDie(client.activity({ name: activity.name, attempt }))
           // If the activity has suspended and did not execute, we need to resume
@@ -465,7 +494,7 @@ export const make = Effect.gen(function*() {
 
     deferredDone: Effect.fnUntraced(
       function*({ deferredName, executionId, exit, workflowName }) {
-        const client = yield* RcMap.get(clients, workflowName)
+        const client = yield* RcMap.get(clientsPartial, workflowName)
         return yield* Effect.orDie(
           client(executionId).deferred({
             name: deferredName,
@@ -544,31 +573,40 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
       .annotate(ClusterSchema.Persisted, true)
       .annotate(ClusterSchema.Uninterruptible, true),
 
-    Rpc.make("deferred", {
-      payload: {
-        name: Schema.String,
-        exit: ExitUnknown
-      },
-      primaryKey: ({ name }) => name,
-      success: ExitUnknown
-    })
-      .annotate(ClusterSchema.Persisted, true)
-      .annotate(ClusterSchema.Uninterruptible, true),
-
-    Rpc.make("resume")
-      .annotate(ClusterSchema.Persisted, true)
-      .annotate(ClusterSchema.Uninterruptible, true),
-
+    DeferredRpc,
+    ResumeRpc,
     ActivityRpc
   ]).annotateContext(workflow.annotations)
-
-const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
 
 const ExitUnknown = Schema.encodedSchema(Schema.Exit({
   success: Schema.Unknown,
   failure: Schema.Unknown,
   defect: Schema.Defect
 }))
+
+const DeferredRpc = Rpc.make("deferred", {
+  payload: {
+    name: Schema.String,
+    exit: ExitUnknown
+  },
+  primaryKey: ({ name }) => name,
+  success: ExitUnknown
+})
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, true)
+
+const ResumeRpc = Rpc.make("resume")
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, true)
+
+const makePartialWorkflowEntity = (workflowName: string) =>
+  Entity.make(`Workflow/${workflowName}`, [
+    DeferredRpc,
+    ResumeRpc,
+    ActivityRpc
+  ])
+
+const activityPrimaryKey = (activity: string, attempt: number) => `${activity}/${attempt}`
 
 class ClockPayload extends Schema.Class<ClockPayload>(`Workflow/DurableClock/Run`)({
   name: Schema.String,
