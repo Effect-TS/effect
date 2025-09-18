@@ -41,7 +41,6 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.21",
-    "bun": "^1.1.38",
     "effect": "latest",
     "fast-check": "^3.23.2"
   }

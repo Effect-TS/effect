@@ -30,7 +30,7 @@ layer(DbMem)((it) => {
       yield* info
 
       const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({
+      const crsql = yield* CrSql.fromSqliteClient({
         sql,
         loadedExtensionInfo: info
       })

@@ -31,7 +31,7 @@ layer(DbMem)((it) => {
 
   it.scoped("crsql_sha missing before load; present after fromSqliteClient", () =>
     Effect.gen(function*() {
-      const sql = yield* NodeSqlite.SqliteClient.SqliteClient
+      const sql = yield* SqlClient.SqlClient
 
       // Before loading the extension, calling crsql_sha() should error.
       const before = yield* sql`SELECT crsql_sha() as sha`.pipe(Effect.exit)
@@ -41,7 +41,7 @@ layer(DbMem)((it) => {
       }
 
       // Load via product API and verify we can read a site id
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+      const crsql = yield* CrSql.fromSqliteClient({ sql })
       const siteId = yield* crsql.getSiteIdHex
       assert.strictEqual(siteId.length, 32)
     }))
@@ -49,9 +49,9 @@ layer(DbMem)((it) => {
     Effect.gen(function*() {
       // Ensure CR-SQLite is loaded via the product code (no duplication).
       // Calling the service loader initializes the extension on this connection.
-      yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
-      yield* createTodosCrr
       const sql = yield* SqlClient.SqlClient
+      yield* CrSql.fromSqliteClient()
+      yield* createTodosCrr
       const pk = "00112233445566778899AABBCCDDEEFF"
       yield* sql`INSERT INTO todos (id, content, completed)
                    VALUES (unhex(${pk}), 'Alpha', 0)`
@@ -61,14 +61,14 @@ layer(DbMem)((it) => {
 
   it.scoped("pullChanges returns inserted columns (content, completed)", () =>
     Effect.gen(function*() {
-      yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
-      yield* createTodosCrr
       const sql = yield* SqlClient.SqlClient
+      yield* CrSql.fromSqliteClient()
+      yield* createTodosCrr
       const pk = "11223344556677889900AABBCCDDEEFF"
       yield* sql`INSERT INTO todos (id, content, completed)
                    VALUES (unhex(${pk}), 'Buy milk', 0)`
 
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+      const crsql = yield* CrSql.fromSqliteClient({ sql })
       const changes = yield* crsql.pullChanges("0")
       assert.ok(changes.length > 0)
       // CR-SQLite encodes PKs in a packed blob; for single BLOB PKs the hex
@@ -82,10 +82,9 @@ layer(DbMem)((it) => {
   it.scoped("db version increments; since-cursor filters earlier changes", () =>
     Effect.gen(function*() {
       // Ensure extension is loaded via product API
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
-      yield* createTodosCrr
-
       const sql = yield* SqlClient.SqlClient
+      const crsql = yield* CrSql.fromSqliteClient()
+      yield* createTodosCrr
       const pk1 = "AA11223344556677889900AABBCCDDEE"
       yield* sql`INSERT INTO todos (id, content, completed)
                    VALUES (unhex(${pk1}), 'One', 0)`
@@ -104,7 +103,7 @@ layer(DbMem)((it) => {
 
   it.scoped("finalize does not fail", () =>
     Effect.gen(function*() {
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+      const crsql = yield* CrSql.fromSqliteClient()
       // Should be safe and idempotent
       yield* crsql.finalize
     }))

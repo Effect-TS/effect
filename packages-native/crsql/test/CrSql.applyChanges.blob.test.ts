@@ -14,7 +14,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
 
         return yield* Effect.gen(function*() {
           const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-          const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+          const crsql = yield* CrSql.fromSqliteClient({ sql })
 
           // Schema and CRR enablement
           // NOTE: CRR requirement — all NOT NULL, non-PK columns must have DEFAULTs
@@ -47,7 +47,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
 
         yield* Effect.gen(function*() {
           const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-          const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+          const crsql = yield* CrSql.fromSqliteClient({ sql })
 
           // NOTE: CRR requirement — all NOT NULL, non-PK columns must have DEFAULTs
           yield* sql`CREATE TABLE blobs (

@@ -28,14 +28,14 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
       // Get B's site id first (used for exclude when pulling from A)
       const siteB = yield* Effect.gen(function*() {
         const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+        const crsql = yield* CrSql.fromSqliteClient({ sql })
         return yield* crsql.getSiteIdHex
       }).pipe(Effect.provide(layerB))
 
       // A: init schema, insert, export changes excluding B
       const fromA = yield* Effect.gen(function*() {
         const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+        const crsql = yield* CrSql.fromSqliteClient({ sql })
         yield* crsql.sql`CREATE TABLE items (
           id BLOB NOT NULL PRIMARY KEY,
           text TEXT NOT NULL DEFAULT ''
@@ -53,7 +53,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
       // B: init schema, apply, verify, update cursor
       yield* Effect.gen(function*() {
         const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+        const crsql = yield* CrSql.fromSqliteClient({ sql })
         yield* crsql.sql`CREATE TABLE items (
           id BLOB NOT NULL PRIMARY KEY,
           text TEXT NOT NULL DEFAULT ''
@@ -82,8 +82,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
       // B's site id (exclude)
       const siteB = yield* Effect.provide(
         Effect.gen(function*() {
-          const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-          const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+          const crsql = yield* CrSql.fromSqliteClient()
           return yield* crsql.getSiteIdHex
         }),
         layerB
@@ -92,8 +91,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
       // A: do both writes & exports on the SAME connection
       const a = yield* Effect.provide(
         Effect.gen(function*() {
-          const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-          const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+          const crsql = yield* CrSql.fromSqliteClient()
           // init
           yield* crsql.automigrate`
             CREATE TABLE items (
@@ -121,7 +119,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
       yield* Effect.provide(
         Effect.gen(function*() {
           const sql = yield* NodeSqlite.SqliteClient.SqliteClient
-          const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql })
+          const crsql = yield* CrSql.fromSqliteClient({ sql })
           // init
           yield* crsql.automigrate`
             CREATE TABLE items (
@@ -151,7 +149,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
 
       // Site ids and schema init
       const siteA = yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientA })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientA })
         yield* crsql.sql`CREATE TABLE items (
           id TEXT NOT NULL PRIMARY KEY,
           text TEXT NOT NULL DEFAULT ''
@@ -160,7 +158,7 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
         return yield* crsql.getSiteIdHex
       })
       const siteB = yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientB })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientB })
         yield* crsql.sql`CREATE TABLE items (
           id TEXT NOT NULL PRIMARY KEY,
           text TEXT NOT NULL DEFAULT ''
@@ -171,14 +169,14 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
 
       // A writes and B syncs
       const changesA1 = yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientA })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientA })
         const id1 = "id1"
         yield* crsql.sql`INSERT INTO items (id, text) VALUES (${id1}, 'fromA')`
         const changes = yield* crsql.pullChanges("0", [siteB])
         return changes
       })
       yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientB })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientB })
         yield* crsql.applyChanges(changesA1)
         const { seq, version } = maxVersionAndSeq(changesA1)
         yield* crsql.setPeerVersion({ siteId: siteA, version, seq })
@@ -186,25 +184,25 @@ layer(Layer.mergeAll(Reactivity.layer, Layer.scope))((it) => {
 
       // B writes and A syncs (exclude siteA, so A doesn't re-receive its own changes)
       const changesB1 = yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientB })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientB })
         const id2 = "id2"
         yield* crsql.sql`INSERT INTO items (id, text) VALUES (${id2}, 'fromB')`
         const changes = yield* crsql.pullChanges("0", [siteA])
         return changes
       })
       yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientA })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientA })
         yield* crsql.applyChanges(changesB1)
       })
 
       // Verify convergence
       const rowsA = yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientA })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientA })
         const rows = yield* crsql.sql<{ t: string }>`SELECT text as t FROM items ORDER BY t`
         return rows.map((r) => r.t)
       })
       const rowsB = yield* Effect.gen(function*() {
-        const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: clientB })
+        const crsql = yield* CrSql.fromSqliteClient({ sql: clientB })
         const rows = yield* crsql.sql<{ t: string }>`SELECT text as t FROM items ORDER BY t`
         return rows.map((r) => r.t)
       })

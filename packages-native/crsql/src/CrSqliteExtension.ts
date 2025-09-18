@@ -47,6 +47,9 @@ const LibCrSqlPath = Config.nonEmptyString(LibCrSqlPathKey)
 export const sqlExtInfo = Effect.gen(function*() {
   const sql = yield* SqlClient.SqlClient
   const [info] = yield* sql<CrSqlSchema.ExtInfoSql>`SELECT crsql_sha() as sha, hex(crsql_site_id()) as siteId`
+  if (info == null) {
+    return yield* Effect.fail("No rows returned from crsql_sha() / crsql_site_id()")
+  }
   return CrSqlSchema.ExtInfoSql.make(info)
 }).pipe(
   Effect.catchAll((cause) => Effect.fail(new CrSqlErrors.CrSqliteExtensionMissing({ cause }))),

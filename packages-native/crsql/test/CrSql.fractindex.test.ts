@@ -10,7 +10,7 @@ layer(DbMem)((it) => {
   it.scoped("fractAsOrdered creates fractindex view", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+      const crsql = yield* CrSql.fromSqliteClient()
       // Minimal table with an order column
       yield* sql`CREATE TABLE fi_items (id TEXT PRIMARY KEY, ord TEXT NOT NULL DEFAULT '')`
       yield* crsql.fractAsOrdered("fi_items", "ord")
@@ -24,7 +24,7 @@ layer(DbMem)((it) => {
   it.scoped("fractAsOrderedWith (grouped) creates fractindex view", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+      const crsql = yield* CrSql.fromSqliteClient()
       // Grouped list by list_id
       yield* sql`CREATE TABLE fi_items2 (id TEXT PRIMARY KEY, list_id TEXT NOT NULL, ord TEXT NOT NULL DEFAULT '')`
       yield* crsql.fractAsOrderedWith("fi_items2", "ord", ["list_id"])
@@ -37,7 +37,7 @@ layer(DbMem)((it) => {
   it.scoped("append and prepend maintain stable ordering", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+      const crsql = yield* CrSql.fromSqliteClient()
       // Fresh table
       yield* sql`DROP TABLE IF EXISTS fi_order1`
       yield* sql`CREATE TABLE fi_order1 (id TEXT PRIMARY KEY, ord TEXT NOT NULL DEFAULT '')`
@@ -60,7 +60,7 @@ layer(DbMem)((it) => {
   it.scoped("insert between neighbors using fractKeyBetween", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+      const crsql = yield* CrSql.fromSqliteClient()
       // Fresh table
       yield* sql`DROP TABLE IF EXISTS fi_order2`
       yield* sql`CREATE TABLE fi_order2 (id TEXT PRIMARY KEY, ord TEXT NOT NULL DEFAULT '')`

@@ -15,7 +15,7 @@ it.scoped.skip("schemaFromChanges: infers columns for todos", () =>
   Effect.gen(function*() {
     yield* ensureCrSqlLoaded
     const sql = yield* SqlClient.SqlClient
-    const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+    const crsql = yield* CrSql.fromSqliteClient()
 
     // Create a simple CRR and insert a row
     yield* sql`CREATE TABLE IF NOT EXISTS todos (id BLOB PRIMARY KEY, content TEXT NOT NULL DEFAULT '', completed INTEGER NOT NULL DEFAULT 0)`
@@ -35,7 +35,7 @@ it.scoped.skip("schemaFromChanges: includes multiple tables present in changes",
   Effect.gen(function*() {
     yield* ensureCrSqlLoaded
     const sql = yield* SqlClient.SqlClient
-    const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+    const crsql = yield* CrSql.fromSqliteClient()
 
     // Define two CRRs and insert into both
     yield* crsql.automigrate`
@@ -60,7 +60,7 @@ it.scoped.skip("schemaFromChanges: maps text/integer/real/blob to TEXT/INTEGER/R
   Effect.gen(function*() {
     yield* ensureCrSqlLoaded
     const sql = yield* SqlClient.SqlClient
-    const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+    const crsql = yield* CrSql.fromSqliteClient()
 
     yield* crsql.automigrate`
       CREATE TABLE IF NOT EXISTS types (
@@ -87,7 +87,7 @@ it.scoped.skip("schemaFromChanges: conflicting types for same column fails", () 
   Effect.gen(function*() {
     yield* ensureCrSqlLoaded
     const sql = yield* SqlClient.SqlClient
-    const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+    const crsql = yield* CrSql.fromSqliteClient()
 
     yield* crsql.automigrate`
       CREATE TABLE IF NOT EXISTS mixed (
@@ -109,7 +109,7 @@ it.scoped.skip("schemaFromChanges: deterministic column order (id first, others 
   Effect.gen(function*() {
     yield* ensureCrSqlLoaded
     const sql = yield* SqlClient.SqlClient
-    const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+    const crsql = yield* CrSql.fromSqliteClient()
 
     yield* crsql.automigrate`
       CREATE TABLE IF NOT EXISTS ordercols (
@@ -136,7 +136,7 @@ it.scoped.skip("schemaFromChanges: generated schema is idempotent under automigr
   Effect.gen(function*() {
     yield* ensureCrSqlLoaded
     const sql = yield* SqlClient.SqlClient
-    const crsql = yield* CrSql.CrSql.fromSqliteClient({ sql: yield* NodeSqlite.SqliteClient.SqliteClient })
+    const crsql = yield* CrSql.fromSqliteClient()
 
     yield* crsql.automigrate`
       CREATE TABLE IF NOT EXISTS idem (
