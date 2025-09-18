@@ -77,7 +77,9 @@ export const fromDuplex = <RO>(
     let currentSocket: Duplex | undefined
     const latch = Effect.unsafeMakeLatch(false)
     const openContext = fiber.currentContext as Context.Context<RO>
-    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
+    const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void, opts?: {
+      readonly onOpen?: Effect.Effect<void> | undefined
+    }) =>
       Effect.scopedWith(Effect.fnUntraced(function*(scope) {
         const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
           Scope.extend(scope)
@@ -127,6 +129,7 @@ export const fromDuplex = <RO>(
 
         currentSocket = conn
         yield* latch.open
+        if (opts?.onOpen) yield* opts.onOpen
 
         return yield* FiberSet.join(fiberSet)
       })).pipe(
