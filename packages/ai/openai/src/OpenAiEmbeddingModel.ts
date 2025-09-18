@@ -1,9 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as AiEmbeddingModel from "@effect/ai/AiEmbeddingModel"
-import { AiError } from "@effect/ai/AiError"
-import * as AiModel from "@effect/ai/AiModel"
+import * as EmbeddingModel from "@effect/ai/EmbeddingModel"
+import * as AiModel from "@effect/ai/Model"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -11,7 +10,7 @@ import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
-import { OpenAiClient } from "./OpenAiClient.js"
+import * as OpenAiClient from "./OpenAiClient.js"
 
 /**
  * @since 1.0.0
@@ -91,60 +90,20 @@ export declare namespace Config {
  */
 export const model = (
   model: (string & {}) | Model,
-  config: Simplify<
+  { mode, ...config }: Simplify<
     (
       | ({ readonly mode: "batched" } & Config.Batched)
       | ({ readonly mode: "data-loader" } & Config.DataLoader)
     )
   >
-): AiModel.AiModel<AiEmbeddingModel.AiEmbeddingModel, OpenAiClient> => {
+): AiModel.Model<"openai", EmbeddingModel.EmbeddingModel, OpenAiClient.OpenAiClient> => {
   return AiModel.make(
-    config.mode === "batched"
-      ? layerBatched({ model, config })
-      : layerDataLoader({ model, config })
+    "openai",
+    mode === "batched"
+      ? layerBatched({ model, config: config as Config.Batched })
+      : layerDataLoader({ model, config: config as Config.DataLoader })
   )
 }
-
-const makeRequest = (
-  client: OpenAiClient.Service,
-  model: string,
-  input: ReadonlyArray<string>,
-  config: typeof Config.Service | undefined
-) =>
-  Effect.context<never>().pipe(
-    Effect.flatMap((context) => {
-      const perRequestConfig = context.unsafeMap.get(Config.key)
-      return client.client.createEmbedding({
-        input,
-        model,
-        ...config,
-        ...perRequestConfig
-      })
-    }),
-    Effect.map((response) =>
-      response.data.map(({ embedding, index }) => ({
-        embeddings: embedding as Array<number>,
-        index
-      }))
-    ),
-    Effect.mapError((cause) => {
-      const common = {
-        module: "OpenAiEmbeddingModel",
-        method: "embed",
-        cause
-      }
-      if (cause._tag === "ParseError") {
-        return new AiError({
-          description: "Malformed input detected in request",
-          ...common
-        })
-      }
-      return new AiError({
-        description: "An error occurred with the OpenAI API",
-        ...common
-      })
-    })
-  )
 
 /**
  * @since 1.0.0
@@ -154,13 +113,33 @@ const makeBatched = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
   readonly config?: Config.Batched
 }) {
-  const client = yield* OpenAiClient
+  const client = yield* OpenAiClient.OpenAiClient
+
   const { config = {}, model } = options
-  const { cache, maxBatchSize = 2048, ...rest } = config
-  return yield* AiEmbeddingModel.make({
+  const { cache, maxBatchSize = 2048, ...globalConfig } = config
+
+  const makeRequest = Effect.fnUntraced(
+    function*(input: ReadonlyArray<string>) {
+      const context = yield* Effect.context<never>()
+      const requestConfig = context.unsafeMap.get(Config.key)
+      const request: typeof Generated.CreateEmbeddingRequest.Encoded = {
+        model,
+        ...globalConfig,
+        ...requestConfig,
+        input
+      }
+      return request
+    }
+  )
+
+  return yield* EmbeddingModel.make({
     cache,
     maxBatchSize,
-    embedMany: (input) => makeRequest(client, model, input, rest)
+    embedMany: Effect.fnUntraced(function*(input) {
+      const request = yield* makeRequest(input)
+      const response = yield* client.createEmbedding(request)
+      return makeResults(response)
+    })
   })
 })
 
@@ -172,13 +151,32 @@ export const makeDataLoader = Effect.fnUntraced(function*(options: {
   readonly model: (string & {}) | Model
   readonly config: Config.DataLoader
 }) {
-  const client = yield* OpenAiClient
+  const client = yield* OpenAiClient.OpenAiClient
   const { config, model } = options
-  const { maxBatchSize = 2048, window, ...rest } = config
-  return yield* AiEmbeddingModel.makeDataLoader({
+  const { maxBatchSize = 2048, window, ...globalConfig } = config
+
+  const makeRequest = Effect.fnUntraced(
+    function*(input: ReadonlyArray<string>) {
+      const context = yield* Effect.context<never>()
+      const requestConfig = context.unsafeMap.get(Config.key)
+      const request: typeof Generated.CreateEmbeddingRequest.Encoded = {
+        model,
+        ...globalConfig,
+        ...requestConfig,
+        input
+      }
+      return request
+    }
+  )
+
+  return yield* EmbeddingModel.makeDataLoader({
     window,
     maxBatchSize,
-    embedMany: (input) => makeRequest(client, model, input, rest)
+    embedMany: Effect.fnUntraced(function*(input) {
+      const request = yield* makeRequest(input)
+      const response = yield* client.createEmbedding(request)
+      return makeResults(response)
+    })
   })
 })
 
@@ -189,8 +187,8 @@ export const makeDataLoader = Effect.fnUntraced(function*(options: {
 export const layerBatched = (options: {
   readonly model: (string & {}) | Model
   readonly config?: Config.Batched
-}): Layer.Layer<AiEmbeddingModel.AiEmbeddingModel, never, OpenAiClient> =>
-  Layer.effect(AiEmbeddingModel.AiEmbeddingModel, makeBatched(options))
+}): Layer.Layer<EmbeddingModel.EmbeddingModel, never, OpenAiClient.OpenAiClient> =>
+  Layer.effect(EmbeddingModel.EmbeddingModel, makeBatched(options))
 
 /**
  * @since 1.0.0
@@ -199,8 +197,8 @@ export const layerBatched = (options: {
 export const layerDataLoader = (options: {
   readonly model: (string & {}) | Model
   readonly config: Config.DataLoader
-}): Layer.Layer<AiEmbeddingModel.AiEmbeddingModel, never, OpenAiClient> =>
-  Layer.scoped(AiEmbeddingModel.AiEmbeddingModel, makeDataLoader(options))
+}): Layer.Layer<EmbeddingModel.EmbeddingModel, never, OpenAiClient.OpenAiClient> =>
+  Layer.scoped(EmbeddingModel.EmbeddingModel, makeDataLoader(options))
 
 /**
  * @since 1.0.0
@@ -233,3 +231,13 @@ export const withConfigOverride: {
     Config.getOrUndefined,
     (config) => Effect.provideService(self, Config, { ...config, ...overrides })
   ))
+
+// =============================================================================
+// Response Conversion
+// =============================================================================
+
+const makeResults = (response: Generated.CreateEmbeddingResponse): Array<EmbeddingModel.Result> =>
+  response.data.map(({ embedding, index }) => ({
+    embeddings: embedding as Array<number>,
+    index
+  }))

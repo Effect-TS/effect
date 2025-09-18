@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import { getTokenizer } from "@anthropic-ai/tokenizer"
-import { AiError } from "@effect/ai/AiError"
-import type * as AiInput from "@effect/ai/AiInput"
+import * as AiError from "@effect/ai/AiError"
+import type * as Prompt from "@effect/ai/Prompt"
 import * as Tokenizer from "@effect/ai/Tokenizer"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
@@ -15,34 +15,25 @@ import * as Option from "effect/Option"
  * @category Constructors
  */
 export const make = Tokenizer.make({
-  tokenize(input) {
+  tokenize(prompt) {
     return Effect.try({
       try: () => {
         const tokenizer = getTokenizer()
-        const text = Arr.flatMap(input.messages, (message) =>
+        const text = Arr.flatMap(prompt.content, (message) =>
           Arr.filterMap(
-            message.parts as Array<
-              | AiInput.AssistantMessagePart
-              | AiInput.ToolMessagePart
-              | AiInput.UserMessagePart
+            message.content as Array<
+              | Prompt.AssistantMessagePart
+              | Prompt.ToolMessagePart
+              | Prompt.UserMessagePart
             >,
             (part) => {
-              if (
-                part._tag === "FilePart" ||
-                part._tag === "FileUrlPart" ||
-                part._tag === "ImagePart" ||
-                part._tag === "ImageUrlPart" ||
-                part._tag === "ReasoningPart" ||
-                part._tag === "RedactedReasoningPart"
-              ) return Option.none()
+              if (part.type === "file" || part.type === "reasoning") {
+                return Option.none()
+              }
               return Option.some(
-                part._tag === "TextPart"
+                part.type === "text"
                   ? part.text
-                  : JSON.stringify(
-                    part._tag === "ToolCallPart"
-                      ? part.params :
-                      part.result
-                  )
+                  : JSON.stringify(part.type === "tool-call" ? part.params : part.result)
               )
             }
           )).join("")
@@ -51,7 +42,7 @@ export const make = Tokenizer.make({
         return Array.from(encoded)
       },
       catch: (cause) =>
-        new AiError({
+        new AiError.UnknownError({
           module: "AnthropicTokenizer",
           method: "tokenize",
           description: "Could not tokenize",

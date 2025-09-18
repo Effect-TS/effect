@@ -36,12 +36,12 @@ export const isExecutionPlan: (u: unknown) => u is ExecutionPlan<any> = internal
  * A `ExecutionPlan` can be used with `Effect.withExecutionPlan` or `Stream.withExecutionPlan`, allowing you to provide different resources for each step of execution until the effect succeeds or the plan is exhausted.
  *
  * ```ts
- * import { type AiLanguageModel } from "@effect/ai"
+ * import type { LanguageModel } from "@effect/ai"
  * import type { Layer } from "effect"
  * import { Effect, ExecutionPlan, Schedule } from "effect"
  *
- * declare const layerBad: Layer.Layer<AiLanguageModel.AiLanguageModel>
- * declare const layerGood: Layer.Layer<AiLanguageModel.AiLanguageModel>
+ * declare const layerBad: Layer.Layer<LanguageModel.LanguageModel>
+ * declare const layerGood: Layer.Layer<LanguageModel.LanguageModel>
  *
  * const ThePlan = ExecutionPlan.make(
  *   {
@@ -67,7 +67,7 @@ export const isExecutionPlan: (u: unknown) => u is ExecutionPlan<any> = internal
  * declare const effect: Effect.Effect<
  *   void,
  *   never,
- *   AiLanguageModel.AiLanguageModel
+ *   LanguageModel.LanguageModel
  * >
  * const withPlan: Effect.Effect<void> = Effect.withExecutionPlan(effect, ThePlan)
  * ```
@@ -127,12 +127,12 @@ export type TypesBase = {
  * Create an `ExecutionPlan`, which can be used with `Effect.withExecutionPlan` or `Stream.withExecutionPlan`, allowing you to provide different resources for each step of execution until the effect succeeds or the plan is exhausted.
  *
  * ```ts
- * import { type AiLanguageModel } from "@effect/ai"
+ * import type { LanguageModel } from "@effect/ai"
  * import type { Layer } from "effect"
  * import { Effect, ExecutionPlan, Schedule } from "effect"
  *
- * declare const layerBad: Layer.Layer<AiLanguageModel.AiLanguageModel>
- * declare const layerGood: Layer.Layer<AiLanguageModel.AiLanguageModel>
+ * declare const layerBad: Layer.Layer<LanguageModel.LanguageModel>
+ * declare const layerGood: Layer.Layer<LanguageModel.LanguageModel>
  *
  * const ThePlan = ExecutionPlan.make(
  *   {
@@ -158,7 +158,7 @@ export type TypesBase = {
  * declare const effect: Effect.Effect<
  *   void,
  *   never,
- *   AiLanguageModel.AiLanguageModel
+ *   LanguageModel.LanguageModel
  * >
  * const withPlan: Effect.Effect<void> = Effect.withExecutionPlan(effect, ThePlan)
  * ```

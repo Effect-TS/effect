@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai-amazon-bedrock",
   "type": "module",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "license": "MIT",
   "description": "Effect modules for working with Amazon Bedrock AI apis",
   "homepage": "https://effect.website",
@@ -47,12 +47,14 @@
   },
   "peerDependencies": {
     "@effect/ai": "workspace:^",
+    "@effect/ai-anthropic": "workspace:^",
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
     "@effect/ai": "workspace:^",
+    "@effect/ai-anthropic": "workspace:^",
     "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/platform-node": "workspace:^",

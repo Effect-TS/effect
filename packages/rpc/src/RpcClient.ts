@@ -947,12 +947,14 @@ export const makeProtocolSocket = (options?: {
   Protocol.make(Effect.fnUntraced(function*(writeResponse) {
     const socket = yield* Socket.Socket
     const serialization = yield* RpcSerialization.RpcSerialization
-
     const write = yield* socket.writer
-
     let parser = serialization.unsafeMake()
-
     const pinger = yield* makePinger(write(parser.encode(constPing)!))
+
+    let currentError: RpcClientError | undefined
+    const clearCurrentError = Effect.sync(() => {
+      currentError = undefined
+    })
 
     yield* Effect.suspend(() => {
       parser = serialization.unsafeMake()
@@ -983,7 +985,7 @@ export const makeProtocolSocket = (options?: {
             })
           })
         }
-      }).pipe(
+      }, { onOpen: clearCurrentError }).pipe(
         Effect.raceFirst(Effect.zipRight(
           pinger.timeout,
           Effect.fail(
@@ -1009,13 +1011,14 @@ export const makeProtocolSocket = (options?: {
         ) {
           return Effect.void
         }
+        currentError = new RpcClientError({
+          reason: "Protocol",
+          message: "Error in socket",
+          cause: Cause.squash(cause)
+        })
         return writeResponse({
           _tag: "ClientProtocolError",
-          error: new RpcClientError({
-            reason: "Protocol",
-            message: "Error in socket",
-            cause: Cause.squash(cause)
-          })
+          error: currentError
         })
       }),
       Effect.retry(Schedule.spaced(1000)),
@@ -1029,6 +1032,9 @@ export const makeProtocolSocket = (options?: {
 
     return {
       send(request) {
+        if (currentError) {
+          return Effect.fail(currentError)
+        }
         const encoded = parser.encode(request)
         if (encoded === undefined) return Effect.void
         return Effect.orDie(write(encoded))
@@ -1053,7 +1059,7 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
     recievedPong = false
     return writePing
   }).pipe(
-    Effect.delay("10 seconds"),
+    Effect.delay("5 seconds"),
     Effect.ignore,
     Effect.forever,
     Effect.interruptible,

@@ -21,4 +21,9 @@ export * as AnthropicTokenizer from "./AnthropicTokenizer.js"
 /**
  * @since 1.0.0
  */
+export * as AnthropicTool from "./AnthropicTool.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Generated from "./Generated.js"

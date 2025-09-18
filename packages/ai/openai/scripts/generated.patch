@@ -1,17 +1,8 @@
 diff --git a/packages/ai/openai/src/Generated.ts b/packages/ai/openai/src/Generated.ts
-index 5e06e0ff8..55ad4d7c5 100644
+index bff596c3d..938a26f44 100644
 --- a/packages/ai/openai/src/Generated.ts
 +++ b/packages/ai/openai/src/Generated.ts
-@@ -374,7 +374,7 @@ export class AssistantSupportedModels extends S.Literal(
-  * reasoning effort can result in faster responses and fewer tokens used
-  * on reasoning in a response.
-  */
--export class ReasoningEffort extends S.Literal("low", "medium", "high") {}
-+export class ReasoningEffort extends S.Literal("minimal", "low", "medium", "high") {}
- 
- export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
-   /**
-@@ -779,7 +779,7 @@ export class CreateTranscriptionResponseVerboseJson
+@@ -897,7 +897,7 @@ export class CreateTranscriptionResponseVerboseJson
  {}
  
  export class CreateTranscription200
@@ -20,52 +11,13 @@ index 5e06e0ff8..55ad4d7c5 100644
  {}
  
  export class CreateTranslationRequestModelEnum extends S.Literal("whisper-1") {}
-@@ -1229,7 +1229,7 @@ export class ChatCompletionTokenLogprob extends S.Class<ChatCompletionTokenLogpr
-  *
-  *   When this parameter is set, the response body will include the `service_tier` utilized.
-  */
--export class ServiceTier extends S.Literal("auto", "default", "flex") {}
-+export class ServiceTier extends S.Literal("auto", "default", "flex", "scale") {}
+@@ -4844,7 +4844,8 @@ export class Includable extends S.Literal(
+   "file_search_call.results",
+   "message.input_image.image_url",
+   "message.output_text.logprobs",
+-  "reasoning.encrypted_content"
++  "reasoning.encrypted_content",
++  "web_search_call.action.sources"
+ ) {}
  
- /**
-  * The object type, which is always `chat.completion`.
-@@ -1327,7 +1327,7 @@ export class CreateChatCompletionResponse
-       /**
-        * Log probability information for the choice.
-        */
--      "logprobs": S.NullOr(S.Struct({
-+      "logprobs": S.optional(S.NullOr(S.Struct({
-         /**
-          * A list of message content tokens with log probability information.
-          */
-@@ -1336,7 +1336,7 @@ export class CreateChatCompletionResponse
-          * A list of message refusal tokens with log probability information.
-          */
-         "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
--      }))
-+      })))
-     })),
-     /**
-      * The Unix timestamp (in seconds) of when the chat completion was created.
-@@ -2064,6 +2064,12 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
-    */
-   "model": ModelIdsShared,
-   "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
-+  /**
-+   * Constrains the verbosity of the model's response. Lower values will result
-+   * in more concise responseswhile higher values will result in more verbose
-+   * responses.
-+   */
-+  "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true, default: () => "medium" as const }),
-   "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
-   /**
-    * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
-@@ -3111,7 +3117,7 @@ export class Eval extends S.Class<Eval>("Eval")({
-       EvalPythonGrader,
-       EvalScoreModelGrader
-     )
--  ).pipe(S.propertySignature, S.withConstructorDefault(() => "eval" as const)),
-+  ),
-   /**
-    * The Unix timestamp (in seconds) for when the eval was created.
-    */
+ export class ListConversationItemsParams extends S.Struct({

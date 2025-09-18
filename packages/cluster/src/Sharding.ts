@@ -36,6 +36,7 @@ import {
   EntityNotManagedByRunner,
   RunnerUnavailable
 } from "./ClusterError.js"
+import * as ClusterError from "./ClusterError.js"
 import { Persisted, Uninterruptible } from "./ClusterSchema.js"
 import * as ClusterSchema from "./ClusterSchema.js"
 import type { CurrentAddress, CurrentRunnerAddress, Entity, HandlersFrom } from "./Entity.js"
@@ -229,8 +230,10 @@ const make = Effect.gen(function*() {
 
     const releasingShards = MutableHashSet.empty<ShardId>()
     yield* Effect.gen(function*() {
+      activeShardsLatch.unsafeOpen()
       while (true) {
         yield* activeShardsLatch.await
+        activeShardsLatch.unsafeClose()
 
         // if a shard is no longer assigned to this runner, we release it
         for (const shardId of acquiredShards) {
@@ -251,7 +254,6 @@ const make = Effect.gen(function*() {
         }
 
         if (MutableHashSet.size(unacquiredShards) === 0) {
-          yield* activeShardsLatch.close
           continue
         }
 
@@ -265,10 +267,11 @@ const make = Effect.gen(function*() {
           yield* Effect.forkIn(syncSingletons, shardingScope)
         }
         yield* Effect.sleep(1000)
+        activeShardsLatch.unsafeOpen()
       }
     }).pipe(
       Effect.catchAllCause((cause) => Effect.logWarning("Could not acquire/release shards", cause)),
-      Effect.repeat(Schedule.spaced(config.entityMessagePollInterval)),
+      Effect.forever,
       Effect.annotateLogs({
         package: "@effect/cluster",
         module: "Sharding",
@@ -309,8 +312,7 @@ const make = Effect.gen(function*() {
           Effect.andThen(clearSelfShards)
         )
       ),
-      Effect.delay("4 seconds"),
-      Effect.forever,
+      Effect.schedule(Schedule.fixed(4000)),
       Effect.interruptible,
       Effect.forkIn(shardingScope)
     )
@@ -327,16 +329,14 @@ const make = Effect.gen(function*() {
               { concurrency: "unbounded", discard: true }
             ).pipe(
               Effect.andThen(shardStorage.release(selfAddress, shardId)),
-              Effect.annotateLogs({
-                runner: selfAddress
-              }),
+              Effect.annotateLogs({ runner: selfAddress }),
               Effect.andThen(() => {
                 MutableHashSet.remove(releasingShards, shardId)
               })
             ),
           { concurrency: "unbounded", discard: true }
         )
-      )
+      ).pipe(Effect.andThen(activeShardsLatch.open))
     )
   }
 
@@ -830,11 +830,12 @@ const make = Effect.gen(function*() {
 
     yield* Effect.logDebug("Subscribing to sharding events")
     const mailbox = yield* shardManager.shardingEvents(config.runnerAddress)
-    const startedLatch = yield* Deferred.make<void>()
+    const startedLatch = yield* Deferred.make<void, ClusterError.RunnerNotRegistered>()
 
     const eventsFiber = yield* Effect.gen(function*() {
       while (true) {
-        const [events] = yield* mailbox.takeAll
+        const [events, done] = yield* mailbox.takeAll
+        if (done) return
         for (const event of events) {
           yield* Effect.logDebug("Received sharding event", event)
 
@@ -868,11 +869,16 @@ const make = Effect.gen(function*() {
               }
               break
             }
+            case "RunnerUnregistered": {
+              if (!isLocalRunner(event.address)) break
+              return yield* Effect.fail(new ClusterError.RunnerNotRegistered({ address: event.address }))
+            }
           }
         }
       }
     }).pipe(
       Effect.intoDeferred(startedLatch),
+      Effect.zipRight(Effect.dieMessage("Shard manager event stream down")),
       Effect.forkScoped
     )
 
@@ -886,7 +892,7 @@ const make = Effect.gen(function*() {
       Effect.forkScoped
     )
 
-    yield* Fiber.joinAll([eventsFiber, syncFiber])
+    return yield* Fiber.joinAll([eventsFiber, syncFiber])
   }).pipe(
     Effect.scoped,
     Effect.catchAllCause((cause) => Effect.logDebug(cause)),
@@ -1148,7 +1154,6 @@ const make = Effect.gen(function*() {
         manager
       })
 
-      yield* Scope.addFinalizer(scope, Effect.sync(() => entityManagers.delete(entity.type)))
       yield* PubSub.publish(events, EntityRegistered({ entity }))
     }
   )

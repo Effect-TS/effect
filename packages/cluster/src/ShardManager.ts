@@ -59,7 +59,7 @@ export class ShardManager extends Context.Tag("@effect/cluster/ShardManager")<Sh
    */
   readonly shardingEvents: (
     address: Option.Option<RunnerAddress>
-  ) => Effect.Effect<Queue.Dequeue<ShardingEvent>, never, Scope>
+  ) => Effect.Effect<Queue.Dequeue<ShardingEvent>, RunnerNotRegistered, Scope>
   /**
    * Register a new runner with the cluster.
    */
@@ -293,6 +293,7 @@ export class Rpcs extends RpcGroup.make(
   Rpc.make("ShardingEvents", {
     payload: { address: Schema.Option(RunnerAddress) },
     success: ShardingEventSchema,
+    error: RunnerNotRegistered,
     stream: true
   }),
   Rpc.make("GetTime", {
@@ -744,11 +745,18 @@ export const make = Effect.gen(function*() {
 
   return ShardManager.of({
     getAssignments,
-    shardingEvents: (address) =>
-      Effect.zipRight(
-        Option.isSome(address) ? runnerHealthApi.onConnection(address.value) : Effect.void,
-        PubSub.subscribe(events)
-      ),
+    shardingEvents: (address) => {
+      if (Option.isNone(address)) {
+        return PubSub.subscribe(events)
+      }
+      return Effect.tap(PubSub.subscribe(events), () => {
+        const isRegistered = MutableHashMap.has(state.allRunners, address.value)
+        if (isRegistered) {
+          return runnerHealthApi.onConnection(address.value)
+        }
+        return Effect.fail(new RunnerNotRegistered({ address: address.value }))
+      })
+    },
     register,
     unregister,
     rebalance,

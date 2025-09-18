@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as AiTelemetry from "@effect/ai/AiTelemetry"
+import * as Telemetry from "@effect/ai/Telemetry"
 import { dual } from "effect/Function"
 import * as Predicate from "effect/Predicate"
 import * as String from "effect/String"
@@ -18,9 +18,9 @@ import type { Simplify } from "effect/Types"
  * @category Models
  */
 export type OpenAiTelemetryAttributes = Simplify<
-  & AiTelemetry.GenAITelemetryAttributes
-  & AiTelemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.openai.request">
-  & AiTelemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.openai.request">
+  & Telemetry.GenAITelemetryAttributes
+  & Telemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.openai.request">
+  & Telemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.openai.request">
 >
 
 /**
@@ -30,7 +30,7 @@ export type OpenAiTelemetryAttributes = Simplify<
  * @since 1.0.0
  * @category Models
  */
-export type AllAttributes = AiTelemetry.AllAttributes & RequestAttributes & ResponseAttributes
+export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & ResponseAttributes
 
 /**
  * Telemetry attributes which are part of the GenAI specification and are
@@ -97,17 +97,17 @@ export type WellKnownServiceTier = "auto" | "default"
  * @since 1.0.0
  * @since Models
  */
-export type OpenAiTelemetryAttributeOptions = AiTelemetry.GenAITelemetryAttributeOptions & {
+export type OpenAiTelemetryAttributeOptions = Telemetry.GenAITelemetryAttributeOptions & {
   openai?: {
     request?: RequestAttributes | undefined
     response?: ResponseAttributes | undefined
   } | undefined
 }
 
-const addOpenAiRequestAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai.request", String.camelToSnake)<
+const addOpenAiRequestAttributes = Telemetry.addSpanAttributes("gen_ai.openai.request", String.camelToSnake)<
   RequestAttributes
 >
-const addOpenAiResponseAttributes = AiTelemetry.addSpanAttributes("gen_ai.openai.response", String.camelToSnake)<
+const addOpenAiResponseAttributes = Telemetry.addSpanAttributes("gen_ai.openai.response", String.camelToSnake)<
   ResponseAttributes
 >
 
@@ -142,7 +142,7 @@ export const addGenAIAnnotations = dual<
    */
   (span: Span, options: OpenAiTelemetryAttributeOptions) => void
 >(2, (span, options) => {
-  AiTelemetry.addGenAIAnnotations(span, options)
+  Telemetry.addGenAIAnnotations(span, options)
   if (Predicate.isNotNullable(options.openai)) {
     if (Predicate.isNotNullable(options.openai.request)) {
       addOpenAiRequestAttributes(span, options.openai.request)

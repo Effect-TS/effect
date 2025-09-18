@@ -157,7 +157,7 @@ export class FunctionCall extends S.Class<FunctionCall>("FunctionCall")({
   /**
    * Required. The name of the function to call.
    * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * length of 64.
    */
   "name": S.String,
   /**
@@ -191,11 +191,15 @@ export class FunctionResponse extends S.Class<FunctionResponse>("FunctionRespons
   /**
    * Required. The name of the function to call.
    * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * length of 64.
    */
   "name": S.String,
   /**
    * Required. The function response in JSON object format.
+   * Callers can use any keys of their choice that fit the function's syntax
+   * to return the function output, e.g. "output", "result", etc.
+   * In particular, if the function call failed to execute, the response can
+   * have an "error" key to return error details to the model.
    */
   "response": S.Record({ key: S.String, value: S.Unknown }),
   /**
@@ -472,7 +476,7 @@ const schemaFields = {
 }
 
 /**
- * The `Schema` object allows the definition of input and output data types.
+ * The \`Schema\` object allows the definition of input and output data types.
  * These types can be objects, but also primitives and arrays.
  * Represents a select subset of an [OpenAPI 3.0 schema
  * object](https://spec.openapis.org/oas/v3.0.3#schema).
@@ -490,7 +494,7 @@ export interface SchemaEncoded extends S.Struct.Encoded<typeof schemaFields> {
 }
 
 /**
- * The `Schema` object allows the definition of input and output data types.
+ * The \`Schema\` object allows the definition of input and output data types.
  * These types can be objects, but also primitives and arrays.
  * Represents a select subset of an [OpenAPI 3.0 schema
  * object](https://spec.openapis.org/oas/v3.0.3#schema).
@@ -520,8 +524,8 @@ export class FunctionDeclarationBehavior extends S.Literal("UNSPECIFIED", "BLOCK
 export class FunctionDeclaration extends S.Class<FunctionDeclaration>("FunctionDeclaration")({
   /**
    * Required. The name of the function.
-   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * Must be a-z, A-Z, 0-9, or contain underscores, colons, dots, and dashes,
+   * with a maximum length of 64.
    */
   "name": S.String,
   /**
@@ -636,6 +640,8 @@ export class UrlContext extends S.Record({ key: S.String, value: S.Unknown }) {}
  * A `Tool` is a piece of code that enables the system to interact with
  * external systems to perform an action, or set of actions, outside of
  * knowledge and scope of the model.
+ *
+ * Next ID: 11
  */
 export class Tool extends S.Class<Tool>("Tool")({
   /**
@@ -691,9 +697,9 @@ export class FunctionCallingConfig extends S.Class<FunctionCallingConfig>("Funct
    * Optional. A set of function names that, when provided, limits the functions the model
    * will call.
    *
-   * This should only be set when the Mode is ANY. Function names
-   * should match [FunctionDeclaration.name]. With mode set to ANY, model will
-   * predict a function call from the set of function names provided.
+   * This should only be set when the Mode is ANY or VALIDATED. Function names
+   * should match [FunctionDeclaration.name]. When set, model will
+   * predict a function call from only allowed function names.
    */
   "allowedFunctionNames": S.optionalWith(S.Array(S.String), { nullable: true })
 }) {}
@@ -849,6 +855,7 @@ export class GenerationConfigMediaResolution extends S.Literal(
 /**
  * Configuration options for model generation and outputs. Not all parameters
  * are configurable for every model.
+ * Next ID: 28
  */
 export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfig")({
   /**
@@ -977,7 +984,7 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
   /**
    * Optional. Only valid if response_logprobs=True.
    * This sets the number of top logprobs to return at each decoding step in the
-   * Candidate.logprobs_result.
+   * Candidate.logprobs_result. The number must be in the range of [0, 20].
    */
   "logprobs": S.optionalWith(S.Int, { nullable: true }),
   /**
@@ -1016,7 +1023,7 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
 
 /**
  * Request to generate a completion from the model.
- * NEXT ID: 14
+ * NEXT ID: 16
  */
 export class GenerateContentRequest extends S.Class<GenerateContentRequest>("GenerateContentRequest")({
   /**
@@ -1107,7 +1114,9 @@ export class CandidateFinishReason extends S.Literal(
   "PROHIBITED_CONTENT",
   "SPII",
   "MALFORMED_FUNCTION_CALL",
-  "IMAGE_SAFETY"
+  "IMAGE_SAFETY",
+  "UNEXPECTED_TOOL_CALL",
+  "TOO_MANY_TOOL_CALLS"
 ) {}
 
 /**
@@ -1410,9 +1419,13 @@ export class LogprobsResult extends S.Class<LogprobsResult>("LogprobsResult")({
 /**
  * Status of the url retrieval.
  */
-export class UrlMetadataUrlRetrievalStatus
-  extends S.Literal("URL_RETRIEVAL_STATUS_UNSPECIFIED", "URL_RETRIEVAL_STATUS_SUCCESS", "URL_RETRIEVAL_STATUS_ERROR")
-{}
+export class UrlMetadataUrlRetrievalStatus extends S.Literal(
+  "URL_RETRIEVAL_STATUS_UNSPECIFIED",
+  "URL_RETRIEVAL_STATUS_SUCCESS",
+  "URL_RETRIEVAL_STATUS_ERROR",
+  "URL_RETRIEVAL_STATUS_PAYWALL",
+  "URL_RETRIEVAL_STATUS_UNSAFE"
+) {}
 
 /**
  * Context of the a single url retrieval.
@@ -1525,7 +1538,9 @@ export class PromptFeedback extends S.Class<PromptFeedback>("PromptFeedback")({
   "safetyRatings": S.optionalWith(S.Array(SafetyRating), { nullable: true })
 }) {}
 
-export class Modality extends S.Literal("MODALITY_UNSPECIFIED", "TEXT", "IMAGE", "VIDEO", "AUDIO", "DOCUMENT") {}
+export class GenerativeLanguageModality
+  extends S.Literal("MODALITY_UNSPECIFIED", "TEXT", "IMAGE", "VIDEO", "AUDIO", "DOCUMENT")
+{}
 
 /**
  * Represents token counting info for a single modality.
@@ -1534,7 +1549,7 @@ export class ModalityTokenCount extends S.Class<ModalityTokenCount>("ModalityTok
   /**
    * The modality associated with this token count.
    */
-  "modality": S.optionalWith(Modality, { nullable: true }),
+  "modality": S.optionalWith(GenerativeLanguageModality, { nullable: true }),
   /**
    * Number of tokens.
    */
@@ -2004,6 +2019,451 @@ export class CountTokensResponse extends S.Class<CountTokensResponse>("CountToke
    */
   "cacheTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true })
 }) {}
+
+/**
+ * The request to be processed in the batch.
+ */
+export class InlinedRequest extends S.Class<InlinedRequest>("InlinedRequest")({
+  /**
+   * Required. The request to be processed in the batch.
+   */
+  "request": GenerateContentRequest,
+  /**
+   * Optional. The metadata to be associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The requests to be processed in the batch if provided as part of the
+ * batch creation request.
+ */
+export class InlinedRequests extends S.Class<InlinedRequests>("InlinedRequests")({
+  /**
+   * Required. The requests to be processed in the batch.
+   */
+  "requests": S.Array(InlinedRequest)
+}) {}
+
+/**
+ * Configures the input to the batch request.
+ */
+export class InputConfig extends S.Class<InputConfig>("InputConfig")({
+  /**
+   * The name of the `File` containing the input requests.
+   */
+  "fileName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The requests to be processed in the batch.
+   */
+  "requests": S.optionalWith(InlinedRequests, { nullable: true })
+}) {}
+
+/**
+ * The response to a single request in the batch.
+ */
+export class InlinedResponse extends S.Class<InlinedResponse>("InlinedResponse")({
+  /**
+   * Output only. The error encountered while processing the request.
+   */
+  "error": S.optionalWith(Status, { nullable: true }),
+  /**
+   * Output only. The response to the request.
+   */
+  "response": S.optionalWith(GenerateContentResponse, { nullable: true }),
+  /**
+   * Output only. The metadata associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The responses to the requests in the batch.
+ */
+export class InlinedResponses extends S.Class<InlinedResponses>("InlinedResponses")({
+  /**
+   * Output only. The responses to the requests in the batch.
+   */
+  "inlinedResponses": S.optionalWith(S.Array(InlinedResponse), { nullable: true })
+}) {}
+
+/**
+ * The output of a batch request. This is returned in the
+ * `BatchGenerateContentResponse` or the `GenerateContentBatch.output` field.
+ */
+export class GenerateContentBatchOutput extends S.Class<GenerateContentBatchOutput>("GenerateContentBatchOutput")({
+  /**
+   * Output only. The file ID of the file containing the responses.
+   * The file will be a JSONL file with a single response per line.
+   * The responses will be `GenerateContentResponse` messages formatted as
+   * JSON.
+   * The responses will be written in the same order as the input requests.
+   */
+  "responsesFile": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The responses to the requests in the batch. Returned when the batch was
+   * built using inlined requests. The responses will be in the same order as
+   * the input requests.
+   */
+  "inlinedResponses": S.optionalWith(InlinedResponses, { nullable: true })
+}) {}
+
+/**
+ * Stats about the batch.
+ */
+export class BatchStats extends S.Class<BatchStats>("BatchStats")({
+  /**
+   * Output only. The number of requests in the batch.
+   */
+  "requestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that were successfully processed.
+   */
+  "successfulRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that failed to be processed.
+   */
+  "failedRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that are still pending processing.
+   */
+  "pendingRequestCount": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BatchState extends S.Literal(
+  "BATCH_STATE_UNSPECIFIED",
+  "BATCH_STATE_PENDING",
+  "BATCH_STATE_RUNNING",
+  "BATCH_STATE_SUCCEEDED",
+  "BATCH_STATE_FAILED",
+  "BATCH_STATE_CANCELLED",
+  "BATCH_STATE_EXPIRED"
+) {}
+
+/**
+ * A resource representing a batch of `GenerateContent` requests.
+ */
+export class GenerateContentBatch extends S.Class<GenerateContentBatch>("GenerateContentBatch")({
+  /**
+   * Required. The name of the `Model` to use for generating the completion.
+   *
+   * Format: `models/{model}`.
+   */
+  "model": S.String,
+  /**
+   * Output only. Identifier. Resource name of the batch.
+   *
+   * Format: `batches/{batch_id}`.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The user-defined name of this batch.
+   */
+  "displayName": S.String,
+  /**
+   * Required. Input configuration of the instances on which batch processing
+   * are performed.
+   */
+  "inputConfig": InputConfig,
+  /**
+   * Output only. The output of the batch request.
+   */
+  "output": S.optionalWith(GenerateContentBatchOutput, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch processing completed.
+   */
+  "endTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Stats about the batch.
+   */
+  "batchStats": S.optionalWith(BatchStats, { nullable: true }),
+  /**
+   * Output only. The state of the batch.
+   */
+  "state": S.optionalWith(BatchState, { nullable: true }),
+  /**
+   * Optional. The priority of the batch. Batches with a higher priority value will be
+   * processed before batches with a lower priority value. Negative values are
+   * allowed. Default is 0.
+   */
+  "priority": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Request for a `BatchGenerateContent` operation.
+ */
+export class BatchGenerateContentRequest extends S.Class<BatchGenerateContentRequest>("BatchGenerateContentRequest")({
+  /**
+   * Required. The batch to create.
+   */
+  "batch": GenerateContentBatch
+}) {}
+
+/**
+ * Response for a `BatchGenerateContent` operation.
+ */
+export class BatchGenerateContentResponse
+  extends S.Class<BatchGenerateContentResponse>("BatchGenerateContentResponse")({
+    /**
+     * Output only. The output of the batch request.
+     */
+    "output": S.optionalWith(GenerateContentBatchOutput, { nullable: true })
+  })
+{}
+
+/**
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
+ */
+export class BatchGenerateContentOperation
+  extends S.Class<BatchGenerateContentOperation>("BatchGenerateContentOperation")({
+    "metadata": S.optionalWith(GenerateContentBatch, { nullable: true }),
+    "response": S.optionalWith(BatchGenerateContentResponse, { nullable: true }),
+    /**
+     * The server-assigned name, which is only unique within the same service that
+     * originally returns it. If you use the default HTTP mapping, the
+     * `name` should be a resource name ending with `operations/{unique_id}`.
+     */
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * If the value is `false`, it means the operation is still in progress.
+     * If `true`, the operation is completed, and either `error` or `response` is
+     * available.
+     */
+    "done": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * The error result of the operation in case of failure or cancellation.
+     */
+    "error": S.optionalWith(Status, { nullable: true })
+  })
+{}
+
+/**
+ * The request to be processed in the batch.
+ */
+export class InlinedEmbedContentRequest extends S.Class<InlinedEmbedContentRequest>("InlinedEmbedContentRequest")({
+  /**
+   * Required. The request to be processed in the batch.
+   */
+  "request": EmbedContentRequest,
+  /**
+   * Optional. The metadata to be associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The requests to be processed in the batch if provided as part of the
+ * batch creation request.
+ */
+export class InlinedEmbedContentRequests extends S.Class<InlinedEmbedContentRequests>("InlinedEmbedContentRequests")({
+  /**
+   * Required. The requests to be processed in the batch.
+   */
+  "requests": S.Array(InlinedEmbedContentRequest)
+}) {}
+
+/**
+ * Configures the input to the batch request.
+ */
+export class InputEmbedContentConfig extends S.Class<InputEmbedContentConfig>("InputEmbedContentConfig")({
+  /**
+   * The name of the `File` containing the input requests.
+   */
+  "fileName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The requests to be processed in the batch.
+   */
+  "requests": S.optionalWith(InlinedEmbedContentRequests, { nullable: true })
+}) {}
+
+/**
+ * The response to a single request in the batch.
+ */
+export class InlinedEmbedContentResponse extends S.Class<InlinedEmbedContentResponse>("InlinedEmbedContentResponse")({
+  /**
+   * Output only. The error encountered while processing the request.
+   */
+  "error": S.optionalWith(Status, { nullable: true }),
+  /**
+   * Output only. The response to the request.
+   */
+  "response": S.optionalWith(EmbedContentResponse, { nullable: true }),
+  /**
+   * Output only. The metadata associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The responses to the requests in the batch.
+ */
+export class InlinedEmbedContentResponses
+  extends S.Class<InlinedEmbedContentResponses>("InlinedEmbedContentResponses")({
+    /**
+     * Output only. The responses to the requests in the batch.
+     */
+    "inlinedResponses": S.optionalWith(S.Array(InlinedEmbedContentResponse), { nullable: true })
+  })
+{}
+
+/**
+ * The output of a batch request. This is returned in the
+ * `AsyncBatchEmbedContentResponse` or the `EmbedContentBatch.output` field.
+ */
+export class EmbedContentBatchOutput extends S.Class<EmbedContentBatchOutput>("EmbedContentBatchOutput")({
+  /**
+   * Output only. The file ID of the file containing the responses.
+   * The file will be a JSONL file with a single response per line.
+   * The responses will be `EmbedContentResponse` messages formatted as JSON.
+   * The responses will be written in the same order as the input requests.
+   */
+  "responsesFile": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The responses to the requests in the batch. Returned when the batch was
+   * built using inlined requests. The responses will be in the same order as
+   * the input requests.
+   */
+  "inlinedResponses": S.optionalWith(InlinedEmbedContentResponses, { nullable: true })
+}) {}
+
+/**
+ * Stats about the batch.
+ */
+export class EmbedContentBatchStats extends S.Class<EmbedContentBatchStats>("EmbedContentBatchStats")({
+  /**
+   * Output only. The number of requests in the batch.
+   */
+  "requestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that were successfully processed.
+   */
+  "successfulRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that failed to be processed.
+   */
+  "failedRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that are still pending processing.
+   */
+  "pendingRequestCount": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A resource representing a batch of `EmbedContent` requests.
+ */
+export class EmbedContentBatch extends S.Class<EmbedContentBatch>("EmbedContentBatch")({
+  /**
+   * Required. The name of the `Model` to use for generating the completion.
+   *
+   * Format: `models/{model}`.
+   */
+  "model": S.String,
+  /**
+   * Output only. Identifier. Resource name of the batch.
+   *
+   * Format: `batches/{batch_id}`.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The user-defined name of this batch.
+   */
+  "displayName": S.String,
+  /**
+   * Required. Input configuration of the instances on which batch processing
+   * are performed.
+   */
+  "inputConfig": InputEmbedContentConfig,
+  /**
+   * Output only. The output of the batch request.
+   */
+  "output": S.optionalWith(EmbedContentBatchOutput, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch processing completed.
+   */
+  "endTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Stats about the batch.
+   */
+  "batchStats": S.optionalWith(EmbedContentBatchStats, { nullable: true }),
+  /**
+   * Output only. The state of the batch.
+   */
+  "state": S.optionalWith(BatchState, { nullable: true }),
+  /**
+   * Optional. The priority of the batch. Batches with a higher priority value will be
+   * processed before batches with a lower priority value. Negative values are
+   * allowed. Default is 0.
+   */
+  "priority": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Request for an `AsyncBatchEmbedContent` operation.
+ */
+export class AsyncBatchEmbedContentRequest
+  extends S.Class<AsyncBatchEmbedContentRequest>("AsyncBatchEmbedContentRequest")({
+    /**
+     * Required. The batch to create.
+     */
+    "batch": EmbedContentBatch
+  })
+{}
+
+/**
+ * Response for a `BatchGenerateContent` operation.
+ */
+export class AsyncBatchEmbedContentResponse
+  extends S.Class<AsyncBatchEmbedContentResponse>("AsyncBatchEmbedContentResponse")({
+    /**
+     * Output only. The output of the batch request.
+     */
+    "output": S.optionalWith(EmbedContentBatchOutput, { nullable: true })
+  })
+{}
+
+/**
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
+ */
+export class AsyncBatchEmbedContentOperation
+  extends S.Class<AsyncBatchEmbedContentOperation>("AsyncBatchEmbedContentOperation")({
+    "metadata": S.optionalWith(EmbedContentBatch, { nullable: true }),
+    "response": S.optionalWith(AsyncBatchEmbedContentResponse, { nullable: true }),
+    /**
+     * The server-assigned name, which is only unique within the same service that
+     * originally returns it. If you use the default HTTP mapping, the
+     * `name` should be a resource name ending with `operations/{unique_id}`.
+     */
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * If the value is `false`, it means the operation is still in progress.
+     * If `true`, the operation is completed, and either `error` or `response` is
+     * available.
+     */
+    "done": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * The error result of the operation in case of failure or cancellation.
+     */
+    "error": S.optionalWith(Status, { nullable: true })
+  })
+{}
 
 export class ListCachedContentsParams extends S.Struct({
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
@@ -3086,20 +3546,22 @@ export class Media extends S.Class<Media>("Media")({
 /**
  * Veo response.
  */
-export class GenerateVideoResponse extends S.Class<GenerateVideoResponse>("GenerateVideoResponse")({
-  /**
-   * The generated samples.
-   */
-  "generatedSamples": S.optionalWith(S.Array(Media), { nullable: true }),
-  /**
-   * Returns if any videos were filtered due to RAI policies.
-   */
-  "raiMediaFilteredCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Returns rai failure reasons if any.
-   */
-  "raiMediaFilteredReasons": S.optionalWith(S.Array(S.String), { nullable: true })
-}) {}
+export class PredictLongRunningGeneratedVideoResponse
+  extends S.Class<PredictLongRunningGeneratedVideoResponse>("PredictLongRunningGeneratedVideoResponse")({
+    /**
+     * The generated samples.
+     */
+    "generatedSamples": S.optionalWith(S.Array(Media), { nullable: true }),
+    /**
+     * Returns if any videos were filtered due to RAI policies.
+     */
+    "raiMediaFilteredCount": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * Returns rai failure reasons if any.
+     */
+    "raiMediaFilteredReasons": S.optionalWith(S.Array(S.String), { nullable: true })
+  })
+{}
 
 /**
  * Response message for [PredictionService.PredictLongRunning]
@@ -3108,7 +3570,7 @@ export class PredictLongRunningResponse extends S.Class<PredictLongRunningRespon
   /**
    * The response of the video generation prediction.
    */
-  "generateVideoResponse": S.optionalWith(GenerateVideoResponse, { nullable: true })
+  "generateVideoResponse": S.optionalWith(PredictLongRunningGeneratedVideoResponse, { nullable: true })
 }) {}
 
 /**
@@ -3147,7 +3609,7 @@ export class ListCorporaParams extends S.Struct({
  */
 export class Corpus extends S.Class<Corpus>("Corpus")({
   /**
-   * Immutable. Identifier. The `Corpus` resource name. The ID (name excluding the "corpora/" prefix)
+   * Output only. Immutable. Identifier. The `Corpus` resource name. The ID (name excluding the "corpora/" prefix)
    * can contain up to 40 characters that are lowercase alphanumeric or dashes
    * (-). The ID cannot start or end with a dash. If the name is empty on
    * create, a unique name will be derived from `display_name` along with a 12
@@ -3337,35 +3799,6 @@ export class Chunk extends S.Class<Chunk>("Chunk")({
 }) {}
 
 /**
- * The information for a chunk relevant to a query.
- */
-export class RelevantChunk extends S.Class<RelevantChunk>("RelevantChunk")({
-  /**
-   * `Chunk` relevance to the query.
-   */
-  "chunkRelevanceScore": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * `Chunk` associated with the query.
-   */
-  "chunk": S.optionalWith(Chunk, { nullable: true })
-}) {}
-
-/**
- * Response from `QueryCorpus` containing a list of relevant chunks.
- */
-export class QueryCorpusResponse extends S.Class<QueryCorpusResponse>("QueryCorpusResponse")({
-  /**
-   * The relevant chunks.
-   */
-  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
-}) {}
-
-export class ListDocumentsParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
  * A `Document` is a collection of `Chunk`s.
  * A `Corpus` can have a maximum of 10,000 `Document`s.
  */
@@ -3398,6 +3831,39 @@ export class Document extends S.Class<Document>("Document")({
    * Output only. The Timestamp of when the `Document` was created.
    */
   "createTime": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The information for a chunk relevant to a query.
+ */
+export class RelevantChunk extends S.Class<RelevantChunk>("RelevantChunk")({
+  /**
+   * `Chunk` relevance to the query.
+   */
+  "chunkRelevanceScore": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * `Chunk` associated with the query.
+   */
+  "chunk": S.optionalWith(Chunk, { nullable: true }),
+  /**
+   * `Document` associated with the chunk.
+   */
+  "document": S.optionalWith(Document, { nullable: true })
+}) {}
+
+/**
+ * Response from `QueryCorpus` containing a list of relevant chunks.
+ */
+export class QueryCorpusResponse extends S.Class<QueryCorpusResponse>("QueryCorpusResponse")({
+  /**
+   * The relevant chunks.
+   */
+  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
+}) {}
+
+export class ListDocumentsParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -3974,6 +4440,27 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "GetOperationByCorpusAndOperation": (corpus, operation) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/operations/${operation}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetOperationByRagStoreAndOperation": (ragStore, operation) =>
+      HttpClientRequest.get(`/v1beta/ragStores/${ragStore}/operations/${operation}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetOperationByRagStoresIdAndOperationsId": (ragStoresId, operationsId) =>
+      HttpClientRequest.get(`/v1beta/ragStores/${ragStoresId}/upload/operations/${operationsId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
     "CancelOperation": (generateContentBatch) =>
       HttpClientRequest.post(`/v1beta/batches/${generateContentBatch}:cancel`).pipe(
         withResponse(HttpClientResponse.matchStatus({
@@ -4058,6 +4545,38 @@ export const make = (
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CountTokensResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchGenerateContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:batchGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchGenerateContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchGenerateContentByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:batchGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchGenerateContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "AsyncBatchEmbedContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:asyncBatchEmbedContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(AsyncBatchEmbedContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "AsyncBatchEmbedContentByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:asyncBatchEmbedContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(AsyncBatchEmbedContentOperation),
           orElse: unexpectedStatus
         }))
       ),
@@ -4628,6 +5147,33 @@ export interface Client {
     operation: string
   ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
   /**
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
+   */
+  readonly "GetOperationByCorpusAndOperation": (
+    corpus: string,
+    operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
+   */
+  readonly "GetOperationByRagStoreAndOperation": (
+    ragStore: string,
+    operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
+   */
+  readonly "GetOperationByRagStoresIdAndOperationsId": (
+    ragStoresId: string,
+    operationsId: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
    * Starts asynchronous cancellation on a long-running operation.  The server
    * makes a best effort to cancel the operation, but success is not
    * guaranteed.  If the server doesn't support this method, it returns
@@ -4743,6 +5289,38 @@ export interface Client {
     model: string,
     options: typeof CountTokensRequest.Encoded
   ) => Effect.Effect<typeof CountTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `GenerateContent` requests for batch processing.
+   */
+  readonly "BatchGenerateContent": (
+    model: string,
+    options: typeof BatchGenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof BatchGenerateContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `GenerateContent` requests for batch processing.
+   */
+  readonly "BatchGenerateContentByTunedModel": (
+    tunedModel: string,
+    options: typeof BatchGenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof BatchGenerateContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `EmbedContent` requests for batch processing.
+   * We have a `BatchEmbedContents` handler in `GenerativeService`, but it was
+   * synchronized. So we name this one to be `Async` to avoid confusion.
+   */
+  readonly "AsyncBatchEmbedContent": (
+    model: string,
+    options: typeof AsyncBatchEmbedContentRequest.Encoded
+  ) => Effect.Effect<typeof AsyncBatchEmbedContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `EmbedContent` requests for batch processing.
+   * We have a `BatchEmbedContents` handler in `GenerativeService`, but it was
+   * synchronized. So we name this one to be `Async` to avoid confusion.
+   */
+  readonly "AsyncBatchEmbedContentByTunedModel": (
+    tunedModel: string,
+    options: typeof AsyncBatchEmbedContentRequest.Encoded
+  ) => Effect.Effect<typeof AsyncBatchEmbedContentOperation.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Lists CachedContents.
    */

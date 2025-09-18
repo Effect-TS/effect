@@ -1,5 +1,47 @@
 # @effect/cluster
 
+## 0.48.11
+
+### Patch Changes
+
+- [#5519](https://github.com/Effect-TS/effect/pull/5519) [`92c533f`](https://github.com/Effect-TS/effect/commit/92c533fb52d6d3869728071e92596f80b4c7aa36) Thanks @tim-smart! - improve SqlMessageStorage insert queries
+
+## 0.48.10
+
+### Patch Changes
+
+- [#5517](https://github.com/Effect-TS/effect/pull/5517) [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8) Thanks @tim-smart! - backport cluster improvements from effect 4
+
+- Updated dependencies [[`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8)]:
+  - @effect/platform@0.90.10
+  - @effect/rpc@0.69.3
+
+## 0.48.9
+
+### Patch Changes
+
+- [#5512](https://github.com/Effect-TS/effect/pull/5512) [`934c1d9`](https://github.com/Effect-TS/effect/commit/934c1d9517a7c8bcac1b362908fa474371f7f0fa) Thanks @tim-smart! - backport active shard latch changes from effect 4
+
+## 0.48.8
+
+### Patch Changes
+
+- [#5510](https://github.com/Effect-TS/effect/pull/5510) [`c2fed22`](https://github.com/Effect-TS/effect/commit/c2fed22a131fbd9ba54482af1886cc1e869a72cd) Thanks @tim-smart! - re-add two phase runner health check
+
+## 0.48.7
+
+### Patch Changes
+
+- [#5505](https://github.com/Effect-TS/effect/pull/5505) [`1c4b6ae`](https://github.com/Effect-TS/effect/commit/1c4b6ae81daf17bce1f67c0a0bc298dc4ce8f461) Thanks @tim-smart! - ensure ShardManager and Runner get fresh versions of the rpc protocol
+
+- [#5508](https://github.com/Effect-TS/effect/pull/5508) [`26d1267`](https://github.com/Effect-TS/effect/commit/26d12678b08ee3021f5529bed97b63377155a7fe) Thanks @tim-smart! - ensure runner detects when it has been externally unregistered
+
+## 0.48.6
+
+### Patch Changes
+
+- [#5501](https://github.com/Effect-TS/effect/pull/5501) [`a874567`](https://github.com/Effect-TS/effect/commit/a874567c59fa1b135268d8e86222a4afd693ae12) Thanks @tim-smart! - don't remove entities from map on shutdown
+
 ## 0.48.5
 
 ### Patch Changes

@@ -421,35 +421,38 @@ class ServerRequestImpl extends Inspectable.Class implements ServerRequest.HttpS
                 return true
               })
             const writer = Effect.succeed(write)
-            const runRaw = <R, E, _>(
-              handler: (_: Uint8Array | string) => Effect.Effect<_, E, R> | void
-            ): Effect.Effect<void, Socket.SocketError | E, R> =>
-              FiberSet.make<any, E>().pipe(
-                Effect.flatMap((set) =>
-                  FiberSet.runtime(set)<R>().pipe(
-                    Effect.flatMap((run) => {
-                      function runRaw(data: Uint8Array | string) {
-                        const result = handler(data)
-                        if (Effect.isEffect(result)) {
-                          run(result)
-                        }
-                      }
-                      ws.data.run = runRaw
-                      ws.data.buffer.forEach(runRaw)
-                      ws.data.buffer.length = 0
-                      return FiberSet.join(set)
-                    })
-                  )
-                ),
-                Effect.scoped,
-                Effect.onExit((exit) => Effect.sync(() => ws.close(exit._tag === "Success" ? 1000 : 1011))),
-                Effect.raceFirst(Deferred.await(closeDeferred)),
-                semaphore.withPermits(1)
-              )
+            const runRaw = Effect.fnUntraced(
+              function*<R, E, _>(
+                handler: (_: Uint8Array | string) => Effect.Effect<_, E, R> | void,
+                opts?: { readonly onOpen?: Effect.Effect<void> | undefined }
+              ) {
+                const set = yield* FiberSet.make<any, E>()
+                const run = yield* FiberSet.runtime(set)<R>()
+                function runRaw(data: Uint8Array | string) {
+                  const result = handler(data)
+                  if (Effect.isEffect(result)) {
+                    run(result)
+                  }
+                }
+                ws.data.run = runRaw
+                ws.data.buffer.forEach(runRaw)
+                ws.data.buffer.length = 0
+                if (opts?.onOpen) yield* opts.onOpen
+                return yield* FiberSet.join(set)
+              },
+              Effect.scoped,
+              Effect.onExit((exit) => {
+                ws.close(exit._tag === "Success" ? 1000 : 1011)
+                return Effect.void
+              }),
+              Effect.raceFirst(Deferred.await(closeDeferred)),
+              semaphore.withPermits(1)
+            )
 
             const encoder = new TextEncoder()
-            const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void) =>
-              runRaw((data) => typeof data === "string" ? handler(encoder.encode(data)) : handler(data))
+            const run = <R, E, _>(handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void, opts?: {
+              readonly onOpen?: Effect.Effect<void> | undefined
+            }) => runRaw((data) => typeof data === "string" ? handler(encoder.encode(data)) : handler(data), opts)
 
             return Socket.Socket.of({
               [Socket.TypeId]: Socket.TypeId,
