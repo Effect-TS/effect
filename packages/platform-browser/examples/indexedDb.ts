@@ -2,27 +2,27 @@ import { IndexedDb, IndexedDbDatabase, IndexedDbTable, IndexedDbVersion } from "
 import { Effect, Layer, Schema } from "effect"
 
 class UserTable1 extends IndexedDbTable.make(
-  "user",
-  Schema.Struct({
-    id: Schema.Number,
-    name: Schema.String,
-    email: Schema.String
-  }),
   {
+    name: "user",
+    schema: Schema.Struct({
+      id: Schema.Number,
+      name: Schema.String,
+      email: Schema.String
+    }),
     keyPath: ["id"],
     indexes: { email: "email" }
   }
 ) {}
 
 class UserTable2 extends IndexedDbTable.make(
-  "user",
-  Schema.Struct({
-    id: Schema.Number,
-    name: Schema.String,
-    email: Schema.String,
-    age: Schema.Number
-  }),
   {
+    name: "user",
+    schema: Schema.Struct({
+      id: Schema.Number,
+      name: Schema.String,
+      email: Schema.String,
+      age: Schema.Number
+    }),
     keyPath: ["id"],
     indexes: { email: "email", age: "age" }
   }
