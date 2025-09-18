@@ -322,6 +322,10 @@ export const layerConfig = (options: {
   )
 }
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ChatCompletionToolCallDelta extends Schema.Class<ChatCompletionToolCallDelta>(
   "@effect/ai-openrouter/ChatCompletionToolCallDelta"
 )({

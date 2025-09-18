@@ -1108,12 +1108,12 @@ const getCacheControl = (
     | Prompt.ToolResultPart
 ): typeof Generated.CacheControlEphemeral.Encoded | undefined => part.options.openrouter?.cacheControl
 
-export const getMediaType = (dataUrl: string): string | undefined => {
+const getMediaType = (dataUrl: string): string | undefined => {
   const match = dataUrl.match(/^data:([^;]+)/)
   return match ? match[1] : undefined
 }
 
-export const getBase64FromDataUrl = (dataUrl: string): string => {
+const getBase64FromDataUrl = (dataUrl: string): string => {
   const match = dataUrl.match(/^data:[^;]*;base64,(.+)$/)
   return match ? match[1]! : dataUrl
 }
