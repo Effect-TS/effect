@@ -1,6 +1,6 @@
 {
   "name": "@effect-native/crsql",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "license": "MIT",
   "description": "CR-SQLite prepared statements and service for Effect SQL",

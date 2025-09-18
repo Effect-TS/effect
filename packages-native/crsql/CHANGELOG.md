@@ -1,5 +1,13 @@
 # @effect-native/crsql
 
+## 0.3.0
+
+### Minor Changes
+
+- [#128](https://github.com/effect-native/effect-native/pull/128) [`b592a73`](https://github.com/effect-native/effect-native/commit/b592a73144cc363ac89d7a3b8cd3edf69ef36550) Thanks @subtleGradient! - sql param to CrSql.fromSqliteClient is now optional
+  will use the SqlClient from the environment if not provided
+  new CrSql.layerFromSqliteClient helper to create CrSql layer from SqlClient layer
+
 ## 0.2.0
 
 ### Minor Changes
