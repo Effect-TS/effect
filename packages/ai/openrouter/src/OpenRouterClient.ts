@@ -127,6 +127,7 @@ export const make: (options: {
       Stream.unwrapScoped,
       Stream.decodeText(),
       Stream.pipeThroughChannel(Sse.makeChannel()),
+      Stream.takeWhile((event) => event.data !== "[DONE]"),
       Stream.mapEffect((event) => decodeEvent(event.data)),
       Stream.catchTags({
         RequestError: (error) =>
@@ -221,9 +222,13 @@ export const make: (options: {
     options: Omit<typeof Generated.ChatCompletionCreateParams.Encoded, "stream">
   ): Stream.Stream<ChatCompletionStreamEvent, AiError.AiError> => {
     const request = HttpClientRequest.post("/chat/completions", {
-      body: HttpBody.unsafeJson({ ...options, stream: true })
+      body: HttpBody.unsafeJson({
+        ...options,
+        stream: true,
+        stream_options: { include_usage: true }
+      })
     })
-    return streamRequest(request, ChatCompletionStreamEvent).pipe() // Stream.takeUntil((event) => event.type === "message_stop")
+    return streamRequest(request, ChatCompletionStreamEvent)
   }
 
   return OpenRouterClient.of({
@@ -317,16 +322,79 @@ export const layerConfig = (options: {
   )
 }
 
+export class ChatCompletionToolCallDelta extends Schema.Class<ChatCompletionToolCallDelta>(
+  "@effect/ai-openrouter/ChatCompletionToolCallDelta"
+)({
+  index: Schema.Number,
+  id: Schema.optionalWith(Schema.String, { nullable: true }),
+  type: Schema.Literal("function"),
+  function: Schema.Struct({
+    name: Schema.optionalWith(Schema.String, { nullable: true }),
+    arguments: Schema.String
+  })
+}) {}
+
 /**
  * @since 1.0.0
  * @category Schemas
  */
-export class ChatCompletionStreamEvent extends Schema.Class<ChatCompletionStreamEvent>(
-  "@effect/ai-openrouter/ChatCompletionStreamEvent"
+export class ChatCompletionStreamDelta extends Schema.Class<ChatCompletionStreamDelta>(
+  "@effect/ai-openrouter/ChatCompletionStreamDelta"
+)({
+  role: Schema.optional(Generated.ChatCompletionMessageRole),
+  content: Schema.NullOr(Schema.String),
+  reasoning: Schema.optionalWith(Schema.String, { nullable: true }),
+  reasoning_details: Schema.optionalWith(Schema.Array(Generated.ReasoningDetail), { nullable: true }),
+  tool_calls: Schema.optionalWith(Schema.Array(ChatCompletionToolCallDelta), { nullable: true }),
+  images: Schema.optionalWith(Schema.Array(Generated.ChatCompletionContentPartImage), { nullable: true }),
+  annotations: Schema.optionalWith(Schema.Array(Generated.AnnotationDetail), { nullable: true })
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
+export class ChatCompletionStreamDeltaEvent extends Schema.Class<ChatCompletionStreamDeltaEvent>(
+  "@effect/ai-openrouter/ChatCompletionStreamDeltaEvent"
 )({
   id: Schema.optionalWith(Schema.String, { nullable: true }),
   model: Schema.optionalWith(Schema.String, { nullable: true }),
   provider: Schema.optionalWith(Schema.String, { nullable: true }),
   usage: Schema.optionalWith(Generated.CompletionUsage, { nullable: true }),
-  choices: Schema.Array(Generated.ChatCompletionChoice)
-}) {}
+  choices: Schema.Array(Schema.Struct({
+    index: Schema.optionalWith(Schema.Number, { nullable: true }),
+    finish_reason: Schema.NullOr(Generated.ChatCompletionChoiceFinishReason),
+    delta: ChatCompletionStreamDelta,
+    logprobs: Schema.optionalWith(Generated.ChatCompletionTokenLogprobs, { nullable: true })
+  }))
+}) {
+  readonly type = "event"
+}
+
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
+export class ChatCompletionStreamErrorEvent extends Schema.Class<ChatCompletionStreamErrorEvent>(
+  "@effect/ai-openrouter/ChatCompletionStreamErrorEvent"
+)({ error: Generated.OpenRouterServerError.fields.error }) {
+  readonly type = "error"
+}
+
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
+export const ChatCompletionStreamEvent: Schema.Union<[
+  typeof ChatCompletionStreamDeltaEvent,
+  typeof ChatCompletionStreamErrorEvent
+]> = Schema.Union(
+  ChatCompletionStreamDeltaEvent,
+  ChatCompletionStreamErrorEvent
+)
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type ChatCompletionStreamEvent = typeof ChatCompletionStreamEvent.Type

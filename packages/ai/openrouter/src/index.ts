@@ -13,5 +13,7 @@ export * as OpenRouterClient from "./OpenRouterClient.js"
  */
 export * as OpenRouterConfig from "./OpenRouterConfig.js"
 
-
+/**
+ * @since 1.0.0
+ */
 export * as OpenRouterLanguageModel from "./OpenRouterLanguageModel.js"

@@ -99,66 +99,62 @@ declare module "@effect/ai/Prompt" {
   }
 }
 
-/**
- * @since 1.0.0
- * @category Context
- */
-export class ProviderMetadata extends Context.Tag(InternalUtilities.ProviderMetadataKey)<
-  ProviderMetadata,
-  ProviderMetadata.Service
->() {}
+declare module "@effect/ai/Response" {
+  export interface TextStartPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
 
-/**
- * @since 1.0.0
- */
-export declare namespace ProviderMetadata {
-  /**
-   * @since 1.0.0
-   * @category Provider Metadata
-   */
-  export interface Service {
-    "finish": {
+  export interface TextDeltaPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningStartPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningDeltaPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface ToolParamsStartPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface ToolParamsDeltaPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface ToolCallPartMetadata extends ProviderMetadata {
+    readonly google?: {
+      readonly thoughtSignature?: string | undefined
+    } | undefined
+  }
+
+  export interface FinishPartMetadata extends ProviderMetadata {
+    readonly google?: {
       readonly groundingMetadata?: Generated.GroundingMetadata | undefined
       readonly safetyRatings?: ReadonlyArray<Generated.SafetyRating> | undefined
       readonly urlContextMetadata?: Generated.UrlContextMetadata | undefined
       readonly usageMetadata?: Generated.UsageMetadata | undefined
-    }
-
-    "reasoning": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "reasoning-start": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "reasoning-delta": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "text-start": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "text-delta": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "tool-params-start": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "tool-params-delta": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "tool-params-end": {
-      readonly thoughtSignature?: string | undefined
-    }
-
-    "tool-call": {
-      readonly thoughtSignature?: string | undefined
-    }
+    } | undefined
   }
 }
 
@@ -457,7 +453,7 @@ const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effe
           parts.push({
             type: "reasoning",
             text: part.text,
-            metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+            metadata: { google: { thoughtSignature: part.thoughtSignature } }
           })
         } else {
           parts.push({
@@ -474,7 +470,7 @@ const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effe
           id: yield* idGenerator.generateId(),
           name: part.functionCall.name,
           params: part.functionCall.args,
-          metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+          metadata: { google: { thoughtSignature: part.thoughtSignature } }
         })
       }
 
@@ -549,7 +545,7 @@ const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effe
         cachedInputTokens: response.usageMetadata?.cachedContentTokenCount
       },
       metadata: {
-        [ProviderMetadata.key]: {
+        google: {
           groundingMetadata: candidate.groundingMetadata,
           safetyRatings: candidate.safetyRatings,
           urlContextMetadata: candidate.urlContextMetadata,
@@ -615,14 +611,14 @@ const makeStreamResponse: (
                 parts.push({
                   type: "reasoning-start",
                   id: currentReasoningBlockId,
-                  metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+                  metadata: { google: { thoughtSignature: part.thoughtSignature } }
                 })
               }
               parts.push({
                 type: "reasoning-delta",
                 id: currentReasoningBlockId,
                 delta: part.text,
-                metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+                metadata: { google: { thoughtSignature: part.thoughtSignature } }
               })
             } else {
               // End any active reasoning block before starting text
@@ -639,14 +635,14 @@ const makeStreamResponse: (
                 parts.push({
                   type: "text-start",
                   id: currentTextBlockId,
-                  metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+                  metadata: { google: { thoughtSignature: part.thoughtSignature } }
                 })
               }
               parts.push({
                 type: "text-delta",
                 id: currentTextBlockId,
                 delta: part.text,
-                metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+                metadata: { google: { thoughtSignature: part.thoughtSignature } }
               })
             }
           }
@@ -751,7 +747,7 @@ const makeStreamResponse: (
               cachedInputTokens: event.usageMetadata?.cachedContentTokenCount
             },
             metadata: {
-              [ProviderMetadata.key]: {
+              google: {
                 groundingMetadata: candidate.groundingMetadata,
                 safetyRatings: candidate.safetyRatings,
                 urlContextMetadata: candidate.urlContextMetadata,
@@ -1000,7 +996,7 @@ const getToolCalls = Effect.fnUntraced(
           id: yield* idGenerator.generateId(),
           name: part.functionCall.name,
           params: part.functionCall.args,
-          metadata: { [ProviderMetadata.key]: { thoughtSignature: part.thoughtSignature } }
+          metadata: { google: { thoughtSignature: part.thoughtSignature } }
         })
       }
     }

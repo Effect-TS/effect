@@ -828,11 +828,27 @@ const makeStreamResponse: (
                       type: "tool-params-end",
                       id: block.id
                     })
+
+                    const toolName = block.name
+                    const toolParams = block.params
+
+                    const params = yield* Effect.try({
+                      try: () => Tool.unsafeSecureJsonParse(toolParams),
+                      catch: (cause) =>
+                        new AiError.MalformedOutput({
+                          module: "AmazonBedrockLanguageModel",
+                          method: "makeStreamResponse",
+                          description: "Failed to securely parse tool call parameters " +
+                            `for tool '${toolName}':\nParameters: ${toolParams}`,
+                          cause
+                        })
+                    })
+
                     parts.push({
                       type: "tool-call",
                       id: block.id,
-                      name: block.name,
-                      params: JSON.parse(block.params),
+                      name: toolName,
+                      params,
                       providerName: block.providerName,
                       providerExecuted: block.providerExecuted
                     })

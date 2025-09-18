@@ -10,6 +10,72 @@ import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
 
+export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("CacheControlEphemeral")({
+  "type": S.Literal("ephemeral")
+}) {}
+
+export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
+
+export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
+
+/**
+ * Reasoning summary detail
+ */
+export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("ReasoningDetailSummary")({
+  "type": ReasoningDetailSummaryType,
+  "summary": S.String,
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "format": S.optionalWith(ReasoningDetailSummaryFormat, {
+    nullable: true,
+    default: () => "anthropic-claude-v1" as const
+  }),
+  "index": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+export class ReasoningDetailEncryptedType extends S.Literal("reasoning.encrypted") {}
+
+export class ReasoningDetailEncryptedFormat
+  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1")
+{}
+
+/**
+ * Encrypted reasoning detail
+ */
+export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>("ReasoningDetailEncrypted")({
+  "type": ReasoningDetailEncryptedType,
+  "data": S.String,
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "format": S.optionalWith(ReasoningDetailEncryptedFormat, {
+    nullable: true,
+    default: () => "anthropic-claude-v1" as const
+  }),
+  "index": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+export class ReasoningDetailTextType extends S.Literal("reasoning.text") {}
+
+export class ReasoningDetailTextFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
+
+/**
+ * Text reasoning detail
+ */
+export class ReasoningDetailText extends S.Class<ReasoningDetailText>("ReasoningDetailText")({
+  "type": ReasoningDetailTextType,
+  "text": S.optionalWith(S.String, { nullable: true }),
+  "signature": S.optionalWith(S.String, { nullable: true }),
+  "id": S.optionalWith(S.String, { nullable: true }),
+  "format": S.optionalWith(ReasoningDetailTextFormat, {
+    nullable: true,
+    default: () => "anthropic-claude-v1" as const
+  }),
+  "index": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * Reasoning detail information
+ */
+export class ReasoningDetail extends S.Union(ReasoningDetailSummary, ReasoningDetailEncrypted, ReasoningDetailText) {}
+
 export class ChatCompletionSystemMessageParamRole extends S.Literal("system") {}
 
 export class ChatCompletionContentPartTextType extends S.Literal("text") {}
@@ -20,7 +86,11 @@ export class ChatCompletionContentPartTextType extends S.Literal("text") {}
 export class ChatCompletionContentPartText
   extends S.Class<ChatCompletionContentPartText>("ChatCompletionContentPartText")({
     "type": ChatCompletionContentPartTextType,
-    "text": S.String
+    "text": S.String,
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
   })
 {}
 
@@ -37,7 +107,11 @@ export class ChatCompletionSystemMessageParam
     /**
      * Optional name for the system message
      */
-    "name": S.optionalWith(S.String, { nullable: true })
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
   })
 {}
 
@@ -65,7 +139,11 @@ export class ChatCompletionContentPartImage
        * Image detail level for vision models
        */
       "detail": S.optionalWith(ChatCompletionContentPartImageImageUrlDetail, { nullable: true })
-    })
+    }),
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
   })
 {}
 
@@ -97,12 +175,40 @@ export class ChatCompletionContentPartAudio
   })
 {}
 
+export class ChatCompletionContentPartFileType extends S.Literal("file") {}
+
+/**
+ * File content part
+ */
+export class ChatCompletionContentPartFile
+  extends S.Class<ChatCompletionContentPartFile>("ChatCompletionContentPartFile")({
+    "type": ChatCompletionContentPartFileType,
+    "file": S.Struct({
+      /**
+       * Name of the file.
+       */
+      "filename": S.String,
+      /**
+       * File data.
+       */
+      "file_data": S.String
+    }),
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
+  })
+{}
+
 /**
  * Content part for chat completion messages
  */
-export class ChatCompletionContentPart
-  extends S.Union(ChatCompletionContentPartText, ChatCompletionContentPartImage, ChatCompletionContentPartAudio)
-{}
+export class ChatCompletionContentPart extends S.Union(
+  ChatCompletionContentPartText,
+  ChatCompletionContentPartImage,
+  ChatCompletionContentPartAudio,
+  ChatCompletionContentPartFile
+) {}
 
 /**
  * User message
@@ -117,7 +223,11 @@ export class ChatCompletionUserMessageParam
     /**
      * Optional name for the user
      */
-    "name": S.optionalWith(S.String, { nullable: true })
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
   })
 {}
 
@@ -163,13 +273,21 @@ export class ChatCompletionAssistantMessageParam
      */
     "name": S.optionalWith(S.String, { nullable: true }),
     /**
+     * Reasoning output
+     */
+    "reasoning": S.optionalWith(S.String, { nullable: true }),
+    /**
      * Tool calls made by the assistant
      */
     "tool_calls": S.optionalWith(S.Array(ChatCompletionMessageToolCall), { nullable: true }),
     /**
-     * Refusal message if content was refused
+     * Reasoning details delta to send reasoning details back to upstream
      */
-    "refusal": S.optionalWith(S.String, { nullable: true })
+    "reasoning_details": S.optionalWith(S.Array(ReasoningDetail), { nullable: true }),
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
   })
 {}
 
@@ -188,7 +306,11 @@ export class ChatCompletionToolMessageParam
     /**
      * ID of the tool call this message responds to
      */
-    "tool_call_id": S.String
+    "tool_call_id": S.String,
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true })
   })
 {}
 
@@ -226,7 +348,11 @@ export class ChatCompletionCreateParamsStreamOptions extends S.Struct({
   "include_usage": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
-export class ChatCompletionToolChoiceOptionEnum extends S.Literal("required") {}
+export class ChatCompletionToolChoiceOptionNoneEnum extends S.Literal("none") {}
+
+export class ChatCompletionToolChoiceOptionAutoEnum extends S.Literal("auto") {}
+
+export class ChatCompletionToolChoiceOptionRequiredEnum extends S.Literal("required") {}
 
 export class ChatCompletionNamedToolChoiceType extends S.Literal("function") {}
 
@@ -249,9 +375,9 @@ export class ChatCompletionNamedToolChoice
  * Tool choice configuration
  */
 export class ChatCompletionToolChoiceOption extends S.Union(
-  ChatCompletionToolChoiceOptionEnum,
-  ChatCompletionToolChoiceOptionEnum,
-  ChatCompletionToolChoiceOptionEnum,
+  ChatCompletionToolChoiceOptionNoneEnum,
+  ChatCompletionToolChoiceOptionAutoEnum,
+  ChatCompletionToolChoiceOptionRequiredEnum,
   ChatCompletionNamedToolChoice
 ) {}
 
@@ -829,68 +955,6 @@ export class ChatCompletionChoiceFinishReason
 
 export class ChatCompletionMessageRole extends S.Literal("assistant") {}
 
-export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
-
-export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
-
-/**
- * Reasoning summary detail
- */
-export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("ReasoningDetailSummary")({
-  "type": ReasoningDetailSummaryType,
-  "summary": S.String,
-  "id": S.optionalWith(S.String, { nullable: true }),
-  "format": S.optionalWith(ReasoningDetailSummaryFormat, {
-    nullable: true,
-    default: () => "anthropic-claude-v1" as const
-  }),
-  "index": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-export class ReasoningDetailEncryptedType extends S.Literal("reasoning.encrypted") {}
-
-export class ReasoningDetailEncryptedFormat
-  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1")
-{}
-
-/**
- * Encrypted reasoning detail
- */
-export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>("ReasoningDetailEncrypted")({
-  "type": ReasoningDetailEncryptedType,
-  "data": S.String,
-  "id": S.optionalWith(S.String, { nullable: true }),
-  "format": S.optionalWith(ReasoningDetailEncryptedFormat, {
-    nullable: true,
-    default: () => "anthropic-claude-v1" as const
-  }),
-  "index": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-export class ReasoningDetailTextType extends S.Literal("reasoning.text") {}
-
-export class ReasoningDetailTextFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
-
-/**
- * Text reasoning detail
- */
-export class ReasoningDetailText extends S.Class<ReasoningDetailText>("ReasoningDetailText")({
-  "type": ReasoningDetailTextType,
-  "text": S.optionalWith(S.String, { nullable: true }),
-  "signature": S.optionalWith(S.String, { nullable: true }),
-  "id": S.optionalWith(S.String, { nullable: true }),
-  "format": S.optionalWith(ReasoningDetailTextFormat, {
-    nullable: true,
-    default: () => "anthropic-claude-v1" as const
-  }),
-  "index": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Reasoning detail information
- */
-export class ReasoningDetail extends S.Union(ReasoningDetailSummary, ReasoningDetailEncrypted, ReasoningDetailText) {}
-
 export class FileAnnotationDetailType extends S.Literal("file") {}
 
 /**
@@ -954,6 +1018,10 @@ export class ChatCompletionMessage extends S.Class<ChatCompletionMessage>("ChatC
    * Refusal message if content was refused
    */
   "refusal": S.NullOr(S.String),
+  /**
+   * Images generated by the assistant
+   */
+  "images": S.optionalWith(S.Array(ChatCompletionContentPartImage), { nullable: true }),
   /**
    * Tool calls made by the assistant
    */
@@ -1043,6 +1111,10 @@ export class CompletionUsage extends S.Class<CompletionUsage>("CompletionUsage")
    */
   "total_tokens": S.Number,
   /**
+   * Total cost of the completion
+   */
+  "cost": S.optionalWith(S.Number, { nullable: true }),
+  /**
    * Detailed completion token usage
    */
   "completion_tokens_details": S.optionalWith(
@@ -1081,6 +1153,12 @@ export class CompletionUsage extends S.Class<CompletionUsage>("CompletionUsage")
       "audio_tokens": S.optionalWith(S.Number, { nullable: true })
     }),
     { nullable: true }
+  ),
+  "cost_details": S.optionalWith(
+    S.Struct({
+      upstream_inference_cost: S.optionalWith(S.Number, { nullable: true })
+    }),
+    { nullable: true }
   )
 }) {}
 
@@ -1104,6 +1182,10 @@ export class ChatCompletion extends S.Class<ChatCompletion>("ChatCompletion")({
    * Model used for completion
    */
   "model": S.String,
+  /**
+   * The provider used for completion
+   */
+  "provider": S.optionalWith(S.String, { nullable: true }),
   "object": ChatCompletionObject,
   /**
    * System fingerprint
