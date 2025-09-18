@@ -266,11 +266,12 @@ const make = Effect.gen(function*() {
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
         }
+        yield* Effect.sleep(1000)
         activeShardsLatch.unsafeOpen()
       }
     }).pipe(
       Effect.catchAllCause((cause) => Effect.logWarning("Could not acquire/release shards", cause)),
-      Effect.repeat(Schedule.spaced(config.entityMessagePollInterval)),
+      Effect.forever,
       Effect.annotateLogs({
         package: "@effect/cluster",
         module: "Sharding",
@@ -311,8 +312,7 @@ const make = Effect.gen(function*() {
           Effect.andThen(clearSelfShards)
         )
       ),
-      Effect.delay("4 seconds"),
-      Effect.forever,
+      Effect.schedule(Schedule.fixed(4000)),
       Effect.interruptible,
       Effect.forkIn(shardingScope)
     )
@@ -329,16 +329,14 @@ const make = Effect.gen(function*() {
               { concurrency: "unbounded", discard: true }
             ).pipe(
               Effect.andThen(shardStorage.release(selfAddress, shardId)),
-              Effect.annotateLogs({
-                runner: selfAddress
-              }),
+              Effect.annotateLogs({ runner: selfAddress }),
               Effect.andThen(() => {
                 MutableHashSet.remove(releasingShards, shardId)
               })
             ),
           { concurrency: "unbounded", discard: true }
         )
-      )
+      ).pipe(Effect.andThen(activeShardsLatch.open))
     )
   }
 

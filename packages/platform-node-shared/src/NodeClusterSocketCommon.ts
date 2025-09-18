@@ -24,7 +24,8 @@ export const layerClientProtocol: Layer.Layer<
     return Effect.fnUntraced(function*(address) {
       const socket = yield* NodeSocket.makeNet({
         host: address.host,
-        port: address.port
+        port: address.port,
+        timeout: 5500
       })
       return yield* RpcClient.makeProtocolSocket().pipe(
         Effect.provideService(Socket, socket),
