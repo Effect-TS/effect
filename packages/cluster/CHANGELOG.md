@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.11
+
+### Patch Changes
+
+- [#5519](https://github.com/Effect-TS/effect/pull/5519) [`92c533f`](https://github.com/Effect-TS/effect/commit/92c533fb52d6d3869728071e92596f80b4c7aa36) Thanks @tim-smart! - improve SqlMessageStorage insert queries
+
 ## 0.48.10
 
 ### Patch Changes
