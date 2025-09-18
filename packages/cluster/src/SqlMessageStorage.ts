@@ -205,34 +205,33 @@ export const make = Effect.fnUntraced(function*(options?: {
   ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
     pg: () => (row, message_id) =>
       sql`
-        WITH inserted AS (
-          INSERT INTO ${messagesTableSql} ${sql.insert(row)}
-          ON CONFLICT (message_id) DO NOTHING
-          RETURNING id
-        ),
-        existing AS (
+        INSERT INTO ${messagesTableSql} ${sql.insert(row)}
+        ON CONFLICT (message_id) DO NOTHING
+        RETURNING id
+      `.pipe(Effect.flatMap((rows) => {
+        // inserted a new row
+        if (rows.length > 0) return Effect.succeed([])
+        return sql`
           SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
           FROM ${messagesTableSql} m
           LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
           WHERE m.message_id = ${message_id}
-          AND NOT EXISTS (SELECT 1 FROM inserted)
-        )
-        SELECT * FROM existing
-      `,
+        `
+      })),
     mysql: () => (row, message_id) =>
-      sql`
-        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id};
-        INSERT INTO ${messagesTableSql} ${sql.insert(row)}
-        ON DUPLICATE KEY UPDATE id = id;
-      `.unprepared.pipe(
-        // we need 2 queries for mysql, so we need to run them in a
-        // transaction with retries
-        sql.withTransaction,
-        Effect.retry({ times: 3 }),
-        Effect.map(([rows]) => rows as any as ReadonlyArray<Row>)
+      Effect.flatMap(
+        sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
+        (row: any) => {
+          if (row.affectedRows > 0) {
+            return Effect.succeed([])
+          }
+          return sql`
+            SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+            FROM ${messagesTableSql} m
+            LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+            WHERE m.message_id = ${message_id}
+          `
+        }
       ),
     mssql: () => (row, message_id) =>
       sql`
