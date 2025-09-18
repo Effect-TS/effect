@@ -5,7 +5,6 @@ import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
-import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import type * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
@@ -93,6 +92,7 @@ export type ErrorReason =
   | "NotFoundError"
   | "UnknownError"
   | "DecodeError"
+  | "EncodeError"
   | "TransactionError"
 
 /**
@@ -741,11 +741,24 @@ const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First<any, ne
   )
 })
 
-const applyModify = (
-  query: IndexedDbQuery.Modify<any>,
+const applyModify = Effect.fnUntraced(function*({
+  query,
+  value
+}: {
+  query: IndexedDbQuery.Modify<any>
   value: any
-) =>
-  Effect.async<any, IndexedDbQueryError>((resume) => {
+}) {
+  const encodedValue = yield* Schema.encodeUnknown(query.from.table.tableSchema)(value).pipe(
+    Effect.mapError(
+      (error) =>
+        new IndexedDbQueryError({
+          reason: "EncodeError",
+          cause: error
+        })
+    )
+  )
+
+  return yield* Effect.async<any, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
     const objectStore = (transaction ?? database.transaction([query.from.table.tableName], "readwrite")).objectStore(
@@ -754,21 +767,10 @@ const applyModify = (
 
     let request: globalThis.IDBRequest<IDBValidKey>
 
-    const encodedValue = Schema.encodeUnknownEither(query.from.table.tableSchema)(value)
-
-    if (Either.isLeft(encodedValue)) {
-      return resume(Effect.fail(
-        new IndexedDbQueryError({
-          reason: "TransactionError",
-          cause: encodedValue.left
-        })
-      ))
-    }
-
     if (query.operation === "add") {
-      request = objectStore.add(encodedValue.right)
+      request = objectStore.add(encodedValue)
     } else if (query.operation === "put") {
-      request = objectStore.put(encodedValue.right)
+      request = objectStore.put(encodedValue)
     } else {
       return resume(Effect.dieMessage("Invalid modify operation"))
     }
@@ -788,6 +790,7 @@ const applyModify = (
       resume(Effect.succeed(request.result))
     }
   })
+})
 
 const applyModifyAll = (query: IndexedDbQuery.ModifyAll<any>, values: Array<any>) =>
   Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryError>((resume) => {
@@ -1446,7 +1449,7 @@ const modifyMakeProto = <
 }): IndexedDbQuery.Modify<Table> => {
   const self = Object.create(Effectable.CommitPrototype)
   self.commit = function(this: IndexedDbQuery.Modify<any>) {
-    return applyModify(this, options.value)
+    return applyModify({ query: this, value: options.value })
   }
   self.from = options.from
   self.value = options.value

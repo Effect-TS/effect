@@ -1,6 +1,6 @@
 import { IndexedDb, IndexedDbDatabase, IndexedDbTable, IndexedDbVersion } from "@effect/platform-browser"
 import { afterEach, assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Layer, Schema } from "effect"
+import { Context, DateTime, Effect, Layer, ParseResult, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
 const databaseName = "db"
@@ -34,6 +34,23 @@ class User extends Schema.Class<User>("User")({
   email: Schema.String,
   createdAt: Schema.DateTimeUtcFromNumber
 }) {}
+
+class VerifyContext extends Context.Tag("VerifyContext")<VerifyContext, { readonly maxLength: number }>() {}
+
+const VerifyId = Schema.transformOrFail(Schema.String, Schema.String, {
+  strict: true,
+  encode: (to, _, ast) =>
+    Effect.gen(function*() {
+      const { maxLength } = yield* VerifyContext
+      if (to.length > maxLength) {
+        return yield* Effect.fail("Max length exceeded")
+      }
+      return to
+    }).pipe(
+      Effect.mapError(() => new ParseResult.Type(ast, to))
+    ),
+  decode: ParseResult.succeed
+})
 
 const Table2 = IndexedDbTable.make({ name: "user", schema: User, keyPath: "id" })
 
@@ -70,7 +87,9 @@ const Table5 = IndexedDbTable.make({
   keyPath: ["firstName", "lastName"]
 })
 
-class V1 extends IndexedDbVersion.make(Table1, Table2, Table3, Table4, Table5) {}
+const Table6 = IndexedDbTable.make({ name: "user-verify", schema: Schema.Struct({ id: VerifyId }), keyPath: "id" })
+
+class V1 extends IndexedDbVersion.make(Table1, Table2, Table3, Table4, Table5, Table6) {}
 
 describe("IndexedDbQueryBuilder", () => {
   describe("select", () => {
@@ -492,6 +511,24 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ id: 10, title: "insert1", count: 10, completed: true }])
       }).pipe(provideDb(Db))
+    })
+
+    it.effect("insert schema with context", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("user-verify")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const addedKey = yield* api.from("user-verify").insert({ id: "abc" })
+        const data = yield* api.from("user-verify").select()
+
+        assert.equal(addedKey, "abc")
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ id: "abc" }])
+      }).pipe(provideDb(Db), Effect.provideService(VerifyContext, VerifyContext.of({ maxLength: 4 })))
     })
 
     it.effect("insert with manual key required", () => {
