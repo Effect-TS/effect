@@ -1,5 +1,16 @@
 # @effect/platform-node-shared
 
+## 0.49.2
+
+### Patch Changes
+
+- [#5517](https://github.com/Effect-TS/effect/pull/5517) [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8) Thanks @tim-smart! - backport cluster improvements from effect 4
+
+- Updated dependencies [[`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8), [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8)]:
+  - @effect/cluster@0.48.10
+  - @effect/platform@0.90.10
+  - @effect/rpc@0.69.3
+
 ## 0.49.1
 
 ### Patch Changes
