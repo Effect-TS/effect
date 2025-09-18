@@ -5,6 +5,7 @@ import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
+import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import type * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
@@ -753,10 +754,21 @@ const applyModify = (
 
     let request: globalThis.IDBRequest<IDBValidKey>
 
+    const encodedValue = Schema.encodeUnknownEither(query.from.table.tableSchema)(value)
+
+    if (Either.isLeft(encodedValue)) {
+      return resume(Effect.fail(
+        new IndexedDbQueryError({
+          reason: "TransactionError",
+          cause: encodedValue.left
+        })
+      ))
+    }
+
     if (query.operation === "add") {
-      request = objectStore.add(value)
+      request = objectStore.add(encodedValue.right)
     } else if (query.operation === "put") {
-      request = objectStore.put(value)
+      request = objectStore.put(encodedValue.right)
     } else {
       return resume(Effect.dieMessage("Invalid modify operation"))
     }
