@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.90.10
+
+### Patch Changes
+
+- [#5517](https://github.com/Effect-TS/effect/pull/5517) [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8) Thanks @tim-smart! - add onOpen option to Socket.run
+
 ## 0.90.9
 
 ### Patch Changes
