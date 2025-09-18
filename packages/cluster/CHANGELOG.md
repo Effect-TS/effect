@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.12
+
+### Patch Changes
+
+- [#5525](https://github.com/Effect-TS/effect/pull/5525) [`7edc074`](https://github.com/Effect-TS/effect/commit/7edc074f67d300957b749c9e20ea9706036dc0e0) Thanks @tim-smart! - backport ClusterWorkflowEngine partial entity clients
+
 ## 0.48.11
 
 ### Patch Changes
