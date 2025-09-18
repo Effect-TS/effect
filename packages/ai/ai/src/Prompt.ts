@@ -81,7 +81,12 @@ const constEmptyObject = () => ({})
  */
 export const ProviderOptions = Schema.Record({
   key: Schema.String,
-  value: Schema.Record({ key: Schema.String, value: Schema.Unknown })
+  value: Schema.UndefinedOr(
+    Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  )
 })
 
 /**

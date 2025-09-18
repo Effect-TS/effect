@@ -366,7 +366,6 @@ export const make = Effect.fnUntraced(function*(options: {
         return yield* makeResponse(rawResponse, options)
       }
     ),
-
     streamText: Effect.fnUntraced(
       function*(options) {
         const { betas, request } = yield* makeRequest(options)
@@ -1173,14 +1172,27 @@ const makeStreamResponse: (
                     id: contentBlock.id
                   })
 
+                  const toolName = contentBlock.name
                   // If the tool call has no parameters, an empty string is returned
-                  const params = contentBlock.params.length === 0 ? "{}" : contentBlock.params
+                  const toolParams = contentBlock.params.length === 0 ? "{}" : contentBlock.params
+
+                  const parsedParams = yield* Effect.try({
+                    try: () => Tool.unsafeSecureJsonParse(toolParams),
+                    catch: (cause) =>
+                      new AiError.MalformedOutput({
+                        module: "AnthropicLanguageModel",
+                        method: "makeStreamResponse",
+                        description: "Failed to securely parse tool call parameters " +
+                          `for tool '${toolName}':\nParameters: ${toolParams}`,
+                        cause
+                      })
+                  })
 
                   parts.push({
                     type: "tool-call",
                     id: contentBlock.id,
-                    name: contentBlock.name,
-                    params: JSON.parse(params),
+                    name: toolName,
+                    params: parsedParams,
                     providerName: contentBlock.providerName,
                     providerExecuted: contentBlock.providerExecuted
                   })

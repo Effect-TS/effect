@@ -287,6 +287,28 @@ importers:
         version: link:../../effect
     publishDirectory: dist
 
+  packages/ai/openrouter:
+    devDependencies:
+      '@effect/ai':
+        specifier: workspace:^
+        version: link:../ai
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../../experimental
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform-node
+      '@tim-smart/openapi-gen':
+        specifier: ^0.4.10
+        version: 0.4.13
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+    publishDirectory: dist
+
   packages/cli:
     dependencies:
       ini:
@@ -1018,6 +1040,9 @@ importers:
       '@effect/ai-openai':
         specifier: workspace:*
         version: link:../packages/ai/openai
+      '@effect/ai-openrouter':
+        specifier: workspace:*
+        version: link:../packages/ai/openrouter
       '@effect/cli':
         specifier: workspace:*
         version: link:../packages/cli
@@ -5026,7 +5051,6 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
-    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lighthouse-logger@1.4.2:

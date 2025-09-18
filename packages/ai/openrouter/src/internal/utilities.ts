@@ -1,26 +1,26 @@
 import type * as Response from "@effect/ai/Response"
 import * as Predicate from "effect/Predicate"
+import type * as Generated from "../Generated.js"
 
 const finishReasonMap: Record<string, Response.FinishReason> = {
-  end_turn: "stop",
-  max_tokens: "length",
-  pause_turn: "pause",
-  refusal: "content-filter",
-  stop_sequence: "stop",
-  tool_use: "tool-calls"
+  content_filter: "content-filter",
+  error: "error",
+  function_call: "tool-calls",
+  tool_calls: "tool-calls",
+  length: "length",
+  stop: "stop"
 }
 
 /** @internal */
 export const resolveFinishReason = (
-  finishReason: string,
-  isJsonResponse: boolean = false
+  finishReason: typeof Generated.ChatCompletionChoiceFinishReason.Type | null
 ): Response.FinishReason => {
+  if (Predicate.isNull(finishReason)) {
+    return "unknown"
+  }
   const reason = finishReasonMap[finishReason]
   if (Predicate.isUndefined(reason)) {
     return "unknown"
-  }
-  if (isJsonResponse && reason === "tool-calls") {
-    return "stop"
   }
   return reason
 }

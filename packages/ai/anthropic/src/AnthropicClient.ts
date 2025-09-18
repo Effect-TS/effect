@@ -170,7 +170,8 @@ export const make: (options: {
   readonly projectId?: Redacted.Redacted | undefined
 
   /**
-   * A function to transform the underlying HTTP client before it's used for API requests.
+   * A function to transform the underlying HTTP client before it's used to send
+   * API requests.
    *
    * This transformation function receives the configured HTTP client and returns
    * a modified version. It's applied after all standard client configuration
@@ -186,10 +187,15 @@ export const make: (options: {
    * The transformation is applied once during client initialization and affects
    * all subsequent API requests made through this client instance.
    *
-   * Leave `undefined` if no custom HTTP client behavior is needed.
+   * Leave absent or set to `undefined` if no custom HTTP client behavior is
+   * needed.
    */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}) => Effect.Effect<Service, never, HttpClient.HttpClient | Scope.Scope> = Effect.fnUntraced(function*(options) {
+}) => Effect.Effect<
+  Service,
+  never,
+  HttpClient.HttpClient | Scope.Scope
+> = Effect.fnUntraced(function*(options) {
   const apiKeyHeader = "x-api-key"
 
   yield* Effect.locallyScopedWith(Headers.currentRedactedNames, Arr.append(apiKeyHeader))
@@ -197,19 +203,11 @@ export const make: (options: {
   const httpClient = (yield* HttpClient.HttpClient).pipe(
     HttpClient.mapRequest((request) =>
       request.pipe(
-        HttpClientRequest.prependUrl(
-          options.apiUrl ?? "https://api.anthropic.com"
-        ),
+        HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.anthropic.com"),
         options.apiKey
-          ? HttpClientRequest.setHeader(
-            apiKeyHeader,
-            Redacted.value(options.apiKey)
-          )
+          ? HttpClientRequest.setHeader(apiKeyHeader, Redacted.value(options.apiKey))
           : identity,
-        HttpClientRequest.setHeader(
-          "anthropic-version",
-          options.anthropicVersion ?? "2023-06-01"
-        ),
+        HttpClientRequest.setHeader("anthropic-version", options.anthropicVersion ?? "2023-06-01"),
         HttpClientRequest.acceptJson
       )
     ),
@@ -276,8 +274,8 @@ export const make: (options: {
               method: "createMessage",
               error
             }),
-          BetaErrorResponse: (error) => {
-            return new AiError.HttpResponseError({
+          BetaErrorResponse: (error) =>
+            new AiError.HttpResponseError({
               module: "AnthropicClient",
               method: "createMessage",
               cause: error.cause,
@@ -293,8 +291,7 @@ export const make: (options: {
                 headers: error.response.headers,
                 status: error.response.status
               }
-            })
-          },
+            }),
           ParseError: (error) =>
             AiError.MalformedOutput.fromParseError({
               module: "AnthropicClient",
@@ -705,81 +702,79 @@ export const layer = (options: {
  * @since 1.0.0
  * @category Layers
  */
-export const layerConfig = (
-  options: {
-    /**
-     * The API key that will be used to authenticate with Anthropic's API.
-     *
-     * The key is wrapped in a `Redacted` type to prevent accidental logging or
-     * exposure in debugging output, helping maintain security best practices.
-     *
-     * The key is automatically included in the `x-api-key` header for all API
-     * requests made through this client, which is automatically redacted in logs
-     * output by Effect loggers.
-     *
-     * Leave `undefined` if authentication will be handled through other means
-     * (e.g., environment-based authentication, proxy authentication, or when
-     * using a mock server that doesn't require authentication).
-     */
-    readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
-    /**
-     * The base URL endpoint used to communicate with Anthropic's API.
-     *
-     * This property determines the HTTP destination for all API requests made by
-     * this client.
-     *
-     * Defaults to `"https://api.anthropic.com"`.
-     *
-     * Override this value when you need to:
-     * - Point to a different Anthropic environment (e.g., staging or sandbox
-     *   servers).
-     * - Use a proxy between your application and Anthropic's API for security,
-     *   caching, or logging.
-     * - Employ a mock server for local development or testing.
-     *
-     * You may leave this property `undefined` to accept the default value.
-     */
-    readonly apiUrl?: Config.Config<string | undefined> | undefined
-    /**
-     * The Anthropic API version to use for requests.
-     *
-     * This version string determines which API schema and features are available
-     * for your requests. Different versions may have different capabilities,
-     * request/response formats, or available models.
-     *
-     * Defaults to `"2023-06-01"`.
-     *
-     * You should specify a version that:
-     * - Supports the features and models you need
-     * - Is stable and well-tested for your use case
-     * - Matches your application's integration requirements
-     *
-     * Consult Anthropic's API documentation for available versions and their
-     * differences.
-     */
-    readonly anthropicVersion?: Config.Config<string | undefined> | undefined
-    /**
-     * A function to transform the underlying HTTP client before it's used for API requests.
-     *
-     * This transformation function receives the configured HTTP client and returns
-     * a modified version. It's applied after all standard client configuration
-     * (authentication, base URL, headers) but before any requests are made.
-     *
-     * Use this for:
-     * - Adding custom middleware (logging, metrics, caching)
-     * - Modifying request/response processing behavior
-     * - Adding custom retry logic or error handling
-     * - Integrating with monitoring or debugging tools
-     * - Applying organization-specific HTTP client policies
-     *
-     * The transformation is applied once during client initialization and affects
-     * all subsequent API requests made through this client instance.
-     *
-     * Leave `undefined` if no custom HTTP client behavior is needed.
-     */
-    readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-  }
-): Layer.Layer<AnthropicClient, ConfigError, HttpClient.HttpClient> => {
+export const layerConfig = (options: {
+  /**
+   * The API key that will be used to authenticate with Anthropic's API.
+   *
+   * The key is wrapped in a `Redacted` type to prevent accidental logging or
+   * exposure in debugging output, helping maintain security best practices.
+   *
+   * The key is automatically included in the `x-api-key` header for all API
+   * requests made through this client, which is automatically redacted in logs
+   * output by Effect loggers.
+   *
+   * Leave `undefined` if authentication will be handled through other means
+   * (e.g., environment-based authentication, proxy authentication, or when
+   * using a mock server that doesn't require authentication).
+   */
+  readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
+  /**
+   * The base URL endpoint used to communicate with Anthropic's API.
+   *
+   * This property determines the HTTP destination for all API requests made by
+   * this client.
+   *
+   * Defaults to `"https://api.anthropic.com"`.
+   *
+   * Override this value when you need to:
+   * - Point to a different Anthropic environment (e.g., staging or sandbox
+   *   servers).
+   * - Use a proxy between your application and Anthropic's API for security,
+   *   caching, or logging.
+   * - Employ a mock server for local development or testing.
+   *
+   * You may leave this property `undefined` to accept the default value.
+   */
+  readonly apiUrl?: Config.Config<string | undefined> | undefined
+  /**
+   * The Anthropic API version to use for requests.
+   *
+   * This version string determines which API schema and features are available
+   * for your requests. Different versions may have different capabilities,
+   * request/response formats, or available models.
+   *
+   * Defaults to `"2023-06-01"`.
+   *
+   * You should specify a version that:
+   * - Supports the features and models you need
+   * - Is stable and well-tested for your use case
+   * - Matches your application's integration requirements
+   *
+   * Consult Anthropic's API documentation for available versions and their
+   * differences.
+   */
+  readonly anthropicVersion?: Config.Config<string | undefined> | undefined
+  /**
+   * A function to transform the underlying HTTP client before it's used for API requests.
+   *
+   * This transformation function receives the configured HTTP client and returns
+   * a modified version. It's applied after all standard client configuration
+   * (authentication, base URL, headers) but before any requests are made.
+   *
+   * Use this for:
+   * - Adding custom middleware (logging, metrics, caching)
+   * - Modifying request/response processing behavior
+   * - Adding custom retry logic or error handling
+   * - Integrating with monitoring or debugging tools
+   * - Applying organization-specific HTTP client policies
+   *
+   * The transformation is applied once during client initialization and affects
+   * all subsequent API requests made through this client instance.
+   *
+   * Leave `undefined` if no custom HTTP client behavior is needed.
+   */
+  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
+}): Layer.Layer<AnthropicClient, ConfigError, HttpClient.HttpClient> => {
   const { transformClient, ...configs } = options
   return Config.all(configs).pipe(
     Effect.flatMap((configs) => make({ ...configs, transformClient })),

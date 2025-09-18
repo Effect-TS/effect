@@ -145,14 +145,88 @@ declare module "@effect/ai/Prompt" {
   }
 }
 
-/**
- * @since 1.0.0
- * @category Context
- */
-export class ProviderMetadata extends Context.Tag(InternalUtilities.ProviderMetadataKey)<
-  ProviderMetadata,
-  ProviderMetadata.Service
->() {}
+declare module "@effect/ai/Response" {
+  export interface TextPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+      /**
+       * If the model emits a refusal content part, the refusal explanation
+       * from the model will be contained in the metadata of an empty text
+       * part.
+       */
+      readonly refusal?: string | undefined
+    } | undefined
+  }
+
+  export interface TextStartPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+      readonly encryptedContent?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningStartPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+      readonly encryptedContent?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningDeltaPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+    } | undefined
+  }
+
+  export interface ReasoningEndPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+      readonly encryptedContent?: string | undefined
+    } | undefined
+  }
+
+  export interface ToolCallPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly itemId?: string | undefined
+    } | undefined
+  }
+
+  export interface DocumentSourcePartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly type: "file_citation"
+      /**
+       * The index of the file in the list of files.
+       */
+      readonly index: number
+    } | undefined
+  }
+
+  export interface UrlSourcePartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly type: "url_citation"
+      /**
+       * The index of the first character of the URL citation in the message.
+       */
+      readonly startIndex: number
+      /**
+       * The index of the last character of the URL citation in the message.
+       */
+      readonly endIndex: number
+    } | undefined
+  }
+
+  export interface FinishPartMetadata extends ProviderMetadata {
+    readonly openai?: {
+      readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | undefined
+    } | undefined
+  }
+}
 
 /**
  * @since 1.0.0
@@ -163,64 +237,7 @@ export declare namespace ProviderMetadata {
    * @category Provider Metadata
    */
   export interface Service {
-    "finish": {
-      readonly serviceTier?: "default" | "auto" | "flex" | "scale" | "priority" | undefined
-    }
-
-    "reasoning": {
-      readonly itemId?: string | undefined
-      readonly encryptedContent?: string | undefined
-    }
-
-    "reasoning-start": {
-      readonly itemId?: string | undefined
-      readonly encryptedContent?: string | undefined
-    }
-
-    "reasoning-delta": {
-      readonly itemId?: string | undefined
-    }
-
-    "reasoning-end": {
-      readonly itemId?: string | undefined
-      readonly encryptedContent?: string | undefined
-    }
-
-    "source": {
-      readonly type: "file_citation"
-      /**
-       * The index of the file in the list of files.
-       */
-      readonly index: number
-    } | {
-      readonly type: "url_citation"
-      /**
-       * The index of the first character of the URL citation in the message.
-       */
-      readonly startIndex: number
-      /**
-       * The index of the last character of the URL citation in the message.
-       */
-      readonly endIndex: number
-    }
-
-    "text": {
-      readonly itemId?: string | undefined
-      /**
-       * If the model emits a refusal content part, the refusal explanation
-       * from the model will be contained in the metadata of an empty text
-       * part.
-       */
-      readonly refusal?: string | undefined
-    }
-
-    "text-start": {
-      readonly itemId?: string | undefined
-    }
-
-    "tool-call": {
-      readonly itemId?: string | undefined
-    }
+    "source": {} | {}
   }
 }
 
@@ -529,7 +546,7 @@ const makeResponse: (
   options: LanguageModel.ProviderOptions
 ) => Effect.Effect<
   Array<Response.PartEncoded>,
-  never,
+  AiError.AiError,
   IdGenerator.IdGenerator
 > = Effect.fnUntraced(
   function*(response, options) {
@@ -561,7 +578,7 @@ const makeResponse: (
                 parts.push({
                   type: "text",
                   text: contentPart.text,
-                  metadata: { [ProviderMetadata.key]: { itemId: part.id } }
+                  metadata: { openai: { itemId: part.id } }
                 })
 
                 for (const annotation of contentPart.annotations) {
@@ -577,7 +594,7 @@ const makeResponse: (
                       id: yield* idGenerator.generateId(),
                       mediaType: "text/plain",
                       title: annotation.filename ?? "Untitled Document",
-                      metadata: { [ProviderMetadata.key]: metadata }
+                      metadata: { openai: metadata }
                     })
                   }
 
@@ -594,7 +611,7 @@ const makeResponse: (
                       id: yield* idGenerator.generateId(),
                       url: annotation.url,
                       title: annotation.title,
-                      metadata: { [ProviderMetadata.key]: metadata }
+                      metadata: { openai: metadata }
                     })
                   }
                 }
@@ -605,7 +622,7 @@ const makeResponse: (
                 parts.push({
                   type: "text",
                   text: "",
-                  metadata: { [ProviderMetadata.key]: { refusal: contentPart.refusal } }
+                  metadata: { openai: { refusal: contentPart.refusal } }
                 })
 
                 break
@@ -619,12 +636,27 @@ const makeResponse: (
         case "function_call": {
           hasToolCalls = true
 
+          const toolName = part.name
+          const toolParams = part.arguments
+
+          const params = yield* Effect.try({
+            try: () => Tool.unsafeSecureJsonParse(toolParams),
+            catch: (cause) =>
+              new AiError.MalformedOutput({
+                module: "OpenAiLanguageModel",
+                method: "makeResponse",
+                description: "Failed to securely parse tool call parameters " +
+                  `for tool '${toolName}':\nParameters: ${toolParams}`,
+                cause
+              })
+          })
+
           parts.push({
             type: "tool-call",
             id: part.call_id,
-            name: part.name,
-            params: JSON.parse(part.arguments),
-            metadata: { [ProviderMetadata.key]: { itemId: part.id } }
+            name: toolName,
+            params,
+            metadata: { openai: { itemId: part.id } }
           })
 
           break
@@ -729,7 +761,7 @@ const makeResponse: (
             parts.push({
               type: "reasoning",
               text: "",
-              metadata: { [ProviderMetadata.key]: { itemId: part.id } }
+              metadata: { openai: { itemId: part.id } }
             })
           } else {
             for (const summary of part.summary) {
@@ -740,7 +772,7 @@ const makeResponse: (
               parts.push({
                 type: "reasoning",
                 text: summary.text,
-                metadata: { [ProviderMetadata.key]: metadata }
+                metadata: { openai: metadata }
               })
             }
           }
@@ -769,7 +801,7 @@ const makeResponse: (
         reasoningTokens: response.usage?.output_tokens_details?.reasoning_tokens,
         cachedInputTokens: response.usage?.input_tokens_details?.cached_tokens
       },
-      metadata: { [ProviderMetadata.key]: metadata }
+      metadata: { openai: metadata }
     })
 
     return parts
@@ -842,7 +874,7 @@ const makeStreamResponse: (
                 reasoningTokens: event.response.usage?.output_tokens_details?.reasoning_tokens,
                 cachedInputTokens: event.response.usage?.input_tokens_details?.cached_tokens
               },
-              metadata: { [ProviderMetadata.key]: { serviceTier: event.response.service_tier } }
+              metadata: { openai: { serviceTier: event.response.service_tier } }
             })
             break
           }
@@ -886,7 +918,7 @@ const makeStreamResponse: (
                 parts.push({
                   type: "text-start",
                   id: event.item.id,
-                  metadata: { [ProviderMetadata.key]: { itemId: event.item.id } }
+                  metadata: { openai: { itemId: event.item.id } }
                 })
                 break
               }
@@ -900,7 +932,7 @@ const makeStreamResponse: (
                   type: "reasoning-start",
                   id: `${event.item.id}:0`,
                   metadata: {
-                    [ProviderMetadata.key]: {
+                    openai: {
                       itemId: event.item.id,
                       encryptedContent: event.item.encrypted_content
                     }
@@ -986,18 +1018,37 @@ const makeStreamResponse: (
 
               case "function_call": {
                 hasToolCalls = true
-                delete activeToolCalls[event.output_index]
+
+                const toolName = event.item.name
+                const toolParams = event.item.arguments
+
+                const params = yield* Effect.try({
+                  try: () => Tool.unsafeSecureJsonParse(toolParams),
+                  catch: (cause) =>
+                    new AiError.MalformedOutput({
+                      module: "OpenAiLanguageModel",
+                      method: "makeStreamResponse",
+                      description: "Failed to securely parse tool call parameters " +
+                        `for tool '${toolName}':\nParameters: ${toolParams}`,
+                      cause
+                    })
+                })
+
                 parts.push({
                   type: "tool-params-end",
                   id: event.item.call_id
                 })
+
                 parts.push({
                   type: "tool-call",
                   id: event.item.call_id,
-                  name: event.item.name,
-                  params: JSON.parse(event.item.arguments),
-                  metadata: { [ProviderMetadata.key]: { itemId: event.item.id } }
+                  name: toolName,
+                  params,
+                  metadata: { openai: { itemId: event.item.id } }
                 })
+
+                delete activeToolCalls[event.output_index]
+
                 break
               }
 
@@ -1016,7 +1067,7 @@ const makeStreamResponse: (
                     type: "reasoning-end",
                     id: `${event.item.id}:${summaryIndex}`,
                     metadata: {
-                      [ProviderMetadata.key]: {
+                      openai: {
                         itemId: event.item.id,
                         encryptedContent: event.item.encrypted_content
                       }
@@ -1111,7 +1162,7 @@ const makeStreamResponse: (
                 type: "reasoning-start",
                 id: `${event.item_id}:${event.summary_index}`,
                 metadata: {
-                  [ProviderMetadata.key]: {
+                  openai: {
                     itemId: event.item_id,
                     encryptedContent: reasoningPart?.encryptedContent
                   }
@@ -1126,7 +1177,7 @@ const makeStreamResponse: (
               type: "reasoning-delta",
               id: `${event.item_id}:${event.summary_index}`,
               delta: event.delta,
-              metadata: { [ProviderMetadata.key]: { itemId: event.item_id } }
+              metadata: { openai: { itemId: event.item_id } }
             })
             break
           }
@@ -1195,7 +1246,7 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
     })
   }
   if (part.type === "finish") {
-    const serviceTier = part.metadata?.[ProviderMetadata.key]?.serviceTier as string | undefined
+    const serviceTier = part.metadata?.openai?.serviceTier as string | undefined
     addGenAIAnnotations(span, {
       response: {
         finishReasons: [part.reason]
