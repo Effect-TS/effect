@@ -1,0 +1,56 @@
+{
+  "name": "effect-native",
+  "version": "0.0.1",
+  "type": "module",
+  "license": "MIT",
+  "description": "Effect Native CLI that shrinks feedback loops for ultra extreme programmers.",
+  "homepage": "https://github.com/effect-native/effect-native/tree/main/packages-native/effect-native",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-native/effect-native",
+    "directory": "packages-native/effect-native"
+  },
+  "bugs": {
+    "url": "https://github.com/effect-native/effect-native/issues"
+  },
+  "bin": {
+    "effect-native": "./bin.mjs"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts",
+    "./internal/*": null
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "directory": "dist",
+    "linkDirectory": false
+  },
+  "scripts": {
+    "codegen": "echo 'effect-native: skip codegen'",
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3 && node ./scripts/copy-bin.mjs",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.69.2",
+    "@effect/platform-node": "^0.96.1",
+    "effect": "^3.17.13"
+  },
+  "files": [
+    "build",
+    "dist",
+    "src",
+    "bin.mjs",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ]
+}

@@ -209,6 +209,19 @@ importers:
         version: 0.45.2(@effect/experimental@0.54.6(@effect/platform@0.90.9(effect@3.17.14))(effect@3.17.14)(ioredis@5.6.1)(lmdb@3.4.1))(@effect/platform@0.90.9(effect@3.17.14))(@effect/sql@0.44.2(@effect/experimental@0.54.6(@effect/platform@0.90.9(effect@3.17.14))(effect@3.17.14)(ioredis@5.6.1)(lmdb@3.4.1))(@effect/platform@0.90.9(effect@3.17.14))(effect@3.17.14))(effect@3.17.14)
     publishDirectory: dist
 
+  packages-native/effect-native:
+    dependencies:
+      '@effect/cli':
+        specifier: ^0.69.2
+        version: 0.69.2(@effect/platform@0.90.9(effect@3.17.13))(@effect/printer-ansi@0.45.0(@effect/typeclass@0.36.0(effect@3.17.13))(effect@3.17.13))(@effect/printer@0.45.0(@effect/typeclass@0.36.0(effect@3.17.13))(effect@3.17.13))(effect@3.17.13)
+      '@effect/platform-node':
+        specifier: ^0.96.1
+        version: 0.96.1(@effect/cluster@0.48.7(@effect/platform@0.90.9(effect@3.17.13))(@effect/rpc@0.69.2(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13))(@effect/sql@0.44.2(@effect/experimental@0.54.6(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13)(ioredis@5.6.1)(lmdb@3.4.1))(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13))(@effect/workflow@0.9.5(@effect/platform@0.90.9(effect@3.17.13))(@effect/rpc@0.69.2(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13))(effect@3.17.13))(effect@3.17.13))(@effect/platform@0.90.9(effect@3.17.13))(@effect/rpc@0.69.2(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13))(@effect/sql@0.44.2(@effect/experimental@0.54.6(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13)(ioredis@5.6.1)(lmdb@3.4.1))(@effect/platform@0.90.9(effect@3.17.13))(effect@3.17.13))(effect@3.17.13)
+      effect:
+        specifier: latest
+        version: 3.17.13
+    publishDirectory: dist
+
   packages-native/libcrsql:
     dependencies:
       '@effect/platform':
