@@ -821,7 +821,7 @@ const make = Effect.gen(function*() {
   // and re-subscribe to sharding events
   yield* Effect.gen(function*() {
     yield* Effect.logDebug("Registering with shard manager")
-    if (Option.isSome(config.runnerAddress)) {
+    if (!isShutdown.current && Option.isSome(config.runnerAddress)) {
       const machineId = yield* shardManager.register(config.runnerAddress.value, config.shardGroups)
       yield* snowflakeGen.setMachineId(machineId)
     }

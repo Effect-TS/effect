@@ -271,7 +271,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         },
         onFailure: (cause) => {
           responded = true
-          if (!disableFatalDefects && Cause.isDie(cause)) {
+          if (!disableFatalDefects && Cause.isDie(cause) && !Cause.isInterrupted(cause)) {
             return sendDefect(client, Cause.squash(cause))
           }
           return options.onFromServer({

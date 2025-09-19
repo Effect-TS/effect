@@ -110,6 +110,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       // - 1 interrupt signal set
       expect(driver.requests.size).toEqual(10)
       yield* TestClock.adjust(5000)
+      yield* sharding.pollStorage
       // - clock cleared
       expect(driver.requests.size).toEqual(9)
 
