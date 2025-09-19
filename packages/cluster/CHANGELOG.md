@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.48.14
+
+### Patch Changes
+
+- [#5529](https://github.com/Effect-TS/effect/pull/5529) [`d9c8bce`](https://github.com/Effect-TS/effect/commit/d9c8bce027a45da82190303cc6eb6838074f4fb9) Thanks @tim-smart! - catch interruptions in Sharding storage loop
+
 ## 0.48.13
 
 ### Patch Changes
