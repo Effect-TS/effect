@@ -511,6 +511,9 @@ const make = Effect.gen(function*() {
             const error = Cause.failureOption(cause)
             // if we get a defect, then update storage
             if (Option.isNone(error)) {
+              if (Cause.isInterrupted(cause)) {
+                return Effect.void
+              }
               return storage.saveReply(Reply.ReplyWithContext.fromDefect({
                 id: snowflakeGen.unsafeNext(),
                 requestId: message.envelope.requestId,
