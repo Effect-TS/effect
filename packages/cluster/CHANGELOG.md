@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.48.13
+
+### Patch Changes
+
+- [#5527](https://github.com/Effect-TS/effect/pull/5527) [`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df) Thanks @tim-smart! - attempt to prevent InterruptedException leaks into entity replies
+
+- Updated dependencies [[`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df)]:
+  - @effect/rpc@0.69.4
+
 ## 0.48.12
 
 ### Patch Changes
