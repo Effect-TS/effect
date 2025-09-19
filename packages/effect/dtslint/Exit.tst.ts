@@ -11,10 +11,10 @@ describe("Exit", () => {
     if (Exit.exists(stringOrNumber$string, Predicate.isString)) {
       expect(stringOrNumber$string).type.toBe<Exit.Exit<string, never>>()
     }
-    // TODO
-    // if (pipe(stringOrNumber$string, Exit.exists(Predicate.isString))) {
-    //   expect(stringOrNumber$string).type.toBe<Exit.Exit<string, never>>()
-    // }
+    if (pipe(stringOrNumber$string, Exit.exists(Predicate.isString))) {
+      // @tstyche fixme -- This doesn't work but it should
+      expect(stringOrNumber$string).type.toBe<Exit.Exit<string, never>>()
+    }
     if (Exit.exists(Predicate.isString)(stringOrNumber$string)) {
       expect(stringOrNumber$string).type.toBe<Exit.Exit<string, never>>()
     }
