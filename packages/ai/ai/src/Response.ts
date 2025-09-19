@@ -542,7 +542,7 @@ export const makePart = <const Type extends AnyPart["type"]>(
     ...params,
     [PartTypeId]: PartTypeId,
     type,
-    metadata: params.metadata
+    metadata: params.metadata ?? {}
   }) as any
 
 // =============================================================================
