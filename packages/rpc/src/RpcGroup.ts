@@ -95,6 +95,8 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
   ): Layer.Layer<
     Rpc.ToHandler<R>,
     EX,
+    | (R extends Rpc.Rpc<infer _A, infer _B, infer _C, infer _D, infer _E, infer _F> ? _F :
+      never)
     | Exclude<RX, Scope>
     | HandlersContext<R, Handlers>
   >
@@ -117,6 +119,8 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
   ): Layer.Layer<
     Rpc.Handler<Tag>,
     EX,
+    | (R extends Rpc.Rpc<infer _A, infer _B, infer _C, infer _D, infer _E, infer _F> ? _F :
+      never)
     | Exclude<RX, Scope>
     | HandlerContext<R, Tag, Handler>
   >
