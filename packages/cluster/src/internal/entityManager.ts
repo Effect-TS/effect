@@ -171,7 +171,7 @@ export const make = Effect.fnUntraced(function*<
                   Exit.isInterrupted(response.exit) &&
                   (isShuttingDown || Context.get(request.rpc.annotations, Uninterruptible))
                 ) {
-                  return Effect.void
+                  return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
                 return retryRespond(
                   4,
