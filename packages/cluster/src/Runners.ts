@@ -373,7 +373,12 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         } else if (!duplicate) {
           return storage.registerReplyHandler(
             message,
-            Effect.forkIn(replyFromStorage(message), runnersScope)
+            Effect.suspend(() =>
+              replyFromStorage(message).pipe(
+                Effect.forkIn(runnersScope),
+                Effect.interruptible
+              )
+            )
           ).pipe(
             Effect.andThen(options.notify(Message.incomingLocalFromOutgoing(message))),
             Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void)
