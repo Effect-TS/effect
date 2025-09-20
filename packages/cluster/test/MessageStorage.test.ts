@@ -83,9 +83,27 @@ describe("MessageStorage", () => {
           new Message.OutgoingRequest({
             ...request,
             respond: () => latch.open
-          })
+          }),
+          Effect.void
         )
         yield* storage.saveReply(yield* makeReply(request))
+        yield* latch.await
+      }).pipe(Effect.provide(MemoryLive)))
+
+    it.effect("unregisterReplyHandler", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const latch = yield* Effect.makeLatch()
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () => Effect.void
+          }),
+          latch.open
+        )
+        yield* storage.unregisterReplyHandler(request.envelope.requestId)
         yield* latch.await
       }).pipe(Effect.provide(MemoryLive)))
   })
