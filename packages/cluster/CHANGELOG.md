@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.48.15
+
+### Patch Changes
+
+- [#5541](https://github.com/Effect-TS/effect/pull/5541) [`4f07ee0`](https://github.com/Effect-TS/effect/commit/4f07ee06e59fa81762761b12938224f5c931b119) Thanks @tim-smart! - backport MessageStorage.unregisterReplyHandler
+
+- Updated dependencies [[`ea95998`](https://github.com/Effect-TS/effect/commit/ea95998de2a7613d844c42e67e7f5b16652c5000)]:
+  - effect@3.17.14
+
 ## 0.48.14
 
 ### Patch Changes
