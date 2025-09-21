@@ -49,11 +49,13 @@ export const makeRemoteCallback = Effect.gen(function*() {
     const runPromise = Runtime.runPromise(currentRuntime ? currentRuntime : constructionRuntime)
 
     const finalParams = params.map((e) => {
+      if (e === null || e === undefined) return e
+      if (typeof e !== "string") return e
+      const s = e.trim()
+      if (!(s.startsWith("{") || s.startsWith("["))) return e
       try {
-        if (e) {
-          return JSON.parse(e)
-        }
-      } catch (err) {
+        return JSON.parse(s)
+      } catch {
         return e
       }
     })
