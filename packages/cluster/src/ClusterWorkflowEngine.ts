@@ -371,14 +371,14 @@ export const make = Effect.gen(function*() {
     interrupt: Effect.fnUntraced(
       function*(this: WorkflowEngine["Type"], workflow, executionId) {
         ensureEntity(workflow)
-        const reply = yield* requestReply({
+        const oreply = yield* requestReply({
           workflow,
           entityType: `Workflow/${workflow.name}`,
           executionId,
           tag: "run",
           id: ""
         })
-        const nonSuspendedReply = reply.pipe(
+        const nonSuspendedReply = oreply.pipe(
           Option.filter((reply) => reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended")
         )
         if (Option.isSome(nonSuspendedReply)) {
