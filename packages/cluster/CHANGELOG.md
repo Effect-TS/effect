@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.48.16
+
+### Patch Changes
+
+- [#5543](https://github.com/Effect-TS/effect/pull/5543) [`2b9db9e`](https://github.com/Effect-TS/effect/commit/2b9db9e7f930d3ae269b123286c881ea34d3afca) Thanks @tim-smart! - propagate workflow interruption to unfinished children
+
+- Updated dependencies [[`2b9db9e`](https://github.com/Effect-TS/effect/commit/2b9db9e7f930d3ae269b123286c881ea34d3afca)]:
+  - @effect/workflow@0.9.6
+
 ## 0.48.15
 
 ### Patch Changes
