@@ -525,7 +525,7 @@ const prepareMessages: (
           messages.push({
             type: "function_call_output",
             call_id: part.id,
-            result: JSON.stringify(part.result)
+            output: JSON.stringify(part.result)
           })
         }
 
