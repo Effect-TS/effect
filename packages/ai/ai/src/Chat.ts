@@ -50,12 +50,14 @@ import * as Persistence from "@effect/experimental/Persistence"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { NoExcessProperties } from "effect/Types"
+import * as IdGenerator from "./IdGenerator.js"
 import * as LanguageModel from "./LanguageModel.js"
 import * as Prompt from "./Prompt.js"
 import type * as Response from "./Response.js"
@@ -116,7 +118,7 @@ export interface Service {
    * })
    * ```
    */
-  readonly history: Ref.Ref<ReadonlyArray<ChatMessage>>
+  readonly history: Ref.Ref<History>
 
   /**
    * Exports the chat history into a structured format.
@@ -287,28 +289,28 @@ export interface Service {
 }
 
 // =============================================================================
-// Chat Messages
+// Chat History
 // =============================================================================
 
 const constEmptyObject = () => ({})
 
 export class SystemMessage extends Schema.Class<SystemMessage>("@effect/ai/Chat/SystemMessage")({
-  id: Schema.String,
-  role: Schema.Literal("user"),
-  parts: Schema.encodedSchema(Prompt.TextPart),
+  id: Schema.optional(Schema.String),
+  role: Schema.tag("system"),
+  text: Schema.String,
   options: Schema.optionalWith(Prompt.ProviderOptions, { default: constEmptyObject })
 }) {}
 
 export class UserMessage extends Schema.Class<UserMessage>("@effect/ai/Chat/UserMessage")({
-  id: Schema.String,
-  role: Schema.Literal("user"),
+  id: Schema.optional(Schema.String),
+  role: Schema.tag("user"),
   parts: Schema.Array(Schema.encodedSchema(Schema.Union(Prompt.TextPart, Prompt.FilePart))),
   options: Schema.optionalWith(Prompt.ProviderOptions, { default: constEmptyObject })
 }) {}
 
 export class AssistantMessage extends Schema.Class<AssistantMessage>("@effect/ai/Chat/AssistantMessage")({
-  id: Schema.String,
-  role: Schema.Literal("assistant"),
+  id: Schema.optional(Schema.String),
+  role: Schema.tag("assistant"),
   parts: Schema.Array(Schema.encodedSchema(Schema.Union(
     Prompt.TextPart,
     Prompt.FilePart,
@@ -331,19 +333,111 @@ export const ChatMessage: Schema.Union<[
 
 export type ChatMessage = typeof ChatMessage.Type
 
+export class History extends Schema.Class<History>("@effect/ai/Chat/History")({
+  messages: Schema.Array(ChatMessage)
+}) {
+  static FromJson = Schema.parseJson(History)
+
+  static empty = new History({ messages: [] })
+
+  static fromPrompt(prompt: Prompt.Prompt): Effect.Effect<History> {
+    return Effect.gen(this, function*() {
+      const idGenerator = yield* Effect.serviceOption(IdGenerator.IdGenerator)
+
+      const messages: Array<ChatMessage> = []
+      for (const message of prompt.content) {
+        switch (message.role) {
+          case "system": {
+            messages.push(
+              new SystemMessage({
+                text: message.content,
+                options: message.options
+              })
+            )
+            break
+          }
+          case "user": {
+            messages.push(
+              new UserMessage({
+                parts: message.content,
+                options: message.options
+              })
+            )
+            break
+          }
+          case "assistant": {
+            messages.push(
+              new AssistantMessage({
+                parts: message.content,
+                options: message.options
+              })
+            )
+            break
+          }
+          case "tool": {
+            break
+          }
+        }
+      }
+
+      return new History({ messages })
+    })
+  }
+
+  static fromResponse(response: ReadonlyArray<Response.AnyPart>): Effect.Effect<History> {
+  }
+
+  static encode = Schema.encodeUnknown(History)
+
+  static encodeJson = Schema.encodeUnknown(History.FromJson)
+
+  static decode = Schema.encodeUnknown(History)
+
+  static decodeJson = Schema.decodeUnknown(History.FromJson)
+
+  get toPrompt(): Prompt.Prompt {
+    const parts: Array<Prompt.MessageEncoded> = []
+    for (const message of this.messages) {
+      switch (message.role) {
+        case "system": {
+          parts.push({
+            role: "system",
+            content: message.text,
+            options: message.options
+          })
+          break
+        }
+        case "user": {
+          parts.push({
+            role: "user",
+            content: message.parts,
+            options: message.options
+          })
+          break
+        }
+        case "assistant": {
+          parts.push({
+            role: "assistant",
+            content: message.parts,
+            options: message.options
+          })
+          break
+        }
+      }
+    }
+    return Prompt.make(parts)
+  }
+}
+
 // =============================================================================
 // Constructors
 // =============================================================================
 
-const makeInternal = Effect.fnUntraced(
-  function*(chatId: string, store: Persistence.BackingPersistenceStore) {
+const fromHistory = Effect.fnUntraced(
+  function*(history: Ref.Ref<History>) {
     const languageModel = yield* LanguageModel.LanguageModel
 
     const context = yield* Effect.context<never>()
-    const history = yield* store.get(chatId).pipe(
-      Effect.flatMap()
-    )
-    Ref.make<ReadonlyArray<ChatMessage>>(messages)
     const semaphore = yield* Effect.makeSemaphore(1)
 
     const provideContext = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
@@ -351,32 +445,30 @@ const makeInternal = Effect.fnUntraced(
     const provideContextStream = <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
       Stream.mapInputContext(stream, (input) => Context.merge(context, input))
 
-    const decodeMessages = Schema.decode(Schema.Array(ChatMessage))
-    const encodeMessages = Schema.encode(Schema.Array(ChatMessage))
-    const encodeMessagesJson = Schema.encode(Schema.parseJson(Schema.Array(ChatMessage)))
-
     return Chat.of({
       history,
       export: Ref.get(history).pipe(
-        Effect.flatMap(encodeMessages),
+        Effect.flatMap(History.encode),
         Effect.withSpan("Chat.export"),
         Effect.orDie
       ),
       exportJson: Ref.get(history).pipe(
-        Effect.flatMap(encodeMessagesJson),
+        Effect.flatMap(History.encodeJson),
         Effect.withSpan("Chat.exportJson"),
         Effect.orDie
       ),
       generateText: Effect.fnUntraced(
         function*(options) {
           const newPrompt = Prompt.make(options.prompt)
-          const oldPrompt = yield* Ref.get(history)
+          const oldPrompt = yield* Ref.get(history).pipe(
+            Effect.map((history) => history.toPrompt)
+          )
           const prompt = Prompt.merge(oldPrompt, newPrompt)
 
           const response = yield* languageModel.generateText({ ...options, prompt })
 
           const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
-          yield* Ref.set(history, newHistory)
+          yield* Ref.set(history, yield* History.fromPrompt(newHistory))
 
           return response
         },
@@ -734,66 +826,85 @@ export class ChatNotFoundError extends Schema.TaggedError<ChatNotFoundError>(
   "@effect/ai/Chat/ChatNotFoundError"
 )("ChatNotFoundError", { chatId: Schema.String }) {}
 
+// @effect-diagnostics effect/leakingRequirements:off
 export class Persisted extends Context.Tag("@effect/ai/Chat/Persisted")<
   Persisted,
   PersistedService
 >() {}
 
 export interface PersistedService {
-  readonly load: (chatId: string) => Effect.Effect<Service, ChatNotFoundError, LanguageModel.LanguageModel>
+  readonly get: (chatId: string) => Effect.Effect<Service, ChatNotFoundError, LanguageModel.LanguageModel>
+  readonly getOrCreate: (chatId: string) => Effect.Effect<Service, never, LanguageModel.LanguageModel>
 }
 
-export const fromPersistence = Effect.fnUntraced(function*(options: {
+export const makePersisted = Effect.fnUntraced(function*(options: {
   readonly storeId: string
 }) {
   const persistence = yield* Persistence.BackingPersistence
   const store = yield* persistence.make(options.storeId)
 
-  const decodeChat = Schema.decodeUnknown(Schema.Array(ChatMessage))
-  const encodeChat = Schema.encodeUnknown(Schema.Array(ChatMessage))
+  const getInternal = Effect.fnUntraced(
+    function*(chatId: string, options?: {
+      readonly createIfNotExists?: boolean | undefined
+    }) {
+      const history = yield* store.get(chatId).pipe(
+        Effect.flatMap(Effect.transposeMapOption((json) => History.decodeJson(json))),
+        Effect.orDie,
+        Effect.flatten,
+        Effect.catchTag("NoSuchElementException", () =>
+          options?.createIfNotExists === true
+            ? store.set(chatId, "", Option.none()).pipe(
+              Effect.orDie,
+              Effect.as(History.empty)
+            )
+            : new ChatNotFoundError({ chatId }))
+      )
 
-  const load = Effect.fn("PersistedChat.load")(function*(chatId: string) {
-    const history = yield* store.get(chatId).pipe(
-      Effect.flatMap(Effect.transposeMapOption(decodeChat)),
-      Effect.orDie,
-      Effect.flatten,
-      Effect.catchTag("NoSuchElementException", () => new ChatNotFoundError({ chatId }))
-    )
-    const chat = yield* make(chatId, store)
-    return Chat.of({
-      ...chat,
-      generateText: (options) =>
-        chat.generateText(options).pipe(
-          Effect.map((response) => toMessages(response.content)),
-          Effect.flatMap(encodeChat),
-          Effect.flatMap((chat) => store.set(chatId, chat, Option.none()))
-        )
-    })
+      const ref = yield* Ref.make(history)
+      const chat = yield* fromHistory(ref)
+
+      const saveChat = Ref.get(ref).pipe(
+        Effect.flatMap(History.encodeJson),
+        Effect.flatMap((history) => store.set(chatId, history, Option.none())),
+        Effect.orDie // TODO
+      )
+
+      return Chat.of({
+        ...chat,
+        generateText: (options) =>
+          chat.generateText(options).pipe(
+            Effect.ensuring(saveChat)
+          ),
+        generateObject: (options) =>
+          chat.generateObject(options).pipe(
+            Effect.ensuring(saveChat)
+          ),
+        streamText: (options) =>
+          chat.streamText(options).pipe(
+            Stream.ensuring(saveChat)
+          )
+      })
+    }
+  )
+
+  const get = Effect.fn("PersistedChat.get")(function*(chatId: string) {
+    return yield* getInternal(chatId)
+  })
+
+  const getOrCreate = Effect.fn("PersistedChat.getOrCreate")(function*(chatId: string) {
+    return yield* Effect.orDie(getInternal(chatId, { createIfNotExists: true }))
   })
 
   return Persisted.of({
-    load
+    get,
+    getOrCreate
   })
 })
 
-// =============================================================================
-// Persistence
-// =============================================================================
-
-export const makePersisted = Effect.fnUntraced(
-  function*(options: {
-    readonly storeId: string
-  }) {
-    const persistence = yield* Persistence.ResultPersistence
-
-    const chat = yield* empty
-
-    const store = yield* persistence.make({
-      storeId: options.storeId
-    })
-
-    store.get()
-
-    store.set()
-  }
-)
+export const layerPersisted = (options: {
+  readonly storeId: string
+}): Layer.Layer<Persisted, never, Persistence.BackingPersistence> =>
+  Layer.scoped(
+    Persisted,
+    makePersisted(options)
+  )
