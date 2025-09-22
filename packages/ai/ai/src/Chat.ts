@@ -46,9 +46,11 @@
  *
  * @since 1.0.0
  */
+import * as Persistence from "@effect/experimental/Persistence"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
@@ -114,7 +116,7 @@ export interface Service {
    * })
    * ```
    */
-  readonly history: Ref.Ref<Prompt.Prompt>
+  readonly history: Ref.Ref<ReadonlyArray<ChatMessage>>
 
   /**
    * Exports the chat history into a structured format.
@@ -283,6 +285,166 @@ export interface Service {
     LanguageModel.LanguageModel | R | LanguageModel.ExtractContext<Options>
   >
 }
+
+// =============================================================================
+// Chat Messages
+// =============================================================================
+
+const constEmptyObject = () => ({})
+
+export class SystemMessage extends Schema.Class<SystemMessage>("@effect/ai/Chat/SystemMessage")({
+  id: Schema.String,
+  role: Schema.Literal("user"),
+  parts: Schema.encodedSchema(Prompt.TextPart),
+  options: Schema.optionalWith(Prompt.ProviderOptions, { default: constEmptyObject })
+}) {}
+
+export class UserMessage extends Schema.Class<UserMessage>("@effect/ai/Chat/UserMessage")({
+  id: Schema.String,
+  role: Schema.Literal("user"),
+  parts: Schema.Array(Schema.encodedSchema(Schema.Union(Prompt.TextPart, Prompt.FilePart))),
+  options: Schema.optionalWith(Prompt.ProviderOptions, { default: constEmptyObject })
+}) {}
+
+export class AssistantMessage extends Schema.Class<AssistantMessage>("@effect/ai/Chat/AssistantMessage")({
+  id: Schema.String,
+  role: Schema.Literal("assistant"),
+  parts: Schema.Array(Schema.encodedSchema(Schema.Union(
+    Prompt.TextPart,
+    Prompt.FilePart,
+    Prompt.ReasoningPart,
+    Prompt.ToolCallPart,
+    Prompt.ToolResultPart
+  ))),
+  options: Schema.optionalWith(Prompt.ProviderOptions, { default: constEmptyObject })
+}) {}
+
+export const ChatMessage: Schema.Union<[
+  typeof SystemMessage,
+  typeof UserMessage,
+  typeof AssistantMessage
+]> = Schema.Union(
+  SystemMessage,
+  UserMessage,
+  AssistantMessage
+)
+
+export type ChatMessage = typeof ChatMessage.Type
+
+// =============================================================================
+// Constructors
+// =============================================================================
+
+const makeInternal = Effect.fnUntraced(
+  function*(chatId: string, store: Persistence.BackingPersistenceStore) {
+    const languageModel = yield* LanguageModel.LanguageModel
+
+    const context = yield* Effect.context<never>()
+    const history = yield* store.get(chatId).pipe(
+      Effect.flatMap()
+    )
+    Ref.make<ReadonlyArray<ChatMessage>>(messages)
+    const semaphore = yield* Effect.makeSemaphore(1)
+
+    const provideContext = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+      Effect.mapInputContext(effect, (input) => Context.merge(context, input))
+    const provideContextStream = <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
+      Stream.mapInputContext(stream, (input) => Context.merge(context, input))
+
+    const decodeMessages = Schema.decode(Schema.Array(ChatMessage))
+    const encodeMessages = Schema.encode(Schema.Array(ChatMessage))
+    const encodeMessagesJson = Schema.encode(Schema.parseJson(Schema.Array(ChatMessage)))
+
+    return Chat.of({
+      history,
+      export: Ref.get(history).pipe(
+        Effect.flatMap(encodeMessages),
+        Effect.withSpan("Chat.export"),
+        Effect.orDie
+      ),
+      exportJson: Ref.get(history).pipe(
+        Effect.flatMap(encodeMessagesJson),
+        Effect.withSpan("Chat.exportJson"),
+        Effect.orDie
+      ),
+      generateText: Effect.fnUntraced(
+        function*(options) {
+          const newPrompt = Prompt.make(options.prompt)
+          const oldPrompt = yield* Ref.get(history)
+          const prompt = Prompt.merge(oldPrompt, newPrompt)
+
+          const response = yield* languageModel.generateText({ ...options, prompt })
+
+          const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
+          yield* Ref.set(history, newHistory)
+
+          return response
+        },
+        provideContext,
+        semaphore.withPermits(1),
+        Effect.withSpan("Chat.generateText", { captureStackTrace: false })
+      ),
+      streamText: Effect.fnUntraced(
+        function*(options) {
+          let combined: Prompt.Prompt = Prompt.empty
+          return Stream.fromChannel(Channel.acquireUseRelease(
+            semaphore.take(1).pipe(
+              Effect.zipRight(Ref.get(history)),
+              Effect.map((history) => Prompt.merge(history, Prompt.make(options.prompt)))
+            ),
+            (prompt) =>
+              languageModel.streamText({ ...options, prompt }).pipe(
+                Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
+                  const parts = Array.from(chunk)
+                  combined = Prompt.merge(combined, Prompt.fromResponseParts(parts))
+                  return chunk
+                })),
+                Stream.toChannel
+              ),
+            (parts) =>
+              Effect.zipRight(
+                Ref.set(history, Prompt.merge(parts, combined)),
+                semaphore.release(1)
+              )
+          )).pipe(
+            provideContextStream,
+            Stream.withSpan("Chat.streamText", {
+              captureStackTrace: false
+            })
+          )
+        },
+        Stream.unwrap
+      ),
+      generateObject: Effect.fnUntraced(
+        function*(options) {
+          const newPrompt = Prompt.make(options.prompt)
+          const oldPrompt = yield* Ref.get(history)
+          const prompt = Prompt.merge(oldPrompt, newPrompt)
+
+          const response = yield* languageModel.generateObject({ ...options, prompt })
+
+          const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
+          yield* Ref.set(history, newHistory)
+
+          return response
+        },
+        provideContext,
+        semaphore.withPermits(1),
+        (effect, options) =>
+          Effect.withSpan(effect, "Chat.generateObject", {
+            attributes: {
+              objectName: "objectName" in options
+                ? options.objectName
+                : "_tag" in options.schema
+                ? options.schema._tag
+                : (options.schema as any).identifier ?? "generateObject"
+            },
+            captureStackTrace: false
+          })
+      )
+    })
+  }
+)
 
 /**
  * Creates a new Chat service from an initial prompt.
@@ -544,3 +706,94 @@ const decodeJson = Schema.decode(Prompt.FromJson)
  */
 export const fromJson = (data: string): Effect.Effect<Service, ParseError, LanguageModel.LanguageModel> =>
   Effect.flatMap(decodeJson(data), fromPrompt)
+
+/*
+//
+// User has not setup Persistence (defaults to in-memory)
+//
+Effect.gen(function* () {
+  const chat = yield* Chat.empty
+
+  // Automatically persist to memory
+  yield* chat.streamText({ ... })
+})
+
+//
+// User has setup Persistence (uses the BackingPersistence layer the user has set up)
+//
+Effect.gen(function* () {
+  const chat = yield* Chat.fromPersistence({ storeId: "..." })
+  chat.load(id)
+
+  // Automatically persist to the persistence layer
+  yield* chat.streamText({ ... })
+})
+*/
+
+export class ChatNotFoundError extends Schema.TaggedError<ChatNotFoundError>(
+  "@effect/ai/Chat/ChatNotFoundError"
+)("ChatNotFoundError", { chatId: Schema.String }) {}
+
+export class Persisted extends Context.Tag("@effect/ai/Chat/Persisted")<
+  Persisted,
+  PersistedService
+>() {}
+
+export interface PersistedService {
+  readonly load: (chatId: string) => Effect.Effect<Service, ChatNotFoundError, LanguageModel.LanguageModel>
+}
+
+export const fromPersistence = Effect.fnUntraced(function*(options: {
+  readonly storeId: string
+}) {
+  const persistence = yield* Persistence.BackingPersistence
+  const store = yield* persistence.make(options.storeId)
+
+  const decodeChat = Schema.decodeUnknown(Schema.Array(ChatMessage))
+  const encodeChat = Schema.encodeUnknown(Schema.Array(ChatMessage))
+
+  const load = Effect.fn("PersistedChat.load")(function*(chatId: string) {
+    const history = yield* store.get(chatId).pipe(
+      Effect.flatMap(Effect.transposeMapOption(decodeChat)),
+      Effect.orDie,
+      Effect.flatten,
+      Effect.catchTag("NoSuchElementException", () => new ChatNotFoundError({ chatId }))
+    )
+    const chat = yield* make(chatId, store)
+    return Chat.of({
+      ...chat,
+      generateText: (options) =>
+        chat.generateText(options).pipe(
+          Effect.map((response) => toMessages(response.content)),
+          Effect.flatMap(encodeChat),
+          Effect.flatMap((chat) => store.set(chatId, chat, Option.none()))
+        )
+    })
+  })
+
+  return Persisted.of({
+    load
+  })
+})
+
+// =============================================================================
+// Persistence
+// =============================================================================
+
+export const makePersisted = Effect.fnUntraced(
+  function*(options: {
+    readonly storeId: string
+  }) {
+    const persistence = yield* Persistence.ResultPersistence
+
+    const chat = yield* empty
+
+    const store = yield* persistence.make({
+      storeId: options.storeId
+    })
+
+    store.get()
+
+    store.set()
+  }
+)
