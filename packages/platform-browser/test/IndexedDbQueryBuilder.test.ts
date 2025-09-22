@@ -35,6 +35,12 @@ class User extends Schema.Class<User>("User")({
   createdAt: Schema.DateTimeUtcFromNumber
 }) {}
 
+class ProductSchema extends Schema.Class<ProductSchema>("ProductSchema")({
+  key: Schema.optional(Schema.Number),
+  name: Schema.String,
+  price: Schema.Number
+}) {}
+
 class VerifyContext extends Context.Tag("VerifyContext")<VerifyContext, { readonly maxLength: number }>() {}
 
 const VerifyId = Schema.transformOrFail(Schema.String, Schema.String, {
@@ -56,11 +62,7 @@ const Table2 = IndexedDbTable.make({ name: "user", schema: User, keyPath: "id" }
 
 const Table3 = IndexedDbTable.make({
   name: "product",
-  schema: Schema.Struct({
-    key: Schema.optional(Schema.Number),
-    name: Schema.String,
-    price: Schema.Number
-  }),
+  schema: ProductSchema,
   // TODO: should only be "key" here, as the auto-increment field should be
   // optional
   keyPath: "price",
