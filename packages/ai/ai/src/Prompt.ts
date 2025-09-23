@@ -1511,3 +1511,143 @@ export const merge: {
   (other: Prompt) => (self: Prompt) => Prompt,
   (self: Prompt, other: Prompt) => Prompt
 >(2, (self, other) => fromMessages([...self.content, ...other.content]))
+
+// =============================================================================
+// Manipulating Prompts
+// =============================================================================
+
+/**
+ * Creates a new prompt from the specified prompt with the system message set
+ * to the specified text content.
+ *
+ * **NOTE**: This method will remove and replace any previous system message
+ * from the prompt.
+ *
+ * @example
+ * ```ts
+ * import { Prompt } from "@effect/ai"
+ *
+ * const systemPrompt = Prompt.make([{
+ *   role: "system",
+ *   content: "You are a helpful assistant."
+ * }])
+ *
+ * const userPrompt = Prompt.make("Hello, world!")
+ *
+ * const prompt = Prompt.merge(systemPrompt, userPrompt)
+ *
+ * const replaced = Prompt.setSystem(
+ *   prompt,
+ *   "You are an expert in programming"
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const setSystem: {
+  (content: string): (self: Prompt) => Prompt
+  (self: Prompt, content: string): Prompt
+} = dual(2, (self: Prompt, content: string): Prompt => {
+  const messages: Array<Message> = [makeMessage("system", { content })]
+  for (const message of self.content) {
+    if (message.role !== "system") {
+      messages.push(message)
+    }
+  }
+  return makePrompt(messages)
+})
+
+/**
+ * Creates a new prompt from the specified prompt with the provided text content
+ * prepended to the start of existing system message content.
+ *
+ * If no system message exists in the specified prompt, the provided content
+ * will be used to create a system message.
+ *
+ * @example
+ * ```ts
+ * import { Prompt } from "@effect/ai"
+ *
+ * const systemPrompt = Prompt.make([{
+ *   role: "system",
+ *   content: "You are an expert in programming."
+ * }])
+ *
+ * const userPrompt = Prompt.make("Hello, world!")
+ *
+ * const prompt = Prompt.merge(systemPrompt, userPrompt)
+ *
+ * const replaced = Prompt.prependSystem(
+ *   prompt,
+ *   "You are a helpful assistant. "
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const prependSystem: {
+  (content: string): (self: Prompt) => Prompt
+  (self: Prompt, content: string): Prompt
+} = dual(2, (self: Prompt, content: string): Prompt => {
+  const messages: Array<Message> = []
+  for (const message of self.content) {
+    if (message.role === "system") {
+      const system = makeMessage("system", {
+        content: content + message.content
+      })
+      messages.push(system)
+    } else {
+      messages.push(message)
+    }
+  }
+  return makePrompt(messages)
+})
+
+/**
+ * Creates a new prompt from the specified prompt with the provided text content
+ * appended to the end of existing system message content.
+ *
+ * If no system message exists in the specified prompt, the provided content
+ * will be used to create a system message.
+ *
+ * @example
+ * ```ts
+ * import { Prompt } from "@effect/ai"
+ *
+ * const systemPrompt = Prompt.make([{
+ *   role: "system",
+ *   content: "You are a helpful assistant."
+ * }])
+ *
+ * const userPrompt = Prompt.make("Hello, world!")
+ *
+ * const prompt = Prompt.merge(systemPrompt, userPrompt)
+ *
+ * const replaced = Prompt.appendSystem(
+ *   prompt,
+ *   " You are an expert in programming."
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const appendSystem: {
+  (content: string): (self: Prompt) => Prompt
+  (self: Prompt, content: string): Prompt
+} = dual(2, (self: Prompt, content: string): Prompt => {
+  const messages: Array<Message> = []
+  for (const message of self.content) {
+    if (message.role === "system") {
+      const system = makeMessage("system", {
+        content: message.content + content
+      })
+      messages.push(system)
+    } else {
+      messages.push(message)
+    }
+  }
+  return makePrompt(messages)
+})
