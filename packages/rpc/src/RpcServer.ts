@@ -948,16 +948,13 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
     clientIds.add(id)
     clients.set(id, {
-      write: (response) => {
+      write: !includesFraming ? ((response) => mailbox.offer(response)) : (response) => {
         try {
-          if (!includesFraming) return mailbox.offer(response)
           const encoded = parser.encode(response)
           if (encoded === undefined) return Effect.void
           return offer(encoded)
         } catch (cause) {
-          return !includesFraming
-            ? mailbox.offer(ResponseDefectEncoded(cause))
-            : offer(parser.encode(ResponseDefectEncoded(cause))!)
+          return offer(parser.encode(ResponseDefectEncoded(cause))!)
         }
       },
       end: mailbox.end
@@ -1006,18 +1003,31 @@ export const makeProtocolWithHttpApp: Effect.Effect<
       return HttpServerResponse.text(parser.encode(responses) as string, { contentType: serialization.contentType })
     }
 
+    const [initialChunk, done] = yield* mailbox.takeAll
+    if (done) {
+      clientIds.delete(id)
+      clients.delete(id)
+      disconnects.unsafeOffer(id)
+      return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk as Chunk.Chunk<Uint8Array>), {
+        contentType: serialization.contentType
+      })
+    }
+
     return HttpServerResponse.stream(
-      Stream.ensuringWith(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>), (exit) => {
-        clientIds.delete(id)
-        clients.delete(id)
-        disconnects.unsafeOffer(id)
-        if (!Exit.isInterrupted(exit)) return Effect.void
-        return Effect.forEach(
-          requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-          { discard: true }
-        )
-      }),
+      Stream.fromChunk(initialChunk as Chunk.Chunk<Uint8Array>).pipe(
+        Stream.concat(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>)),
+        Stream.ensuringWith((exit) => {
+          clientIds.delete(id)
+          clients.delete(id)
+          disconnects.unsafeOffer(id)
+          if (!Exit.isInterrupted(exit)) return Effect.void
+          return Effect.forEach(
+            requestIds,
+            (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
+            { discard: true }
+          )
+        })
+      ),
       { contentType: serialization.contentType }
     )
   }).pipe(Effect.interruptible)
@@ -1046,6 +1056,19 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
   return { protocol, httpApp } as const
 })
+
+const mergeUint8Arrays = (arrays: Chunk.Chunk<Uint8Array>) => {
+  if (arrays.length === 0) return new Uint8Array(0)
+  if (arrays.length === 1) return Chunk.unsafeHead(arrays)
+  const length = Chunk.reduce(arrays, 0, (acc, a) => acc + a.length)
+  const result = new Uint8Array(length)
+  let offset = 0
+  for (const array of arrays) {
+    result.set(array, offset)
+    offset += array.length
+  }
+  return result
+}
 
 /**
  * @since 1.0.0
