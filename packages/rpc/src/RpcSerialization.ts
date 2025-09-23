@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import { Msgpackr } from "@effect/platform/MsgPack"
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import { hasProperty } from "effect/Predicate"
+import * as Msgpackr from "msgpackr"
 import type * as RpcMessage from "./RpcMessage.js"
 
 /**

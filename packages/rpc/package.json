@@ -52,5 +52,8 @@
   "peerDependencies": {
     "@effect/platform": "workspace:^",
     "effect": "workspace:^"
+  },
+  "dependencies": {
+    "msgpackr": "^1.11.4"
   }
 }
