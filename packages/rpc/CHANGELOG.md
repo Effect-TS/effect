@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.69.5
+
+### Patch Changes
+
+- [#5548](https://github.com/Effect-TS/effect/pull/5548) [`ae3854d`](https://github.com/Effect-TS/effect/commit/ae3854d06c2c43ce94f0969e64633902738453f6) Thanks @tim-smart! - optimize non-streaming response for http rpc protocol
+
 ## 0.69.4
 
 ### Patch Changes
