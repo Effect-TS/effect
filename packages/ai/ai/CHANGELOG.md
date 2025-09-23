@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.28.1
+
+### Patch Changes
+
+- [#5555](https://github.com/Effect-TS/effect/pull/5555) [`aacd472`](https://github.com/Effect-TS/effect/commit/aacd472a9bab389269f74d923ac20cc895c638ee) Thanks @IMax153! - Add support for persisting a `Chat` via `Persistence`
+
 ## 0.28.0
 
 ### Patch Changes
