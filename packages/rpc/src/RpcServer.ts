@@ -5,6 +5,7 @@ import * as Headers from "@effect/platform/Headers"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpRouter from "@effect/platform/HttpRouter"
+import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Socket from "@effect/platform/Socket"
@@ -922,6 +923,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
   const includesFraming = serialization.includesFraming
+  const isBinary = !serialization.contentType.includes("json")
 
   const disconnects = yield* Mailbox.make<number>()
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
@@ -935,15 +937,18 @@ export const makeProtocolWithHttpApp: Effect.Effect<
   const clients = new Map<number, Client>()
   const clientIds = new Set<number>()
 
+  const encoder = new TextEncoder()
+
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
     const scope = yield* Effect.scope
     const requestHeaders = Object.entries(request.headers)
-    const data = yield* Effect.orDie(request.arrayBuffer)
+    const data = yield* Effect.orDie<string | Uint8Array<ArrayBuffer>, HttpServerError.HttpServerError, never>(
+      isBinary ? Effect.map(request.arrayBuffer, (ab) => new Uint8Array(ab)) : request.text
+    )
     const id = clientId++
     const mailbox = yield* Mailbox.make<Uint8Array | FromServerEncoded>()
     const parser = serialization.unsafeMake()
-    const encoder = new TextEncoder()
 
     const offer = (data: Uint8Array | string) =>
       typeof data === "string" ? mailbox.offer(encoder.encode(data)) : mailbox.offer(data)
@@ -978,7 +983,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     const requestIds: Array<RequestId> = []
 
     try {
-      const decoded = parser.decode(new Uint8Array(data)) as ReadonlyArray<FromClientEncoded>
+      const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
       for (const message of decoded) {
         if (message._tag === "Request") {
           requestIds.push(RequestId(message.id))
