@@ -928,14 +928,16 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
   let clientId = 0
 
-  const clients = new Map<number, {
+  type Client = {
     readonly write: (bytes: FromServerEncoded) => Effect.Effect<void>
     readonly end: Effect.Effect<void>
-  }>()
+  }
+  const clients = new Map<number, Client>()
   const clientIds = new Set<number>()
 
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
+    const scope = yield* Effect.scope
     const requestHeaders = Object.entries(request.headers)
     const data = yield* Effect.orDie(request.arrayBuffer)
     const id = clientId++
@@ -947,7 +949,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
       typeof data === "string" ? mailbox.offer(encoder.encode(data)) : mailbox.offer(data)
 
     clientIds.add(id)
-    clients.set(id, {
+    const client: Client = {
       write: !includesFraming ? ((response) => mailbox.offer(response)) : (response) => {
         try {
           const encoded = parser.encode(response)
@@ -958,6 +960,19 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         }
       },
       end: mailbox.end
+    }
+    clients.set(id, client)
+
+    yield* Scope.addFinalizerExit(scope, () => {
+      clientIds.delete(id)
+      clients.delete(id)
+      disconnects.unsafeOffer(id)
+      if (mailbox.unsafeSize()._tag === "None") return Effect.void
+      return Effect.forEach(
+        requestIds,
+        (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
+        { discard: true }
+      )
     })
 
     const requestIds: Array<RequestId> = []
@@ -974,24 +989,12 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         yield* writeRequest(id, message)
       }
     } catch (cause) {
-      yield* offer(parser.encode(ResponseDefectEncoded(cause))!)
+      yield* client.write(ResponseDefectEncoded(cause))
     }
 
     yield* writeRequest(id, constEof)
 
     if (!includesFraming) {
-      let done = false
-      yield* Effect.addFinalizer(() => {
-        clientIds.delete(id)
-        clients.delete(id)
-        disconnects.unsafeOffer(id)
-        if (done) return Effect.void
-        return Effect.forEach(
-          requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-          { discard: true }
-        )
-      })
       const responses = Arr.empty<FromServerEncoded>()
       while (true) {
         const [items, done] = yield* mailbox.takeAll
@@ -999,15 +1002,11 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         responses.push(...items as any)
         if (done) break
       }
-      done = true
       return HttpServerResponse.text(parser.encode(responses) as string, { contentType: serialization.contentType })
     }
 
     const [initialChunk, done] = yield* mailbox.takeAll
     if (done) {
-      clientIds.delete(id)
-      clients.delete(id)
-      disconnects.unsafeOffer(id)
       return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk as Chunk.Chunk<Uint8Array>), {
         contentType: serialization.contentType
       })
@@ -1015,18 +1014,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
     return HttpServerResponse.stream(
       Stream.fromChunk(initialChunk as Chunk.Chunk<Uint8Array>).pipe(
-        Stream.concat(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>)),
-        Stream.ensuringWith((exit) => {
-          clientIds.delete(id)
-          clients.delete(id)
-          disconnects.unsafeOffer(id)
-          if (!Exit.isInterrupted(exit)) return Effect.void
-          return Effect.forEach(
-            requestIds,
-            (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-            { discard: true }
-          )
-        })
+        Stream.concat(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>))
       ),
       { contentType: serialization.contentType }
     )
