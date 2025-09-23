@@ -160,7 +160,7 @@ export interface IndexedDbQueryBuilder<
  */
 export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
   | IndexedDbValidKeys<TableSchema>
-  | Array<IndexedDbValidKeys<TableSchema>>
+  | NonEmptyReadonlyArray<IndexedDbValidKeys<TableSchema>>
 
 /**
  * @since 1.0.0
@@ -168,7 +168,7 @@ export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
  */
 export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
   | IndexedDbValidNumberKeys<TableSchema>
-  | Array<IndexedDbValidNumberKeys<TableSchema>>
+  | NonEmptyReadonlyArray<IndexedDbValidNumberKeys<TableSchema>>
 
 /**
  * @since 1.0.0
@@ -181,7 +181,7 @@ export declare namespace IndexedDbQuery {
    */
   export type SourceTableSchemaType<
     Table extends IndexedDbTable.AnyWithProps
-  > = IndexedDbTable.TableSchema<Table>["Type"]
+  > = Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
 
   /**
    * @since 1.0.0

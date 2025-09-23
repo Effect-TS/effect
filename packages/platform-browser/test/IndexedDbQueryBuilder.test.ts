@@ -669,6 +669,24 @@ describe("IndexedDbQueryBuilder", () => {
       }).pipe(provideDb(Db))
     })
 
+    it.effect("insert with auto-increment and key path", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("product")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const addedKey = yield* api.from("product").insert({ name: "insert1", price: 12 })
+        const data = yield* api.from("product").select()
+
+        assert.equal(addedKey, 1)
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ name: "insert1", price: 12 }])
+      }).pipe(provideDb(Db))
+    })
+
     it.effect("upsert", () => {
       class Db extends IndexedDbDatabase.make(V1, (api) =>
         Effect.gen(function*() {
