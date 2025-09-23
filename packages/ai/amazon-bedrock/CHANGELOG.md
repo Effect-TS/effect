@@ -1,5 +1,15 @@
 # @effect/ai-amazon-bedrock
 
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/ai@0.28.0
+  - @effect/ai-anthropic@0.18.0
+  - @effect/experimental@0.55.0
+
 ## 0.7.1
 
 ### Patch Changes
