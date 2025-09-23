@@ -2,6 +2,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
+import * as Function from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -219,7 +220,7 @@ export const searchParamsParser = <E, R>(httpApp: App.Default<E, R>) =>
 
 /** @internal */
 export const cors = (options?: {
-  readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowedOrigins?: ReadonlyArray<string> | Predicate.Predicate<string> | undefined
   readonly allowedMethods?: ReadonlyArray<string> | undefined
   readonly allowedHeaders?: ReadonlyArray<string> | undefined
   readonly exposedHeaders?: ReadonlyArray<string> | undefined
@@ -227,7 +228,7 @@ export const cors = (options?: {
   readonly credentials?: boolean | undefined
 }) => {
   const opts = {
-    allowedOrigins: ["*"],
+    allowedOrigins: [],
     allowedMethods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
     allowedHeaders: [],
     exposedHeaders: [],
@@ -235,29 +236,28 @@ export const cors = (options?: {
     ...options
   }
 
-  const isAllowedOrigin = (origin: string) => opts.allowedOrigins.includes(origin)
+  const isAllowedOrigin = typeof opts.allowedOrigins === "function"
+    ? opts.allowedOrigins
+    : (origin: string) => (opts.allowedOrigins as ReadonlyArray<string>).includes(origin)
 
-  const allowOrigin = (originHeader: string): ReadonlyRecord<string, string> | undefined => {
-    if (opts.allowedOrigins.length === 0) {
-      return { "access-control-allow-origin": "*" }
-    }
-
-    if (opts.allowedOrigins.length === 1) {
-      return {
-        "access-control-allow-origin": opts.allowedOrigins[0],
-        vary: "Origin"
+  const allowOrigin = typeof opts.allowedOrigins === "function" || opts.allowedOrigins.length > 1 ?
+    (originHeader: string): ReadonlyRecord<string, string> | undefined => {
+      if (isAllowedOrigin(originHeader)) {
+        return {
+          "access-control-allow-origin": originHeader,
+          vary: "Origin"
+        }
       }
-    }
-
-    if (isAllowedOrigin(originHeader)) {
-      return {
-        "access-control-allow-origin": originHeader,
-        vary: "Origin"
-      }
-    }
-
-    return undefined
-  }
+      return undefined
+    } :
+    opts.allowedOrigins.length === 1 ?
+    Function.constant({
+      "access-control-allow-origin": opts.allowedOrigins[0],
+      vary: "Origin"
+    }) :
+    Function.constant({
+      "access-control-allow-origin": "*"
+    })
 
   const allowMethods = opts.allowedMethods.length > 0
     ? { "access-control-allow-methods": opts.allowedMethods.join(", ") }
