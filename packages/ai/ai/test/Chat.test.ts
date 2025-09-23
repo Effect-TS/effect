@@ -1,50 +1,63 @@
 import * as Chat from "@effect/ai/Chat"
-import * as LanguageModel from "@effect/ai/LanguageModel"
+import * as Prompt from "@effect/ai/Prompt"
 import * as Persistence from "@effect/experimental/Persistence"
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Stream from "effect/Stream"
+import * as Schema from "effect/Schema"
+import * as TestUtils from "./utilities.js"
 
-const PersistenceLayer = Chat.layerPersisted({
-  storeId: "chat"
-}).pipe(
-  Layer.provideMerge(Persistence.layerMemory),
-  Layer.provideMerge(Layer.scope)
-)
-
-const TestLayer = Layer.mergeAll(
-  PersistenceLayer,
-  Layer.effect(
-    LanguageModel.LanguageModel,
-    LanguageModel.make({
-      generateText: () =>
-        Effect.succeed([{
-          type: "text",
-          text: "test assistant"
-        }]),
-      streamText: () => Stream.empty
-    })
-  )
+const PersistenceLayer = Layer.provideMerge(
+  Chat.layerPersisted({ storeId: "chat" }),
+  Persistence.layerMemory
 )
 
 describe("Chat", () => {
-  describe("Persisted", () => {
-    it.effect("test persistence", () =>
+  it.layer(PersistenceLayer)("Persisted", (it) => {
+    it.scoped("should persist chat history to the backing persistence store", () =>
       Effect.gen(function*() {
-        const persistence = yield* Persistence.BackingPersistence
-        const persistedChat = yield* Chat.Persisted
+        const backing = yield* Persistence.BackingPersistence
+        const persistence = yield* Chat.Persistence
 
-        const chat = yield* persistedChat.getOrCreate("chat-123")
-        yield* chat.generateText({ prompt: "test user" })
-        const history = yield* chat.history
-        console.dir(history, { depth: null, colors: true })
+        const chat = yield* persistence.getOrCreate("chat-123")
+        const store = yield* backing.make("chat")
 
-        const store = yield* persistence.make("chat")
-        const persistedHistory = yield* store.get("chat-123")
-        console.dir(persistedHistory, { depth: null, colors: true })
-      }).pipe(
-        Effect.provide(TestLayer)
-      ))
+        yield* chat.generateText({ prompt: "test user message" }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{
+              type: "text",
+              text: "test assistant message"
+            }]
+          })
+        )
+
+        const chatHistory = yield* chat.history
+        const storeHistory = yield* store.get("chat-123").pipe(
+          Effect.flatten,
+          Effect.flatMap(Schema.decodeUnknown(Prompt.FromJson))
+        )
+        const expectedHistory = Prompt.make([
+          { role: "user", content: [{ type: "text", text: "test user message" }] },
+          { role: "assistant", content: [{ type: "text", text: "test assistant message" }] }
+        ])
+
+        assert.deepStrictEqual(chatHistory, expectedHistory)
+        assert.deepStrictEqual(chatHistory, storeHistory)
+      }))
+
+    it.scoped("should raise an error when retrieving a chat that does not exist", () =>
+      Effect.gen(function*() {
+        const persistence = yield* Chat.Persistence
+
+        const result = yield* Effect.flip(persistence.get("chat-321"))
+
+        assert.instanceOf(result, Chat.ChatNotFoundError)
+        assert.strictEqual(result.chatId, "chat-321")
+      }).pipe(TestUtils.withLanguageModel({
+        generateText: [{
+          type: "text",
+          text: "test assistant message"
+        }]
+      })))
   })
 })
