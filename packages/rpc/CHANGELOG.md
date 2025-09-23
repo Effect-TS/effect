@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.70.0
+
+### Patch Changes
+
+- [#5549](https://github.com/Effect-TS/effect/pull/5549) [`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a) Thanks @tim-smart! - remove msgpackr re-exports
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+
 ## 0.69.5
 
 ### Patch Changes

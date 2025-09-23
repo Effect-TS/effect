@@ -1,5 +1,12 @@
 # @effect/sql-kysely
 
+## 0.41.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/sql@0.45.0
+
 ## 0.40.1
 
 ### Patch Changes
