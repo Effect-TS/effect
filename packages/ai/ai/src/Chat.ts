@@ -46,14 +46,19 @@
  *
  * @since 1.0.0
  */
+import type { PersistenceBackingError } from "@effect/experimental/Persistence"
+import { BackingPersistence } from "@effect/experimental/Persistence"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { NoExcessProperties } from "effect/Types"
+import * as AiError from "./AiError.js"
 import * as LanguageModel from "./LanguageModel.js"
 import * as Prompt from "./Prompt.js"
 import type * as Response from "./Response.js"
@@ -138,7 +143,7 @@ export interface Service {
    * })
    * ```
    */
-  readonly export: Effect.Effect<unknown>
+  readonly export: Effect.Effect<unknown, AiError.AiError>
 
   /**
    * Exports the chat history as a JSON string.
@@ -165,7 +170,7 @@ export interface Service {
    * })
    * ```
    */
-  readonly exportJson: Effect.Effect<string>
+  readonly exportJson: Effect.Effect<string, AiError.MalformedOutput>
 
   /**
    * Generate text using a language model for the specified prompt.
@@ -200,7 +205,7 @@ export interface Service {
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Effect.Effect<
     LanguageModel.GenerateTextResponse<Tools>,
     LanguageModel.ExtractError<Options>,
-    LanguageModel.ExtractContext<Options>
+    LanguageModel.LanguageModel | LanguageModel.ExtractContext<Options>
   >
 
   /**
@@ -235,7 +240,7 @@ export interface Service {
   >(options: Options & LanguageModel.GenerateTextOptions<Tools>) => Stream.Stream<
     Response.StreamPart<Tools>,
     LanguageModel.ExtractError<Options>,
-    LanguageModel.ExtractContext<Options>
+    LanguageModel.LanguageModel | LanguageModel.ExtractContext<Options>
   >
 
   /**
@@ -283,6 +288,152 @@ export interface Service {
     LanguageModel.LanguageModel | R | LanguageModel.ExtractContext<Options>
   >
 }
+
+// =============================================================================
+// Constructors
+// =============================================================================
+
+/**
+ * Creates a new Chat service with empty conversation history.
+ *
+ * This is the most common way to start a fresh chat session without
+ * any initial context or system prompts.
+ *
+ * @example
+ * ```ts
+ * import { Chat } from "@effect/ai"
+ * import { Effect } from "effect"
+ *
+ * const freshChat = Effect.gen(function* () {
+ *   const chat = yield* Chat.empty
+ *
+ *   const response = yield* chat.generateText({
+ *     prompt: "Hello! Can you introduce yourself?"
+ *   })
+ *
+ *   console.log(response.content)
+ *
+ *   return chat
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const empty: Effect.Effect<Service> = Effect.gen(function*() {
+  const history = yield* Ref.make(Prompt.empty)
+  const context = yield* Effect.context<never>()
+  const semaphore = yield* Effect.makeSemaphore(1)
+
+  const provideContext = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.mapInputContext(effect, (input) => Context.merge(context, input))
+  const provideContextStream = <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
+    Stream.mapInputContext(stream, (input) => Context.merge(context, input))
+
+  const encodeHistory = Schema.encode(Prompt.Prompt)
+  const encodeHistoryJson = Schema.encode(Prompt.FromJson)
+
+  return Chat.of({
+    history,
+    export: Ref.get(history).pipe(
+      Effect.flatMap(encodeHistory),
+      Effect.catchTag("ParseError", (error) =>
+        AiError.MalformedOutput.fromParseError({
+          module: "Chat",
+          method: "exportJson",
+          description: "Failed to encode chat history",
+          error
+        })),
+      Effect.withSpan("Chat.export")
+    ),
+    exportJson: Ref.get(history).pipe(
+      Effect.flatMap(encodeHistoryJson),
+      Effect.catchTag("ParseError", (error) =>
+        AiError.MalformedOutput.fromParseError({
+          module: "Chat",
+          method: "exportJson",
+          description: "Failed to encode chat history into JSON",
+          error
+        })),
+      Effect.withSpan("Chat.exportJson")
+    ),
+    generateText: Effect.fnUntraced(
+      function*(options) {
+        const newPrompt = Prompt.make(options.prompt)
+        const oldPrompt = yield* Ref.get(history)
+        const prompt = Prompt.merge(oldPrompt, newPrompt)
+
+        const response = yield* LanguageModel.generateText({ ...options, prompt })
+
+        const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
+        yield* Ref.set(history, newHistory)
+
+        return response
+      },
+      provideContext,
+      semaphore.withPermits(1),
+      Effect.withSpan("Chat.generateText", { captureStackTrace: false })
+    ),
+    streamText: Effect.fnUntraced(
+      function*(options) {
+        let combined: Prompt.Prompt = Prompt.empty
+        return Stream.fromChannel(Channel.acquireUseRelease(
+          semaphore.take(1).pipe(
+            Effect.zipRight(Ref.get(history)),
+            Effect.map((history) => Prompt.merge(history, Prompt.make(options.prompt)))
+          ),
+          (prompt) =>
+            LanguageModel.streamText({ ...options, prompt }).pipe(
+              Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
+                const parts = Array.from(chunk)
+                combined = Prompt.merge(combined, Prompt.fromResponseParts(parts))
+                return chunk
+              })),
+              Stream.toChannel
+            ),
+          (parts) =>
+            Effect.zipRight(
+              Ref.set(history, Prompt.merge(parts, combined)),
+              semaphore.release(1)
+            )
+        )).pipe(
+          provideContextStream,
+          Stream.withSpan("Chat.streamText", {
+            captureStackTrace: false
+          })
+        )
+      },
+      Stream.unwrap
+    ),
+    generateObject: Effect.fnUntraced(
+      function*(options) {
+        const newPrompt = Prompt.make(options.prompt)
+        const oldPrompt = yield* Ref.get(history)
+        const prompt = Prompt.merge(oldPrompt, newPrompt)
+
+        const response = yield* LanguageModel.generateObject({ ...options, prompt })
+
+        const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
+        yield* Ref.set(history, newHistory)
+
+        return response
+      },
+      provideContext,
+      semaphore.withPermits(1),
+      (effect, options) =>
+        Effect.withSpan(effect, "Chat.generateObject", {
+          attributes: {
+            objectName: "objectName" in options
+              ? options.objectName
+              : "_tag" in options.schema
+              ? options.schema._tag
+              : (options.schema as any).identifier ?? "generateObject"
+          },
+          captureStackTrace: false
+        })
+    )
+  })
+})
 
 /**
  * Creates a new Chat service from an initial prompt.
@@ -333,136 +484,13 @@ export interface Service {
  * @since 1.0.0
  * @category Constructors
  */
-export const fromPrompt = Effect.fnUntraced(function*(
-  prompt: Prompt.RawInput
-) {
-  const languageModel = yield* LanguageModel.LanguageModel
-  const context = yield* Effect.context<never>()
-  const provideContext = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.mapInputContext(effect, (input) => Context.merge(context, input))
-  const provideContextStream = <A, E, R>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
-    Stream.mapInputContext(stream, (input) => Context.merge(context, input))
-  const history = yield* Ref.make<Prompt.Prompt>(Prompt.make(prompt))
-  const semaphore = yield* Effect.makeSemaphore(1)
-
-  return Chat.of({
-    history,
-    export: Ref.get(history).pipe(
-      Effect.flatMap(Schema.encode(Prompt.Prompt)),
-      Effect.withSpan("Chat.export"),
-      Effect.orDie
-    ),
-    exportJson: Ref.get(history).pipe(
-      Effect.flatMap(Schema.encode(Prompt.FromJson)),
-      Effect.withSpan("Chat.exportJson"),
-      Effect.orDie
-    ),
-    generateText: Effect.fnUntraced(
-      function*(options) {
-        const newPrompt = Prompt.make(options.prompt)
-        const oldPrompt = yield* Ref.get(history)
-        const prompt = Prompt.merge(oldPrompt, newPrompt)
-
-        const response = yield* languageModel.generateText({ ...options, prompt })
-
-        const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
-        yield* Ref.set(history, newHistory)
-
-        return response
-      },
-      provideContext,
-      semaphore.withPermits(1),
-      Effect.withSpan("Chat.generateText", { captureStackTrace: false })
-    ),
-    streamText: Effect.fnUntraced(
-      function*(options) {
-        let combined: Prompt.Prompt = Prompt.empty
-        return Stream.fromChannel(Channel.acquireUseRelease(
-          semaphore.take(1).pipe(
-            Effect.zipRight(Ref.get(history)),
-            Effect.map((history) => Prompt.merge(history, Prompt.make(options.prompt)))
-          ),
-          (prompt) =>
-            languageModel.streamText({ ...options, prompt }).pipe(
-              Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
-                const parts = Array.from(chunk)
-                combined = Prompt.merge(combined, Prompt.fromResponseParts(parts))
-                return chunk
-              })),
-              Stream.toChannel
-            ),
-          (parts) =>
-            Effect.zipRight(
-              Ref.set(history, Prompt.merge(parts, combined)),
-              semaphore.release(1)
-            )
-        )).pipe(
-          provideContextStream,
-          Stream.withSpan("Chat.streamText", {
-            captureStackTrace: false
-          })
-        )
-      },
-      Stream.unwrap
-    ),
-    generateObject: Effect.fnUntraced(
-      function*(options) {
-        const newPrompt = Prompt.make(options.prompt)
-        const oldPrompt = yield* Ref.get(history)
-        const prompt = Prompt.merge(oldPrompt, newPrompt)
-
-        const response = yield* languageModel.generateObject({ ...options, prompt })
-
-        const newHistory = Prompt.merge(prompt, Prompt.fromResponseParts(response.content))
-        yield* Ref.set(history, newHistory)
-
-        return response
-      },
-      provideContext,
-      semaphore.withPermits(1),
-      (effect, options) =>
-        Effect.withSpan(effect, "Chat.generateObject", {
-          attributes: {
-            objectName: "objectName" in options
-              ? options.objectName
-              : "_tag" in options.schema
-              ? options.schema._tag
-              : (options.schema as any).identifier ?? "generateObject"
-          },
-          captureStackTrace: false
-        })
-    )
-  })
-})
-
-/**
- * Creates a new Chat service with empty conversation history.
- *
- * This is the most common way to start a fresh chat session without
- * any initial context or system prompts.
- *
- * @example
- * ```ts
- * import { Chat } from "@effect/ai"
- * import { Effect } from "effect"
- *
- * const freshChat = Effect.gen(function* () {
- *   const chat = yield* Chat.empty
- *
- *   const response = yield* chat.generateText({
- *     prompt: "Hello! Can you introduce yourself?"
- *   })
- *
- *   console.log(response.content)
- *
- *   return chat
- * })
- * ```
- *
- * @since 1.0.0
- * @category Constructors
- */
-export const empty: Effect.Effect<Service, never, LanguageModel.LanguageModel> = fromPrompt(Prompt.empty)
+export const fromPrompt = Effect.fnUntraced(
+  function*(prompt: Prompt.RawInput) {
+    const chat = yield* empty
+    yield* Ref.set(chat.history, Prompt.make(prompt))
+    return chat
+  }
+)
 
 const decodeUnknown = Schema.decodeUnknown(Prompt.Prompt)
 
@@ -504,7 +532,7 @@ const decodeUnknown = Schema.decodeUnknown(Prompt.Prompt)
 export const fromExport = (data: unknown): Effect.Effect<Service, ParseError, LanguageModel.LanguageModel> =>
   Effect.flatMap(decodeUnknown(data), fromPrompt)
 
-const decodeJson = Schema.decode(Prompt.FromJson)
+const decodeHistoryJson = Schema.decodeUnknown(Prompt.FromJson)
 
 /**
  * Creates a Chat service from previously exported JSON chat data.
@@ -543,4 +571,200 @@ const decodeJson = Schema.decode(Prompt.FromJson)
  * @category Constructors
  */
 export const fromJson = (data: string): Effect.Effect<Service, ParseError, LanguageModel.LanguageModel> =>
-  Effect.flatMap(decodeJson(data), fromPrompt)
+  Effect.flatMap(decodeHistoryJson(data), fromPrompt)
+
+// =============================================================================
+// Chat Persistence
+// =============================================================================
+
+/**
+ * An error that occurs when attempting to retrieve a persisted `Chat` that
+ * does not exist in the backing persistence store.
+ *
+ * @since 1.0.0
+ * @category Errors
+ */
+export class ChatNotFoundError extends Schema.TaggedError<ChatNotFoundError>(
+  "@effect/ai/Chat/ChatNotFoundError"
+)("ChatNotFoundError", { chatId: Schema.String }) {}
+
+// @effect-diagnostics effect/leakingRequirements:off
+/**
+ * The context tag for chat persistence.
+ *
+ * @since 1.0.0
+ * @category Context
+ */
+export class Persistence extends Context.Tag("@effect/ai/Chat/Persisted")<
+  Persistence,
+  Persistence.Service
+>() {}
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export declare namespace Persistence {
+  /**
+   * Represents the backing persistence for a persisted `Chat`. Allows for
+   * creating and retrieving chats that have been saved to a persistence store.
+   *
+   * @since 1.0.0
+   * @category Models
+   */
+  export interface Service {
+    /**
+     * Attempts to retrieve the persisted chat from the backing persistence
+     * store with the specified chat identifer. If the chat does not exist in
+     * the persistence store, a `ChatNotFoundError` will be returned.
+     */
+    readonly get: (chatId: string) => Effect.Effect<
+      Persisted,
+      ChatNotFoundError | PersistenceBackingError
+    >
+
+    /**
+     * Attempts to retrieve the persisted chat from the backing persistence
+     * store with the specified chat identifer. If the chat does not exist in
+     * the persistence store, an empty chat will be created, saved, and
+     * returned.
+     */
+    readonly getOrCreate: (chatId: string) => Effect.Effect<
+      Persisted,
+      AiError.MalformedOutput | PersistenceBackingError
+    >
+  }
+}
+
+/**
+ * Represents a `Chat` that is backed by persistence.
+ *
+ * When calling a text generation method (e.g. `generateText`), the previous
+ * chat history as well as the relevent response parts will be saved to the
+ * backing persistence store.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface Persisted extends Service {
+  /**
+   * The identifier for the chat in the backing persistence store.
+   */
+  readonly id: string
+}
+
+/**
+ * Creates a new chat persistence service.
+ *
+ * The provided store identifier will be used to indicate which "store" the
+ * backing persistence should load chats from.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const makePersisted = Effect.fnUntraced(function*(options: {
+  readonly storeId: string
+}) {
+  const persistence = yield* BackingPersistence
+  const store = yield* persistence.make(options.storeId)
+
+  const toPersisted = (chatId: string, chat: Service): Persisted => {
+    const persistChat = chat.exportJson.pipe(
+      Effect.flatMap((history) => store.set(chatId, history, Option.none())),
+      Effect.orDie
+    )
+    return {
+      ...chat,
+      id: chatId,
+      generateText: (options) =>
+        chat.generateText(options).pipe(
+          Effect.ensuring(persistChat)
+        ),
+      generateObject: (options) =>
+        chat.generateObject(options).pipe(
+          Effect.ensuring(persistChat)
+        ),
+      streamText: (options) =>
+        chat.streamText(options).pipe(
+          Stream.ensuring(persistChat)
+        )
+    }
+  }
+
+  const createChat = Effect.fnUntraced(
+    function*(chatId: string) {
+      // Create an empty chat
+      const chat = yield* empty
+
+      // Save the history for the newly created chat
+      const history = yield* chat.exportJson
+      yield* store.set(chatId, history, Option.none())
+
+      // Convert the chat to a persisted chat
+      return toPersisted(chatId, chat)
+    },
+    Effect.catchTag("PersistenceError", (error) => {
+      // Should never happen because we are using the backing persistence
+      // store directly, and parse errors can only occur when using result
+      // persistence
+      if (error.reason === "ParseError") return Effect.die(error)
+      return Effect.fail(error)
+    })
+  )
+
+  const getChat = Effect.fnUntraced(
+    function*(chatId: string) {
+      // Create an empty chat
+      const chat = yield* empty
+
+      // Hydrate the chat history
+      yield* store.get(chatId).pipe(
+        Effect.flatMap(Effect.transposeMapOption(decodeHistoryJson)),
+        Effect.flatten,
+        Effect.catchTag("NoSuchElementException", () => new ChatNotFoundError({ chatId })),
+        Effect.flatMap((history) => Ref.set(chat.history, history))
+      )
+
+      // Convert the chat to a persisted chat
+      return toPersisted(chatId, chat)
+    },
+    Effect.catchTags({
+      ParseError: (error) => Effect.die(error),
+      PersistenceError: (error) => {
+        // Should never happen because we are using the backing persistence
+        // store directly, and parse errors can only occur when using result
+        // persistence
+        if (error.reason === "ParseError") return Effect.die(error)
+        return Effect.fail(error)
+      }
+    })
+  )
+
+  const get = Effect.fn("PersistedChat.get")(function*(chatId: string) {
+    return yield* getChat(chatId)
+  })
+
+  const getOrCreate = Effect.fn("PersistedChat.getOrCreate")(function*(chatId: string) {
+    return yield* getChat(chatId).pipe(
+      Effect.catchTag("ChatNotFoundError", () => createChat(chatId))
+    )
+  })
+
+  return Persistence.of({
+    get,
+    getOrCreate
+  })
+})
+
+/**
+ * Creates a `Layer` new chat persistence service.
+ *
+ * The provided store identifier will be used to indicate which "store" the
+ * backing persistence should load chats from.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const layerPersisted = (options: {
+  readonly storeId: string
+}): Layer.Layer<Persistence, never, BackingPersistence> => Layer.scoped(Persistence, makePersisted(options))
