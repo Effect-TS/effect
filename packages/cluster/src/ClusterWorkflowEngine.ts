@@ -550,7 +550,9 @@ const ActivityRpc = Rpc.make("activity", {
     success: Schema.Unknown,
     error: Schema.Unknown
   })
-}).annotate(ClusterSchema.Persisted, true)
+})
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, true)
 
 const payloadParentKey = "~@effect/workflow/parent" as const
 
