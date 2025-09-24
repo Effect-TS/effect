@@ -51,6 +51,7 @@
  *
  * @since 1.0.0
  */
+import * as Arr from "effect/Array"
 import { constFalse, dual } from "effect/Function"
 import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
@@ -729,6 +730,22 @@ export const makeMessage = <const Role extends Message["role"]>(
     options: params.options ?? {}
   }) as any
 
+/**
+ * Schema for decoding message content (i.e. an array containing a single
+ * `TextPart`) from a string.
+ *
+ * @since 1.0.0
+ * @category Schemas
+ */
+export const MessageContentFromString: Schema.Schema<
+  Arr.NonEmptyReadonlyArray<TextPart>,
+  string
+> = Schema.transform(Schema.String, Schema.NonEmptyArray(Schema.typeSchema(TextPart)), {
+  strict: true,
+  decode: (text) => Arr.of(makePart("text", { text })),
+  encode: (content) => content[0].text
+})
+
 // =============================================================================
 // System Message
 // =============================================================================
@@ -854,7 +871,7 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user", UserMessa
   /**
    * Array of content parts that make up the user's message.
    */
-  readonly content: ReadonlyArray<UserMessagePartEncoded>
+  readonly content: string | ReadonlyArray<UserMessagePartEncoded>
 }
 
 /**
@@ -882,7 +899,10 @@ export interface UserMessageOptions extends ProviderOptions {}
  */
 export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schema.Struct({
   role: Schema.Literal("user"),
-  content: Schema.Array(Schema.Union(TextPart, FilePart)),
+  content: Schema.Union(
+    MessageContentFromString,
+    Schema.Array(Schema.Union(TextPart, FilePart))
+  ),
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
@@ -953,7 +973,7 @@ export type AssistantMessagePart =
  * @category Models
  */
 export interface AssistantMessageEncoded extends BaseMessageEncoded<"assistant", AssistantMessageOptions> {
-  readonly content: ReadonlyArray<AssistantMessagePartEncoded>
+  readonly content: string | ReadonlyArray<AssistantMessagePartEncoded>
 }
 
 /**
@@ -986,7 +1006,10 @@ export interface AssistantMessageOptions extends ProviderOptions {}
  */
 export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageEncoded> = Schema.Struct({
   role: Schema.Literal("assistant"),
-  content: Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart)),
+  content: Schema.Union(
+    MessageContentFromString,
+    Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart))
+  ),
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
@@ -1338,7 +1361,7 @@ export const make = (input: RawInput): Prompt => {
   }
 
   if (Predicate.isIterable(input)) {
-    return makePrompt(decodeMessagesSync(Array.from(input), {
+    return makePrompt(decodeMessagesSync(Arr.fromIterable(input), {
       errors: "all"
     }))
   }
