@@ -165,7 +165,6 @@ export const make: (options: {
             new AiError.HttpResponseError({
               module: "OpenRouterClient",
               method: "createChatCompletion",
-              cause: error.cause,
               reason: "StatusCode",
               request: {
                 hash: error.request.hash,
