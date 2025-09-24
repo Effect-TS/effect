@@ -1,5 +1,14 @@
 # @effect/platform-node-shared
 
+## 0.50.1
+
+### Patch Changes
+
+- [#5557](https://github.com/Effect-TS/effect/pull/5557) [`978b6ff`](https://github.com/Effect-TS/effect/commit/978b6ffc0b124d67d62a797211eff795f22cd1e6) Thanks @tim-smart! - allow NodeSocket.makeNet open to be interrupted
+
+- Updated dependencies [[`978b6ff`](https://github.com/Effect-TS/effect/commit/978b6ffc0b124d67d62a797211eff795f22cd1e6)]:
+  - @effect/cluster@0.49.1
+
 ## 0.50.0
 
 ### Patch Changes
