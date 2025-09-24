@@ -1482,10 +1482,10 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 // =============================================================================
 
 /**
- * Merges two prompts by concatenating their messages.
+ * Merges a prompt with additional raw input by concatenating messages.
  *
- * Creates a new prompt containing all messages from both prompts, maintaining
- * the order of messages within each prompt.
+ * Creates a new prompt containing all messages from both the original prompt,
+ * and the provided raw input, maintaining the order of messages.
  *
  * @example
  * ```ts
@@ -1496,21 +1496,20 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
  *   content: "You are a helpful assistant."
  * }])
  *
- * const userPrompt = Prompt.make("Hello, world!")
- *
- * const merged = Prompt.merge(systemPrompt, userPrompt)
+ * const merged = Prompt.merge(systemPrompt, "Hello, world!")
  * ```
  *
  * @since 1.0.0
  * @category Combinators
  */
 export const merge: {
-  (other: Prompt): (self: Prompt) => Prompt
-  (self: Prompt, other: Prompt): Prompt
-} = dual<
-  (other: Prompt) => (self: Prompt) => Prompt,
-  (self: Prompt, other: Prompt) => Prompt
->(2, (self, other) => fromMessages([...self.content, ...other.content]))
+  (other: RawInput): (self: Prompt) => Prompt
+  (self: Prompt, other: RawInput): Prompt
+} = dual(2, (self: Prompt, other: RawInput): Prompt =>
+  fromMessages([
+    ...self.content,
+    ...make(other).content
+  ]))
 
 // =============================================================================
 // Manipulating Prompts
