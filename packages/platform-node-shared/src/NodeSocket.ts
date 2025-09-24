@@ -37,33 +37,34 @@ export const makeNet = (
   options: Net.NetConnectOpts
 ): Effect.Effect<Socket.Socket, Socket.SocketError> =>
   fromDuplex(
-    Effect.acquireRelease(
-      Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
-        const conn = Net.createConnection(options)
-        conn.on("connect", () => {
-          conn.removeAllListeners()
-          resume(Effect.succeed(conn))
-        })
-        conn.on("error", (cause) => {
-          conn.removeAllListeners()
-          resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
-        })
-        return Effect.sync(() => {
-          conn.destroy()
-        })
-      }),
-      (conn) =>
-        Effect.sync(() => {
-          if (conn.closed === false) {
-            if ("destroySoon" in conn) {
-              conn.destroySoon()
-            } else {
-              ;(conn as Net.Socket).destroy()
+    Effect.scopeWith((scope) => {
+      const conn = Net.createConnection(options)
+      return Effect.flatMap(
+        Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            if (conn.closed === false) {
+              if ("destroySoon" in conn) {
+                conn.destroySoon()
+              } else {
+                ;(conn as Net.Socket).destroy()
+              }
             }
-          }
-          conn.removeAllListeners()
-        })
-    )
+            conn.removeAllListeners()
+          })
+        ),
+        () =>
+          Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
+            const onError = (cause: Error) =>
+              resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
+            conn.once("connect", () => {
+              conn.off("error", onError)
+              resume(Effect.succeed(conn))
+            })
+            conn.on("error", onError)
+          })
+      )
+    })
   )
 
 /**
