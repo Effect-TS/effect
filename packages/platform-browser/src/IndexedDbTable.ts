@@ -199,13 +199,16 @@ export const make = <
   const KeyPath extends AutoIncrement extends true ? IndexedDbQueryBuilder.KeyPathNumber<NoInfer<TableSchema>>
     : IndexedDbQueryBuilder.KeyPath<NoInfer<TableSchema>>,
   const AutoIncrement extends boolean = false
->(options: {
-  readonly name: Name
-  readonly schema: TableSchema
-  readonly keyPath: KeyPath
-  readonly indexes?: Indexes | undefined
-  readonly autoIncrement?: AutoIncrement | undefined
-}): IndexedDbTable<Name, TableSchema, Indexes, Extract<KeyPath, Readonly<IDBValidKey>>, AutoIncrement> =>
+>(
+  options: {
+    readonly name: Name
+    readonly schema: TableSchema
+    readonly keyPath: KeyPath
+    readonly indexes?: Indexes | undefined
+    readonly autoIncrement?: IsValidAutoIncrementKeyPath<TableSchema, KeyPath> extends true ? AutoIncrement | undefined
+      : never
+  }
+): IndexedDbTable<Name, TableSchema, Indexes, Extract<KeyPath, Readonly<IDBValidKey>>, AutoIncrement> =>
   makeProto({
     tableName: options.name,
     tableSchema: options.schema,
@@ -213,3 +216,14 @@ export const make = <
     indexes: options.indexes ?? {} as Indexes,
     autoIncrement: options.autoIncrement ?? false as AutoIncrement
   })
+
+// -----------------------------------------------------------------------------
+// internal
+// -----------------------------------------------------------------------------
+
+type IsValidAutoIncrementKeyPath<TableSchema extends AnySchemaStruct, KeyPath> = KeyPath extends
+  keyof TableSchema["Encoded"] ?
+  TableSchema["Encoded"][KeyPath] extends number | undefined ?
+    number | undefined extends TableSchema["Encoded"][KeyPath] ? true : false :
+  false
+  : false

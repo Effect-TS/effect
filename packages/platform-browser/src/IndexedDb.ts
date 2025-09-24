@@ -6,6 +6,7 @@ import * as ConfigError from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 
 /**
  * @since 1.0.0
@@ -69,4 +70,18 @@ export const layerWindow: Layer.Layer<IndexedDb, ConfigError.ConfigError> = Laye
       )
     }
   })
+)
+
+/**
+ * Schema for `autoIncrement` key path (`number | undefined`).
+ *
+ * @since 1.0.0
+ * @category schemas
+ */
+export const AutoIncrement = Schema.optional(Schema.Number).annotations(
+  {
+    identifier: "AutoIncrement",
+    title: "autoIncrement",
+    description: "Defines a valid autoIncrement key path for the IndexedDb table"
+  }
 )

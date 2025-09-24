@@ -36,7 +36,7 @@ class User extends Schema.Class<User>("User")({
 }) {}
 
 class ProductSchema extends Schema.Class<ProductSchema>("ProductSchema")({
-  key: Schema.optional(Schema.Number),
+  key: IndexedDb.AutoIncrement,
   name: Schema.String,
   price: Schema.Number
 }) {}
@@ -63,16 +63,13 @@ const Table2 = IndexedDbTable.make({ name: "user", schema: User, keyPath: "id" }
 const Table3 = IndexedDbTable.make({
   name: "product",
   schema: ProductSchema,
-  // TODO: should only be "key" here, as the auto-increment field should be
-  // optional
-  keyPath: "price",
-  autoIncrement: true
+  keyPath: "price"
 })
 
 const Table4 = IndexedDbTable.make({
   name: "price",
   schema: Schema.Struct({
-    id: Schema.optional(Schema.Number),
+    id: IndexedDb.AutoIncrement,
     amount: Schema.Number
   }),
   keyPath: "id",
@@ -669,7 +666,7 @@ describe("IndexedDbQueryBuilder", () => {
       }).pipe(provideDb(Db))
     })
 
-    it.effect("insert with auto-increment and key path", () => {
+    it.effect("insert with auto-increment schema and different key path", () => {
       class Db extends IndexedDbDatabase.make(V1, (api) =>
         Effect.gen(function*() {
           yield* api.createObjectStore("product")
@@ -678,12 +675,12 @@ describe("IndexedDbQueryBuilder", () => {
 
       return Effect.gen(function*() {
         const api = yield* Db.getQueryBuilder
-        const addedKey = yield* api.from("product").insert({ name: "insert1", price: 12 })
+        const addedKey = yield* api.from("product").insert({ name: "insert1", price: 12, key: 10 })
         const data = yield* api.from("product").select()
 
-        assert.equal(addedKey, 1)
+        assert.equal(addedKey, 12)
         assert.equal(data.length, 1)
-        assert.deepStrictEqual(data, [{ name: "insert1", price: 12 }])
+        assert.deepStrictEqual(data, [{ name: "insert1", price: 12, key: 10 }])
       }).pipe(provideDb(Db))
     })
 
