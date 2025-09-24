@@ -687,7 +687,8 @@ export interface HandlerResult<Tool extends Any> {
  * @category Utility Types
  */
 export type HandlersFor<Tools extends Record<string, Any>> = {
-  [K in keyof Tools]: Handler<Tools[K]["name"]>
+  [Name in keyof Tools]: RequiresHandler<Tools[Name]> extends true ? Handler<Tools[Name]["name"]>
+    : never
 }[keyof Tools]
 
 /**
