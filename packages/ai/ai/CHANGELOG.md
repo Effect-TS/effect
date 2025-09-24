@@ -1,5 +1,21 @@
 # @effect/ai
 
+## 0.28.2
+
+### Patch Changes
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Accept `Prompt.RawInput` in `Prompt.merge`
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Add `Prompt.setSystem`, `Prompt.prependSystem`, and `Prompt.appendSystem` methods
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Improve the information available to the user following a model response error
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Allow raw user and assistant prompt messages to accept plain strings
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Make `Prompt` pipeable
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Fix leakage of provider-defined tool handler requirements
+
 ## 0.28.1
 
 ### Patch Changes

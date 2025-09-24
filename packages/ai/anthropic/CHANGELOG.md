@@ -1,5 +1,14 @@
 # @effect/ai-anthropic
 
+## 0.18.1
+
+### Patch Changes
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Improve the information available to the user following a model response error
+
+- Updated dependencies [[`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a)]:
+  - @effect/ai@0.28.2
+
 ## 0.18.0
 
 ### Patch Changes
