@@ -51,9 +51,13 @@
  *
  * @since 1.0.0
  */
+import * as Arr from "effect/Array"
 import { constFalse, dual } from "effect/Function"
+import * as ParseResult from "effect/ParseResult"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as AST from "effect/SchemaAST"
 import type * as Response from "./Response.js"
 
 const constEmptyObject = () => ({})
@@ -726,6 +730,22 @@ export const makeMessage = <const Role extends Message["role"]>(
     options: params.options ?? {}
   }) as any
 
+/**
+ * Schema for decoding message content (i.e. an array containing a single
+ * `TextPart`) from a string.
+ *
+ * @since 1.0.0
+ * @category Schemas
+ */
+export const MessageContentFromString: Schema.Schema<
+  Arr.NonEmptyReadonlyArray<TextPart>,
+  string
+> = Schema.transform(Schema.String, Schema.NonEmptyArray(Schema.typeSchema(TextPart)), {
+  strict: true,
+  decode: (text) => Arr.of(makePart("text", { text })),
+  encode: (content) => content[0].text
+})
+
 // =============================================================================
 // System Message
 // =============================================================================
@@ -851,7 +871,7 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user", UserMessa
   /**
    * Array of content parts that make up the user's message.
    */
-  readonly content: ReadonlyArray<UserMessagePartEncoded>
+  readonly content: string | ReadonlyArray<UserMessagePartEncoded>
 }
 
 /**
@@ -879,7 +899,10 @@ export interface UserMessageOptions extends ProviderOptions {}
  */
 export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schema.Struct({
   role: Schema.Literal("user"),
-  content: Schema.Array(Schema.Union(TextPart, FilePart)),
+  content: Schema.Union(
+    MessageContentFromString,
+    Schema.Array(Schema.Union(TextPart, FilePart))
+  ),
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
@@ -950,7 +973,7 @@ export type AssistantMessagePart =
  * @category Models
  */
 export interface AssistantMessageEncoded extends BaseMessageEncoded<"assistant", AssistantMessageOptions> {
-  readonly content: ReadonlyArray<AssistantMessagePartEncoded>
+  readonly content: string | ReadonlyArray<AssistantMessagePartEncoded>
 }
 
 /**
@@ -983,7 +1006,10 @@ export interface AssistantMessageOptions extends ProviderOptions {}
  */
 export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageEncoded> = Schema.Struct({
   role: Schema.Literal("assistant"),
-  content: Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart)),
+  content: Schema.Union(
+    MessageContentFromString,
+    Schema.Array(Schema.Union(TextPart, FilePart, ReasoningPart, ToolCallPart, ToolResultPart))
+  ),
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
@@ -1157,7 +1183,7 @@ export const isPrompt = (u: unknown): u is Prompt => Predicate.hasProperty(u, Ty
  * @since 1.0.0
  * @category Models
  */
-export interface Prompt {
+export interface Prompt extends Pipeable {
   readonly [TypeId]: TypeId
   /**
    * Array of messages that make up the conversation.
@@ -1179,17 +1205,56 @@ export interface PromptEncoded {
 }
 
 /**
+ * Describes a schema that represents a `Prompt` instance.
+ *
+ * @since 1.0.0
+ * @category Schemas
+ */
+export class PromptFromSelf extends Schema.declare(
+  (u) => isPrompt(u),
+  {
+    identifier: "PromptFromSelf",
+    description: "a Prompt instance"
+  }
+) {}
+
+/**
  * Schema for validation and encoding of prompts.
  *
  * @since 1.0.0
  * @category Schemas
  */
-export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
-  content: Schema.Array(Message)
-}).pipe(
-  Schema.attachPropertySignature(TypeId, TypeId),
-  Schema.annotations({ identifier: "Prompt" })
-)
+export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.transformOrFail(
+  Schema.Struct({ content: Schema.Array(Schema.encodedSchema(Message)) }),
+  PromptFromSelf,
+  {
+    strict: true,
+    decode: (i, _, ast) => decodePrompt(i, ast),
+    encode: (a, _, ast) => encodePrompt(a, ast)
+  }
+).annotations({ identifier: "Prompt" })
+
+const decodeMessages = ParseResult.decodeEither(Schema.Array(Message))
+const encodeMessages = ParseResult.encodeEither(Schema.Array(Message))
+
+const decodePrompt = (input: PromptEncoded, ast: AST.AST) =>
+  ParseResult.mapBoth(decodeMessages(input.content), {
+    onFailure: () => new ParseResult.Type(ast, input, `Unable to decode ${JSON.stringify(input)} into a Prompt`),
+    onSuccess: makePrompt
+  })
+
+const encodePrompt = (input: Prompt, ast: AST.AST) =>
+  ParseResult.mapBoth(encodeMessages(input.content), {
+    onFailure: () => new ParseResult.Type(ast, input, `Failed to encode Prompt`),
+    onSuccess: (messages) => ({ content: messages })
+  })
+
+// export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
+//   content: Schema.Array(Message)
+// }).pipe(
+//   Schema.attachPropertySignature(TypeId, TypeId),
+//   Schema.annotations({ identifier: "Prompt" })
+// )
 
 /**
  * Schema for parsing a Prompt from JSON strings.
@@ -1231,10 +1296,17 @@ export type RawInput =
   | Iterable<MessageEncoded>
   | Prompt
 
-const makePrompt = (content: ReadonlyArray<Message>): Prompt => ({
+const Proto = {
   [TypeId]: TypeId,
-  content
-})
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+const makePrompt = (content: ReadonlyArray<Message>): Prompt =>
+  Object.assign(Object.create(Proto), {
+    content
+  })
 
 const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
 
@@ -1289,7 +1361,7 @@ export const make = (input: RawInput): Prompt => {
   }
 
   if (Predicate.isIterable(input)) {
-    return makePrompt(decodeMessagesSync(Array.from(input), {
+    return makePrompt(decodeMessagesSync(Arr.fromIterable(input), {
       errors: "all"
     }))
   }
@@ -1482,10 +1554,45 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 // =============================================================================
 
 /**
- * Merges two prompts by concatenating their messages.
+ * Merges a prompt with additional raw input by concatenating messages.
  *
- * Creates a new prompt containing all messages from both prompts, maintaining
- * the order of messages within each prompt.
+ * Creates a new prompt containing all messages from both the original prompt,
+ * and the provided raw input, maintaining the order of messages.
+ *
+ * @example
+ * ```ts
+ * import { Prompt } from "@effect/ai"
+ *
+ * const systemPrompt = Prompt.make([{
+ *   role: "system",
+ *   content: "You are a helpful assistant."
+ * }])
+ *
+ * const merged = Prompt.merge(systemPrompt, "Hello, world!")
+ * ```
+ *
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const merge: {
+  (other: RawInput): (self: Prompt) => Prompt
+  (self: Prompt, other: RawInput): Prompt
+} = dual(2, (self: Prompt, other: RawInput): Prompt =>
+  fromMessages([
+    ...self.content,
+    ...make(other).content
+  ]))
+
+// =============================================================================
+// Manipulating Prompts
+// =============================================================================
+
+/**
+ * Creates a new prompt from the specified prompt with the system message set
+ * to the specified text content.
+ *
+ * **NOTE**: This method will remove and replace any previous system message
+ * from the prompt.
  *
  * @example
  * ```ts
@@ -1498,16 +1605,120 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
  *
  * const userPrompt = Prompt.make("Hello, world!")
  *
- * const merged = Prompt.merge(systemPrompt, userPrompt)
+ * const prompt = Prompt.merge(systemPrompt, userPrompt)
+ *
+ * const replaced = Prompt.setSystem(
+ *   prompt,
+ *   "You are an expert in programming"
+ * )
  * ```
  *
  * @since 1.0.0
  * @category Combinators
  */
-export const merge: {
-  (other: Prompt): (self: Prompt) => Prompt
-  (self: Prompt, other: Prompt): Prompt
-} = dual<
-  (other: Prompt) => (self: Prompt) => Prompt,
-  (self: Prompt, other: Prompt) => Prompt
->(2, (self, other) => fromMessages([...self.content, ...other.content]))
+export const setSystem: {
+  (content: string): (self: Prompt) => Prompt
+  (self: Prompt, content: string): Prompt
+} = dual(2, (self: Prompt, content: string): Prompt => {
+  const messages: Array<Message> = [makeMessage("system", { content })]
+  for (const message of self.content) {
+    if (message.role !== "system") {
+      messages.push(message)
+    }
+  }
+  return makePrompt(messages)
+})
+
+/**
+ * Creates a new prompt from the specified prompt with the provided text content
+ * prepended to the start of existing system message content.
+ *
+ * If no system message exists in the specified prompt, the provided content
+ * will be used to create a system message.
+ *
+ * @example
+ * ```ts
+ * import { Prompt } from "@effect/ai"
+ *
+ * const systemPrompt = Prompt.make([{
+ *   role: "system",
+ *   content: "You are an expert in programming."
+ * }])
+ *
+ * const userPrompt = Prompt.make("Hello, world!")
+ *
+ * const prompt = Prompt.merge(systemPrompt, userPrompt)
+ *
+ * const replaced = Prompt.prependSystem(
+ *   prompt,
+ *   "You are a helpful assistant. "
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const prependSystem: {
+  (content: string): (self: Prompt) => Prompt
+  (self: Prompt, content: string): Prompt
+} = dual(2, (self: Prompt, content: string): Prompt => {
+  const messages: Array<Message> = []
+  for (const message of self.content) {
+    if (message.role === "system") {
+      const system = makeMessage("system", {
+        content: content + message.content
+      })
+      messages.push(system)
+    } else {
+      messages.push(message)
+    }
+  }
+  return makePrompt(messages)
+})
+
+/**
+ * Creates a new prompt from the specified prompt with the provided text content
+ * appended to the end of existing system message content.
+ *
+ * If no system message exists in the specified prompt, the provided content
+ * will be used to create a system message.
+ *
+ * @example
+ * ```ts
+ * import { Prompt } from "@effect/ai"
+ *
+ * const systemPrompt = Prompt.make([{
+ *   role: "system",
+ *   content: "You are a helpful assistant."
+ * }])
+ *
+ * const userPrompt = Prompt.make("Hello, world!")
+ *
+ * const prompt = Prompt.merge(systemPrompt, userPrompt)
+ *
+ * const replaced = Prompt.appendSystem(
+ *   prompt,
+ *   " You are an expert in programming."
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ * @category Combinators
+ */
+export const appendSystem: {
+  (content: string): (self: Prompt) => Prompt
+  (self: Prompt, content: string): Prompt
+} = dual(2, (self: Prompt, content: string): Prompt => {
+  const messages: Array<Message> = []
+  for (const message of self.content) {
+    if (message.role === "system") {
+      const system = makeMessage("system", {
+        content: message.content + content
+      })
+      messages.push(system)
+    } else {
+      messages.push(message)
+    }
+  }
+  return makePrompt(messages)
+})

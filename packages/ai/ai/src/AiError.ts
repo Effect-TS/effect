@@ -70,6 +70,8 @@
  * @since 1.0.0
  */
 import type * as HttpClientError from "@effect/platform/HttpClientError"
+import * as Effect from "effect/Effect"
+import * as Inspectable from "effect/Inspectable"
 import type { ParseError } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -354,9 +356,9 @@ export class HttpResponseError extends Schema.TaggedError<HttpResponseError>(
   method: Schema.String,
   request: HttpRequestDetails,
   response: HttpResponseDetails,
+  body: Schema.optional(Schema.String),
   reason: Schema.Literal("StatusCode", "Decode", "EmptyBody"),
-  description: Schema.optional(Schema.String),
-  cause: Schema.optional(Schema.Defect)
+  description: Schema.optional(Schema.String)
 }) {
   /**
    * @since 1.0.0
@@ -388,24 +390,32 @@ export class HttpResponseError extends Schema.TaggedError<HttpResponseError>(
     readonly module: string
     readonly method: string
     readonly error: HttpClientError.ResponseError
-  }): HttpResponseError {
-    return new HttpResponseError({
-      ...params,
-      cause: error,
-      description: error.description,
-      reason: error.reason,
-      request: {
-        hash: error.request.hash,
-        headers: error.request.headers,
-        method: error.request.method,
-        url: error.request.url,
-        urlParams: error.request.urlParams
-      },
-      response: {
-        headers: error.response.headers,
-        status: error.response.status
-      }
-    })
+  }): Effect.Effect<never, HttpResponseError> {
+    let body: Effect.Effect<unknown, HttpClientError.ResponseError> = Effect.void
+    const contentType = error.response.headers["content-type"] ?? ""
+    if (contentType.includes("application/json")) {
+      body = error.response.json
+    } else if (contentType.includes("text/") || contentType.includes("urlencoded")) {
+      body = error.response.text
+    }
+    return Effect.flatMap(Effect.merge(body), (body) =>
+      new HttpResponseError({
+        ...params,
+        description: error.description,
+        reason: error.reason,
+        request: {
+          hash: error.request.hash,
+          headers: error.request.headers,
+          method: error.request.method,
+          url: error.request.url,
+          urlParams: error.request.urlParams
+        },
+        response: {
+          headers: error.response.headers,
+          status: error.response.status
+        },
+        body: Inspectable.format(body)
+      }))
   }
 
   get message(): string {
@@ -436,7 +446,11 @@ export class HttpResponseError extends Schema.TaggedError<HttpResponseError>(
       }
     }
 
-    baseMessage += `\n\nSuggestion: ${suggestion}`
+    baseMessage += `\n\n${suggestion}`
+
+    if (Predicate.isNotUndefined(this.body)) {
+      baseMessage += `\n\nResponse Body: ${this.body}`
+    }
 
     return baseMessage
   }
