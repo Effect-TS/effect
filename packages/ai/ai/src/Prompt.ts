@@ -52,8 +52,11 @@
  * @since 1.0.0
  */
 import { constFalse, dual } from "effect/Function"
+import * as ParseResult from "effect/ParseResult"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as AST from "effect/SchemaAST"
 import type * as Response from "./Response.js"
 
 const constEmptyObject = () => ({})
@@ -1157,7 +1160,7 @@ export const isPrompt = (u: unknown): u is Prompt => Predicate.hasProperty(u, Ty
  * @since 1.0.0
  * @category Models
  */
-export interface Prompt {
+export interface Prompt extends Pipeable {
   readonly [TypeId]: TypeId
   /**
    * Array of messages that make up the conversation.
@@ -1179,17 +1182,56 @@ export interface PromptEncoded {
 }
 
 /**
+ * Describes a schema that represents a `Prompt` instance.
+ *
+ * @since 1.0.0
+ * @category Schemas
+ */
+export class PromptFromSelf extends Schema.declare(
+  (u) => isPrompt(u),
+  {
+    identifier: "PromptFromSelf",
+    description: "a Prompt instance"
+  }
+) {}
+
+/**
  * Schema for validation and encoding of prompts.
  *
  * @since 1.0.0
  * @category Schemas
  */
-export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
-  content: Schema.Array(Message)
-}).pipe(
-  Schema.attachPropertySignature(TypeId, TypeId),
-  Schema.annotations({ identifier: "Prompt" })
-)
+export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.transformOrFail(
+  Schema.Struct({ content: Schema.Array(Schema.encodedSchema(Message)) }),
+  PromptFromSelf,
+  {
+    strict: true,
+    decode: (i, _, ast) => decodePrompt(i, ast),
+    encode: (a, _, ast) => encodePrompt(a, ast)
+  }
+).annotations({ identifier: "Prompt" })
+
+const decodeMessages = ParseResult.decodeEither(Schema.Array(Message))
+const encodeMessages = ParseResult.encodeEither(Schema.Array(Message))
+
+const decodePrompt = (input: PromptEncoded, ast: AST.AST) =>
+  ParseResult.mapBoth(decodeMessages(input.content), {
+    onFailure: () => new ParseResult.Type(ast, input, `Unable to decode ${JSON.stringify(input)} into a Prompt`),
+    onSuccess: makePrompt
+  })
+
+const encodePrompt = (input: Prompt, ast: AST.AST) =>
+  ParseResult.mapBoth(encodeMessages(input.content), {
+    onFailure: () => new ParseResult.Type(ast, input, `Failed to encode Prompt`),
+    onSuccess: (messages) => ({ content: messages })
+  })
+
+// export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
+//   content: Schema.Array(Message)
+// }).pipe(
+//   Schema.attachPropertySignature(TypeId, TypeId),
+//   Schema.annotations({ identifier: "Prompt" })
+// )
 
 /**
  * Schema for parsing a Prompt from JSON strings.
@@ -1231,10 +1273,17 @@ export type RawInput =
   | Iterable<MessageEncoded>
   | Prompt
 
-const makePrompt = (content: ReadonlyArray<Message>): Prompt => ({
+const Proto = {
   [TypeId]: TypeId,
-  content
-})
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+const makePrompt = (content: ReadonlyArray<Message>): Prompt =>
+  Object.assign(Object.create(Proto), {
+    content
+  })
 
 const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
 
