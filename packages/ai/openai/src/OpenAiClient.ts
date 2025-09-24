@@ -104,6 +104,8 @@ export const make = (options: {
       options.transformClient ? options.transformClient : identity
     )
 
+    const httpClientOk = HttpClient.filterStatusOk(httpClient)
+
     const client = Generated.make(httpClient, {
       transformClient: (client) =>
         OpenAiConfig.getOrUndefined.pipe(
@@ -116,7 +118,7 @@ export const make = (options: {
       schema: Schema.Schema<A, I, R>
     ): Stream.Stream<A, AiError.AiError, R> => {
       const decodeEvent = Schema.decode(Schema.parseJson(schema))
-      return httpClient.execute(request).pipe(
+      return httpClientOk.execute(request).pipe(
         Effect.map((r) => r.stream),
         Stream.unwrapScoped,
         Stream.decodeText(),
