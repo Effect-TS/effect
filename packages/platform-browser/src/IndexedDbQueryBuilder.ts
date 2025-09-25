@@ -175,11 +175,19 @@ export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
  * @category models
  */
 export declare namespace IndexedDbQuery {
+  // /**
+  //  * @since 1.0.0
+  //  * @category models
+  //  */
+  export type SourceTableSelectSchemaType<
+    Table extends IndexedDbTable.AnyWithProps
+  > = Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
+
   /**
    * @since 1.0.0
    * @category models
    */
-  export type SourceTableSchemaType<
+  export type SourceTableModifySchemaType<
     Table extends IndexedDbTable.AnyWithProps
   > = IndexedDbTable.AutoIncrement<Table> extends true ?
       & {
@@ -216,7 +224,7 @@ export declare namespace IndexedDbQuery {
    * @since 1.0.0
    * @category models
    */
-  export type ModifyWithKey<Table extends IndexedDbTable.AnyWithProps> = SourceTableSchemaType<Table>
+  export type ModifyWithKey<Table extends IndexedDbTable.AnyWithProps> = SourceTableModifySchemaType<Table>
 
   /**
    * @since 1.0.0
@@ -405,7 +413,9 @@ export declare namespace IndexedDbQuery {
   export interface Select<
     Table extends IndexedDbTable.AnyWithProps,
     Index extends IndexedDbDatabase.IndexFromTable<Table>
-  > extends Effect.Effect<Array<SourceTableSchemaType<Table>>, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
+  > extends
+    Effect.Effect<Array<SourceTableSelectSchemaType<Table>>, IndexedDbQueryError, IndexedDbTable.Context<Table>>
+  {
     readonly from: From<Table>
     readonly index?: Index
     readonly limitValue?: number
@@ -455,7 +465,7 @@ export declare namespace IndexedDbQuery {
   export interface First<
     Table extends IndexedDbTable.AnyWithProps,
     Index extends IndexedDbDatabase.IndexFromTable<Table>
-  > extends Effect.Effect<SourceTableSchemaType<Table>, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
+  > extends Effect.Effect<SourceTableSelectSchemaType<Table>, IndexedDbQueryError, IndexedDbTable.Context<Table>> {
     readonly select: Select<Table, Index>
   }
 
