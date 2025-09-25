@@ -684,7 +684,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
       function*(prevHistory: Prompt.Prompt) {
         // Get the current chat history
         const history = yield* Ref.get(chat.history)
-        // Get the most recent message stored in the chat history
+        // Get the most recent message stored in the previous chat history
         const lastMessage = prevHistory.content[prevHistory.content.length - 1]
         // Determine the correct message identifier to use:
         let messageId: string | undefined = undefined

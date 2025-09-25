@@ -55,7 +55,7 @@ describe("Chat", () => {
       assert.deepStrictEqual(chatHistory, storeHistory)
     }).pipe(withConstantIdGenerator("msg_abc123"), Effect.provide(PersistenceLayer)))
 
-  it.scoped.only("should prefer the message identifier of the most recent assistant message", () =>
+  it.scoped("should prefer the message identifier of the most recent assistant message", () =>
     Effect.gen(function*() {
       const storeId = "chat"
       const chatId = "2"
