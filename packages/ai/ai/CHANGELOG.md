@@ -1,5 +1,15 @@
 # @effect/ai
 
+## 0.28.3
+
+### Patch Changes
+
+- [#5566](https://github.com/Effect-TS/effect/pull/5566) [`ab57b7a`](https://github.com/Effect-TS/effect/commit/ab57b7af5349fcf22e6c702b793d01079dba69a6) Thanks @IMax153! - Support generation of persistence identifiers for ai chat
+
+- [#5540](https://github.com/Effect-TS/effect/pull/5540) [`5b13482`](https://github.com/Effect-TS/effect/commit/5b134824c1ce7d754deba0a76ac9e2a37d156ef1) Thanks @IMax153! - ensure decoded response metadata is always set
+
+- [#5566](https://github.com/Effect-TS/effect/pull/5566) [`ab57b7a`](https://github.com/Effect-TS/effect/commit/ab57b7af5349fcf22e6c702b793d01079dba69a6) Thanks @IMax153! - fix prompt construction from response parts
+
 ## 0.28.2
 
 ### Patch Changes
