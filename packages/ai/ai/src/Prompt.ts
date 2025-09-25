@@ -51,6 +51,7 @@
  *
  * @since 1.0.0
  */
+import * as Arbitrary from "effect/Arbitrary"
 import * as Arr from "effect/Array"
 import { constFalse, dual } from "effect/Function"
 import * as ParseResult from "effect/ParseResult"
@@ -1214,7 +1215,11 @@ export class PromptFromSelf extends Schema.declare(
   (u) => isPrompt(u),
   {
     identifier: "PromptFromSelf",
-    description: "a Prompt instance"
+    description: "a Prompt instance",
+    arbitrary: (): Arbitrary.LazyArbitrary<Prompt> => (fc) =>
+      fc.array(
+        Arbitrary.makeLazy(Message)(fc)
+      ).map(makePrompt)
   }
 ) {}
 
@@ -1467,14 +1472,15 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     return empty
   }
 
-  const content: Array<AssistantMessagePart> = []
+  const assistantParts: Array<AssistantMessagePart> = []
+  const toolParts: Array<ToolMessagePart> = []
 
   const textDeltas: Array<string> = []
   function flushTextDeltas() {
     if (textDeltas.length > 0) {
       const text = textDeltas.join("")
       if (text.length > 0) {
-        content.push(makePart("text", { text }))
+        assistantParts.push(makePart("text", { text }))
       }
       textDeltas.length = 0
     }
@@ -1485,7 +1491,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     if (reasoningDeltas.length > 0) {
       const text = reasoningDeltas.join("")
       if (text.length > 0) {
-        content.push(makePart("reasoning", { text }))
+        assistantParts.push(makePart("reasoning", { text }))
       }
       reasoningDeltas.length = 0
     }
@@ -1501,7 +1507,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       switch (part.type) {
         case "text": {
           flushDeltas()
-          content.push(makePart("text", { text: part.text }))
+          assistantParts.push(makePart("text", { text: part.text }))
           break
         }
         case "text-delta": {
@@ -1511,7 +1517,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         }
         case "reasoning": {
           flushDeltas()
-          content.push(makePart("reasoning", { text: part.text }))
+          assistantParts.push(makePart("reasoning", { text: part.text }))
           break
         }
         case "reasoning-delta": {
@@ -1521,7 +1527,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         }
         case "tool-call": {
           flushDeltas()
-          content.push(makePart("tool-call", {
+          assistantParts.push(makePart("tool-call", {
             id: part.id,
             name: part.providerName ?? part.name,
             params: part.params,
@@ -1531,7 +1537,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         }
         case "tool-result": {
           flushDeltas()
-          content.push(makePart("tool-result", {
+          toolParts.push(makePart("tool-result", {
             id: part.id,
             name: part.providerName ?? part.name,
             result: part.encodedResult
@@ -1544,9 +1550,18 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   flushDeltas()
 
-  const message = makeMessage("assistant", { content })
+  if (assistantParts.length === 0 && toolParts.length === 0) {
+    return empty
+  }
 
-  return makePrompt([message])
+  const messages: Array<Message> = []
+  if (assistantParts.length > 0) {
+    messages.push(makeMessage("assistant", { content: assistantParts }))
+  }
+  if (toolParts.length > 0) {
+    messages.push(makeMessage("tool", { content: toolParts }))
+  }
+  return makePrompt(messages)
 }
 
 // =============================================================================
@@ -1575,13 +1590,18 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
  * @category Combinators
  */
 export const merge: {
-  (other: RawInput): (self: Prompt) => Prompt
-  (self: Prompt, other: RawInput): Prompt
-} = dual(2, (self: Prompt, other: RawInput): Prompt =>
-  fromMessages([
-    ...self.content,
-    ...make(other).content
-  ]))
+  (input: RawInput): (self: Prompt) => Prompt
+  (self: Prompt, input: RawInput): Prompt
+} = dual(2, (self: Prompt, input: RawInput): Prompt => {
+  const other = make(input)
+  if (self.content.length === 0) {
+    return other
+  }
+  if (other.content.length === 0) {
+    return self
+  }
+  return fromMessages([...self.content, ...other.content])
+})
 
 // =============================================================================
 // Manipulating Prompts
