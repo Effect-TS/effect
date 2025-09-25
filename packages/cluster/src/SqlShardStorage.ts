@@ -194,9 +194,38 @@ export const make = Effect.fnUntraced(function*(options?: {
       `
   })
 
-  const forUpdate = sql.onDialectOrElse({
-    sqlite: () => sql.literal(""),
-    orElse: () => sql.literal("FOR UPDATE")
+  const wrapString = sql.onDialectOrElse({
+    mssql: () => (s: string) => `N'${s}'`,
+    orElse: () => (s: string) => `'${s}'`
+  })
+  const wrapStringArr = (arr: ReadonlyArray<string>) => sql.literal(arr.map(wrapString).join(", "))
+
+  const refreshShards = sql.onDialectOrElse({
+    mysql: () => (address: string, shardIds: ReadonlyArray<string>) => {
+      const shardIdsStr = wrapStringArr(shardIds)
+      return sql<Array<{ shard_id: string }>>`
+        UPDATE ${locksTableSql}
+        SET acquired_at = ${sqlNow}
+        WHERE address = ${address} AND shard_id IN (${shardIdsStr});
+        SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} AND shard_id IN (${shardIdsStr})
+      `.unprepared.pipe(
+        Effect.map((rows) => rows[1].map((row) => [row.shard_id]))
+      )
+    },
+    mssql: () => (address: string, shardIds: ReadonlyArray<string>) =>
+      sql`
+        UPDATE ${locksTableSql}
+        SET acquired_at = ${sqlNow}
+        OUTPUT inserted.shard_id
+        WHERE address = ${address} AND shard_id IN (${wrapStringArr(shardIds)})
+      `.values,
+    orElse: () => (address: string, shardIds: ReadonlyArray<string>) =>
+      sql`
+        UPDATE ${locksTableSql}
+        SET acquired_at = ${sqlNow}
+        WHERE address = ${address} AND shard_id IN (${wrapStringArr(shardIds)})
+        RETURNING shard_id
+      `.values
   })
 
   return ShardStorage.makeEncoded({
@@ -242,12 +271,13 @@ export const make = Effect.fnUntraced(function*(options?: {
 
     acquire: Effect.fnUntraced(
       function*(address, shardIds) {
-        const values = shardIds.map((shardId) => sql`(${shardId}, ${address}, ${sqlNow})`)
-        yield* acquireLock(address, values)
+        if (shardIds.length > 0) {
+          const values = shardIds.map((shardId) => sql`(${shardId}, ${address}, ${sqlNow})`)
+          yield* acquireLock(address, values)
+        }
         const currentLocks = yield* sql<{ shard_id: string }>`
           SELECT shard_id FROM ${sql(locksTable)}
           WHERE address = ${address} AND acquired_at >= ${lockExpiresAt}
-          ${forUpdate}
         `.values
         return currentLocks.map((row) => row[0] as string)
       },
@@ -257,17 +287,13 @@ export const make = Effect.fnUntraced(function*(options?: {
     ),
 
     refresh: (address, shardIds) =>
-      sql`UPDATE ${locksTableSql} SET acquired_at = ${sqlNow} WHERE address = ${address} AND ${
-        sql.in("shard_id", shardIds)
-      }`.pipe(
-        Effect.andThen(
-          sql`SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} AND acquired_at >= ${lockExpiresAt} ${forUpdate}`
-            .values
+      shardIds.length === 0
+        ? Effect.succeed([])
+        : refreshShards(address, shardIds).pipe(
+          Effect.map((rows) => rows.map((row) => row[0] as string)),
+          PersistenceError.refail,
+          withTracerDisabled
         ),
-        Effect.map((rows) => rows.map((row) => row[0] as string)),
-        PersistenceError.refail,
-        withTracerDisabled
-      ),
 
     release: (address, shardId) =>
       sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`.pipe(
