@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.49.2
+
+### Patch Changes
+
+- [#5561](https://github.com/Effect-TS/effect/pull/5561) [`1a9e601`](https://github.com/Effect-TS/effect/commit/1a9e60163d25da51294e7aaba33bbf0bde7fe231) Thanks @tim-smart! - optimize SqlShardStorage queries
+
 ## 0.49.1
 
 ### Patch Changes
