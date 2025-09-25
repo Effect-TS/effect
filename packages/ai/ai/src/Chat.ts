@@ -54,11 +54,13 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
+import * as Predicate from "effect/Predicate"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { NoExcessProperties } from "effect/Types"
 import * as AiError from "./AiError.js"
+import * as IdGenerator from "./IdGenerator.js"
 import * as LanguageModel from "./LanguageModel.js"
 import * as Prompt from "./Prompt.js"
 import type * as Response from "./Response.js"
@@ -651,6 +653,11 @@ export interface Persisted extends Service {
    * The identifier for the chat in the backing persistence store.
    */
   readonly id: string
+
+  /**
+   * Saves the current chat history into the backing persistence store.
+   */
+  readonly save: Effect.Effect<void, AiError.MalformedOutput | PersistenceBackingError>
 }
 
 /**
@@ -668,28 +675,77 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
   const persistence = yield* BackingPersistence
   const store = yield* persistence.make(options.storeId)
 
-  const toPersisted = (chatId: string, chat: Service): Persisted => {
-    const persistChat = chat.exportJson.pipe(
-      Effect.flatMap((history) => store.set(chatId, history, Option.none())),
-      Effect.orDie
+  const toPersisted = Effect.fnUntraced(function*(chatId: string, chat: Service) {
+    const idGenerator = yield* Effect.serviceOption(IdGenerator.IdGenerator).pipe(
+      Effect.map(Option.getOrElse(() => IdGenerator.defaultIdGenerator))
     )
-    return {
+
+    const saveChat = Effect.fnUntraced(
+      function*(prevHistory: Prompt.Prompt) {
+        // Get the current chat history
+        const history = yield* Ref.get(chat.history)
+        // Get the most recent message stored in the chat history
+        const lastMessage = prevHistory.content[prevHistory.content.length - 1]
+        // Determine the correct message identifier to use:
+        let messageId: string | undefined = undefined
+        // If the most recent message in the chat history is an assistant message,
+        // use the message identifer stored in that message
+        if (Predicate.isNotUndefined(lastMessage) && lastMessage.role === "assistant") {
+          messageId = lastMessage.options[Persistence.key]?.messageId as string | undefined
+        }
+        // If the chat history is empty or a message identifier did not exist on
+        // the most recent message in the chat history, generate a new identifier
+        if (Predicate.isUndefined(messageId)) {
+          messageId = yield* idGenerator.generateId()
+        }
+        // Mutate the new messages to add the generated message identifier
+        for (let i = prevHistory.content.length; i < history.content.length; i++) {
+          const message = history.content[i]
+          ;(message.options as any)[Persistence.key] = { messageId }
+        }
+        // Save the mutated history back to the ref
+        yield* Ref.set(chat.history, history)
+        // Export the chat to JSON
+        const json = yield* chat.exportJson
+        // Save the chat to the backing store
+        yield* store.set(chatId, json, Option.none())
+      },
+      Effect.catchTag("PersistenceError", (error) => {
+        // Should never happen because we are using the backing persistence
+        // store directly, and parse errors can only occur when using result
+        // persistence
+        if (error.reason === "ParseError") return Effect.die(error)
+        return Effect.fail(error)
+      })
+    )
+
+    const persisted: Persisted = {
       ...chat,
       id: chatId,
-      generateText: (options) =>
-        chat.generateText(options).pipe(
-          Effect.ensuring(persistChat)
-        ),
-      generateObject: (options) =>
-        chat.generateObject(options).pipe(
-          Effect.ensuring(persistChat)
-        ),
-      streamText: (options) =>
-        chat.streamText(options).pipe(
-          Stream.ensuring(persistChat)
+      save: Effect.flatMap(Ref.get(chat.history), saveChat),
+      generateText: Effect.fnUntraced(function*(options) {
+        const history = yield* Ref.get(chat.history)
+        return yield* chat.generateText(options).pipe(
+          Effect.ensuring(Effect.orDie(saveChat(history)))
         )
+      }),
+      generateObject: Effect.fnUntraced(function*(options) {
+        const history = yield* Ref.get(chat.history)
+        return yield* chat.generateObject(options).pipe(
+          Effect.ensuring(Effect.orDie(saveChat(history)))
+        )
+      }),
+      streamText: Effect.fnUntraced(function*(options) {
+        const history = yield* Ref.get(chat.history)
+        const stream = chat.streamText(options).pipe(
+          Stream.ensuring(Effect.orDie(saveChat(history)))
+        )
+        return stream
+      }, Stream.unwrap)
     }
-  }
+
+    return persisted
+  })
 
   const createChat = Effect.fnUntraced(
     function*(chatId: string) {
@@ -701,7 +757,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
       yield* store.set(chatId, history, Option.none())
 
       // Convert the chat to a persisted chat
-      return toPersisted(chatId, chat)
+      return yield* toPersisted(chatId, chat)
     },
     Effect.catchTag("PersistenceError", (error) => {
       // Should never happen because we are using the backing persistence
@@ -726,7 +782,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
       )
 
       // Convert the chat to a persisted chat
-      return toPersisted(chatId, chat)
+      return yield* toPersisted(chatId, chat)
     },
     Effect.catchTags({
       ParseError: (error) => Effect.die(error),
