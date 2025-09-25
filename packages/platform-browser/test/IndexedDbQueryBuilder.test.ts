@@ -543,19 +543,33 @@ describe("IndexedDbQueryBuilder", () => {
       return Effect.gen(function*() {
         const api = yield* Db.getQueryBuilder
         const createdAt = DateTime.unsafeNow()
-        const addedKey = yield* api.from("user").insert(
-          new User({
-            id: 10,
-            name: "insert1",
-            email: "insert1@example.com",
-            createdAt
-          })
-        )
+        const addedKey = yield* api.from("user").insert({
+          id: 10,
+          name: "insert1",
+          email: "insert1@example.com",
+          createdAt
+        })
+        const addedAllKeys = yield* api.from("user").insertAll([{
+          id: 11,
+          name: "insert2",
+          email: "insert2@example.com",
+          createdAt
+        }, {
+          id: 12,
+          name: "insert3",
+          email: "insert3@example.com",
+          createdAt
+        }])
         const data = yield* api.from("user").select()
 
         assert.equal(addedKey, 10)
-        assert.equal(data.length, 1)
-        assert.deepStrictEqual(data, [new User({ id: 10, name: "insert1", email: "insert1@example.com", createdAt })])
+        assert.deepStrictEqual(addedAllKeys, [11, 12])
+        assert.equal(data.length, 3)
+        assert.deepStrictEqual(data, [
+          new User({ id: 10, name: "insert1", email: "insert1@example.com", createdAt }),
+          new User({ id: 11, name: "insert2", email: "insert2@example.com", createdAt }),
+          new User({ id: 12, name: "insert3", email: "insert3@example.com", createdAt })
+        ])
       }).pipe(provideDb(Db))
     })
 

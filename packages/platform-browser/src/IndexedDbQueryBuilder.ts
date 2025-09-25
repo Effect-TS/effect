@@ -181,7 +181,20 @@ export declare namespace IndexedDbQuery {
    */
   export type SourceTableSchemaType<
     Table extends IndexedDbTable.AnyWithProps
-  > = Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
+  > = IndexedDbTable.AutoIncrement<Table> extends true ?
+      & {
+        [
+          key in keyof Schema.Struct.Constructor<
+            Omit<IndexedDbTable.TableSchema<Table>["fields"], IndexedDbTable.KeyPath<Table>>
+          >
+        ]: Schema.Struct.Constructor<
+          IndexedDbTable.TableSchema<Table>["fields"]
+        >[key]
+      }
+      & {
+        [key in IndexedDbTable.KeyPath<Table>]?: number | undefined
+      } :
+    Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
 
   /**
    * @since 1.0.0
@@ -748,7 +761,13 @@ const applyModify = Effect.fnUntraced(function*({
   query: IndexedDbQuery.Modify<any>
   value: any
 }) {
-  const encodedValue = yield* Schema.encodeUnknown(query.from.table.tableSchema)(value).pipe(
+  const autoIncrement = query.from.table.autoIncrement as boolean
+  const keyPath = query.from.table.keyPath
+  const schema = query.from.table.tableSchema
+
+  const encodedValue = yield* Schema.encodeUnknown(
+    autoIncrement && value[keyPath] === undefined ? schema.omit(keyPath) : schema
+  )(value).pipe(
     Effect.mapError(
       (error) =>
         new IndexedDbQueryError({
@@ -792,8 +811,34 @@ const applyModify = Effect.fnUntraced(function*({
   })
 })
 
-const applyModifyAll = (query: IndexedDbQuery.ModifyAll<any>, values: Array<any>) =>
-  Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryError>((resume) => {
+const applyModifyAll = Effect.fnUntraced(function*({
+  query,
+  values
+}: {
+  query: IndexedDbQuery.ModifyAll<any>
+  values: Array<any>
+}) {
+  const autoIncrement = query.from.table.autoIncrement as boolean
+  const keyPath = query.from.table.keyPath
+  const schema = query.from.table.tableSchema
+
+  const encodedValues = yield* Effect.all(
+    values.map((value) =>
+      Schema.encodeUnknown(
+        autoIncrement && value[keyPath] === undefined ? schema.omit(keyPath) : schema
+      )(value).pipe(
+        Effect.mapError(
+          (error) =>
+            new IndexedDbQueryError({
+              reason: "EncodeError",
+              cause: error
+            })
+        )
+      )
+    )
+  )
+
+  return yield* Effect.async<Array<globalThis.IDBValidKey>, IndexedDbQueryError>((resume) => {
     const database = query.from.database
     const transaction = query.from.transaction
     const objectStore = (transaction ?? database.transaction([query.from.table.tableName], "readwrite")).objectStore(
@@ -803,8 +848,8 @@ const applyModifyAll = (query: IndexedDbQuery.ModifyAll<any>, values: Array<any>
     const results: Array<globalThis.IDBValidKey> = []
 
     if (query.operation === "add") {
-      for (let i = 0; i < values.length; i++) {
-        const request = objectStore.add(values[i])
+      for (let i = 0; i < encodedValues.length; i++) {
+        const request = objectStore.add(encodedValues[i])
 
         request.onerror = () => {
           resume(
@@ -822,8 +867,8 @@ const applyModifyAll = (query: IndexedDbQuery.ModifyAll<any>, values: Array<any>
         }
       }
     } else if (query.operation === "put") {
-      for (let i = 0; i < values.length; i++) {
-        const request = objectStore.put(values[i])
+      for (let i = 0; i < encodedValues.length; i++) {
+        const request = objectStore.put(encodedValues[i])
 
         request.onerror = () => {
           resume(
@@ -859,6 +904,7 @@ const applyModifyAll = (query: IndexedDbQuery.ModifyAll<any>, values: Array<any>
       resume(Effect.succeed(results))
     }
   })
+})
 
 const applyClear = (options: {
   readonly database: globalThis.IDBDatabase
@@ -1466,7 +1512,7 @@ const modifyAllMakeProto = <
 }): IndexedDbQuery.Modify<Table> => {
   const self = Object.create(Effectable.CommitPrototype)
   self.commit = function(this: IndexedDbQuery.ModifyAll<any>) {
-    return applyModifyAll(this, options.values)
+    return applyModifyAll({ query: this, values: options.values })
   }
   self.from = options.from
   self.values = options.values

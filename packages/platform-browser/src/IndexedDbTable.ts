@@ -222,8 +222,6 @@ export const make = <
 // -----------------------------------------------------------------------------
 
 type IsValidAutoIncrementKeyPath<TableSchema extends AnySchemaStruct, KeyPath> = KeyPath extends
-  keyof TableSchema["Encoded"] ?
-  TableSchema["Encoded"][KeyPath] extends number | undefined ?
-    number | undefined extends TableSchema["Encoded"][KeyPath] ? true : false :
+  keyof TableSchema["Encoded"] ? TableSchema["Encoded"][KeyPath] extends number ? true :
   false
   : false

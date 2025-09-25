@@ -73,15 +73,16 @@ export const layerWindow: Layer.Layer<IndexedDb, ConfigError.ConfigError> = Laye
 )
 
 /**
- * Schema for `autoIncrement` key path (`number | undefined`).
+ * Schema for `autoIncrement` key path (`number`).
  *
  * @since 1.0.0
  * @category schemas
  */
-export const AutoIncrement = Schema.optional(Schema.Number).annotations(
-  {
-    identifier: "AutoIncrement",
-    title: "autoIncrement",
-    description: "Defines a valid autoIncrement key path for the IndexedDb table"
-  }
-)
+export const AutoIncrement = Schema.Number
+  .annotations(
+    {
+      identifier: "AutoIncrement",
+      title: "autoIncrement",
+      description: "Defines a valid autoIncrement key path for the IndexedDb table"
+    }
+  )
