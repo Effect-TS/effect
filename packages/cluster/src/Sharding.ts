@@ -734,12 +734,11 @@ const make = Effect.gen(function*() {
         | (M extends Message.Incoming<any> ? never : PersistenceError)
       > => {
         const address = message.envelope.address
-        if (!isEntityOnLocalShards(address)) {
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        } else if (!entityManagers.has(address.entityType)) {
+        if (!entityManagers.has(address.entityType)) {
           return Effect.fail(new EntityNotManagedByRunner({ address }))
         }
 
+        const isLocal = isEntityOnLocalShards(address)
         const notify = storageEnabled
           ? openStorageReadLatch
           : () => Effect.dieMessage("Sharding.notifyLocal: storage is disabled")
@@ -747,11 +746,13 @@ const make = Effect.gen(function*() {
         if (message._tag === "IncomingRequest" || message._tag === "IncomingEnvelope") {
           if (message._tag === "IncomingRequest" && storageAlreadyProcessed(message)) {
             return Effect.fail(new AlreadyProcessingMessage({ address, envelopeId: message.envelope.requestId }))
+          } else if (!isLocal) {
+            return Effect.fail(new EntityNotAssignedToRunner({ address }))
           }
           return notify()
         }
 
-        return runners.notifyLocal({ message, notify, discard }) as any
+        return runners.notifyLocal({ message, notify, discard, storageOnly: !isLocal }) as any
       }
     )
 
