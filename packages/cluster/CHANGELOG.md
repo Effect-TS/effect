@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.49.3
+
+### Patch Changes
+
+- [#5563](https://github.com/Effect-TS/effect/pull/5563) [`fc7e32a`](https://github.com/Effect-TS/effect/commit/fc7e32af793214b542262f912a30c89f85068bb4) Thanks @tim-smart! - prevent EntityNotAssigned when sending to local runner
+
 ## 0.49.2
 
 ### Patch Changes
