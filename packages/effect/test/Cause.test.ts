@@ -926,16 +926,16 @@ describe("Cause", () => {
   describe("Formatting", () => {
     it("prettyErrors", () => {
       deepStrictEqual(Cause.prettyErrors(empty), [])
-      deepStrictEqual(Cause.prettyErrors(failure), [new internal.PrettyError("error")])
-      deepStrictEqual(Cause.prettyErrors(defect), [new internal.PrettyError("defect")])
+      deepStrictEqual(Cause.prettyErrors(failure), [new internal.PrettyError("error", true)])
+      deepStrictEqual(Cause.prettyErrors(defect), [new internal.PrettyError("defect", true)])
       deepStrictEqual(Cause.prettyErrors(interruption), [])
       deepStrictEqual(Cause.prettyErrors(sequential), [
-        new internal.PrettyError("error"),
-        new internal.PrettyError("defect")
+        new internal.PrettyError("error", true),
+        new internal.PrettyError("defect", true)
       ])
       deepStrictEqual(Cause.prettyErrors(parallel), [
-        new internal.PrettyError("error"),
-        new internal.PrettyError("defect")
+        new internal.PrettyError("error", true),
+        new internal.PrettyError("defect", true)
       ])
     })
 
