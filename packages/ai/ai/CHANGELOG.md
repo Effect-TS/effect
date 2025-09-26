@@ -1,5 +1,15 @@
 # @effect/ai
 
+## 0.28.4
+
+### Patch Changes
+
+- [#5570](https://github.com/Effect-TS/effect/pull/5570) [`bc83015`](https://github.com/Effect-TS/effect/commit/bc83015e2546957520a91ff6f5728e40c75605b7) Thanks @IMax153! - Redact headers where possible in AiError
+
+- [#5570](https://github.com/Effect-TS/effect/pull/5570) [`bc83015`](https://github.com/Effect-TS/effect/commit/bc83015e2546957520a91ff6f5728e40c75605b7) Thanks @IMax153! - Fix return type of `Response.AllParts`
+
+- [#5568](https://github.com/Effect-TS/effect/pull/5568) [`6c2d586`](https://github.com/Effect-TS/effect/commit/6c2d586ae4dab17d9622424f0e95808131888a1a) Thanks @IMax153! - Support expiration of persisted chats via time to live
+
 ## 0.28.3
 
 ### Patch Changes
