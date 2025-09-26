@@ -5,8 +5,10 @@ import * as Persistence from "@effect/experimental/Persistence"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
+import * as TestClock from "effect/TestClock"
 import * as TestUtils from "./utilities.js"
 
 const withConstantIdGenerator = (id: string) =>
@@ -53,6 +55,48 @@ describe("Chat", () => {
 
       assert.deepStrictEqual(chatHistory, expectedHistory)
       assert.deepStrictEqual(chatHistory, storeHistory)
+    }).pipe(withConstantIdGenerator("msg_abc123"), Effect.provide(PersistenceLayer)))
+
+  it.scoped("should respect the specified time to live", () =>
+    Effect.gen(function*() {
+      const storeId = "chat"
+      const chatId = "1"
+
+      const backing = yield* Persistence.BackingPersistence
+      const persistence = yield* Chat.Persistence
+
+      const store = yield* backing.make(storeId)
+      const chat = yield* persistence.getOrCreate(chatId, {
+        timeToLive: "30 days"
+      })
+
+      yield* chat.generateText({ prompt: "test user message" }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "text",
+            text: "test assistant message"
+          }]
+        })
+      )
+
+      const chatHistory = yield* store.get(chatId).pipe(
+        Effect.flatten,
+        Effect.flatMap(Schema.decodeUnknown(Prompt.FromJson))
+      )
+      const options = { [Chat.Persistence.key]: { messageId: "msg_abc123" } }
+      const expectedHistory = Prompt.make([
+        { role: "user", content: [{ type: "text", text: "test user message" }], options },
+        { role: "assistant", content: [{ type: "text", text: "test assistant message" }], options }
+      ])
+
+      assert.deepStrictEqual(chatHistory, expectedHistory)
+
+      // Simulate chat expiration
+      yield* TestClock.adjust("30 days")
+
+      const afterExpiration = yield* store.get(chatId)
+
+      assert.deepStrictEqual(afterExpiration, Option.none())
     }).pipe(withConstantIdGenerator("msg_abc123"), Effect.provide(PersistenceLayer)))
 
   it.scoped("should prefer the message identifier of the most recent assistant message", () =>
