@@ -54,7 +54,7 @@
  *       url: "https://api.openai.com/v1/completions",
  *       urlParams: [],
  *       hash: Option.none(),
- *       headers: { "Authorization": "Bearer ***" }
+ *       headers: { "Content-Type": "application/json" }
  *     }
  *   })
  * })
