@@ -54,7 +54,7 @@
  *       url: "https://api.openai.com/v1/completions",
  *       urlParams: [],
  *       hash: Option.none(),
- *       headers: { "Authorization": "Bearer ***" }
+ *       headers: { "Content-Type": "application/json" }
  *     }
  *   })
  * })
@@ -137,10 +137,7 @@ export const isAiError = (u: unknown): u is AiError => Predicate.hasProperty(u, 
  *   url: "https://api.openai.com/v1/completions",
  *   urlParams: [["model", "gpt-4"], ["stream", "false"]],
  *   hash: Option.some("#section1"),
- *   headers: {
- *     "Content-Type": "application/json",
- *     "Authorization": "Bearer sk-..."
- *   }
+ *   headers: { "Content-Type": "application/json" }
  * }
  * ```
  *
@@ -238,7 +235,7 @@ export class HttpRequestError extends Schema.TaggedError<HttpRequestError>(
       reason: error.reason,
       request: {
         hash: error.request.hash,
-        headers: error.request.headers,
+        headers: Inspectable.redact(error.request.headers) as any,
         method: error.request.method,
         url: error.request.url,
         urlParams: error.request.urlParams
@@ -333,7 +330,7 @@ export const HttpResponseDetails = Schema.Struct({
  *     url: "https://api.openai.com/v1/completions",
  *     urlParams: [],
  *     hash: Option.none(),
- *     headers: { "Authorization": "Bearer sk-..." }
+ *     headers: { "Content-Type": "application/json" }
  *   },
  *   response: {
  *     status: 429,
@@ -405,13 +402,13 @@ export class HttpResponseError extends Schema.TaggedError<HttpResponseError>(
         reason: error.reason,
         request: {
           hash: error.request.hash,
-          headers: error.request.headers,
+          headers: Inspectable.redact(error.request.headers) as any,
           method: error.request.method,
           url: error.request.url,
           urlParams: error.request.urlParams
         },
         response: {
-          headers: error.response.headers,
+          headers: Inspectable.redact(error.response.headers) as any,
           status: error.response.status
         },
         body: Inspectable.format(body)

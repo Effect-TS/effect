@@ -200,10 +200,7 @@ export type AllPartsEncoded =
  */
 export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   toolkit: T
-): Schema.Schema<
-  AllParts<Toolkit.Tools<T>>,
-  AllParts<Toolkit.Tools<T>>
-> => {
+): Schema.Schema<AllParts<Toolkit.Tools<T>>, AllPartsEncoded> => {
   const toolCalls: Array<Schema.Schema<ToolCallPart<string, any>, ToolCallPartEncoded>> = []
   const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any>, ToolResultPartEncoded>> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
