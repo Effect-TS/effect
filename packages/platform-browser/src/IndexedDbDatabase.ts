@@ -477,7 +477,11 @@ const makeTransactionProto = <
     )
 
     return yield* Effect.try({
-      try: () => database.createObjectStore(createTable.tableName, createTable),
+      try: () =>
+        database.createObjectStore(createTable.tableName, {
+          keyPath: createTable.keyPath,
+          autoIncrement: createTable.autoIncrement
+        }),
       catch: (cause) =>
         new IndexedDbDatabaseError({
           reason: "TransactionError",
