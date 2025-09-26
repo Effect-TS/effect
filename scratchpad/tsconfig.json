@@ -6,6 +6,7 @@
     "declarationMap": false,
     "composite": false,
     "incremental": false,
+    "jsx": "preserve",
     "plugins": [
       {
         "name": "@effect/language-service",

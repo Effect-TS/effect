@@ -5,6 +5,7 @@ import * as Headers from "@effect/platform/Headers"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpRouter from "@effect/platform/HttpRouter"
+import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Socket from "@effect/platform/Socket"
@@ -271,7 +272,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         },
         onFailure: (cause) => {
           responded = true
-          if (!disableFatalDefects && Cause.isDie(cause)) {
+          if (!disableFatalDefects && Cause.isDie(cause) && !Cause.isInterrupted(cause)) {
             return sendDefect(client, Cause.squash(cause))
           }
           return options.onFromServer({
@@ -922,51 +923,67 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
   const includesFraming = serialization.includesFraming
+  const isBinary = !serialization.contentType.includes("json")
 
   const disconnects = yield* Mailbox.make<number>()
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
 
   let clientId = 0
 
-  const clients = new Map<number, {
+  type Client = {
     readonly write: (bytes: FromServerEncoded) => Effect.Effect<void>
     readonly end: Effect.Effect<void>
-  }>()
+  }
+  const clients = new Map<number, Client>()
   const clientIds = new Set<number>()
+
+  const encoder = new TextEncoder()
 
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
+    const scope = yield* Effect.scope
     const requestHeaders = Object.entries(request.headers)
-    const data = yield* Effect.orDie(request.arrayBuffer)
+    const data = yield* Effect.orDie<string | Uint8Array<ArrayBuffer>, HttpServerError.HttpServerError, never>(
+      isBinary ? Effect.map(request.arrayBuffer, (ab) => new Uint8Array(ab)) : request.text
+    )
     const id = clientId++
     const mailbox = yield* Mailbox.make<Uint8Array | FromServerEncoded>()
     const parser = serialization.unsafeMake()
-    const encoder = new TextEncoder()
 
     const offer = (data: Uint8Array | string) =>
       typeof data === "string" ? mailbox.offer(encoder.encode(data)) : mailbox.offer(data)
 
     clientIds.add(id)
-    clients.set(id, {
-      write: (response) => {
+    const client: Client = {
+      write: !includesFraming ? ((response) => mailbox.offer(response)) : (response) => {
         try {
-          if (!includesFraming) return mailbox.offer(response)
           const encoded = parser.encode(response)
           if (encoded === undefined) return Effect.void
           return offer(encoded)
         } catch (cause) {
-          return !includesFraming
-            ? mailbox.offer(ResponseDefectEncoded(cause))
-            : offer(parser.encode(ResponseDefectEncoded(cause))!)
+          return offer(parser.encode(ResponseDefectEncoded(cause))!)
         }
       },
       end: mailbox.end
+    }
+    clients.set(id, client)
+
+    yield* Scope.addFinalizerExit(scope, () => {
+      clientIds.delete(id)
+      clients.delete(id)
+      disconnects.unsafeOffer(id)
+      if (mailbox.unsafeSize()._tag === "None") return Effect.void
+      return Effect.forEach(
+        requestIds,
+        (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
+        { discard: true }
+      )
     })
 
     const requestIds: Array<RequestId> = []
 
     try {
-      const decoded = parser.decode(new Uint8Array(data)) as ReadonlyArray<FromClientEncoded>
+      const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
       for (const message of decoded) {
         if (message._tag === "Request") {
           requestIds.push(RequestId(message.id))
@@ -977,24 +994,12 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         yield* writeRequest(id, message)
       }
     } catch (cause) {
-      yield* offer(parser.encode(ResponseDefectEncoded(cause))!)
+      yield* client.write(ResponseDefectEncoded(cause))
     }
 
     yield* writeRequest(id, constEof)
 
     if (!includesFraming) {
-      let done = false
-      yield* Effect.addFinalizer(() => {
-        clientIds.delete(id)
-        clients.delete(id)
-        disconnects.unsafeOffer(id)
-        if (done) return Effect.void
-        return Effect.forEach(
-          requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-          { discard: true }
-        )
-      })
       const responses = Arr.empty<FromServerEncoded>()
       while (true) {
         const [items, done] = yield* mailbox.takeAll
@@ -1002,22 +1007,20 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         responses.push(...items as any)
         if (done) break
       }
-      done = true
       return HttpServerResponse.text(parser.encode(responses) as string, { contentType: serialization.contentType })
     }
 
+    const [initialChunk, done] = yield* mailbox.takeAll
+    if (done) {
+      return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk as Chunk.Chunk<Uint8Array>), {
+        contentType: serialization.contentType
+      })
+    }
+
     return HttpServerResponse.stream(
-      Stream.ensuringWith(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>), (exit) => {
-        clientIds.delete(id)
-        clients.delete(id)
-        disconnects.unsafeOffer(id)
-        if (!Exit.isInterrupted(exit)) return Effect.void
-        return Effect.forEach(
-          requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-          { discard: true }
-        )
-      }),
+      Stream.fromChunk(initialChunk as Chunk.Chunk<Uint8Array>).pipe(
+        Stream.concat(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>))
+      ),
       { contentType: serialization.contentType }
     )
   }).pipe(Effect.interruptible)
@@ -1046,6 +1049,19 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
   return { protocol, httpApp } as const
 })
+
+const mergeUint8Arrays = (arrays: Chunk.Chunk<Uint8Array>) => {
+  if (arrays.length === 0) return new Uint8Array(0)
+  if (arrays.length === 1) return Chunk.unsafeHead(arrays)
+  const length = Chunk.reduce(arrays, 0, (acc, a) => acc + a.length)
+  const result = new Uint8Array(length)
+  let offset = 0
+  for (const array of arrays) {
+    result.set(array, offset)
+    offset += array.length
+  }
+  return result
+}
 
 /**
  * @since 1.0.0

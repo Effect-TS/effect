@@ -81,7 +81,6 @@ export const jsonSchemaToOpenApiSchema = (schema: JsonSchema7): typeof Schema.En
         }
 
       case "/schemas/object":
-      case "/schemas/%7B%7D":
         return {
           type: "OBJECT",
           description: schema.description
@@ -198,10 +197,9 @@ export const jsonSchemaToOpenApiSchema = (schema: JsonSchema7): typeof Schema.En
   if ("anyOf" in schema) {
     const anyOfSchema = schema as JsonSchema7AnyOf
     const result: typeof Schema.Encoded = {
-      type: "OBJECT", // Default type for anyOf
       anyOf: anyOfSchema.anyOf.map((s) => jsonSchemaToOpenApiSchema(s)),
       ...extractAnnotations(anyOfSchema)
-    }
+    } as any
 
     return result
   }

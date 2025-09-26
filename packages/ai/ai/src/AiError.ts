@@ -578,6 +578,7 @@ export class MalformedOutput extends Schema.TaggedError<MalformedOutput>(
   static fromParseError({ error, ...params }: {
     readonly module: string
     readonly method: string
+    readonly description?: string
     readonly error: ParseError
   }): MalformedOutput {
     // TODO(Max): enhance

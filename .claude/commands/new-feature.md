@@ -7,7 +7,7 @@ This command enforces a rigorous **5-phase development process** for substantial
 ### ⚠️ IMPORTANT SCOPE LIMITATION
 This workflow is **ONLY** for substantial new features. For other types of work:
 - **Bug fixes**: Use standard development workflow
-- **Refactoring**: Use `/refactor` command  
+- **Refactoring**: Use `/refactor` command
 - **JSDoc enhancement**: Use `/add-jsdoc` command
 - **Test fixes**: Use `/fix-tests` command
 
@@ -27,11 +27,11 @@ This workflow is **ONLY** for substantial new features. For other types of work:
 - Create `.specs/[feature-name]/` directory
 - Create `instructions.md` with:
   - Overview and User Story
-  - Core Requirements
+  - Core Requirements (express key behaviors using EARS statements with pattern tags, e.g., `[Ubiquitous] When <event> the system shall ...`)
   - Technical Specifications
-  - Acceptance Criteria
+  - Acceptance Criteria (mirror the agreed EARS statements so customer language stays consistent)
   - Out of Scope items
-  - Success Metrics
+  - Success Metrics (tie back to observable outcomes from EARS requirements where possible)
   - Future Considerations
   - Testing Requirements
 
@@ -42,13 +42,13 @@ This workflow is **ONLY** for substantial new features. For other types of work:
 
 **Deliverables**:
 - Create `requirements.md` with hierarchical numbering:
-  - **FR1.x**: Functional Requirements
+  - **FR1.x**: Functional Requirements (author each FR in EARS form; prefix the heading with its EARS pattern tag such as `[Event-Driven] FR1.2 ...`)
   - **NFR2.x**: Non-Functional Requirements
   - **TC3.x**: Technical Constraints
   - **DR4.x**: Data Requirements
-  - **IR5.x**: Integration Requirements
+  - **IR5.x**: Integration Requirements (use EARS phrasing when specifying externally triggered behaviors)
   - **DEP6.x**: Dependencies
-  - **SC7.x**: Success Criteria
+  - **SC7.x**: Success Criteria (reference the relevant EARS FR identifiers to keep traceability)
 
 **🔒 AUTHORIZATION GATE**: Present requirements.md and request user approval to proceed to Design Phase
 
@@ -64,11 +64,11 @@ This workflow is **ONLY** for substantial new features. For other types of work:
   - **Testing Strategy**: @effect/vitest, TestClock for time-dependent code
   - **JSDoc Documentation Plan**: @example tags, @category annotations
   - **Code Examples**: Demonstrating key implementations
-  - **Integration Points**: How feature fits with existing codebase
+  - **Integration Points**: How feature fits with existing codebase (link each decision back to the relevant EARS-tagged requirements to preserve traceability)
 
 **🔒 AUTHORIZATION GATE**: Present design.md and request user approval to proceed to Plan Phase
 
-#### Phase 4: Plan Phase  
+#### Phase 4: Plan Phase
 **Objective**: Implementation roadmap with progress tracking
 
 **Deliverables**:
@@ -107,7 +107,7 @@ pnpm docgen
 # 3. Run type checking
 pnpm check
 
-# 4. Run relevant tests  
+# 4. Run relevant tests
 pnpm test <test-file>
 
 # 5. Build project

@@ -140,7 +140,12 @@ export const histogram = (key: MetricKey.MetricKey.Histogram): MetricHook.Metric
   const bounds = key.keyType.boundaries.values
   const size = bounds.length
   const values = new Uint32Array(size + 1)
-  const boundaries = new Float32Array(size)
+  // NOTE: while 64-bit floating point precision shoule be enough for any
+  // practical histogram boundary values, there is still a small chance that
+  // precision will be lost with very large / very small numbers. If we find
+  // that is the case, a more complex approach storing the histogram boundary
+  // values as a tuple of `[original: string, numeric: number]` may be warranted
+  const boundaries = new Float64Array(size)
   let count = 0
   let sum = 0
   let min = Number.MAX_VALUE

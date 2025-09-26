@@ -1,5 +1,26 @@
 # @effect/rpc
 
+## 0.70.0
+
+### Patch Changes
+
+- [#5549](https://github.com/Effect-TS/effect/pull/5549) [`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a) Thanks @tim-smart! - remove msgpackr re-exports
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+
+## 0.69.5
+
+### Patch Changes
+
+- [#5548](https://github.com/Effect-TS/effect/pull/5548) [`ae3854d`](https://github.com/Effect-TS/effect/commit/ae3854d06c2c43ce94f0969e64633902738453f6) Thanks @tim-smart! - optimize non-streaming response for http rpc protocol
+
+## 0.69.4
+
+### Patch Changes
+
+- [#5527](https://github.com/Effect-TS/effect/pull/5527) [`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df) Thanks @tim-smart! - attempt to prevent InterruptedException leaks into entity replies
+
 ## 0.69.3
 
 ### Patch Changes

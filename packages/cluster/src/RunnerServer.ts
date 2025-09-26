@@ -7,6 +7,7 @@ import { constant } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
+import * as ClusterError from "./ClusterError.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
@@ -40,7 +41,7 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
           : new Message.IncomingEnvelope({ envelope })
       ),
     Effect: ({ persisted, request }) => {
-      let resume: (reply: Effect.Effect<Reply.ReplyEncoded<any>>) => void
+      let resume: (reply: Effect.Effect<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>) => void
       let replyEncoded: Reply.ReplyEncoded<any> | undefined
       const message = new Message.IncomingRequest({
         envelope: request,
@@ -59,11 +60,20 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
       return Effect.zipRight(
         persisted ?
           Effect.zipRight(
-            storage.registerReplyHandler(message),
+            storage.registerReplyHandler(
+              message,
+              Effect.sync(() =>
+                resume(Effect.fail(
+                  new ClusterError.EntityNotAssignedToRunner({
+                    address: request.address
+                  })
+                ))
+              )
+            ),
             sharding.notify(message)
           ) :
           sharding.send(message),
-        Effect.async<Reply.ReplyEncoded<any>>((resume_) => {
+        Effect.async<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>((resume_) => {
           if (replyEncoded) {
             resume_(Effect.succeed(replyEncoded))
           } else {
@@ -74,7 +84,7 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
     },
     Stream: ({ persisted, request }) =>
       Effect.flatMap(
-        Mailbox.make<Reply.ReplyEncoded<any>>(),
+        Mailbox.make<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>(),
         (mailbox) => {
           const message = new Message.IncomingRequest({
             envelope: request,
@@ -89,7 +99,16 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
           return Effect.as(
             persisted ?
               Effect.zipRight(
-                storage.registerReplyHandler(message),
+                storage.registerReplyHandler(
+                  message,
+                  Effect.suspend(() =>
+                    mailbox.fail(
+                      new ClusterError.EntityNotAssignedToRunner({
+                        address: request.address
+                      })
+                    )
+                  )
+                ),
                 sharding.notify(message)
               ) :
               sharding.send(message),

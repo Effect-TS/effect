@@ -20,8 +20,11 @@ function packages() {
     basePath: Path.join("packages", dir)
   }))
 
-  return [...mainPackages, ...packagesInAi, ...packagesInNative]
-    .filter((pkg) => Fs.existsSync(Path.join(pkg.basePath, "docs/modules")))
+  return [...mainPackages, ...packagesInAi, ...packagesInNative].filter(
+    (pkg) =>
+      Fs.existsSync(Path.join(pkg.basePath, "package.json")) &&
+      Fs.existsSync(Path.join(pkg.basePath, "docs/modules"))
+  )
 }
 
 function pkgName(pkg) {

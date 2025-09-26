@@ -2,6 +2,7 @@
   "extends": "./tsconfig.base.json",
   "include": [],
   "references": [
-    { "path": "packages-native/bun-test" }
+    { "path": "packages-native/bun-test" },
+    { "path": "packages-native/patterns" }
   ]
 }

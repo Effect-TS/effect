@@ -79,7 +79,7 @@ Implementation highlights:
 Validation:
 - ✅ All TypeScript files linted with zero errors
 - ✅ pnpm docgen passes with all examples compiling
-- ✅ pnpm check passes with zero type errors  
+- ✅ pnpm check passes with zero type errors
 - ✅ All tests pass with proper Effect patterns
 - ✅ pnpm build completes successfully
 - ✅ JSDoc coverage at 100% for new APIs

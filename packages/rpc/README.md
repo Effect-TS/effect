@@ -150,8 +150,8 @@ Use this `curl` command to test if the API is operational:
 
 ```bash
 curl -X POST http://localhost:3000/rpc \
-     -H "Content-Type: application/json" \
-     -d $'{"_tag": "Request", "id": "123", "tag": "UserList", "payload": {}, "traceId": "traceId", "spanId": "spanId", "sampled": true, "headers": {} }\n'
+     -H "Content-Type: application/ndjson" \
+     -d $'{"_tag": "Request", "id": "123", "tag": "UserList", "payload": {}, "traceId": "traceId", "spanId": "spanId", "sampled": true, "headers": [] }\n'
 ```
 
 ## Using your new backend on the client

@@ -1,5 +1,29 @@
 # @effect/ai-openai
 
+## 0.31.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/ai@0.28.0
+  - @effect/experimental@0.55.0
+
+## 0.30.2
+
+### Patch Changes
+
+- [#5545](https://github.com/Effect-TS/effect/pull/5545) [`f71a731`](https://github.com/Effect-TS/effect/commit/f71a7319c52ae2a66f1266d8777d8de94e7db3cb) Thanks @timurrakhimzhan! - fixed message shape of tool call result being sent to openai for tool call result
+
+## 0.30.1
+
+### Patch Changes
+
+- [#5521](https://github.com/Effect-TS/effect/pull/5521) [`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80) Thanks @IMax153! - Fix provider metadata and parse tool call parameters safely
+
+- Updated dependencies [[`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80)]:
+  - @effect/ai@0.27.1
+
 ## 0.30.0
 
 ### Minor Changes

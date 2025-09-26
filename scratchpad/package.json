@@ -4,15 +4,19 @@
   "type": "module",
   "version": "0.0.0",
   "dependencies": {
+    "@effect-atom/atom": "^0.2.1",
+    "@effect-atom/atom-react": "^0.2.0",
     "@effect-native/bun-test": "workspace:*",
     "@effect-native/crsql": "workspace:*",
     "@effect-native/libcrsql": "workspace:^",
     "@effect-native/libsqlite": "workspace:^",
+    "@effect-native/patterns": "workspace:^",
     "@effect/ai": "latest",
     "@effect/ai-amazon-bedrock": "latest",
     "@effect/ai-anthropic": "latest",
     "@effect/ai-google": "latest",
     "@effect/ai-openai": "latest",
+    "@effect/ai-openrouter": "latest",
     "@effect/cli": "latest",
     "@effect/cluster": "latest",
     "@effect/experimental": "latest",
@@ -48,5 +52,9 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.13",
+    "react": "^19.1.1"
   }
 }

@@ -1,5 +1,11 @@
 # effect
 
+## 3.17.14
+
+### Patch Changes
+
+- [#5533](https://github.com/Effect-TS/effect/pull/5533) [`ea95998`](https://github.com/Effect-TS/effect/commit/ea95998de2a7613d844c42e67e7f5b16652c5000) Thanks @IMax153! - Preserve the precision of histogram boundary values
+
 ## 3.17.13
 
 ### Patch Changes

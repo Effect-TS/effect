@@ -14,14 +14,6 @@ import { Packr, Unpackr } from "msgpackr"
 import * as Msgpackr from "msgpackr"
 import * as ChannelSchema from "./ChannelSchema.js"
 
-export {
-  /**
-   * @since 1.0.0
-   * @category re-exports
-   */
-  Msgpackr
-}
-
 /**
  * @since 1.0.0
  * @category errors

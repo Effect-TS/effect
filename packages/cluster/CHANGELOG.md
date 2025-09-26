@@ -1,5 +1,54 @@
 # @effect/cluster
 
+## 0.49.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/rpc@0.70.0
+  - @effect/sql@0.45.0
+  - @effect/workflow@0.10.0
+
+## 0.48.16
+
+### Patch Changes
+
+- [#5543](https://github.com/Effect-TS/effect/pull/5543) [`2b9db9e`](https://github.com/Effect-TS/effect/commit/2b9db9e7f930d3ae269b123286c881ea34d3afca) Thanks @tim-smart! - propagate workflow interruption to unfinished children
+
+- Updated dependencies [[`2b9db9e`](https://github.com/Effect-TS/effect/commit/2b9db9e7f930d3ae269b123286c881ea34d3afca)]:
+  - @effect/workflow@0.9.6
+
+## 0.48.15
+
+### Patch Changes
+
+- [#5541](https://github.com/Effect-TS/effect/pull/5541) [`4f07ee0`](https://github.com/Effect-TS/effect/commit/4f07ee06e59fa81762761b12938224f5c931b119) Thanks @tim-smart! - backport MessageStorage.unregisterReplyHandler
+
+- Updated dependencies [[`ea95998`](https://github.com/Effect-TS/effect/commit/ea95998de2a7613d844c42e67e7f5b16652c5000)]:
+  - effect@3.17.14
+
+## 0.48.14
+
+### Patch Changes
+
+- [#5529](https://github.com/Effect-TS/effect/pull/5529) [`d9c8bce`](https://github.com/Effect-TS/effect/commit/d9c8bce027a45da82190303cc6eb6838074f4fb9) Thanks @tim-smart! - catch interruptions in Sharding storage loop
+
+## 0.48.13
+
+### Patch Changes
+
+- [#5527](https://github.com/Effect-TS/effect/pull/5527) [`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df) Thanks @tim-smart! - attempt to prevent InterruptedException leaks into entity replies
+
+- Updated dependencies [[`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df)]:
+  - @effect/rpc@0.69.4
+
+## 0.48.12
+
+### Patch Changes
+
+- [#5525](https://github.com/Effect-TS/effect/pull/5525) [`7edc074`](https://github.com/Effect-TS/effect/commit/7edc074f67d300957b749c9e20ea9706036dc0e0) Thanks @tim-smart! - backport ClusterWorkflowEngine partial entity clients
+
 ## 0.48.11
 
 ### Patch Changes

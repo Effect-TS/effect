@@ -1,6 +1,41 @@
 # Agent Contribution Rules
 
-This repository enforces a fail-fast, evidence-first workflow. Agents and contributors must not hide defects behind optional guards or conditional logic in tests.
+We practice ultra extreme programming (uXP): tight feedback loops, evidence-first decision making, and collective ownership. Every change must be grounded in tests-first thinking and the scientific method, and nothing in our code is somebody else's problem.
+
+## Pattern Library Contract
+
+The documentation in `.patterns/*.md` is normative. Before writing or reviewing code, identify the relevant pattern files, follow them precisely, and cite them when presenting evidence. If a scenario is not covered, extend the patterns with a documented consensus—never improvise contradictory behavior.
+
+### Effect Development (`.patterns/effect-library-development.md`)
+- Never introduce `try`/`catch` inside `Effect.gen`; model control flow with Effect primitives.
+- Always terminate failing or interrupting branches with `return yield* ...`.
+- Resolve type problems instead of masking them with assertions; when TypeScript types disagree, fix the types.
+- After editing TypeScript, run `nix develop --command pnpm lint --fix` to enforce immediate linting.
+
+### Error Handling (`.patterns/error-handling.md`)
+- Model domain failures with `Data.TaggedError` hierarchies and rich error reasons.
+- Convert external failures via `Effect.try`/`Effect.tryPromise`, returning structured errors instead of raw exceptions.
+- Keep error pathways explicit; no swallowing, downgrading, or conditionalizing of failures.
+
+### Module Organization (`.patterns/module-organization.md`)
+- Follow the established directory and index export structure when adding modules.
+- Keep public APIs in top-level modules and private details in corresponding `internal/` files.
+- Use standard naming patterns for constructors, combinators, and predicates to maintain discoverability.
+
+### Documentation (`.patterns/jsdoc-documentation.md`)
+- Maintain complete, compilable JSDoc examples; run `nix develop --command pnpm docgen` after documentation changes.
+- Prefer multiple realistic examples over deleting content when fixing docgen failures.
+- Use canonical import forms (`import { Schema } from "effect/schema"`, etc.) and forbid unsafe type assertions in docs.
+
+### Testing (`.patterns/testing-patterns.md`)
+- Use `@effect/vitest` with `it.effect` and `assert.*` for Effectful tests; use plain vitest only for pure functions.
+- Replace wall-clock waits with `TestClock` for time-sensitive behavior.
+- Never rely on `Effect.runSync` or `expect` inside Effect-based tests.
+
+### Platform Integration (`.patterns/platform-integration.md`)
+- Express platform concerns through service abstractions and layers; provide platform-specific implementations separately.
+- Translate platform errors into `PlatformError` variants with consistent reasons.
+- Favor reusable, cross-platform-friendly integration points over ad-hoc conditionals.
 
 ## Hard-Fail Policy (Never Hide Defects)
 
@@ -15,7 +50,7 @@ Failing fast makes defects visible early, prevents silent regressions, and align
 ## Evidence-First Expectations
 
 - When changing tests or infrastructure:
-  - Provide concrete file paths and code references for the behavior being asserted.
+  - Provide concrete file paths and code references for the behavior being asserted, referencing the relevant `.patterns/*.md` guidance.
   - If a failure requires an environment change, document the exact steps to reproduce and remediate (e.g., reinstall `better-sqlite3` for the current Node version).
 - All changes must keep `pnpm ok` green unless a failing test is intentionally introduced as part of a RED phase in a TDD cycle (and is clearly marked as such in the PR).
 
@@ -79,21 +114,26 @@ This project uses the latest Effect `^3.17.11` which supports modern error handl
 
 - **Review Expectation**: Contributors and automated reviews should NOT flag the modern `yield* new Error()` syntax as incorrect. It is the current standard for this project's Effect version.
 
-## Nix Development Environment
+## Tooling & Nix Development Environment
 
-This project uses Nix for dependency management and reproducible builds. All development commands should be run within the Nix development shell:
+This project uses Nix for dependency management and reproducible builds. All development commands must be run within the Nix development shell:
 
 - **Command Prefix**: Always prefix package manager and build commands with `nix develop --command` or run `nix develop` first to enter the shell:
   ```bash
   # ✅ Preferred
   nix develop --command pnpm install
+  nix develop --command pnpm lint --fix
+  nix develop --command pnpm docgen
   nix develop --command pnpm ok
   nix develop --command pnpm test
 
   # ✅ Alternative (enter shell first)
   nix develop
   pnpm install
+  pnpm lint --fix
+  pnpm docgen
   pnpm ok
+  pnpm test
   ```
 
 - **Rationale**: The Nix shell ensures consistent Node.js versions, native dependencies, and build tools across all environments, preventing "works on my machine" issues.
