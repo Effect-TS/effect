@@ -184,10 +184,10 @@ const Proto = {
       identifier: this.identifier,
       groups: this.groups,
       errorSchema: HttpApiSchema.UnionUnify(
-        this.errorSchema,
         annotations?.status
           ? schema.annotations(HttpApiSchema.annotations({ status: annotations.status }))
-          : schema
+          : schema,
+        this.errorSchema
       ),
       annotations: this.annotations,
       middlewares: this.middlewares
