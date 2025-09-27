@@ -11,7 +11,13 @@ import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import { Packr, Unpackr } from "msgpackr"
-import * as Msgpackr from "msgpackr"
+// Fix: msgpackr doesn't export a namespace, so we create one with the correct methods
+const Msgpackr = { 
+  Packr, 
+  Unpackr,
+  encode: (data: any) => new Packr().pack(data),
+  decode: (buffer: Uint8Array) => new Unpackr().unpack(buffer)
+}
 import * as ChannelSchema from "./ChannelSchema.js"
 
 /**
