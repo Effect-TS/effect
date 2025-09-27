@@ -23,7 +23,8 @@ import * as Utils from "effect/Utils"
 import * as V from "vitest"
 import type * as Vitest from "../index.js"
 
-const defaultApi = Object.assign(V.it, { scopedFixtures: V.it.scoped })
+// Bun test runner compatibility fix
+const defaultApi = Object.assign(V.it, { scopedFixtures: V.it.scoped || V.it })
 
 const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function*() {
@@ -116,7 +117,7 @@ const makeTester = <R>(
     )
 
   const fails: Vitest.Vitest.Tester<R>["fails"] = (name, self, timeout) =>
-    V.it.fails(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
+    (V.it.fails || V.it)(name, testOptions(timeout), (ctx) => run(ctx, [ctx], self))
 
   const prop: Vitest.Vitest.Tester<R>["prop"] = (name, arbitraries, self, timeout) => {
     if (Array.isArray(arbitraries)) {
@@ -162,7 +163,7 @@ const makeTester = <R>(
 export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, timeout) => {
   if (Array.isArray(arbitraries)) {
     const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
-    return V.it(
+    return (V.it || V.test)(
       name,
       testOptions(timeout),
       // @ts-ignore
@@ -177,7 +178,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
     }, {} as Record<string, fc.Arbitrary<any>>)
   )
 
-  return V.it(
+  return (V.it || V.test)(
     name,
     testOptions(timeout),
     // @ts-ignore

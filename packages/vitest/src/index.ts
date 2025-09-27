@@ -11,6 +11,15 @@ import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
 import * as internal from "./internal/internal.js"
 
+// Bun test runner compatibility fix
+// Ensure all required exports are available
+if (!V.it && V.test) {
+  V.it = V.test
+}
+if (!V.describe && V.suite) {
+  V.describe = V.suite
+}
+
 /**
  * @since 1.0.0
  */
