@@ -74,4 +74,22 @@ describe("IndexedDbTable", () => {
     assert.deepStrictEqual(Table.tableSchema.fields.completed, Schema.Boolean)
     assert.deepStrictEqual(Table.keyPath, ["id", "title"])
   })
+
+  it("no keyPath", () => {
+    const Table = IndexedDbTable.make({
+      name: "todo",
+      schema: Schema.Struct({
+        id: Schema.Number,
+        title: Schema.String,
+        completed: Schema.Boolean
+      })
+    })
+
+    assert.equal(Table.tableName, "todo")
+    assert.equal(Table.autoIncrement, false)
+    assert.deepStrictEqual(Table.tableSchema.fields.id, Schema.Number)
+    assert.deepStrictEqual(Table.tableSchema.fields.title, Schema.String)
+    assert.deepStrictEqual(Table.tableSchema.fields.completed, Schema.Boolean)
+    assert.deepStrictEqual(Table.keyPath, undefined)
+  })
 })

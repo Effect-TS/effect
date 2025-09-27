@@ -86,3 +86,22 @@ export const AutoIncrement = Schema.Number
       description: "Defines a valid autoIncrement key path for the IndexedDb table"
     }
   )
+
+/** @internal */
+const IDBFlatKey = Schema.Union(
+  Schema.String,
+  Schema.Number,
+  Schema.DateFromSelf,
+  Schema.declare((input): input is BufferSource => input instanceof ArrayBuffer || ArrayBuffer.isView(input))
+)
+
+/**
+ * Schema for `IDBValidKey` (`number | string | Date | BufferSource | IDBValidKey[]`).
+ *
+ * @since 1.0.0
+ * @category schemas
+ */
+export const IDBValidKey = Schema.Union(
+  IDBFlatKey,
+  Schema.Array(IDBFlatKey)
+)

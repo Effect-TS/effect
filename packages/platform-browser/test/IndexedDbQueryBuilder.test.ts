@@ -88,7 +88,12 @@ const Table5 = IndexedDbTable.make({
 
 const Table6 = IndexedDbTable.make({ name: "user-verify", schema: Schema.Struct({ id: VerifyId }), keyPath: "id" })
 
-class V1 extends IndexedDbVersion.make(Table1, Table2, Table3, Table4, Table5, Table6) {}
+const Table7 = IndexedDbTable.make({
+  name: "no-keypath",
+  schema: Schema.Struct({ username: Schema.String, index: Schema.Number })
+})
+
+class V1 extends IndexedDbVersion.make(Table1, Table2, Table3, Table4, Table5, Table6, Table7) {}
 
 describe("IndexedDbQueryBuilder", () => {
   describe("select", () => {
@@ -695,6 +700,140 @@ describe("IndexedDbQueryBuilder", () => {
         assert.equal(addedKey, 12)
         assert.equal(data.length, 1)
         assert.deepStrictEqual(data, [{ name: "insert1", price: 12, key: 10 }])
+      }).pipe(provideDb(Db))
+    })
+
+    it.effect("insert in no keypath table with manual key", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("no-keypath")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const addedKey = yield* api.from("no-keypath").insert({ username: "insert1", index: 12, key: "key" })
+        const data = yield* api.from("no-keypath").select()
+
+        assert.equal(addedKey, "key")
+        assert.equal(data.length, 1)
+        assert.deepStrictEqual(data, [{ username: "insert1", index: 12, key: "key" }])
+      }).pipe(provideDb(Db))
+    })
+
+    it.effect("insertAll in no keypath table with manual key", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("no-keypath")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const addedKey = yield* api.from("no-keypath").insertAll([{ username: "insert1", index: 12, key: "key" }, {
+          username: "insert2",
+          index: 13,
+          key: "key2"
+        }])
+        const data = yield* api.from("no-keypath").select()
+
+        assert.deepStrictEqual(addedKey, ["key", "key2"])
+        assert.equal(data.length, 2)
+        assert.deepStrictEqual(data, [{ username: "insert1", index: 12, key: "key" }, {
+          username: "insert2",
+          index: 13,
+          key: "key2"
+        }])
+      }).pipe(provideDb(Db))
+    })
+
+    it.effect("insertAll in no keypath table and get first", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("no-keypath")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const addedKey = yield* api.from("no-keypath").insertAll([{ username: "insert1", index: 12, key: "key" }, {
+          username: "insert2",
+          index: 13,
+          key: "key2"
+        }])
+        const data = yield* api.from("no-keypath").select().first()
+
+        assert.deepStrictEqual(addedKey, ["key", "key2"])
+        assert.deepStrictEqual(data, { username: "insert1", index: 12, key: "key" })
+      }).pipe(provideDb(Db))
+    })
+
+    it.effect("insertAll in no keypath table and get limit", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("no-keypath")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const addedKey = yield* api.from("no-keypath").insertAll([{ username: "insert1", index: 12, key: "key" }, {
+          username: "insert2",
+          index: 13,
+          key: "key2"
+        }])
+        const data = yield* api.from("no-keypath").select().limit(1)
+
+        assert.deepStrictEqual(addedKey, ["key", "key2"])
+        assert.deepStrictEqual(data, [{ username: "insert1", index: 12, key: "key" }])
+      }).pipe(provideDb(Db))
+    })
+
+    it.effect("insertAll in no keypath table with multiple types of keys", () => {
+      class Db extends IndexedDbDatabase.make(V1, (api) =>
+        Effect.gen(function*() {
+          yield* api.createObjectStore("no-keypath")
+        }))
+      {}
+
+      return Effect.gen(function*() {
+        const api = yield* Db.getQueryBuilder
+        const date = new Date()
+        const arrayBuffer = new ArrayBuffer(10)
+        const addedKey = yield* api.from("no-keypath").insertAll([{ username: "insert1", index: 12, key: "key" }, {
+          username: "insert2",
+          index: 13,
+          key: 14
+        }, {
+          username: "insert3",
+          index: 14,
+          key: date
+        }, {
+          username: "insert4",
+          index: 15,
+          key: arrayBuffer
+        }, {
+          username: "insert5",
+          index: 16,
+          key: [1, "key", date, arrayBuffer]
+        }])
+        const data = yield* api.from("no-keypath").select()
+
+        // Returned data order not guaranteed
+        data.sort((a, b) => a.index - b.index)
+
+        assert.deepStrictEqual(addedKey, ["key", 14, date, arrayBuffer, [1, "key", date, arrayBuffer]])
+        assert.deepStrictEqual(data, [
+          { username: "insert1", index: 12, key: "key" },
+          {
+            username: "insert2",
+            index: 13,
+            key: 14
+          },
+          { username: "insert3", index: 14, key: date },
+          { username: "insert4", index: 15, key: arrayBuffer },
+          { username: "insert5", index: 16, key: [1, "key", date, arrayBuffer] }
+        ])
       }).pipe(provideDb(Db))
     })
 

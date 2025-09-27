@@ -6,6 +6,7 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as Schema from "effect/Schema"
+import * as IndexedDb from "./IndexedDb.js"
 import type * as IndexedDbDatabase from "./IndexedDbDatabase.js"
 import type * as IndexedDbTable from "./IndexedDbTable.js"
 import type * as IndexedDbVersion from "./IndexedDbVersion.js"
@@ -175,13 +176,20 @@ export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
  * @category models
  */
 export declare namespace IndexedDbQuery {
-  // /**
-  //  * @since 1.0.0
-  //  * @category models
-  //  */
+  /**
+   * @since 1.0.0
+   * @category models
+   */
   export type SourceTableSelectSchemaType<
     Table extends IndexedDbTable.AnyWithProps
-  > = Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
+  > =
+    & Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
+    & (
+      [IndexedDbTable.KeyPath<Table>] extends [undefined] ? {
+          key: typeof IndexedDb.IDBValidKey["Type"]
+        } :
+        {}
+    )
 
   /**
    * @since 1.0.0
@@ -189,20 +197,27 @@ export declare namespace IndexedDbQuery {
    */
   export type SourceTableModifySchemaType<
     Table extends IndexedDbTable.AnyWithProps
-  > = IndexedDbTable.AutoIncrement<Table> extends true ?
-      & {
-        [
-          key in keyof Schema.Struct.Constructor<
-            Omit<IndexedDbTable.TableSchema<Table>["fields"], IndexedDbTable.KeyPath<Table>>
-          >
-        ]: Schema.Struct.Constructor<
-          IndexedDbTable.TableSchema<Table>["fields"]
-        >[key]
-      }
-      & {
-        [key in IndexedDbTable.KeyPath<Table>]?: number | undefined
-      } :
-    Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>
+  > =
+    & (IndexedDbTable.AutoIncrement<Table> extends true ?
+        & {
+          [
+            key in keyof Schema.Struct.Constructor<
+              Omit<IndexedDbTable.TableSchema<Table>["fields"], IndexedDbTable.KeyPath<Table>>
+            >
+          ]: Schema.Struct.Constructor<
+            IndexedDbTable.TableSchema<Table>["fields"]
+          >[key]
+        }
+        & {
+          [key in IndexedDbTable.KeyPath<Table>]?: number | undefined
+        } :
+      Schema.Struct.Constructor<IndexedDbTable.TableSchema<Table>["fields"]>)
+    & (
+      [IndexedDbTable.KeyPath<Table>] extends [undefined] ? {
+          key: IDBValidKey
+        } :
+        {}
+    )
 
   /**
    * @since 1.0.0
@@ -632,56 +647,46 @@ const getReadonlyObjectStore = (
 
 const getReadSchema = (
   from: IndexedDbQuery.From<any>
-) => (from.table as IndexedDbTable.AnyWithProps).tableSchema
+) => {
+  const keyPath = from.table.keyPath
+  const tableSchema = (from.table as IndexedDbTable.AnyWithProps).tableSchema
+  return keyPath === undefined
+    ? Schema.extend(tableSchema, Schema.Struct({ key: IndexedDb.IDBValidKey }))
+    : tableSchema
+}
 
 const getSelect = Effect.fnUntraced(function*(query: IndexedDbQuery.Select<any, never>) {
+  const keyPath = query.from.table.keyPath
+
   const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
-    let request: globalThis.IDBRequest
     const { keyRange, store } = getReadonlyObjectStore(query)
 
-    if (query.limitValue !== undefined) {
-      const cursorRequest = store.openCursor(keyRange)
-      const results: Array<any> = []
-      let count = 0
+    const cursorRequest = store.openCursor(keyRange)
+    const results: Array<any> = []
+    let count = 0
 
-      cursorRequest.onerror = () => {
-        resume(
-          Effect.fail(
-            new IndexedDbQueryError({ reason: "TransactionError", cause: cursorRequest.error })
-          )
+    cursorRequest.onerror = () => {
+      resume(
+        Effect.fail(
+          new IndexedDbQueryError({ reason: "TransactionError", cause: cursorRequest.error })
         )
-      }
+      )
+    }
 
-      cursorRequest.onsuccess = () => {
-        const cursor = cursorRequest.result
-        if (cursor !== null) {
-          results.push(cursor.value)
-          count += 1
-          if (count < query.limitValue!) {
-            cursor.continue()
-          } else {
-            resume(Effect.succeed(results))
-          }
+    cursorRequest.onsuccess = () => {
+      const cursor = cursorRequest.result
+
+      if (cursor !== null) {
+        results.push(keyPath === undefined ? { ...cursor.value, key: cursor.key } : cursor.value)
+        count += 1
+
+        if (query.limitValue === undefined || count < query.limitValue) {
+          cursor.continue()
         } else {
           resume(Effect.succeed(results))
         }
-      }
-    } else {
-      request = store.getAll(keyRange)
-
-      request.onerror = (event) => {
-        resume(
-          Effect.fail(
-            new IndexedDbQueryError({
-              reason: "TransactionError",
-              cause: event
-            })
-          )
-        )
-      }
-
-      request.onsuccess = () => {
-        resume(Effect.succeed(request.result))
+      } else {
+        resume(Effect.succeed(results))
       }
     }
   })
@@ -700,6 +705,8 @@ const getSelect = Effect.fnUntraced(function*(query: IndexedDbQuery.Select<any, 
 })
 
 const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First<any, never>) {
+  const keyPath = query.select.from.table.keyPath
+
   const data = yield* Effect.async<any, IndexedDbQueryError>((resume) => {
     const { keyRange, store } = getReadonlyObjectStore(query.select)
 
@@ -736,6 +743,7 @@ const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First<any, ne
 
       request.onsuccess = () => {
         const value = request.result?.value
+        const key = request.result?.key
 
         if (value === undefined) {
           resume(
@@ -747,7 +755,7 @@ const getFirst = Effect.fnUntraced(function*(query: IndexedDbQuery.First<any, ne
             )
           )
         } else {
-          resume(Effect.succeed(request.result?.value))
+          resume(Effect.succeed(keyPath === undefined ? { ...value, key } : value))
         }
       }
     }
@@ -797,9 +805,9 @@ const applyModify = Effect.fnUntraced(function*({
     let request: globalThis.IDBRequest<IDBValidKey>
 
     if (query.operation === "add") {
-      request = objectStore.add(encodedValue)
+      request = objectStore.add(encodedValue, keyPath === undefined ? value["key"] : undefined)
     } else if (query.operation === "put") {
-      request = objectStore.put(encodedValue)
+      request = objectStore.put(encodedValue, keyPath === undefined ? value["key"] : undefined)
     } else {
       return resume(Effect.dieMessage("Invalid modify operation"))
     }
@@ -859,7 +867,7 @@ const applyModifyAll = Effect.fnUntraced(function*({
 
     if (query.operation === "add") {
       for (let i = 0; i < encodedValues.length; i++) {
-        const request = objectStore.add(encodedValues[i])
+        const request = objectStore.add(encodedValues[i], keyPath === undefined ? values[i]["key"] : undefined)
 
         request.onerror = () => {
           resume(
@@ -878,7 +886,7 @@ const applyModifyAll = Effect.fnUntraced(function*({
       }
     } else if (query.operation === "put") {
       for (let i = 0; i < encodedValues.length; i++) {
-        const request = objectStore.put(encodedValues[i])
+        const request = objectStore.put(encodedValues[i], keyPath === undefined ? values[i]["key"] : undefined)
 
         request.onerror = () => {
           resume(

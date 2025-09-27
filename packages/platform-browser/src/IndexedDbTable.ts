@@ -29,7 +29,7 @@ export interface IndexedDbTable<
   out Name extends string,
   out TableSchema extends AnySchemaStruct,
   out Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
-  out KeyPath extends Readonly<IDBValidKey>,
+  out KeyPath extends Readonly<IDBValidKey | undefined>,
   out AutoIncrement extends boolean
 > extends Pipeable {
   new(_: never): {}
@@ -169,7 +169,7 @@ const makeProto = <
   const Name extends string,
   TableSchema extends AnySchemaStruct,
   const Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
-  const KeyPath extends Readonly<IDBValidKey>,
+  const KeyPath extends Readonly<IDBValidKey | undefined>,
   const AutoIncrement extends boolean
 >(options: {
   readonly tableName: Name
@@ -196,22 +196,26 @@ export const make = <
   const Name extends string,
   TableSchema extends AnySchemaStruct,
   const Indexes extends Record<string, IndexedDbQueryBuilder.KeyPath<TableSchema>>,
-  const KeyPath extends AutoIncrement extends true ? IndexedDbQueryBuilder.KeyPathNumber<NoInfer<TableSchema>>
-    : IndexedDbQueryBuilder.KeyPath<NoInfer<TableSchema>>,
+  const KeyPath extends
+    | (AutoIncrement extends true ? IndexedDbQueryBuilder.KeyPathNumber<NoInfer<TableSchema>>
+      : IndexedDbQueryBuilder.KeyPath<NoInfer<TableSchema>>)
+    | undefined = undefined,
   const AutoIncrement extends boolean = false
 >(
   options: {
     readonly name: Name
-    readonly schema: TableSchema
-    readonly keyPath: KeyPath
+    readonly schema: [KeyPath] extends [undefined] ?
+      "key" extends keyof TableSchema["fields"] ? "Cannot have a 'key' field when keyPath is undefined" : TableSchema :
+      TableSchema
+    readonly keyPath?: KeyPath
     readonly indexes?: Indexes | undefined
     readonly autoIncrement?: IsValidAutoIncrementKeyPath<TableSchema, KeyPath> extends true ? AutoIncrement | undefined
       : never
   }
-): IndexedDbTable<Name, TableSchema, Indexes, Extract<KeyPath, Readonly<IDBValidKey>>, AutoIncrement> =>
+): IndexedDbTable<Name, TableSchema, Indexes, Extract<KeyPath, Readonly<IDBValidKey | undefined>>, AutoIncrement> =>
   makeProto({
     tableName: options.name,
-    tableSchema: options.schema,
+    tableSchema: options.schema as TableSchema,
     keyPath: options.keyPath as any,
     indexes: options.indexes ?? {} as Indexes,
     autoIncrement: options.autoIncrement ?? false as AutoIncrement
