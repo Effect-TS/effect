@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Rpc from "@effect/rpc/Rpc"
-import * as RpcServer from "@effect/rpc/RpcServer"
 import { DurableDeferred } from "@effect/workflow"
 import * as Activity from "@effect/workflow/Activity"
 import * as DurableClock from "@effect/workflow/DurableClock"
@@ -14,7 +13,6 @@ import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
-import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
@@ -292,37 +290,43 @@ export const make = Effect.gen(function*() {
                 ) as any
               },
 
-              activity: Effect.fnUntraced(function*(request: Entity.Request<any>) {
-                const activityId = `${executionId}/${request.payload.name}`
-                let entry = activities.get(activityId)
-                while (!entry) {
-                  const latch = Effect.unsafeMakeLatch()
-                  activityLatches.set(activityId, latch)
-                  yield* latch.await
-                  entry = activities.get(activityId)
-                }
-                const contextMap = new Map(entry.runtime.context.unsafeMap)
-                contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
-                contextMap.set(
-                  WorkflowInstance.key,
-                  WorkflowInstance.initial(workflow, executionId)
-                )
-                const runtime = Runtime.make({
-                  context: Context.unsafeMake(contextMap),
-                  fiberRefs: entry.runtime.fiberRefs,
-                  runtimeFlags: Runtime.defaultRuntimeFlags
+              activity: Effect.fnUntraced(
+                function*(request: Entity.Request<any>) {
+                  const activityId = `${executionId}/${request.payload.name}`
+                  let entry = activities.get(activityId)
+                  while (!entry) {
+                    const latch = Effect.unsafeMakeLatch()
+                    activityLatches.set(activityId, latch)
+                    yield* latch.await
+                    entry = activities.get(activityId)
+                  }
+                  const instance = WorkflowInstance.initial(workflow, executionId)
+                  const contextMap = new Map(entry.runtime.context.unsafeMap)
+                  contextMap.set(Activity.CurrentAttempt.key, request.payload.attempt)
+                  contextMap.set(WorkflowInstance.key, instance)
+                  const runtime = Runtime.make({
+                    context: Context.unsafeMake(contextMap),
+                    fiberRefs: entry.runtime.fiberRefs,
+                    runtimeFlags: Runtime.defaultRuntimeFlags
+                  })
+                  return yield* entry.activity.executeEncoded.pipe(
+                    Effect.interruptible,
+                    Effect.onInterrupt(() => {
+                      instance.suspended = true
+                      return Effect.void
+                    }),
+                    Workflow.intoResult,
+                    Effect.provide(runtime),
+                    Effect.ensuring(Effect.sync(() => {
+                      activities.delete(activityId)
+                    }))
+                  )
+                },
+                Rpc.wrap({
+                  fork: true,
+                  uninterruptible: true
                 })
-                return yield* entry.activity.executeEncoded.pipe(
-                  Effect.onInterrupt((interruptors) =>
-                    HashSet.has(interruptors, RpcServer.fiberIdClientInterrupt) ? Effect.void : Entity.interruptIgnored
-                  ),
-                  Workflow.intoResult,
-                  Effect.provide(runtime),
-                  Effect.ensuring(Effect.sync(() => {
-                    activities.delete(activityId)
-                  }))
-                )
-              }, Rpc.fork),
+              ),
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 yield* ensureSuccess(resume(workflow, executionId))

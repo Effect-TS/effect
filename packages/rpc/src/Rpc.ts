@@ -423,7 +423,7 @@ export type ToHandlerFn<Current extends Any, R = any> = (
     readonly clientId: number
     readonly headers: Headers
   }
-) => ResultFrom<Current, R> | Fork<ResultFrom<Current, R>>
+) => ResultFrom<Current, R> | Wrapper<ResultFrom<Current, R>>
 
 /**
  * @since 1.0.0
@@ -740,24 +740,55 @@ export const exitSchema = <R extends Any>(
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const ForkTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Fork")
+export const WrapperTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Wrapper")
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export type ForkTypeId = typeof ForkTypeId
+export type WrapperTypeId = typeof WrapperTypeId
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export interface Fork<A> {
-  readonly [ForkTypeId]: ForkTypeId
+export interface Wrapper<A> {
+  readonly [WrapperTypeId]: WrapperTypeId
   readonly value: A
+  readonly fork: boolean
+  readonly uninterruptible: boolean
 }
+
+/**
+ * @since 1.0.0
+ * @category Wrapper
+ */
+export const isWrapper = (u: object): u is Wrapper<any> => WrapperTypeId in u
+
+/**
+ * @since 1.0.0
+ * @category Wrapper
+ */
+export const wrap = (options: {
+  readonly fork?: boolean | undefined
+  readonly uninterruptible?: boolean | undefined
+}) =>
+<A extends object>(value: A): A extends Wrapper<infer _> ? A : Wrapper<A> =>
+  (isWrapper(value) ?
+    {
+      [WrapperTypeId]: WrapperTypeId,
+      value: value.value,
+      fork: options.fork ?? value.fork,
+      uninterruptible: options.uninterruptible ?? value.uninterruptible
+    } :
+    {
+      [WrapperTypeId]: WrapperTypeId,
+      value,
+      fork: options.fork ?? false,
+      uninterruptible: options.uninterruptible ?? false
+    }) as any
 
 /**
  * You can use `fork` to wrap a response Effect or Stream, to ensure that the
@@ -765,12 +796,17 @@ export interface Fork<A> {
  * setting.
  *
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const fork = <A>(value: A): Fork<A> => ({ [ForkTypeId]: ForkTypeId, value })
+export const fork: <A extends object>(value: A) => A extends Wrapper<infer _> ? A : Wrapper<A> = wrap({ fork: true })
 
 /**
+ * You can use `uninterruptible` to wrap a response Effect or Stream, to ensure
+ * that it is executed inside an uninterruptible region.
+ *
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const isFork = (u: object): u is Fork<any> => ForkTypeId in u
+export const uninterruptible: <A extends object>(value: A) => A extends Wrapper<infer _> ? A : Wrapper<A> = wrap({
+  uninterruptible: true
+})
