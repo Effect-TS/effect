@@ -168,6 +168,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       const result = yield* Fiber.join(fiber)
       expect(result).toEqual("Activity3")
+
       expect(flags.get("interrupt1")).toBeTruthy()
       expect(flags.get("interrupt2")).toBeTruthy()
       expect(flags.get("interrupt3")).toBeFalsy()

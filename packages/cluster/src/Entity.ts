@@ -202,7 +202,7 @@ export type Any = Entity<string, Rpc.Any>
 export type HandlersFrom<Rpc extends Rpc.Any> = {
   readonly [Current in Rpc as Current["_tag"]]: (
     envelope: Request<Current>
-  ) => Rpc.ResultFrom<Current, any> | Rpc.Fork<Rpc.ResultFrom<Current, any>>
+  ) => Rpc.ResultFrom<Current, any> | Rpc.Wrapper<Rpc.ResultFrom<Current, any>>
 }
 
 /**
