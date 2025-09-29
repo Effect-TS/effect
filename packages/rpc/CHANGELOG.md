@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.70.1
+
+### Patch Changes
+
+- [#5577](https://github.com/Effect-TS/effect/pull/5577) [`c9e1e40`](https://github.com/Effect-TS/effect/commit/c9e1e4064cef4c4324318ec76b35bbbdc026dace) Thanks @tim-smart! - ignore non-client interrupts in workflow activities
+
 ## 0.70.0
 
 ### Patch Changes
