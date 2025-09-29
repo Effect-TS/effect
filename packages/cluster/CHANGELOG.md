@@ -1,5 +1,15 @@
 # @effect/cluster
 
+## 0.49.6
+
+### Patch Changes
+
+- [#5581](https://github.com/Effect-TS/effect/pull/5581) [`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd) Thanks @tim-smart! - persist activity interrupts as "Suspended"
+
+- Updated dependencies [[`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd)]:
+  - @effect/rpc@0.70.2
+  - @effect/workflow@0.10.3
+
 ## 0.49.5
 
 ### Patch Changes
