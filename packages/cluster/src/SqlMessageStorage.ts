@@ -379,14 +379,15 @@ export const make = Effect.fnUntraced(function*(options?: {
               return SaveResultEncoded.Success()
             }
             const row = rows[0]
+            const replyKindNum = typeof row.reply_kind === "bigint" ? Number(row.reply_kind) : row.reply_kind
             return SaveResultEncoded.Duplicate({
               originalId: Snowflake.Snowflake(row.id as any),
               lastReceivedReply: row.reply_id ?
                 Option.some({
                   id: String(row.reply_id),
                   requestId: String(row.id),
-                  _tag: row.reply_kind === replyKind.WithExit ? "WithExit" : "Chunk",
-                  ...(row.reply_kind === replyKind.WithExit
+                  _tag: replyKindNum === replyKind.WithExit ? "WithExit" : "Chunk",
+                  ...(replyKindNum === replyKind.WithExit
                     ? { exit: JSON.parse(row.reply_payload as string) }
                     : {
                       sequence: Number(row.reply_sequence),

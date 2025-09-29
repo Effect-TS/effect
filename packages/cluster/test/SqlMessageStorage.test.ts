@@ -4,7 +4,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { Rpc } from "@effect/rpc"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { SqlClient } from "@effect/sql/SqlClient"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, TestClock } from "effect"
 import { MysqlContainer } from "./fixtures/utils-mysql.js"
 import { PgContainer } from "./fixtures/utils-pg.js"
@@ -36,7 +36,7 @@ describe("SqlMessageStorage", () => {
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
-      timeout: 30000
+      timeout: 120000
     })(label, (it) => {
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
@@ -74,13 +74,26 @@ describe("SqlMessageStorage", () => {
               payload: new StreamTest({ id: 123 })
             })
           )
-          expect(result._tag === "Duplicate" && result.lastReceivedReply._tag).toEqual("Some")
+          assert(result._tag === "Duplicate")
+          assert(result.lastReceivedReply._tag === "Some")
+          expect(result.lastReceivedReply.value._tag).toEqual("Chunk")
 
           // get the un-acked chunk
           const replies = yield* storage.repliesFor([request])
           expect(replies).toHaveLength(1)
 
           yield* storage.saveReply(yield* makeReply(request))
+
+          result = yield* storage.saveRequest(
+            yield* makeRequest({
+              rpc: StreamRpc,
+              payload: new StreamTest({ id: 123 })
+            })
+          )
+          assert(result._tag === "Duplicate")
+          assert(result.lastReceivedReply._tag === "Some")
+          expect(result.lastReceivedReply.value._tag).toEqual("WithExit")
+
           // duplicate WithExit
           const fiber = yield* storage.saveReply(yield* makeReply(request)).pipe(Effect.fork)
           yield* TestClock.adjust(1)
