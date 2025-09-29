@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import * as Rpc from "@effect/rpc/Rpc"
+import * as RpcServer from "@effect/rpc/RpcServer"
 import { DurableDeferred } from "@effect/workflow"
 import * as Activity from "@effect/workflow/Activity"
 import * as DurableClock from "@effect/workflow/DurableClock"
@@ -13,6 +14,7 @@ import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
+import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
@@ -311,6 +313,9 @@ export const make = Effect.gen(function*() {
                   runtimeFlags: Runtime.defaultRuntimeFlags
                 })
                 return yield* entry.activity.executeEncoded.pipe(
+                  Effect.onInterrupt((interruptors) =>
+                    HashSet.has(interruptors, RpcServer.fiberIdClientInterrupt) ? Effect.void : Entity.interruptIgnored
+                  ),
                   Workflow.intoResult,
                   Effect.provide(runtime),
                   Effect.ensuring(Effect.sync(() => {
