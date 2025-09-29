@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.49.4
+
+### Patch Changes
+
+- [#5575](https://github.com/Effect-TS/effect/pull/5575) [`d0e97d7`](https://github.com/Effect-TS/effect/commit/d0e97d74a9e4d4a436ac8d148db81144cf872cc6) Thanks @tim-smart! - fix SqlMessageStorage last reply for sqlite
+
+- Updated dependencies [[`d0e97d7`](https://github.com/Effect-TS/effect/commit/d0e97d74a9e4d4a436ac8d148db81144cf872cc6)]:
+  - @effect/workflow@0.10.1
+
 ## 0.49.3
 
 ### Patch Changes
