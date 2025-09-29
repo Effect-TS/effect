@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.70.2
+
+### Patch Changes
+
+- [#5581](https://github.com/Effect-TS/effect/pull/5581) [`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd) Thanks @tim-smart! - persist activity interrupts as "Suspended"
+
 ## 0.70.1
 
 ### Patch Changes
