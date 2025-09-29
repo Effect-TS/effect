@@ -90,11 +90,11 @@ const rpcCount = Metric.counter("rpc_middleware_count")
 const TimingLive = Layer.succeed(
   TimingMiddleware,
   TimingMiddleware.of((options) =>
-    options.next.pipe(
+    Effect.addFinalizer((exit) => Effect.logInfo(exit)).pipe(Effect.zipRight(options.next.pipe(
       Effect.tap(Metric.increment(rpcSuccesses)),
       Effect.tapDefect(() => Metric.increment(rpcDefects)),
       Effect.ensuring(Metric.increment(rpcCount))
-    )
+    )))
   )
 )
 
