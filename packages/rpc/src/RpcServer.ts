@@ -182,7 +182,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           }
           case "Interrupt": {
             const fiber = client.fibers.get(message.requestId)
-            return fiber ? Fiber.interruptFork(fiber) : options.onFromServer({
+            return fiber ? Fiber.interruptAsFork(fiber, fiberIdClientInterrupt) : options.onFromServer({
               _tag: "Exit",
               clientId,
               requestId: message.requestId,
@@ -1368,6 +1368,14 @@ export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
   readonly stdout: Sink.Sink<void, Uint8Array | string, unknown, EOut, ROut>
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | RIn | ROut> =>
   Layer.scoped(Protocol, makeProtocolStdio(options))
+
+/**
+ * Fiber id used for client interruptions.
+ *
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdClientInterrupt = FiberId.make(-499, 0)
 
 // internal
 
