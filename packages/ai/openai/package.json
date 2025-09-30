@@ -1,7 +1,7 @@
 {
   "name": "@effect/ai-openai",
   "type": "module",
-  "version": "0.31.1",
+  "version": "0.32.0",
   "license": "MIT",
   "description": "Effect modules for working with AI apis",
   "homepage": "https://effect.website",

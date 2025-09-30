@@ -1,5 +1,71 @@
 # effect
 
+## 3.18.0
+
+### Minor Changes
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa) Thanks @schickling! - Add experimental Graph module with comprehensive graph data structure support
+
+  This experimental module provides:
+  - Directed and undirected graph support
+  - Immutable and mutable graph variants
+  - Type-safe node and edge operations
+  - Graph algorithms: DFS, BFS, shortest paths, cycle detection, etc.
+
+  Example usage:
+
+  ```typescript
+  import { Graph } from "effect"
+
+  // Create a graph with mutations
+  const graph = Graph.directed<string, number>((mutable) => {
+    const nodeA = Graph.addNode(mutable, "Node A")
+    const nodeB = Graph.addNode(mutable, "Node B")
+    Graph.addEdge(mutable, nodeA, nodeB, 5)
+  })
+
+  console.log(
+    `Nodes: ${Graph.nodeCount(graph)}, Edges: ${Graph.edgeCount(graph)}`
+  )
+  ```
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137) Thanks @mikearnaldi! - Automatically set otel parent when present as external span
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c) Thanks @tim-smart! - add Effect.Semaphore.resize
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2) Thanks @mikearnaldi! - Introduce ReadonlyTag as the covariant side of a tag, enables:
+
+  ```ts
+  import type { Context } from "effect"
+  import { Effect } from "effect"
+
+  export class MyRequirement extends Effect.Service<MyRequirement>()(
+    "MyRequirement",
+    { succeed: () => 42 }
+  ) {}
+
+  export class MyUseCase extends Effect.Service<MyUseCase>()("MyUseCase", {
+    dependencies: [MyRequirement.Default],
+    effect: Effect.gen(function* () {
+      const requirement = yield* MyRequirement
+      return Effect.fn("MyUseCase.execute")(function* () {
+        return requirement()
+      })
+    })
+  }) {}
+
+  export function effectHandler<I, Args extends Array<any>, A, E, R>(
+    service: Context.ReadonlyTag<I, (...args: Args) => Effect.Effect<A, E, R>>
+  ) {
+    return Effect.fn("effectHandler")(function* (...args: Args) {
+      const execute = yield* service
+      yield* execute(...args)
+    })
+  }
+
+  export const program = effectHandler(MyUseCase)
+  ```
+
 ## 3.17.14
 
 ### Patch Changes
