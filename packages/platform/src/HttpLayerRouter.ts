@@ -10,6 +10,7 @@ import * as FiberRef from "effect/FiberRef"
 import { compose, constant, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as Predicate from "effect/Predicate"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type * as Types from "effect/Types"
@@ -903,7 +904,7 @@ export declare namespace middleware {
  */
 export const cors = (
   options?: {
-    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedOrigins?: ReadonlyArray<string> | Predicate.Predicate<string> | undefined
     readonly allowedMethods?: ReadonlyArray<string> | undefined
     readonly allowedHeaders?: ReadonlyArray<string> | undefined
     readonly exposedHeaders?: ReadonlyArray<string> | undefined

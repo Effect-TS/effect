@@ -122,7 +122,7 @@ export const searchParamsParser: <E, R>(
  */
 export const cors: (
   options?: {
-    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedOrigins?: ReadonlyArray<string> | Predicate.Predicate<string> | undefined
     readonly allowedMethods?: ReadonlyArray<string> | undefined
     readonly allowedHeaders?: ReadonlyArray<string> | undefined
     readonly exposedHeaders?: ReadonlyArray<string> | undefined
