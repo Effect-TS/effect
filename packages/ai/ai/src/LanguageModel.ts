@@ -767,10 +767,12 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.tools = tools
         providerOptions.toolChoice = toolChoice
 
+        // Construct the response schema with the tools from the toolkit
+        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
+
         // If tool call resolution is disabled, return the response without
         // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
-          const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
           const rawContent = yield* params.generateText(providerOptions)
           const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
           return content as Array<Response.Part<Tools>>
@@ -780,7 +782,6 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
         // Resolve the generated tool calls
         const toolResults = yield* resolveToolCalls(rawContent, toolkit, options.concurrency)
-        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
         const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
 
         // Return the content merged with the tool call results
