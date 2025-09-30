@@ -25,7 +25,8 @@ export const layerClientProtocol: Layer.Layer<
       const socket = yield* NodeSocket.makeNet({
         host: address.host,
         port: address.port,
-        timeout: 5500
+        timeout: 5500,
+        openTimeout: 1000
       })
       return yield* RpcClient.makeProtocolSocket().pipe(
         Effect.provideService(Socket, socket),

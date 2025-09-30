@@ -6,8 +6,10 @@ import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as Net from "node:net"
@@ -34,7 +36,9 @@ export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.GenericTag(
  * @category constructors
  */
 export const makeNet = (
-  options: Net.NetConnectOpts
+  options: Net.NetConnectOpts & {
+    readonly openTimeout?: Duration.DurationInput | undefined
+  }
 ): Effect.Effect<Socket.Socket, Socket.SocketError> =>
   fromDuplex(
     Effect.scopeWith((scope) => {
@@ -65,7 +69,8 @@ export const makeNet = (
             })
           })
       )
-    })
+    }),
+    options
   )
 
 /**
@@ -73,7 +78,10 @@ export const makeNet = (
  * @category constructors
  */
 export const fromDuplex = <RO>(
-  open: Effect.Effect<Duplex, Socket.SocketError, RO>
+  open: Effect.Effect<Duplex, Socket.SocketError, RO>,
+  options?: {
+    readonly openTimeout?: Duration.DurationInput | undefined
+  }
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiberRuntime<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
@@ -96,7 +104,15 @@ export const fromDuplex = <RO>(
           })
         )
 
-        const conn = yield* Scope.extend(open, scope)
+        const conn = yield* Scope.extend(open, scope).pipe(
+          options?.openTimeout ?
+            Effect.timeoutFail({
+              duration: options.openTimeout,
+              onTimeout: () =>
+                new Socket.SocketGenericError({ reason: "Open", cause: new Error("Connection timed out") })
+            }) :
+            identity
+        )
         conn.on("end", onEnd)
         conn.on("error", onError)
         conn.on("close", onClose)
