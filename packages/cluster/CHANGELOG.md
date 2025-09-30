@@ -1,5 +1,15 @@
 # @effect/cluster
 
+## 0.50.2
+
+### Patch Changes
+
+- [#5590](https://github.com/Effect-TS/effect/pull/5590) [`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646) Thanks @tim-smart! - add openTimeout options to NodeSocket.makeNet
+
+- Updated dependencies [[`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646), [`f6987c0`](https://github.com/Effect-TS/effect/commit/f6987c04ebf1386dc37729dfea1631ce364a5a96)]:
+  - @effect/workflow@0.11.2
+  - @effect/platform@0.92.1
+
 ## 0.50.1
 
 ### Patch Changes

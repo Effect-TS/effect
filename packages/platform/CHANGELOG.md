@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.92.1
+
+### Patch Changes
+
+- [#5588](https://github.com/Effect-TS/effect/pull/5588) [`f6987c0`](https://github.com/Effect-TS/effect/commit/f6987c04ebf1386dc37729dfea1631ce364a5a96) Thanks @wmaurer! - add additional predicate typings for HttpMiddleware.cors allowOrigins
+
 ## 0.92.0
 
 ### Patch Changes
