@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.11.1
+
+### Patch Changes
+
+- [#5585](https://github.com/Effect-TS/effect/pull/5585) [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69) Thanks @tim-smart! - keep socket error listener attached in NodeSocket
+
+- Updated dependencies [[`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152)]:
+  - effect@3.18.1
+
 ## 0.11.0
 
 ### Patch Changes

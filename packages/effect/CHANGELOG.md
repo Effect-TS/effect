@@ -1,5 +1,11 @@
 # effect
 
+## 3.18.1
+
+### Patch Changes
+
+- [#5584](https://github.com/Effect-TS/effect/pull/5584) [`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152) Thanks @indietyp! - Enable `console.group` use in `Logger.prettyFormat` when using Bun
+
 ## 3.18.0
 
 ### Minor Changes
