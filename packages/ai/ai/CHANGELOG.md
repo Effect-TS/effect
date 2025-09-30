@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.29.1
+
+### Patch Changes
+
+- [#5587](https://github.com/Effect-TS/effect/pull/5587) [`d628c15`](https://github.com/Effect-TS/effect/commit/d628c1527898dc13176185d52e5ea9ee68fd3934) Thanks @IMax153! - Ensure response schema includes toolkit tools even when tool call resolution is disabled
+
 ## 0.29.0
 
 ### Minor Changes
