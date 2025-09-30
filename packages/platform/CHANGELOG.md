@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.92.0
+
+### Patch Changes
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`c60956e`](https://github.com/Effect-TS/effect/commit/c60956e18fe20841d39d0127c8c488af657ab936) Thanks @OliverJAsh! - Adjust `xForwardedHeaders` middleware to always use `x-forwarded-for`
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+
 ## 0.91.1
 
 ### Patch Changes
