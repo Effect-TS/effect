@@ -17,6 +17,9 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Stream from "effect/Stream"
+import { spawn } from "node:child_process"
+import * as readline from "node:readline"
+import * as nodePath from "node:path"
 
 const TEST_BASH_SCRIPTS_PATH = [__dirname, "fixtures", "bash"]
 
@@ -471,4 +474,52 @@ describe("Command", () => {
         expect(Array.sort(files, Order.string)).toEqual(Array.sort(lines, Order.string))
       }).pipe(Effect.scoped)
     ))
+
+  it("should clean up detached children when the parent receives SIGINT", async () => {
+    if (process.platform === "win32") {
+      return
+    }
+
+    const script = nodePath.join(__dirname, "fixtures", "sigint-wrapper.mjs")
+    const wrapper = spawn(process.execPath, [script], {
+      stdio: ["ignore", "pipe", "inherit"],
+      env: {
+        ...process.env,
+        REPRO_PORT: "61001",
+      },
+    })
+
+    wrapper.stdout.setEncoding("utf8")
+    const rl = readline.createInterface({ input: wrapper.stdout })
+
+    let childPid: number | undefined
+    for await (const line of rl) {
+      if (line.startsWith("child:")) {
+        childPid = Number(line.slice("child:".length))
+        break
+      }
+    }
+
+    rl.close()
+
+    expect(childPid).toBeDefined()
+
+    wrapper.kill("SIGINT")
+
+    await new Promise<void>((resolve) => {
+      wrapper.once("exit", () => resolve())
+    })
+
+    const check = () => process.kill(childPid!, 0)
+
+    try {
+      expect(check).toThrow()
+    } finally {
+      if (childPid !== undefined) {
+        try {
+          process.kill(childPid, "SIGTERM")
+        } catch {}
+      }
+    }
+  })
 })
