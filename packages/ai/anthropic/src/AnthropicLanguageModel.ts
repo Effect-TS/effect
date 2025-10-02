@@ -14,6 +14,7 @@ import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -627,20 +628,20 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 
               case "tool-call": {
                 if (part.providerExecuted) {
-                  if (part.name === "AnthropicWebSearch") {
-                    content.push({
-                      type: "server_tool_use",
-                      id: part.id,
-                      name: "web_search",
-                      input: part.params as any,
-                      cache_control: cacheControl
-                    })
-                  }
                   if (part.name === "AnthropicCodeExecution") {
                     content.push({
                       type: "server_tool_use",
                       id: part.id,
                       name: "code_execution",
+                      input: part.params as any,
+                      cache_control: cacheControl
+                    })
+                  }
+                  if (part.name === "AnthropicWebSearch") {
+                    content.push({
+                      type: "server_tool_use",
+                      id: part.id,
+                      name: "web_search",
                       input: part.params as any,
                       cache_control: cacheControl
                     })
@@ -655,6 +656,34 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                   })
                 }
                 break
+              }
+
+              case "tool-result": {
+                if (part.name === "AnthropicCodeExecution") {
+                  if (Either.isEither(part.result) && Either.isRight(part.result)) {
+                    content.push({
+                      type: "code_execution_tool_result",
+                      tool_use_id: part.id,
+                      content: part.result.right as any,
+                      cache_control: cacheControl
+                    })
+                  }
+                } else if (part.name === "AnthropicWebSearch") {
+                  if (Either.isEither(part.result) && Either.isRight(part.result)) {
+                    content.push({
+                      type: "web_search_tool_result",
+                      tool_use_id: part.id,
+                      content: part.result.right as any,
+                      cache_control: cacheControl
+                    })
+                  }
+                } else {
+                  return new AiError.MalformedInput({
+                    module: "AnthropicLanguageModel",
+                    method: "prepareMessages",
+                    description: `Provider executed tool result for tool ${part.name} is not supported in prompt`
+                  })
+                }
               }
             }
           }
