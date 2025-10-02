@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.19.1
+
+### Patch Changes
+
+- [#5599](https://github.com/Effect-TS/effect/pull/5599) [`d7eba97`](https://github.com/Effect-TS/effect/commit/d7eba977288f0a97a1dac5cadb1f16253220b82a) Thanks @IMax153! - Fix provider defined tool results in prompt input
+
 ## 0.19.0
 
 ### Patch Changes
