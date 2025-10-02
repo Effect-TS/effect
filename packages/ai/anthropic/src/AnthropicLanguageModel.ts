@@ -678,7 +678,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                     })
                   }
                 } else {
-                  return new AiError.MalformedInput({
+                  return yield* new AiError.MalformedInput({
                     module: "AnthropicLanguageModel",
                     method: "prepareMessages",
                     description: `Provider executed tool result for tool ${part.name} is not supported in prompt`
