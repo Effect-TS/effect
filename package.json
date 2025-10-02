@@ -91,10 +91,7 @@
       "workerd"
     ],
     "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "better-sqlite3",
-      "sharp",
-      "unrs-resolver"
+      "better-sqlite3"
     ]
   }
 }
