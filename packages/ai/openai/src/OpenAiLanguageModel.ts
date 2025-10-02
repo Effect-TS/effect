@@ -425,9 +425,7 @@ const prepareMessages: (
                   const imageUrl = `data:${mediaType};base64,${base64}`
                   content.push({ type: "input_image", image_url: imageUrl, detail })
                 }
-              }
-
-              if (part.mediaType === "application/pdf") {
+              } else if (part.mediaType === "application/pdf") {
                 if (typeof part.data === "string" && isFileId(part.data, config)) {
                   content.push({ type: "input_file", file_id: part.data })
                 }
@@ -442,13 +440,13 @@ const prepareMessages: (
                   const fileData = `data:application/pdf;base64,${base64}`
                   content.push({ type: "input_file", filename: fileName, file_data: fileData })
                 }
+              } else {
+                return yield* new AiError.MalformedInput({
+                  module: "OpenAiLanguageModel",
+                  method: "prepareMessages",
+                  description: `Detected unsupported media type for file: '${part.mediaType}'`
+                })
               }
-
-              return yield* new AiError.MalformedInput({
-                module: "OpenAiLanguageModel",
-                method: "prepareMessages",
-                description: `Detected unsupported media type for file: '${part.mediaType}'`
-              })
             }
           }
         }
