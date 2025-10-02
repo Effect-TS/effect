@@ -94,9 +94,12 @@ export const fromDuplex = <RO>(
         const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
           Scope.extend(scope)
         )
+        // eslint-disable-next-line prefer-const
+        let conn: Duplex | undefined
         yield* Scope.addFinalizer(
           scope,
           Effect.sync(() => {
+            if (!conn) return
             conn.off("data", onData)
             conn.off("end", onEnd)
             conn.off("error", onError)
@@ -104,7 +107,7 @@ export const fromDuplex = <RO>(
           })
         )
 
-        const conn = yield* Scope.extend(open, scope).pipe(
+        conn = yield* Scope.extend(open, scope).pipe(
           options?.openTimeout ?
             Effect.timeoutFail({
               duration: options.openTimeout,
