@@ -487,7 +487,7 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   uid: Option.fromNullable(stat.uid),
   gid: Option.fromNullable(stat.gid),
   size: FileSystem.Size(stat.size),
-  blksize: Option.fromNullable(FileSystem.Size(stat.blksize)),
+  blksize: Option.map(Option.fromNullable(stat.blksize), FileSystem.Size),
   blocks: Option.fromNullable(stat.blocks)
 })
 const stat = (() => {
