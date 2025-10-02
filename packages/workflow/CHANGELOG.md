@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.11.3
+
+### Patch Changes
+
+- [#5602](https://github.com/Effect-TS/effect/pull/5602) [`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf) Thanks @tim-smart! - guard against race conditions in NodeSocketServer
+
 ## 0.11.2
 
 ### Patch Changes
