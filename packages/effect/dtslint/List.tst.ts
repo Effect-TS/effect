@@ -14,10 +14,10 @@ describe("List", () => {
     if (List.every(numberOrString, Predicate.isString)) {
       expect(numberOrString).type.toBe<List.List<string>>()
     }
-    // TODO
-    // if (pipe(numberOrString, List.every(Predicate.isString))) {
-    //   expect(numberOrString).type.toBe<List.List<string>>()
-    // }
+    if (pipe(numberOrString, List.every(Predicate.isString))) {
+      // @tstyche fixme -- This doesn't work but it should
+      expect(numberOrString).type.toBe<List.List<string>>()
+    }
     if (List.every(Predicate.isString)(numberOrString)) {
       expect(numberOrString).type.toBe<List.List<string>>()
     }
@@ -41,10 +41,10 @@ describe("List", () => {
     if (List.some(numberOrString, Predicate.isString)) {
       expect(numberOrString).type.toBe<List.Cons<string | number>>()
     }
-    // TODO
-    // if (pipe(numberOrString, List.some(Predicate.isString))) {
-    //   expect(numberOrString).type.toBe<List.Cons<string | number>>()
-    // }
+    if (pipe(numberOrString, List.some(Predicate.isString))) {
+      // @tstyche fixme -- This doesn't work but it should
+      expect(numberOrString).type.toBe<List.Cons<string | number>>()
+    }
     if (List.some(Predicate.isString)(numberOrString)) {
       expect(numberOrString).type.toBe<List.Cons<string | number>>()
     }
