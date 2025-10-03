@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.32.1
+
+### Patch Changes
+
+- [#5601](https://github.com/Effect-TS/effect/pull/5601) [`8048b44`](https://github.com/Effect-TS/effect/commit/8048b443170f0a24873dc1f1043e8ab9ee111435) Thanks @janglad! - Fix FilePart validation always returning an MalformedInput error
+
 ## 0.32.0
 
 ### Patch Changes
