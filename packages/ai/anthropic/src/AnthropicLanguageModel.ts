@@ -14,7 +14,6 @@ import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Encoding from "effect/Encoding"
 import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -327,6 +326,7 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const { betas: messageBetas, messages, system } = yield* prepareMessages(providerOptions)
+      console.dir({ messages }, { depth: null, colors: true })
       const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(providerOptions, config)
       const responseFormat = providerOptions.responseFormat
       const request: typeof Generated.BetaCreateMessageParams.Encoded = {
@@ -660,7 +660,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 
               case "tool-result": {
                 if (part.name === "AnthropicCodeExecution") {
-                  if (Either.isEither(part.result) && Either.isRight(part.result)) {
+                  if (Predicate.hasProperty(part.result, "right")) {
                     content.push({
                       type: "code_execution_tool_result",
                       tool_use_id: part.id,
@@ -669,7 +669,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                     })
                   }
                 } else if (part.name === "AnthropicWebSearch") {
-                  if (Either.isEither(part.result) && Either.isRight(part.result)) {
+                  if (Predicate.hasProperty(part.result, "right")) {
                     content.push({
                       type: "web_search_tool_result",
                       tool_use_id: part.id,
