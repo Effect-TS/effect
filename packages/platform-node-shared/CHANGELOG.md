@@ -1,5 +1,11 @@
 # @effect/platform-node-shared
 
+## 0.51.4
+
+### Patch Changes
+
+- [#5595](https://github.com/Effect-TS/effect/pull/5595) [`12c3ce1`](https://github.com/Effect-TS/effect/commit/12c3ce129f5092778be224fc129f4b84d319f2f9) Thanks @code-alexander! - Fixing stat error when `blksize` is undefined.
+
 ## 0.51.3
 
 ### Patch Changes
