@@ -1,5 +1,11 @@
 # effect
 
+## 3.18.2
+
+### Patch Changes
+
+- [#5598](https://github.com/Effect-TS/effect/pull/5598) [`8ba4757`](https://github.com/Effect-TS/effect/commit/8ba47576c75b8b91be4bf9c1dae13995b37018af) Thanks @cyberixae! - Fix Array Do documentation
+
 ## 3.18.1
 
 ### Patch Changes

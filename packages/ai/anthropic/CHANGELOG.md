@@ -1,5 +1,14 @@
 # @effect/ai-anthropic
 
+## 0.19.2
+
+### Patch Changes
+
+- [#5608](https://github.com/Effect-TS/effect/pull/5608) [`215ed46`](https://github.com/Effect-TS/effect/commit/215ed4642b0c991d47e86fabb62f2118bf5f0231) Thanks @IMax153! - Fix incorrect detection of either result
+
+- Updated dependencies [[`8ba4757`](https://github.com/Effect-TS/effect/commit/8ba47576c75b8b91be4bf9c1dae13995b37018af)]:
+  - effect@3.18.2
+
 ## 0.19.1
 
 ### Patch Changes
