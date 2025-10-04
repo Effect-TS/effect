@@ -27,6 +27,41 @@ export const TypeId: unique symbol = Symbol.for("@effect/workflow/Workflow")
 
 /**
  * @since 1.0.0
+ */
+export declare namespace Workflow {
+  /**
+   * Extracts the type of the Payload of a `Workflow`.
+   *
+   * @since 1.0.0
+   * @category Type-level Utils
+   */
+  export type Payload<W extends Workflow<any, any, any, any>> = W extends Workflow<any, infer Payload, any, any>
+    ? Payload["Type"]
+    : never
+
+  /**
+   * Extracts the type of the Success of a `Workflow`.
+   *
+   * @since 1.0.0
+   * @category Type-level Utils
+   */
+  export type Success<W extends Workflow<any, any, any, any>> = W extends Workflow<any, any, infer Success, any>
+    ? Success["Type"]
+    : never
+
+  /**
+   * Extracts the type of the Error of a `Workflow`.
+   *
+   * @since 1.0.0
+   * @category Type-level Utils
+   */
+  export type Error<W extends Workflow<any, any, any, any>> = W extends Workflow<any, any, any, infer Error>
+    ? Error["Type"]
+    : never
+}
+
+/**
+ * @since 1.0.0
  * @category Symbols
  */
 export type TypeId = typeof TypeId
