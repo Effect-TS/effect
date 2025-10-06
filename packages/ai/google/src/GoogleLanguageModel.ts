@@ -191,7 +191,9 @@ export const make = Effect.fnUntraced(function*(options: {
       const responseFormat = providerOptions.responseFormat
       const responseMimeType = responseFormat.type === "json" ? "application/json" : undefined
       const responseSchema = responseFormat.type === "json"
-        ? InternalUtilities.jsonSchemaToOpenApiSchema(Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast))
+        ? InternalUtilities.jsonSchemaToOpenApiSchema(
+          InternalUtilities.resolveRefs(Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast))
+        )
         : undefined
       const request: typeof Generated.GenerateContentRequest.Encoded = {
         ...config,

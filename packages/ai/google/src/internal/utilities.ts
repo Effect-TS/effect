@@ -1,4 +1,5 @@
 import type * as Response from "@effect/ai/Response"
+import { Record } from "effect"
 import type {
   JsonSchema7,
   JsonSchema7AnyOf,
@@ -7,6 +8,7 @@ import type {
   JsonSchema7Integer,
   JsonSchema7Number,
   JsonSchema7Object,
+  JsonSchema7Root,
   JsonSchema7String,
   JsonSchemaAnnotations
 } from "effect/JSONSchema"
@@ -50,6 +52,86 @@ export const resolveFinishReason = (
   }
   const reason = finishReasonMap[finishReason]
   return Predicate.isUndefined(reason) ? "unknown" : reason
+}
+
+/** @internal */
+export function resolveRefs(
+  schema: JsonSchema7Root
+): JsonSchema7Root {
+  return _resolveRefs(schema, schema.$defs ?? {}, 0)
+}
+
+/** @internal */
+function _resolveRefs(
+  schema: JsonSchema7,
+  defs: Record<string, JsonSchema7>,
+  depth: number
+): JsonSchema7 {
+  // Arbitrary depth but probably more than most people will need
+  if (depth > 20) {
+    throw new Error(`Maximum depth exceeded when resolving JSON schema $refs - recursive Schemas are not supported`)
+  }
+  function lookupDef(
+    $ref: string,
+    defs: Record<string, JsonSchema7>
+  ): JsonSchema7 {
+    const path = $ref.split("/").slice(2)
+    if (path.length !== 1) {
+      throw new Error(`Unsupported nested $ref: ${$ref}`)
+    }
+    return defs[path[0]]
+  }
+  if ("$ref" in schema) {
+    const { $ref, ...rest } = schema
+    const replacement = _resolveRefs(lookupDef($ref, defs), defs, depth + 1)
+    return {
+      ...rest,
+      ...replacement
+    }
+  }
+  if ("type" in schema) {
+    switch (schema.type) {
+      case "object": {
+        return {
+          ...schema,
+          properties: Record.map(schema.properties, (s) => _resolveRefs(s, defs, depth + 1))
+        }
+      }
+      case "array": {
+        if (!schema.items) {
+          return schema
+        }
+        return {
+          ...schema,
+          items: Array.isArray(schema.items)
+            ? schema.items.map((i) => _resolveRefs(i, defs, depth + 1))
+            : _resolveRefs(schema.items, defs, depth + 1)
+        } satisfies JsonSchema7Array
+      }
+      case "string":
+      case "number":
+      case "boolean":
+      case "null":
+      case "integer":
+        return schema
+    }
+  }
+  if ("$id" in schema) {
+    return schema
+  }
+
+  if ("$comment" in schema) {
+    return schema
+  }
+
+  if ("anyOf" in schema) {
+    return {
+      ...schema,
+      anyOf: schema.anyOf.map((s) => _resolveRefs(s, defs))
+    }
+  }
+  // satisfies ensures we aren't missing any cases
+  return schema satisfies JsonSchema7Enum
 }
 
 /** @internal */
