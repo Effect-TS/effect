@@ -53,30 +53,10 @@ const NoHandlerRequired = Tool.providerDefined({
   })
 })
 
-const HandlerRequiredError = Tool.providerDefined({
-  id: "provider.handler-required-error",
-  toolkitName: "HandlerRequiredError",
-  providerName: "handler_required_error",
-  requiresHandler: true,
-  args: {
-    testArg: Schema.String
-  },
-  parameters: {
-    testParam: Schema.String
-  },
-  success: Schema.Struct({
-    testSuccess: Schema.String
-  }),
-  failure: Schema.Struct({
-    testFailure: Schema.String
-  })
-})
-
-const HandlerRequiredReturn = Tool.providerDefined({
-  id: "provider.handler-required-return",
-  toolkitName: "HandlerRequiredReturn",
-  providerName: "handler_required_return",
-  failureMode: "return",
+const HandlerRequired = Tool.providerDefined({
+  id: "provider.handler-required",
+  toolkitName: "HandlerRequired",
+  providerName: "handler_required",
   requiresHandler: true,
   args: {
     testArg: Schema.String
@@ -336,7 +316,7 @@ describe("Tool", () => {
 
     it.effect("should return tool call handler success as a Right", () =>
       Effect.gen(function*() {
-        const tool = HandlerRequiredReturn({
+        const tool = HandlerRequired({
           testArg: "test-arg"
         })
 
@@ -345,7 +325,7 @@ describe("Tool", () => {
 
         const toolkit = Toolkit.make(tool)
         const handlers = toolkit.toLayer({
-          HandlerRequiredReturn: () => Effect.succeed(toolResult)
+          HandlerRequired: () => Effect.succeed(toolResult)
         })
 
         const response = yield* LanguageModel.generateText({
@@ -383,7 +363,8 @@ describe("Tool", () => {
 
     it.effect("should return tool call handler failure as a Left", () =>
       Effect.gen(function*() {
-        const tool = HandlerRequiredReturn({
+        const tool = HandlerRequired({
+          failureMode: "return",
           testArg: "test-arg"
         })
 
@@ -392,7 +373,7 @@ describe("Tool", () => {
 
         const toolkit = Toolkit.make(tool)
         const handlers = toolkit.toLayer({
-          HandlerRequiredReturn: () => Effect.fail(toolResult)
+          HandlerRequired: () => Effect.fail(toolResult)
         })
 
         const response = yield* LanguageModel.generateText({
@@ -430,7 +411,7 @@ describe("Tool", () => {
 
     it.effect("should raise an error on tool call handler failure", () =>
       Effect.gen(function*() {
-        const tool = HandlerRequiredError({
+        const tool = HandlerRequired({
           testArg: "test-arg"
         })
 
@@ -439,7 +420,7 @@ describe("Tool", () => {
 
         const toolkit = Toolkit.make(tool)
         const handlers = toolkit.toLayer({
-          HandlerRequiredError: () => Effect.fail(toolResult)
+          HandlerRequired: () => Effect.fail(toolResult)
         })
 
         const response = yield* LanguageModel.generateText({
@@ -469,7 +450,8 @@ describe("Tool", () => {
 
     it.effect("should raise an error on invalid tool call parameters", () =>
       Effect.gen(function*() {
-        const tool = HandlerRequiredReturn({
+        const tool = HandlerRequired({
+          failureMode: "return",
           testArg: "test-arg"
         })
 
@@ -478,7 +460,7 @@ describe("Tool", () => {
 
         const toolkit = Toolkit.make(tool)
         const handlers = toolkit.toLayer({
-          HandlerRequiredReturn: () => Effect.succeed(toolResult)
+          HandlerRequired: () => Effect.succeed(toolResult)
         })
 
         const response = yield* LanguageModel.generateText({
@@ -506,7 +488,7 @@ describe("Tool", () => {
         assert.strictEqual(response._tag, "MalformedOutput")
         assert.strictEqual(
           response.description,
-          "Failed to decode tool call parameters for tool 'HandlerRequiredReturn' from:\n'{}'"
+          "Failed to decode tool call parameters for tool 'HandlerRequired' from:\n'{}'"
         )
       }))
   })

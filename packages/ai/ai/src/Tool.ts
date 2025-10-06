@@ -1080,7 +1080,6 @@ export const providerDefined = <
   Parameters extends Schema.Struct.Fields = {},
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Failure extends Schema.Schema.All = typeof Schema.Never,
-  Mode extends FailureMode | undefined = undefined,
   RequiresHandler extends boolean = false
 >(options: {
   /**
@@ -1115,20 +1114,24 @@ export const providerDefined = <
    * Schema for failed tool execution results.
    */
   readonly failure?: Failure | undefined
-  /**
-   * The strategy used for handling errors returned from tool call handler
-   * execution.
-   *
-   * If set to `"error"` (the default), errors that occur during tool call handler
-   * execution will be returned in the error channel of the calling effect.
-   *
-   * If set to `"return"`, errors that occur during tool call handler execution
-   * will be captured and returned as part of the tool call result.
-   */
-  readonly failureMode?: Mode
 }) =>
-(
-  args: Schema.Simplify<Schema.Struct.Encoded<Args>>
+<Mode extends FailureMode | undefined = undefined>(
+  args: RequiresHandler extends true ? Schema.Simplify<
+      Schema.Struct.Encoded<Args> & {
+        /**
+         * The strategy used for handling errors returned from tool call handler
+         * execution.
+         *
+         * If set to `"error"` (the default), errors that occur during tool call handler
+         * execution will be returned in the error channel of the calling effect.
+         *
+         * If set to `"return"`, errors that occur during tool call handler execution
+         * will be captured and returned as part of the tool call result.
+         */
+        readonly failureMode?: Mode
+      }
+    >
+    : Schema.Simplify<Schema.Struct.Encoded<Args>>
 ): ProviderDefined<
   Name,
   {
@@ -1140,6 +1143,7 @@ export const providerDefined = <
   },
   RequiresHandler
 > => {
+  const failureMode = "failureMode" in args ? args.failureMode : undefined
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
   const resultSchema = Schema.Either({
@@ -1159,7 +1163,7 @@ export const providerDefined = <
     successSchema,
     failureSchema,
     resultSchema,
-    failureMode: options?.failureMode ?? "error"
+    failureMode: failureMode ?? "error"
   }) as any
 }
 
