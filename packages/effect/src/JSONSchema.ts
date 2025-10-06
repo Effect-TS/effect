@@ -314,16 +314,17 @@ export const fromAST = (ast: AST.AST, options: {
   const definitionPath = options.definitionPath ?? "#/$defs/"
   const getRef = (id: string) => definitionPath + id
   const target = options.target ?? "jsonSchema7"
-  const handleIdentifier = options.topLevelReferenceStrategy !== "skip" ? "handle-identifier" : "ignore-identifier"
+  const topLevelReferenceStrategy = options.topLevelReferenceStrategy ?? "keep"
   const additionalPropertiesStrategy = options.additionalPropertiesStrategy ?? "strict"
   return go(
     ast,
     options.definitions,
-    handleIdentifier,
+    "handle-identifier",
     [],
     {
       getRef,
       target,
+      topLevelReferenceStrategy,
       additionalPropertiesStrategy
     },
     "handle-annotation",
@@ -509,6 +510,7 @@ const mergeRefinements = (from: any, jsonSchema: any, ast: AST.AST): any => {
 type GoOptions = {
   readonly getRef: (id: string) => string
   readonly target: Target
+  readonly topLevelReferenceStrategy: TopLevelReferenceStrategy
   readonly additionalPropertiesStrategy: AdditionalPropertiesStrategy
 }
 
@@ -571,7 +573,10 @@ function go(
   annotation: "handle-annotation" | "ignore-annotation",
   errors: "handle-errors" | "ignore-errors"
 ): JsonSchema7 {
-  if (identifier === "handle-identifier") {
+  if (
+    identifier === "handle-identifier" &&
+    (options.topLevelReferenceStrategy !== "skip" || AST.isSuspend(ast))
+  ) {
     const id = getIdentifierAnnotation(ast)
     if (id !== undefined) {
       const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")
