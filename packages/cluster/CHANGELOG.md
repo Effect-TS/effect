@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.50.4
+
+### Patch Changes
+
+- [#5618](https://github.com/Effect-TS/effect/pull/5618) [`d2140c1`](https://github.com/Effect-TS/effect/commit/d2140c1604a575186075e0907ecc05d9ab197c23) Thanks @tim-smart! - don't restart an entity during shutdown
+
 ## 0.50.3
 
 ### Patch Changes
