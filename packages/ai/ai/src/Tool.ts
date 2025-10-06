@@ -509,7 +509,7 @@ export interface Any extends Pipeable {
   readonly parametersSchema: AnyStructSchema
   readonly successSchema: Schema.Schema.Any
   readonly failureSchema: Schema.Schema.All
-  readonly resultSchema: Schema.Either<Schema.Schema.Any, Schema.Schema.All>
+  readonly resultSchema: Schema.Either<any, any>
   readonly failureMode: FailureMode
   readonly annotations: Context.Context<never>
 }

@@ -232,6 +232,20 @@ export const makePart = <const Type extends Part["type"]>(
     options: params.options ?? {}
   }) as any
 
+/**
+ * A utility type for specifying the parameters required to construct a
+ * specific part of a prompt.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type PartConstructorParams<P extends Part> = Omit<P, PartTypeId | "type" | "options"> & {
+  /**
+   * Optional provider-specific options for this part.
+   */
+  readonly options?: Part["options"] | undefined
+}
+
 // =============================================================================
 // Text Part
 // =============================================================================
@@ -297,6 +311,14 @@ export const TextPart: Schema.Schema<TextPart, TextPartEncoded> = Schema.Struct(
   Schema.annotations({ identifier: "TextPart" })
 )
 
+/**
+ * Constructs a new text part.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const textPart = (params: PartConstructorParams<TextPart>): TextPart => makePart("text", params)
+
 // =============================================================================
 // Reasoning Part
 // =============================================================================
@@ -359,6 +381,15 @@ export const ReasoningPart: Schema.Schema<ReasoningPart, ReasoningPartEncoded> =
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ReasoningPart" })
 )
+
+/**
+ * Constructs a new reasoning part.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const reasoningPart = (params: PartConstructorParams<ReasoningPart>): ReasoningPart =>
+  makePart("reasoning", params)
 
 // =============================================================================
 // File Part
@@ -451,6 +482,14 @@ export const FilePart: Schema.Schema<FilePart, FilePartEncoded> = Schema.Struct(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "FilePart" })
 )
+
+/**
+ * Constructs a new file part.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const filePart = (params: PartConstructorParams<FilePart>): FilePart => makePart("file", params)
 
 // =============================================================================
 // Tool Call Part
@@ -545,6 +584,14 @@ export const ToolCallPart: Schema.Schema<ToolCallPart, ToolCallPartEncoded> = Sc
   Schema.annotations({ identifier: "ToolCallPart" })
 )
 
+/**
+ * Constructs a new tool call part.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolCallPart => makePart("tool-call", params)
+
 // =============================================================================
 // Tool Result Part
 // =============================================================================
@@ -560,9 +607,12 @@ export const ToolCallPart: Schema.Schema<ToolCallPart, ToolCallPartEncoded> = Sc
  *   id: "call_123",
  *   name: "get_weather",
  *   result: {
- *     temperature: 22,
- *     condition: "sunny",
- *     humidity: 65
+ *     _tag: "Right",
+ *     right: {
+ *       temperature: 22,
+ *       condition: "sunny",
+ *       humidity: 65
+ *     }
  *   }
  * })
  * ```
@@ -582,7 +632,7 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
   /**
    * The result returned by the tool execution.
    */
-  readonly result: unknown
+  readonly result: Schema.EitherEncoded<unknown, unknown>
 }
 
 /**
@@ -603,7 +653,7 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
   /**
    * The result returned by the tool execution.
    */
-  readonly result: unknown
+  readonly result: Schema.EitherEncoded<unknown, unknown>
 }
 
 /**
@@ -625,12 +675,24 @@ export const ToolResultPart: Schema.Schema<ToolResultPart, ToolResultPartEncoded
   type: Schema.Literal("tool-result"),
   id: Schema.String,
   name: Schema.String,
-  result: Schema.Unknown,
+  result: Schema.encodedSchema(Schema.Either({
+    left: Schema.Unknown,
+    right: Schema.Unknown
+  })),
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
   Schema.annotations({ identifier: "ToolResultPart" })
 )
+
+/**
+ * Constructs a new tool result part.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const toolResultPart = (params: PartConstructorParams<ToolResultPart>): ToolResultPart =>
+  makePart("tool-result", params)
 
 // =============================================================================
 // Base Message
@@ -732,6 +794,20 @@ export const makeMessage = <const Role extends Message["role"]>(
   }) as any
 
 /**
+ * A utility type for specifying the parameters required to construct a
+ * specific message for a prompt.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type MessageConstructorParams<M extends Message> = Omit<M, MessageTypeId | "role" | "options"> & {
+  /**
+   * Optional provider-specific options for this message.
+   */
+  readonly options?: Part["options"] | undefined
+}
+
+/**
  * Schema for decoding message content (i.e. an array containing a single
  * `TextPart`) from a string.
  *
@@ -810,6 +886,15 @@ export const SystemMessage: Schema.Schema<SystemMessage, SystemMessageEncoded> =
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "SystemMessage" })
 )
+
+/**
+ * Constructs a new system message.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const systemMessage = (params: MessageConstructorParams<SystemMessage>): SystemMessage =>
+  makeMessage("system", params)
 
 // =============================================================================
 // User Message
@@ -910,6 +995,14 @@ export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schem
   Schema.annotations({ identifier: "UserMessage" })
 )
 
+/**
+ * Constructs a new user message.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const userMessage = (params: MessageConstructorParams<UserMessage>): UserMessage => makeMessage("user", params)
+
 // =============================================================================
 // Assistant Message
 // =============================================================================
@@ -935,7 +1028,10 @@ export const UserMessage: Schema.Schema<UserMessage, UserMessageEncoded> = Schem
  *     Prompt.makePart("tool-result", {
  *       id: "call_123",
  *       name: "get_weather",
- *       result: { temperature: 72, condition: "sunny" }
+ *       result: {
+ *         _tag: "Right",
+ *         right: { temperature: 72, condition: "sunny" }
+ *       }
  *     }),
  *     Prompt.makePart("text", {
  *       text: "The weather in San Francisco is currently 72°F and sunny."
@@ -1017,6 +1113,15 @@ export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageE
   Schema.annotations({ identifier: "AssistantMessage" })
 )
 
+/**
+ * Constructs a new assistant message.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const assistantMessage = (params: MessageConstructorParams<AssistantMessage>): AssistantMessage =>
+  makeMessage("assistant", params)
+
 // =============================================================================
 // Tool Message
 // =============================================================================
@@ -1034,11 +1139,14 @@ export const AssistantMessage: Schema.Schema<AssistantMessage, AssistantMessageE
  *       id: "call_123",
  *       name: "search_web",
  *       result: {
- *         query: "TypeScript best practices",
- *         results: [
- *           { title: "TypeScript Handbook", url: "https://..." },
- *           { title: "Effective TypeScript", url: "https://..." }
- *         ]
+ *         _tag: "Right",
+ *         right: {
+ *           query: "TypeScript best practices",
+ *           results: [
+ *             { title: "TypeScript Handbook", url: "https://..." },
+ *             { title: "Effective TypeScript", url: "https://..." }
+ *           ]
+ *         }
  *       }
  *     })
  *   ]
@@ -1107,6 +1215,14 @@ export const ToolMessage: Schema.Schema<ToolMessage, ToolMessageEncoded> = Schem
   Schema.attachPropertySignature(MessageTypeId, MessageTypeId),
   Schema.annotations({ identifier: "ToolMessage" })
 )
+
+/**
+ * Constructs a new tool message.
+ *
+ * @since 1.0.0
+ * @category Constructors
+ */
+export const toolMessage = (params: MessageConstructorParams<ToolMessage>): ToolMessage => makeMessage("tool", params)
 
 // =============================================================================
 // Message
@@ -1253,13 +1369,6 @@ const encodePrompt = (input: Prompt, ast: AST.AST) =>
     onFailure: () => new ParseResult.Type(ast, input, `Failed to encode Prompt`),
     onSuccess: (messages) => ({ content: messages })
   })
-
-// export const Prompt: Schema.Schema<Prompt, PromptEncoded> = Schema.Struct({
-//   content: Schema.Array(Message)
-// }).pipe(
-//   Schema.attachPropertySignature(TypeId, TypeId),
-//   Schema.annotations({ identifier: "Prompt" })
-// )
 
 /**
  * Schema for parsing a Prompt from JSON strings.
@@ -1439,6 +1548,7 @@ const isValidPart = (part: Response.AnyPart): part is ValidResponsePart => {
  *
  * @example
  * ```ts
+ * import { Either } from "effect"
  * import { Prompt, Response } from "@effect/ai"
  *
  * const responseParts: ReadonlyArray<Response.AnyPart> = [
@@ -1454,8 +1564,8 @@ const isValidPart = (part: Response.AnyPart): part is ValidResponsePart => {
  *   Response.makePart("tool-result", {
  *     id: "call_1",
  *     name: "get_time",
- *     result: "10:30 AM",
- *     encodedResult: "10:30 AM",
+ *     result: Either.right("10:30 AM"),
+ *     encodedResult: { _tag: "Right", right: "10:30 AM" },
  *     providerExecuted: false
  *   })
  * ]
