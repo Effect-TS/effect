@@ -326,7 +326,6 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const { betas: messageBetas, messages, system } = yield* prepareMessages(providerOptions)
-      console.dir({ messages }, { depth: null, colors: true })
       const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(providerOptions, config)
       const responseFormat = providerOptions.responseFormat
       const request: typeof Generated.BetaCreateMessageParams.Encoded = {
@@ -557,11 +556,26 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 
             // TODO: advanced tool result content parts
             case "tool": {
-              for (const part of message.content) {
+              for (let j = 0; j < message.content.length; j++) {
+                const part = message.content[j]
+                const isLastPart = j === message.content.length - 1
+
+                // Attempt to get the cache control from the part first. If
+                // the part does not have cache control defined and we are
+                // evaluating the last part for this message, also check the
+                // message for cache control.
+                const cacheControl = getCacheControl(part) ?? (
+                  isLastPart ? getCacheControl(message) : undefined
+                )
+
+                const result = part.result._tag === "Right" ? part.result.right : part.result.left
+                const isError = part.result._tag === "Left"
                 content.push({
                   type: "tool_result",
                   tool_use_id: part.id,
-                  content: JSON.stringify(part.result)
+                  content: JSON.stringify(result),
+                  is_error: isError,
+                  cache_control: cacheControl
                 })
               }
 
@@ -659,24 +673,23 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
               }
 
               case "tool-result": {
+                const result = part.result._tag === "Right"
+                  ? part.result.right
+                  : part.result.left
                 if (part.name === "AnthropicCodeExecution") {
-                  if (Predicate.hasProperty(part.result, "right")) {
-                    content.push({
-                      type: "code_execution_tool_result",
-                      tool_use_id: part.id,
-                      content: part.result.right as any,
-                      cache_control: cacheControl
-                    })
-                  }
+                  content.push({
+                    type: "code_execution_tool_result",
+                    tool_use_id: part.id,
+                    content: result as any,
+                    cache_control: cacheControl
+                  })
                 } else if (part.name === "AnthropicWebSearch") {
-                  if (Predicate.hasProperty(part.result, "right")) {
-                    content.push({
-                      type: "web_search_tool_result",
-                      tool_use_id: part.id,
-                      content: part.result.right as any,
-                      cache_control: cacheControl
-                    })
-                  }
+                  content.push({
+                    type: "web_search_tool_result",
+                    tool_use_id: part.id,
+                    content: result as any,
+                    cache_control: cacheControl
+                  })
                 } else {
                   return yield* new AiError.MalformedInput({
                     module: "AnthropicLanguageModel",
@@ -812,31 +825,63 @@ const makeResponse: (
           break
         }
 
-        case "code_execution_tool_result":
-        case "bash_code_execution_tool_result":
-        case "text_editor_code_execution_tool_result": {
+        case "bash_code_execution_tool_result": {
+          const result = part.content.type === "bash_code_execution_result"
+            ? { _tag: "Right", right: part.content } as const
+            : { _tag: "Left", left: part.content } as const
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
             name: "AnthropicCodeExecution",
-            result: part.content,
+            result,
             providerName: "code_execution",
             providerExecuted: true
           })
+          break
+        }
 
+        case "code_execution_tool_result": {
+          const result = part.content.type === "code_execution_result"
+            ? { _tag: "Right", right: part.content } as const
+            : { _tag: "Left", left: part.content } as const
+          parts.push({
+            type: "tool-result",
+            id: part.tool_use_id,
+            name: "AnthropicCodeExecution",
+            result,
+            providerName: "code_execution",
+            providerExecuted: true
+          })
+          break
+        }
+
+        case "text_editor_code_execution_tool_result": {
+          const result = part.content.type === "text_editor_code_execution_tool_result_error"
+            ? { _tag: "Left", left: part.content } as const
+            : { _tag: "Right", right: part.content } as const
+          parts.push({
+            type: "tool-result",
+            id: part.tool_use_id,
+            name: "AnthropicCodeExecution",
+            result,
+            providerName: "code_execution",
+            providerExecuted: true
+          })
           break
         }
 
         case "web_search_tool_result": {
+          const result = Array.isArray(part.content)
+            ? { _tag: "Right", right: part.content } as const
+            : { _tag: "Left", left: part.content } as const
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
             name: "AnthropicWebSearch",
-            result: part.content,
+            result,
             providerName: "web_search",
             providerExecuted: true
           })
-
           break
         }
       }
@@ -1072,31 +1117,71 @@ const makeStreamResponse: (
                 break
               }
 
-              case "code_execution_tool_result":
-              case "bash_code_execution_tool_result":
-              case "text_editor_code_execution_tool_result": {
+              case "bash_code_execution_tool_result": {
+                const toolUseId = event.content_block.tool_use_id
+                const content = event.content_block.content
+                const result = content.type === "bash_code_execution_result"
+                  ? { _tag: "Right", right: content } as const
+                  : { _tag: "Left", left: content } as const
                 parts.push({
                   type: "tool-result",
-                  id: event.content_block.tool_use_id,
+                  id: toolUseId,
                   name: "AnthropicCodeExecution",
-                  result: event.content_block.content,
+                  result,
                   providerName: "code_execution",
                   providerExecuted: true
                 })
+                break
+              }
 
+              case "code_execution_tool_result": {
+                const toolUseId = event.content_block.tool_use_id
+                const content = event.content_block.content
+                const result = content.type === "code_execution_result"
+                  ? { _tag: "Right", right: content } as const
+                  : { _tag: "Left", left: content } as const
+                parts.push({
+                  type: "tool-result",
+                  id: toolUseId,
+                  name: "AnthropicCodeExecution",
+                  result,
+                  providerName: "code_execution",
+                  providerExecuted: true
+                })
+                break
+              }
+
+              case "text_editor_code_execution_tool_result": {
+                const toolUseId = event.content_block.tool_use_id
+                const content = event.content_block.content
+                const result = content.type === "text_editor_code_execution_tool_result_error"
+                  ? { _tag: "Left", left: content } as const
+                  : { _tag: "Right", right: content } as const
+                parts.push({
+                  type: "tool-result",
+                  id: toolUseId,
+                  name: "AnthropicCodeExecution",
+                  result,
+                  providerName: "code_execution",
+                  providerExecuted: true
+                })
                 break
               }
 
               case "web_search_tool_result": {
+                const toolUseId = event.content_block.tool_use_id
+                const content = event.content_block.content
+                const result = Array.isArray(content)
+                  ? { _tag: "Right", right: content } as const
+                  : { _tag: "Left", left: content } as const
                 parts.push({
                   type: "tool-result",
-                  id: event.content_block.tool_use_id,
+                  id: toolUseId,
                   name: "AnthropicWebSearch",
-                  result: event.content_block.content,
+                  result,
                   providerName: "web_search",
                   providerExecuted: true
                 })
-
                 break
               }
             }

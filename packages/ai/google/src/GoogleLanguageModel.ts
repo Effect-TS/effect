@@ -386,10 +386,14 @@ const prepareMessages: (
           const parts: Array<typeof Generated.Part.Encoded> = []
 
           for (const part of message.content) {
+            const result = part.result._tag === "Right"
+              ? part.result.right
+              : part.result.left
             parts.push({
               functionResponse: {
+                id: part.id,
                 name: part.name,
-                response: part.result as any
+                response: result as any
               }
             })
           }
@@ -519,7 +523,7 @@ const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effe
           type: "tool-result",
           id: lastCodeExecutionToolCallId,
           name: "GoogleCodeExecution",
-          result: part.codeExecutionResult,
+          result: { _tag: "Right", right: part.codeExecutionResult },
           providerName: "code_execution",
           providerExecuted: true
         })
@@ -673,7 +677,7 @@ const makeStreamResponse: (
               type: "tool-result",
               id: lastCodeExecutionToolCallId,
               name: "GoogleCodeExecution",
-              result: part.codeExecutionResult,
+              result: { _tag: "Right", right: part.codeExecutionResult },
               providerName: "code_execution",
               providerExecuted: true
             })
