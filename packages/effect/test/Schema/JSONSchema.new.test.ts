@@ -119,23 +119,110 @@ describe("JSONSchema", () => {
     })
 
     describe("topLevelReferenceStrategy", () => {
-      it(`"skip"`, () => {
-        const schema = Schema.String.annotations({ identifier: "1b205579-f159-48d4-a218-f09426bca040" })
-        const definitions = {}
-        const jsonSchema = JSONSchema.fromAST(schema.ast, {
-          definitions,
-          topLevelReferenceStrategy: "skip"
+      describe(`"skip"`, () => {
+        it("top level identifier", () => {
+          const schema = Schema.String.annotations({ identifier: "1b205579-f159-48d4-a218-f09426bca040" })
+          const definitions = {}
+          const jsonSchema = JSONSchema.fromAST(schema.ast, {
+            definitions,
+            topLevelReferenceStrategy: "skip"
+          })
+          deepStrictEqual(jsonSchema, {
+            "type": "string"
+          })
+          deepStrictEqual(definitions, {})
         })
-        deepStrictEqual(jsonSchema, {
-          "type": "string"
+
+        it("nested identifiers", () => {
+          class A extends Schema.Class<A>("A")({ a: Schema.String.annotations({ identifier: "ID4" }) }) {}
+          const schema = Schema.Struct({
+            a: Schema.String.annotations({ identifier: "ID" }),
+            b: Schema.Date,
+            c: Schema.Struct({
+              d: Schema.String.annotations({ identifier: "ID3" })
+            }).annotations({ identifier: "ID2" }),
+            e: A
+          })
+          const definitions = {}
+          const jsonSchema = JSONSchema.fromAST(schema.ast, {
+            definitions,
+            topLevelReferenceStrategy: "skip"
+          })
+          deepStrictEqual(jsonSchema, {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "string",
+                "description": "a string to be decoded into a Date"
+              },
+              "c": {
+                "type": "object",
+                "properties": {
+                  "d": { "type": "string" }
+                },
+                "required": ["d"],
+                "additionalProperties": false
+              },
+              "e": {
+                "type": "object",
+                "properties": {
+                  "a": { "type": "string" }
+                },
+                "required": ["a"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["a", "b", "c", "e"],
+            "additionalProperties": false
+          })
+          deepStrictEqual(definitions, {})
         })
-        deepStrictEqual(definitions, {})
+
+        it("suspended schema", () => {
+          interface A {
+            readonly a: string
+            readonly as: ReadonlyArray<A>
+          }
+          const schema: Schema.Schema<A> = Schema.suspend(() =>
+            Schema.Struct({
+              a: Schema.String.annotations({ identifier: "ID2" }),
+              as: Schema.Array(schema)
+            })
+          ).annotations({ identifier: "ID" })
+          const definitions = {}
+          const jsonSchema = JSONSchema.fromAST(schema.ast, {
+            definitions,
+            topLevelReferenceStrategy: "skip"
+          })
+          deepStrictEqual(jsonSchema, {
+            "$ref": "#/$defs/ID"
+          })
+          deepStrictEqual(definitions, {
+            "ID": {
+              "type": "object",
+              "properties": {
+                "a": { "type": "string" },
+                "as": { "type": "array", "items": { "$ref": "#/$defs/ID" } }
+              },
+              "required": ["a", "as"],
+              "additionalProperties": false
+            }
+          })
+        })
       })
     })
 
     describe("additionalPropertiesStrategy", () => {
       it(`"allow"`, () => {
-        const schema = Schema.Struct({ a: Schema.String })
+        const schema = Schema.Struct({
+          a: Schema.String,
+          b: Schema.Struct({
+            c: Schema.String
+          })
+        })
         const definitions = {}
         const jsonSchema = JSONSchema.fromAST(schema.ast, {
           definitions,
@@ -146,9 +233,17 @@ describe("JSONSchema", () => {
           "properties": {
             "a": {
               "type": "string"
+            },
+            "b": {
+              "type": "object",
+              "properties": {
+                "c": { "type": "string" }
+              },
+              "required": ["c"],
+              "additionalProperties": true
             }
           },
-          "required": ["a"],
+          "required": ["a", "b"],
           "additionalProperties": true
         })
         deepStrictEqual(definitions, {})
