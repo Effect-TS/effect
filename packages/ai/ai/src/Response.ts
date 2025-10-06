@@ -26,11 +26,12 @@
  *
  * @since 1.0.0
  */
-import { ParseResult } from "effect"
 import type * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
+import type * as Either from "effect/Either"
 import { constFalse } from "effect/Function"
 import type * as Option from "effect/Option"
+import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type * as Tool from "./Tool.js"
@@ -85,7 +86,7 @@ export type AnyPart =
   | ToolParamsDeltaPart
   | ToolParamsEndPart
   | ToolCallPart<any, any>
-  | ToolResultPart<any, any>
+  | ToolResultPart<any, any, any>
   | FilePart
   | DocumentSourcePart
   | UrlSourcePart
@@ -202,10 +203,10 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   toolkit: T
 ): Schema.Schema<AllParts<Toolkit.Tools<T>>, AllPartsEncoded> => {
   const toolCalls: Array<Schema.Schema<ToolCallPart<string, any>, ToolCallPartEncoded>> = []
-  const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any>, ToolResultPartEncoded>> = []
+  const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any, any>, ToolResultPartEncoded>> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     toolCalls.push(ToolCallPart(tool.name, tool.parametersSchema as any))
-    toolCallResults.push(ToolResultPart(tool.name, tool.successSchema))
+    toolCallResults.push(ToolResultPart(tool.name, tool.successSchema, tool.failureSchema))
   }
   return Schema.Union(
     TextPart,
@@ -283,10 +284,10 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   toolkit: T
 ): Schema.Schema<Part<Toolkit.Tools<T>>, PartEncoded> => {
   const toolCalls: Array<Schema.Schema<ToolCallPart<string, any>, ToolCallPartEncoded>> = []
-  const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any>, ToolResultPartEncoded>> = []
+  const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any, any>, ToolResultPartEncoded>> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     toolCalls.push(ToolCallPart(tool.name, tool.parametersSchema as any))
-    toolCallResults.push(ToolResultPart(tool.name, tool.successSchema))
+    toolCallResults.push(ToolResultPart(tool.name, tool.successSchema, tool.failureSchema))
   }
   return Schema.Union(
     TextPart,
@@ -367,10 +368,10 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   toolkit: T
 ): Schema.Schema<StreamPart<Toolkit.Tools<T>>, StreamPartEncoded> => {
   const toolCalls: Array<Schema.Schema<ToolCallPart<string, any>, ToolCallPartEncoded>> = []
-  const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any>, ToolResultPartEncoded>> = []
+  const toolCallResults: Array<Schema.Schema<ToolResultPart<string, any, any>, ToolResultPartEncoded>> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
     toolCalls.push(ToolCallPart(tool.name, tool.parametersSchema as any))
-    toolCallResults.push(ToolResultPart(tool.name, tool.successSchema))
+    toolCallResults.push(ToolResultPart(tool.name, tool.successSchema, tool.failureSchema))
   }
   return Schema.Union(
     TextStartPart,
@@ -419,7 +420,11 @@ export type ToolCallParts<Tools extends Record<string, Tool.Any>> = {
  * @category Utility Types
  */
 export type ToolResultParts<Tools extends Record<string, Tool.Any>> = {
-  [Name in keyof Tools]: Name extends string ? ToolResultPart<Name, Tool.Success<Tools[Name]>>
+  [Name in keyof Tools]: Name extends string ? ToolResultPart<
+      Name,
+      Tool.Success<Tools[Name]>,
+      Tool.Failure<Tools[Name]>
+    >
     : never
 }[keyof Tools]
 
@@ -1417,13 +1422,12 @@ export const ToolCallPart = <const Name extends string, Params extends Schema.St
  * })
  * ```
  *
- * @template Name - String literal type for the tool name
- * @template Result - Type of the tool result
- *
  * @since 1.0.0
  * @category Models
  */
-export interface ToolResultPart<Name extends string, Result> extends BasePart<"tool-result", ToolResultPartMetadata> {
+export interface ToolResultPart<Name extends string, Success, Failure>
+  extends BasePart<"tool-result", ToolResultPartMetadata>
+{
   /**
    * Unique identifier matching the original tool call.
    */
@@ -1436,11 +1440,11 @@ export interface ToolResultPart<Name extends string, Result> extends BasePart<"t
   /**
    * The decoded result returned by the tool execution.
    */
-  readonly result: Result
+  readonly result: Either.Either<Success, Failure>
   /**
    * The encoded result for serialization purposes.
    */
-  readonly encodedResult: unknown
+  readonly encodedResult: Schema.EitherEncoded<unknown, unknown>
   /**
    * Optional provider-specific name for the tool, which can be useful when the
    * name of the tool in the `Toolkit` and the name of the tool used by the
@@ -1475,7 +1479,7 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
   /**
    * The result returned by the tool execution.
    */
-  readonly result: unknown
+  readonly result: Schema.EitherEncoded<unknown, unknown>
   /**
    * Optional provider-specific name for the tool, which can be useful when the
    * name of the tool in the `Toolkit` and the name of the tool used by the
@@ -1506,19 +1510,22 @@ export interface ToolResultPartMetadata extends ProviderMetadata {}
  * @since 1.0.0
  * @category Schemas
  */
-export const ToolResultPart = <const Name extends string, Result extends Schema.Schema.Any>(
-  /**
-   * Name of the tool.
-   */
+export const ToolResultPart = <
+  const Name extends string,
+  Success extends Schema.Schema.Any,
+  Failure extends Schema.Schema.All
+>(
   name: Name,
-  /**
-   * Schema for the tool result.
-   */
-  result: Result
+  success: Success,
+  failure: Failure
 ): Schema.Schema<
-  ToolResultPart<Name, Schema.Schema.Type<Result>>,
+  ToolResultPart<Name, Schema.Schema.Type<Success>, Schema.Schema.Type<Failure>>,
   ToolResultPartEncoded
 > => {
+  const ResultSchema = Schema.Either({
+    left: failure,
+    right: success
+  })
   const Base = Schema.Struct({
     id: Schema.String,
     type: Schema.Literal("tool-result"),
@@ -1527,7 +1534,7 @@ export const ToolResultPart = <const Name extends string, Result extends Schema.
   const Encoded = Schema.Struct({
     ...Base.fields,
     name: Schema.String,
-    result: Schema.encodedSchema(result),
+    result: Schema.encodedSchema(ResultSchema),
     providerExecuted: Schema.optional(Schema.Boolean),
     metadata: Schema.optional(ProviderMetadata)
   })
@@ -1535,33 +1542,33 @@ export const ToolResultPart = <const Name extends string, Result extends Schema.
     ...Base.fields,
     [PartTypeId]: Schema.Literal(PartTypeId),
     name: Schema.Literal(name),
-    result: Schema.typeSchema(result),
-    encodedResult: Schema.encodedSchema(result),
+    result: Schema.typeSchema(ResultSchema),
+    encodedResult: Schema.encodedSchema(ResultSchema),
     providerExecuted: Schema.Boolean,
     metadata: ProviderMetadata
   })
-  const decodeParams = ParseResult.decode<any, any, never>(result as any)
-  const encodeParams = ParseResult.encode<any, any, never>(result as any)
+  const decodeResult = ParseResult.decode<any, any, never>(ResultSchema as any)
+  const encodeResult = ParseResult.encode<any, any, never>(ResultSchema as any)
   return Schema.transformOrFail(
     Encoded,
     Decoded,
     {
       strict: true,
       decode: Effect.fnUntraced(function*(encoded) {
-        const decoded = yield* decodeParams(encoded.result)
+        const decoded = yield* decodeResult(encoded.result)
         const providerExecuted = encoded.providerExecuted ?? false
         return {
           ...encoded,
           [PartTypeId]: PartTypeId,
           name: encoded.name as Name,
           result: decoded,
-          encodedResult: encoded.result,
+          encodedResult: encoded.result as any,
           metadata: encoded.metadata ?? {},
           providerExecuted
         } as const
       }),
       encode: Effect.fnUntraced(function*(decoded) {
-        const encoded = yield* encodeParams(decoded.result)
+        const encoded = yield* encodeResult(decoded.result)
         return {
           id: decoded.id,
           type: decoded.type,
@@ -1573,7 +1580,7 @@ export const ToolResultPart = <const Name extends string, Result extends Schema.
         }
       })
     }
-  ).annotations({ identifier: `ToolResultPart(${name})` })
+  ).annotations({ identifier: `ToolResultPart(${name})` }) as any
 }
 
 // =============================================================================
