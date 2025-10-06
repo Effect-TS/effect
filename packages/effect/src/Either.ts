@@ -780,7 +780,7 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
  * ```
  *
  * @category combining
- * @since 3.17.0
+ * @since 3.20.0
  */
 export const forEach = dual<
   <B, E, S extends Iterable<any>>(
