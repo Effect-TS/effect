@@ -326,7 +326,6 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const { betas: messageBetas, messages, system } = yield* prepareMessages(providerOptions)
-      console.dir({ messages }, { depth: null, colors: true })
       const { betas: toolBetas, toolChoice, tools } = yield* prepareTools(providerOptions, config)
       const responseFormat = providerOptions.responseFormat
       const request: typeof Generated.BetaCreateMessageParams.Encoded = {
