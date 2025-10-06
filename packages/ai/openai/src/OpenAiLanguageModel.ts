@@ -520,13 +520,10 @@ const prepareMessages: (
 
       case "tool": {
         for (const part of message.content) {
-          const result = part.result._tag === "Right"
-            ? part.result.right
-            : part.result.left
           messages.push({
             type: "function_call_output",
             call_id: part.id,
-            output: JSON.stringify(result)
+            output: JSON.stringify(part.result)
           })
         }
 
