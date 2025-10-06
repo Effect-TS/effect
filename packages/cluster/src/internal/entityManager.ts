@@ -113,7 +113,7 @@ export const make = Effect.fnUntraced(function*<
     EntityAddress,
     EntityState,
     EntityNotAssignedToRunner
-  > = yield* ResourceMap.make(Effect.fnUntraced(function*(address) {
+  > = yield* ResourceMap.make(Effect.fnUntraced(function*(address: EntityAddress) {
     if (yield* options.sharding.isShutdown) {
       return yield* new EntityNotAssignedToRunner({ address })
     }
@@ -246,30 +246,35 @@ export const make = Effect.fnUntraced(function*<
           })
         )
 
-        for (const id of defectRequestIds) {
-          const { lastSentChunk, message } = activeRequests.get(id)!
-          yield* server.write(0, {
-            ...message.envelope,
-            id: RequestId(message.envelope.requestId),
-            tag: message.envelope.tag as any,
-            payload: new Request({
+        if (defectRequestIds.length > 0) {
+          for (const id of defectRequestIds) {
+            const { lastSentChunk, message } = activeRequests.get(id)!
+            yield* server.write(0, {
               ...message.envelope,
-              lastSentChunk
-            } as any) as any
-          })
+              id: RequestId(message.envelope.requestId),
+              tag: message.envelope.tag as any,
+              payload: new Request({
+                ...message.envelope,
+                lastSentChunk
+              } as any) as any
+            })
+          }
+          defectRequestIds = []
         }
-        defectRequestIds = []
 
         return server.write
       })
     )
 
     function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
+      if (!activeServers.has(address.entityId)) {
+        return endLatch.open
+      }
       const effect = writeRef.unsafeRebuild()
       defectRequestIds = Array.from(activeRequests.keys())
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
-        Effect.andThen(effect),
+        Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
