@@ -40,11 +40,13 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
+import * as Either from "effect/Either"
 import { identity } from "effect/Function"
 import type { Inspectable } from "effect/Inspectable"
 import { BaseProto as InspectableProto } from "effect/Inspectable"
 import * as Layer from "effect/Layer"
 import type { ParseError } from "effect/ParseResult"
+import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
@@ -226,10 +228,7 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
      */
     params: Tool.Parameters<Tools[Name]>
   ) => Effect.Effect<
-    {
-      readonly result: Tool.Success<Tools[Name]>
-      readonly encodedResult: unknown
-    },
+    Tool.HandlerResult<Tools[Name]>,
     Tool.Failure<Tools[Name]>,
     Tool.Requirements<Tools[Name]>
   >
@@ -267,26 +266,23 @@ const Proto = {
       const schemasCache = new WeakMap<any, {
         readonly context: Context.Context<never>
         readonly handler: (params: any) => Effect.Effect<any, any>
-        readonly encodeSuccess: (u: unknown) => Effect.Effect<unknown, ParseError>
-        readonly encodeFailure: (u: unknown) => Effect.Effect<unknown, ParseError>
-        readonly decodeFailure: (u: unknown) => Effect.Effect<Tool.Failure<any>, ParseError>
         readonly decodeParameters: (u: unknown) => Effect.Effect<Tool.Parameters<any>, ParseError>
+        readonly validateResult: (u: unknown) => Effect.Effect<Either.Either<unknown, unknown>, ParseError>
+        readonly encodeResult: (u: unknown) => Effect.Effect<Schema.EitherEncoded<unknown, unknown>, ParseError>
       }>()
       const getSchemas = (tool: Tool.Any) => {
         let schemas = schemasCache.get(tool)
         if (Predicate.isUndefined(schemas)) {
           const handler = context.unsafeMap.get(tool.id)! as Tool.Handler<any>
-          const encodeSuccess = Schema.encodeUnknown(tool.successSchema) as any
-          const encodeFailure = Schema.encodeUnknown(tool.failureSchema as any) as any
-          const decodeFailure = Schema.decodeUnknown(tool.failureSchema as any) as any
           const decodeParameters = Schema.decodeUnknown(tool.parametersSchema) as any
+          const validateResult = Schema.validate(tool.resultSchema) as any
+          const encodeResult = Schema.encodeUnknown(tool.resultSchema) as any
           schemas = {
             context: handler.context,
             handler: handler.handler,
-            encodeSuccess,
-            encodeFailure,
-            decodeFailure,
-            decodeParameters
+            decodeParameters,
+            validateResult,
+            encodeResult
           }
           schemasCache.set(tool, schemas)
         }
@@ -318,23 +314,28 @@ const Proto = {
               })
           )
           const result = yield* schemas.handler(decodedParams).pipe(
+            Effect.matchEffect({
+              onFailure: (error) =>
+                tool.failureMode === "error"
+                  ? Effect.fail(error)
+                  : Effect.succeed(Either.left(error)),
+              onSuccess: (value) => Effect.succeed(Either.right(value))
+            }),
+            Effect.flatMap((either) => schemas.validateResult(either)),
             Effect.mapInputContext((input) => Context.merge(schemas.context, input)),
-            Effect.catchAll((error) =>
-              schemas.decodeFailure(error).pipe(
-                Effect.mapError((cause) =>
-                  new AiError.MalformedInput({
-                    module: "Toolkit",
-                    method: `${name}.handle`,
-                    description: `Failed to decode tool call failure for tool '${name}'`,
-                    cause
-                  })
-                ),
-                Effect.flatMap(Effect.fail)
-              )
+            Effect.mapError((cause) =>
+              ParseResult.isParseError(cause)
+                ? new AiError.MalformedInput({
+                  module: "Toolkit",
+                  method: `${name}.handle`,
+                  description: `Failed to validate tool call result for tool '${name}'`,
+                  cause
+                })
+                : cause
             )
           )
           const encodedResult = yield* Effect.mapError(
-            schemas.encodeSuccess(result),
+            schemas.encodeResult(result),
             (cause) =>
               new AiError.MalformedInput({
                 module: "Toolkit",
@@ -351,7 +352,7 @@ const Proto = {
       )
       return {
         tools,
-        handle
+        handle: handle as any
       } satisfies WithHandler<Record<string, any>>
     })
   },
