@@ -7,13 +7,14 @@ import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Arr from "effect/Array"
 import type { Brand } from "effect/Brand"
-import type * as Cause from "effect/Cause"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
+import * as FiberId from "effect/FiberId"
 import { identity } from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as Layer from "effect/Layer"
@@ -201,7 +202,7 @@ export type Any = Entity<string, Rpc.Any>
 export type HandlersFrom<Rpc extends Rpc.Any> = {
   readonly [Current in Rpc as Current["_tag"]]: (
     envelope: Request<Current>
-  ) => Rpc.ResultFrom<Current, any> | Rpc.Fork<Rpc.ResultFrom<Current, any>>
+  ) => Rpc.ResultFrom<Current, any> | Rpc.Wrapper<Rpc.ResultFrom<Current, any>>
 }
 
 /**
@@ -491,6 +492,18 @@ export class Request<Rpc extends Rpc.Any> extends Data.Class<
 }
 
 const shardingTag = Context.GenericTag<Sharding, Sharding["Type"]>("@effect/cluster/Sharding")
+
+/**
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdIgnored = FiberId.make(-1, 0)
+
+/**
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const interruptIgnored = Effect.failCause(Cause.interrupt(fiberIdIgnored))
 
 /**
  * @since 1.0.0

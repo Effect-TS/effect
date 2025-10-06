@@ -32,7 +32,7 @@
             bun
             pnpm
             deno
-            nodejs-slim_23
+            nodejs_24
             python3
             yq-go
           ];

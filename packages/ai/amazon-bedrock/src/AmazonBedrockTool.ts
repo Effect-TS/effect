@@ -10,17 +10,21 @@ import type * as Schema from "effect/Schema"
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicBash_20241022: (
-  args: {}
+export const AnthropicBash_20241022: <Mode extends Tool.FailureMode | undefined = undefined>(
+  args: {} & { readonly failureMode?: Mode | undefined }
 ) => Tool.ProviderDefined<
   "AnthropicBash",
   {
     readonly args: Schema.Struct<{}>
     readonly parameters: Schema.Struct<
-      { command: typeof Schema.NonEmptyString; restart: Schema.optional<typeof Schema.Boolean> }
+      {
+        command: typeof Schema.NonEmptyString
+        restart: Schema.optional<typeof Schema.Boolean>
+      }
     >
     readonly success: typeof Schema.String
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.Bash_20241022
@@ -29,17 +33,21 @@ export const AnthropicBash_20241022: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicBash_20250124: (
-  args: {}
+export const AnthropicBash_20250124: <Mode extends Tool.FailureMode | undefined = undefined>(
+  args: {} & { readonly failureMode?: Mode | undefined }
 ) => Tool.ProviderDefined<
   "AnthropicBash",
   {
     readonly args: Schema.Struct<{}>
     readonly parameters: Schema.Struct<
-      { command: typeof Schema.NonEmptyString; restart: Schema.optional<typeof Schema.Boolean> }
+      {
+        command: typeof Schema.NonEmptyString
+        restart: Schema.optional<typeof Schema.Boolean>
+      }
     >
     readonly success: typeof Schema.String
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.Bash_20250124
@@ -48,15 +56,19 @@ export const AnthropicBash_20250124: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicComputerUse_20241022: (
+export const AnthropicComputerUse_20241022: <Mode extends Tool.FailureMode | undefined = undefined>(
   args: {
     readonly display_height_px: number
     readonly display_width_px: number
     readonly cache_control?:
-      | { readonly type: "ephemeral"; readonly ttl?: "5m" | "1h" | null | undefined }
+      | {
+        readonly type: "ephemeral"
+        readonly ttl?: "5m" | "1h" | null | undefined
+      }
       | null
       | undefined
     readonly display_number?: number | null | undefined
+    readonly failureMode?: Mode | undefined
   }
 ) => Tool.ProviderDefined<
   "AnthropicComputerUse",
@@ -78,6 +90,7 @@ export const AnthropicComputerUse_20241022: (
     >
     readonly success: typeof Schema.String
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.ComputerUse_20241022
@@ -86,15 +99,19 @@ export const AnthropicComputerUse_20241022: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicComputerUse_20250124: (
+export const AnthropicComputerUse_20250124: <Mode extends Tool.FailureMode | undefined = undefined>(
   args: {
     readonly display_height_px: number
     readonly display_width_px: number
     readonly cache_control?:
-      | { readonly type: "ephemeral"; readonly ttl?: "5m" | "1h" | null | undefined }
+      | {
+        readonly type: "ephemeral"
+        readonly ttl?: "5m" | "1h" | null | undefined
+      }
       | null
       | undefined
     readonly display_number?: number | null | undefined
+    readonly failureMode?: Mode | undefined
   }
 ) => Tool.ProviderDefined<
   "AnthropicComputerUse",
@@ -138,6 +155,7 @@ export const AnthropicComputerUse_20250124: (
     >
     readonly success: typeof Schema.String
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.ComputerUse_20250124
@@ -146,8 +164,8 @@ export const AnthropicComputerUse_20250124: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicTextEditor_20241022: (
-  args: {}
+export const AnthropicTextEditor_20241022: <Mode extends Tool.FailureMode | undefined = undefined>(
+  args: { readonly failureMode?: Mode | undefined }
 ) => Tool.ProviderDefined<
   "AnthropicTextEditor",
   {
@@ -165,6 +183,7 @@ export const AnthropicTextEditor_20241022: (
     >
     readonly success: typeof Schema.Void
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.TextEditor_20241022
@@ -173,8 +192,8 @@ export const AnthropicTextEditor_20241022: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicTextEditor_20250124: (
-  args: {}
+export const AnthropicTextEditor_20250124: <Mode extends Tool.FailureMode | undefined = undefined>(
+  args: { readonly failureMode?: Mode | undefined }
 ) => Tool.ProviderDefined<
   "AnthropicTextEditor",
   {
@@ -192,6 +211,7 @@ export const AnthropicTextEditor_20250124: (
     >
     readonly success: typeof Schema.Void
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.TextEditor_20250124
@@ -200,8 +220,8 @@ export const AnthropicTextEditor_20250124: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicTextEditor_20250429: (
-  args: {}
+export const AnthropicTextEditor_20250429: <Mode extends Tool.FailureMode | undefined = undefined>(
+  args: { readonly failureMode?: Mode | undefined }
 ) => Tool.ProviderDefined<
   "AnthropicTextEditor",
   {
@@ -219,6 +239,7 @@ export const AnthropicTextEditor_20250429: (
     >
     readonly success: typeof Schema.Void
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.TextEditor_20250429
@@ -227,8 +248,8 @@ export const AnthropicTextEditor_20250429: (
  * @since 1.0.0
  * @catgory Tools
  */
-export const AnthropicTextEditor_20250728: (
-  args: {}
+export const AnthropicTextEditor_20250728: <Mode extends Tool.FailureMode | undefined = undefined>(
+  args: { readonly failureMode?: Mode | undefined }
 ) => Tool.ProviderDefined<
   "AnthropicTextEditor",
   {
@@ -246,6 +267,7 @@ export const AnthropicTextEditor_20250728: (
     >
     readonly success: typeof Schema.Void
     readonly failure: typeof Schema.Never
+    readonly failureMode: Mode extends undefined ? "error" : Mode
   },
   true
 > = AnthropicTool.TextEditor_20250728

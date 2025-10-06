@@ -383,7 +383,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                         // TODO(Max): support this
                         return yield* new AiError.MalformedInput({
                           module: "AmazonBedrockLanguageModel",
-                          method: "makeMessages",
+                          method: "prepareMessages",
                           description: "File URL inputs are not supported at this time"
                         })
                       }
@@ -412,10 +412,13 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 
               case "tool": {
                 for (const part of message.content) {
+                  const result = part.result._tag === "Right"
+                    ? part.result.right
+                    : part.result.left
                   content.push({
                     toolResult: {
                       toolUseId: part.id,
-                      content: [{ text: JSON.stringify(part.result) }]
+                      content: [{ text: JSON.stringify(result) }]
                     }
                   })
                 }

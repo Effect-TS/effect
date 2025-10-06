@@ -314,16 +314,17 @@ export const fromAST = (ast: AST.AST, options: {
   const definitionPath = options.definitionPath ?? "#/$defs/"
   const getRef = (id: string) => definitionPath + id
   const target = options.target ?? "jsonSchema7"
-  const handleIdentifier = options.topLevelReferenceStrategy !== "skip" ? "handle-identifier" : "ignore-identifier"
+  const topLevelReferenceStrategy = options.topLevelReferenceStrategy ?? "keep"
   const additionalPropertiesStrategy = options.additionalPropertiesStrategy ?? "strict"
   return go(
     ast,
     options.definitions,
-    handleIdentifier,
+    "handle-identifier",
     [],
     {
       getRef,
       target,
+      topLevelReferenceStrategy,
       additionalPropertiesStrategy
     },
     "handle-annotation",
@@ -379,6 +380,11 @@ function getRawDefault(annotated: AST.Annotated | undefined): Option.Option<unkn
   return Option.none()
 }
 
+function encodeDefault(ast: AST.AST, def: unknown): Option.Option<unknown> {
+  const getOption = ParseResult.getOption(ast, false)
+  return getOption(def)
+}
+
 function getRawExamples(annotated: AST.Annotated | undefined): ReadonlyArray<unknown> | undefined {
   if (annotated !== undefined) return Option.getOrUndefined(AST.getExamplesAnnotation(annotated))
 }
@@ -413,7 +419,12 @@ function pruneJsonSchemaAnnotations(
   const out: JsonSchemaAnnotations = {}
   if (description !== undefined) out.description = description
   if (title !== undefined) out.title = title
-  if (Option.isSome(def)) out.default = def.value
+  if (Option.isSome(def)) {
+    const o = encodeDefault(ast, def.value)
+    if (Option.isSome(o)) {
+      out.default = o.value
+    }
+  }
   if (examples !== undefined) {
     const encodedExamples = encodeExamples(ast, examples)
     if (encodedExamples !== undefined) {
@@ -509,6 +520,7 @@ const mergeRefinements = (from: any, jsonSchema: any, ast: AST.AST): any => {
 type GoOptions = {
   readonly getRef: (id: string) => string
   readonly target: Target
+  readonly topLevelReferenceStrategy: TopLevelReferenceStrategy
   readonly additionalPropertiesStrategy: AdditionalPropertiesStrategy
 }
 
@@ -571,7 +583,10 @@ function go(
   annotation: "handle-annotation" | "ignore-annotation",
   errors: "handle-errors" | "ignore-errors"
 ): JsonSchema7 {
-  if (identifier === "handle-identifier") {
+  if (
+    identifier === "handle-identifier" &&
+    (options.topLevelReferenceStrategy !== "skip" || AST.isSuspend(ast))
+  ) {
     const id = getIdentifierAnnotation(ast)
     if (id !== undefined) {
       const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")

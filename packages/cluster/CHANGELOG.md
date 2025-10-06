@@ -1,5 +1,98 @@
 # @effect/cluster
 
+## 0.50.4
+
+### Patch Changes
+
+- [#5618](https://github.com/Effect-TS/effect/pull/5618) [`d2140c1`](https://github.com/Effect-TS/effect/commit/d2140c1604a575186075e0907ecc05d9ab197c23) Thanks @tim-smart! - don't restart an entity during shutdown
+
+## 0.50.3
+
+### Patch Changes
+
+- [#5602](https://github.com/Effect-TS/effect/pull/5602) [`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf) Thanks @tim-smart! - guard against race conditions in NodeSocketServer
+
+- Updated dependencies [[`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf)]:
+  - @effect/workflow@0.11.3
+
+## 0.50.2
+
+### Patch Changes
+
+- [#5590](https://github.com/Effect-TS/effect/pull/5590) [`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646) Thanks @tim-smart! - add openTimeout options to NodeSocket.makeNet
+
+- Updated dependencies [[`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646), [`f6987c0`](https://github.com/Effect-TS/effect/commit/f6987c04ebf1386dc37729dfea1631ce364a5a96)]:
+  - @effect/workflow@0.11.2
+  - @effect/platform@0.92.1
+
+## 0.50.1
+
+### Patch Changes
+
+- [#5585](https://github.com/Effect-TS/effect/pull/5585) [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69) Thanks @tim-smart! - keep socket error listener attached in NodeSocket
+
+- Updated dependencies [[`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152), [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69)]:
+  - effect@3.18.1
+  - @effect/workflow@0.11.1
+
+## 0.50.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/rpc@0.71.0
+  - @effect/sql@0.46.0
+  - @effect/workflow@0.11.0
+
+## 0.49.6
+
+### Patch Changes
+
+- [#5581](https://github.com/Effect-TS/effect/pull/5581) [`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd) Thanks @tim-smart! - persist activity interrupts as "Suspended"
+
+- Updated dependencies [[`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd)]:
+  - @effect/rpc@0.70.2
+  - @effect/workflow@0.10.3
+
+## 0.49.5
+
+### Patch Changes
+
+- [#5577](https://github.com/Effect-TS/effect/pull/5577) [`c9e1e40`](https://github.com/Effect-TS/effect/commit/c9e1e4064cef4c4324318ec76b35bbbdc026dace) Thanks @tim-smart! - ignore non-client interrupts in workflow activities
+
+- Updated dependencies [[`c9e1e40`](https://github.com/Effect-TS/effect/commit/c9e1e4064cef4c4324318ec76b35bbbdc026dace)]:
+  - @effect/rpc@0.70.1
+  - @effect/workflow@0.10.2
+
+## 0.49.4
+
+### Patch Changes
+
+- [#5575](https://github.com/Effect-TS/effect/pull/5575) [`d0e97d7`](https://github.com/Effect-TS/effect/commit/d0e97d74a9e4d4a436ac8d148db81144cf872cc6) Thanks @tim-smart! - fix SqlMessageStorage last reply for sqlite
+
+- Updated dependencies [[`d0e97d7`](https://github.com/Effect-TS/effect/commit/d0e97d74a9e4d4a436ac8d148db81144cf872cc6)]:
+  - @effect/workflow@0.10.1
+
+## 0.49.3
+
+### Patch Changes
+
+- [#5563](https://github.com/Effect-TS/effect/pull/5563) [`fc7e32a`](https://github.com/Effect-TS/effect/commit/fc7e32af793214b542262f912a30c89f85068bb4) Thanks @tim-smart! - prevent EntityNotAssigned when sending to local runner
+
+## 0.49.2
+
+### Patch Changes
+
+- [#5561](https://github.com/Effect-TS/effect/pull/5561) [`1a9e601`](https://github.com/Effect-TS/effect/commit/1a9e60163d25da51294e7aaba33bbf0bde7fe231) Thanks @tim-smart! - optimize SqlShardStorage queries
+
+## 0.49.1
+
+### Patch Changes
+
+- [#5557](https://github.com/Effect-TS/effect/pull/5557) [`978b6ff`](https://github.com/Effect-TS/effect/commit/978b6ffc0b124d67d62a797211eff795f22cd1e6) Thanks @tim-smart! - allow NodeSocket.makeNet open to be interrupted
+
 ## 0.49.0
 
 ### Patch Changes

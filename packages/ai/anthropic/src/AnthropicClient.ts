@@ -6,6 +6,7 @@ import * as Sse from "@effect/experimental/Sse"
 import * as Headers from "@effect/platform/Headers"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Arr from "effect/Array"
 import * as Chunk from "effect/Chunk"
@@ -214,6 +215,8 @@ export const make: (options: {
     options.transformClient ? options.transformClient : identity
   )
 
+  const httpClientOk = HttpClient.filterStatusOk(httpClient)
+
   const client = Generated.make(httpClient, {
     transformClient: (client) =>
       AnthropicConfig.getOrUndefined.pipe(
@@ -226,7 +229,7 @@ export const make: (options: {
     schema: Schema.Schema<A, I, R>
   ): Stream.Stream<A, AiError.AiError, R> => {
     const decodeEvents = Schema.decode(Schema.ChunkFromSelf(Schema.parseJson(schema)))
-    return httpClient.execute(request).pipe(
+    return httpClientOk.execute(request).pipe(
       Effect.map((r) => r.stream),
       Stream.unwrapScoped,
       Stream.decodeText(),
@@ -275,22 +278,14 @@ export const make: (options: {
               error
             }),
           BetaErrorResponse: (error) =>
-            new AiError.HttpResponseError({
+            AiError.HttpResponseError.fromResponseError({
               module: "AnthropicClient",
               method: "createMessage",
-              cause: error.cause,
-              reason: "StatusCode",
-              request: {
-                hash: error.request.hash,
-                headers: error.request.headers,
-                method: error.request.method,
-                url: error.request.url,
-                urlParams: error.request.urlParams
-              },
-              response: {
-                headers: error.response.headers,
-                status: error.response.status
-              }
+              error: new HttpClientError.ResponseError({
+                reason: "StatusCode",
+                request: error.request,
+                response: error.response
+              })
             }),
           ParseError: (error) =>
             AiError.MalformedOutput.fromParseError({

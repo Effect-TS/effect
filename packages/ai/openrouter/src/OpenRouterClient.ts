@@ -110,6 +110,8 @@ export const make: (options: {
     options.transformClient ?? identity
   )
 
+  const httpClientOk = HttpClient.filterStatusOk(httpClient)
+
   const client = Generated.make(httpClient, {
     transformClient: (client) =>
       OpenRouterConfig.getOrUndefined.pipe(
@@ -122,7 +124,7 @@ export const make: (options: {
     schema: Schema.Schema<A, I, R>
   ): Stream.Stream<A, AiError.AiError, R> => {
     const decodeEvent = Schema.decode(Schema.parseJson(schema))
-    return httpClient.execute(request).pipe(
+    return httpClientOk.execute(request).pipe(
       Effect.map((r) => r.stream),
       Stream.unwrapScoped,
       Stream.decodeText(),
@@ -165,7 +167,6 @@ export const make: (options: {
             new AiError.HttpResponseError({
               module: "OpenRouterClient",
               method: "createChatCompletion",
-              cause: error.cause,
               reason: "StatusCode",
               request: {
                 hash: error.request.hash,

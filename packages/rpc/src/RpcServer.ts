@@ -31,6 +31,7 @@ import * as Option from "effect/Option"
 import { type ParseError, TreeFormatter } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
+import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -182,7 +183,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           }
           case "Interrupt": {
             const fiber = client.fibers.get(message.requestId)
-            return fiber ? Fiber.interruptFork(fiber) : options.onFromServer({
+            return fiber ? Fiber.interruptAsFork(fiber, fiberIdClientInterrupt) : options.onFromServer({
               _tag: "Exit",
               clientId,
               requestId: message.requestId,
@@ -244,22 +245,24 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     })
 
     // if the handler requested forking, then we skip the concurrency control
-    const isFork = Rpc.isFork(result)
+    const isWrapper = Rpc.isWrapper(result)
+    const isFork = isWrapper && result.fork
+    const isUninterruptible = isWrapper && result.uninterruptible
     // unwrap the fork data type
-    const streamOrEffect = isFork ? result.value : result
-
+    const streamOrEffect = isWrapper ? result.value : result
+    const handler = applyMiddleware(
+      rpc,
+      context,
+      client.id,
+      request.payload,
+      request.headers,
+      isStream
+        ? streamEffect(client, request, streamOrEffect)
+        : streamOrEffect as Effect.Effect<any>
+    )
     let responded = false
-    let effect = Effect.uninterruptible(Effect.matchCauseEffect(
-      Effect.interruptible(applyMiddleware(
-        rpc,
-        context,
-        client.id,
-        request.payload,
-        request.headers,
-        isStream
-          ? streamEffect(client, request, streamOrEffect)
-          : streamOrEffect as Effect.Effect<any>
-      )),
+    let effect = Effect.matchCauseEffect(
+      isUninterruptible ? handler : Effect.interruptible(handler),
       {
         onSuccess: (value) => {
           responded = true
@@ -283,7 +286,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           })
         }
       }
-    ))
+    )
     if (enableTracing) {
       const parentSpan = requestFiber.currentContext.unsafeMap.get(Tracer.ParentSpan.key) as Tracer.AnySpan | undefined
       effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
@@ -313,7 +316,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     const runtime = Runtime.make({
       context: Context.merge(entry.context, requestFiber.currentContext),
       fiberRefs: requestFiber.getFiberRefs(),
-      runtimeFlags: Runtime.defaultRuntime.runtimeFlags
+      runtimeFlags: RuntimeFlags.disable(Runtime.defaultRuntime.runtimeFlags, RuntimeFlags.Interruption)
     })
     const fiber = Runtime.runFork(runtime, effect)
     FiberSet.unsafeAdd(fiberSet, fiber)
@@ -1368,6 +1371,14 @@ export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
   readonly stdout: Sink.Sink<void, Uint8Array | string, unknown, EOut, ROut>
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | RIn | ROut> =>
   Layer.scoped(Protocol, makeProtocolStdio(options))
+
+/**
+ * Fiber id used for client interruptions.
+ *
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdClientInterrupt = FiberId.make(-499, 0)
 
 // internal
 

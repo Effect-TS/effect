@@ -6,8 +6,10 @@ import * as Channel from "effect/Channel"
 import type * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as FiberSet from "effect/FiberSet"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as Net from "node:net"
@@ -34,36 +36,41 @@ export const NetSocket: Context.Tag<NetSocket, Net.Socket> = Context.GenericTag(
  * @category constructors
  */
 export const makeNet = (
-  options: Net.NetConnectOpts
+  options: Net.NetConnectOpts & {
+    readonly openTimeout?: Duration.DurationInput | undefined
+  }
 ): Effect.Effect<Socket.Socket, Socket.SocketError> =>
   fromDuplex(
-    Effect.acquireRelease(
-      Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
-        const conn = Net.createConnection(options)
-        conn.on("connect", () => {
-          conn.removeAllListeners()
-          resume(Effect.succeed(conn))
-        })
-        conn.on("error", (cause) => {
-          conn.removeAllListeners()
-          resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
-        })
-        return Effect.sync(() => {
-          conn.destroy()
-        })
-      }),
-      (conn) =>
-        Effect.sync(() => {
-          if (conn.closed === false) {
-            if ("destroySoon" in conn) {
-              conn.destroySoon()
-            } else {
-              ;(conn as Net.Socket).destroy()
+    Effect.scopeWith((scope) => {
+      let conn: Net.Socket | undefined
+      return Effect.flatMap(
+        Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            if (!conn) return
+            if (conn.closed === false) {
+              if ("destroySoon" in conn) {
+                conn.destroySoon()
+              } else {
+                ;(conn as Net.Socket).destroy()
+              }
             }
-          }
-          conn.removeAllListeners()
-        })
-    )
+            conn.removeAllListeners()
+          })
+        ),
+        () =>
+          Effect.async<Net.Socket, Socket.SocketError, never>((resume) => {
+            conn = Net.createConnection(options)
+            conn.once("connect", () => {
+              resume(Effect.succeed(conn!))
+            })
+            conn.on("error", (cause) => {
+              resume(Effect.fail(new Socket.SocketGenericError({ reason: "Open", cause })))
+            })
+          })
+      )
+    }),
+    options
   )
 
 /**
@@ -71,7 +78,10 @@ export const makeNet = (
  * @category constructors
  */
 export const fromDuplex = <RO>(
-  open: Effect.Effect<Duplex, Socket.SocketError, RO>
+  open: Effect.Effect<Duplex, Socket.SocketError, RO>,
+  options?: {
+    readonly openTimeout?: Duration.DurationInput | undefined
+  }
 ): Effect.Effect<Socket.Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiberRuntime<Socket.Socket, never, Exclude<RO, Scope.Scope>>((fiber) => {
     let currentSocket: Duplex | undefined
@@ -84,8 +94,40 @@ export const fromDuplex = <RO>(
         const fiberSet = yield* FiberSet.make<any, E | Socket.SocketError>().pipe(
           Scope.extend(scope)
         )
-        const conn = yield* Scope.extend(open, scope)
+        // eslint-disable-next-line prefer-const
+        let conn: Duplex | undefined
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.sync(() => {
+            if (!conn) return
+            conn.off("data", onData)
+            conn.off("end", onEnd)
+            conn.off("error", onError)
+            conn.off("close", onClose)
+          })
+        )
+
+        conn = yield* Scope.extend(open, scope).pipe(
+          options?.openTimeout ?
+            Effect.timeoutFail({
+              duration: options.openTimeout,
+              onTimeout: () =>
+                new Socket.SocketGenericError({ reason: "Open", cause: new Error("Connection timed out") })
+            }) :
+            identity
+        )
+        conn.on("end", onEnd)
+        conn.on("error", onError)
+        conn.on("close", onClose)
+
         const run = yield* Effect.provideService(FiberSet.runtime(fiberSet)<R>(), NetSocket, conn as Net.Socket)
+        conn.on("data", onData)
+
+        currentSocket = conn
+        yield* latch.open
+        if (opts?.onOpen) yield* opts.onOpen
+
+        return yield* FiberSet.join(fiberSet)
 
         function onData(chunk: Uint8Array) {
           const result = handler(chunk)
@@ -113,25 +155,6 @@ export const fromDuplex = <RO>(
             )
           )
         }
-        yield* Scope.addFinalizer(
-          scope,
-          Effect.sync(() => {
-            conn.off("data", onData)
-            conn.off("end", onEnd)
-            conn.off("error", onError)
-            conn.off("close", onClose)
-          })
-        )
-        conn.on("data", onData)
-        conn.on("end", onEnd)
-        conn.on("error", onError)
-        conn.on("close", onClose)
-
-        currentSocket = conn
-        yield* latch.open
-        if (opts?.onOpen) yield* opts.onOpen
-
-        return yield* FiberSet.join(fiberSet)
       })).pipe(
         Effect.mapInputContext((input: Context.Context<R>) => Context.merge(openContext, input)),
         Effect.ensuring(Effect.sync(() => {

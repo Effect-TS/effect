@@ -415,17 +415,19 @@ export class GenerateObjectResponse<Tools extends Record<string, Tool.Any>, A> e
  * @category Utility Types
  */
 export type ExtractError<Options> = Options extends {
+  readonly toolkit: Toolkit.WithHandler<infer _Tools>
   readonly disableToolCallResolution: true
-} ? Options extends {
-    readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
-  } ? AiError.AiError | _E :
-  AiError.AiError :
-  Options extends {
-    readonly toolkit: Toolkit.WithHandler<infer _Tools>
-  } ? AiError.AiError | Tool.Failure<_Tools[keyof _Tools]>
+} ? AiError.AiError
   : Options extends {
     readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
-  } ? AiError.AiError | Tool.Failure<_Tools[keyof _Tools]> | _E :
+    readonly disableToolCallResolution: true
+  } ? AiError.AiError | _E
+  : Options extends {
+    readonly toolkit: Toolkit.WithHandler<infer _Tools>
+  } ? AiError.AiError | Tool.HandlerError<_Tools[keyof _Tools]>
+  : Options extends {
+    readonly toolkit: Effect.Effect<Toolkit.WithHandler<infer _Tools>, infer _E, infer _R>
+  } ? AiError.AiError | Tool.HandlerError<_Tools[keyof _Tools]> | _E :
   AiError.AiError
 
 /**
@@ -767,10 +769,12 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.tools = tools
         providerOptions.toolChoice = toolChoice
 
+        // Construct the response schema with the tools from the toolkit
+        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
+
         // If tool call resolution is disabled, return the response without
         // resolving the tool calls that were generated
         if (options.disableToolCallResolution === true) {
-          const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(Toolkit.empty)))
           const rawContent = yield* params.generateText(providerOptions)
           const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
           return content as Array<Response.Part<Tools>>
@@ -780,7 +784,6 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
 
         // Resolve the generated tool calls
         const toolResults = yield* resolveToolCalls(rawContent, toolkit, options.concurrency)
-        const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
         const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
 
         // Return the content merged with the tool call results
@@ -982,8 +985,14 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.WithHandler<Tools>,
   concurrency: Concurrency | undefined
 ): Effect.Effect<
-  ReadonlyArray<Response.ToolResultPart<Tool.Name<Tools[keyof Tools]>, Tool.Success<Tools[keyof Tools]>>>,
-  Tool.Failure<Tools[keyof Tools]>,
+  ReadonlyArray<
+    Response.ToolResultPart<
+      Tool.Name<Tools[keyof Tools]>,
+      Tool.Success<Tools[keyof Tools]>,
+      Tool.Failure<Tools[keyof Tools]>
+    >
+  >,
+  Tool.HandlerError<Tools[keyof Tools]>,
   Tool.Requirements<Tools[keyof Tools]>
 > => {
   const toolNames: Array<string> = []
@@ -1007,8 +1016,10 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
           name: toolCall.name,
           result,
           encodedResult,
-          providerName: toolCall.providerName,
-          providerExecuted: false
+          providerExecuted: false,
+          ...(toolCall.providerName !== undefined
+            ? { providerName: toolCall.providerName }
+            : {})
         })
       )
     )

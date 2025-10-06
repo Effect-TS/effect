@@ -353,26 +353,10 @@ export const layerWithTokenizer = (options: {
  * @category Configuration
  */
 export const withConfigOverride: {
-  /**
-   * @since 1.0.0
-   * @category Configuration
-   */
   (overrides: Config.Service): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  /**
-   * @since 1.0.0
-   * @category Configuration
-   */
   <A, E, R>(self: Effect.Effect<A, E, R>, overrides: Config.Service): Effect.Effect<A, E, R>
 } = dual<
-  /**
-   * @since 1.0.0
-   * @category Configuration
-   */
   (overrides: Config.Service) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
-  /**
-   * @since 1.0.0
-   * @category Configuration
-   */
   <A, E, R>(self: Effect.Effect<A, E, R>, overrides: Config.Service) => Effect.Effect<A, E, R>
 >(2, (self, overrides) =>
   Effect.flatMap(
@@ -441,9 +425,7 @@ const prepareMessages: (
                   const imageUrl = `data:${mediaType};base64,${base64}`
                   content.push({ type: "input_image", image_url: imageUrl, detail })
                 }
-              }
-
-              if (part.mediaType === "application/pdf") {
+              } else if (part.mediaType === "application/pdf") {
                 if (typeof part.data === "string" && isFileId(part.data, config)) {
                   content.push({ type: "input_file", file_id: part.data })
                 }
@@ -458,13 +440,13 @@ const prepareMessages: (
                   const fileData = `data:application/pdf;base64,${base64}`
                   content.push({ type: "input_file", filename: fileName, file_data: fileData })
                 }
+              } else {
+                return yield* new AiError.MalformedInput({
+                  module: "OpenAiLanguageModel",
+                  method: "prepareMessages",
+                  description: `Detected unsupported media type for file: '${part.mediaType}'`
+                })
               }
-
-              return yield* new AiError.MalformedInput({
-                module: "OpenAiLanguageModel",
-                method: "prepareMessages",
-                description: `Detected unsupported media type for file: '${part.mediaType}'`
-              })
             }
           }
         }
@@ -538,10 +520,13 @@ const prepareMessages: (
 
       case "tool": {
         for (const part of message.content) {
+          const result = part.result._tag === "Right"
+            ? part.result.right
+            : part.result.left
           messages.push({
             type: "function_call_output",
             call_id: part.id,
-            output: JSON.stringify(part.result)
+            output: JSON.stringify(result)
           })
         }
 
@@ -692,7 +677,7 @@ const makeResponse: (
             type: "tool-result",
             id: part.id,
             name: "OpenAiCodeInterpreter",
-            result: { outputs: part.outputs },
+            result: { _tag: "Right", right: { outputs: part.outputs } },
             providerName: "code_interpreter",
             providerExecuted: true
           })
@@ -715,9 +700,12 @@ const makeResponse: (
             id: part.id,
             name: "OpenAiFileSearch",
             result: {
-              status: part.status,
-              queries: part.queries,
-              ...(part.results && { results: part.results })
+              _tag: "Right",
+              right: {
+                status: part.status,
+                queries: part.queries,
+                ...(part.results && { results: part.results })
+              }
             },
             providerName: "file_search",
             providerExecuted: true
@@ -740,7 +728,7 @@ const makeResponse: (
             type: "tool-result",
             id: part.id,
             name: webSearchTool?.name ?? "OpenAiWebSearch",
-            result: { status: part.status },
+            result: { _tag: "Right", right: { status: part.status } },
             providerName: webSearchTool?.providerName ?? "web_search",
             providerExecuted: true
           })
@@ -991,7 +979,7 @@ const makeStreamResponse: (
                   type: "tool-result",
                   id: event.item.id,
                   name: "OpenAiCodeInterpreter",
-                  result: { outputs: event.item.outputs },
+                  result: { _tag: "Right", right: { outputs: event.item.outputs } },
                   providerName: "code_interpreter",
                   providerExecuted: true
                 })
@@ -1022,9 +1010,12 @@ const makeStreamResponse: (
                   id: event.item.id,
                   name: "OpenAiFileSearch",
                   result: {
-                    status: event.item.status,
-                    queries: event.item.queries,
-                    ...(event.item.results && { results: event.item.results })
+                    _tag: "Right",
+                    right: {
+                      status: event.item.status,
+                      queries: event.item.queries,
+                      ...(event.item.results && { results: event.item.results })
+                    }
                   },
                   providerName: "file_search",
                   providerExecuted: true
@@ -1112,7 +1103,7 @@ const makeStreamResponse: (
                   type: "tool-result",
                   id: event.item.id,
                   name: "OpenAiWebSearch",
-                  result: { status: event.item.status },
+                  result: { _tag: "Right", right: { status: event.item.status } },
                   providerName: "web_search",
                   providerExecuted: true
                 })

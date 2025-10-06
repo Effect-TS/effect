@@ -104,6 +104,8 @@ export const make = (options: {
       options.transformClient ? options.transformClient : identity
     )
 
+    const httpClientOk = HttpClient.filterStatusOk(httpClient)
+
     const client = makeClient(httpClient, {
       transformClient: (client) =>
         AmazonBedrockConfig.getOrUndefined.pipe(
@@ -145,7 +147,7 @@ export const make = (options: {
       request: HttpClientRequest.HttpClientRequest,
       schema: Schema.Schema<A, I, R>
     ): Stream.Stream<A, AiError.AiError, R> =>
-      httpClient.execute(request).pipe(
+      httpClientOk.execute(request).pipe(
         Effect.map((r) => r.stream),
         Stream.unwrapScoped,
         Stream.pipeThroughChannel(EventStreamEncoding.makeChannel(schema)),

@@ -13,6 +13,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import type * as Predicate from "effect/Predicate"
 import type { ReadonlyRecord } from "effect/Record"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
@@ -988,7 +989,7 @@ export const middleware: {
  */
 export const middlewareCors = (
   options?: {
-    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedOrigins?: ReadonlyArray<string> | Predicate.Predicate<string> | undefined
     readonly allowedMethods?: ReadonlyArray<string> | undefined
     readonly allowedHeaders?: ReadonlyArray<string> | undefined
     readonly exposedHeaders?: ReadonlyArray<string> | undefined

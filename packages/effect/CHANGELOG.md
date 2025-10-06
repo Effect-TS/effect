@@ -1,5 +1,242 @@
 # effect
 
+## 3.18.4
+
+### Patch Changes
+
+- [#5617](https://github.com/Effect-TS/effect/pull/5617) [`6ae2f5d`](https://github.com/Effect-TS/effect/commit/6ae2f5da45a9ed9832605eca12b3e2bf2e2a1a67) Thanks @gcanti! - JSONSchema: Fix issue where invalid `default`s were included in the output.
+
+  Now they are ignored, similar to invalid `examples`.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString.annotations({
+    default: ""
+  })
+
+  const jsonSchema = JSONSchema.make(schema)
+
+  console.log(JSON.stringify(jsonSchema, null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "nonEmptyString",
+    "default": "",
+    "minLength": 1
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString.annotations({
+    default: ""
+  })
+
+  const jsonSchema = JSONSchema.make(schema)
+
+  console.log(JSON.stringify(jsonSchema, null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "nonEmptyString",
+    "minLength": 1
+  }
+  */
+  ```
+
+## 3.18.3
+
+### Patch Changes
+
+- [#5612](https://github.com/Effect-TS/effect/pull/5612) [`25fab81`](https://github.com/Effect-TS/effect/commit/25fab8147c8c58e637332cfd9e690f777898c813) Thanks @gcanti! - Fix JSON Schema generation with `topLevelReferenceStrategy: "skip"`, closes #5611
+
+  This patch fixes a bug that occurred when generating JSON Schemas with nested schemas that had identifiers, while using `topLevelReferenceStrategy: "skip"`.
+
+  Previously, the generator would still output `$ref` entries even though references were supposed to be skipped, leaving unresolved definitions.
+
+  **Before**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const A = Schema.Struct({ value: Schema.String }).annotations({
+    identifier: "A"
+  })
+  const B = Schema.Struct({ a: A }).annotations({ identifier: "B" })
+
+  const definitions = {}
+  console.log(
+    JSON.stringify(
+      JSONSchema.fromAST(B.ast, {
+        definitions,
+        topLevelReferenceStrategy: "skip"
+      }),
+      null,
+      2
+    )
+  )
+  /*
+  {
+    "type": "object",
+    "required": ["a"],
+    "properties": {
+      "a": {
+        "$ref": "#/$defs/A"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  console.log(definitions)
+  /*
+  {
+    A: {
+      type: "object",
+      required: ["value"],
+      properties: { value: [Object] },
+      additionalProperties: false
+    }
+  }
+  */
+  ```
+
+  **After**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const A = Schema.Struct({ value: Schema.String }).annotations({
+    identifier: "A"
+  })
+  const B = Schema.Struct({ a: A }).annotations({ identifier: "B" })
+
+  const definitions = {}
+  console.log(
+    JSON.stringify(
+      JSONSchema.fromAST(B.ast, {
+        definitions,
+        topLevelReferenceStrategy: "skip"
+      }),
+      null,
+      2
+    )
+  )
+  /*
+  {
+    "type": "object",
+    "required": ["a"],
+    "properties": {
+      "a": {
+        "type": "object",
+        "required": ["value"],
+        "properties": {
+          "value": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  console.log(definitions)
+  /*
+  {}
+  */
+  ```
+
+  Now schemas are correctly inlined, and no leftover `$ref` entries or unused definitions remain.
+
+## 3.18.2
+
+### Patch Changes
+
+- [#5598](https://github.com/Effect-TS/effect/pull/5598) [`8ba4757`](https://github.com/Effect-TS/effect/commit/8ba47576c75b8b91be4bf9c1dae13995b37018af) Thanks @cyberixae! - Fix Array Do documentation
+
+## 3.18.1
+
+### Patch Changes
+
+- [#5584](https://github.com/Effect-TS/effect/pull/5584) [`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152) Thanks @indietyp! - Enable `console.group` use in `Logger.prettyFormat` when using Bun
+
+## 3.18.0
+
+### Minor Changes
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa) Thanks @schickling! - Add experimental Graph module with comprehensive graph data structure support
+
+  This experimental module provides:
+  - Directed and undirected graph support
+  - Immutable and mutable graph variants
+  - Type-safe node and edge operations
+  - Graph algorithms: DFS, BFS, shortest paths, cycle detection, etc.
+
+  Example usage:
+
+  ```typescript
+  import { Graph } from "effect"
+
+  // Create a graph with mutations
+  const graph = Graph.directed<string, number>((mutable) => {
+    const nodeA = Graph.addNode(mutable, "Node A")
+    const nodeB = Graph.addNode(mutable, "Node B")
+    Graph.addEdge(mutable, nodeA, nodeB, 5)
+  })
+
+  console.log(
+    `Nodes: ${Graph.nodeCount(graph)}, Edges: ${Graph.edgeCount(graph)}`
+  )
+  ```
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137) Thanks @mikearnaldi! - Automatically set otel parent when present as external span
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c) Thanks @tim-smart! - add Effect.Semaphore.resize
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2) Thanks @mikearnaldi! - Introduce ReadonlyTag as the covariant side of a tag, enables:
+
+  ```ts
+  import type { Context } from "effect"
+  import { Effect } from "effect"
+
+  export class MyRequirement extends Effect.Service<MyRequirement>()(
+    "MyRequirement",
+    { succeed: () => 42 }
+  ) {}
+
+  export class MyUseCase extends Effect.Service<MyUseCase>()("MyUseCase", {
+    dependencies: [MyRequirement.Default],
+    effect: Effect.gen(function* () {
+      const requirement = yield* MyRequirement
+      return Effect.fn("MyUseCase.execute")(function* () {
+        return requirement()
+      })
+    })
+  }) {}
+
+  export function effectHandler<I, Args extends Array<any>, A, E, R>(
+    service: Context.ReadonlyTag<I, (...args: Args) => Effect.Effect<A, E, R>>
+  ) {
+    return Effect.fn("effectHandler")(function* (...args: Args) {
+      const execute = yield* service
+      yield* execute(...args)
+    })
+  }
+
+  export const program = effectHandler(MyUseCase)
+  ```
+
 ## 3.17.14
 
 ### Patch Changes
