@@ -380,6 +380,11 @@ function getRawDefault(annotated: AST.Annotated | undefined): Option.Option<unkn
   return Option.none()
 }
 
+function encodeDefault(ast: AST.AST, def: unknown): Option.Option<unknown> {
+  const getOption = ParseResult.getOption(ast, false)
+  return getOption(def)
+}
+
 function getRawExamples(annotated: AST.Annotated | undefined): ReadonlyArray<unknown> | undefined {
   if (annotated !== undefined) return Option.getOrUndefined(AST.getExamplesAnnotation(annotated))
 }
@@ -414,7 +419,12 @@ function pruneJsonSchemaAnnotations(
   const out: JsonSchemaAnnotations = {}
   if (description !== undefined) out.description = description
   if (title !== undefined) out.title = title
-  if (Option.isSome(def)) out.default = def.value
+  if (Option.isSome(def)) {
+    const o = encodeDefault(ast, def.value)
+    if (Option.isSome(o)) {
+      out.default = o.value
+    }
+  }
   if (examples !== undefined) {
     const encodedExamples = encodeExamples(ast, examples)
     if (encodedExamples !== undefined) {
