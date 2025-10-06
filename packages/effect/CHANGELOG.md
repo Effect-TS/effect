@@ -1,5 +1,62 @@
 # effect
 
+## 3.18.4
+
+### Patch Changes
+
+- [#5617](https://github.com/Effect-TS/effect/pull/5617) [`6ae2f5d`](https://github.com/Effect-TS/effect/commit/6ae2f5da45a9ed9832605eca12b3e2bf2e2a1a67) Thanks @gcanti! - JSONSchema: Fix issue where invalid `default`s were included in the output.
+
+  Now they are ignored, similar to invalid `examples`.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString.annotations({
+    default: ""
+  })
+
+  const jsonSchema = JSONSchema.make(schema)
+
+  console.log(JSON.stringify(jsonSchema, null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "nonEmptyString",
+    "default": "",
+    "minLength": 1
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString.annotations({
+    default: ""
+  })
+
+  const jsonSchema = JSONSchema.make(schema)
+
+  console.log(JSON.stringify(jsonSchema, null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "nonEmptyString",
+    "minLength": 1
+  }
+  */
+  ```
+
 ## 3.18.3
 
 ### Patch Changes
