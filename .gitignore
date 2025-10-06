@@ -19,3 +19,4 @@ bun.lock
 # Guard against stray URI-named files from SQLite connection strings
 file:*
 packages-native/*/file:*
+.pnpm-store/
