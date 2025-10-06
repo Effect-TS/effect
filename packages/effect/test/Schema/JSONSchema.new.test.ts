@@ -2972,6 +2972,25 @@ schema (SymbolKeyword): symbol`
       })
     })
 
+    it("should filter out invalid examples", async () => {
+      await assertDraft7(Schema.NonEmptyString.annotations({ examples: ["", "a"] }), {
+        "type": "string",
+        "title": "nonEmptyString",
+        "description": "a non empty string",
+        "minLength": 1,
+        "examples": ["a"]
+      })
+    })
+
+    it("should filter out invalid defaults", async () => {
+      await assertDraft7(Schema.NonEmptyString.annotations({ default: "" }), {
+        "type": "string",
+        "title": "nonEmptyString",
+        "description": "a non empty string",
+        "minLength": 1
+      })
+    })
+
     describe("should encode the examples", () => {
       it("property signatures", async () => {
         const schema = Schema.Struct({
