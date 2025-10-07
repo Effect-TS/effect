@@ -1595,20 +1595,17 @@ export interface ToolResultFailure<Name extends string, Failure> extends BaseToo
  * > = Response.toolResultPart({
  *   id: "call_123",
  *   name: "get_weather",
- *   result: Either.right({
+ *   isFailure: false,
+ *   result: {
  *     temperature: 22,
  *     condition: "sunny",
  *     humidity: 65
- *   }),
- *   encodedResult: {
- *     _tag: "Right",
- *     right: {
- *       temperature: 22,
- *       condition: "sunny",
- *       humidity: 65
- *     }
  *   },
- *   isFailure: false,
+ *   encodedResult: {
+ *     temperature: 22,
+ *     condition: "sunny",
+ *     humidity: 65
+ *   },
  *   providerExecuted: false
  * })
  * ```
@@ -1749,9 +1746,21 @@ export const ToolResultPart = <
  * @since 1.0.0
  * @category Constructors
  */
-export const toolResultPart = <const Name extends string, Success, Failure>(
-  params: ConstructorParams<ToolResultPart<Name, Success, Failure>>
-): ToolResultPart<Name, Success, Failure> => makePart("tool-result", params)
+export const toolResultPart = <
+  const Params extends ConstructorParams<ToolResultPart<string, any, any>>
+>(
+  params: Params
+): Params extends {
+  readonly name: infer Name extends string
+  readonly isFailure: false
+  readonly result: infer Success
+} ? ToolResultPart<Name, Success, never>
+  : Params extends {
+    readonly name: infer Name extends string
+    readonly isFailure: true
+    readonly result: infer Failure
+  } ? ToolResultPart<Name, never, Failure>
+  : never => makePart("tool-result", params) as any
 
 // =============================================================================
 // File Part
