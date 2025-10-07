@@ -396,13 +396,10 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 
               case "tool": {
                 for (const part of message.content) {
-                  const result = part.result._tag === "Right"
-                    ? part.result.right
-                    : part.result.left
                   content.push({
                     toolResult: {
                       toolUseId: part.id,
-                      content: [{ text: JSON.stringify(result) }]
+                      content: [{ text: JSON.stringify(part.result) }]
                     }
                   })
                 }
