@@ -4,7 +4,6 @@ import * as Tool from "@effect/ai/Tool"
 import * as Toolkit from "@effect/ai/Toolkit"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Schema from "effect/Schema"
 import * as TestUtils from "./utilities.js"
 
@@ -103,9 +102,10 @@ describe("Tool", () => {
 
         const expected = Response.makePart("tool-result", {
           id: toolCallId,
+          isFailure: false,
           name: toolName,
-          result: Either.right(toolResult),
-          encodedResult: { _tag: "Right", right: toolResult },
+          result: toolResult,
+          encodedResult: toolResult,
           providerExecuted: false
         })
 
@@ -142,8 +142,9 @@ describe("Tool", () => {
         const expected = Response.makePart("tool-result", {
           id: toolCallId,
           name: toolName,
-          result: Either.left(toolResult),
-          encodedResult: { _tag: "Left", left: toolResult },
+          isFailure: true,
+          result: toolResult,
+          encodedResult: toolResult,
           providerExecuted: false
         })
 
@@ -246,7 +247,8 @@ describe("Tool", () => {
                 type: "tool-result",
                 id: toolCallId,
                 name: tool.name,
-                result: { _tag: "Right", right: toolResult },
+                isFailure: false,
+                result: toolResult,
                 providerName: tool.providerName,
                 providerExecuted: true
               }
@@ -257,8 +259,9 @@ describe("Tool", () => {
         const expected = Response.makePart("tool-result", {
           id: toolCallId,
           name: tool.name,
-          result: Either.right(toolResult),
-          encodedResult: { _tag: "Right", right: toolResult },
+          isFailure: false,
+          result: toolResult,
+          encodedResult: toolResult,
           providerName: tool.providerName,
           providerExecuted: true
         })
@@ -293,8 +296,9 @@ describe("Tool", () => {
               {
                 type: "tool-result",
                 id: toolCallId,
+                isFailure: true,
                 name: tool.name,
-                result: { _tag: "Left", left: toolResult },
+                result: toolResult,
                 providerName: tool.providerName,
                 providerExecuted: true
               }
@@ -305,8 +309,9 @@ describe("Tool", () => {
         const expected = Response.makePart("tool-result", {
           id: toolCallId,
           name: tool.name,
-          result: Either.left(toolResult),
-          encodedResult: { _tag: "Left", left: toolResult },
+          isFailure: true,
+          result: toolResult,
+          encodedResult: toolResult,
           providerName: tool.providerName,
           providerExecuted: true
         })
@@ -352,8 +357,9 @@ describe("Tool", () => {
         const expected = Response.makePart("tool-result", {
           id: toolCallId,
           name: tool.name,
-          result: Either.right(toolResult),
-          encodedResult: { _tag: "Right", right: toolResult },
+          isFailure: false,
+          result: toolResult,
+          encodedResult: toolResult,
           providerName: tool.providerName,
           providerExecuted: false
         })
@@ -400,8 +406,9 @@ describe("Tool", () => {
         const expected = Response.makePart("tool-result", {
           id: toolCallId,
           name: tool.name,
-          result: Either.left(toolResult),
-          encodedResult: { _tag: "Left", left: toolResult },
+          isFailure: true,
+          result: toolResult,
+          encodedResult: toolResult,
           providerName: tool.providerName,
           providerExecuted: false
         })
