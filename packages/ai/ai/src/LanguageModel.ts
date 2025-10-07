@@ -1010,12 +1010,13 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 
   return Effect.forEach(toolCalls, (toolCall) => {
     return toolkit.handle(toolCall.name, toolCall.params as any).pipe(
-      Effect.map(({ encodedResult, result }) =>
+      Effect.map(({ encodedResult, isFailure, result }) =>
         Response.makePart("tool-result", {
           id: toolCall.id,
           name: toolCall.name,
           result,
           encodedResult,
+          isFailure,
           providerExecuted: false,
           ...(toolCall.providerName !== undefined
             ? { providerName: toolCall.providerName }

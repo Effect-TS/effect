@@ -520,13 +520,10 @@ const prepareMessages: (
 
       case "tool": {
         for (const part of message.content) {
-          const result = part.result._tag === "Right"
-            ? part.result.right
-            : part.result.left
           messages.push({
             type: "function_call_output",
             call_id: part.id,
-            output: JSON.stringify(result)
+            output: JSON.stringify(part.result)
           })
         }
 
@@ -677,7 +674,8 @@ const makeResponse: (
             type: "tool-result",
             id: part.id,
             name: "OpenAiCodeInterpreter",
-            result: { _tag: "Right", right: { outputs: part.outputs } },
+            isFailure: false,
+            result: part.outputs,
             providerName: "code_interpreter",
             providerExecuted: true
           })
@@ -699,13 +697,11 @@ const makeResponse: (
             type: "tool-result",
             id: part.id,
             name: "OpenAiFileSearch",
+            isFailure: false,
             result: {
-              _tag: "Right",
-              right: {
-                status: part.status,
-                queries: part.queries,
-                ...(part.results && { results: part.results })
-              }
+              status: part.status,
+              queries: part.queries,
+              ...(part.results && { results: part.results })
             },
             providerName: "file_search",
             providerExecuted: true
@@ -728,7 +724,8 @@ const makeResponse: (
             type: "tool-result",
             id: part.id,
             name: webSearchTool?.name ?? "OpenAiWebSearch",
-            result: { _tag: "Right", right: { status: part.status } },
+            isFailure: false,
+            result: { status: part.status },
             providerName: webSearchTool?.providerName ?? "web_search",
             providerExecuted: true
           })
@@ -979,7 +976,8 @@ const makeStreamResponse: (
                   type: "tool-result",
                   id: event.item.id,
                   name: "OpenAiCodeInterpreter",
-                  result: { _tag: "Right", right: { outputs: event.item.outputs } },
+                  isFailure: false,
+                  result: { outputs: event.item.outputs },
                   providerName: "code_interpreter",
                   providerExecuted: true
                 })
@@ -1009,13 +1007,11 @@ const makeStreamResponse: (
                   type: "tool-result",
                   id: event.item.id,
                   name: "OpenAiFileSearch",
+                  isFailure: false,
                   result: {
-                    _tag: "Right",
-                    right: {
-                      status: event.item.status,
-                      queries: event.item.queries,
-                      ...(event.item.results && { results: event.item.results })
-                    }
+                    status: event.item.status,
+                    queries: event.item.queries,
+                    ...(event.item.results && { results: event.item.results })
                   },
                   providerName: "file_search",
                   providerExecuted: true
@@ -1103,7 +1099,8 @@ const makeStreamResponse: (
                   type: "tool-result",
                   id: event.item.id,
                   name: "OpenAiWebSearch",
-                  result: { _tag: "Right", right: { status: event.item.status } },
+                  isFailure: false,
+                  result: { status: event.item.status },
                   providerName: "web_search",
                   providerExecuted: true
                 })

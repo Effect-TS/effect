@@ -568,13 +568,11 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                   isLastPart ? getCacheControl(message) : undefined
                 )
 
-                const result = part.result._tag === "Right" ? part.result.right : part.result.left
-                const isError = part.result._tag === "Left"
                 content.push({
                   type: "tool_result",
                   tool_use_id: part.id,
-                  content: JSON.stringify(result),
-                  is_error: isError,
+                  content: JSON.stringify(part.result),
+                  is_error: part.isFailure,
                   cache_control: cacheControl
                 })
               }
@@ -673,21 +671,18 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
               }
 
               case "tool-result": {
-                const result = part.result._tag === "Right"
-                  ? part.result.right
-                  : part.result.left
                 if (part.name === "AnthropicCodeExecution") {
                   content.push({
                     type: "code_execution_tool_result",
                     tool_use_id: part.id,
-                    content: result as any,
+                    content: part.result as any,
                     cache_control: cacheControl
                   })
                 } else if (part.name === "AnthropicWebSearch") {
                   content.push({
                     type: "web_search_tool_result",
                     tool_use_id: part.id,
-                    content: result as any,
+                    content: part.result as any,
                     cache_control: cacheControl
                   })
                 } else {
@@ -826,14 +821,13 @@ const makeResponse: (
         }
 
         case "bash_code_execution_tool_result": {
-          const result = part.content.type === "bash_code_execution_result"
-            ? { _tag: "Right", right: part.content } as const
-            : { _tag: "Left", left: part.content } as const
+          const isFailure = part.content.type === "bash_code_execution_tool_result_error"
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
             name: "AnthropicCodeExecution",
-            result,
+            isFailure,
+            result: part.content,
             providerName: "code_execution",
             providerExecuted: true
           })
@@ -841,14 +835,13 @@ const makeResponse: (
         }
 
         case "code_execution_tool_result": {
-          const result = part.content.type === "code_execution_result"
-            ? { _tag: "Right", right: part.content } as const
-            : { _tag: "Left", left: part.content } as const
+          const isFailure = part.content.type === "code_execution_tool_result_error"
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
             name: "AnthropicCodeExecution",
-            result,
+            isFailure,
+            result: part.content,
             providerName: "code_execution",
             providerExecuted: true
           })
@@ -856,14 +849,13 @@ const makeResponse: (
         }
 
         case "text_editor_code_execution_tool_result": {
-          const result = part.content.type === "text_editor_code_execution_tool_result_error"
-            ? { _tag: "Left", left: part.content } as const
-            : { _tag: "Right", right: part.content } as const
+          const isFailure = part.content.type === "text_editor_code_execution_tool_result_error"
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
             name: "AnthropicCodeExecution",
-            result,
+            isFailure,
+            result: part.content,
             providerName: "code_execution",
             providerExecuted: true
           })
@@ -871,14 +863,13 @@ const makeResponse: (
         }
 
         case "web_search_tool_result": {
-          const result = Array.isArray(part.content)
-            ? { _tag: "Right", right: part.content } as const
-            : { _tag: "Left", left: part.content } as const
+          const isFailure = !Array.isArray(part.content)
           parts.push({
             type: "tool-result",
             id: part.tool_use_id,
             name: "AnthropicWebSearch",
-            result,
+            isFailure,
+            result: part.content,
             providerName: "web_search",
             providerExecuted: true
           })
@@ -1120,14 +1111,13 @@ const makeStreamResponse: (
               case "bash_code_execution_tool_result": {
                 const toolUseId = event.content_block.tool_use_id
                 const content = event.content_block.content
-                const result = content.type === "bash_code_execution_result"
-                  ? { _tag: "Right", right: content } as const
-                  : { _tag: "Left", left: content } as const
+                const isFailure = content.type === "bash_code_execution_tool_result_error"
                 parts.push({
                   type: "tool-result",
                   id: toolUseId,
                   name: "AnthropicCodeExecution",
-                  result,
+                  isFailure,
+                  result: content,
                   providerName: "code_execution",
                   providerExecuted: true
                 })
@@ -1137,14 +1127,13 @@ const makeStreamResponse: (
               case "code_execution_tool_result": {
                 const toolUseId = event.content_block.tool_use_id
                 const content = event.content_block.content
-                const result = content.type === "code_execution_result"
-                  ? { _tag: "Right", right: content } as const
-                  : { _tag: "Left", left: content } as const
+                const isFailure = content.type === "code_execution_tool_result_error"
                 parts.push({
                   type: "tool-result",
                   id: toolUseId,
                   name: "AnthropicCodeExecution",
-                  result,
+                  isFailure,
+                  result: content,
                   providerName: "code_execution",
                   providerExecuted: true
                 })
@@ -1154,14 +1143,13 @@ const makeStreamResponse: (
               case "text_editor_code_execution_tool_result": {
                 const toolUseId = event.content_block.tool_use_id
                 const content = event.content_block.content
-                const result = content.type === "text_editor_code_execution_tool_result_error"
-                  ? { _tag: "Left", left: content } as const
-                  : { _tag: "Right", right: content } as const
+                const isFailure = content.type === "text_editor_code_execution_tool_result_error"
                 parts.push({
                   type: "tool-result",
                   id: toolUseId,
                   name: "AnthropicCodeExecution",
-                  result,
+                  isFailure,
+                  result: content,
                   providerName: "code_execution",
                   providerExecuted: true
                 })
@@ -1171,14 +1159,13 @@ const makeStreamResponse: (
               case "web_search_tool_result": {
                 const toolUseId = event.content_block.tool_use_id
                 const content = event.content_block.content
-                const result = Array.isArray(content)
-                  ? { _tag: "Right", right: content } as const
-                  : { _tag: "Left", left: content } as const
+                const isFailure = !Array.isArray(content)
                 parts.push({
                   type: "tool-result",
                   id: toolUseId,
                   name: "AnthropicWebSearch",
-                  result,
+                  isFailure,
+                  result: content,
                   providerName: "web_search",
                   providerExecuted: true
                 })
