@@ -1,5 +1,10 @@
 ---
-"@effect/ai": patch
+"@effect/ai-amazon-bedrock": minor
+"@effect/ai-openrouter": minor
+"@effect/ai-anthropic": minor
+"@effect/ai-google": minor
+"@effect/ai-openai": minor
+"@effect/ai": minor
 ---
 
 Remove `Either` / `EitherEncoded` from tool call results. 
