@@ -468,13 +468,10 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
       case "tool": {
         const cacheControl = getCacheControl(message)
         for (const part of message.content) {
-          const result = part.result._tag === "Right"
-            ? part.result.right
-            : part.result.left
           messages.push({
             role: "tool",
             tool_call_id: part.id,
-            content: JSON.stringify(result),
+            content: JSON.stringify(part.result),
             cache_control: cacheControl
           })
         }

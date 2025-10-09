@@ -40,7 +40,6 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { CommitPrototype } from "effect/Effectable"
-import * as Either from "effect/Either"
 import { identity } from "effect/Function"
 import type { Inspectable } from "effect/Inspectable"
 import { BaseProto as InspectableProto } from "effect/Inspectable"
@@ -267,16 +266,17 @@ const Proto = {
         readonly context: Context.Context<never>
         readonly handler: (params: any) => Effect.Effect<any, any>
         readonly decodeParameters: (u: unknown) => Effect.Effect<Tool.Parameters<any>, ParseError>
-        readonly validateResult: (u: unknown) => Effect.Effect<Either.Either<unknown, unknown>, ParseError>
-        readonly encodeResult: (u: unknown) => Effect.Effect<Schema.EitherEncoded<unknown, unknown>, ParseError>
+        readonly validateResult: (u: unknown) => Effect.Effect<unknown, ParseError>
+        readonly encodeResult: (u: unknown) => Effect.Effect<unknown, ParseError>
       }>()
       const getSchemas = (tool: Tool.Any) => {
         let schemas = schemasCache.get(tool)
         if (Predicate.isUndefined(schemas)) {
           const handler = context.unsafeMap.get(tool.id)! as Tool.Handler<any>
           const decodeParameters = Schema.decodeUnknown(tool.parametersSchema) as any
-          const validateResult = Schema.validate(tool.resultSchema) as any
-          const encodeResult = Schema.encodeUnknown(tool.resultSchema) as any
+          const resultSchema = Schema.Union(tool.successSchema, tool.failureSchema)
+          const validateResult = Schema.validate(resultSchema) as any
+          const encodeResult = Schema.encodeUnknown(resultSchema) as any
           schemas = {
             context: handler.context,
             handler: handler.handler,
@@ -313,15 +313,16 @@ const Proto = {
                 cause
               })
           )
-          const result = yield* schemas.handler(decodedParams).pipe(
-            Effect.matchEffect({
-              onFailure: (error) =>
-                tool.failureMode === "error"
-                  ? Effect.fail(error)
-                  : Effect.succeed(Either.left(error)),
-              onSuccess: (value) => Effect.succeed(Either.right(value))
-            }),
-            Effect.flatMap((either) => schemas.validateResult(either)),
+          const { isFailure, result } = yield* schemas.handler(decodedParams).pipe(
+            Effect.map((result) => ({ result, isFailure: false })),
+            Effect.catchAll((error) =>
+              // If the tool handler failed, check the tool's failure mode to
+              // determine how the result should be returned to the end user
+              tool.failureMode === "error"
+                ? Effect.fail(error)
+                : Effect.succeed({ result: error, isFailure: true })
+            ),
+            Effect.tap(({ result }) => schemas.validateResult(result)),
             Effect.mapInputContext((input) => Context.merge(schemas.context, input)),
             Effect.mapError((cause) =>
               ParseResult.isParseError(cause)
@@ -345,6 +346,7 @@ const Proto = {
               })
           )
           return {
+            isFailure,
             result,
             encodedResult
           } satisfies Tool.HandlerResult<any>
@@ -352,7 +354,7 @@ const Proto = {
       )
       return {
         tools,
-        handle: handle as any
+        handle
       } satisfies WithHandler<Record<string, any>>
     })
   },

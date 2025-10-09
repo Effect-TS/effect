@@ -28,7 +28,6 @@
  */
 import type * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
-import type * as Either from "effect/Either"
 import { constFalse } from "effect/Function"
 import type * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
@@ -1507,6 +1506,75 @@ export const toolCallPart = <const Name extends string, Params>(
 // =============================================================================
 
 /**
+ * The base fields of a tool result part.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface BaseToolResult<Name extends string> extends BasePart<"tool-result", ToolResultPartMetadata> {
+  /**
+   * Unique identifier matching the original tool call.
+   */
+  readonly id: string
+  /**
+   * Name of the tool being called, which corresponds to the name of the tool
+   * in the `Toolkit` included with the request.
+   */
+  readonly name: Name
+  /**
+   * The encoded result for serialization purposes.
+   */
+  readonly encodedResult: unknown
+  /**
+   * Optional provider-specific name for the tool, which can be useful when the
+   * name of the tool in the `Toolkit` and the name of the tool used by the
+   * model are different.
+   *
+   * This is usually happens only with provider-defined tools which require a
+   * user-space handler.
+   */
+  readonly providerName?: string | undefined
+  /**
+   * Whether the tool was executed by the provider (true) or framework (false).
+   */
+  readonly providerExecuted: boolean
+}
+
+/**
+ * Represents a successful tool call result.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ToolResultSuccess<Name extends string, Success> extends BaseToolResult<Name> {
+  /**
+   * The decoded success returned by the tool execution.
+   */
+  readonly result: Success
+  /**
+   * Whether or not the result of executing the tool call handler was an error.
+   */
+  readonly isFailure: false
+}
+
+/**
+ * Represents a failed tool call result.
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export interface ToolResultFailure<Name extends string, Failure> extends BaseToolResult<Name> {
+  /**
+   * The decoded failure returned by the tool execution.
+   */
+  readonly result: Failure
+  /**
+   * Whether or not the result of executing the tool call handler was an error.
+   */
+  readonly isFailure: true
+}
+
+/**
  * Response part representing the result of a tool call.
  *
  * @example
@@ -1527,18 +1595,16 @@ export const toolCallPart = <const Name extends string, Params>(
  * > = Response.toolResultPart({
  *   id: "call_123",
  *   name: "get_weather",
- *   result: Either.right({
+ *   isFailure: false,
+ *   result: {
  *     temperature: 22,
  *     condition: "sunny",
  *     humidity: 65
- *   }),
+ *   },
  *   encodedResult: {
- *     _tag: "Right",
- *     right: {
- *       temperature: 22,
- *       condition: "sunny",
- *       humidity: 65
- *     }
+ *     temperature: 22,
+ *     condition: "sunny",
+ *     humidity: 65
  *   },
  *   providerExecuted: false
  * })
@@ -1547,40 +1613,9 @@ export const toolCallPart = <const Name extends string, Params>(
  * @since 1.0.0
  * @category Models
  */
-export interface ToolResultPart<Name extends string, Success, Failure>
-  extends BasePart<"tool-result", ToolResultPartMetadata>
-{
-  /**
-   * Unique identifier matching the original tool call.
-   */
-  readonly id: string
-  /**
-   * Name of the tool being called, which corresponds to the name of the tool
-   * in the `Toolkit` included with the request.
-   */
-  readonly name: Name
-  /**
-   * The decoded result returned by the tool execution.
-   */
-  readonly result: Either.Either<Success, Failure>
-  /**
-   * The encoded result for serialization purposes.
-   */
-  readonly encodedResult: Schema.EitherEncoded<unknown, unknown>
-  /**
-   * Optional provider-specific name for the tool, which can be useful when the
-   * name of the tool in the `Toolkit` and the name of the tool used by the
-   * model are different.
-   *
-   * This is usually happens only with provider-defined tools which require a
-   * user-space handler.
-   */
-  readonly providerName?: string | undefined
-  /**
-   * Whether the tool was executed by the provider (true) or framework (false).
-   */
-  readonly providerExecuted: boolean
-}
+export type ToolResultPart<Name extends string, Success, Failure> =
+  | ToolResultSuccess<Name, Success>
+  | ToolResultFailure<Name, Failure>
 
 /**
  * Encoded representation of tool result parts for serialization.
@@ -1601,7 +1636,11 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
   /**
    * The result returned by the tool execution.
    */
-  readonly result: Schema.EitherEncoded<unknown, unknown>
+  readonly result: unknown
+  /**
+   * Whether or not the result of executing the tool call handler was an error.
+   */
+  readonly isFailure: boolean
   /**
    * Optional provider-specific name for the tool, which can be useful when the
    * name of the tool in the `Toolkit` and the name of the tool used by the
@@ -1644,15 +1683,13 @@ export const ToolResultPart = <
   ToolResultPart<Name, Schema.Schema.Type<Success>, Schema.Schema.Type<Failure>>,
   ToolResultPartEncoded
 > => {
-  const ResultSchema = Schema.Either({
-    left: failure,
-    right: success
-  })
   const Base = Schema.Struct({
     id: Schema.String,
     type: Schema.Literal("tool-result"),
-    providerName: Schema.optional(Schema.String)
+    providerName: Schema.optional(Schema.String),
+    isFailure: Schema.Boolean
   })
+  const ResultSchema = Schema.Union(success, failure)
   const Encoded = Schema.Struct({
     ...Base.fields,
     name: Schema.String,
@@ -1692,11 +1729,9 @@ export const ToolResultPart = <
       encode: Effect.fnUntraced(function*(decoded) {
         const encoded = yield* encodeResult(decoded.result)
         return {
-          id: decoded.id,
-          type: decoded.type,
-          name: decoded.name,
+          ...decoded,
           result: encoded,
-          ...(decoded.metadata ? { metadata: decoded.metadata } : {}),
+          ...(decoded.metadata ?? {}),
           ...(decoded.providerName ? { providerName: decoded.providerName } : {}),
           ...(decoded.providerExecuted ? { providerExecuted: true } : {})
         }
@@ -1711,9 +1746,21 @@ export const ToolResultPart = <
  * @since 1.0.0
  * @category Constructors
  */
-export const toolResultPart = <const Name extends string, Success, Failure>(
-  params: ConstructorParams<ToolResultPart<Name, Success, Failure>>
-): ToolResultPart<Name, Success, Failure> => makePart("tool-result", params)
+export const toolResultPart = <
+  const Params extends ConstructorParams<ToolResultPart<string, any, any>>
+>(
+  params: Params
+): Params extends {
+  readonly name: infer Name extends string
+  readonly isFailure: false
+  readonly result: infer Success
+} ? ToolResultPart<Name, Success, never>
+  : Params extends {
+    readonly name: infer Name extends string
+    readonly isFailure: true
+    readonly result: infer Failure
+  } ? ToolResultPart<Name, never, Failure>
+  : never => makePart("tool-result", params) as any
 
 // =============================================================================
 // File Part

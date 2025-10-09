@@ -27,7 +27,7 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import * as Effect from "effect/Effect"
+import type * as Effect from "effect/Effect"
 import { constFalse, constTrue, identity } from "effect/Function"
 import * as JsonSchema from "effect/JSONSchema"
 import * as Option from "effect/Option"
@@ -37,7 +37,7 @@ import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import type { Covariant } from "effect/Types"
-import * as AiError from "./AiError.js"
+import type * as AiError from "./AiError.js"
 
 // =============================================================================
 // Type Ids
@@ -163,12 +163,6 @@ export interface Tool<
    * it fails.
    */
   readonly failureSchema: Config["failure"]
-
-  /**
-   * A `Schema` representing the result of a tool call, whether it succeeds or
-   * fails.
-   */
-  readonly resultSchema: Schema.Either<Config["success"], Config["failure"]>
 
   /**
    * A `Context` object containing tool annotations which can store metadata
@@ -340,13 +334,6 @@ export interface ProviderDefined<
    * this tool into a `Layer`.
    */
   readonly requiresHandler: RequiresHandler
-
-  /**
-   * Decodes the result received after the provider-defined tool is called.
-   */
-  decodeResult(
-    args: unknown
-  ): Effect.Effect<Config["success"]["Type"], AiError.AiError>
 }
 
 /**
@@ -509,7 +496,6 @@ export interface Any extends Pipeable {
   readonly parametersSchema: AnyStructSchema
   readonly successSchema: Schema.Schema.Any
   readonly failureSchema: Schema.Schema.All
-  readonly resultSchema: Schema.Either<any, any>
   readonly failureMode: FailureMode
   readonly annotations: Context.Context<never>
 }
@@ -705,8 +691,8 @@ export type Result<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? Schema.Either<_Config["success"], _Config["failure"]>["Type"] :
-  never
+> ? Success<T> | Failure<T>
+  : never
 
 /**
  * A utility type to extract the encoded type of the tool call result whether
@@ -719,8 +705,8 @@ export type ResultEncoded<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? Schema.Either<_Config["success"], _Config["failure"]>["Encoded"] :
-  never
+> ? SuccessEncoded<T> | FailureEncoded<T>
+  : never
 
 /**
  * A utility type to extract the requirements of an `Tool`.
@@ -760,6 +746,10 @@ export interface Handler<Name extends string> {
  */
 export interface HandlerResult<Tool extends Any> {
   /**
+   * Whether the result of executing the tool call handler was an error or not.
+   */
+  readonly isFailure: boolean
+  /**
    * The result of executing the handler for a particular tool.
    */
   readonly result: Result<Tool>
@@ -768,7 +758,7 @@ export interface HandlerResult<Tool extends Any> {
    * tool as a JSON-serializable value. The encoded result can be incorporated
    * into subsequent requests to the large language model.
    */
-  readonly encodedResult: Schema.EitherEncoded<unknown, unknown>
+  readonly encodedResult: unknown
 }
 
 /**
@@ -782,7 +772,7 @@ export type HandlerError<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? _Config["failureMode"] extends "error" ? Schema.Schema.Type<_Config["failure"]>
+> ? _Config["failureMode"] extends "error" ? _Config["failure"]["Type"]
   : never
   : never
 
@@ -863,21 +853,7 @@ const Proto = {
 
 const ProviderDefinedProto = {
   ...Proto,
-  [ProviderDefinedTypeId]: ProviderDefinedTypeId,
-  decodeResult(this: AnyProviderDefined, result: unknown) {
-    return Schema.decodeUnknown(this.successSchema)(result).pipe(
-      Effect.orElse(() => Schema.decodeUnknown(this.failureSchema as any)(result)),
-      Effect.mapError(
-        (cause) =>
-          new AiError.MalformedOutput({
-            module: "Tool",
-            method: "ProviderDefined.decodeResult",
-            description: `Failed to decode the result of provider-defined tool '${this.name}'`,
-            cause
-          })
-      )
-    )
-  }
+  [ProviderDefinedTypeId]: ProviderDefinedTypeId
 }
 
 const userDefinedProto = <
@@ -892,7 +868,6 @@ const userDefinedProto = <
   readonly parametersSchema: Parameters
   readonly successSchema: Success
   readonly failureSchema: Failure
-  readonly resultSchema: Schema.Either<Success, Failure>
   readonly annotations: Context.Context<never>
   readonly failureMode: Mode
 }): Tool<
@@ -927,7 +902,6 @@ const providerDefinedProto = <
   readonly parametersSchema: Parameters
   readonly successSchema: Success
   readonly failureSchema: Failure
-  readonly resultSchema: Schema.Either<Success, Failure>
   readonly failureMode: FailureMode
 }): ProviderDefined<
   Name,
@@ -1022,10 +996,6 @@ export const make = <
 > => {
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
-  const resultSchema = Schema.Either({
-    left: failureSchema,
-    right: successSchema
-  })
   return userDefinedProto({
     name,
     description: options?.description,
@@ -1034,7 +1004,6 @@ export const make = <
       : constEmptyStruct,
     successSchema,
     failureSchema,
-    resultSchema,
     failureMode: options?.failureMode ?? "error",
     annotations: Context.empty()
   }) as any
@@ -1146,10 +1115,6 @@ export const providerDefined = <
   const failureMode = "failureMode" in args ? args.failureMode : undefined
   const successSchema = options?.success ?? Schema.Void
   const failureSchema = options?.failure ?? Schema.Never
-  const resultSchema = Schema.Either({
-    right: successSchema,
-    left: failureSchema
-  })
   return providerDefinedProto({
     id: options.id,
     name: options.toolkitName,
@@ -1162,7 +1127,6 @@ export const providerDefined = <
       : constEmptyStruct,
     successSchema,
     failureSchema,
-    resultSchema,
     failureMode: failureMode ?? "error"
   }) as any
 }
@@ -1213,10 +1177,6 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
     parametersSchema: schema,
     successSchema: schema.success,
     failureSchema: schema.failure,
-    resultSchema: Schema.Either({
-      left: schema.failure,
-      right: schema.success
-    }),
     failureMode: "error",
     annotations: Context.empty()
   }) as any

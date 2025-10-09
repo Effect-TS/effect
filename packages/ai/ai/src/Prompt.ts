@@ -606,13 +606,11 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
  * const toolResultPart: Prompt.ToolResultPart = Prompt.makePart("tool-result", {
  *   id: "call_123",
  *   name: "get_weather",
+ *   isFailure: false,
  *   result: {
- *     _tag: "Right",
- *     right: {
- *       temperature: 22,
- *       condition: "sunny",
- *       humidity: 65
- *     }
+ *     temperature: 22,
+ *     condition: "sunny",
+ *     humidity: 65
  *   }
  * })
  * ```
@@ -630,9 +628,13 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    */
   readonly name: string
   /**
+   * Whether or not the result of executing the tool call handler was an error.
+   */
+  readonly isFailure: boolean
+  /**
    * The result returned by the tool execution.
    */
-  readonly result: Schema.EitherEncoded<unknown, unknown>
+  readonly result: unknown
 }
 
 /**
@@ -651,9 +653,13 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    */
   readonly name: string
   /**
+   * Whether or not the result of executing the tool call handler was an error.
+   */
+  readonly isFailure: boolean
+  /**
    * The result returned by the tool execution.
    */
-  readonly result: Schema.EitherEncoded<unknown, unknown>
+  readonly result: unknown
 }
 
 /**
@@ -675,10 +681,8 @@ export const ToolResultPart: Schema.Schema<ToolResultPart, ToolResultPartEncoded
   type: Schema.Literal("tool-result"),
   id: Schema.String,
   name: Schema.String,
-  result: Schema.encodedSchema(Schema.Either({
-    left: Schema.Unknown,
-    right: Schema.Unknown
-  })),
+  isFailure: Schema.Boolean,
+  result: Schema.Unknown,
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
@@ -1028,9 +1032,10 @@ export const userMessage = (params: MessageConstructorParams<UserMessage>): User
  *     Prompt.makePart("tool-result", {
  *       id: "call_123",
  *       name: "get_weather",
+ *       isFailure: false,
  *       result: {
- *         _tag: "Right",
- *         right: { temperature: 72, condition: "sunny" }
+ *         temperature: 72,
+ *         condition: "sunny"
  *       }
  *     }),
  *     Prompt.makePart("text", {
@@ -1138,15 +1143,13 @@ export const assistantMessage = (params: MessageConstructorParams<AssistantMessa
  *     Prompt.makePart("tool-result", {
  *       id: "call_123",
  *       name: "search_web",
+ *       isFailure: false,
  *       result: {
- *         _tag: "Right",
- *         right: {
- *           query: "TypeScript best practices",
- *           results: [
- *             { title: "TypeScript Handbook", url: "https://..." },
- *             { title: "Effective TypeScript", url: "https://..." }
- *           ]
- *         }
+ *         query: "TypeScript best practices",
+ *         results: [
+ *           { title: "TypeScript Handbook", url: "https://..." },
+ *           { title: "Effective TypeScript", url: "https://..." }
+ *         ]
  *       }
  *     })
  *   ]
@@ -1564,8 +1567,9 @@ const isValidPart = (part: Response.AnyPart): part is ValidResponsePart => {
  *   Response.makePart("tool-result", {
  *     id: "call_1",
  *     name: "get_time",
- *     result: Either.right("10:30 AM"),
- *     encodedResult: { _tag: "Right", right: "10:30 AM" },
+ *     isFailure: false,
+ *     result: "10:30 AM",
+ *     encodedResult: "10:30 AM",
  *     providerExecuted: false
  *   })
  * ]
@@ -1650,6 +1654,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           toolParts.push(makePart("tool-result", {
             id: part.id,
             name: part.providerName ?? part.name,
+            isFailure: part.isFailure,
             result: part.encodedResult
           }))
           break
