@@ -263,7 +263,7 @@ export declare namespace Effect {
     T extends Effect<infer _A, infer _E, infer _R> ? _A : never,
     T extends Effect<infer _A, infer _E, infer _R> ? _E : never,
     T extends Effect<infer _A, infer _E, infer _R> ? _R : never
-  >
+  > extends infer Q ? Q : never
 }
 
 /**
