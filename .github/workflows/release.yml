@@ -6,6 +6,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
+# Keep org-wide defaults; job requests least-privilege writes.
 permissions: {}
 
 jobs:
@@ -15,15 +16,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: write
-      id-token: write
-      pull-requests: write
+      contents: write        # create/update tags & release commits
+      pull-requests: write   # open/update the Changesets PR
+      id-token: write        # npm provenance (OIDC), if enabled
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to full commit SHA per org policy
+      # actions/checkout v4.1.7
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          fetch-depth: 0   # Changesets / tagging needs full history
+
+      # Local composite action (in-repo, no pin needed here).
       - name: Install dependencies
         uses: ./.github/actions/setup
+
+      # Pinned to full commit SHA per org policy
+      # changesets/action v1.5.3
       - name: Create Release Pull Request or Publish
-        uses: changesets/action@v1
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba
         with:
           version: pnpm changeset-version
           publish: pnpm changeset-publish
