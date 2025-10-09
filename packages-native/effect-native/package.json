@@ -1,6 +1,6 @@
 {
   "name": "effect-native",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "license": "MIT",
   "description": "Effect Native CLI that shrinks feedback loops for ultra extreme programmers.",
