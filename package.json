@@ -14,9 +14,10 @@
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
     "check-recursive": "pnpm --recursive --filter \"./packages-native/**/*\" exec tsc -b tsconfig.json",
-    "lint": "eslint \"packages-native/**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\" \"scripts/**/*.{ts,mjs}\"",
+    "lint-all": "eslint \"packages-native/**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\" \"scripts/**/*.{ts,mjs}\"",
+    "lint": "eslint --ignore-pattern \"**/*-demos/**\" \"packages-native/**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\" \"scripts/**/*.{ts,mjs}\"",
     "lint-fix": "pnpm lint --fix",
-    "docgen": "pnpm --recursive --filter \"./packages-native/**/*\" exec docgen && node scripts/docs.mjs",
+    "docgen": "pnpm --recursive --filter \"./packages-native/**/*\" --filter \"!./packages-native/*-demos\" exec docgen && node scripts/docs.mjs",
     "test-types": "tstyche",
     "changeset-version": "changeset version && node scripts/version.mjs && node scripts/force-libsqlite-embedded.mjs",
     "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish && node scripts/postpublish-dist-tags.mjs"

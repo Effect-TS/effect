@@ -1,0 +1,27 @@
+{
+  "name": "debug-demo-ai-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Workers AI proxy demo - memory leak debugging",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --inspector-port=9229",
+    "dev:leak": "cp ../src/workers-ai-proxy-leak.ts src/index.ts && wrangler dev --inspector-port=9229",
+    "dev:fixed": "cp ../src/workers-ai-proxy-fixed.ts src/index.ts && wrangler dev --inspector-port=9229",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail",
+    "tail:json": "wrangler tail --format=json",
+    "test:load": "echo 'Run: for i in {1..100}; do curl -X POST http://localhost:8787/api/chat -H \"Content-Type: application/json\" -d '{\"prompt\":\"test\"}'; done'",
+    "test:concurrent": "echo 'Install hey: brew install hey' && echo 'Run: hey -n 100 -c 10 -m POST -H \"Content-Type: application/json\" -d '{\"prompt\":\"test\"}' http://localhost:8787/api/chat'",
+    "stats": "curl http://localhost:8787/stats",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0",
+    "typescript": "^5.6.0"
+  }
+}

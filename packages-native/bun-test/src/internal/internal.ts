@@ -165,7 +165,7 @@ const makeTester = <R>(
   const failing: BunTest.Tester<R>["failing"] = (name, self, timeout) =>
     B.test.failing(name, () => run([], self), timeout)
 
-  const todo: BunTest.Tester<R>["todo"] = (name) => B.test.todo(name)
+  const todo: BunTest.Tester<R>["todo"] = (name) => B.test.todo(name, () => {})
 
   const prop: any = (name: string, arbitraries: any, self: any, options?: any) => {
     const timeout = typeof options === "number" ? options : options?.timeout
