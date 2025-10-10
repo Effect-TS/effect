@@ -18,6 +18,7 @@ See the [original Effect-TS README](https://github.com/Effect-TS/effect/blob/mai
 |![](https://img.shields.io/npm/v/@effect-native/libcrsql)|@effect-native/libcrsql|latest native CR-SQLite extension, pre-compiled|
 |![](https://img.shields.io/npm/v/@effect-native/crsql)|@effect-native/crsql|Effect Service for working with the CrSql extension|
 |![](https://img.shields.io/npm/v/@effect-native/debug)|@effect-native/debug|JS runtime debugger automation tools|
+|![](https://img.shields.io/npm/v/@effect-native/patterns)|@effect-native/patterns|ignore this for now|
 
 ---
 
