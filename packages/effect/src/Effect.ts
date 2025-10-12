@@ -13947,7 +13947,7 @@ export declare namespace Service {
  */
 export namespace fn {
   /**
-   * @since 3.11.0
+   * @since 3.19.0
    * @category Models
    */
   export type Return<A, E, R> = Generator<YieldWrap<Effect<any, E, R>>, A, any>
