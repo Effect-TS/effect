@@ -13950,7 +13950,7 @@ export namespace fn {
    * @since 3.19.0
    * @category Models
    */
-  export type Return<A, E, R> = Generator<YieldWrap<Effect<any, E, R>>, A, any>
+  export type Return<A, E = never, R = never> = Generator<YieldWrap<Effect<any, E, R>>, A, any>
   /**
    * @since 3.11.0
    * @category Models
