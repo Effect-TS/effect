@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.31.1
+
+### Patch Changes
+
+- [#5634](https://github.com/Effect-TS/effect/pull/5634) [`a5d0f2b`](https://github.com/Effect-TS/effect/commit/a5d0f2bd54ec4a791a2ea5b31493bd55882066e0) Thanks @IMax153! - Ensure that tool calls are emitted as soon as possible when streaming
+
 ## 0.31.0
 
 ### Minor Changes
