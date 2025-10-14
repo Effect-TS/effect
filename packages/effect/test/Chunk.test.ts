@@ -887,4 +887,9 @@ describe("Chunk", () => {
     assertEquals(Chunk.difference(curr, Chunk.empty()), Chunk.empty())
     assertEquals(Chunk.difference(curr, curr), Chunk.empty())
   })
+
+  it("getSomes", () => {
+    assertEquals(Chunk.getSomes(Chunk.empty()), Chunk.empty())
+    assertEquals(Chunk.getSomes(Chunk.make(Option.some(1), Option.none())), Chunk.of(1))
+  })
 })
