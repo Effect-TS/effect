@@ -345,6 +345,11 @@ export declare namespace Schema {
   /**
    * @since 3.10.0
    */
+  export type WithoutContext<S> = S extends Schema.Variance<infer A, infer I, infer _R> ? Schema<A, I> : never
+
+  /**
+   * @since 3.10.0
+   */
   export type ToAsserts<S extends AnyNoContext> = (
     input: unknown,
     options?: AST.ParseOptions

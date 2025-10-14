@@ -461,101 +461,110 @@ const getEffect = <R>(ast: AST.AST, isDecoding: boolean, options?: AST.ParseOpti
  * @category decoding
  * @since 3.10.0
  */
-export const decodeUnknownSync = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const decodeUnknownSync = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => A => getSync(schema.ast, true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Schema.Schema.Type<S> => getSync(schema.ast, true, options)
 
 /**
  * @category decoding
  * @since 3.10.0
  */
-export const decodeUnknownOption = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const decodeUnknownOption = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<A> => getOption(schema.ast, true, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<Schema.Schema.Type<S>> =>
+  getOption(schema.ast, true, options)
 
 /**
  * @category decoding
  * @since 3.10.0
  */
-export const decodeUnknownEither = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const decodeUnknownEither = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<A, ParseIssue> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<Schema.Schema.Type<S>, ParseIssue> =>
   getEither(schema.ast, true, options)
 
 /**
  * @category decoding
  * @since 3.10.0
  */
-export const decodeUnknownPromise = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const decodeUnknownPromise = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
 ) => {
-  const parser = decodeUnknown(schema, options)
-  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<A> => Effect.runPromise(parser(u, overrideOptions))
+  const parser = decodeUnknown<Schema.Schema<Schema.Schema.Type<S>>>(schema, options)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<Schema.Schema.Type<S>> =>
+    Effect.runPromise(parser(u, overrideOptions))
 }
 
 /**
  * @category decoding
  * @since 3.10.0
  */
-export const decodeUnknown = <A, I, R>(
-  schema: Schema.Schema<A, I, R>,
+export const decodeUnknown = <S extends Schema.Schema.Any>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<A, ParseIssue, R> =>
-  getEffect(schema.ast, true, options)
+): (
+  u: unknown,
+  overrideOptions?: AST.ParseOptions
+) => Effect.Effect<Schema.Schema.Type<S>, ParseIssue, Schema.Schema.Context<S>> => getEffect(schema.ast, true, options)
 
 /**
  * @throws `ParseError`
  * @category encoding
  * @since 3.10.0
  */
-export const encodeUnknownSync = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const encodeUnknownSync = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => I => getSync(schema.ast, false, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Schema.Schema.Encoded<S> => getSync(schema.ast, false, options)
 
 /**
  * @category encoding
  * @since 3.10.0
  */
-export const encodeUnknownOption = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const encodeUnknownOption = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<I> => getOption(schema.ast, false, options)
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Option.Option<Schema.Schema.Encoded<S>> =>
+  getOption(schema.ast, false, options)
 
 /**
  * @category encoding
  * @since 3.10.0
  */
-export const encodeUnknownEither = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const encodeUnknownEither = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<I, ParseIssue> =>
+): (u: unknown, overrideOptions?: AST.ParseOptions) => Either.Either<Schema.Schema.Encoded<S>, ParseIssue> =>
   getEither(schema.ast, false, options)
 
 /**
  * @category encoding
  * @since 3.10.0
  */
-export const encodeUnknownPromise = <A, I>(
-  schema: Schema.Schema<A, I, never>,
+export const encodeUnknownPromise = <S extends Schema.Schema.AnyNoContext>(
+  schema: S,
   options?: AST.ParseOptions
 ) => {
-  const parser = encodeUnknown(schema, options)
-  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<I> => Effect.runPromise(parser(u, overrideOptions))
+  const parser = encodeUnknown<Schema.Schema.WithoutContext<S>>(schema, options)
+  return (u: unknown, overrideOptions?: AST.ParseOptions): Promise<Schema.Schema.Encoded<S>> =>
+    Effect.runPromise(parser(u, overrideOptions))
 }
 
 /**
  * @category encoding
  * @since 3.10.0
  */
-export const encodeUnknown = <A, I, R>(
-  schema: Schema.Schema<A, I, R>,
+export const encodeUnknown = <S extends Schema.Schema.Any>(
+  schema: S,
   options?: AST.ParseOptions
-): (u: unknown, overrideOptions?: AST.ParseOptions) => Effect.Effect<I, ParseIssue, R> =>
+): (
+  u: unknown,
+  overrideOptions?: AST.ParseOptions
+) => Effect.Effect<Schema.Schema.Encoded<S>, ParseIssue, Schema.Schema.Context<S>> =>
   getEffect(schema.ast, false, options)
 
 /**
