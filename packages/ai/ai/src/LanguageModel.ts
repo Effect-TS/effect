@@ -51,10 +51,12 @@
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { Concurrency, Mutable, NoExcessProperties } from "effect/Types"
@@ -797,7 +799,9 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
     >(options: Options & GenerateTextOptions<Tools>, providerOptions: Mutable<ProviderOptions>) => Effect.Effect<
       Stream.Stream<Response.StreamPart<Tools>, AiError.AiError | ParseResult.ParseError, IdGenerator>,
       Options extends { readonly toolkit: Effect.Effect<Toolkit.WithHandler<Tools>, infer _E, infer _R> } ? _E : never,
-      Options extends { readonly toolkit: Effect.Effect<Toolkit.WithHandler<Tools>, infer _E, infer _R> } ? _R : never
+      | (Options extends { readonly toolkit: Effect.Effect<Toolkit.WithHandler<Tools>, infer _E, infer _R> } ? _R
+        : never)
+      | Scope.Scope
     > = Effect.fnUntraced(
       function*<
         Tools extends Record<string, Tool.Any>,
@@ -842,16 +846,21 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
           ) as Stream.Stream<Response.StreamPart<Tools>, AiError.AiError | ParseResult.ParseError, IdGenerator>
         }
 
-        const ResponseSchema = Schema.Chunk(Response.StreamPart(toolkit))
+        const mailbox = yield* Mailbox.make<Response.StreamPart<Tools>, AiError.AiError | ParseResult.ParseError>()
+        const ResponseSchema = Schema.Array(Response.StreamPart(toolkit))
         const decode = Schema.decode(ResponseSchema)
-        return params.streamText(providerOptions).pipe(
-          Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
+        yield* params.streamText(providerOptions).pipe(
+          Stream.runForEachChunk(Effect.fnUntraced(function*(chunk) {
             const rawContent = Chunk.toArray(chunk)
-            const toolResults = yield* resolveToolCalls(rawContent, toolkit, options.concurrency)
             const content = yield* decode(rawContent)
-            return Chunk.unsafeFromArray([...content, ...toolResults])
-          }))
-        ) as Stream.Stream<Response.StreamPart<Tools>, AiError.AiError | ParseResult.ParseError, IdGenerator>
+            yield* mailbox.offerAll(content)
+            const toolResults = yield* resolveToolCalls(rawContent, toolkit, options.concurrency)
+            yield* mailbox.offerAll(toolResults as any)
+          })),
+          Mailbox.into(mailbox),
+          Effect.forkScoped
+        )
+        return Mailbox.toStream(mailbox)
       }
     )
 
