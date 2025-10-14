@@ -79,6 +79,22 @@ const fromTree = <A>(keyTree: RBT.RedBlackTree<A, boolean>): SortedSet<A> => {
 /**
  * @since 2.0.0
  * @category refinements
+ *
+ * @example
+ *
+ * ```ts
+ * import { Order, SortedSet } from "effect"
+ *
+ * const newSortedSet = SortedSet.empty(Order.number) as unknown
+ *
+ * const isMyThingASortedSet = SortedSet.isSortedSet(newSortedSet)
+ *
+ * if (isMyThingASortedSet) {
+ *   console.log(newSortedSet)
+ *   //          ^ type is SortedSet.SortedSet<unknown>
+ *   // outputs { _id: "SortedSet", values: [] }
+ * }
+ * ```
  */
 export const isSortedSet: {
   <A>(u: Iterable<A>): u is SortedSet<A>
@@ -88,6 +104,19 @@ export const isSortedSet: {
 /**
  * @since 2.0.0
  * @category constructors
+ *
+ * @example
+ *
+ * ```ts
+ * import { Order, SortedSet } from "effect"
+ *
+ * const newSortedSet = SortedSet.empty(Order.number)
+ * //    ^ type is SortedSet.SortedSet<number>
+ *
+ * console.log(newSortedSet)
+ * // outputs { _id: "SortedSet", values: [] }
+ *
+ * ```
  */
 export const empty = <A>(O: Order<A>): SortedSet<A> => fromTree(RBT.empty(O))
 
@@ -96,14 +125,37 @@ export const empty = <A>(O: Order<A>): SortedSet<A> => fromTree(RBT.empty(O))
  *
  * @since 2.0.0
  * @category constructors
+ *
+ * @example
+ *
+ * ```ts
+ * import { Order, pipe, SortedSet } from "effect"
+ *
+ * const reverseNumberOrder = pipe(Order.number, Order.reverse)
+ *
+ * const arr = [1, 5, 2, 5]
+ *
+ * const mySet = SortedSet.fromIterable(reverseNumberOrder)(arr)
+ *
+ * console.log(mySet)
+ * //          ^ type is SortedSet.SortedSet<number>
+ * // { _id: "SortedSet", values: [ 5, 5, 2, 1 ] }
+ * ```
  */
 export const fromIterable: {
   <B>(ord: Order<B>): <A extends B>(iterable: Iterable<A>) => SortedSet<A>
   <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A>
 } = Dual.dual(
   2,
-  <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A> =>
-    fromTree(RBT.fromIterable(Array.from(iterable).map((k) => [k, true]), ord))
+  <A extends B, B>(iterable: Iterable<A>, ord: Order<B>): SortedSet<A> => {
+    const RBT_fromIterable = RBT.fromIterable(Array.from(iterable).map((k) => [k, true]), ord)
+    console.log("RBT_fromIterable", RBT_fromIterable)
+
+    const asd = fromTree(RBT_fromIterable)
+    console.log("fromTree(RBT_fromIterable)", asd)
+
+    return asd
+  }
 )
 
 /**
