@@ -345,7 +345,7 @@ export declare namespace Schema {
   /**
    * @since 3.10.0
    */
-  export type WithoutContext<S> = S extends Schema.Variance<infer A, infer I, infer _R> ? Schema<A, I> : never
+  export type WithoutContext<S> = Schema<Type<S>, Encoded<S>>
 
   /**
    * @since 3.10.0
