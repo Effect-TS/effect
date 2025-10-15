@@ -1,5 +1,11 @@
 # @effect/platform-node-shared
 
+## 0.51.5
+
+### Patch Changes
+
+- [#5638](https://github.com/Effect-TS/effect/pull/5638) [`c11019d`](https://github.com/Effect-TS/effect/commit/c11019ddff54558e7537acbb4aca3e0d5a494839) Thanks @tim-smart! - don't use removeAllListeners in NodeSocket.fromNet
+
 ## 0.51.4
 
 ### Patch Changes
