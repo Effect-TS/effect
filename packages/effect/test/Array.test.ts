@@ -1065,7 +1065,7 @@ describe("Array", () => {
   })
 
   it("match", () => {
-    const len: <A>(as: ReadonlyArray<A>) => number = Arr.match({
+    const len: <A>(as: Array<A>) => number = Arr.match({
       onEmpty: () => 0,
       onNonEmpty: (as) => 1 + len(as.slice(1))
     })
