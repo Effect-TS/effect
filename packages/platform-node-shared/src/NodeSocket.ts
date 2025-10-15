@@ -55,7 +55,6 @@ export const makeNet = (
                 ;(conn as Net.Socket).destroy()
               }
             }
-            conn.removeAllListeners()
           })
         ),
         () =>
