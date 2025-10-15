@@ -46,4 +46,29 @@ export * as Geolocation from "./Geolocation.js"
 /**
  * @since 1.0.0
  */
+export * as IndexedDb from "./IndexedDb.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbDatabase from "./IndexedDbDatabase.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbQueryBuilder from "./IndexedDbQueryBuilder.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbTable from "./IndexedDbTable.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as IndexedDbVersion from "./IndexedDbVersion.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Permissions from "./Permissions.js"
