@@ -6,6 +6,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import { constFalse, constTrue, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -301,8 +302,7 @@ export const make = <
         if (Option.isSome(parentInstance)) {
           result = yield* wrapActivityResult(run, (result) => result._tag === "Suspended")
           if (result._tag === "Suspended") {
-            parentInstance.value.suspended = true
-            return yield* Effect.interrupt
+            return yield* suspend(parentInstance.value)
           }
           return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
         }
@@ -532,6 +532,9 @@ export const intoResult = <A, E, R>(
     const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
     return Effect.uninterruptibleMask((restore) =>
       restore(effect).pipe(
+        // So we can use external interruption to suspend a workflow
+        Effect.fork,
+        Effect.flatMap((fiber) => Effect.onInterrupt(Fiber.join(fiber), () => Fiber.interrupt(fiber))),
         suspendOnFailure ?
           Effect.catchAllCause((cause) => {
             instance.suspended = true
@@ -570,9 +573,9 @@ export const wrapActivityResult = <A, E, R>(
       return state.count > 0 ?
         state.latch.await.pipe(
           Effect.andThen(Effect.yieldNow()),
-          Effect.andThen(Effect.interrupt)
+          Effect.andThen(suspend(instance))
         ) :
-        Effect.interrupt
+        suspend(instance)
     }
     if (state.count === 0) state.latch.unsafeClose()
     state.count++
@@ -624,6 +627,16 @@ export const withCompensation: {
         )
     )
   ))
+
+/**
+ * @since 1.0.0
+ */
+export const suspend = (instance: WorkflowInstance["Type"]): Effect.Effect<never> =>
+  Effect.interruptible(Effect.async<never>(() => {
+    instance.suspended = true
+    const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+    fiber.unsafeInterruptAsFork(fiber.id())
+  }))
 
 /**
  * If you set this annotation to `true` for a workflow, it will capture defects
