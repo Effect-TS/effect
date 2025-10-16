@@ -13,6 +13,7 @@ import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
@@ -279,7 +280,7 @@ export const make = Effect.gen(function*() {
                         instance.interrupted = true
                         return Effect.zipRight(
                           Effect.ignore(clearClock({ workflow, executionId })),
-                          Effect.interrupt
+                          Effect.withFiberRuntime<void>((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
                         )
                       }),
                       Effect.orDie

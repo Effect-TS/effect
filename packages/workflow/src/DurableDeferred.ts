@@ -113,8 +113,7 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
   const instance = yield* InstanceTag
   const oexit = yield* Workflow.wrapActivityResult(engine.deferredResult(self), Option.isNone)
   if (Option.isNone(oexit)) {
-    instance.suspended = true
-    return yield* Effect.interrupt
+    return yield* Workflow.suspend(instance)
   }
   return yield* Effect.flatten(Effect.orDie(
     Schema.decodeUnknown(self.exitSchema)(oexit.value)
