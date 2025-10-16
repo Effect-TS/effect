@@ -7,11 +7,12 @@ import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type { MessageStorage } from "./MessageStorage.js"
+import type { RunnerHealth } from "./RunnerHealth.js"
 import type * as Runners from "./Runners.js"
 import * as RunnerServer from "./RunnerServer.js"
+import type * as RunnerStorage from "./RunnerStorage.js"
 import type * as Sharding from "./Sharding.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
-import type * as ShardStorage from "./ShardStorage.js"
 
 const withLogAddress = <A, E, R>(layer: Layer.Layer<A, E, R>): Layer.Layer<A, E, R | SocketServer> =>
   Layer.effectDiscard(Effect.gen(function*() {
@@ -37,10 +38,11 @@ export const layer: Layer.Layer<
   | RpcSerialization.RpcSerialization
   | SocketServer
   | MessageStorage
-  | ShardStorage.ShardStorage
+  | RunnerStorage.RunnerStorage
+  | RunnerHealth
 > = RunnerServer.layerWithClients.pipe(
   withLogAddress,
-  Layer.provide(Layer.fresh(RpcServer.layerProtocolSocketServer))
+  Layer.provide(RpcServer.layerProtocolSocketServer)
 )
 
 /**
@@ -50,5 +52,5 @@ export const layer: Layer.Layer<
 export const layerClientOnly: Layer.Layer<
   Sharding.Sharding | Runners.Runners,
   never,
-  Runners.RpcClientProtocol | ShardingConfig | MessageStorage
+  Runners.RpcClientProtocol | ShardingConfig | MessageStorage | RunnerStorage.RunnerStorage
 > = RunnerServer.layerClientOnly

@@ -268,9 +268,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   let isShutdown = false
   yield* Scope.addFinalizer(
     scope,
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       isShutdown = true
-      return clearEntries(Exit.interrupt(fiberId))
+      return clearEntries(Exit.interrupt(fiberIdTransientInterrupt))
     })
   )
 
@@ -365,6 +365,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         runtimeFlags: Runtime.defaultRuntime.runtimeFlags
       })
       let fiber: Fiber.RuntimeFiber<any, any>
+      let completed = false
       return Effect.onInterrupt(
         Effect.async<any, any>((resume) => {
           const entry: ClientEntry = {
@@ -372,11 +373,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             rpc,
             context,
             resume(exit) {
+              completed = true
               resume(exit)
               if (fiber && !fiber.unsafePoll()) {
-                parentFiber.currentScheduler.scheduleTask(() => {
+                setTimeout(() => {
                   fiber.unsafeInterruptAsFork(parentFiber.id())
-                }, 0)
+                }, 1)
               }
             }
           }
@@ -399,6 +401,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           })
         }),
         (interruptors) => {
+          if (completed) return Effect.void
           entries.delete(id)
           const ids = Array.from(interruptors).flatMap((id) => Array.from(FiberId.toSet(id)))
           return Effect.zipRight(
@@ -600,6 +603,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
 
   return { client, write } as const
 })
+
+const fiberIdTransientInterrupt = FiberId.make(-503, 0) as FiberId.Runtime
 
 /**
  * @since 1.0.0

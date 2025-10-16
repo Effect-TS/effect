@@ -111,6 +111,11 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly storageOnly?: boolean | undefined
     }
   ) => Effect.Effect<void, EntityNotManagedByRunner | PersistenceError>
+
+  /**
+   * Mark a Runner as unavailable.
+   */
+  readonly onRunnerUnavailable: (address: RunnerAddress) => Effect.Effect<void>
 }>() {}
 
 /**
@@ -243,6 +248,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           for (const message of entry.messages) {
             yield* message.respond(reply)
           }
+          // wait for ack
           yield* entry.latch.await
         }
         entry.replies = []
@@ -405,7 +411,8 @@ export const makeNoop: Effect.Effect<
 > = make({
   send: ({ message }) => Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address })),
   notify: () => Effect.void,
-  ping: () => Effect.void
+  ping: () => Effect.void,
+  onRunnerUnavailable: () => Effect.void
 })
 
 /**
@@ -510,7 +517,12 @@ export const makeRpc: Effect.Effect<
     ping(address) {
       return RcMap.get(clients, address).pipe(
         Effect.flatMap((client) => client.Ping()),
-        Effect.catchAllCause(() => Effect.fail(new RunnerUnavailable({ address }))),
+        Effect.catchAllCause(() => {
+          return Effect.zipRight(
+            RcMap.invalidate(clients, address),
+            Effect.fail(new RunnerUnavailable({ address }))
+          )
+        }),
         Effect.scoped
       )
     },
@@ -610,7 +622,8 @@ export const makeRpc: Effect.Effect<
           return Effect.void
         })
       )
-    }
+    },
+    onRunnerUnavailable: (address) => RcMap.invalidate(clients, address)
   })
 })
 

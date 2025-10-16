@@ -2,10 +2,9 @@ import {
   MessageStorage,
   RunnerAddress,
   Runners,
+  RunnerStorage,
   Sharding,
   ShardingConfig,
-  ShardManager,
-  ShardStorage,
   Snowflake
 } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
@@ -24,6 +23,7 @@ import {
   Stream,
   TestClock
 } from "effect"
+import * as RunnerHealth from "../src/RunnerHealth.js"
 import { TestEntity, TestEntityNoState, TestEntityState, User } from "./TestEntity.js"
 
 describe.concurrent("Sharding", () => {
@@ -91,13 +91,12 @@ describe.concurrent("Sharding", () => {
 
       yield* Effect.gen(function*() {
         const makeClient = yield* TestEntity.client
-        yield* TestClock.adjust(1)
         const client = makeClient("1")
         const fiber = yield* client.NeverVolatile().pipe(Effect.fork)
         yield* TestClock.adjust(1)
         const config = yield* ShardingConfig.ShardingConfig
         ;(config as any).runnerAddress = Option.some(RunnerAddress.make("localhost", 1234))
-        setTimeout(() => {
+        fiber.currentScheduler.scheduleTask(() => {
           fiber.unsafeInterruptAsFork(FiberId.none)
           Effect.runFork(testClock.adjust(30000))
         }, 0)
@@ -533,8 +532,8 @@ const TestShardingConfig = ShardingConfig.layer({
 
 const TestShardingWithoutState = TestEntityNoState.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provide(ShardManager.layerClientLocal),
-  Layer.provide(ShardStorage.layerMemory)
+  Layer.provide(RunnerStorage.layerMemory),
+  Layer.provide(RunnerHealth.layerNoop)
   // Layer.provide(Logger.minimumLogLevel(LogLevel.All)),
   // Layer.provideMerge(Logger.pretty)
 )
@@ -554,9 +553,9 @@ const TestSharding = TestShardingWithoutStorage.pipe(
 )
 
 const TestShardingWithoutEntities = Sharding.layer.pipe(
-  Layer.provide(ShardManager.layerClientLocal),
-  Layer.provide(ShardStorage.layerMemory),
+  Layer.provide(RunnerStorage.layerMemory),
   Layer.provide(Runners.layerNoop),
+  Layer.provide(RunnerHealth.layerNoop),
   Layer.provideMerge(MessageStorage.layerMemory),
   Layer.provide(TestShardingConfig)
 )

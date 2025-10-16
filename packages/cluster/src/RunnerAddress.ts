@@ -4,6 +4,7 @@
 import * as Equal from "effect/Equal"
 import * as Hash from "effect/Hash"
 import { NodeInspectSymbol } from "effect/Inspectable"
+import * as PrimaryKey from "effect/PrimaryKey"
 import * as Schema from "effect/Schema"
 
 const SymbolKey = "@effect/cluster/RunnerAddress"
@@ -32,6 +33,13 @@ export class RunnerAddress extends Schema.Class<RunnerAddress>(SymbolKey)({
    * @since 1.0.0
    */
   readonly [TypeId] = TypeId;
+
+  /**
+   * @since 1.0.0
+   */
+  [PrimaryKey.symbol](): string {
+    return `${this.host}:${this.port}`
+  }
 
   /**
    * @since 1.0.0

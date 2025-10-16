@@ -21,7 +21,7 @@ import type { EntityAddress } from "./EntityAddress.js"
 import * as Envelope from "./Envelope.js"
 import * as Message from "./Message.js"
 import * as Reply from "./Reply.js"
-import { ShardId } from "./ShardId.js"
+import type { ShardId } from "./ShardId.js"
 import type { ShardingConfig } from "./ShardingConfig.js"
 import * as Snowflake from "./Snowflake.js"
 
@@ -96,6 +96,11 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
    * Unregister the reply handler for the specified message.
    */
   readonly unregisterReplyHandler: (requestId: Snowflake.Snowflake) => Effect.Effect<void>
+
+  /**
+   * Unregister the reply handlers for the specified ShardId.
+   */
+  readonly unregisterReplyHandlers: (shardId: ShardId) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -342,28 +347,52 @@ export type EncodedRepliesOptions<A> = {
  * @category constructors
  */
 export const make = (
-  storage: Omit<MessageStorage["Type"], "registerReplyHandler" | "unregisterReplyHandler">
+  storage: Omit<MessageStorage["Type"], "registerReplyHandler" | "unregisterReplyHandler" | "unregisterReplyHandlers">
 ): Effect.Effect<MessageStorage["Type"]> =>
   Effect.sync(() => {
-    const replyHandlers = new Map<Snowflake.Snowflake, {
+    type ReplyHandler = {
+      readonly shardSet: Set<ReplyHandler>
       readonly respond: (reply: Reply.ReplyWithContext<any>) => Effect.Effect<void, PersistenceError | MalformedMessage>
       readonly onUnregister: Effect.Effect<void>
-    }>()
+    }
+    const replyHandlers = new Map<Snowflake.Snowflake, ReplyHandler>()
+    const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
       registerReplyHandler: (message, onUnregister) =>
         Effect.sync(() => {
-          replyHandlers.set(message.envelope.requestId, {
+          const shardId = message.envelope.address.shardId.toString()
+          let shardSet = replyHandlersShard.get(shardId)
+          if (!shardSet) {
+            shardSet = new Set()
+            replyHandlersShard.set(shardId, shardSet)
+          }
+          const entry: ReplyHandler = {
+            shardSet,
             respond: message._tag === "IncomingRequest" ? message.respond : (reply) => message.respond(reply.reply),
             onUnregister
-          })
+          }
+          replyHandlers.set(message.envelope.requestId, entry)
+          shardSet.add(entry)
         }),
       unregisterReplyHandler: (requestId) =>
         Effect.suspend(() => {
           const handler = replyHandlers.get(requestId)
           if (!handler) return Effect.void
           replyHandlers.delete(requestId)
+          handler.shardSet.delete(handler)
           return handler.onUnregister
+        }),
+      unregisterReplyHandlers: (shardId) =>
+        Effect.suspend(() => {
+          const id = shardId.toString()
+          const shardSet = replyHandlersShard.get(id)
+          if (!shardSet) return Effect.void
+          replyHandlersShard.delete(id)
+          return Effect.forEach(shardSet, (entry) => entry.onUnregister, {
+            concurrency: "unbounded",
+            discard: true
+          })
         }),
       saveReply(reply) {
         return Effect.flatMap(storage.saveReply(reply), () => {
@@ -748,8 +777,9 @@ export class MemoryDriver extends Effect.Service<MemoryDriver>()("@effect/cluste
           }>()
           for (let index = 0; index < journal.length; index++) {
             const envelope = journal[index]
-            const shardId = ShardId.make(envelope.address.shardId)
-            if (!unprocessed.has(envelope as any) || !shardIds.includes(shardId.toString())) {
+            const shardId = envelope.address.shardId
+            const shardIdStr = `${shardId.group}:${shardId.id}`
+            if (!unprocessed.has(envelope as any) || !shardIds.includes(shardIdStr)) {
               continue
             }
             if (envelope._tag === "Request") {

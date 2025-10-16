@@ -112,7 +112,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   )
   const concurrencySemaphore = concurrency === "unbounded"
     ? undefined
-    : yield* Effect.makeSemaphore(concurrency)
+    : Effect.unsafeMakeSemaphore(concurrency).withPermits(1)
 
   type Client = {
     readonly id: number
@@ -126,7 +126,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const shutdownLatch = Effect.unsafeMakeLatch(false)
   yield* Scope.addFinalizer(
     scope,
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       isShutdown = true
       for (const client of clients.values()) {
         client.ended = true
@@ -135,7 +135,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           continue
         }
         for (const fiber of client.fibers.values()) {
-          fiber.unsafeInterruptAsFork(fiberId)
+          fiber.unsafeInterruptAsFork(fiberIdTransientInterrupt)
         }
       }
       if (clients.size === 0) {
@@ -146,11 +146,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   )
 
   const disconnect = (clientId: number) =>
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       const client = clients.get(clientId)
       if (!client) return Effect.void
       for (const fiber of client.fibers.values()) {
-        fiber.unsafeInterruptAsFork(fiberId)
+        fiber.unsafeInterruptAsFork(fiberIdTransientInterrupt)
       }
       clients.delete(clientId)
       return Effect.void
@@ -311,7 +311,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       })
     }
     if (!isFork && concurrencySemaphore) {
-      effect = concurrencySemaphore.withPermits(1)(effect)
+      effect = concurrencySemaphore(effect)
     }
     const runtime = Runtime.make({
       context: Context.merge(entry.context, requestFiber.currentContext),
@@ -319,7 +319,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       runtimeFlags: RuntimeFlags.disable(Runtime.defaultRuntime.runtimeFlags, RuntimeFlags.Interruption)
     })
     const fiber = Runtime.runFork(runtime, effect)
-    FiberSet.unsafeAdd(fiberSet, fiber)
     client.fibers.set(request.id, fiber)
     fiber.addObserver((exit) => {
       if (!responded && exit._tag === "Failure") {
@@ -1378,7 +1377,15 @@ export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
  * @since 1.0.0
  * @category Interruption
  */
-export const fiberIdClientInterrupt = FiberId.make(-499, 0)
+export const fiberIdClientInterrupt = FiberId.make(-499, 0) as FiberId.Runtime
+
+/**
+ * Fiber id used for transient interruptions.
+ *
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdTransientInterrupt = FiberId.make(-503, 0) as FiberId.Runtime
 
 // internal
 
