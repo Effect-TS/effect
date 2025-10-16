@@ -174,15 +174,16 @@ describe("SqlMessageStorage", () => {
           const latch = yield* Effect.makeLatch()
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
-          yield* storage.registerReplyHandler(
+          const fiber = yield* storage.registerReplyHandler(
             new Message.OutgoingRequest({
               ...request,
               respond: () => latch.open
-            }),
-            Effect.void
-          )
+            })
+          ).pipe(Effect.fork)
+          yield* TestClock.adjust(1)
           yield* storage.saveReply(yield* makeReply(request))
           yield* latch.await
+          yield* fiber.await
         }))
 
       it.effect("unprocessedMessagesById", () =>

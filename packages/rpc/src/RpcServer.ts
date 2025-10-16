@@ -112,7 +112,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   )
   const concurrencySemaphore = concurrency === "unbounded"
     ? undefined
-    : yield* Effect.makeSemaphore(concurrency)
+    : Effect.unsafeMakeSemaphore(concurrency).withPermits(1)
 
   type Client = {
     readonly id: number
@@ -126,7 +126,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const shutdownLatch = Effect.unsafeMakeLatch(false)
   yield* Scope.addFinalizer(
     scope,
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       isShutdown = true
       for (const client of clients.values()) {
         client.ended = true
@@ -135,7 +135,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           continue
         }
         for (const fiber of client.fibers.values()) {
-          fiber.unsafeInterruptAsFork(fiberId)
+          fiber.unsafeInterruptAsFork(fiberIdTransientInterrupt)
         }
       }
       if (clients.size === 0) {
@@ -146,11 +146,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   )
 
   const disconnect = (clientId: number) =>
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       const client = clients.get(clientId)
       if (!client) return Effect.void
       for (const fiber of client.fibers.values()) {
-        fiber.unsafeInterruptAsFork(fiberId)
+        fiber.unsafeInterruptAsFork(fiberIdTransientInterrupt)
       }
       clients.delete(clientId)
       return Effect.void
@@ -221,7 +221,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     request: Request<Rpcs>
   ): Effect.Effect<void> => {
     if (client.fibers.has(request.id)) {
-      return Effect.interrupt
+      return Effect.flatMap(
+        Fiber.await(client.fibers.get(request.id)!),
+        () => handleRequest(requestFiber, client, request)
+      )
     }
     const rpc = group.requests.get(request.tag) as any as Rpc.AnyWithProps
     const entry = context.unsafeMap.get(rpc?.key) as Rpc.Handler<Rpcs["_tag"]>
@@ -271,7 +274,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             clientId: client.id,
             requestId: request.id,
             exit: Exit.succeed(value as any)
-          })
+          }).pipe(
+            Effect.withSpan("RpcServer.handleRequest.onSuccess", {
+              captureStackTrace: false
+            })
+          )
         },
         onFailure: (cause) => {
           responded = true
@@ -283,7 +290,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             clientId: client.id,
             requestId: request.id,
             exit: Exit.failCause(cause)
-          })
+          }).pipe(
+            Effect.withSpan("RpcServer.handleRequest.onFailure", {
+              captureStackTrace: false
+            })
+          )
         }
       }
     )
@@ -291,7 +302,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       const parentSpan = requestFiber.currentContext.unsafeMap.get(Tracer.ParentSpan.key) as Tracer.AnySpan | undefined
       effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
         captureStackTrace: false,
-        attributes: options.spanAttributes,
+        attributes: {
+          requestId: String(request.id),
+          ...options.spanAttributes
+        },
         parent: enableSpanPropagation && request.spanId ?
           {
             _tag: "ExternalSpan",
@@ -311,7 +325,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       })
     }
     if (!isFork && concurrencySemaphore) {
-      effect = concurrencySemaphore.withPermits(1)(effect)
+      effect = concurrencySemaphore(effect)
     }
     const runtime = Runtime.make({
       context: Context.merge(entry.context, requestFiber.currentContext),
@@ -319,7 +333,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       runtimeFlags: RuntimeFlags.disable(Runtime.defaultRuntime.runtimeFlags, RuntimeFlags.Interruption)
     })
     const fiber = Runtime.runFork(runtime, effect)
-    FiberSet.unsafeAdd(fiberSet, fiber)
     client.fibers.set(request.id, fiber)
     fiber.addObserver((exit) => {
       if (!responded && exit._tag === "Failure") {
@@ -704,7 +717,8 @@ export const make: <Rpcs extends Rpc.Any>(
   }).pipe(
     Effect.interruptible,
     Effect.tapErrorCause((cause) => Effect.logFatal("BUG: RpcServer protocol crashed", cause)),
-    Effect.onExit((exit) => Scope.close(scope, exit))
+    Effect.onExit((exit) => Scope.close(scope, exit)),
+    Effect.withUnhandledErrorLogLevel(Option.none())
   )
 })
 
@@ -795,9 +809,10 @@ export class Protocol extends Context.Tag("@effect/rpc/RpcServer/Protocol")<Prot
 export const makeProtocolSocketServer = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
   const { onSocket, protocol } = yield* makeSocketProtocol
-  yield* Effect.forkScoped(Effect.interruptible(
-    server.run(Effect.fnUntraced(onSocket, Effect.scoped))
-  ))
+  yield* server.run(Effect.fnUntraced(onSocket, Effect.scoped)).pipe(
+    Effect.interruptible,
+    Effect.forkScoped
+  )
   return protocol
 })
 
@@ -1026,7 +1041,10 @@ export const makeProtocolWithHttpApp: Effect.Effect<
       ),
       { contentType: serialization.contentType }
     )
-  }).pipe(Effect.interruptible)
+  }).pipe(
+    Effect.interruptible,
+    Effect.withUnhandledErrorLogLevel(Option.none())
+  )
 
   const protocol = yield* Protocol.make((writeRequest_) => {
     writeRequest = writeRequest_
@@ -1125,7 +1143,9 @@ export const makeProtocolWorkerRunner: Effect.Effect<
       return Deferred.succeed(initialMessage, message.value)
     }
     return writeRequest(clientId, message)
-  })
+  }).pipe(
+    Effect.withUnhandledErrorLogLevel(Option.none())
+  )
 
   yield* disconnects.take.pipe(
     Effect.tap((clientId) => {
@@ -1329,7 +1349,8 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
       Effect.retry(Schedule.spaced(500)),
       Effect.ensuring(Fiber.interruptFork(fiber)),
       Effect.forkScoped,
-      Effect.interruptible
+      Effect.interruptible,
+      Effect.withUnhandledErrorLogLevel(Option.none())
     )
 
     yield* Mailbox.toStream(mailbox).pipe(
@@ -1378,7 +1399,15 @@ export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
  * @since 1.0.0
  * @category Interruption
  */
-export const fiberIdClientInterrupt = FiberId.make(-499, 0)
+export const fiberIdClientInterrupt = FiberId.make(-499, 0) as FiberId.Runtime
+
+/**
+ * Fiber id used for transient interruptions.
+ *
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdTransientInterrupt = FiberId.make(-503, 0) as FiberId.Runtime
 
 // internal
 
@@ -1443,7 +1472,8 @@ const makeSocketProtocol = Effect.gen(function*() {
     }).pipe(
       Effect.interruptible,
       Effect.catchIf((error) => error.reason === "Close", () => Effect.void),
-      Effect.orDie
+      Effect.orDie,
+      Effect.withUnhandledErrorLogLevel(Option.none())
     )
   }
 

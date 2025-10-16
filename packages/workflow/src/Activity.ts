@@ -199,6 +199,7 @@ const makeExecute = Effect.fnUntraced(function*<
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
   const attempt = yield* CurrentAttempt
+  yield* Effect.annotateCurrentSpan({ executionId: instance.executionId })
   const result = yield* Workflow.wrapActivityResult(
     engine.activityExecute({
       activity,
@@ -213,4 +214,7 @@ const makeExecute = Effect.fnUntraced(function*<
     Schema.decode(activity.exitSchema)(result.exit)
   )
   return yield* exit
-})
+}, (effect, activity) =>
+  Effect.withSpan(effect, activity.name, {
+    captureStackTrace: false
+  }))

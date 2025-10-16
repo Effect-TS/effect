@@ -1,17 +1,11 @@
-import {
-  ClusterWorkflowEngine,
-  MessageStorage,
-  Runners,
-  Sharding,
-  ShardingConfig,
-  ShardManager,
-  ShardStorage
-} from "@effect/cluster"
+import { ClusterWorkflowEngine, MessageStorage, Runners, Sharding, ShardingConfig } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "@effect/workflow"
 import { WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 import * as Cause from "effect/Cause"
+import * as RunnerHealth from "../src/RunnerHealth.js"
+import * as RunnerStorage from "../src/RunnerStorage.js"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
@@ -205,6 +199,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         id: "123"
       }).pipe(Effect.fork)
       yield* TestClock.adjust(1)
+      yield* TestClock.adjust(5000)
 
       assert.isUndefined(flags.get("parent-end"))
       assert.isUndefined(flags.get("child-end"))
@@ -247,10 +242,10 @@ const TestShardingConfig = ShardingConfig.layer({
 
 const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provide(ShardManager.layerClientLocal),
-  Layer.provide(ShardStorage.layerMemory),
   Layer.provide(Runners.layerNoop),
   Layer.provideMerge(MessageStorage.layerMemory),
+  Layer.provide(RunnerStorage.layerMemory),
+  Layer.provide(RunnerHealth.layerNoop),
   Layer.provide(TestShardingConfig)
 )
 
