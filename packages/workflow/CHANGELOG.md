@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.11.4
+
+### Patch Changes
+
+- [#5640](https://github.com/Effect-TS/effect/pull/5640) [`85ea731`](https://github.com/Effect-TS/effect/commit/85ea731c8305c040fc50b82c204f3e20371c50a4) Thanks @tim-smart! - use external interruption for workflow suspend
+
 ## 0.11.3
 
 ### Patch Changes
