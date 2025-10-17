@@ -39,14 +39,23 @@ export const run: <R2 = never>(
     const mysqlDump = (args: Array<string>) =>
       Effect.gen(function*() {
         const sql = yield* MysqlClient
+
+        const url = sql.config.url ? new URL(Redacted.value(sql.config.url)) : undefined
+
+        const host = url?.hostname ?? sql.config.host
+        const port = url?.port ?? sql.config.port?.toString()
+        const username = url?.username ?? sql.config.username
+        const password = url?.password ? Redacted.make(url.password) : sql.config.password
+        const database = url?.pathname?.slice(1) ?? sql.config.database
+
         const dump = yield* pipe(
           Command.make(
             "mysqldump",
-            ...(sql.config.host ? ["-h", sql.config.host] : []),
-            ...(sql.config.port ? ["-P", sql.config.port.toString()] : []),
-            ...(sql.config.username ? ["-u", sql.config.username] : []),
-            ...(sql.config.password ? [`-p${Redacted.value(sql.config.password)}`] : []),
-            ...(sql.config.database ? [sql.config.database] : []),
+            ...(host ? ["-h", host] : []),
+            ...(port ? ["-P", port] : []),
+            ...(username ? ["-u", username] : []),
+            ...(password ? [`-p${Redacted.value(password)}`] : []),
+            ...(database ? [database] : []),
             "--skip-comments",
             "--compact",
             ...args
