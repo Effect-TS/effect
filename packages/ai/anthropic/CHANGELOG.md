@@ -1,5 +1,11 @@
 # @effect/ai-anthropic
 
+## 0.21.1
+
+### Patch Changes
+
+- [#5644](https://github.com/Effect-TS/effect/pull/5644) [`7de0bfc`](https://github.com/Effect-TS/effect/commit/7de0bfc57f9a1d69c342224ab26402752677efcb) Thanks @IMax153! - Ensure that model accepts a string in Anthropic request schemas
+
 ## 0.21.0
 
 ### Minor Changes
