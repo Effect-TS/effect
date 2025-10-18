@@ -1,0 +1,76 @@
+diff --git a/packages/ai/anthropic/src/Generated.ts b/packages/ai/anthropic/src/Generated.ts
+index 9015e6427..dcb4afdad 100644
+--- a/packages/ai/anthropic/src/Generated.ts
++++ b/packages/ai/anthropic/src/Generated.ts
+@@ -641,7 +641,7 @@ export class WebSearchTool20250305 extends S.Class<WebSearchTool20250305>("WebSe
+ }) {}
+ 
+ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMessageParams")({
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * Input messages.
+    *
+@@ -1114,7 +1114,7 @@ export class Message extends S.Class<Message>("Message")({
+    * ```
+    */
+   "content": S.Array(ContentBlock),
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * The reason that we stopped.
+    *
+@@ -1244,7 +1244,7 @@ export class CompletePostParams extends S.Struct({
+ }) {}
+ 
+ export class CompletionRequest extends S.Class<CompletionRequest>("CompletionRequest")({
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * The prompt that you want Claude to complete.
+    *
+@@ -1316,7 +1316,7 @@ export class CompletionResponse extends S.Class<CompletionResponse>("CompletionR
+    * The format and length of IDs may change over time.
+    */
+   "id": S.String,
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * The reason that we stopped.
+    *
+@@ -1730,7 +1730,7 @@ export class CountMessageTokensParams extends S.Class<CountMessageTokensParams>(
+    * There is a limit of 100,000 messages in a single request.
+    */
+   "messages": S.Array(InputMessage),
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * System prompt.
+    *
+@@ -3659,7 +3659,7 @@ export class BetaWebFetchTool20250910 extends S.Class<BetaWebFetchTool20250910>(
+ }) {}
+ 
+ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("BetaCreateMessageParams")({
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * Input messages.
+    *
+@@ -4517,7 +4517,7 @@ export class BetaMessage extends S.Class<BetaMessage>("BetaMessage")({
+    * ```
+    */
+   "content": S.Array(BetaContentBlock),
+-  "model": Model,
++  "model": S.Union(S.String, Model),
+   /**
+    * The reason that we stopped.
+    *
+@@ -5099,7 +5099,7 @@ export class BetaCountMessageTokensParams
+      * There is a limit of 100,000 messages in a single request.
+      */
+     "messages": S.Array(BetaInputMessage),
+-    "model": Model,
++    "model": S.Union(S.String, Model),
+     /**
+      * System prompt.
+      *

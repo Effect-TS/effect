@@ -942,6 +942,7 @@ const makeStreamResponse: (
       | "redacted_thinking"
       | "tool_use"
       | "server_tool_use"
+      | "web_fetch_tool_result"
       | "web_search_tool_result"
       | "code_execution_tool_result"
       | "bash_code_execution_tool_result"

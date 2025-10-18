@@ -12,17 +12,11 @@ import * as S from "effect/Schema"
 
 export class MessagesPostParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
-  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional header to specify the beta version(s) you want to use.
-   *
-   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
-   */
-  "anthropic-beta": S.optionalWith(S.String, { nullable: true })
+  "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -46,6 +40,14 @@ export class Model extends S.Union(
    */
   S.Literal("claude-3-5-haiku-20241022"),
   /**
+   * Hybrid model, capable of near-instant responses and extended thinking
+   */
+  S.Literal("claude-haiku-4-5"),
+  /**
+   * Hybrid model, capable of near-instant responses and extended thinking
+   */
+  S.Literal("claude-haiku-4-5-20251001"),
+  /**
    * High-performance model with extended thinking
    */
   S.Literal("claude-sonnet-4-20250514"),
@@ -57,6 +59,14 @@ export class Model extends S.Union(
    * High-performance model with extended thinking
    */
   S.Literal("claude-4-sonnet-20250514"),
+  /**
+   * Our best model for real-world agents and coding
+   */
+  S.Literal("claude-sonnet-4-5"),
+  /**
+   * Our best model for real-world agents and coding
+   */
+  S.Literal("claude-sonnet-4-5-20250929"),
   /**
    * Our previous most intelligent model
    */
@@ -295,7 +305,10 @@ export class RequestToolResultBlock extends S.Class<RequestToolResultBlock>("Req
    */
   "cache_control": S.optionalWith(CacheControlEphemeral, { nullable: true }),
   "content": S.optionalWith(
-    S.Union(S.String, S.Array(S.Union(RequestTextBlock, RequestImageBlock, RequestSearchResultBlock))),
+    S.Union(
+      S.String,
+      S.Array(S.Union(RequestTextBlock, RequestImageBlock, RequestSearchResultBlock, RequestDocumentBlock))
+    ),
     { nullable: true }
   ),
   "is_error": S.optionalWith(S.Boolean, { nullable: true }),
@@ -401,7 +414,7 @@ export class Metadata extends S.Class<Metadata>("Metadata")({
 /**
  * Determines whether to use priority capacity (if available) or standard capacity for this request.
  *
- * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+ * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.claude.com/en/api/service-tiers) for details.
  */
 export class CreateMessageParamsServiceTier extends S.Literal("auto", "standard_only") {}
 
@@ -411,7 +424,7 @@ export class ThinkingConfigEnabled extends S.Class<ThinkingConfigEnabled>("Think
    *
    * Must be ≥1024 and less than `max_tokens`.
    *
-   * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+   * See [extended thinking](https://docs.claude.com/en/docs/build-with-claude/extended-thinking) for details.
    */
   "budget_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1024)),
   "type": S.Literal("enabled")
@@ -426,7 +439,7 @@ export class ThinkingConfigDisabled extends S.Class<ThinkingConfigDisabled>("Thi
  *
  * When enabled, responses include `thinking` content blocks showing Claude's thinking process before the final answer. Requires a minimum budget of 1,024 tokens and counts towards your `max_tokens` limit.
  *
- * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+ * See [extended thinking](https://docs.claude.com/en/docs/build-with-claude/extended-thinking) for details.
  */
 export class ThinkingConfigParam extends S.Union(ThinkingConfigEnabled, ThinkingConfigDisabled) {}
 
@@ -628,7 +641,7 @@ export class WebSearchTool20250305 extends S.Class<WebSearchTool20250305>("WebSe
 }) {}
 
 export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMessageParams")({
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * Input messages.
    *
@@ -673,9 +686,9 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
    * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
    * ```
    *
-   * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+   * See [input examples](https://docs.claude.com/en/api/messages-examples).
    *
-   * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+   * Note that if you want to include a [system prompt](https://docs.claude.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
    *
    * There is a limit of 100,000 messages in a single request.
    */
@@ -685,7 +698,7 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
    *
    * Note that our models may stop _before_ reaching this maximum. This parameter only specifies the absolute maximum number of tokens to generate.
    *
-   * Different models have different maximum values for this parameter.  See [models](https://docs.anthropic.com/en/docs/models-overview) for details.
+   * Different models have different maximum values for this parameter.  See [models](https://docs.claude.com/en/docs/models-overview) for details.
    */
   "max_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1)),
   /**
@@ -695,7 +708,7 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
   /**
    * Determines whether to use priority capacity (if available) or standard capacity for this request.
    *
-   * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+   * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.claude.com/en/api/service-tiers) for details.
    */
   "service_tier": S.optionalWith(CreateMessageParamsServiceTier, { nullable: true }),
   /**
@@ -709,13 +722,13 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
   /**
    * Whether to incrementally stream the response using server-sent events.
    *
-   * See [streaming](https://docs.anthropic.com/en/api/messages-streaming) for details.
+   * See [streaming](https://docs.claude.com/en/api/messages-streaming) for details.
    */
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   /**
    * System prompt.
    *
-   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.claude.com/en/docs/system-prompts).
    */
   "system": S.optionalWith(S.Union(S.String, S.Array(RequestTextBlock)), { nullable: true }),
   /**
@@ -733,7 +746,7 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
    *
    * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
    *
-   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
    *
    * Each tool definition includes:
    *
@@ -789,7 +802,7 @@ export class CreateMessageParams extends S.Class<CreateMessageParams>("CreateMes
    *
    * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
    *
-   * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+   * See our [guide](https://docs.claude.com/en/docs/tool-use) for more details.
    */
   "tools": S.optionalWith(
     S.Array(
@@ -1101,7 +1114,7 @@ export class Message extends S.Class<Message>("Message")({
    * ```
    */
   "content": S.Array(ContentBlock),
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * The reason that we stopped.
    *
@@ -1217,9 +1230,9 @@ export class ErrorResponse extends S.Class<ErrorResponse>("ErrorResponse")({
 
 export class CompletePostParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1231,7 +1244,7 @@ export class CompletePostParams extends S.Struct({
 }) {}
 
 export class CompletionRequest extends S.Class<CompletionRequest>("CompletionRequest")({
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * The prompt that you want Claude to complete.
    *
@@ -1241,7 +1254,7 @@ export class CompletionRequest extends S.Class<CompletionRequest>("CompletionReq
    * "\n\nHuman: {userQuestion}\n\nAssistant:"
    * ```
    *
-   * See [prompt validation](https://docs.anthropic.com/en/api/prompt-validation) and our guide to [prompt design](https://docs.anthropic.com/en/docs/intro-to-prompting) for more details.
+   * See [prompt validation](https://docs.claude.com/en/api/prompt-validation) and our guide to [prompt design](https://docs.claude.com/en/docs/intro-to-prompting) for more details.
    */
   "prompt": S.String.pipe(S.minLength(1)),
   /**
@@ -1287,7 +1300,7 @@ export class CompletionRequest extends S.Class<CompletionRequest>("CompletionReq
   /**
    * Whether to incrementally stream the response using server-sent events.
    *
-   * See [streaming](https://docs.anthropic.com/en/api/streaming) for details.
+   * See [streaming](https://docs.claude.com/en/api/streaming) for details.
    */
   "stream": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
@@ -1303,7 +1316,7 @@ export class CompletionResponse extends S.Class<CompletionResponse>("CompletionR
    * The format and length of IDs may change over time.
    */
   "id": S.String,
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * The reason that we stopped.
    *
@@ -1339,9 +1352,9 @@ export class ModelsListParams extends S.Struct({
     default: () => 20 as const
   }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1397,9 +1410,9 @@ export class ListResponseModelInfo extends S.Class<ListResponseModelInfo>("ListR
 
 export class ModelsGetParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1435,9 +1448,9 @@ export class MessageBatchesListParams extends S.Struct({
     default: () => 20 as const
   }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1555,9 +1568,9 @@ export class ListResponseMessageBatch extends S.Class<ListResponseMessageBatch>(
 
 export class MessageBatchesPostParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -1588,9 +1601,9 @@ export class CreateMessageBatchParams extends S.Class<CreateMessageBatchParams>(
 
 export class MessageBatchesRetrieveParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1603,9 +1616,9 @@ export class MessageBatchesRetrieveParams extends S.Struct({
 
 export class MessageBatchesDeleteParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1634,18 +1647,18 @@ export class DeleteMessageBatchResponse extends S.Class<DeleteMessageBatchRespon
 
 export class MessageBatchesCancelParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class MessageBatchesResultsParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1658,9 +1671,9 @@ export class MessageBatchesResultsParams extends S.Struct({
 
 export class MessagesCountTokensPostParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -1710,18 +1723,18 @@ export class CountMessageTokensParams extends S.Class<CountMessageTokensParams>(
    * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
    * ```
    *
-   * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+   * See [input examples](https://docs.claude.com/en/api/messages-examples).
    *
-   * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+   * Note that if you want to include a [system prompt](https://docs.claude.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
    *
    * There is a limit of 100,000 messages in a single request.
    */
   "messages": S.Array(InputMessage),
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * System prompt.
    *
-   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.claude.com/en/docs/system-prompts).
    */
   "system": S.optionalWith(S.Union(S.String, S.Array(RequestTextBlock)), { nullable: true }),
   "thinking": S.optionalWith(ThinkingConfigParam, { nullable: true }),
@@ -1731,7 +1744,7 @@ export class CountMessageTokensParams extends S.Class<CountMessageTokensParams>(
    *
    * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
    *
-   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
    *
    * Each tool definition includes:
    *
@@ -1787,7 +1800,7 @@ export class CountMessageTokensParams extends S.Class<CountMessageTokensParams>(
    *
    * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
    *
-   * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+   * See our [guide](https://docs.claude.com/en/docs/tool-use) for more details.
    */
   "tools": S.optionalWith(
     S.Array(
@@ -1829,9 +1842,9 @@ export class ListFilesV1FilesGetParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1904,9 +1917,9 @@ export class UploadFileV1FilesPostParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -1928,9 +1941,9 @@ export class GetFileMetadataV1FilesFileIdGetParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1949,9 +1962,9 @@ export class DeleteFileV1FilesFileIdDeleteParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1983,9 +1996,9 @@ export class DownloadFileV1FilesFileIdContentGetParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -1996,6 +2009,554 @@ export class DownloadFileV1FilesFileIdContentGetParams extends S.Struct({
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+export class ListSkillsV1SkillsGetParams extends S.Struct({
+  /**
+   * Pagination token for fetching a specific page of results.
+   *
+   * Pass the value from a previous response's `next_page` field to get the next page of results.
+   */
+  "page": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Number of results to return per page.
+   *
+   * Maximum value is 100. Defaults to 20.
+   */
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  /**
+   * Filter skills by source.
+   *
+   * If provided, only skills from the specified source will be returned:
+   * * `"custom"`: only return user-created skills
+   * * `"anthropic"`: only return Anthropic-created skills
+   */
+  "source": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class Skill extends S.Class<Skill>("Skill")({
+  /**
+   * ISO 8601 timestamp of when the skill was created.
+   */
+  "created_at": S.String,
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.NullOr(S.String),
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * The latest version identifier for the skill.
+   *
+   * This represents the most recent version of the skill that has been created.
+   */
+  "latest_version": S.NullOr(S.String),
+  /**
+   * Source of the skill.
+   *
+   * This may be one of the following values:
+   * * `"custom"`: the skill was created by a user
+   * * `"anthropic"`: the skill was created by Anthropic
+   */
+  "source": S.String,
+  /**
+   * Object type.
+   *
+   * For Skills, this is always `"skill"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill" as const)),
+  /**
+   * ISO 8601 timestamp of when the skill was last updated.
+   */
+  "updated_at": S.String
+}) {}
+
+export class ListSkillsResponse extends S.Class<ListSkillsResponse>("ListSkillsResponse")({
+  /**
+   * List of skills.
+   */
+  "data": S.Array(Skill),
+  /**
+   * Whether there are more results available.
+   *
+   * If `true`, there are additional results that can be fetched using the `next_page` token.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Token for fetching the next page of results.
+   *
+   * If `null`, there are no more results available. Pass this value to the `page_token` parameter in the next request to get the next page.
+   */
+  "next_page": S.NullOr(S.String)
+}) {}
+
+export class CreateSkillV1SkillsPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BodyCreateSkillV1SkillsPost extends S.Class<BodyCreateSkillV1SkillsPost>("BodyCreateSkillV1SkillsPost")({
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Files to upload for the skill.
+   *
+   * All files must be in the same top-level directory and must include a SKILL.md file at the root of that directory.
+   */
+  "files": S.optionalWith(S.Array(S.instanceOf(globalThis.Blob)), { nullable: true })
+}) {}
+
+export class CreateSkillResponse extends S.Class<CreateSkillResponse>("CreateSkillResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill was created.
+   */
+  "created_at": S.String,
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.NullOr(S.String),
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * The latest version identifier for the skill.
+   *
+   * This represents the most recent version of the skill that has been created.
+   */
+  "latest_version": S.NullOr(S.String),
+  /**
+   * Source of the skill.
+   *
+   * This may be one of the following values:
+   * * `"custom"`: the skill was created by a user
+   * * `"anthropic"`: the skill was created by Anthropic
+   */
+  "source": S.String,
+  /**
+   * Object type.
+   *
+   * For Skills, this is always `"skill"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill" as const)),
+  /**
+   * ISO 8601 timestamp of when the skill was last updated.
+   */
+  "updated_at": S.String
+}) {}
+
+export class GetSkillV1SkillsSkillIdGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class GetSkillResponse extends S.Class<GetSkillResponse>("GetSkillResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill was created.
+   */
+  "created_at": S.String,
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.NullOr(S.String),
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * The latest version identifier for the skill.
+   *
+   * This represents the most recent version of the skill that has been created.
+   */
+  "latest_version": S.NullOr(S.String),
+  /**
+   * Source of the skill.
+   *
+   * This may be one of the following values:
+   * * `"custom"`: the skill was created by a user
+   * * `"anthropic"`: the skill was created by Anthropic
+   */
+  "source": S.String,
+  /**
+   * Object type.
+   *
+   * For Skills, this is always `"skill"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill" as const)),
+  /**
+   * ISO 8601 timestamp of when the skill was last updated.
+   */
+  "updated_at": S.String
+}) {}
+
+export class DeleteSkillV1SkillsSkillIdDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class DeleteSkillResponse extends S.Class<DeleteSkillResponse>("DeleteSkillResponse")({
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Deleted object type.
+   *
+   * For Skills, this is always `"skill_deleted"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_deleted" as const))
+}) {}
+
+export class ListSkillVersionsV1SkillsSkillIdVersionsGetParams extends S.Struct({
+  /**
+   * Optionally set to the `next_page` token from the previous response.
+   */
+  "page": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class SkillVersion extends S.Class<SkillVersion>("SkillVersion")({
+  /**
+   * ISO 8601 timestamp of when the skill version was created.
+   */
+  "created_at": S.String,
+  /**
+   * Description of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "description": S.String,
+  /**
+   * Directory name of the skill version.
+   *
+   * This is the top-level directory name that was extracted from the uploaded files.
+   */
+  "directory": S.String,
+  /**
+   * Unique identifier for the skill version.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Human-readable name of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "name": S.String,
+  /**
+   * Identifier for the skill that this version belongs to.
+   */
+  "skill_id": S.String,
+  /**
+   * Object type.
+   *
+   * For Skill Versions, this is always `"skill_version"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version" as const)),
+  /**
+   * Version identifier for the skill.
+   *
+   * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+   */
+  "version": S.String
+}) {}
+
+export class ListSkillVersionsResponse extends S.Class<ListSkillVersionsResponse>("ListSkillVersionsResponse")({
+  /**
+   * List of skill versions.
+   */
+  "data": S.Array(SkillVersion),
+  /**
+   * Indicates if there are more results in the requested page direction.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Token to provide in as `page` in the subsequent request to retrieve the next page of data.
+   */
+  "next_page": S.NullOr(S.String)
+}) {}
+
+export class CreateSkillVersionV1SkillsSkillIdVersionsPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BodyCreateSkillVersionV1SkillsSkillIdVersionsPost
+  extends S.Class<BodyCreateSkillVersionV1SkillsSkillIdVersionsPost>(
+    "BodyCreateSkillVersionV1SkillsSkillIdVersionsPost"
+  )({
+    /**
+     * Files to upload for the skill.
+     *
+     * All files must be in the same top-level directory and must include a SKILL.md file at the root of that directory.
+     */
+    "files": S.optionalWith(S.Array(S.instanceOf(globalThis.Blob)), { nullable: true })
+  })
+{}
+
+export class CreateSkillVersionResponse extends S.Class<CreateSkillVersionResponse>("CreateSkillVersionResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill version was created.
+   */
+  "created_at": S.String,
+  /**
+   * Description of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "description": S.String,
+  /**
+   * Directory name of the skill version.
+   *
+   * This is the top-level directory name that was extracted from the uploaded files.
+   */
+  "directory": S.String,
+  /**
+   * Unique identifier for the skill version.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Human-readable name of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "name": S.String,
+  /**
+   * Identifier for the skill that this version belongs to.
+   */
+  "skill_id": S.String,
+  /**
+   * Object type.
+   *
+   * For Skill Versions, this is always `"skill_version"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version" as const)),
+  /**
+   * Version identifier for the skill.
+   *
+   * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+   */
+  "version": S.String
+}) {}
+
+export class GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class GetSkillVersionResponse extends S.Class<GetSkillVersionResponse>("GetSkillVersionResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill version was created.
+   */
+  "created_at": S.String,
+  /**
+   * Description of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "description": S.String,
+  /**
+   * Directory name of the skill version.
+   *
+   * This is the top-level directory name that was extracted from the uploaded files.
+   */
+  "directory": S.String,
+  /**
+   * Unique identifier for the skill version.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Human-readable name of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "name": S.String,
+  /**
+   * Identifier for the skill that this version belongs to.
+   */
+  "skill_id": S.String,
+  /**
+   * Object type.
+   *
+   * For Skill Versions, this is always `"skill_version"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version" as const)),
+  /**
+   * Version identifier for the skill.
+   *
+   * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+   */
+  "version": S.String
+}) {}
+
+export class DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class DeleteSkillVersionResponse extends S.Class<DeleteSkillVersionResponse>("DeleteSkillVersionResponse")({
+  /**
+   * Version identifier for the skill.
+   *
+   * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+   */
+  "id": S.String,
+  /**
+   * Deleted object type.
+   *
+   * For Skill Versions, this is always `"skill_version_deleted"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version_deleted" as const))
+}) {}
+
 export class BetaMessagesPostParams extends S.Struct({
   /**
    * Optional header to specify the beta version(s) you want to use.
@@ -2004,9 +2565,9 @@ export class BetaMessagesPostParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -2232,7 +2793,12 @@ export class BetaRequestToolResultBlock extends S.Class<BetaRequestToolResultBlo
    */
   "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
   "content": S.optionalWith(
-    S.Union(S.String, S.Array(S.Union(BetaRequestTextBlock, BetaRequestImageBlock, BetaRequestSearchResultBlock))),
+    S.Union(
+      S.String,
+      S.Array(
+        S.Union(BetaRequestTextBlock, BetaRequestImageBlock, BetaRequestSearchResultBlock, BetaRequestDocumentBlock)
+      )
+    ),
     { nullable: true }
   ),
   "is_error": S.optionalWith(S.Boolean, { nullable: true }),
@@ -2241,7 +2807,7 @@ export class BetaRequestToolResultBlock extends S.Class<BetaRequestToolResultBlo
 }) {}
 
 export class BetaRequestServerToolUseBlockName
-  extends S.Literal("web_search", "code_execution", "bash_code_execution", "text_editor_code_execution")
+  extends S.Literal("web_search", "web_fetch", "code_execution", "bash_code_execution", "text_editor_code_execution")
 {}
 
 export class BetaRequestServerToolUseBlock
@@ -2287,6 +2853,51 @@ export class BetaRequestWebSearchToolResultBlock
     "content": S.Union(S.Array(BetaRequestWebSearchResultBlock), BetaRequestWebSearchToolResultError),
     "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
     "type": S.Literal("web_search_tool_result")
+  })
+{}
+
+export class BetaWebFetchToolResultErrorCode extends S.Literal(
+  "invalid_tool_input",
+  "url_too_long",
+  "url_not_allowed",
+  "url_not_accessible",
+  "unsupported_content_type",
+  "too_many_requests",
+  "max_uses_exceeded",
+  "unavailable"
+) {}
+
+export class BetaRequestWebFetchToolResultError
+  extends S.Class<BetaRequestWebFetchToolResultError>("BetaRequestWebFetchToolResultError")({
+    "error_code": BetaWebFetchToolResultErrorCode,
+    "type": S.Literal("web_fetch_tool_result_error")
+  })
+{}
+
+export class BetaRequestWebFetchResultBlock
+  extends S.Class<BetaRequestWebFetchResultBlock>("BetaRequestWebFetchResultBlock")({
+    "content": BetaRequestDocumentBlock,
+    /**
+     * ISO 8601 timestamp when the content was retrieved
+     */
+    "retrieved_at": S.optionalWith(S.String, { nullable: true }),
+    "type": S.Literal("web_fetch_result"),
+    /**
+     * Fetched content URL
+     */
+    "url": S.String
+  })
+{}
+
+export class BetaRequestWebFetchToolResultBlock
+  extends S.Class<BetaRequestWebFetchToolResultBlock>("BetaRequestWebFetchToolResultBlock")({
+    /**
+     * Create a cache control breakpoint at this content block.
+     */
+    "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+    "content": S.Union(BetaRequestWebFetchToolResultError, BetaRequestWebFetchResultBlock),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("web_fetch_tool_result")
   })
 {}
 
@@ -2526,6 +3137,7 @@ export class BetaInputContentBlock extends S.Union(
   BetaRequestToolResultBlock,
   BetaRequestServerToolUseBlock,
   BetaRequestWebSearchToolResultBlock,
+  BetaRequestWebFetchToolResultBlock,
   BetaRequestCodeExecutionToolResultBlock,
   BetaRequestBashCodeExecutionToolResultBlock,
   BetaRequestTextEditorCodeExecutionToolResultBlock,
@@ -2539,6 +3151,94 @@ export class BetaInputMessageRole extends S.Literal("user", "assistant") {}
 export class BetaInputMessage extends S.Class<BetaInputMessage>("BetaInputMessage")({
   "content": S.Union(S.String, S.Array(BetaInputContentBlock)),
   "role": BetaInputMessageRole
+}) {}
+
+/**
+ * Type of skill - either 'anthropic' (built-in) or 'custom' (user-defined)
+ */
+export class BetaSkillParamsType extends S.Literal("anthropic", "custom") {}
+
+/**
+ * Specification for a skill to be loaded in a container (request model).
+ */
+export class BetaSkillParams extends S.Class<BetaSkillParams>("BetaSkillParams")({
+  /**
+   * Skill ID
+   */
+  "skill_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+  /**
+   * Type of skill - either 'anthropic' (built-in) or 'custom' (user-defined)
+   */
+  "type": BetaSkillParamsType,
+  /**
+   * Skill version or 'latest' for most recent version
+   */
+  "version": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(64)), { nullable: true })
+}) {}
+
+/**
+ * Container parameters with skills to be loaded.
+ */
+export class BetaContainerParams extends S.Class<BetaContainerParams>("BetaContainerParams")({
+  /**
+   * Container id
+   */
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * List of skills to load in the container
+   */
+  "skills": S.optionalWith(S.Array(BetaSkillParams).pipe(S.maxItems(8)), { nullable: true })
+}) {}
+
+export class BetaInputTokensClearAtLeast extends S.Class<BetaInputTokensClearAtLeast>("BetaInputTokensClearAtLeast")({
+  "type": S.Literal("input_tokens"),
+  "value": S.Int.pipe(S.greaterThanOrEqualTo(0))
+}) {}
+
+export class BetaToolUsesKeep extends S.Class<BetaToolUsesKeep>("BetaToolUsesKeep")({
+  "type": S.Literal("tool_uses"),
+  "value": S.Int.pipe(S.greaterThanOrEqualTo(0))
+}) {}
+
+export class BetaInputTokensTrigger extends S.Class<BetaInputTokensTrigger>("BetaInputTokensTrigger")({
+  "type": S.Literal("input_tokens"),
+  "value": S.Int.pipe(S.greaterThanOrEqualTo(1))
+}) {}
+
+export class BetaToolUsesTrigger extends S.Class<BetaToolUsesTrigger>("BetaToolUsesTrigger")({
+  "type": S.Literal("tool_uses"),
+  "value": S.Int.pipe(S.greaterThanOrEqualTo(1))
+}) {}
+
+export class BetaClearToolUses20250919 extends S.Class<BetaClearToolUses20250919>("BetaClearToolUses20250919")({
+  /**
+   * Minimum number of tokens that must be cleared when triggered. Context will only be modified if at least this many tokens can be removed.
+   */
+  "clear_at_least": S.optionalWith(BetaInputTokensClearAtLeast, { nullable: true }),
+  /**
+   * Whether to clear all tool inputs (bool) or specific tool inputs to clear (list)
+   */
+  "clear_tool_inputs": S.optionalWith(S.Union(S.Boolean, S.Array(S.String)), { nullable: true }),
+  /**
+   * Tool names whose uses are preserved from clearing
+   */
+  "exclude_tools": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Number of tool uses to retain in the conversation
+   */
+  "keep": S.optionalWith(BetaToolUsesKeep, { nullable: true }),
+  /**
+   * Condition that triggers the context management strategy
+   */
+  "trigger": S.optionalWith(S.Union(BetaInputTokensTrigger, BetaToolUsesTrigger), { nullable: true }),
+  "type": S.Literal("clear_tool_uses_20250919")
+}) {}
+
+export class BetaContextManagementConfig extends S.Class<BetaContextManagementConfig>("BetaContextManagementConfig")({
+  /**
+   * List of context management edits to apply
+   */
+  "edits": S.optionalWith(S.Array(BetaClearToolUses20250919), { nullable: true })
 }) {}
 
 export class BetaRequestMCPServerToolConfiguration
@@ -2570,7 +3270,7 @@ export class BetaMetadata extends S.Class<BetaMetadata>("BetaMetadata")({
 /**
  * Determines whether to use priority capacity (if available) or standard capacity for this request.
  *
- * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+ * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.claude.com/en/api/service-tiers) for details.
  */
 export class BetaCreateMessageParamsServiceTier extends S.Literal("auto", "standard_only") {}
 
@@ -2580,7 +3280,7 @@ export class BetaThinkingConfigEnabled extends S.Class<BetaThinkingConfigEnabled
    *
    * Must be ≥1024 and less than `max_tokens`.
    *
-   * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+   * See [extended thinking](https://docs.claude.com/en/docs/build-with-claude/extended-thinking) for details.
    */
   "budget_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1024)),
   "type": S.Literal("enabled")
@@ -2595,7 +3295,7 @@ export class BetaThinkingConfigDisabled extends S.Class<BetaThinkingConfigDisabl
  *
  * When enabled, responses include `thinking` content blocks showing Claude's thinking process before the final answer. Requires a minimum budget of 1,024 tokens and counts towards your `max_tokens` limit.
  *
- * See [extended thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) for details.
+ * See [extended thinking](https://docs.claude.com/en/docs/build-with-claude/extended-thinking) for details.
  */
 export class BetaThinkingConfigParam extends S.Union(BetaThinkingConfigEnabled, BetaThinkingConfigDisabled) {}
 
@@ -2774,6 +3474,20 @@ export class BetaComputerUseTool20241022 extends S.Class<BetaComputerUseTool2024
   "type": S.Literal("computer_20241022")
 }) {}
 
+export class BetaMemoryTool20250818 extends S.Class<BetaMemoryTool20250818>("BetaMemoryTool20250818")({
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("memory"),
+  "type": S.Literal("memory_20250818")
+}) {}
+
 export class BetaComputerUseTool20250124 extends S.Class<BetaComputerUseTool20250124>("BetaComputerUseTool20250124")({
   /**
    * Create a cache control breakpoint at this content block.
@@ -2910,8 +3624,42 @@ export class BetaWebSearchTool20250305 extends S.Class<BetaWebSearchTool20250305
   "user_location": S.optionalWith(BetaUserLocation, { nullable: true })
 }) {}
 
+export class BetaWebFetchTool20250910 extends S.Class<BetaWebFetchTool20250910>("BetaWebFetchTool20250910")({
+  /**
+   * List of domains to allow fetching from
+   */
+  "allowed_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * List of domains to block fetching from
+   */
+  "blocked_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Create a cache control breakpoint at this content block.
+   */
+  "cache_control": S.optionalWith(BetaCacheControlEphemeral, { nullable: true }),
+  /**
+   * Citations configuration for fetched documents. Citations are disabled by default.
+   */
+  "citations": S.optionalWith(BetaRequestCitationsConfig, { nullable: true }),
+  /**
+   * Maximum number of tokens used by including web page text content in the context. The limit is approximate and does not apply to binary content such as PDFs.
+   */
+  "max_content_tokens": S.optionalWith(S.Int.pipe(S.greaterThan(0)), { nullable: true }),
+  /**
+   * Maximum number of times the tool can be used in the API request.
+   */
+  "max_uses": S.optionalWith(S.Int.pipe(S.greaterThan(0)), { nullable: true }),
+  /**
+   * Name of the tool.
+   *
+   * This is how the tool will be called by the model and in `tool_use` blocks.
+   */
+  "name": S.Literal("web_fetch"),
+  "type": S.Literal("web_fetch_20250910")
+}) {}
+
 export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("BetaCreateMessageParams")({
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * Input messages.
    *
@@ -2956,9 +3704,9 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
    * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
    * ```
    *
-   * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+   * See [input examples](https://docs.claude.com/en/api/messages-examples).
    *
-   * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+   * Note that if you want to include a [system prompt](https://docs.claude.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
    *
    * There is a limit of 100,000 messages in a single request.
    */
@@ -2966,13 +3714,19 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
   /**
    * Container identifier for reuse across requests.
    */
-  "container": S.optionalWith(S.String, { nullable: true }),
+  "container": S.optionalWith(S.Union(BetaContainerParams, S.String), { nullable: true }),
+  /**
+   * Context management configuration.
+   *
+   * This allows you to control how Claude manages context across multiple requests, such as whether to clear function results or not.
+   */
+  "context_management": S.optionalWith(BetaContextManagementConfig, { nullable: true }),
   /**
    * The maximum number of tokens to generate before stopping.
    *
    * Note that our models may stop _before_ reaching this maximum. This parameter only specifies the absolute maximum number of tokens to generate.
    *
-   * Different models have different maximum values for this parameter.  See [models](https://docs.anthropic.com/en/docs/models-overview) for details.
+   * Different models have different maximum values for this parameter.  See [models](https://docs.claude.com/en/docs/models-overview) for details.
    */
   "max_tokens": S.Int.pipe(S.greaterThanOrEqualTo(1)),
   /**
@@ -2986,7 +3740,7 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
   /**
    * Determines whether to use priority capacity (if available) or standard capacity for this request.
    *
-   * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.anthropic.com/en/api/service-tiers) for details.
+   * Anthropic offers different levels of service for your API requests. See [service-tiers](https://docs.claude.com/en/api/service-tiers) for details.
    */
   "service_tier": S.optionalWith(BetaCreateMessageParamsServiceTier, { nullable: true }),
   /**
@@ -3000,13 +3754,13 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
   /**
    * Whether to incrementally stream the response using server-sent events.
    *
-   * See [streaming](https://docs.anthropic.com/en/api/messages-streaming) for details.
+   * See [streaming](https://docs.claude.com/en/api/messages-streaming) for details.
    */
   "stream": S.optionalWith(S.Boolean, { nullable: true }),
   /**
    * System prompt.
    *
-   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+   * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.claude.com/en/docs/system-prompts).
    */
   "system": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
   /**
@@ -3024,7 +3778,7 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
    *
    * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
    *
-   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+   * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
    *
    * Each tool definition includes:
    *
@@ -3080,7 +3834,7 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
    *
    * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
    *
-   * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+   * See our [guide](https://docs.claude.com/en/docs/tool-use) for more details.
    */
   "tools": S.optionalWith(
     S.Array(
@@ -3091,12 +3845,14 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
         BetaCodeExecutionTool20250522,
         BetaCodeExecutionTool20250825,
         BetaComputerUseTool20241022,
+        BetaMemoryTool20250818,
         BetaComputerUseTool20250124,
         BetaTextEditor20241022,
         BetaTextEditor20250124,
         BetaTextEditor20250429,
         BetaTextEditor20250728,
-        BetaWebSearchTool20250305
+        BetaWebSearchTool20250305,
+        BetaWebFetchTool20250910
       )
     ),
     { nullable: true }
@@ -3240,7 +3996,7 @@ export class BetaResponseToolUseBlock extends S.Class<BetaResponseToolUseBlock>(
 }) {}
 
 export class BetaResponseServerToolUseBlockName
-  extends S.Literal("web_search", "code_execution", "bash_code_execution", "text_editor_code_execution")
+  extends S.Literal("web_search", "web_fetch", "code_execution", "bash_code_execution", "text_editor_code_execution")
 {}
 
 export class BetaResponseServerToolUseBlock
@@ -3285,6 +4041,62 @@ export class BetaResponseWebSearchToolResultBlock
     "type": S.Literal("web_search_tool_result").pipe(
       S.propertySignature,
       S.withConstructorDefault(() => "web_search_tool_result" as const)
+    )
+  })
+{}
+
+export class BetaResponseWebFetchToolResultError
+  extends S.Class<BetaResponseWebFetchToolResultError>("BetaResponseWebFetchToolResultError")({
+    "error_code": BetaWebFetchToolResultErrorCode,
+    "type": S.Literal("web_fetch_tool_result_error").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_fetch_tool_result_error" as const)
+    )
+  })
+{}
+
+export class BetaResponseCitationsConfig extends S.Class<BetaResponseCitationsConfig>("BetaResponseCitationsConfig")({
+  "enabled": S.Boolean.pipe(S.propertySignature, S.withConstructorDefault(() => false as const))
+}) {}
+
+export class BetaResponseDocumentBlock extends S.Class<BetaResponseDocumentBlock>("BetaResponseDocumentBlock")({
+  /**
+   * Citation configuration for the document
+   */
+  "citations": S.optionalWith(S.NullOr(BetaResponseCitationsConfig), { default: () => null }),
+  "source": S.Union(BetaBase64PDFSource, BetaPlainTextSource),
+  /**
+   * The title of the document
+   */
+  "title": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+  "type": S.Literal("document").pipe(S.propertySignature, S.withConstructorDefault(() => "document" as const))
+}) {}
+
+export class BetaResponseWebFetchResultBlock
+  extends S.Class<BetaResponseWebFetchResultBlock>("BetaResponseWebFetchResultBlock")({
+    "content": BetaResponseDocumentBlock,
+    /**
+     * ISO 8601 timestamp when the content was retrieved
+     */
+    "retrieved_at": S.optionalWith(S.NullOr(S.String), { default: () => null }),
+    "type": S.Literal("web_fetch_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_fetch_result" as const)
+    ),
+    /**
+     * Fetched content URL
+     */
+    "url": S.String
+  })
+{}
+
+export class BetaResponseWebFetchToolResultBlock
+  extends S.Class<BetaResponseWebFetchToolResultBlock>("BetaResponseWebFetchToolResultBlock")({
+    "content": S.Union(BetaResponseWebFetchToolResultError, BetaResponseWebFetchResultBlock),
+    "tool_use_id": S.String.pipe(S.pattern(new RegExp("^srvtoolu_[a-zA-Z0-9_]+$"))),
+    "type": S.Literal("web_fetch_tool_result").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "web_fetch_tool_result" as const)
     )
   })
 {}
@@ -3500,6 +4312,7 @@ export class BetaContentBlock extends S.Union(
   BetaResponseToolUseBlock,
   BetaResponseServerToolUseBlock,
   BetaResponseWebSearchToolResultBlock,
+  BetaResponseWebFetchToolResultBlock,
   BetaResponseCodeExecutionToolResultBlock,
   BetaResponseBashCodeExecutionToolResultBlock,
   BetaResponseTextEditorCodeExecutionToolResultBlock,
@@ -3508,9 +4321,15 @@ export class BetaContentBlock extends S.Union(
   BetaResponseContainerUploadBlock
 ) {}
 
-export class BetaStopReason
-  extends S.Literal("end_turn", "max_tokens", "stop_sequence", "tool_use", "pause_turn", "refusal")
-{}
+export class BetaStopReason extends S.Literal(
+  "end_turn",
+  "max_tokens",
+  "stop_sequence",
+  "tool_use",
+  "pause_turn",
+  "refusal",
+  "model_context_window_exceeded"
+) {}
 
 export class BetaCacheCreation extends S.Class<BetaCacheCreation>("BetaCacheCreation")({
   /**
@@ -3530,6 +4349,13 @@ export class BetaCacheCreation extends S.Class<BetaCacheCreation>("BetaCacheCrea
 }) {}
 
 export class BetaServerToolUsage extends S.Class<BetaServerToolUsage>("BetaServerToolUsage")({
+  /**
+   * The number of web fetch tool requests.
+   */
+  "web_fetch_requests": S.Int.pipe(S.greaterThanOrEqualTo(0)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => 0 as const)
+  ),
   /**
    * The number of web search tool requests.
    */
@@ -3574,6 +4400,58 @@ export class BetaUsage extends S.Class<BetaUsage>("BetaUsage")({
   "service_tier": S.optionalWith(S.NullOr(BetaUsageServiceTierEnum), { default: () => null })
 }) {}
 
+export class BetaResponseClearToolUses20250919Edit
+  extends S.Class<BetaResponseClearToolUses20250919Edit>("BetaResponseClearToolUses20250919Edit")({
+    /**
+     * Number of input tokens cleared by this edit.
+     */
+    "cleared_input_tokens": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    /**
+     * Number of tool uses that were cleared.
+     */
+    "cleared_tool_uses": S.Int.pipe(S.greaterThanOrEqualTo(0)),
+    /**
+     * The type of context management edit applied.
+     */
+    "type": S.Literal("clear_tool_uses_20250919").pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "clear_tool_uses_20250919" as const)
+    )
+  })
+{}
+
+export class BetaResponseContextManagement
+  extends S.Class<BetaResponseContextManagement>("BetaResponseContextManagement")({
+    /**
+     * List of context management edits that were applied.
+     */
+    "applied_edits": S.Array(BetaResponseClearToolUses20250919Edit)
+  })
+{}
+
+/**
+ * Type of skill - either 'anthropic' (built-in) or 'custom' (user-defined)
+ */
+export class BetaSkillType extends S.Literal("anthropic", "custom") {}
+
+/**
+ * A skill that was loaded in a container (response model).
+ */
+export class BetaSkill extends S.Class<BetaSkill>("BetaSkill")({
+  /**
+   * Skill ID
+   */
+  "skill_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+  /**
+   * Type of skill - either 'anthropic' (built-in) or 'custom' (user-defined)
+   */
+  "type": BetaSkillType,
+  /**
+   * Skill version or 'latest' for most recent version
+   */
+  "version": S.String.pipe(S.minLength(1), S.maxLength(64))
+}) {}
+
 /**
  * Information about the container used in the request (for the code execution tool)
  */
@@ -3585,7 +4463,11 @@ export class BetaContainer extends S.Class<BetaContainer>("BetaContainer")({
   /**
    * Identifier for the container used in this request
    */
-  "id": S.String
+  "id": S.String,
+  /**
+   * Skills loaded in the container
+   */
+  "skills": S.optionalWith(S.NullOr(S.Array(BetaSkill)), { default: () => null })
 }) {}
 
 export class BetaMessage extends S.Class<BetaMessage>("BetaMessage")({
@@ -3635,7 +4517,7 @@ export class BetaMessage extends S.Class<BetaMessage>("BetaMessage")({
    * ```
    */
   "content": S.Array(BetaContentBlock),
-  "model": Model,
+  "model": S.Union(S.String, Model),
   /**
    * The reason that we stopped.
    *
@@ -3668,6 +4550,12 @@ export class BetaMessage extends S.Class<BetaMessage>("BetaMessage")({
    * Total input tokens in a request is the summation of `input_tokens`, `cache_creation_input_tokens`, and `cache_read_input_tokens`.
    */
   "usage": BetaUsage,
+  /**
+   * Context management response.
+   *
+   * Information about context management strategies applied during the request.
+   */
+  "context_management": S.optionalWith(S.NullOr(BetaResponseContextManagement), { default: () => null }),
   /**
    * Information about the container used in this request.
    *
@@ -3774,9 +4662,9 @@ export class BetaModelsListParams extends S.Struct({
     default: () => 20 as const
   }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -3832,9 +4720,9 @@ export class BetaListResponseModelInfo extends S.Class<BetaListResponseModelInfo
 
 export class BetaModelsGetParams extends S.Struct({
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -3876,9 +4764,9 @@ export class BetaMessageBatchesListParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4004,9 +4892,9 @@ export class BetaMessageBatchesPostParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -4045,9 +4933,9 @@ export class BetaMessageBatchesRetrieveParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4066,9 +4954,9 @@ export class BetaMessageBatchesDeleteParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4105,9 +4993,9 @@ export class BetaMessageBatchesCancelParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -4120,9 +5008,9 @@ export class BetaMessageBatchesResultsParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4141,15 +5029,21 @@ export class BetaMessagesCountTokensPostParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class BetaCountMessageTokensParams
   extends S.Class<BetaCountMessageTokensParams>("BetaCountMessageTokensParams")({
+    /**
+     * Context management configuration.
+     *
+     * This allows you to control how Claude manages context across multiple requests, such as whether to clear function results or not.
+     */
+    "context_management": S.optionalWith(BetaContextManagementConfig, { nullable: true }),
     /**
      * MCP servers to be utilized in this request
      */
@@ -4198,18 +5092,18 @@ export class BetaCountMessageTokensParams
      * {"role": "user", "content": [{"type": "text", "text": "Hello, Claude"}]}
      * ```
      *
-     * See [input examples](https://docs.anthropic.com/en/api/messages-examples).
+     * See [input examples](https://docs.claude.com/en/api/messages-examples).
      *
-     * Note that if you want to include a [system prompt](https://docs.anthropic.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
+     * Note that if you want to include a [system prompt](https://docs.claude.com/en/docs/system-prompts), you can use the top-level `system` parameter — there is no `"system"` role for input messages in the Messages API.
      *
      * There is a limit of 100,000 messages in a single request.
      */
     "messages": S.Array(BetaInputMessage),
-    "model": Model,
+    "model": S.Union(S.String, Model),
     /**
      * System prompt.
      *
-     * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.anthropic.com/en/docs/system-prompts).
+     * A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [guide to system prompts](https://docs.claude.com/en/docs/system-prompts).
      */
     "system": S.optionalWith(S.Union(S.String, S.Array(BetaRequestTextBlock)), { nullable: true }),
     "thinking": S.optionalWith(BetaThinkingConfigParam, { nullable: true }),
@@ -4219,7 +5113,7 @@ export class BetaCountMessageTokensParams
      *
      * If you include `tools` in your API request, the model may return `tool_use` content blocks that represent the model's use of those tools. You can then run those tools using the tool input generated by the model and then optionally return results back to the model using `tool_result` content blocks.
      *
-     * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
+     * There are two types of tools: **client tools** and **server tools**. The behavior described below applies to client tools. For [server tools](https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview\#server-tools), see their individual documentation as each has its own behavior (e.g., the [web search tool](https://docs.claude.com/en/docs/agents-and-tools/tool-use/web-search-tool)).
      *
      * Each tool definition includes:
      *
@@ -4275,7 +5169,7 @@ export class BetaCountMessageTokensParams
      *
      * Tools can be used for workflows that include running client-side tools and functions, or more generally whenever you want the model to produce a particular JSON structure of output.
      *
-     * See our [guide](https://docs.anthropic.com/en/docs/tool-use) for more details.
+     * See our [guide](https://docs.claude.com/en/docs/tool-use) for more details.
      */
     "tools": S.optionalWith(
       S.Array(
@@ -4286,12 +5180,14 @@ export class BetaCountMessageTokensParams
           BetaCodeExecutionTool20250522,
           BetaCodeExecutionTool20250825,
           BetaComputerUseTool20241022,
+          BetaMemoryTool20250818,
           BetaComputerUseTool20250124,
           BetaTextEditor20241022,
           BetaTextEditor20250124,
           BetaTextEditor20250429,
           BetaTextEditor20250728,
-          BetaWebSearchTool20250305
+          BetaWebSearchTool20250305,
+          BetaWebFetchTool20250910
         )
       ),
       { nullable: true }
@@ -4299,8 +5195,21 @@ export class BetaCountMessageTokensParams
   })
 {}
 
+export class BetaContextManagementResponse
+  extends S.Class<BetaContextManagementResponse>("BetaContextManagementResponse")({
+    /**
+     * The original token count before context management was applied
+     */
+    "original_input_tokens": S.Int
+  })
+{}
+
 export class BetaCountMessageTokensResponse
   extends S.Class<BetaCountMessageTokensResponse>("BetaCountMessageTokensResponse")({
+    /**
+     * Information about context management applied to the message.
+     */
+    "context_management": S.NullOr(BetaContextManagementResponse),
     /**
      * The total number of tokens across the provided list of messages, system prompt, and tools.
      */
@@ -4333,9 +5242,9 @@ export class BetaListFilesV1FilesGetParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4408,9 +5317,9 @@ export class BetaUploadFileV1FilesPostParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -4432,9 +5341,9 @@ export class BetaGetFileMetadataV1FilesFileIdGetParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4453,9 +5362,9 @@ export class BetaDeleteFileV1FilesFileIdDeleteParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4487,9 +5396,9 @@ export class BetaDownloadFileV1FilesFileIdContentGetParams extends S.Struct({
    */
   "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
   /**
-   * The version of the Anthropic API you want to use.
+   * The version of the Claude API you want to use.
    *
-   * Read more about versioning and our version history [here](https://docs.anthropic.com/en/api/versioning).
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
    */
   "anthropic-version": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4499,6 +5408,562 @@ export class BetaDownloadFileV1FilesFileIdContentGetParams extends S.Struct({
    */
   "x-api-key": S.optionalWith(S.String, { nullable: true })
 }) {}
+
+export class BetaListSkillsV1SkillsGetParams extends S.Struct({
+  /**
+   * Pagination token for fetching a specific page of results.
+   *
+   * Pass the value from a previous response's `next_page` field to get the next page of results.
+   */
+  "page": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Number of results to return per page.
+   *
+   * Maximum value is 100. Defaults to 20.
+   */
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  /**
+   * Filter skills by source.
+   *
+   * If provided, only skills from the specified source will be returned:
+   * * `"custom"`: only return user-created skills
+   * * `"anthropic"`: only return Anthropic-created skills
+   */
+  "source": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaapiSchemasSkillsSkill extends S.Class<BetaapiSchemasSkillsSkill>("BetaapiSchemasSkillsSkill")({
+  /**
+   * ISO 8601 timestamp of when the skill was created.
+   */
+  "created_at": S.String,
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.NullOr(S.String),
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * The latest version identifier for the skill.
+   *
+   * This represents the most recent version of the skill that has been created.
+   */
+  "latest_version": S.NullOr(S.String),
+  /**
+   * Source of the skill.
+   *
+   * This may be one of the following values:
+   * * `"custom"`: the skill was created by a user
+   * * `"anthropic"`: the skill was created by Anthropic
+   */
+  "source": S.String,
+  /**
+   * Object type.
+   *
+   * For Skills, this is always `"skill"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill" as const)),
+  /**
+   * ISO 8601 timestamp of when the skill was last updated.
+   */
+  "updated_at": S.String
+}) {}
+
+export class BetaListSkillsResponse extends S.Class<BetaListSkillsResponse>("BetaListSkillsResponse")({
+  /**
+   * List of skills.
+   */
+  "data": S.Array(BetaapiSchemasSkillsSkill),
+  /**
+   * Whether there are more results available.
+   *
+   * If `true`, there are additional results that can be fetched using the `next_page` token.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Token for fetching the next page of results.
+   *
+   * If `null`, there are no more results available. Pass this value to the `page_token` parameter in the next request to get the next page.
+   */
+  "next_page": S.NullOr(S.String)
+}) {}
+
+export class BetaCreateSkillV1SkillsPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaBodyCreateSkillV1SkillsPost
+  extends S.Class<BetaBodyCreateSkillV1SkillsPost>("BetaBodyCreateSkillV1SkillsPost")({
+    /**
+     * Display title for the skill.
+     *
+     * This is a human-readable label that is not included in the prompt sent to the model.
+     */
+    "display_title": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Files to upload for the skill.
+     *
+     * All files must be in the same top-level directory and must include a SKILL.md file at the root of that directory.
+     */
+    "files": S.optionalWith(S.Array(S.instanceOf(globalThis.Blob)), { nullable: true })
+  })
+{}
+
+export class BetaCreateSkillResponse extends S.Class<BetaCreateSkillResponse>("BetaCreateSkillResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill was created.
+   */
+  "created_at": S.String,
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.NullOr(S.String),
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * The latest version identifier for the skill.
+   *
+   * This represents the most recent version of the skill that has been created.
+   */
+  "latest_version": S.NullOr(S.String),
+  /**
+   * Source of the skill.
+   *
+   * This may be one of the following values:
+   * * `"custom"`: the skill was created by a user
+   * * `"anthropic"`: the skill was created by Anthropic
+   */
+  "source": S.String,
+  /**
+   * Object type.
+   *
+   * For Skills, this is always `"skill"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill" as const)),
+  /**
+   * ISO 8601 timestamp of when the skill was last updated.
+   */
+  "updated_at": S.String
+}) {}
+
+export class BetaGetSkillV1SkillsSkillIdGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaGetSkillResponse extends S.Class<BetaGetSkillResponse>("BetaGetSkillResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill was created.
+   */
+  "created_at": S.String,
+  /**
+   * Display title for the skill.
+   *
+   * This is a human-readable label that is not included in the prompt sent to the model.
+   */
+  "display_title": S.NullOr(S.String),
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * The latest version identifier for the skill.
+   *
+   * This represents the most recent version of the skill that has been created.
+   */
+  "latest_version": S.NullOr(S.String),
+  /**
+   * Source of the skill.
+   *
+   * This may be one of the following values:
+   * * `"custom"`: the skill was created by a user
+   * * `"anthropic"`: the skill was created by Anthropic
+   */
+  "source": S.String,
+  /**
+   * Object type.
+   *
+   * For Skills, this is always `"skill"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill" as const)),
+  /**
+   * ISO 8601 timestamp of when the skill was last updated.
+   */
+  "updated_at": S.String
+}) {}
+
+export class BetaDeleteSkillV1SkillsSkillIdDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaDeleteSkillResponse extends S.Class<BetaDeleteSkillResponse>("BetaDeleteSkillResponse")({
+  /**
+   * Unique identifier for the skill.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Deleted object type.
+   *
+   * For Skills, this is always `"skill_deleted"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_deleted" as const))
+}) {}
+
+export class BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams extends S.Struct({
+  /**
+   * Optionally set to the `next_page` token from the previous response.
+   */
+  "page": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Number of items to return per page.
+   *
+   * Defaults to `20`. Ranges from `1` to `1000`.
+   */
+  "limit": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaSkillVersion extends S.Class<BetaSkillVersion>("BetaSkillVersion")({
+  /**
+   * ISO 8601 timestamp of when the skill version was created.
+   */
+  "created_at": S.String,
+  /**
+   * Description of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "description": S.String,
+  /**
+   * Directory name of the skill version.
+   *
+   * This is the top-level directory name that was extracted from the uploaded files.
+   */
+  "directory": S.String,
+  /**
+   * Unique identifier for the skill version.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Human-readable name of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "name": S.String,
+  /**
+   * Identifier for the skill that this version belongs to.
+   */
+  "skill_id": S.String,
+  /**
+   * Object type.
+   *
+   * For Skill Versions, this is always `"skill_version"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version" as const)),
+  /**
+   * Version identifier for the skill.
+   *
+   * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+   */
+  "version": S.String
+}) {}
+
+export class BetaListSkillVersionsResponse
+  extends S.Class<BetaListSkillVersionsResponse>("BetaListSkillVersionsResponse")({
+    /**
+     * List of skill versions.
+     */
+    "data": S.Array(BetaSkillVersion),
+    /**
+     * Indicates if there are more results in the requested page direction.
+     */
+    "has_more": S.Boolean,
+    /**
+     * Token to provide in as `page` in the subsequent request to retrieve the next page of data.
+     */
+    "next_page": S.NullOr(S.String)
+  })
+{}
+
+export class BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaBodyCreateSkillVersionV1SkillsSkillIdVersionsPost
+  extends S.Class<BetaBodyCreateSkillVersionV1SkillsSkillIdVersionsPost>(
+    "BetaBodyCreateSkillVersionV1SkillsSkillIdVersionsPost"
+  )({
+    /**
+     * Files to upload for the skill.
+     *
+     * All files must be in the same top-level directory and must include a SKILL.md file at the root of that directory.
+     */
+    "files": S.optionalWith(S.Array(S.instanceOf(globalThis.Blob)), { nullable: true })
+  })
+{}
+
+export class BetaCreateSkillVersionResponse
+  extends S.Class<BetaCreateSkillVersionResponse>("BetaCreateSkillVersionResponse")({
+    /**
+     * ISO 8601 timestamp of when the skill version was created.
+     */
+    "created_at": S.String,
+    /**
+     * Description of the skill version.
+     *
+     * This is extracted from the SKILL.md file in the skill upload.
+     */
+    "description": S.String,
+    /**
+     * Directory name of the skill version.
+     *
+     * This is the top-level directory name that was extracted from the uploaded files.
+     */
+    "directory": S.String,
+    /**
+     * Unique identifier for the skill version.
+     *
+     * The format and length of IDs may change over time.
+     */
+    "id": S.String,
+    /**
+     * Human-readable name of the skill version.
+     *
+     * This is extracted from the SKILL.md file in the skill upload.
+     */
+    "name": S.String,
+    /**
+     * Identifier for the skill that this version belongs to.
+     */
+    "skill_id": S.String,
+    /**
+     * Object type.
+     *
+     * For Skill Versions, this is always `"skill_version"`.
+     */
+    "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version" as const)),
+    /**
+     * Version identifier for the skill.
+     *
+     * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+     */
+    "version": S.String
+  })
+{}
+
+export class BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaGetSkillVersionResponse extends S.Class<BetaGetSkillVersionResponse>("BetaGetSkillVersionResponse")({
+  /**
+   * ISO 8601 timestamp of when the skill version was created.
+   */
+  "created_at": S.String,
+  /**
+   * Description of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "description": S.String,
+  /**
+   * Directory name of the skill version.
+   *
+   * This is the top-level directory name that was extracted from the uploaded files.
+   */
+  "directory": S.String,
+  /**
+   * Unique identifier for the skill version.
+   *
+   * The format and length of IDs may change over time.
+   */
+  "id": S.String,
+  /**
+   * Human-readable name of the skill version.
+   *
+   * This is extracted from the SKILL.md file in the skill upload.
+   */
+  "name": S.String,
+  /**
+   * Identifier for the skill that this version belongs to.
+   */
+  "skill_id": S.String,
+  /**
+   * Object type.
+   *
+   * For Skill Versions, this is always `"skill_version"`.
+   */
+  "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version" as const)),
+  /**
+   * Version identifier for the skill.
+   *
+   * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+   */
+  "version": S.String
+}) {}
+
+export class BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams extends S.Struct({
+  /**
+   * Optional header to specify the beta version(s) you want to use.
+   *
+   * To use multiple betas, use a comma separated list like `beta1,beta2` or specify the header multiple times for each beta.
+   */
+  "anthropic-beta": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The version of the Claude API you want to use.
+   *
+   * Read more about versioning and our version history [here](https://docs.claude.com/en/api/versioning).
+   */
+  "anthropic-version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Your unique API key for authentication.
+   *
+   * This key is required in the header of all API requests, to authenticate your account and access Anthropic's services. Get your API key through the [Console](https://console.anthropic.com/settings/keys). Each key is scoped to a Workspace.
+   */
+  "x-api-key": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BetaDeleteSkillVersionResponse
+  extends S.Class<BetaDeleteSkillVersionResponse>("BetaDeleteSkillVersionResponse")({
+    /**
+     * Version identifier for the skill.
+     *
+     * Each version is identified by a Unix epoch timestamp (e.g., "1759178010641129").
+     */
+    "id": S.String,
+    /**
+     * Deleted object type.
+     *
+     * For Skill Versions, this is always `"skill_version_deleted"`.
+     */
+    "type": S.String.pipe(S.propertySignature, S.withConstructorDefault(() => "skill_version_deleted" as const))
+  })
+{}
 
 export const make = (
   httpClient: HttpClient.HttpClient,
@@ -4744,6 +6209,116 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "listSkillsV1SkillsGet": (options) =>
+      HttpClientRequest.get(`/v1/skills`).pipe(
+        HttpClientRequest.setUrlParams({
+          "page": options?.["page"] as any,
+          "limit": options?.["limit"] as any,
+          "source": options?.["source"] as any
+        }),
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListSkillsResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createSkillV1SkillsPost": (options) =>
+      HttpClientRequest.post(`/v1/skills`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options.params?.["anthropic-version"] ?? undefined
+        }),
+        HttpClientRequest.bodyFormDataRecord(options.payload as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CreateSkillResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "getSkillV1SkillsSkillIdGet": (skillId, options) =>
+      HttpClientRequest.get(`/v1/skills/${skillId}`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GetSkillResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteSkillV1SkillsSkillIdDelete": (skillId, options) =>
+      HttpClientRequest.del(`/v1/skills/${skillId}`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeleteSkillResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listSkillVersionsV1SkillsSkillIdVersionsGet": (skillId, options) =>
+      HttpClientRequest.get(`/v1/skills/${skillId}/versions`).pipe(
+        HttpClientRequest.setUrlParams({ "page": options?.["page"] as any, "limit": options?.["limit"] as any }),
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListSkillVersionsResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createSkillVersionV1SkillsSkillIdVersionsPost": (skillId, options) =>
+      HttpClientRequest.post(`/v1/skills/${skillId}/versions`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options.params?.["anthropic-version"] ?? undefined
+        }),
+        HttpClientRequest.bodyFormDataRecord(options.payload as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CreateSkillVersionResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "getSkillVersionV1SkillsSkillIdVersionsVersionGet": (skillId, version, options) =>
+      HttpClientRequest.get(`/v1/skills/${skillId}/versions/${version}`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GetSkillVersionResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteSkillVersionV1SkillsSkillIdVersionsVersionDelete": (skillId, version, options) =>
+      HttpClientRequest.del(`/v1/skills/${skillId}/versions/${version}`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeleteSkillVersionResponse),
+          "4xx": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
     "betaMessagesPost": (options) =>
       HttpClientRequest.post(`/v1/messages?beta=true`).pipe(
         HttpClientRequest.setHeaders({
@@ -4949,6 +6524,116 @@ export const make = (
         withResponse(HttpClientResponse.matchStatus({
           orElse: unexpectedStatus
         }))
+      ),
+    "betaListSkillsV1SkillsGet": (options) =>
+      HttpClientRequest.get(`/v1/skills?beta=true`).pipe(
+        HttpClientRequest.setUrlParams({
+          "page": options?.["page"] as any,
+          "limit": options?.["limit"] as any,
+          "source": options?.["source"] as any
+        }),
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaListSkillsResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaCreateSkillV1SkillsPost": (options) =>
+      HttpClientRequest.post(`/v1/skills?beta=true`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options.params?.["anthropic-version"] ?? undefined
+        }),
+        HttpClientRequest.bodyFormDataRecord(options.payload as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaCreateSkillResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaGetSkillV1SkillsSkillIdGet": (skillId, options) =>
+      HttpClientRequest.get(`/v1/skills/${skillId}?beta=true`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaGetSkillResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaDeleteSkillV1SkillsSkillIdDelete": (skillId, options) =>
+      HttpClientRequest.del(`/v1/skills/${skillId}?beta=true`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaDeleteSkillResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaListSkillVersionsV1SkillsSkillIdVersionsGet": (skillId, options) =>
+      HttpClientRequest.get(`/v1/skills/${skillId}/versions?beta=true`).pipe(
+        HttpClientRequest.setUrlParams({ "page": options?.["page"] as any, "limit": options?.["limit"] as any }),
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaListSkillVersionsResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaCreateSkillVersionV1SkillsSkillIdVersionsPost": (skillId, options) =>
+      HttpClientRequest.post(`/v1/skills/${skillId}/versions?beta=true`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options.params?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options.params?.["anthropic-version"] ?? undefined
+        }),
+        HttpClientRequest.bodyFormDataRecord(options.payload as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaCreateSkillVersionResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaGetSkillVersionV1SkillsSkillIdVersionsVersionGet": (skillId, version, options) =>
+      HttpClientRequest.get(`/v1/skills/${skillId}/versions/${version}?beta=true`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaGetSkillVersionResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "betaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete": (skillId, version, options) =>
+      HttpClientRequest.del(`/v1/skills/${skillId}/versions/${version}?beta=true`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": options?.["anthropic-beta"] ?? undefined,
+          "anthropic-version": options?.["anthropic-version"] ?? undefined,
+          "x-api-key": options?.["x-api-key"] ?? undefined
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BetaDeleteSkillVersionResponse),
+          "4xx": decodeError("BetaErrorResponse", BetaErrorResponse),
+          orElse: unexpectedStatus
+        }))
       )
   }
 }
@@ -4974,9 +6659,9 @@ export interface Client {
   /**
    * [Legacy] Create a Text Completion.
    *
-   * The Text Completions API is a legacy API. We recommend using the [Messages API](https://docs.anthropic.com/en/api/messages) going forward.
+   * The Text Completions API is a legacy API. We recommend using the [Messages API](https://docs.claude.com/en/api/messages) going forward.
    *
-   * Future models and features will not be compatible with Text Completions. See our [migration guide](https://docs.anthropic.com/en/api/migrating-from-text-completions-to-messages) for guidance in migrating from Text Completions to Messages.
+   * Future models and features will not be compatible with Text Completions. See our [migration guide](https://docs.claude.com/en/api/migrating-from-text-completions-to-messages) for guidance in migrating from Text Completions to Messages.
    */
   readonly "completePost": (
     options: {
@@ -5155,6 +6840,92 @@ export interface Client {
     fileId: string,
     options?: typeof DownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
   ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List Skills
+   */
+  readonly "listSkillsV1SkillsGet": (
+    options?: typeof ListSkillsV1SkillsGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListSkillsResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Create Skill
+   */
+  readonly "createSkillV1SkillsPost": (
+    options: {
+      readonly params?: typeof CreateSkillV1SkillsPostParams.Encoded | undefined
+      readonly payload: typeof BodyCreateSkillV1SkillsPost.Encoded
+    }
+  ) => Effect.Effect<
+    typeof CreateSkillResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Get Skill
+   */
+  readonly "getSkillV1SkillsSkillIdGet": (
+    skillId: string,
+    options?: typeof GetSkillV1SkillsSkillIdGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof GetSkillResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Delete Skill
+   */
+  readonly "deleteSkillV1SkillsSkillIdDelete": (
+    skillId: string,
+    options?: typeof DeleteSkillV1SkillsSkillIdDeleteParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof DeleteSkillResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * List Skill Versions
+   */
+  readonly "listSkillVersionsV1SkillsSkillIdVersionsGet": (
+    skillId: string,
+    options?: typeof ListSkillVersionsV1SkillsSkillIdVersionsGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListSkillVersionsResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Create Skill Version
+   */
+  readonly "createSkillVersionV1SkillsSkillIdVersionsPost": (
+    skillId: string,
+    options: {
+      readonly params?: typeof CreateSkillVersionV1SkillsSkillIdVersionsPostParams.Encoded | undefined
+      readonly payload: typeof BodyCreateSkillVersionV1SkillsSkillIdVersionsPost.Encoded
+    }
+  ) => Effect.Effect<
+    typeof CreateSkillVersionResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Get Skill Version
+   */
+  readonly "getSkillVersionV1SkillsSkillIdVersionsVersionGet": (
+    skillId: string,
+    version: string,
+    options?: typeof GetSkillVersionV1SkillsSkillIdVersionsVersionGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof GetSkillVersionResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
+  /**
+   * Delete Skill Version
+   */
+  readonly "deleteSkillVersionV1SkillsSkillIdVersionsVersionDelete": (
+    skillId: string,
+    version: string,
+    options?: typeof DeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof DeleteSkillVersionResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
+  >
   /**
    * Send a structured list of input messages with text and/or image content, and the model will generate the next message in the conversation.
    *
@@ -5339,6 +7110,92 @@ export interface Client {
     fileId: string,
     options?: typeof BetaDownloadFileV1FilesFileIdContentGetParams.Encoded | undefined
   ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List Skills
+   */
+  readonly "betaListSkillsV1SkillsGet": (
+    options?: typeof BetaListSkillsV1SkillsGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof BetaListSkillsResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Create Skill
+   */
+  readonly "betaCreateSkillV1SkillsPost": (
+    options: {
+      readonly params?: typeof BetaCreateSkillV1SkillsPostParams.Encoded | undefined
+      readonly payload: typeof BetaBodyCreateSkillV1SkillsPost.Encoded
+    }
+  ) => Effect.Effect<
+    typeof BetaCreateSkillResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Get Skill
+   */
+  readonly "betaGetSkillV1SkillsSkillIdGet": (
+    skillId: string,
+    options?: typeof BetaGetSkillV1SkillsSkillIdGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof BetaGetSkillResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Delete Skill
+   */
+  readonly "betaDeleteSkillV1SkillsSkillIdDelete": (
+    skillId: string,
+    options?: typeof BetaDeleteSkillV1SkillsSkillIdDeleteParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof BetaDeleteSkillResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * List Skill Versions
+   */
+  readonly "betaListSkillVersionsV1SkillsSkillIdVersionsGet": (
+    skillId: string,
+    options?: typeof BetaListSkillVersionsV1SkillsSkillIdVersionsGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof BetaListSkillVersionsResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Create Skill Version
+   */
+  readonly "betaCreateSkillVersionV1SkillsSkillIdVersionsPost": (
+    skillId: string,
+    options: {
+      readonly params?: typeof BetaCreateSkillVersionV1SkillsSkillIdVersionsPostParams.Encoded | undefined
+      readonly payload: typeof BetaBodyCreateSkillVersionV1SkillsSkillIdVersionsPost.Encoded
+    }
+  ) => Effect.Effect<
+    typeof BetaCreateSkillVersionResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Get Skill Version
+   */
+  readonly "betaGetSkillVersionV1SkillsSkillIdVersionsVersionGet": (
+    skillId: string,
+    version: string,
+    options?: typeof BetaGetSkillVersionV1SkillsSkillIdVersionsVersionGetParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof BetaGetSkillVersionResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
+  /**
+   * Delete Skill Version
+   */
+  readonly "betaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDelete": (
+    skillId: string,
+    version: string,
+    options?: typeof BetaDeleteSkillVersionV1SkillsSkillIdVersionsVersionDeleteParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof BetaDeleteSkillVersionResponse.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"BetaErrorResponse", typeof BetaErrorResponse.Type>
+  >
 }
 
 export interface ClientError<Tag extends string, E> {
