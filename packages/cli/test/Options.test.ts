@@ -151,18 +151,18 @@ describe("Options", () => {
     }).pipe(runEffect))
 
   it("validates a option with choices", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       const option = Options.choice("animal", ["cat", "dog"])
       const args1 = Array.make("--animal", "cat")
       const args2 = Array.make("--animal", "dog")
-      const result1 = yield* $(process(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* $(process(option, args2, CliConfig.defaultConfig))
+      const result1 = yield* process(option, args1, CliConfig.defaultConfig)
+      const result2 = yield* process(option, args2, CliConfig.defaultConfig)
       expect(result1).toEqual([[], "cat"])
       expect(result2).toEqual([[], "dog"])
     }).pipe(runEffect))
 
   it("validates an option with choices that map to values", () =>
-    Effect.gen(function*($) {
+    Effect.gen(function*() {
       type Animal = Dog | Cat
       class Dog extends Data.TaggedClass("Dog")<{}> {}
       class Cat extends Data.TaggedClass("Dog")<{}> {}
@@ -174,8 +174,8 @@ describe("Options", () => {
       ])
       const args1 = Array.make("--animal", "cat")
       const args2 = Array.make("--animal", "dog")
-      const result1 = yield* $(process(option, args1, CliConfig.defaultConfig))
-      const result2 = yield* $(process(option, args2, CliConfig.defaultConfig))
+      const result1 = yield* process(option, args1, CliConfig.defaultConfig)
+      const result2 = yield* process(option, args2, CliConfig.defaultConfig)
       expect(result1).toEqual([[], cat])
       expect(result2).toEqual([[], dog])
     }).pipe(runEffect))
