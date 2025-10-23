@@ -2,6 +2,7 @@ import type { OpenApiJsonSchema } from "@effect/platform"
 import {
   HttpApi,
   HttpApiEndpoint,
+  HttpApiError,
   HttpApiGroup,
   HttpApiMiddleware,
   HttpApiSchema,
@@ -204,6 +205,165 @@ describe("OpenApi", () => {
             }
           }
         }, { additionalPropertiesStrategy: "allow" })
+      })
+
+      it("custom HttpApiDecodeError", () => {
+        const MyCustomHttpApiDecodeError = HttpApiError.HttpApiDecodeError.annotations({
+          identifier: "MyCustomApiDecodeError"
+        })
+
+        const api = HttpApi.make("api", { errorSchema: MyCustomHttpApiDecodeError }).add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.get("get", "/").addSuccess(Schema.String)
+          )
+        )
+
+        expectSpec(api, {
+          "components": {
+            "schemas": {
+              "Issue": {
+                "additionalProperties": false,
+                "description": "Represents an error encountered while parsing a value to match the schema",
+                "properties": {
+                  "_tag": {
+                    "description": "The tag identifying the type of parse issue",
+                    "enum": [
+                      "Pointer",
+                      "Unexpected",
+                      "Missing",
+                      "Composite",
+                      "Refinement",
+                      "Transformation",
+                      "Type",
+                      "Forbidden"
+                    ],
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "A descriptive message explaining the issue",
+                    "type": "string"
+                  },
+                  "path": {
+                    "description": "The path to the property where the issue occurred",
+                    "items": {
+                      "$ref": "#/components/schemas/PropertyKey"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "_tag",
+                  "path",
+                  "message"
+                ],
+                "type": "object"
+              },
+              "MyCustomApiDecodeError": {
+                "additionalProperties": false,
+                "description": "The request did not match the expected schema",
+                "properties": {
+                  "_tag": {
+                    "enum": [
+                      "HttpApiDecodeError"
+                    ],
+                    "type": "string"
+                  },
+                  "issues": {
+                    "items": {
+                      "$ref": "#/components/schemas/Issue"
+                    },
+                    "type": "array"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "issues",
+                  "message",
+                  "_tag"
+                ],
+                "type": "object"
+              },
+              "PropertyKey": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "description": "an object to be decoded into a globally shared symbol",
+                    "properties": {
+                      "_tag": {
+                        "enum": [
+                          "symbol"
+                        ],
+                        "type": "string"
+                      },
+                      "key": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "_tag",
+                      "key"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "securitySchemes": {}
+          },
+          "info": {
+            "title": "Api",
+            "version": "0.0.1"
+          },
+          "openapi": "3.1.0",
+          "paths": {
+            "/": {
+              "get": {
+                "operationId": "group.get",
+                "parameters": [],
+                "responses": {
+                  "200": {
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "description": "a string"
+                  },
+                  "400": {
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "$ref": "#/components/schemas/MyCustomApiDecodeError"
+                        }
+                      }
+                    },
+                    "description": "The request did not match the expected schema"
+                  }
+                },
+                "security": [],
+                "tags": [
+                  "group"
+                ]
+              }
+            }
+          },
+          "security": [],
+          "tags": [
+            {
+              "name": "group"
+            }
+          ]
+        })
       })
 
       it("addHttpApi", () => {
