@@ -17,6 +17,29 @@ import * as Tuple from "./Tuple.js"
 import type { NoInfer } from "./Types.js"
 
 /**
+ * @since 2.0.0
+ */
+export declare namespace Iterable {
+  /**
+   * @since 2.0.0
+   */
+  export type Infer<S extends Iterable<any>> = S extends Iterable<infer A, infer _R, infer _N> ? A
+    : never
+
+  /**
+   * @since 2.0.0
+   */
+  export type Return<S extends Iterable<any>> = S extends Iterable<infer _A, infer R, infer _N> ? R
+    : never
+
+  /**
+   * @since 2.0.0
+   */
+  export type Next<S extends Iterable<any>> = S extends Iterable<infer _A, infer _R, infer N> ? N
+    : never
+}
+
+/**
  * Return a `Iterable` with element `i` initialized with `f(i)`.
  *
  * If the `length` is not specified, the `Iterable` will be infinite.

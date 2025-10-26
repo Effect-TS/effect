@@ -12,7 +12,7 @@ import { dual, identity } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
 import * as internalArray from "./internal/array.js"
 import * as internalDoNotation from "./internal/doNotation.js"
-import * as moduleIterable from "./Iterable.js"
+import * as Iterable_ from "./Iterable.js"
 import * as Option from "./Option.js"
 import * as Order from "./Order.js"
 import * as Predicate from "./Predicate.js"
@@ -1057,7 +1057,7 @@ export const findFirst: {
   <A, B>(self: Iterable<A>, f: (a: A, i: number) => Option.Option<B>): Option.Option<B>
   <A, B extends A>(self: Iterable<A>, refinement: (a: A, i: number) => a is B): Option.Option<B>
   <A>(self: Iterable<A>, predicate: (a: A, i: number) => boolean): Option.Option<A>
-} = moduleIterable.findFirst
+} = Iterable_.findFirst
 
 /**
  * Finds the last element in an iterable collection that satisfies the given predicate or refinement.
@@ -2441,8 +2441,7 @@ export declare namespace ReadonlyArray {
    * @since 2.0.0
    */
   export type Infer<S extends Iterable<any>> = S extends ReadonlyArray<infer A> ? A
-    : S extends Iterable<infer A> ? A
-    : never
+    : Iterable_.Iterable.Infer<S>
 
   /**
    * @since 2.0.0
