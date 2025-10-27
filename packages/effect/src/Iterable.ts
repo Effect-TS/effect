@@ -17,23 +17,23 @@ import * as Tuple from "./Tuple.js"
 import type { NoInfer } from "./Types.js"
 
 /**
- * @since 2.0.0
+ * @since 3.8.14
  */
 export declare namespace Iterable {
   /**
-   * @since 2.0.0
+   * @since 3.8.14
    */
   export type Infer<S extends Iterable<any>> = S extends Iterable<infer A, infer _R, infer _N> ? A
     : never
 
   /**
-   * @since 2.0.0
+   * @since 3.8.14
    */
   export type Return<S extends Iterable<any>> = S extends Iterable<infer _A, infer R, infer _N> ? R
     : never
 
   /**
-   * @since 2.0.0
+   * @since 3.8.14
    */
   export type Next<S extends Iterable<any>> = S extends Iterable<infer _A, infer _R, infer N> ? N
     : never
