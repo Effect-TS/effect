@@ -108,7 +108,7 @@ export const toUint8Array = <E>(
 }
 
 /** @internal */
-export const fromDuplex = <IE, E, I = string | Uint8Array<ArrayBufferLike>, O = Uint8Array<ArrayBufferLike>>(
+export const fromDuplex = <IE, E, I = string | Uint8Array, O = Uint8Array>(
   evaluate: LazyArg<Duplex>,
   onError: (error: unknown) => E,
   options?: FromReadableOptions & FromWritableOptions
