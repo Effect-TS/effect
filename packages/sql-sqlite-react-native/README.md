@@ -1,6 +1,6 @@
 # `@effect/sql-sqlite-react-native`
 
-An `@effect/sql` implementation using the `react-native-quick-sqlite` library.
+An `@effect/sql` implementation using the `@op-engineering/op-sqlite` library.
 
 ## Documentation
 
