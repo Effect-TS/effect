@@ -310,7 +310,7 @@ export const match: {
   <A, B, C = B>(self: Option<A>, { onNone, onSome }: {
     readonly onNone: LazyArg<B>
     readonly onSome: (a: A) => C
-  }): B | C => isNone(self) ? onNone() : onSome(self.value)
+  }): B | C => isSome(self) ? onSome(self.value) : onNone()
 )
 
 /**
@@ -502,7 +502,7 @@ export const getOrElse: {
   <A, B>(self: Option<A>, onNone: LazyArg<B>): A | B
 } = dual(
   2,
-  <A, B>(self: Option<A>, onNone: LazyArg<B>): A | B => isNone(self) ? onNone() : self.value
+  <A, B>(self: Option<A>, onNone: LazyArg<B>): A | B => isSome(self) ? self.value : onNone()
 )
 
 /**
@@ -546,7 +546,7 @@ export const orElse: {
   <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<A | B>
 } = dual(
   2,
-  <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<A | B> => isNone(self) ? that() : self
+  <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<A | B> => isSome(self) ? self : that()
 )
 
 /**
@@ -583,7 +583,7 @@ export const orElseSome: {
   <A, B>(self: Option<A>, onNone: LazyArg<B>): Option<A | B>
 } = dual(
   2,
-  <A, B>(self: Option<A>, onNone: LazyArg<B>): Option<A | B> => isNone(self) ? some(onNone()) : self
+  <A, B>(self: Option<A>, onNone: LazyArg<B>): Option<A | B> => isSome(self) ? self : some(onNone())
 )
 
 /**
@@ -615,7 +615,7 @@ export const orElseEither: {
 } = dual(
   2,
   <A, B>(self: Option<A>, that: LazyArg<Option<B>>): Option<Either<B, A>> =>
-    isNone(self) ? map(that(), either.right) : map(self, either.left)
+    isSome(self) ? map(self, either.left) : map(that(), either.right)
 )
 
 /**
@@ -925,7 +925,7 @@ export const map: {
   <A, B>(self: Option<A>, f: (a: A) => B): Option<B>
 } = dual(
   2,
-  <A, B>(self: Option<A>, f: (a: A) => B): Option<B> => isNone(self) ? none() : some(f(self.value))
+  <A, B>(self: Option<A>, f: (a: A) => B): Option<B> => isSome(self) ? some(f(self.value)) : none()
 )
 
 /**
@@ -1049,7 +1049,7 @@ export const flatMap: {
   <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B>
 } = dual(
   2,
-  <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B> => isNone(self) ? none() : f(self.value)
+  <A, B>(self: Option<A>, f: (a: A) => Option<B>): Option<B> => isSome(self) ? f(self.value) : none()
 )
 
 /**
@@ -1148,7 +1148,7 @@ export const flatMapNullable: {
 } = dual(
   2,
   <A, B>(self: Option<A>, f: (a: A) => B | null | undefined): Option<NonNullable<B>> =>
-    isNone(self) ? none() : fromNullable(f(self.value))
+    isSome(self) ? fromNullable(f(self.value)) : none()
 )
 
 /**
@@ -1542,7 +1542,7 @@ export const reduceCompact: {
  * @category Conversions
  * @since 2.0.0
  */
-export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [self.value]
+export const toArray = <A>(self: Option<A>): Array<A> => isSome(self) ? [self.value] : []
 
 /**
  * Splits an `Option` into two `Option`s based on the result of a mapping
@@ -1854,7 +1854,7 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
   (a: A): (self: Option<A>) => boolean
   (self: Option<A>, a: A): boolean
-} => dual(2, (self: Option<A>, a: A): boolean => isNone(self) ? false : isEquivalent(self.value, a))
+} => dual(2, (self: Option<A>, a: A): boolean => isSome(self) ? isEquivalent(self.value, a) : false)
 
 const _equivalence = Equal.equivalence()
 
@@ -1934,7 +1934,7 @@ export const exists: {
 } = dual(
   2,
   <A, B extends A>(self: Option<A>, refinement: Refinement<A, B>): self is Option<B> =>
-    isNone(self) ? false : refinement(self.value)
+    isSome(self) ? refinement(self.value) : false
 )
 
 // -------------------------------------------------------------------------------------
