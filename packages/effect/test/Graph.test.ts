@@ -1797,10 +1797,10 @@ describe("Graph", () => {
 
         const mermaid = Graph.toMermaid(graph)
 
-        expect(mermaid).toContain("0[\"Node with \\\"quotes\\\"\"]")
-        expect(mermaid).toContain("1[\"Node with \\[brackets\\]\"]")
-        expect(mermaid).toContain("2[\"Node with \\| pipe\"]")
-        expect(mermaid).toContain("3[\"Node with \\\\ backslash\"]")
+        expect(mermaid).toContain("0[\"Node with #quot;quotes#quot;\"]")
+        expect(mermaid).toContain("1[\"Node with #91;brackets#93;\"]")
+        expect(mermaid).toContain("2[\"Node with #124; pipe\"]")
+        expect(mermaid).toContain("3[\"Node with #92; backslash\"]")
         expect(mermaid).toContain("4[\"Node with <br/> newline\"]")
       })
 

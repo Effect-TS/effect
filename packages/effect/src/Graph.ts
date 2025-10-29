@@ -1699,11 +1699,11 @@ const escapeMermaidLabel = (label: string): string => {
   // Escape special characters for Mermaid using HTML entity codes
   // According to: https://mermaid.js.org/syntax/flowchart.html#special-characters-that-break-syntax
   return label
+    .replace(/#/g, "#35;")
     .replace(/"/g, "#quot;")
     .replace(/</g, "#lt;")
     .replace(/>/g, "#gt;")
     .replace(/&/g, "#amp;")
-    .replace(/#/g, "#35;")
     .replace(/\[/g, "#91;")
     .replace(/\]/g, "#93;")
     .replace(/\{/g, "#123;")
