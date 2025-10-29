@@ -130,8 +130,9 @@ describe("Cron", () => {
   })
 
   it.only("prev", () => {
-    const after = new Date("2024-01-04 16:21:00")
-    deepStrictEqual(prev("5 0 8 2 *", after), new Date("2024-02-08 00:05:00"))
+    const before = new Date("2024-01-04 16:21:00")
+    deepStrictEqual(prev("5 0 8 2 *", before), new Date("2023-02-08 00:05:00"))
+    deepStrictEqual(prev("5 0 8 10 *", before), new Date("2023-10-08 05:05:00Z"))
   })
 
   it("sequence", () => {
