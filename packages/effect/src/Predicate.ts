@@ -18,6 +18,7 @@
  */
 import { dual, isFunction as isFunction_ } from "./Function.js"
 import type { TypeLambda } from "./HKT.js"
+import type { Iterable as Iterable_ } from "./Iterable.js"
 import type { TupleOf, TupleOfAtLeast } from "./Types.js"
 
 /**
@@ -948,12 +949,19 @@ export const product =
  *
  * @category combining
  * @since 2.0.0
- * @see tuple for a more powerful, variadic version.
  */
-export const all = <A>(
-  collection: Iterable<Predicate<A>>
-): Predicate<ReadonlyArray<A>> => {
-  return (as) => {
+export const all: {
+  <A extends Iterable<Refinement.Any>>(
+    collection: A
+  ): Refinement<
+    Array<Refinement.In<Iterable_.Infer<A>>>,
+    Array<Refinement.Out<Iterable_.Infer<A>>>
+  >
+  <A extends Iterable<Predicate.Any>>(collection: A): Predicate<Array<Predicate.In<Iterable_.Infer<A>>>>
+} = <A extends Iterable<Refinement.Any>>(
+  collection: A
+) => {
+  return (as: Array<Refinement.In<Iterable_.Infer<A>>>): as is Array<Refinement.Out<Iterable_.Infer<A>>> => {
     let collectionIndex = 0
     for (const p of collection) {
       if (collectionIndex >= as.length) {
@@ -1395,7 +1403,18 @@ export const every = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a
  * @since 2.0.0
  * @see every
  */
-export const some = <A>(collection: Iterable<Predicate<A>>): Predicate<A> => (a) => {
+export const some: {
+  <A extends Iterable<Refinement.Any>>(
+    collection: A
+  ): Refinement<
+    Refinement.In<Iterable_.Infer<A>>,
+    Refinement.Out<Iterable_.Infer<A>>
+  >
+  <A extends Iterable<Predicate.Any>>(collection: A): Predicate<Predicate.In<Iterable_.Infer<A>>>
+} = <A extends Iterable<Refinement.Any>>(
+  collection: A
+) =>
+(a: Refinement.In<Iterable_.Infer<A>>): a is Refinement.Out<Iterable_.Infer<A>> => {
   for (const p of collection) {
     if (p(a)) {
       return true
