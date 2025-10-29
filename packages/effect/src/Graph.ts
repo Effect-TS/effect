@@ -1488,6 +1488,11 @@ export const neighbors = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
 ): Array<NodeIndex> => {
+  // For undirected graphs, use the specialized helper that returns the other endpoint
+  if (graph.type === "undirected") {
+    return getUndirectedNeighbors(graph as any, nodeIndex)
+  }
+
   const adjacencyList = getMapSafe(graph.adjacency, nodeIndex)
   if (Option.isNone(adjacencyList)) {
     return []
