@@ -1,5 +1,14 @@
 # @effect/sql-mysql2
 
+## 0.47.1
+
+### Patch Changes
+
+- [#5632](https://github.com/Effect-TS/effect/pull/5632) [`979d1c1`](https://github.com/Effect-TS/effect/commit/979d1c10cdb32817f64c1efb9daa41a1d8e8ff3d) Thanks @andrephilipsson! - Support config.url in MysqlMigrator
+
+- Updated dependencies [[`a537469`](https://github.com/Effect-TS/effect/commit/a5374696bdabee005bf75d7b1b57f8bee7763cba), [`52d5963`](https://github.com/Effect-TS/effect/commit/52d59635f35406bd27874ca0090f8642432928f4), [`463345d`](https://github.com/Effect-TS/effect/commit/463345d734fb462dc284d590193b7843dc104d78)]:
+  - effect@3.18.5
+
 ## 0.47.0
 
 ### Patch Changes
