@@ -1497,6 +1497,65 @@ describe("Graph", () => {
       })
     })
 
+    describe("neighbors with undirected graphs", () => {
+      it("should return correct neighbors for single edge", () => {
+        const graph = Graph.undirected<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+          Graph.addEdge(mutable, 0, 1, undefined)
+        })
+
+        expect(Graph.neighbors(graph, 0)).toEqual([1])
+        expect(Graph.neighbors(graph, 1)).toEqual([0])
+      })
+
+      it("should return correct neighbors for linear graph", () => {
+        const graph = Graph.undirected<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+          Graph.addNode(mutable, 2)
+          Graph.addEdge(mutable, 0, 1, undefined)
+          Graph.addEdge(mutable, 1, 2, undefined)
+        })
+
+        expect(Graph.neighbors(graph, 0)).toEqual([1])
+        expect(Graph.neighbors(graph, 1).sort()).toEqual([0, 2])
+        expect(Graph.neighbors(graph, 2)).toEqual([1])
+      })
+
+      it("should handle multiple edges between same nodes", () => {
+        const graph = Graph.undirected<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+          Graph.addEdge(mutable, 0, 1, undefined)
+          Graph.addEdge(mutable, 0, 1, undefined)
+        })
+
+        // Should deduplicate neighbors
+        expect(Graph.neighbors(graph, 0)).toEqual([1])
+        expect(Graph.neighbors(graph, 1)).toEqual([0])
+      })
+
+      it("should handle self-loops", () => {
+        const graph = Graph.undirected<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addEdge(mutable, 0, 0, undefined)
+        })
+
+        expect(Graph.neighbors(graph, 0)).toEqual([0])
+      })
+
+      it("should handle node with no neighbors", () => {
+        const graph = Graph.undirected<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+        })
+
+        expect(Graph.neighbors(graph, 0)).toEqual([])
+        expect(Graph.neighbors(graph, 1)).toEqual([])
+      })
+    })
+
     describe("neighborsDirected", () => {
       it("should return incoming neighbors", () => {
         let nodeA: Graph.NodeIndex
