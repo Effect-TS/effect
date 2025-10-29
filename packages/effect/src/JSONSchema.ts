@@ -163,7 +163,8 @@ export interface JsonSchema7Boolean extends JsonSchemaAnnotations {
  */
 export interface JsonSchema7Array extends JsonSchemaAnnotations {
   type: "array"
-  items?: JsonSchema7 | Array<JsonSchema7>
+  items?: JsonSchema7 | Array<JsonSchema7> | false
+  prefixItems?: Array<JsonSchema7>
   minItems?: number
   maxItems?: number
   additionalItems?: JsonSchema7 | boolean
@@ -258,7 +259,7 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
     definitions
   })
   const out: JsonSchema7Root = {
-    $schema,
+    $schema: getMetaSchemaUri("jsonSchema7"),
     $defs: {},
     ...jsonSchema
   }
@@ -270,11 +271,24 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
   return out
 }
 
-type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1"
+type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1" | "jsonSchema2020-12"
 
 type TopLevelReferenceStrategy = "skip" | "keep"
 
 type AdditionalPropertiesStrategy = "allow" | "strict"
+
+/** @internal */
+export function getMetaSchemaUri(target: Target) {
+  switch (target) {
+    case "jsonSchema7":
+      return "http://json-schema.org/draft-07/schema#"
+    case "jsonSchema2019-09":
+      return "https://json-schema.org/draft/2019-09/schema"
+    case "jsonSchema2020-12":
+    case "openApi3.1":
+      return "https://json-schema.org/draft/2020-12/schema"
+  }
+}
 
 /**
  * Returns a JSON Schema with additional options and definitions.
@@ -364,8 +378,6 @@ const constEmptyStruct: JsonSchema7empty = {
     { "type": "array" }
   ]
 }
-
-const $schema = "http://json-schema.org/draft-07/schema#"
 
 function getRawDescription(annotated: AST.Annotated | undefined): string | undefined {
   if (annotated !== undefined) return Option.getOrUndefined(AST.getDescriptionAnnotation(annotated))
@@ -529,6 +541,7 @@ function isContentSchemaSupported(options: GoOptions): boolean {
     case "jsonSchema7":
       return false
     case "jsonSchema2019-09":
+    case "jsonSchema2020-12":
     case "openApi3.1":
       return true
   }
@@ -716,7 +729,11 @@ function go(
       const len = ast.elements.length
       if (len > 0) {
         output.minItems = len - ast.elements.filter((element) => element.isOptional).length
-        output.items = elements
+        if (options.target === "jsonSchema7") {
+          output.items = elements
+        } else {
+          output.prefixItems = elements
+        }
       }
       // ---------------------------------------------
       // handle rest element
@@ -726,9 +743,18 @@ function go(
         const head = rest[0]
         const isHomogeneous = restLength === 1 && ast.elements.every((e) => e.type === ast.rest[0].type)
         if (isHomogeneous) {
-          output.items = head
+          if (options.target === "jsonSchema7") {
+            output.items = head
+          } else {
+            output.items = head
+            delete output.prefixItems
+          }
         } else {
-          output.additionalItems = head
+          if (options.target === "jsonSchema7") {
+            output.additionalItems = head
+          } else {
+            output.items = head
+          }
         }
 
         // ---------------------------------------------
@@ -740,7 +766,11 @@ function go(
         }
       } else {
         if (len > 0) {
-          output.additionalItems = false
+          if (options.target === "jsonSchema7") {
+            output.additionalItems = false
+          } else {
+            output.items = false
+          }
         } else {
           output.maxItems = 0
         }
