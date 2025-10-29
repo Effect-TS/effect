@@ -81,6 +81,24 @@ async function assertOpenApi3_1<S extends Schema.Schema.All>(
   return jsonSchema
 }
 
+async function assertDraft2020_12<S extends Schema.Schema.All>(
+  schema: S,
+  expected: object
+) {
+  const definitions = {}
+  const jsonSchema = JSONSchema.fromAST(schema.ast, {
+    definitions,
+    target: "jsonSchema2020-12"
+  })
+  deepStrictEqual(jsonSchema, expected)
+  const valid = ajv2020.validateSchema(jsonSchema)
+  if (valid instanceof Promise) {
+    await valid
+  }
+  strictEqual(ajv2020.errors, null)
+  return jsonSchema
+}
+
 function assertAjvDraft7Success<S extends Schema.Schema.Any>(
   schema: S,
   input: S["Type"]
@@ -371,7 +389,7 @@ schema (SymbolKeyword): symbol`
     })
   })
 
-  describe("Draft 07", () => {
+  describe("jsonSchema7", () => {
     describe("nullable handling", () => {
       it("Null", async () => {
         const schema = Schema.Null
@@ -4160,7 +4178,7 @@ schema (SymbolKeyword): symbol`
     })
   })
 
-  describe("Draft 2019-09", () => {
+  describe("jsonSchema2019-09", () => {
     describe("nullable handling", () => {
       it("Null", async () => {
         const schema = Schema.Null
@@ -4279,7 +4297,7 @@ schema (SymbolKeyword): symbol`
     })
   })
 
-  describe("OpenAPI 3.1", () => {
+  describe("openApi3.1", () => {
     describe("nullable handling", () => {
       it("Null", async () => {
         const schema = Schema.Null
@@ -4393,6 +4411,225 @@ schema (SymbolKeyword): symbol`
             },
             "additionalProperties": false
           }
+        }
+      )
+    })
+  })
+})
+
+describe("jsonSchema2020-12", () => {
+  describe("Tuple", () => {
+    it("empty tuple", async () => {
+      const schema = Schema.Tuple()
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "maxItems": 0
+      })
+    })
+
+    it("element", async () => {
+      const schema = Schema.Tuple(Schema.Number)
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "prefixItems": [{
+          "type": "number"
+        }],
+        "minItems": 1,
+        "items": false
+      })
+    })
+
+    it("element + inner annotations", async () => {
+      await assertDraft2020_12(
+        Schema.Tuple(Schema.Number.annotations({ description: "inner" })),
+        {
+          "type": "array",
+          "prefixItems": [{
+            "type": "number",
+            "description": "inner"
+          }],
+          "minItems": 1,
+          "items": false
+        }
+      )
+    })
+
+    it("element + outer annotations should override inner annotations", async () => {
+      await assertDraft2020_12(
+        Schema.Tuple(
+          Schema.element(Schema.Number.annotations({ description: "inner" })).annotations({ description: "outer" })
+        ),
+        {
+          "type": "array",
+          "prefixItems": [{
+            "type": "number",
+            "description": "outer"
+          }],
+          "minItems": 1,
+          "items": false
+        }
+      )
+    })
+
+    it("optionalElement", async () => {
+      const schema = Schema.Tuple(Schema.optionalElement(Schema.Number))
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "minItems": 0,
+        "prefixItems": [
+          {
+            "type": "number"
+          }
+        ],
+        "items": false
+      })
+    })
+
+    it("optionalElement + inner annotations", async () => {
+      await assertDraft2020_12(
+        Schema.Tuple(Schema.optionalElement(Schema.Number).annotations({ description: "inner" })),
+        {
+          "type": "array",
+          "minItems": 0,
+          "prefixItems": [
+            {
+              "type": "number",
+              "description": "inner"
+            }
+          ],
+          "items": false
+        }
+      )
+    })
+
+    it("optionalElement + outer annotations should override inner annotations", async () => {
+      await assertDraft2020_12(
+        Schema.Tuple(
+          Schema.optionalElement(Schema.Number).annotations({ description: "inner" }).annotations({
+            description: "outer"
+          })
+        ),
+        {
+          "type": "array",
+          "minItems": 0,
+          "prefixItems": [
+            {
+              "type": "number",
+              "description": "outer"
+            }
+          ],
+          "items": false
+        }
+      )
+    })
+
+    it("element + optionalElement", async () => {
+      const schema = Schema.Tuple(
+        Schema.element(Schema.String.annotations({ description: "inner" })).annotations({ description: "outer" }),
+        Schema.optionalElement(Schema.Number.annotations({ description: "inner?" })).annotations({
+          description: "outer?"
+        })
+      )
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "minItems": 1,
+        "prefixItems": [
+          {
+            "type": "string",
+            "description": "outer"
+          },
+          {
+            "type": "number",
+            "description": "outer?"
+          }
+        ],
+        "items": false
+      })
+    })
+
+    it("rest", async () => {
+      const schema = Schema.Array(Schema.Number)
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      })
+    })
+
+    it("rest + inner annotations", async () => {
+      await assertDraft2020_12(Schema.Array(Schema.Number.annotations({ description: "inner" })), {
+        "type": "array",
+        "items": {
+          "type": "number",
+          "description": "inner"
+        }
+      })
+    })
+
+    it("optionalElement + rest + inner annotations", async () => {
+      const schema = Schema.Tuple(
+        [Schema.optionalElement(Schema.String)],
+        Schema.element(Schema.Number.annotations({ description: "inner" }))
+      )
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "minItems": 0,
+        "prefixItems": [
+          {
+            "type": "string"
+          }
+        ],
+        "items": {
+          "type": "number",
+          "description": "inner"
+        }
+      })
+    })
+
+    it("optionalElement + rest + outer annotations should override inner annotations", async () => {
+      await assertDraft2020_12(
+        Schema.Tuple(
+          [Schema.optionalElement(Schema.String)],
+          Schema.element(Schema.Number.annotations({ description: "inner" })).annotations({ description: "outer" })
+        ),
+        {
+          "type": "array",
+          "minItems": 0,
+          "prefixItems": [
+            {
+              "type": "string"
+            }
+          ],
+          "items": {
+            "type": "number",
+            "description": "outer"
+          }
+        }
+      )
+    })
+
+    it("element + rest", async () => {
+      const schema = Schema.Tuple([Schema.String], Schema.Number)
+      await assertDraft2020_12(schema, {
+        "type": "array",
+        "prefixItems": [{
+          "type": "string"
+        }],
+        "minItems": 1,
+        "items": {
+          "type": "number"
+        }
+      })
+    })
+
+    it("NonEmptyArray", async () => {
+      await assertDraft2020_12(
+        Schema.NonEmptyArray(Schema.String),
+        {
+          type: "array",
+          minItems: 1,
+          items: { type: "string" }
         }
       )
     })
