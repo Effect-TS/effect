@@ -8,6 +8,9 @@ const match = (input: Cron.Cron | string, date: DateTime.DateTime.Input) =>
 const next = (input: Cron.Cron | string, after?: DateTime.DateTime.Input) =>
   Cron.next(Cron.isCron(input) ? input : Cron.unsafeParse(input), after)
 
+const prev = (input: Cron.Cron | string, after?: DateTime.DateTime.Input) =>
+  Cron.prev(Cron.isCron(input) ? input : Cron.unsafeParse(input), after)
+
 describe("Cron", () => {
   it("parse", () => {
     // At 04:00 on every day-of-month from 8 through 14.
@@ -124,6 +127,11 @@ describe("Cron", () => {
 
     deepStrictEqual(next(Cron.unsafeParse("5 0 8 2 *", london), after), DateTime.toDateUtc(londonTime))
     deepStrictEqual(next(Cron.unsafeParse("5 0 8 2 *", london), after), DateTime.toDateUtc(amsterdamTime))
+  })
+
+  it.only("prev", () => {
+    const after = new Date("2024-01-04 16:21:00")
+    deepStrictEqual(prev("5 0 8 2 *", after), new Date("2024-02-08 00:05:00"))
   })
 
   it("sequence", () => {
