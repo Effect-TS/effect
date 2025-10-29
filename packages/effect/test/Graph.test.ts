@@ -1973,8 +1973,8 @@ describe("Graph", () => {
         expect(mermaid).toContain("2[\"C\"]")
         expect(mermaid).toContain("3[\"D\"]")
         expect(mermaid).toContain("4[\"E\"]")
-        expect(mermaid).toContain("0 -->|\"A->B\"| 1")
-        expect(mermaid).toContain("2 -->|\"C->D\"| 3")
+        expect(mermaid).toContain("0 -->|\"A-#gt;B\"| 1")
+        expect(mermaid).toContain("2 -->|\"C-#gt;D\"| 3")
       })
 
       it("should handle custom labels with complex data", () => {
@@ -2012,7 +2012,7 @@ describe("Graph", () => {
         expect(mermaid).toContain("flowchart LR")
         expect(mermaid).toContain("0[\"node1:42\"]")
         expect(mermaid).toContain("1[\"node2:84\"]")
-        expect(mermaid).toContain("0 -->|\"data(1.5)\"| 1")
+        expect(mermaid).toContain("0 -->|\"data#40;1.5#41;\"| 1")
       })
     })
   })
