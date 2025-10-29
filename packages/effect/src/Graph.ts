@@ -15,18 +15,6 @@ import { pipeArguments } from "./Pipeable.js"
 import type { Mutable } from "./Types.js"
 
 /**
- * Safely get a value from a Map, returning an Option.
- * Uses explicit key presence check with map.has() for better safety.
- * @internal
- */
-const getMapSafe = <K, V>(map: Map<K, V>, key: K): Option.Option<V> => {
-  if (map.has(key)) {
-    return Option.some(map.get(key)!)
-  }
-  return Option.none()
-}
-
-/**
  * Unique identifier for Graph instances.
  *
  * @since 3.18.0
@@ -223,6 +211,23 @@ const ProtoGraph = {
     return pipeArguments(this, arguments)
   }
 }
+
+// =============================================================================
+// Errors
+// =============================================================================
+
+/**
+ * Error thrown when a graph operation fails.
+ *
+ * @since 3.18.0
+ * @category errors
+ */
+export class GraphError extends Data.TaggedError("GraphError")<{
+  readonly message: string
+}> {}
+
+/** @internal */
+const missingNode = (node: number) => new GraphError({ message: `Node ${node} does not exist` })
 
 // =============================================================================
 // Constructors
@@ -494,7 +499,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
 export const getNode = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
-): Option.Option<N> => getMapSafe(graph.nodes, nodeIndex)
+): Option.Option<N> => graph.nodes.has(nodeIndex) ? Option.some(graph.nodes.get(nodeIndex)!) : Option.none()
 
 /**
  * Checks if a node with the given index exists in the graph.
@@ -1145,10 +1150,10 @@ export const addEdge = <N, E, T extends Kind = "directed">(
 ): EdgeIndex => {
   // Validate that both nodes exist
   if (!mutable.nodes.has(source)) {
-    throw new Error(`Source node ${source} does not exist`)
+    throw missingNode(source)
   }
   if (!mutable.nodes.has(target)) {
-    throw new Error(`Target node ${target} does not exist`)
+    throw missingNode(target)
   }
 
   const edgeIndex = mutable.nextEdgeIndex
@@ -1158,26 +1163,26 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   mutable.edges.set(edgeIndex, edgeData)
 
   // Update adjacency lists
-  const sourceAdjacency = getMapSafe(mutable.adjacency, source)
-  if (Option.isSome(sourceAdjacency)) {
-    sourceAdjacency.value.push(edgeIndex)
+  const sourceAdjacency = mutable.adjacency.get(source)
+  if (sourceAdjacency !== undefined) {
+    sourceAdjacency.push(edgeIndex)
   }
 
-  const targetReverseAdjacency = getMapSafe(mutable.reverseAdjacency, target)
-  if (Option.isSome(targetReverseAdjacency)) {
-    targetReverseAdjacency.value.push(edgeIndex)
+  const targetReverseAdjacency = mutable.reverseAdjacency.get(target)
+  if (targetReverseAdjacency !== undefined) {
+    targetReverseAdjacency.push(edgeIndex)
   }
 
   // For undirected graphs, add reverse connections
   if (mutable.type === "undirected") {
-    const targetAdjacency = getMapSafe(mutable.adjacency, target)
-    if (Option.isSome(targetAdjacency)) {
-      targetAdjacency.value.push(edgeIndex)
+    const targetAdjacency = mutable.adjacency.get(target)
+    if (targetAdjacency !== undefined) {
+      targetAdjacency.push(edgeIndex)
     }
 
-    const sourceReverseAdjacency = getMapSafe(mutable.reverseAdjacency, source)
-    if (Option.isSome(sourceReverseAdjacency)) {
-      sourceReverseAdjacency.value.push(edgeIndex)
+    const sourceReverseAdjacency = mutable.reverseAdjacency.get(source)
+    if (sourceReverseAdjacency !== undefined) {
+      sourceReverseAdjacency.push(edgeIndex)
     }
   }
 
@@ -1224,17 +1229,17 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   const edgesToRemove: Array<EdgeIndex> = []
 
   // Get outgoing edges
-  const outgoingEdges = getMapSafe(mutable.adjacency, nodeIndex)
-  if (Option.isSome(outgoingEdges)) {
-    for (const edge of outgoingEdges.value) {
+  const outgoingEdges = mutable.adjacency.get(nodeIndex)
+  if (outgoingEdges !== undefined) {
+    for (const edge of outgoingEdges) {
       edgesToRemove.push(edge)
     }
   }
 
   // Get incoming edges
-  const incomingEdges = getMapSafe(mutable.reverseAdjacency, nodeIndex)
-  if (Option.isSome(incomingEdges)) {
-    for (const edge of incomingEdges.value) {
+  const incomingEdges = mutable.reverseAdjacency.get(nodeIndex)
+  if (incomingEdges !== undefined) {
+    for (const edge of incomingEdges) {
       edgesToRemove.push(edge)
     }
   }
@@ -1293,45 +1298,45 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex
 ): boolean => {
   // Get edge data
-  const edge = getMapSafe(mutable.edges, edgeIndex)
-  if (Option.isNone(edge)) {
+  const edge = mutable.edges.get(edgeIndex)
+  if (edge === undefined) {
     return false // Edge doesn't exist, no mutation occurred
   }
 
-  const { source, target } = edge.value
+  const { source, target } = edge
 
   // Remove from adjacency lists
-  const sourceAdjacency = getMapSafe(mutable.adjacency, source)
-  if (Option.isSome(sourceAdjacency)) {
-    const index = sourceAdjacency.value.indexOf(edgeIndex)
+  const sourceAdjacency = mutable.adjacency.get(source)
+  if (sourceAdjacency !== undefined) {
+    const index = sourceAdjacency.indexOf(edgeIndex)
     if (index !== -1) {
-      sourceAdjacency.value.splice(index, 1)
+      sourceAdjacency.splice(index, 1)
     }
   }
 
-  const targetReverseAdjacency = getMapSafe(mutable.reverseAdjacency, target)
-  if (Option.isSome(targetReverseAdjacency)) {
-    const index = targetReverseAdjacency.value.indexOf(edgeIndex)
+  const targetReverseAdjacency = mutable.reverseAdjacency.get(target)
+  if (targetReverseAdjacency !== undefined) {
+    const index = targetReverseAdjacency.indexOf(edgeIndex)
     if (index !== -1) {
-      targetReverseAdjacency.value.splice(index, 1)
+      targetReverseAdjacency.splice(index, 1)
     }
   }
 
   // For undirected graphs, remove reverse connections
   if (mutable.type === "undirected") {
-    const targetAdjacency = getMapSafe(mutable.adjacency, target)
-    if (Option.isSome(targetAdjacency)) {
-      const index = targetAdjacency.value.indexOf(edgeIndex)
+    const targetAdjacency = mutable.adjacency.get(target)
+    if (targetAdjacency !== undefined) {
+      const index = targetAdjacency.indexOf(edgeIndex)
       if (index !== -1) {
-        targetAdjacency.value.splice(index, 1)
+        targetAdjacency.splice(index, 1)
       }
     }
 
-    const sourceReverseAdjacency = getMapSafe(mutable.reverseAdjacency, source)
-    if (Option.isSome(sourceReverseAdjacency)) {
-      const index = sourceReverseAdjacency.value.indexOf(edgeIndex)
+    const sourceReverseAdjacency = mutable.reverseAdjacency.get(source)
+    if (sourceReverseAdjacency !== undefined) {
+      const index = sourceReverseAdjacency.indexOf(edgeIndex)
       if (index !== -1) {
-        sourceReverseAdjacency.value.splice(index, 1)
+        sourceReverseAdjacency.splice(index, 1)
       }
     }
   }
@@ -1375,7 +1380,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
 export const getEdge = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   edgeIndex: EdgeIndex
-): Option.Option<Edge<E>> => getMapSafe(graph.edges, edgeIndex)
+): Option.Option<Edge<E>> => graph.edges.has(edgeIndex) ? Option.some(graph.edges.get(edgeIndex)!) : Option.none()
 
 /**
  * Checks if an edge exists between two nodes in the graph.
@@ -1410,15 +1415,15 @@ export const hasEdge = <N, E, T extends Kind = "directed">(
   source: NodeIndex,
   target: NodeIndex
 ): boolean => {
-  const adjacencyList = getMapSafe(graph.adjacency, source)
-  if (Option.isNone(adjacencyList)) {
+  const adjacencyList = graph.adjacency.get(source)
+  if (adjacencyList === undefined) {
     return false
   }
 
   // Check if any edge in the adjacency list connects to the target
-  for (const edgeIndex of adjacencyList.value) {
-    const edge = getMapSafe(graph.edges, edgeIndex)
-    if (Option.isSome(edge) && edge.value.target === target) {
+  for (const edgeIndex of adjacencyList) {
+    const edge = graph.edges.get(edgeIndex)
+    if (edge !== undefined && edge.target === target) {
       return true
     }
   }
@@ -1493,16 +1498,16 @@ export const neighbors = <N, E, T extends Kind = "directed">(
     return getUndirectedNeighbors(graph as any, nodeIndex)
   }
 
-  const adjacencyList = getMapSafe(graph.adjacency, nodeIndex)
-  if (Option.isNone(adjacencyList)) {
+  const adjacencyList = graph.adjacency.get(nodeIndex)
+  if (adjacencyList === undefined) {
     return []
   }
 
   const result: Array<NodeIndex> = []
-  for (const edgeIndex of adjacencyList.value) {
-    const edge = getMapSafe(graph.edges, edgeIndex)
-    if (Option.isSome(edge)) {
-      result.push(edge.value.target)
+  for (const edgeIndex of adjacencyList) {
+    const edge = graph.edges.get(edgeIndex)
+    if (edge !== undefined) {
+      result.push(edge.target)
     }
   }
 
@@ -1544,19 +1549,19 @@ export const neighborsDirected = <N, E, T extends Kind = "directed">(
     ? graph.reverseAdjacency
     : graph.adjacency
 
-  const adjacencyList = getMapSafe(adjacencyMap, nodeIndex)
-  if (Option.isNone(adjacencyList)) {
+  const adjacencyList = adjacencyMap.get(nodeIndex)
+  if (adjacencyList === undefined) {
     return []
   }
 
   const result: Array<NodeIndex> = []
-  for (const edgeIndex of adjacencyList.value) {
-    const edge = getMapSafe(graph.edges, edgeIndex)
-    if (Option.isSome(edge)) {
+  for (const edgeIndex of adjacencyList) {
+    const edge = graph.edges.get(edgeIndex)
+    if (edge !== undefined) {
       // For incoming direction, we want the source node instead of target
       const neighborNode = direction === "incoming"
-        ? edge.value.source
-        : edge.value.target
+        ? edge.source
+        : edge.target
       result.push(neighborNode)
     }
   }
@@ -1567,6 +1572,18 @@ export const neighborsDirected = <N, E, T extends Kind = "directed">(
 // =============================================================================
 // GraphViz Export
 // =============================================================================
+
+/**
+ * Configuration options for GraphViz DOT format generation from graphs.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export interface GraphVizOptions<N, E> {
+  readonly nodeLabel?: (data: N) => string
+  readonly edgeLabel?: (data: E) => string
+  readonly graphName?: string
+}
 
 /**
  * Exports a graph to GraphViz DOT format for visualization.
@@ -1601,11 +1618,7 @@ export const neighborsDirected = <N, E, T extends Kind = "directed">(
  */
 export const toGraphViz = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  options?: {
-    readonly nodeLabel?: (data: N) => string
-    readonly edgeLabel?: (data: E) => string
-    readonly graphName?: string
-  }
+  options?: GraphVizOptions<N, E>
 ): string => {
   const {
     edgeLabel = (data: E) => String(data),
@@ -1637,6 +1650,174 @@ export const toGraphViz = <N, E, T extends Kind = "directed">(
 }
 
 // =============================================================================
+// Mermaid Export
+// =============================================================================
+
+/**
+ * Mermaid node shape types.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export type MermaidNodeShape =
+  | "rectangle"
+  | "rounded"
+  | "circle"
+  | "diamond"
+  | "hexagon"
+  | "stadium"
+  | "subroutine"
+  | "cylindrical"
+
+/**
+ * Mermaid diagram direction types.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export type MermaidDirection = "TB" | "TD" | "BT" | "LR" | "RL"
+
+/**
+ * Mermaid diagram type.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export type MermaidDiagramType = "flowchart" | "graph"
+
+/**
+ * Configuration options for Mermaid diagram generation.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export interface MermaidOptions<N, E> {
+  readonly nodeLabel?: (data: N) => string
+  readonly edgeLabel?: (data: E) => string
+  readonly diagramType?: MermaidDiagramType
+  readonly direction?: MermaidDirection
+  readonly nodeShape?: (data: N) => MermaidNodeShape
+}
+
+/** @internal */
+const escapeMermaidLabel = (label: string): string => {
+  // Escape special characters for Mermaid using HTML entity codes
+  // According to: https://mermaid.js.org/syntax/flowchart.html#special-characters-that-break-syntax
+  return label
+    .replace(/#/g, "#35;")
+    .replace(/"/g, "#quot;")
+    .replace(/</g, "#lt;")
+    .replace(/>/g, "#gt;")
+    .replace(/&/g, "#amp;")
+    .replace(/\[/g, "#91;")
+    .replace(/\]/g, "#93;")
+    .replace(/\{/g, "#123;")
+    .replace(/\}/g, "#125;")
+    .replace(/\(/g, "#40;")
+    .replace(/\)/g, "#41;")
+    .replace(/\|/g, "#124;")
+    .replace(/\\/g, "#92;")
+    .replace(/\n/g, "<br/>")
+}
+
+/** @internal */
+const formatMermaidNode = (nodeId: string, label: string, shape: MermaidNodeShape): string => {
+  switch (shape) {
+    case "rectangle":
+      return `${nodeId}["${label}"]`
+    case "rounded":
+      return `${nodeId}("${label}")`
+    case "circle":
+      return `${nodeId}(("${label}"))`
+    case "diamond":
+      return `${nodeId}{"${label}"}`
+    case "hexagon":
+      return `${nodeId}{{"${label}"}}`
+    case "stadium":
+      return `${nodeId}(["${label}"])`
+    case "subroutine":
+      return `${nodeId}[["${label}"]]`
+    case "cylindrical":
+      return `${nodeId}[("${label}")]`
+  }
+}
+
+/**
+ * Exports a graph to Mermaid diagram format for visualization.
+ *
+ * @example
+ * ```ts
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
+ *   const app = Graph.addNode(mutable, "App")
+ *   const db = Graph.addNode(mutable, "Database")
+ *   const cache = Graph.addNode(mutable, "Cache")
+ *   Graph.addEdge(mutable, app, db, 1)
+ *   Graph.addEdge(mutable, app, cache, 2)
+ * })
+ *
+ * const mermaid = Graph.toMermaid(graph)
+ * console.log(mermaid)
+ * // flowchart TD
+ * //   0["App"]
+ * //   1["Database"]
+ * //   2["Cache"]
+ * //   0 -->|"1"| 1
+ * //   0 -->|"2"| 2
+ * ```
+ *
+ * @since 3.18.0
+ * @category utils
+ */
+export const toMermaid = <N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
+  options?: MermaidOptions<N, E>
+): string => {
+  // Extract and validate options with defaults
+  const {
+    diagramType,
+    direction = "TD",
+    edgeLabel = (data: E) => String(data),
+    nodeLabel = (data: N) => String(data),
+    nodeShape = () => "rectangle" as const
+  } = options ?? {}
+
+  // Auto-detect diagram type if not specified
+  const finalDiagramType = diagramType ??
+    (graph.type === "directed" ? "flowchart" : "graph")
+
+  // Generate diagram header
+  const lines: Array<string> = []
+  lines.push(`${finalDiagramType} ${direction}`)
+
+  // Add nodes
+  for (const [nodeIndex, nodeData] of graph.nodes) {
+    const nodeId = String(nodeIndex)
+    const label = escapeMermaidLabel(nodeLabel(nodeData))
+    const shape = nodeShape(nodeData)
+    const formattedNode = formatMermaidNode(nodeId, label, shape)
+    lines.push(`  ${formattedNode}`)
+  }
+
+  // Add edges
+  const edgeOperator = finalDiagramType === "flowchart" ? "-->" : "---"
+  for (const [, edgeData] of graph.edges) {
+    const sourceId = String(edgeData.source)
+    const targetId = String(edgeData.target)
+    const label = escapeMermaidLabel(edgeLabel(edgeData.data))
+
+    if (label) {
+      lines.push(`  ${sourceId} ${edgeOperator}|"${label}"| ${targetId}`)
+    } else {
+      lines.push(`  ${sourceId} ${edgeOperator} ${targetId}`)
+    }
+  }
+
+  return lines.join("\n")
+}
+
+// =============================================================================
 // Direction Types for Bidirectional Traversal
 // =============================================================================
 
@@ -1654,10 +1835,10 @@ export const toGraphViz = <N, E, T extends Kind = "directed">(
  * })
  *
  * // Follow outgoing edges (normal direction)
- * const outgoingNodes = Array.from(Graph.indices(Graph.dfs(graph, { startNodes: [0], direction: "outgoing" })))
+ * const outgoingNodes = Array.from(Graph.indices(Graph.dfs(graph, { start: [0], direction: "outgoing" })))
  *
  * // Follow incoming edges (reverse direction)
- * const incomingNodes = Array.from(Graph.indices(Graph.dfs(graph, { startNodes: [1], direction: "incoming" })))
+ * const incomingNodes = Array.from(Graph.indices(Graph.dfs(graph, { start: [1], direction: "incoming" })))
  * ```
  *
  * @since 3.18.0
@@ -1878,13 +2059,13 @@ const getUndirectedNeighbors = <N, E>(
   const neighbors = new Set<NodeIndex>()
 
   // Check edges where this node is the source
-  const adjacencyList = getMapSafe(graph.adjacency, nodeIndex)
-  if (Option.isSome(adjacencyList)) {
-    for (const edgeIndex of adjacencyList.value) {
-      const edge = getMapSafe(graph.edges, edgeIndex)
-      if (Option.isSome(edge)) {
+  const adjacencyList = graph.adjacency.get(nodeIndex)
+  if (adjacencyList !== undefined) {
+    for (const edgeIndex of adjacencyList) {
+      const edge = graph.edges.get(edgeIndex)
+      if (edge !== undefined) {
         // For undirected graphs, the neighbor is the other endpoint
-        const otherNode = edge.value.source === nodeIndex ? edge.value.target : edge.value.source
+        const otherNode = edge.source === nodeIndex ? edge.target : edge.source
         neighbors.add(otherNode)
       }
     }
@@ -2048,12 +2229,12 @@ export const stronglyConnectedComponents = <N, E, T extends Kind = "directed">(
       scc.push(node)
 
       // Use reverse adjacency (transpose graph)
-      const reverseAdjacency = getMapSafe(graph.reverseAdjacency, node)
-      if (Option.isSome(reverseAdjacency)) {
-        for (const edgeIndex of reverseAdjacency.value) {
-          const edge = getMapSafe(graph.edges, edgeIndex)
-          if (Option.isSome(edge)) {
-            const predecessor = edge.value.source
+      const reverseAdjacency = graph.reverseAdjacency.get(node)
+      if (reverseAdjacency !== undefined) {
+        for (const edgeIndex of reverseAdjacency) {
+          const edge = graph.edges.get(edgeIndex)
+          if (edge !== undefined) {
+            const predecessor = edge.source
             if (!visited.has(predecessor)) {
               stack.push(predecessor)
             }
@@ -2081,7 +2262,44 @@ export const stronglyConnectedComponents = <N, E, T extends Kind = "directed">(
 export interface PathResult<E> {
   readonly path: Array<NodeIndex>
   readonly distance: number
-  readonly edgeWeights: Array<E>
+  readonly costs: Array<E>
+}
+
+/**
+ * Configuration for Dijkstra's algorithm.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export interface DijkstraConfig<E> {
+  source: NodeIndex
+  target: NodeIndex
+  cost: (edgeData: E) => number
+}
+
+/**
+ * Configuration for A* algorithm.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export interface AstarConfig<E, N> {
+  source: NodeIndex
+  target: NodeIndex
+  cost: (edgeData: E) => number
+  heuristic: (sourceNodeData: N, targetNodeData: N) => number
+}
+
+/**
+ * Configuration for Bellman-Ford algorithm.
+ *
+ * @since 3.18.0
+ * @category models
+ */
+export interface BellmanFordConfig<E> {
+  source: NodeIndex
+  target: NodeIndex
+  cost: (edgeData: E) => number
 }
 
 /**
@@ -2103,7 +2321,7 @@ export interface PathResult<E> {
  *   Graph.addEdge(mutable, b, c, 2)
  * })
  *
- * const result = Graph.dijkstra(graph, 0, 2, (edgeData) => edgeData)
+ * const result = Graph.dijkstra(graph, { source: 0, target: 2, cost: (edgeData) => edgeData })
  * if (Option.isSome(result)) {
  *   console.log(result.value.path) // [0, 1, 2] - shortest path A->B->C
  *   console.log(result.value.distance) // 7 - total distance
@@ -2115,16 +2333,15 @@ export interface PathResult<E> {
  */
 export const dijkstra = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  source: NodeIndex,
-  target: NodeIndex,
-  edgeWeight: (edgeData: E) => number
+  config: DijkstraConfig<E>
 ): Option.Option<PathResult<E>> => {
+  const { cost, source, target } = config
   // Validate that source and target nodes exist
   if (!graph.nodes.has(source)) {
-    throw new Error(`Source node ${source} does not exist`)
+    throw missingNode(source)
   }
   if (!graph.nodes.has(target)) {
-    throw new Error(`Target node ${target} does not exist`)
+    throw missingNode(target)
   }
 
   // Early return if source equals target
@@ -2132,7 +2349,7 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
     return Option.some({
       path: [source],
       distance: 0,
-      edgeWeights: []
+      costs: []
     })
   }
 
@@ -2181,13 +2398,13 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
     const currentDistance = distances.get(currentNode)!
 
     // Examine all outgoing edges
-    const adjacencyList = getMapSafe(graph.adjacency, currentNode)
-    if (Option.isSome(adjacencyList)) {
-      for (const edgeIndex of adjacencyList.value) {
-        const edge = getMapSafe(graph.edges, edgeIndex)
-        if (Option.isSome(edge)) {
-          const neighbor = edge.value.target
-          const weight = edgeWeight(edge.value.data)
+    const adjacencyList = graph.adjacency.get(currentNode)
+    if (adjacencyList !== undefined) {
+      for (const edgeIndex of adjacencyList) {
+        const edge = graph.edges.get(edgeIndex)
+        if (edge !== undefined) {
+          const neighbor = edge.target
+          const weight = cost(edge.data)
 
           // Validate non-negative weights
           if (weight < 0) {
@@ -2200,7 +2417,7 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
           // Relaxation step
           if (newDistance < neighborDistance) {
             distances.set(neighbor, newDistance)
-            previous.set(neighbor, { node: currentNode, edgeData: edge.value.data })
+            previous.set(neighbor, { node: currentNode, edgeData: edge.data })
 
             // Add to priority queue if not visited
             if (!visited.has(neighbor)) {
@@ -2220,14 +2437,14 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
 
   // Reconstruct path
   const path: Array<NodeIndex> = []
-  const edgeWeights: Array<E> = []
+  const costs: Array<E> = []
   let currentNode: NodeIndex | null = target
 
   while (currentNode !== null) {
     path.unshift(currentNode)
     const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode)!
     if (prev !== null) {
-      edgeWeights.unshift(prev.edgeData)
+      costs.unshift(prev.edgeData)
       currentNode = prev.node
     } else {
       currentNode = null
@@ -2237,7 +2454,7 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
   return Option.some({
     path,
     distance: targetDistance,
-    edgeWeights
+    costs
   })
 }
 
@@ -2250,7 +2467,7 @@ export const dijkstra = <N, E, T extends Kind = "directed">(
 export interface AllPairsResult<E> {
   readonly distances: Map<NodeIndex, Map<NodeIndex, number>>
   readonly paths: Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>
-  readonly edgeWeights: Map<NodeIndex, Map<NodeIndex, Array<E>>>
+  readonly costs: Map<NodeIndex, Map<NodeIndex, Array<E>>>
 }
 
 /**
@@ -2282,7 +2499,7 @@ export interface AllPairsResult<E> {
  */
 export const floydWarshall = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  edgeWeight: (edgeData: E) => number
+  cost: (edgeData: E) => number
 ): AllPairsResult<E> => {
   // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
   const allNodes = Array.from(graph.nodes.keys())
@@ -2307,7 +2524,7 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
 
   // Set edge weights
   for (const [, edgeData] of graph.edges) {
-    const weight = edgeWeight(edgeData.data)
+    const weight = cost(edgeData.data)
     const i = edgeData.source
     const j = edgeData.target
 
@@ -2345,19 +2562,19 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
 
   // Build result paths and edge weights
   const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
-  const resultEdgeWeights = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
+  const resultCosts = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
 
   for (const i of allNodes) {
     paths.set(i, new Map())
-    resultEdgeWeights.set(i, new Map())
+    resultCosts.set(i, new Map())
 
     for (const j of allNodes) {
       if (i === j) {
         paths.get(i)!.set(j, [i])
-        resultEdgeWeights.get(i)!.set(j, [])
+        resultCosts.get(i)!.set(j, [])
       } else if (dist.get(i)!.get(j)! === Infinity) {
         paths.get(i)!.set(j, null)
-        resultEdgeWeights.get(i)!.set(j, [])
+        resultCosts.get(i)!.set(j, [])
       } else {
         // Reconstruct path iteratively
         const path: Array<NodeIndex> = []
@@ -2379,7 +2596,7 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
         }
 
         paths.get(i)!.set(j, path)
-        resultEdgeWeights.get(i)!.set(j, weights)
+        resultCosts.get(i)!.set(j, weights)
       }
     }
   }
@@ -2387,7 +2604,7 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
   return {
     distances: dist,
     paths,
-    edgeWeights: resultEdgeWeights
+    costs: resultCosts
   }
 }
 
@@ -2414,7 +2631,7 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
  * const heuristic = (nodeData: {x: number, y: number}, targetData: {x: number, y: number}) =>
  *   Math.abs(nodeData.x - targetData.x) + Math.abs(nodeData.y - targetData.y)
  *
- * const result = Graph.astar(graph, 0, 2, (edgeData) => edgeData, heuristic)
+ * const result = Graph.astar(graph, { source: 0, target: 2, cost: (edgeData) => edgeData, heuristic })
  * if (Option.isSome(result)) {
  *   console.log(result.value.path) // [0, 1, 2] - shortest path
  *   console.log(result.value.distance) // 2 - total distance
@@ -2426,17 +2643,15 @@ export const floydWarshall = <N, E, T extends Kind = "directed">(
  */
 export const astar = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  source: NodeIndex,
-  target: NodeIndex,
-  edgeWeight: (edgeData: E) => number,
-  heuristic: (sourceNodeData: N, targetNodeData: N) => number
+  config: AstarConfig<E, N>
 ): Option.Option<PathResult<E>> => {
+  const { cost, heuristic, source, target } = config
   // Validate that source and target nodes exist
   if (!graph.nodes.has(source)) {
-    throw new Error(`Source node ${source} does not exist`)
+    throw missingNode(source)
   }
   if (!graph.nodes.has(target)) {
-    throw new Error(`Target node ${target} does not exist`)
+    throw missingNode(target)
   }
 
   // Early return if source equals target
@@ -2444,13 +2659,13 @@ export const astar = <N, E, T extends Kind = "directed">(
     return Option.some({
       path: [source],
       distance: 0,
-      edgeWeights: []
+      costs: []
     })
   }
 
   // Get target node data for heuristic calculations
-  const targetNodeData = getMapSafe(graph.nodes, target)
-  if (Option.isNone(targetNodeData)) {
+  const targetNodeData = graph.nodes.get(target)
+  if (targetNodeData === undefined) {
     throw new Error(`Target node ${target} data not found`)
   }
 
@@ -2469,9 +2684,9 @@ export const astar = <N, E, T extends Kind = "directed">(
   }
 
   // Calculate initial f-score for source
-  const sourceNodeData = getMapSafe(graph.nodes, source)
-  if (Option.isSome(sourceNodeData)) {
-    const h = heuristic(sourceNodeData.value, targetNodeData.value)
+  const sourceNodeData = graph.nodes.get(source)
+  if (sourceNodeData !== undefined) {
+    const h = heuristic(sourceNodeData, targetNodeData)
     fScore.set(source, h)
   }
 
@@ -2508,13 +2723,13 @@ export const astar = <N, E, T extends Kind = "directed">(
     const currentGScore = gScore.get(currentNode)!
 
     // Examine all outgoing edges
-    const adjacencyList = getMapSafe(graph.adjacency, currentNode)
-    if (Option.isSome(adjacencyList)) {
-      for (const edgeIndex of adjacencyList.value) {
-        const edge = getMapSafe(graph.edges, edgeIndex)
-        if (Option.isSome(edge)) {
-          const neighbor = edge.value.target
-          const weight = edgeWeight(edge.value.data)
+    const adjacencyList = graph.adjacency.get(currentNode)
+    if (adjacencyList !== undefined) {
+      for (const edgeIndex of adjacencyList) {
+        const edge = graph.edges.get(edgeIndex)
+        if (edge !== undefined) {
+          const neighbor = edge.target
+          const weight = cost(edge.data)
 
           // Validate non-negative weights
           if (weight < 0) {
@@ -2528,12 +2743,12 @@ export const astar = <N, E, T extends Kind = "directed">(
           if (tentativeGScore < neighborGScore) {
             // Update g-score and previous
             gScore.set(neighbor, tentativeGScore)
-            previous.set(neighbor, { node: currentNode, edgeData: edge.value.data })
+            previous.set(neighbor, { node: currentNode, edgeData: edge.data })
 
             // Calculate f-score using heuristic
-            const neighborNodeData = getMapSafe(graph.nodes, neighbor)
-            if (Option.isSome(neighborNodeData)) {
-              const h = heuristic(neighborNodeData.value, targetNodeData.value)
+            const neighborNodeData = graph.nodes.get(neighbor)
+            if (neighborNodeData !== undefined) {
+              const h = heuristic(neighborNodeData, targetNodeData)
               const f = tentativeGScore + h
               fScore.set(neighbor, f)
 
@@ -2556,14 +2771,14 @@ export const astar = <N, E, T extends Kind = "directed">(
 
   // Reconstruct path
   const path: Array<NodeIndex> = []
-  const edgeWeights: Array<E> = []
+  const costs: Array<E> = []
   let currentNode: NodeIndex | null = target
 
   while (currentNode !== null) {
     path.unshift(currentNode)
     const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode)!
     if (prev !== null) {
-      edgeWeights.unshift(prev.edgeData)
+      costs.unshift(prev.edgeData)
       currentNode = prev.node
     } else {
       currentNode = null
@@ -2573,7 +2788,7 @@ export const astar = <N, E, T extends Kind = "directed">(
   return Option.some({
     path,
     distance: targetGScore,
-    edgeWeights
+    costs
   })
 }
 
@@ -2597,7 +2812,7 @@ export const astar = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, a, c, 5)
  * })
  *
- * const result = Graph.bellmanFord(graph, 0, 2, (edgeData) => edgeData)
+ * const result = Graph.bellmanFord(graph, { source: 0, target: 2, cost: (edgeData) => edgeData })
  * if (Option.isSome(result)) {
  *   console.log(result.value.path) // [0, 1, 2] - shortest path A->B->C
  *   console.log(result.value.distance) // 2 - total distance
@@ -2609,16 +2824,15 @@ export const astar = <N, E, T extends Kind = "directed">(
  */
 export const bellmanFord = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  source: NodeIndex,
-  target: NodeIndex,
-  edgeWeight: (edgeData: E) => number
+  config: BellmanFordConfig<E>
 ): Option.Option<PathResult<E>> => {
+  const { cost, source, target } = config
   // Validate that source and target nodes exist
   if (!graph.nodes.has(source)) {
-    throw new Error(`Source node ${source} does not exist`)
+    throw missingNode(source)
   }
   if (!graph.nodes.has(target)) {
-    throw new Error(`Target node ${target} does not exist`)
+    throw missingNode(target)
   }
 
   // Early return if source equals target
@@ -2626,7 +2840,7 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
     return Option.some({
       path: [source],
       distance: 0,
-      edgeWeights: []
+      costs: []
     })
   }
 
@@ -2643,7 +2857,7 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
   // Collect all edges for relaxation
   const edges: Array<{ source: NodeIndex; target: NodeIndex; weight: number; edgeData: E }> = []
   for (const [, edgeData] of graph.edges) {
-    const weight = edgeWeight(edgeData.data)
+    const weight = cost(edgeData.data)
     edges.push({
       source: edgeData.source,
       target: edgeData.target,
@@ -2691,12 +2905,12 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
         affectedNodes.add(node)
 
         // Add all nodes reachable from this node
-        const adjacencyList = getMapSafe(graph.adjacency, node)
-        if (Option.isSome(adjacencyList)) {
-          for (const edgeIndex of adjacencyList.value) {
-            const edge = getMapSafe(graph.edges, edgeIndex)
-            if (Option.isSome(edge)) {
-              queue.push(edge.value.target)
+        const adjacencyList = graph.adjacency.get(node)
+        if (adjacencyList !== undefined) {
+          for (const edgeIndex of adjacencyList) {
+            const edge = graph.edges.get(edgeIndex)
+            if (edge !== undefined) {
+              queue.push(edge.target)
             }
           }
         }
@@ -2717,14 +2931,14 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
 
   // Reconstruct path
   const path: Array<NodeIndex> = []
-  const edgeWeights: Array<E> = []
+  const costs: Array<E> = []
   let currentNode: NodeIndex | null = target
 
   while (currentNode !== null) {
     path.unshift(currentNode)
     const prev: { node: NodeIndex; edgeData: E } | null = previous.get(currentNode)!
     if (prev !== null) {
-      edgeWeights.unshift(prev.edgeData)
+      costs.unshift(prev.edgeData)
       currentNode = prev.node
     } else {
       currentNode = null
@@ -2734,7 +2948,7 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
   return Option.some({
     path,
     distance: targetDistance,
-    edgeWeights
+    costs
   })
 }
 
@@ -2756,7 +2970,7 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
  * })
  *
  * // Both traversal and element iterators return NodeWalker
- * const dfsNodes: Graph.NodeWalker<string> = Graph.dfs(graph, { startNodes: [0] })
+ * const dfsNodes: Graph.NodeWalker<string> = Graph.dfs(graph, { start: [0] })
  * const allNodes: Graph.NodeWalker<string> = Graph.nodes(graph)
  *
  * // Common interface for working with node iterables
@@ -2793,7 +3007,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
    *   Graph.addEdge(mutable, a, b, 1)
    * })
    *
-   * const dfs = Graph.dfs(graph, { startNodes: [0] })
+   * const dfs = Graph.dfs(graph, { start: [0] })
    *
    * // Map to just the node data
    * const values = Array.from(dfs.visit((index, data) => data))
@@ -2827,7 +3041,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
      *   Graph.addEdge(mutable, a, b, 1)
      * })
      *
-     * const dfs = Graph.dfs(graph, { startNodes: [0] })
+     * const dfs = Graph.dfs(graph, { start: [0] })
      *
      * // Map to just the node data
      * const values = Array.from(dfs.visit((index, data) => data))
@@ -2879,7 +3093,7 @@ export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
  *   Graph.addEdge(mutable, a, b, 1)
  * })
  *
- * const dfs = Graph.dfs(graph, { startNodes: [0] })
+ * const dfs = Graph.dfs(graph, { start: [0] })
  * const indices = Array.from(Graph.indices(dfs))
  * console.log(indices) // [0, 1]
  * ```
@@ -2902,7 +3116,7 @@ export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit
  *   Graph.addEdge(mutable, a, b, 1)
  * })
  *
- * const dfs = Graph.dfs(graph, { startNodes: [0] })
+ * const dfs = Graph.dfs(graph, { start: [0] })
  * const values = Array.from(Graph.values(dfs))
  * console.log(values) // ["A", "B"]
  * ```
@@ -2925,7 +3139,7 @@ export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit(
  *   Graph.addEdge(mutable, a, b, 1)
  * })
  *
- * const dfs = Graph.dfs(graph, { startNodes: [0] })
+ * const dfs = Graph.dfs(graph, { start: [0] })
  * const entries = Array.from(Graph.entries(dfs))
  * console.log(entries) // [[0, "A"], [1, "B"]]
  * ```
@@ -2937,13 +3151,13 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
   walker.visit((index, data) => [index, data] as [T, N])
 
 /**
- * Configuration options for DFS iterator.
+ * Configuration for graph search iterators.
  *
  * @since 3.18.0
  * @category models
  */
-export interface DfsConfig {
-  readonly startNodes?: Array<NodeIndex>
+export interface SearchConfig {
+  readonly start?: Array<NodeIndex>
   readonly direction?: Direction
 }
 
@@ -2966,7 +3180,7 @@ export interface DfsConfig {
  * })
  *
  * // Start from a specific node
- * const dfs1 = Graph.dfs(graph, { startNodes: [0] })
+ * const dfs1 = Graph.dfs(graph, { start: [0] })
  * for (const nodeIndex of Graph.indices(dfs1)) {
  *   console.log(nodeIndex) // Traverses in DFS order: 0, 1, 2
  * }
@@ -2981,21 +3195,21 @@ export interface DfsConfig {
  */
 export const dfs = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  config: DfsConfig = {}
+  config: SearchConfig = {}
 ): NodeWalker<N> => {
-  const startNodes = config.startNodes ?? []
+  const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
 
   // Validate that all start nodes exist
-  for (const nodeIndex of startNodes) {
+  for (const nodeIndex of start) {
     if (!hasNode(graph, nodeIndex)) {
-      throw new Error(`Start node ${nodeIndex} does not exist`)
+      throw missingNode(nodeIndex)
     }
   }
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const stack = [...startNodes]
+      const stack = [...start]
       const discovered = new Set<NodeIndex>()
 
       const nextMapped = () => {
@@ -3008,8 +3222,8 @@ export const dfs = <N, E, T extends Kind = "directed">(
 
           discovered.add(current)
 
-          const nodeDataOption = getMapSafe(graph.nodes, current)
-          if (Option.isNone(nodeDataOption)) {
+          const nodeDataOption = graph.nodes.get(current)
+          if (nodeDataOption === undefined) {
             continue
           }
 
@@ -3021,7 +3235,7 @@ export const dfs = <N, E, T extends Kind = "directed">(
             }
           }
 
-          return { done: false, value: f(current, nodeDataOption.value) }
+          return { done: false, value: f(current, nodeDataOption) }
         }
 
         return { done: true, value: undefined } as const
@@ -3030,17 +3244,6 @@ export const dfs = <N, E, T extends Kind = "directed">(
       return { next: nextMapped }
     }
   }))
-}
-
-/**
- * Configuration options for BFS iterator.
- *
- * @since 3.18.0
- * @category models
- */
-export interface BfsConfig {
-  readonly startNodes?: Array<NodeIndex>
-  readonly direction?: Direction
 }
 
 /**
@@ -3062,7 +3265,7 @@ export interface BfsConfig {
  * })
  *
  * // Start from a specific node
- * const bfs1 = Graph.bfs(graph, { startNodes: [0] })
+ * const bfs1 = Graph.bfs(graph, { start: [0] })
  * for (const nodeIndex of Graph.indices(bfs1)) {
  *   console.log(nodeIndex) // Traverses in BFS order: 0, 1, 2
  * }
@@ -3077,21 +3280,21 @@ export interface BfsConfig {
  */
 export const bfs = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  config: BfsConfig = {}
+  config: SearchConfig = {}
 ): NodeWalker<N> => {
-  const startNodes = config.startNodes ?? []
+  const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
 
   // Validate that all start nodes exist
-  for (const nodeIndex of startNodes) {
+  for (const nodeIndex of start) {
     if (!hasNode(graph, nodeIndex)) {
-      throw new Error(`Start node ${nodeIndex} does not exist`)
+      throw missingNode(nodeIndex)
     }
   }
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const queue = [...startNodes]
+      const queue = [...start]
       const discovered = new Set<NodeIndex>()
 
       const nextMapped = () => {
@@ -3193,7 +3396,7 @@ export const topo = <N, E, T extends Kind = "directed">(
   // Validate that all initial nodes exist
   for (const nodeIndex of initials) {
     if (!hasNode(graph, nodeIndex)) {
-      throw new Error(`Initial node ${nodeIndex} does not exist`)
+      throw missingNode(nodeIndex)
     }
   }
 
@@ -3263,17 +3466,6 @@ export const topo = <N, E, T extends Kind = "directed">(
 }
 
 /**
- * Configuration options for DFS postorder iterator.
- *
- * @since 3.18.0
- * @category models
- */
-export interface DfsPostOrderConfig {
-  readonly startNodes?: Array<NodeIndex>
-  readonly direction?: Direction
-}
-
-/**
  * Creates a new DFS postorder iterator with optional configuration.
  *
  * The iterator maintains a stack with visit state tracking and emits nodes
@@ -3293,7 +3485,7 @@ export interface DfsPostOrderConfig {
  * })
  *
  * // Postorder: children before parents
- * const postOrder = Graph.dfsPostOrder(graph, { startNodes: [0] })
+ * const postOrder = Graph.dfsPostOrder(graph, { start: [0] })
  * for (const node of postOrder) {
  *   console.log(node) // 1, 2, 0
  * }
@@ -3304,15 +3496,15 @@ export interface DfsPostOrderConfig {
  */
 export const dfsPostOrder = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  config: DfsPostOrderConfig = {}
+  config: SearchConfig = {}
 ): NodeWalker<N> => {
-  const startNodes = config.startNodes ?? []
+  const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
 
   // Validate that all start nodes exist
-  for (const nodeIndex of startNodes) {
+  for (const nodeIndex of start) {
     if (!hasNode(graph, nodeIndex)) {
-      throw new Error(`Start node ${nodeIndex} does not exist`)
+      throw missingNode(nodeIndex)
     }
   }
 
@@ -3323,8 +3515,8 @@ export const dfsPostOrder = <N, E, T extends Kind = "directed">(
       const finished = new Set<NodeIndex>()
 
       // Initialize stack with start nodes
-      for (let i = startNodes.length - 1; i >= 0; i--) {
-        stack.push({ node: startNodes[i], visitedChildren: false })
+      for (let i = start.length - 1; i >= 0; i--) {
+        stack.push({ node: start[i], visitedChildren: false })
       }
 
       const nextMapped = () => {
@@ -3522,10 +3714,10 @@ export const externals = <N, E, T extends Kind = "directed">(
         let current = nodeIterator.next()
         while (!current.done) {
           const [nodeIndex, nodeData] = current.value
-          const adjacencyList = getMapSafe(adjacencyMap, nodeIndex)
+          const adjacencyList = adjacencyMap.get(nodeIndex)
 
           // Node is external if it has no edges in the specified direction
-          if (Option.isNone(adjacencyList) || adjacencyList.value.length === 0) {
+          if (adjacencyList === undefined || adjacencyList.length === 0) {
             return { done: false, value: f(nodeIndex, nodeData) }
           }
           current = nodeIterator.next()
