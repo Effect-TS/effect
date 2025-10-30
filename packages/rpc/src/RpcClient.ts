@@ -848,7 +848,8 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
 
       if (isJson) {
         return client.post("", { body }).pipe(
-          Effect.flatMap((r) => r.json),
+          Effect.flatMap((r) => r.text),
+          Effect.map((text) => parser.decode(text)),
           Effect.mapError((cause) =>
             new RpcClientError({
               reason: "Protocol",
