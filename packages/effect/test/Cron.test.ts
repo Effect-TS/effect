@@ -137,6 +137,10 @@ describe("Cron", () => {
     deepStrictEqual(prev("5 4 * * SUN", before), new Date("2023-12-31 04:05:00"))
     deepStrictEqual(prev("5 4 * DEC SUN", before), new Date("2023-12-31 04:05:00"))
     deepStrictEqual(prev("30 5 0 8 2 *", before), new Date("2023-02-08 00:05:30"))
+
+    const wednesday = new Date("2025-10-22 1:00:00")
+    deepStrictEqual(prev("0 1 * * MON", wednesday), new Date("2025-10-20 1:00:00"))
+    deepStrictEqual(next("0 1 * * MON", wednesday), new Date("2025-10-27 1:00:00"))
   })
 
   it("sequence", () => {

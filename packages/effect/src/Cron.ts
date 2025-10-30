@@ -438,6 +438,8 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
   const zoned = dateTime.unsafeMakeZoned(startFrom ?? new Date(), {
     timeZone: tz
   })
+  const tick = direction === "next" ? 1 : -1
+  const table = cron[direction]
 
   const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
   const adjustDst = utc ? constVoid : (current: Date) => {
@@ -453,13 +455,10 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
     }
   }
 
-  const tick = direction === "next" ? 1 : -1
-  const table = cron[direction]
-
   const result = dateTime.mutate(zoned, (current) => {
     current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
 
-    for (let i = 0; i < 10_0; i++) {
+    for (let i = 0; i < 10_000; i++) {
       if (cron.seconds.size !== 0) {
         const currentSecond = current.getUTCSeconds()
         const nextSecond = table.second[currentSecond]
