@@ -129,10 +129,14 @@ describe("Cron", () => {
     deepStrictEqual(next(Cron.unsafeParse("5 0 8 2 *", london), after), DateTime.toDateUtc(amsterdamTime))
   })
 
-  it.only("prev", () => {
+  it("prev", () => {
     const before = new Date("2024-01-04 16:21:00")
     deepStrictEqual(prev("5 0 8 2 *", before), new Date("2023-02-08 00:05:00"))
-    deepStrictEqual(prev("5 0 8 10 *", before), new Date("2023-10-08 05:05:00Z"))
+    deepStrictEqual(prev("15 14 1 * *", before), new Date("2024-01-01 14:15:00"))
+    deepStrictEqual(prev("23 0-20/2 * * 0", before), new Date("2023-12-31 00:23:00"))
+    deepStrictEqual(prev("5 4 * * SUN", before), new Date("2023-12-31 04:05:00"))
+    deepStrictEqual(prev("5 4 * DEC SUN", before), new Date("2023-12-31 04:05:00"))
+    deepStrictEqual(prev("30 5 0 8 2 *", before), new Date("2023-02-08 00:05:30"))
   })
 
   it("sequence", () => {

@@ -453,30 +453,19 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
     }
   }
 
-  console.log(cron);
-
   const tick = direction === "next" ? 1 : -1
   const table = cron[direction]
-
-  // console.log({
-  //   table,
-  //   cron
-  // });
 
   const result = dateTime.mutate(zoned, (current) => {
     current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
 
     for (let i = 0; i < 10_0; i++) {
-      console.log('LOOP', current.toISOString())
       if (cron.seconds.size !== 0) {
-        console.log('SECONDS');
         const currentSecond = current.getUTCSeconds()
-        // console.log({currentSecond, t: table.second });
         const nextSecond = table.second[currentSecond]
         if (nextSecond === undefined) {
           current.setUTCMinutes(current.getUTCMinutes() + tick, cron.first.second)
           adjustDst(current)
-      console.log('seconds undef', current.toISOString())
           continue
         }
         if (
@@ -486,19 +475,16 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
         ) {
           current.setUTCSeconds(nextSecond)
           adjustDst(current)
-      console.log('seconds', current.toISOString())
           continue
         }
       }
 
       if (cron.minutes.size !== 0) {
-        console.log('MINUTES');
         const currentMinute = current.getUTCMinutes()
         const nextMinute = table.minute[currentMinute]
         if (nextMinute === undefined) {
           current.setUTCHours(current.getUTCHours() + tick, cron.first.minute, cron.first.second)
           adjustDst(current)
-      console.log('minutes undef', current.toISOString())
           continue
         }
         if (
@@ -508,21 +494,17 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
         ) {
           current.setUTCMinutes(nextMinute, cron.first.second)
           adjustDst(current)
-      console.log('minutes', current.toISOString())
           continue
         }
       }
 
       if (cron.hours.size !== 0) {
-        console.log('HOURS');
         const currentHour = current.getUTCHours()
         const nextHour = table.hour[currentHour]
         if (nextHour === undefined) {
-          console.log('HOURS undefined');
           current.setUTCDate(current.getUTCDate() + tick)
           current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
-      console.log('hours undef', current.toISOString())
           continue
         }
         if (
@@ -530,10 +512,8 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
             nextHour > currentHour :
             nextHour < currentHour
         ) {
-          console.log('HOURS setting', nextHour);
           current.setUTCHours(nextHour, cron.first.minute, cron.first.second)
           adjustDst(current)
-      console.log('hours', current.toISOString())
           continue
         }
       }
@@ -554,47 +534,41 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
           const currentDay = current.getUTCDate()
           const nextDay = table.day[currentDay]
           b = nextDay === undefined ?
-            (direction === "next" ?
-              daysInMonth(current) - currentDay + cron.first.day :
-              currentDay + cron.first.day - daysInMonth(current)
+            (
+              direction === "next" ?
+                daysInMonth(current) - currentDay + cron.first.day :
+                currentDay + cron.first.day - daysInMonth(current)
             ) :
             nextDay - currentDay
         }
 
         const addDays = Math.min(a, b)
-        console.log({addDays, a, b});
         if (addDays !== 0) {
           current.setUTCDate(current.getUTCDate() + addDays)
           current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
-      console.log('weekdays', current.toISOString())
           continue
         }
       }
 
       if (cron.months.size !== 0) {
-        console.log('MONTHS');
         const currentMonth = current.getUTCMonth() + 1
         const nextMonth = table.month[currentMonth]
-        console.log({nextMonth, currentMonth});
         if (nextMonth === undefined) {
-          // TODO: something is going wrong here.
-          // console.log('rewinding a year!');
           current.setUTCFullYear(current.getUTCFullYear() + tick)
           current.setUTCMonth(cron.first.month, cron.first.day)
           current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
-      console.log('months undef', current.toISOString())
           continue
         }
-        if (direction === "next" ?
+        if (
+          direction === "next" ?
             nextMonth > currentMonth :
             nextMonth < currentMonth
-           ) {
+        ) {
           current.setUTCMonth(nextMonth - 1, cron.first.day)
           current.setUTCHours(cron.first.hour, cron.first.minute, cron.first.second)
           adjustDst(current)
-      console.log('months', current.toISOString())
           continue
         }
       }
