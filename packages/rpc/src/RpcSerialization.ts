@@ -171,6 +171,7 @@ function decodeJsonRpcRaw(
     const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
     for (let i = 0; i < decoded.length; i++) {
       const message = decodeJsonRpcMessage(decoded[i])
+      messages.push(message)
       if (message._tag === "Request") {
         batch.size++
         batches.set(message.id, batch)
@@ -178,7 +179,7 @@ function decodeJsonRpcRaw(
     }
     return messages
   }
-  return Array.isArray(decoded) ? decoded.map(decodeJsonRpcMessage) : [decodeJsonRpcMessage(decoded)]
+  return [decodeJsonRpcMessage(decoded)]
 }
 
 function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
