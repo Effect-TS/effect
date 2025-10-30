@@ -153,6 +153,17 @@ describe("Cron", () => {
     deepStrictEqual(generator.next().value, new Date("2024-01-07 08:23:00"))
   })
 
+  it("sequenceReverse", () => {
+    const start = new Date("2024-01-01 00:00:00Z")
+    const utc = DateTime.zoneUnsafeMakeNamed("UTC")
+    const generator = Cron.sequenceReverse(Cron.unsafeParse("23 0-20/2 * * 0", utc), start)
+    deepStrictEqual(generator.next().value, new Date("2023-12-31 20:23:00Z"))
+    deepStrictEqual(generator.next().value, new Date("2023-12-31 18:23:00Z"))
+    deepStrictEqual(generator.next().value, new Date("2023-12-31 16:23:00Z"))
+    deepStrictEqual(generator.next().value, new Date("2023-12-31 14:23:00Z"))
+    deepStrictEqual(generator.next().value, new Date("2023-12-31 12:23:00Z"))
+  })
+
   it("equal", () => {
     const cron = Cron.unsafeParse("23 0-20/2 * * 0")
     assertTrue(Equal.equals(cron, cron))

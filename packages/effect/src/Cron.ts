@@ -593,6 +593,18 @@ export const sequence = function*(cron: Cron, startFrom?: DateTime.DateTime.Inpu
 }
 
 /**
+ * Returns an `IterableIterator` which yields the sequence of `Date`s that match the `Cron` instance,
+ * in reverse direction.
+ *
+ * @since 2.0.0
+ */
+export const sequenceReverse = function*(cron: Cron, startFrom?: DateTime.DateTime.Input): IterableIterator<Date> {
+  while (true) {
+    yield startFrom = prev(cron, startFrom)
+  }
+}
+
+/**
  * @category instances
  * @since 2.0.0
  */
