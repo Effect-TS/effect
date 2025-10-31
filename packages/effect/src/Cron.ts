@@ -445,12 +445,13 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
   const adjustDst = utc ? constVoid : (current: Date) => {
     const adjusted = dateTime.unsafeMakeZoned(current, {
       timeZone: zoned.zone,
-      adjustForTimeZone: true
+      adjustForTimeZone: true // ,
+      // disambiguation: direction === "prev" ? "later" : "earlier"
     }).pipe(dateTime.toDate)
 
     // TODO: This implementation currently only skips forward when transitioning into daylight savings time.
     const drift = current.getTime() - adjusted.getTime()
-    if (drift > 0) {
+    if (drift !== 0) {
       current.setTime(current.getTime() + drift)
     }
   }
@@ -525,7 +526,9 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
           const currentWeekday = current.getUTCDay()
           const nextWeekday = table.weekday[currentWeekday]
           a = nextWeekday === undefined ?
-            7 - currentWeekday + cron.first.weekday :
+            (direction === "next" ?
+              7 - currentWeekday + cron.first.weekday :
+              currentWeekday - 7 + cron.first.weekday) :
             nextWeekday - currentWeekday
         }
 
