@@ -70,7 +70,11 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
                 ))
               )
             ),
-            sharding.notify(message)
+            Effect.catchTag(
+              sharding.notify(message),
+              "AlreadyProcessingMessage",
+              (_) => Effect.void
+            )
           ) :
           sharding.send(message),
         Effect.async<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>((resume_) => {

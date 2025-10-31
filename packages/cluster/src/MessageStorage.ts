@@ -355,13 +355,18 @@ export const make = (
       readonly respond: (reply: Reply.ReplyWithContext<any>) => Effect.Effect<void, PersistenceError | MalformedMessage>
       readonly onUnregister: Effect.Effect<void>
     }
-    const replyHandlers = new Map<Snowflake.Snowflake, ReplyHandler>()
+    const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
       registerReplyHandler: (message, onUnregister) =>
         Effect.sync(() => {
           const shardId = message.envelope.address.shardId.toString()
+          let handlers = replyHandlers.get(message.envelope.requestId)
+          if (!handlers) {
+            handlers = []
+            replyHandlers.set(message.envelope.requestId, handlers)
+          }
           let shardSet = replyHandlersShard.get(shardId)
           if (!shardSet) {
             shardSet = new Set()
@@ -372,16 +377,21 @@ export const make = (
             respond: message._tag === "IncomingRequest" ? message.respond : (reply) => message.respond(reply.reply),
             onUnregister
           }
-          replyHandlers.set(message.envelope.requestId, entry)
+          handlers.push(entry)
           shardSet.add(entry)
         }),
       unregisterReplyHandler: (requestId) =>
         Effect.suspend(() => {
-          const handler = replyHandlers.get(requestId)
-          if (!handler) return Effect.void
+          const handlers = replyHandlers.get(requestId)
+          if (!handlers) return Effect.void
           replyHandlers.delete(requestId)
-          handler.shardSet.delete(handler)
-          return handler.onUnregister
+          const effects: Array<Effect.Effect<void>> = []
+          for (let i = 0; i < handlers.length; i++) {
+            const handler = handlers[i]
+            handler.shardSet.delete(handler)
+            effects.push(handler.onUnregister)
+          }
+          return effects.length === 1 ? effects[0] : Effect.all(effects, { concurrency: "unbounded", discard: true })
         }),
       unregisterReplyHandlers: (shardId) =>
         Effect.suspend(() => {
@@ -396,13 +406,15 @@ export const make = (
         }),
       saveReply(reply) {
         return Effect.flatMap(storage.saveReply(reply), () => {
-          const handler = replyHandlers.get(reply.reply.requestId)
-          if (!handler) {
+          const handlers = replyHandlers.get(reply.reply.requestId)
+          if (!handlers) {
             return Effect.void
           } else if (reply.reply._tag === "WithExit") {
             replyHandlers.delete(reply.reply.requestId)
           }
-          return handler.respond(reply)
+          return handlers.length === 1
+            ? handlers[0].respond(reply)
+            : Effect.forEach(handlers, (handler) => handler.respond(reply))
         })
       }
     })
