@@ -490,7 +490,7 @@ export const makeRpcClient: Effect.Effect<
   RpcClient,
   never,
   RpcClient_.Protocol | Scope
-> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: false })
+> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: true })
 
 /**
  * @since 1.0.0

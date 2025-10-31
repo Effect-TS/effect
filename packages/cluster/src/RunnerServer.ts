@@ -139,7 +139,7 @@ export const layer: Layer.Layer<
   RpcServer.Protocol | Sharding.Sharding | MessageStorage.MessageStorage
 > = RpcServer.layer(Runners.Rpcs, {
   spanPrefix: "RunnerServer",
-  disableTracing: false
+  disableTracing: true
 }).pipe(Layer.provide(layerHandlers))
 
 /**
