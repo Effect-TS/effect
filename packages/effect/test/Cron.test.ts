@@ -173,6 +173,10 @@ describe("Cron", () => {
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
+
+    const seq = Cron.sequence(Cron.unsafeParse("5 2 * * 6"), new Date("2020-11-01 0:00:01Z"))
+    deepStrictEqual(seq.next().value, new Date("2020-11-07T07:05:00.000Z"))
+    deepStrictEqual(seq.next().value, new Date("2020-11-14T07:05:00.000Z"))
   })
 
   it("handles transition out of daylight savings time", () => {
