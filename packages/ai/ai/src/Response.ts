@@ -2809,7 +2809,6 @@ export const ToolPart = <
     type: Schema.Literal("tool"),
     providerName: Schema.optional(Schema.String)
   })
-  failure.ast._tag === "NeverKeyword"
   const Encoded = Schema.Struct({
     ...Base.fields,
     name: Schema.String,
