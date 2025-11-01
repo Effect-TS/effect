@@ -391,7 +391,7 @@ export const make = (
             handler.shardSet.delete(handler)
             effects.push(handler.onUnregister)
           }
-          return effects.length === 1 ? effects[0] : Effect.all(effects, { concurrency: "unbounded", discard: true })
+          return effects.length === 1 ? effects[0] : Effect.all(effects, { discard: true })
         }),
       unregisterReplyHandlers: (shardId) =>
         Effect.suspend(() => {
@@ -400,7 +400,6 @@ export const make = (
           if (!shardSet) return Effect.void
           replyHandlersShard.delete(id)
           return Effect.forEach(shardSet, (entry) => entry.onUnregister, {
-            concurrency: "unbounded",
             discard: true
           })
         }),

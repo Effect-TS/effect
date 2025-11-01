@@ -238,7 +238,11 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           // we have reached the end
           if (reply._tag === "WithExit") {
             for (const message of entry.messages) {
-              yield* message.respond(reply)
+              yield* message.respond(reply).pipe(
+                Effect.withSpan("Runners.replyFromStorage.respond", {
+                  captureStackTrace: false
+                })
+              )
             }
             entry.doneLatch?.unsafeOpen()
             return
@@ -266,12 +270,21 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           storageRequests.delete(message.envelope.requestId)
           waitingStorageRequests.delete(message.envelope.requestId)
         })
-      )
+      ),
+    (effect, message) =>
+      Effect.withSpan(effect, "Runners.replyFromStorage", {
+        captureStackTrace: false,
+        attributes: {
+          requestId: message.envelope.requestId.toString()
+        }
+      })
   )
 
   const storageLatch = Effect.unsafeMakeLatch(false)
   if (storage !== MessageStorage.noop) {
     yield* Effect.gen(function*() {
+      const foundRequests = new Set<StorageRequestEntry>()
+
       while (true) {
         yield* storageLatch.await
         storageLatch.unsafeClose()
@@ -289,8 +302,6 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           )
         )
 
-        const foundRequests = new Set<StorageRequestEntry>()
-
         // put the replies into the storage requests and then open the latches
         for (let i = 0; i < replies.length; i++) {
           const reply = replies[i]
@@ -302,6 +313,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         }
 
         foundRequests.forEach((entry) => entry.latch.unsafeOpen())
+        foundRequests.clear()
       }
     }).pipe(
       Effect.interruptible,
@@ -367,7 +379,14 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         return options.notify(options_).pipe(
           Effect.andThen(replyFromStorage(message))
         )
-      })
+      }).pipe(
+        Effect.withSpan("Runners.notify", {
+          captureStackTrace: false,
+          attributes: {
+            requestId: message.envelope.requestId.toString()
+          }
+        })
+      )
     },
     notifyLocal(options) {
       return notifyWith(options.message, (message, duplicate) => {
@@ -395,7 +414,14 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
           Effect.andThen(replyFromStorage(message))
         )
-      })
+      }).pipe(
+        Effect.withSpan("Runners.notifyLocal", {
+          captureStackTrace: false,
+          attributes: {
+            requestId: options.message.envelope.requestId.toString()
+          }
+        })
+      )
     }
   })
 })

@@ -559,7 +559,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       case "Exit": {
         const requestId = message.requestId
         const entry = entries.get(requestId)
-        if (!entry) return Effect.void
+        if (!entry) {
+          // eslint-disable-next-line no-console
+          console.warn(`No entry found for requestId ${requestId}, ignoring Exit message`)
+          return Effect.void
+        }
         entries.delete(requestId)
         if (entry._tag === "Effect") {
           entry.resume(message.exit)

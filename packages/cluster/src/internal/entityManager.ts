@@ -183,10 +183,7 @@ export const make = Effect.fnUntraced(function*<
                   (isShuttingDown || Context.get(request.rpc.annotations, Uninterruptible) ||
                     isInterruptIgnore(response.exit.cause))
                 ) {
-                  return Effect.forkIn(
-                    options.storage.unregisterReplyHandler(request.message.envelope.requestId),
-                    managerScope
-                  )
+                  return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
                 return retryRespond(
                   4,
