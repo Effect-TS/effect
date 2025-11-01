@@ -266,7 +266,14 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           storageRequests.delete(message.envelope.requestId)
           waitingStorageRequests.delete(message.envelope.requestId)
         })
-      )
+      ),
+    (effect, message) =>
+      Effect.withSpan(effect, "Runners.replyFromStorage", {
+        captureStackTrace: false,
+        attributes: {
+          requestId: message.envelope.requestId.toString()
+        }
+      })
   )
 
   const storageLatch = Effect.unsafeMakeLatch(false)
@@ -368,7 +375,15 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         return options.notify(options_).pipe(
           Effect.andThen(replyFromStorage(message))
         )
-      })
+      }).pipe(
+        Effect.withSpan("Runners.notify", {
+          captureStackTrace: false,
+          attributes: {
+            requestId: options_.message.envelope.requestId.toString(),
+            discard
+          }
+        })
+      )
     },
     notifyLocal(options) {
       return notifyWith(options.message, (message, duplicate) => {
@@ -392,7 +407,8 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         Effect.withSpan("Runners.notifyLocal", {
           captureStackTrace: false,
           attributes: {
-            requestId: options.message.envelope.requestId.toString()
+            requestId: options.message.envelope.requestId.toString(),
+            storageOnly: options.storageOnly
           }
         })
       )
@@ -490,7 +506,7 @@ export const makeRpcClient: Effect.Effect<
   RpcClient,
   never,
   RpcClient_.Protocol | Scope
-> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: true })
+> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: false })
 
 /**
  * @since 1.0.0
