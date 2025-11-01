@@ -395,7 +395,7 @@ const daysInMonth = (date: Date): number =>
  */
 export const next = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
   const tz = Option.getOrUndefined(cron.tz)
-  const effectiveZone = tz ?? dateTime.zoneUnsafeMakeNamed(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const effectiveZone = tz
   const zoned = dateTime.unsafeMakeZoned(startFrom ?? new Date(), {
     timeZone: effectiveZone
   })

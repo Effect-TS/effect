@@ -256,8 +256,12 @@ export const unsafeMakeZoned = (input: DateTime.DateTime.Input, options?: {
   }
   let zone: DateTime.TimeZone
   if (options?.timeZone === undefined) {
-    const offset = new Date(self.epochMillis).getTimezoneOffset() * -60 * 1000
-    zone = zoneMakeOffset(offset)
+    const zoneName = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const parsedZone = zoneFromString(zoneName)
+    if (Option.isNone(parsedZone)) {
+      throw new IllegalArgumentException(`Invalid time zone: ${zoneName}`)
+    }
+    zone = parsedZone.value
   } else if (isTimeZone(options?.timeZone)) {
     zone = options.timeZone
   } else if (typeof options?.timeZone === "number") {
