@@ -6,7 +6,7 @@ Build and run durable workflows in TypeScript with Effect.
 
 ```typescript
 import { ClusterWorkflowEngine } from "@effect/cluster"
-import { NodeClusterRunnerSocket, NodeRuntime } from "@effect/platform-node"
+import { NodeClusterSocket, NodeRuntime } from "@effect/platform-node"
 import { PgClient } from "@effect/sql-pg"
 import {
   Activity,
@@ -122,7 +122,7 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(
 // `ClusterWorkflowEngine.layer` Layer, and provide it with your cluster Runner
 // layer.
 const WorkflowEngineLayer = ClusterWorkflowEngine.layer.pipe(
-  Layer.provideMerge(NodeClusterRunnerSocket.layer({ storage: "sql" })),
+  Layer.provideMerge(NodeClusterSocket.layer()),
   Layer.provideMerge(
     PgClient.layer({
       database: "effect_cluster",

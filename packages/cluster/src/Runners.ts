@@ -111,6 +111,11 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly storageOnly?: boolean | undefined
     }
   ) => Effect.Effect<void, EntityNotManagedByRunner | PersistenceError>
+
+  /**
+   * Mark a Runner as unavailable.
+   */
+  readonly onRunnerUnavailable: (address: RunnerAddress) => Effect.Effect<void>
 }>() {}
 
 /**
@@ -243,6 +248,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           for (const message of entry.messages) {
             yield* message.respond(reply)
           }
+          // wait for ack
           yield* entry.latch.await
         }
         entry.replies = []
@@ -260,12 +266,21 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           storageRequests.delete(message.envelope.requestId)
           waitingStorageRequests.delete(message.envelope.requestId)
         })
-      )
+      ),
+    (effect, message) =>
+      Effect.withSpan(effect, "Runners.replyFromStorage", {
+        captureStackTrace: false,
+        attributes: {
+          requestId: message.envelope.requestId.toString()
+        }
+      })
   )
 
   const storageLatch = Effect.unsafeMakeLatch(false)
   if (storage !== MessageStorage.noop) {
     yield* Effect.gen(function*() {
+      const foundRequests = new Set<StorageRequestEntry>()
+
       while (true) {
         yield* storageLatch.await
         storageLatch.unsafeClose()
@@ -283,8 +298,6 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           )
         )
 
-        const foundRequests = new Set<StorageRequestEntry>()
-
         // put the replies into the storage requests and then open the latches
         for (let i = 0; i < replies.length; i++) {
           const reply = replies[i]
@@ -296,6 +309,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         }
 
         foundRequests.forEach((entry) => entry.latch.unsafeOpen())
+        foundRequests.clear()
       }
     }).pipe(
       Effect.interruptible,
@@ -361,7 +375,15 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         return options.notify(options_).pipe(
           Effect.andThen(replyFromStorage(message))
         )
-      })
+      }).pipe(
+        Effect.withSpan("Runners.notify", {
+          captureStackTrace: false,
+          attributes: {
+            requestId: options_.message.envelope.requestId.toString(),
+            discard
+          }
+        })
+      )
     },
     notifyLocal(options) {
       return notifyWith(options.message, (message, duplicate) => {
@@ -372,24 +394,24 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
             () => Effect.void
           )
         } else if (!duplicate && options.storageOnly !== true) {
-          return storage.registerReplyHandler(
-            message,
-            Effect.suspend(() =>
-              replyFromStorage(message).pipe(
-                Effect.forkIn(runnersScope),
-                Effect.interruptible
-              )
-            )
-          ).pipe(
-            Effect.andThen(options.notify(Message.incomingLocalFromOutgoing(message))),
-            Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void)
+          return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
+            Effect.andThen(storage.registerReplyHandler(message)),
+            Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(message))
           )
         }
         return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
           Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
           Effect.andThen(replyFromStorage(message))
         )
-      })
+      }).pipe(
+        Effect.withSpan("Runners.notifyLocal", {
+          captureStackTrace: false,
+          attributes: {
+            requestId: options.message.envelope.requestId.toString(),
+            storageOnly: options.storageOnly
+          }
+        })
+      )
     }
   })
 })
@@ -405,7 +427,8 @@ export const makeNoop: Effect.Effect<
 > = make({
   send: ({ message }) => Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address })),
   notify: () => Effect.void,
-  ping: () => Effect.void
+  ping: () => Effect.void,
+  onRunnerUnavailable: () => Effect.void
 })
 
 /**
@@ -483,7 +506,7 @@ export const makeRpcClient: Effect.Effect<
   RpcClient,
   never,
   RpcClient_.Protocol | Scope
-> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: true })
+> = RpcClient_.make(Rpcs, { spanPrefix: "Runners", disableTracing: false })
 
 /**
  * @since 1.0.0
@@ -510,7 +533,12 @@ export const makeRpc: Effect.Effect<
     ping(address) {
       return RcMap.get(clients, address).pipe(
         Effect.flatMap((client) => client.Ping()),
-        Effect.catchAllCause(() => Effect.fail(new RunnerUnavailable({ address }))),
+        Effect.catchAllCause(() => {
+          return Effect.zipRight(
+            RcMap.invalidate(clients, address),
+            Effect.fail(new RunnerUnavailable({ address }))
+          )
+        }),
         Effect.scoped
       )
     },
@@ -610,7 +638,8 @@ export const makeRpc: Effect.Effect<
           return Effect.void
         })
       )
-    }
+    },
+    onRunnerUnavailable: (address) => RcMap.invalidate(clients, address)
   })
 })
 
