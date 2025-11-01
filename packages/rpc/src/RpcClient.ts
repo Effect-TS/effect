@@ -741,13 +741,17 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         ) as Effect.Effect<void>
       }
       case "Defect": {
+        entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
         return Effect.forEach(
           entries.keys(),
-          (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
+          (requestId) => {
+            entries.delete(requestId)
+            return write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
+          }
         )
       }
       default: {
