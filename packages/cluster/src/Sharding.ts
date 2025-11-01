@@ -360,7 +360,7 @@ const make = Effect.gen(function*() {
               Effect.annotateLogs({ runner: selfAddress }),
               Effect.flatMap(() => {
                 MutableHashSet.remove(releasingShards, shardId)
-                return Effect.forkIn(storage.unregisterReplyHandlers(shardId), shardingScope)
+                return storage.unregisterShardReplyHandlers(shardId)
               })
             ),
           { concurrency: "unbounded", discard: true }
@@ -393,9 +393,7 @@ const make = Effect.gen(function*() {
   // & ack envelopes can still be processed.
 
   const storageReadLatch = yield* Effect.makeLatch(true)
-  const openStorageReadLatch = constant(Effect.sync(() => {
-    storageReadLatch.unsafeOpen()
-  }))
+  const openStorageReadLatch = constant(storageReadLatch.open)
 
   const storageReadLock = Effect.unsafeMakeSemaphore(1)
   const withStorageReadLock = storageReadLock.withPermits(1)

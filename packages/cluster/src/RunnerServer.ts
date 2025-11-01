@@ -7,7 +7,7 @@ import { constant } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
-import * as ClusterError from "./ClusterError.js"
+import type * as ClusterError from "./ClusterError.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
@@ -60,21 +60,12 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
       return Effect.zipRight(
         persisted ?
           Effect.zipRight(
-            storage.registerReplyHandler(
-              message,
-              Effect.sync(() =>
-                resume(Effect.fail(
-                  new ClusterError.EntityNotAssignedToRunner({
-                    address: request.address
-                  })
-                ))
-              )
-            ),
             Effect.catchTag(
               sharding.notify(message),
               "AlreadyProcessingMessage",
               (_) => Effect.void
-            )
+            ),
+            storage.registerReplyHandler(message)
           ) :
           sharding.send(message),
         Effect.async<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>((resume_) => {
@@ -103,15 +94,10 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
           return Effect.as(
             persisted ?
               Effect.zipRight(
-                storage.registerReplyHandler(
-                  message,
-                  Effect.suspend(() =>
-                    mailbox.fail(
-                      new ClusterError.EntityNotAssignedToRunner({
-                        address: request.address
-                      })
-                    )
-                  )
+                storage.registerReplyHandler(message).pipe(
+                  Effect.onError((cause) => mailbox.failCause(cause)),
+                  Effect.forkScoped,
+                  Effect.interruptible
                 ),
                 sharding.notify(message)
               ) :

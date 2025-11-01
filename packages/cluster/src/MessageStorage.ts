@@ -15,7 +15,7 @@ import type { ParseError } from "effect/ParseResult"
 import type { Predicate } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import type { PersistenceError } from "./ClusterError.js"
-import { MalformedMessage } from "./ClusterError.js"
+import { EntityNotAssignedToRunner, MalformedMessage } from "./ClusterError.js"
 import * as DeliverAt from "./DeliverAt.js"
 import type { EntityAddress } from "./EntityAddress.js"
 import * as Envelope from "./Envelope.js"
@@ -88,9 +88,8 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
    * For locally sent messages, register a handler to process the replies.
    */
   readonly registerReplyHandler: <R extends Rpc.Any>(
-    message: Message.OutgoingRequest<R> | Message.IncomingRequest<R>,
-    onUnregister: Effect.Effect<void>
-  ) => Effect.Effect<void>
+    message: Message.OutgoingRequest<R> | Message.IncomingRequest<R>
+  ) => Effect.Effect<void, EntityNotAssignedToRunner>
 
   /**
    * Unregister the reply handler for the specified message.
@@ -100,7 +99,7 @@ export class MessageStorage extends Context.Tag("@effect/cluster/MessageStorage"
   /**
    * Unregister the reply handlers for the specified ShardId.
    */
-  readonly unregisterReplyHandlers: (shardId: ShardId) => Effect.Effect<void>
+  readonly unregisterShardReplyHandlers: (shardId: ShardId) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -347,20 +346,24 @@ export type EncodedRepliesOptions<A> = {
  * @category constructors
  */
 export const make = (
-  storage: Omit<MessageStorage["Type"], "registerReplyHandler" | "unregisterReplyHandler" | "unregisterReplyHandlers">
+  storage: Omit<
+    MessageStorage["Type"],
+    "registerReplyHandler" | "unregisterReplyHandler" | "unregisterShardReplyHandlers"
+  >
 ): Effect.Effect<MessageStorage["Type"]> =>
   Effect.sync(() => {
     type ReplyHandler = {
+      readonly message: Message.OutgoingRequest<any> | Message.IncomingRequest<any>
       readonly shardSet: Set<ReplyHandler>
       readonly respond: (reply: Reply.ReplyWithContext<any>) => Effect.Effect<void, PersistenceError | MalformedMessage>
-      readonly onUnregister: Effect.Effect<void>
+      readonly resume: (effect: Effect.Effect<void, EntityNotAssignedToRunner>) => void
     }
     const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
-      registerReplyHandler: (message, onUnregister) =>
-        Effect.sync(() => {
+      registerReplyHandler: (message) =>
+        Effect.async<void, EntityNotAssignedToRunner>((resume) => {
           const shardId = message.envelope.address.shardId.toString()
           let handlers = replyHandlers.get(message.envelope.requestId)
           if (!handlers) {
@@ -373,34 +376,47 @@ export const make = (
             replyHandlersShard.set(shardId, shardSet)
           }
           const entry: ReplyHandler = {
+            message,
             shardSet,
             respond: message._tag === "IncomingRequest" ? message.respond : (reply) => message.respond(reply.reply),
-            onUnregister
+            resume
           }
           handlers.push(entry)
           shardSet.add(entry)
+          return Effect.sync(() => {
+            const index = handlers.indexOf(entry)
+            handlers.splice(index, 1)
+            shardSet.delete(entry)
+          })
         }),
       unregisterReplyHandler: (requestId) =>
-        Effect.suspend(() => {
+        Effect.sync(() => {
           const handlers = replyHandlers.get(requestId)
           if (!handlers) return Effect.void
           replyHandlers.delete(requestId)
-          const effects: Array<Effect.Effect<void>> = []
           for (let i = 0; i < handlers.length; i++) {
             const handler = handlers[i]
             handler.shardSet.delete(handler)
-            effects.push(handler.onUnregister)
+            handler.resume(Effect.fail(
+              new EntityNotAssignedToRunner({
+                address: handler.message.envelope.address
+              })
+            ))
           }
-          return effects.length === 1 ? effects[0] : Effect.all(effects, { discard: true })
         }),
-      unregisterReplyHandlers: (shardId) =>
-        Effect.suspend(() => {
+      unregisterShardReplyHandlers: (shardId) =>
+        Effect.sync(() => {
           const id = shardId.toString()
           const shardSet = replyHandlersShard.get(id)
-          if (!shardSet) return Effect.void
+          if (!shardSet) return
           replyHandlersShard.delete(id)
-          return Effect.forEach(shardSet, (entry) => entry.onUnregister, {
-            discard: true
+          shardSet.forEach((handler) => {
+            replyHandlers.delete(handler.message.envelope.requestId)
+            handler.resume(Effect.fail(
+              new EntityNotAssignedToRunner({
+                address: handler.message.envelope.address
+              })
+            ))
           })
         }),
       saveReply(reply) {
@@ -410,6 +426,11 @@ export const make = (
             return Effect.void
           } else if (reply.reply._tag === "WithExit") {
             replyHandlers.delete(reply.reply.requestId)
+            for (let i = 0; i < handlers.length; i++) {
+              const handler = handlers[i]
+              handler.shardSet.delete(handler)
+              handler.resume(Effect.void)
+            }
           }
           return handlers.length === 1
             ? handlers[0].respond(reply)

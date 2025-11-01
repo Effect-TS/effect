@@ -238,11 +238,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           // we have reached the end
           if (reply._tag === "WithExit") {
             for (const message of entry.messages) {
-              yield* message.respond(reply).pipe(
-                Effect.withSpan("Runners.replyFromStorage.respond", {
-                  captureStackTrace: false
-                })
-              )
+              yield* message.respond(reply)
             }
             entry.doneLatch?.unsafeOpen()
             return
@@ -270,14 +266,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           storageRequests.delete(message.envelope.requestId)
           waitingStorageRequests.delete(message.envelope.requestId)
         })
-      ),
-    (effect, message) =>
-      Effect.withSpan(effect, "Runners.replyFromStorage", {
-        captureStackTrace: false,
-        attributes: {
-          requestId: message.envelope.requestId.toString()
-        }
-      })
+      )
   )
 
   const storageLatch = Effect.unsafeMakeLatch(false)
@@ -379,14 +368,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         return options.notify(options_).pipe(
           Effect.andThen(replyFromStorage(message))
         )
-      }).pipe(
-        Effect.withSpan("Runners.notify", {
-          captureStackTrace: false,
-          attributes: {
-            requestId: message.envelope.requestId.toString()
-          }
-        })
-      )
+      })
     },
     notifyLocal(options) {
       return notifyWith(options.message, (message, duplicate) => {
@@ -397,17 +379,9 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
             () => Effect.void
           )
         } else if (!duplicate && options.storageOnly !== true) {
-          return storage.registerReplyHandler(
-            message,
-            Effect.suspend(() =>
-              replyFromStorage(message).pipe(
-                Effect.forkIn(runnersScope),
-                Effect.interruptible
-              )
-            )
-          ).pipe(
-            Effect.andThen(options.notify(Message.incomingLocalFromOutgoing(message))),
-            Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void)
+          return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
+            Effect.andThen(storage.registerReplyHandler(message)),
+            Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(message))
           )
         }
         return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
