@@ -162,7 +162,7 @@ const handleBuiltInOption = <R, E, A>(
       const nextArgs = executable.split(/\s+/)
       // Filter out the log level option before re-executing the command
       for (let i = 0; i < args.length; i++) {
-        if (args[i] === "--log-level" || args[i - 1] === "--log-level") {
+        if (isLogLevelArg(args[i]) || isLogLevelArg(args[i - 1])) {
           continue
         }
         nextArgs.push(args[i])
@@ -355,4 +355,8 @@ const renderWizardArgs = (args: ReadonlyArray<string>) => {
       InternalSpan.highlight(params, Color.cyan)
     ))
   ])
+}
+
+const isLogLevelArg = (arg?: string) => {
+  return arg && (arg === "--log-level" || arg.startsWith("--log-level="))
 }
