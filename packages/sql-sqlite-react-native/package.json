@@ -48,13 +48,13 @@
   "devDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@op-engineering/op-sqlite": "7.1.0",
+    "@op-engineering/op-sqlite": ">=12.0.0",
     "effect": "workspace:^"
   },
   "peerDependencies": {
     "@effect/experimental": "workspace:^",
     "@effect/sql": "workspace:^",
-    "@op-engineering/op-sqlite": "7.1.0",
+    "@op-engineering/op-sqlite": ">=12.0.0",
     "effect": "workspace:^"
   }
 }
