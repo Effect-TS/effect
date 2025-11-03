@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
-Array.window signature has been improved
+`Array.window` signature has been improved
