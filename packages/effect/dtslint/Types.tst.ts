@@ -3,6 +3,10 @@ import { describe, expect, it } from "tstyche"
 
 describe("Types", () => {
   it("TupleOf", () => {
+    expect<Types.TupleOf<-1, number>>()
+      .type.toBe<never>()
+    expect<Types.TupleOf<0, number>>()
+      .type.toBe<[]>()
     expect<Types.TupleOf<3, number>>()
       .type.toBe<[number, number, number]>()
   })

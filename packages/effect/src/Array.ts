@@ -18,7 +18,7 @@ import * as Order from "./Order.js"
 import * as Predicate from "./Predicate.js"
 import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
-import type { NoInfer } from "./Types.js"
+import type { NoInfer, TupleOf } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -2135,9 +2135,14 @@ export const chunksOf: {
  * @since 3.13.2
  */
 export const window: {
-  (n: number): <A>(self: Iterable<A>) => Array<Array<A>>
-  <A>(self: Iterable<A>, n: number): Array<Array<A>>
-} = dual(2, <A>(self: Iterable<A>, n: number): Array<Array<A>> => {
+  <N extends number = number>(
+    n: N
+  ): <A>(self: Iterable<A>) => Array<TupleOf<N, A>>
+  <A, N extends number = number>(
+    self: Iterable<A>,
+    n: N
+  ): Array<TupleOf<N, A>>
+} = dual(2, <A, const N extends number>(self: Iterable<A>, n: N): Array<Array<A>> => {
   const input = fromIterable(self)
   if (n > 0 && isNonEmptyReadonlyArray(input)) {
     return Array.from(
