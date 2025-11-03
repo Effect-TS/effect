@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.71.2
+
+### Patch Changes
+
+- [#5664](https://github.com/Effect-TS/effect/pull/5664) [`2603745`](https://github.com/Effect-TS/effect/commit/2603745badd442870673ee9ab49e2652ecbaba4f) Thanks @lucas-barake! - Expose disableFatalDefects option in RPC server public API
+
+- Updated dependencies [[`a537469`](https://github.com/Effect-TS/effect/commit/a5374696bdabee005bf75d7b1b57f8bee7763cba), [`52d5963`](https://github.com/Effect-TS/effect/commit/52d59635f35406bd27874ca0090f8642432928f4), [`463345d`](https://github.com/Effect-TS/effect/commit/463345d734fb462dc284d590193b7843dc104d78)]:
+  - effect@3.18.5
+
 ## 0.71.1
 
 ### Patch Changes

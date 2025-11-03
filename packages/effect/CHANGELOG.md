@@ -1,5 +1,19 @@
 # effect
 
+## 3.18.5
+
+### Patch Changes
+
+- [#5669](https://github.com/Effect-TS/effect/pull/5669) [`a537469`](https://github.com/Effect-TS/effect/commit/a5374696bdabee005bf75d7b1b57f8bee7763cba) Thanks @fubhy! - Fix Graph.neighbors() returning self-loops in undirected graphs.
+
+  Graph.neighbors() now correctly returns the other endpoint for undirected graphs instead of always returning edge.target, which caused nodes to appear as their own neighbors when queried from the target side of an edge.
+
+- [#5628](https://github.com/Effect-TS/effect/pull/5628) [`52d5963`](https://github.com/Effect-TS/effect/commit/52d59635f35406bd27874ca0090f8642432928f4) Thanks @mikearnaldi! - Make sure AsEffect is computed
+
+- [#5671](https://github.com/Effect-TS/effect/pull/5671) [`463345d`](https://github.com/Effect-TS/effect/commit/463345d734fb462dc284d590193b7843dc104d78) Thanks @gcanti! - JSON Schema generation: add `jsonSchema2020-12` target and fix tuple output for:
+  - JSON Schema 2019-09
+  - OpenAPI 3.1
+
 ## 3.18.4
 
 ### Patch Changes
