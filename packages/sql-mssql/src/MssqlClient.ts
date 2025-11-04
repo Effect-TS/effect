@@ -554,4 +554,3 @@ function rowsToObjects(rows: ReadonlyArray<any>) {
 
   return newRows
 }
-

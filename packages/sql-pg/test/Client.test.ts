@@ -231,8 +231,8 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
   it.effect("jsonb", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
-      const rows = yield* sql`select ${{ testValue: 123 }}::jsonb`
-      console.log(rows)
+      const rows = yield* sql<{ json: unknown }>`select ${{ testValue: 123 }}::jsonb as json`
+      expect(rows[0].json).toEqual({ testValue: 123 })
     }))
 })
 

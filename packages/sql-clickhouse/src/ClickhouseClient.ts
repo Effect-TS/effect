@@ -421,4 +421,3 @@ interface ClickhouseParam extends Statement.Custom<"ClickhouseParam", string, un
 
 const clickhouseParam = Statement.custom<ClickhouseParam>("ClickhouseParam")
 const isClickhouseParam = Statement.isCustom<ClickhouseParam>("ClickhouseParam")
-
