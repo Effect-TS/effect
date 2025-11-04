@@ -15,7 +15,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
@@ -308,7 +307,7 @@ export const make = Effect.gen(function*() {
                 }).pipe(
                   Workflow.intoResult,
                   Effect.catchAllCause((cause) =>
-                    Effect.failCause(Cause.isInterrupted(cause) ? Cause.interrupt(FiberId.make(-1, 0)) : cause)
+                    Cause.isInterrupted(cause) ? Effect.succeed(new Workflow.Suspended()) : Effect.failCause(cause)
                   ),
                   Effect.provideService(WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, request.payload.attempt),
@@ -514,7 +513,9 @@ const ActivityRpc = Rpc.make("activity", {
     success: Schema.Unknown,
     error: Schema.Unknown
   })
-}).annotate(ClusterSchema.Persisted, true)
+})
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, true)
 
 const payloadParentKey = "~@effect/workflow/parent" as const
 
