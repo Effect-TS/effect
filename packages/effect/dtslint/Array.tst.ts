@@ -940,15 +940,26 @@ describe("Array", () => {
   })
 
   it("window", () => {
+    const two: number = 2
     // Array
-    expect(Array.window(strings, 2)).type.toBe<Array<Array<string>>>()
-    expect(pipe(strings, Array.window(2))).type.toBe<Array<Array<string>>>()
-    expect(Array.window(2)(strings)).type.toBe<Array<Array<string>>>()
+    expect(Array.window(strings, two)).type.toBe<Array<Array<string>>>()
+    expect(pipe(strings, Array.window(two))).type.toBe<Array<Array<string>>>()
+    expect(Array.window(two)(strings)).type.toBe<Array<Array<string>>>()
 
     // NonEmptyArray
-    expect(Array.window(nonEmptyStrings, 2)).type.toBe<Array<Array<string>>>()
-    expect(pipe(nonEmptyStrings, Array.window(2))).type.toBe<Array<Array<string>>>()
-    expect(Array.window(2)(nonEmptyStrings)).type.toBe<Array<Array<string>>>()
+    expect(Array.window(nonEmptyStrings, two)).type.toBe<Array<Array<string>>>()
+    expect(pipe(nonEmptyStrings, Array.window(two))).type.toBe<Array<Array<string>>>()
+    expect(Array.window(two)(nonEmptyStrings)).type.toBe<Array<Array<string>>>()
+
+    // literal + Array
+    expect(Array.window(strings, 2)).type.toBe<Array<[string, string]>>()
+    expect(pipe(strings, Array.window(2))).type.toBe<Array<[string, string]>>()
+    expect(Array.window(2)(strings)).type.toBe<Array<[string, string]>>()
+
+    // literal + NonEmptyArray
+    expect(Array.window(nonEmptyStrings, 2)).type.toBe<Array<[string, string]>>()
+    expect(pipe(nonEmptyStrings, Array.window(2))).type.toBe<Array<[string, string]>>()
+    expect(Array.window(2)(nonEmptyStrings)).type.toBe<Array<[string, string]>>()
   })
 
   it("reverse", () => {
