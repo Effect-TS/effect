@@ -1,5 +1,19 @@
 # effect
 
+## 3.19.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a) Thanks @mikearnaldi! - Add Effect.fn.Return to allow typing returns on Effect.fn
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d) Thanks @fubhy! - Backport `Graph` module updates
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - add experimental HashRing module
+
+### Patch Changes
+
+- [#5679](https://github.com/Effect-TS/effect/pull/5679) [`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c) Thanks @KhraksMamtsov! - `Array.window` signature has been improved
+
 ## 3.18.5
 
 ### Patch Changes
