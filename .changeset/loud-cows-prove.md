@@ -19,6 +19,9 @@ To migrate, remove any Shard Manager deployments and use the updated layers in
 
 - `ShardManager` module has been removed
 - `EntityNotManagedByRunner` error has been removed
+- Shard locks now use database advisory locks, which requires stable sessions
+  for database connections. This means load balancers or proxies that rotate
+  connections may cause issues.
 - `@effect/platform-node/NodeClusterSocketRunner` is now
   `@effect/cluster/NodeClusterSocket`
 - `@effect/platform-node/NodeClusterHttpRunner` is now
