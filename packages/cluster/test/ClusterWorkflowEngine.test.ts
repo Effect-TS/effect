@@ -230,6 +230,20 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("suspended"))
       assert.include(flags.get("cause"), "boom")
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("catchAllCause activity", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* CatchWorkflow.execute({
+        id: ""
+      }).pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+      yield* Fiber.join(fiber)
+
+      assert.isTrue(flags.get("catch"))
+    }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({
@@ -504,12 +518,41 @@ const SuspendOnFailureWorkflowLayer = SuspendOnFailureWorkflow.toLayer(Effect.fn
   })
 }))
 
+const CatchWorkflow = Workflow.make({
+  name: "CatchWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  idempotencyKey(payload) {
+    return payload.id
+  }
+})
+
+const CatchWorkflowLayer = CatchWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  yield* Activity.make({
+    name: "fail",
+    execute: Effect.die("boom")
+  }).pipe(
+    Effect.catchAllCause((cause) =>
+      Activity.make({
+        name: "log",
+        execute: Effect.suspend(() => {
+          flags.set("catch", true)
+          return Effect.log(cause)
+        })
+      })
+    )
+  )
+}))
+
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(SuspendOnFailureWorkflowLayer),
+  Layer.merge(CatchWorkflowLayer),
   Layer.provideMerge(Flags.Default),
   Layer.provideMerge(TestWorkflowEngine)
 )
