@@ -18,6 +18,7 @@ To migrate, remove any Shard Manager deployments and use the updated layers in
 # Breaking Changes
 
 - `ShardManager` module has been removed
+- `EntityNotManagedByRunner` error has been removed
 - `@effect/platform-node/NodeClusterSocketRunner` is now
   `@effect/cluster/NodeClusterSocket`
 - `@effect/platform-node/NodeClusterHttpRunner` is now
