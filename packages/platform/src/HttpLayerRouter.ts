@@ -1084,7 +1084,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
 ): Layer.Layer<
-  never,
+  A,
   Request.Without<E>,
   HttpServer.HttpServer | Exclude<Request.Without<R> | Exclude<HR, GlobalProvided>, HttpRouter>
 > => {
@@ -1101,7 +1101,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
     return middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler)
   }).pipe(
     Layer.unwrapScoped,
-    Layer.provide(appLayer),
+    Layer.provideMerge(appLayer),
     Layer.provide(RouterLayer),
     options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any

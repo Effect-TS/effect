@@ -63,3 +63,13 @@ export class EntityAddress extends Schema.Class<EntityAddress>(SymbolKey)({
 export const EntityAddressFromSelf: Schema.Schema<EntityAddress> = Schema.typeSchema(
   EntityAddress
 )
+
+/**
+ * @since 4.0.0
+ * @category constructors
+ */
+export const make = (options: {
+  readonly shardId: ShardId
+  readonly entityType: EntityType
+  readonly entityId: EntityId
+}): EntityAddress => new EntityAddress(options, { disableValidation: true })
