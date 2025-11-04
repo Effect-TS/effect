@@ -5,7 +5,7 @@ import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
-import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
+import type { Custom, Fragment } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import * as Arr from "effect/Array"
 import * as Chunk from "effect/Chunk"
@@ -163,7 +163,7 @@ export const make = (
         this.pg = pg
       }
 
-      private run(query: string, params: ReadonlyArray<Primitive>) {
+      private run(query: string, params: ReadonlyArray<unknown>) {
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
           this.pg.query(query, params as any, (err, result) => {
             if (err) {
@@ -177,14 +177,14 @@ export const make = (
 
       execute(
         sql: string,
-        params: ReadonlyArray<Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         return transformRows
           ? Effect.map(this.run(sql, params), transformRows)
           : this.run(sql, params)
       }
-      executeRaw(sql: string, params: ReadonlyArray<Primitive>) {
+      executeRaw(sql: string, params: ReadonlyArray<unknown>) {
         return Effect.async<Pg.Result, SqlError>((resume) => {
           this.pg.query(sql, params as any, (err, result) => {
             if (err) {
@@ -195,10 +195,10 @@ export const make = (
           })
         })
       }
-      executeWithoutTransform(sql: string, params: ReadonlyArray<Primitive>) {
+      executeWithoutTransform(sql: string, params: ReadonlyArray<unknown>) {
         return this.run(sql, params)
       }
-      executeValues(sql: string, params: ReadonlyArray<Primitive>) {
+      executeValues(sql: string, params: ReadonlyArray<unknown>) {
         return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
           this.pg.query(
             {
@@ -218,14 +218,14 @@ export const make = (
       }
       executeUnprepared(
         sql: string,
-        params: ReadonlyArray<Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         return this.execute(sql, params, transformRows)
       }
       executeStream(
         sql: string,
-        params: ReadonlyArray<Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         // eslint-disable-next-line @typescript-eslint/no-this-alias

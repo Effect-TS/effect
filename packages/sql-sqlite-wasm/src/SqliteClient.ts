@@ -141,7 +141,7 @@ export const makeMemory = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = [],
+        params: ReadonlyArray<unknown> = [],
         rowMode: "object" | "array" = "object"
       ) =>
         Effect.try({
@@ -336,7 +336,7 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = [],
+        params: ReadonlyArray<unknown> = [],
         rowMode: "object" | "array" = "object"
       ): Effect.Effect<Array<any>, SqlError, never> => {
         const rows = Effect.withFiberRuntime<[Array<string>, Array<any>], SqlError>((fiber) => {

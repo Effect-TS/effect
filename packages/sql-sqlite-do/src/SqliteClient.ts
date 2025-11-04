@@ -79,7 +79,7 @@ export const make = (
 
       function* runIterator(
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) {
         const cursor = db.exec(sql, ...params)
         const columns = cursor.columnNames
@@ -95,7 +95,7 @@ export const make = (
 
       const runStatement = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
         Effect.try({
           try: () => Array.from(runIterator(sql, params)),
@@ -104,7 +104,7 @@ export const make = (
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
         Effect.try({
           try: () =>
