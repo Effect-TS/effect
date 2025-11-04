@@ -1239,17 +1239,19 @@ const make = Effect.gen(function*() {
         closed: false,
         manager
       }
-      entityManagers.set(entity.type, state)
-      if (entityManagerLatches.has(entity.type)) {
-        entityManagerLatches.get(entity.type)!.unsafeOpen()
-        entityManagerLatches.delete(entity.type)
-      }
+
+      // register entities while storage is idle
+      // this ensures message order is preserved
+      yield* withStorageReadLock(Effect.sync(() => {
+        entityManagers.set(entity.type, state)
+        if (entityManagerLatches.has(entity.type)) {
+          entityManagerLatches.get(entity.type)!.unsafeOpen()
+          entityManagerLatches.delete(entity.type)
+        }
+      }))
 
       yield* PubSub.publish(events, EntityRegistered({ entity }))
-    },
-    // register entities while storage is idle
-    // this ensures message order is preserved
-    withStorageReadLock
+    }
   )
 
   yield* Scope.addFinalizerExit(
