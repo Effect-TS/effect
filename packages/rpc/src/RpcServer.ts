@@ -274,11 +274,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             clientId: client.id,
             requestId: request.id,
             exit: Exit.succeed(value as any)
-          }).pipe(
-            Effect.withSpan("RpcServer.handleRequest.onSuccess", {
-              captureStackTrace: false
-            })
-          )
+          })
         },
         onFailure: (cause) => {
           responded = true
@@ -290,11 +286,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             clientId: client.id,
             requestId: request.id,
             exit: Exit.failCause(cause)
-          }).pipe(
-            Effect.withSpan("RpcServer.handleRequest.onFailure", {
-              captureStackTrace: false
-            })
-          )
+          })
         }
       }
     )
