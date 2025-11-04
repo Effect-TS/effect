@@ -6,7 +6,6 @@ import type { Effect } from "effect/Effect"
 import type { Scope } from "effect/Scope"
 import type { Stream } from "effect/Stream"
 import type { SqlError } from "./SqlError.js"
-import type { Primitive } from "./Statement.js"
 
 /**
  * @category model
@@ -15,7 +14,7 @@ import type { Primitive } from "./Statement.js"
 export interface Connection {
   readonly execute: (
     sql: string,
-    params: ReadonlyArray<Primitive>,
+    params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Effect<ReadonlyArray<any>, SqlError>
 
@@ -25,23 +24,23 @@ export interface Connection {
    */
   readonly executeRaw: (
     sql: string,
-    params: ReadonlyArray<Primitive>
+    params: ReadonlyArray<unknown>
   ) => Effect<unknown, SqlError>
 
   readonly executeStream: (
     sql: string,
-    params: ReadonlyArray<Primitive>,
+    params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Stream<any, SqlError>
 
   readonly executeValues: (
     sql: string,
-    params: ReadonlyArray<Primitive>
-  ) => Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
+    params: ReadonlyArray<unknown>
+  ) => Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
 
   readonly executeUnprepared: (
     sql: string,
-    params: ReadonlyArray<Primitive>,
+    params: ReadonlyArray<unknown>,
     transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
   ) => Effect<ReadonlyArray<any>, SqlError>
 }
@@ -67,4 +66,4 @@ export const Connection = Context.GenericTag<Connection>("@services/Connection")
  * @category model
  * @since 1.0.0
  */
-export type Row = { readonly [column: string]: Primitive }
+export type Row = { readonly [column: string]: unknown }

@@ -48,11 +48,11 @@ export interface Statement<A> extends Fragment, Effect<ReadonlyArray<A>, SqlErro
   readonly raw: Effect<unknown, SqlError>
   readonly withoutTransform: Effect<ReadonlyArray<A>, SqlError>
   readonly stream: Stream.Stream<A, SqlError>
-  readonly values: Effect<ReadonlyArray<ReadonlyArray<Primitive>>, SqlError>
+  readonly values: Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>
   readonly unprepared: Effect<ReadonlyArray<A>, SqlError>
   readonly compile: (withoutTransform?: boolean | undefined) => readonly [
     sql: string,
-    params: ReadonlyArray<Primitive>
+    params: ReadonlyArray<unknown>
   ]
 }
 
@@ -141,7 +141,7 @@ export type Segment =
 export interface Literal {
   readonly _tag: "Literal"
   readonly value: string
-  readonly params?: ReadonlyArray<Primitive> | undefined
+  readonly params?: ReadonlyArray<unknown> | undefined
 }
 
 /**
@@ -159,7 +159,7 @@ export interface Identifier {
  */
 export interface Parameter {
   readonly _tag: "Parameter"
-  readonly value: Primitive
+  readonly value: unknown
 }
 
 /**
@@ -168,7 +168,7 @@ export interface Parameter {
  */
 export interface ArrayHelper {
   readonly _tag: "ArrayHelper"
-  readonly value: ReadonlyArray<Primitive | Fragment>
+  readonly value: ReadonlyArray<unknown | Fragment>
 }
 
 /**
@@ -177,7 +177,7 @@ export interface ArrayHelper {
  */
 export interface RecordInsertHelper {
   readonly _tag: "RecordInsertHelper"
-  readonly value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>
+  readonly value: ReadonlyArray<Record<string, unknown>>
   /** @internal */
   readonly returningIdentifier: string | Fragment | undefined
   readonly returning: (sql: string | Identifier | Fragment) => RecordInsertHelper
@@ -189,7 +189,7 @@ export interface RecordInsertHelper {
  */
 export interface RecordUpdateHelper {
   readonly _tag: "RecordUpdateHelper"
-  readonly value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>
+  readonly value: ReadonlyArray<Record<string, unknown>>
   readonly alias: string
   /** @internal */
   readonly returningIdentifier: string | Fragment | undefined
@@ -202,7 +202,7 @@ export interface RecordUpdateHelper {
  */
 export interface RecordUpdateHelperSingle {
   readonly _tag: "RecordUpdateHelperSingle"
-  readonly value: Record<string, Primitive | Fragment | undefined>
+  readonly value: Record<string, unknown>
   readonly omit: ReadonlyArray<string>
   /** @internal */
   readonly returningIdentifier: string | Fragment | undefined
@@ -238,20 +238,6 @@ export const custom: <C extends Custom<any, any, any, any>>(
  * @category model
  * @since 1.0.0
  */
-export type Primitive =
-  | string
-  | number
-  | bigint
-  | boolean
-  | Date
-  | null
-  | Int8Array
-  | Uint8Array
-
-/**
- * @category model
- * @since 1.0.0
- */
 export type PrimitiveKind =
   | "string"
   | "number"
@@ -261,6 +247,7 @@ export type PrimitiveKind =
   | "null"
   | "Int8Array"
   | "Uint8Array"
+  | "object"
 
 /**
  * @category model
@@ -278,16 +265,10 @@ export type Helper =
  * @category model
  * @since 1.0.0
  */
-export type Argument = Primitive | Helper | Fragment
-
-/**
- * @category model
- * @since 1.0.0
- */
 export interface Constructor {
   <A extends object = Row>(
     strings: TemplateStringsArray,
-    ...args: Array<Argument>
+    ...args: Array<any>
   ): Statement<A>
 
   (value: string): Identifier
@@ -297,25 +278,25 @@ export interface Constructor {
    */
   readonly unsafe: <A extends object>(
     sql: string,
-    params?: ReadonlyArray<Primitive> | undefined
+    params?: ReadonlyArray<any> | undefined
   ) => Statement<A>
 
   readonly literal: (sql: string) => Fragment
 
   readonly in: {
-    (value: ReadonlyArray<Primitive>): ArrayHelper
-    (column: string, value: ReadonlyArray<Primitive>): Fragment
+    (value: ReadonlyArray<unknown>): ArrayHelper
+    (column: string, value: ReadonlyArray<unknown>): Fragment
   }
 
   readonly insert: {
     (
-      value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>
+      value: ReadonlyArray<Record<string, unknown>>
     ): RecordInsertHelper
-    (value: Record<string, Primitive | Fragment | undefined>): RecordInsertHelper
+    (value: Record<string, unknown>): RecordInsertHelper
   }
 
   /** Update a single row */
-  readonly update: <A extends Record<string, Primitive | Fragment | undefined>>(
+  readonly update: <A extends Record<string, unknown>>(
     value: A,
     omit?: ReadonlyArray<keyof A>
   ) => RecordUpdateHelperSingle
@@ -326,7 +307,7 @@ export interface Constructor {
    * **Note:** Not supported in sqlite
    */
   readonly updateValues: (
-    value: ReadonlyArray<Record<string, Primitive | Fragment | undefined>>,
+    value: ReadonlyArray<Record<string, unknown>>,
     alias: string
   ) => RecordUpdateHelper
 
@@ -391,7 +372,7 @@ export const make: (
  */
 export const unsafeFragment: (
   sql: string,
-  params?: ReadonlyArray<Primitive> | undefined
+  params?: ReadonlyArray<unknown> | undefined
 ) => Fragment = internal.unsafeFragment
 
 /**
@@ -434,7 +415,7 @@ export interface Compiler {
   readonly compile: (
     statement: Fragment,
     withoutTransform: boolean
-  ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+  ) => readonly [sql: string, params: ReadonlyArray<unknown>]
   readonly withoutTransform: this
 }
 
@@ -451,25 +432,25 @@ export const makeCompiler: <C extends Custom<any, any, any, any> = any>(
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Primitive>>,
-      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
-    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+      values: ReadonlyArray<ReadonlyArray<unknown>>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, params: ReadonlyArray<unknown>]
     readonly onCustom: (
       type: C,
       placeholder: (u: unknown) => string,
       withoutTransform: boolean
-    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+    ) => readonly [sql: string, params: ReadonlyArray<unknown>]
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Primitive>>,
-      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
-    ) => readonly [sql: string, binds: ReadonlyArray<Primitive>]
+      values: ReadonlyArray<ReadonlyArray<unknown>>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, binds: ReadonlyArray<unknown>]
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Primitive>,
-      returning: readonly [sql: string, params: ReadonlyArray<Primitive>] | undefined
-    ) => readonly [sql: string, params: ReadonlyArray<Primitive>]
+      values: ReadonlyArray<unknown>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, params: ReadonlyArray<unknown>]
   }
 ) => Compiler = internal.makeCompiler
 
@@ -488,7 +469,7 @@ export const defaultEscape: (c: string) => (str: string) => string = internal.de
 /**
  * @since 1.0.0
  */
-export const primitiveKind: (value: Primitive) => PrimitiveKind = internal.primitiveKind
+export const primitiveKind: (value: unknown) => PrimitiveKind = internal.primitiveKind
 
 /**
  * @since 1.0.0

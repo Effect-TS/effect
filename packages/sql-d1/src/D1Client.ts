@@ -91,7 +91,7 @@ export const make = (
 
       const runStatement = (
         statement: D1PreparedStatement,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
         Effect.tryPromise({
           try: async () => {
@@ -106,22 +106,22 @@ export const make = (
 
       const runRaw = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) => runStatement(db.prepare(sql), params)
 
       const runCached = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
 
       const runUncached = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) => runRaw(sql, params)
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>
+        params: ReadonlyArray<unknown>
       ) =>
         Effect.flatMap(
           prepareCache.get(sql),
@@ -130,7 +130,7 @@ export const make = (
               try: () => {
                 return statement.bind(...params).raw() as Promise<
                   ReadonlyArray<
-                    ReadonlyArray<Statement.Primitive>
+                    ReadonlyArray<unknown>
                   >
                 >
               },

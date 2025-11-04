@@ -100,7 +100,7 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) =>
         Effect.try({
           try: () => (db.query(sql).all(...(params as any)) ?? []) as Array<any>,
@@ -109,7 +109,7 @@ export const make = (
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) =>
         Effect.try({
           try: () => (db.query(sql).values(...(params as any)) ?? []) as Array<any>,
