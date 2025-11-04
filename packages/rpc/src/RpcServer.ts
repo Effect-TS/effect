@@ -481,7 +481,7 @@ export const make: <Rpcs extends Rpc.Any>(
 ) => Effect.Effect<
   never,
   never,
-  Protocol | Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>
+  Protocol | Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs> | Rpc.Context<Rpcs>
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options?: {
@@ -732,6 +732,7 @@ export const layer = <Rpcs extends Rpc.Any>(
   never,
   | Protocol
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > => Layer.scopedDiscard(Effect.forkScoped(Effect.interruptible(make(group, options))))
 
@@ -759,6 +760,7 @@ export const layerHttpRouter = <Rpcs extends Rpc.Any>(options: {
   | RpcSerialization.RpcSerialization
   | HttpLayerRouter.HttpRouter
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > =>
   layer(options.group, options).pipe(
@@ -1221,6 +1223,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
   | Scope.Scope
   | RpcSerialization.RpcSerialization
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
@@ -1258,6 +1261,7 @@ export const toHttpAppWebsocket: <Rpcs extends Rpc.Any>(
   | Scope.Scope
   | RpcSerialization.RpcSerialization
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
