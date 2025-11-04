@@ -17,13 +17,7 @@ import * as RcMap from "effect/RcMap"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type { PersistenceError } from "./ClusterError.js"
-import {
-  AlreadyProcessingMessage,
-  EntityNotAssignedToRunner,
-  EntityNotManagedByRunner,
-  MailboxFull,
-  RunnerUnavailable
-} from "./ClusterError.js"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, RunnerUnavailable } from "./ClusterError.js"
 import { Persisted } from "./ClusterSchema.js"
 import * as Envelope from "./Envelope.js"
 import * as Message from "./Message.js"
@@ -56,13 +50,13 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
         message: Message.IncomingLocal<Rpc>
       ) => Effect.Effect<
         void,
-        EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
+        EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage
       >
       readonly simulateRemoteSerialization: boolean
     }
   ) => Effect.Effect<
     void,
-    EntityNotManagedByRunner | EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage | PersistenceError
+    EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage | PersistenceError
   >
 
   /**
@@ -75,7 +69,6 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
     }
   ) => Effect.Effect<
     void,
-    | EntityNotManagedByRunner
     | EntityNotAssignedToRunner
     | RunnerUnavailable
     | MailboxFull
@@ -92,7 +85,7 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly discard: boolean
     }
-  ) => Effect.Effect<void, EntityNotManagedByRunner | PersistenceError>
+  ) => Effect.Effect<void, PersistenceError>
 
   /**
    * Notify the current Runner that a message is available, then read replies from
@@ -106,11 +99,16 @@ export class Runners extends Context.Tag("@effect/cluster/Runners")<Runners, {
       readonly message: Message.Outgoing<R>
       readonly notify: (
         options: Message.IncomingLocal<any>
-      ) => Effect.Effect<void, EntityNotManagedByRunner | EntityNotAssignedToRunner>
+      ) => Effect.Effect<void, EntityNotAssignedToRunner>
       readonly discard: boolean
       readonly storageOnly?: boolean | undefined
     }
-  ) => Effect.Effect<void, EntityNotManagedByRunner | PersistenceError>
+  ) => Effect.Effect<void, PersistenceError>
+
+  /**
+   * Mark a Runner as unavailable.
+   */
+  readonly onRunnerUnavailable: (address: RunnerAddress) => Effect.Effect<void>
 }>() {}
 
 /**
@@ -243,6 +241,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           for (const message of entry.messages) {
             yield* message.respond(reply)
           }
+          // wait for ack
           yield* entry.latch.await
         }
         entry.replies = []
@@ -266,6 +265,8 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
   const storageLatch = Effect.unsafeMakeLatch(false)
   if (storage !== MessageStorage.noop) {
     yield* Effect.gen(function*() {
+      const foundRequests = new Set<StorageRequestEntry>()
+
       while (true) {
         yield* storageLatch.await
         storageLatch.unsafeClose()
@@ -283,8 +284,6 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
           )
         )
 
-        const foundRequests = new Set<StorageRequestEntry>()
-
         // put the replies into the storage requests and then open the latches
         for (let i = 0; i < replies.length; i++) {
           const reply = replies[i]
@@ -296,6 +295,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
         }
 
         foundRequests.forEach((entry) => entry.latch.unsafeOpen())
+        foundRequests.clear()
       }
     }).pipe(
       Effect.interruptible,
@@ -350,12 +350,7 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
               address: options_.address.value,
               message
             }),
-            (error) => {
-              if (error._tag === "EntityNotManagedByRunner") {
-                return Effect.fail(error)
-              }
-              return replyFromStorage(message)
-            }
+            (_) => replyFromStorage(message)
           )
         }
         return options.notify(options_).pipe(
@@ -372,17 +367,9 @@ export const make: (options: Omit<Runners["Type"], "sendLocal" | "notifyLocal">)
             () => Effect.void
           )
         } else if (!duplicate && options.storageOnly !== true) {
-          return storage.registerReplyHandler(
-            message,
-            Effect.suspend(() =>
-              replyFromStorage(message).pipe(
-                Effect.forkIn(runnersScope),
-                Effect.interruptible
-              )
-            )
-          ).pipe(
-            Effect.andThen(options.notify(Message.incomingLocalFromOutgoing(message))),
-            Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void)
+          return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
+            Effect.andThen(storage.registerReplyHandler(message)),
+            Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(message))
           )
         }
         return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
@@ -403,9 +390,10 @@ export const makeNoop: Effect.Effect<
   never,
   MessageStorage.MessageStorage | Snowflake.Generator | ShardingConfig | Scope
 > = make({
-  send: ({ message }) => Effect.fail(new EntityNotManagedByRunner({ address: message.envelope.address })),
+  send: ({ message }) => Effect.fail(new EntityNotAssignedToRunner({ address: message.envelope.address })),
   notify: () => Effect.void,
-  ping: () => Effect.void
+  ping: () => Effect.void,
+  onRunnerUnavailable: () => Effect.void
 })
 
 /**
@@ -419,12 +407,10 @@ export const layerNoop: Layer.Layer<
 > = Layer.scoped(Runners, makeNoop).pipe(Layer.provide([Snowflake.layerGenerator]))
 
 const rpcErrors: Schema.Union<[
-  typeof EntityNotManagedByRunner,
   typeof EntityNotAssignedToRunner,
   typeof MailboxFull,
   typeof AlreadyProcessingMessage
 ]> = Schema.Union(
-  EntityNotManagedByRunner,
   EntityNotAssignedToRunner,
   MailboxFull,
   AlreadyProcessingMessage
@@ -441,7 +427,7 @@ export class Rpcs extends RpcGroup.make(
       envelope: Envelope.PartialEncoded
     },
     success: Schema.Void,
-    error: Schema.Union(EntityNotManagedByRunner, EntityNotAssignedToRunner, AlreadyProcessingMessage)
+    error: Schema.Union(EntityNotAssignedToRunner, AlreadyProcessingMessage)
   }),
   Rpc.make("Effect", {
     payload: {
@@ -510,7 +496,12 @@ export const makeRpc: Effect.Effect<
     ping(address) {
       return RcMap.get(clients, address).pipe(
         Effect.flatMap((client) => client.Ping()),
-        Effect.catchAllCause(() => Effect.fail(new RunnerUnavailable({ address }))),
+        Effect.catchAllCause(() => {
+          return Effect.zipRight(
+            RcMap.invalidate(clients, address),
+            Effect.fail(new RunnerUnavailable({ address }))
+          )
+        }),
         Effect.scoped
       )
     },
@@ -603,14 +594,10 @@ export const makeRpc: Effect.Effect<
       return RcMap.get(clients, address.value).pipe(
         Effect.flatMap((client) => client.Notify({ envelope })),
         Effect.scoped,
-        Effect.catchAll((error) => {
-          if (error._tag === "EntityNotManagedByRunner") {
-            return Effect.fail(error)
-          }
-          return Effect.void
-        })
+        Effect.ignore
       )
-    }
+    },
+    onRunnerUnavailable: (address) => RcMap.invalidate(clients, address)
   })
 })
 

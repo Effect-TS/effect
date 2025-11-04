@@ -6,7 +6,6 @@ import * as SqlClient from "@effect/sql/SqlClient"
 import type { Row } from "@effect/sql/SqlConnection"
 import type { SqlError } from "@effect/sql/SqlError"
 import * as Arr from "effect/Array"
-import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -41,6 +40,7 @@ export const make = Effect.fnUntraced(function*(options?: {
   )
 
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
+  const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
   const replyKindWithExit = sql.literal(String(replyKind.WithExit))
 
   const messagesTable = table("messages")
@@ -284,11 +284,11 @@ export const make = Effect.fnUntraced(function*(options?: {
       )
   })
 
-  const fiveMinutesAgo = sql.onDialectOrElse({
-    mssql: () => sql.literal(`DATEADD(MINUTE, -5, GETDATE())`),
-    mysql: () => sql.literal(`NOW() - INTERVAL 5 MINUTE`),
-    pg: () => sql.literal(`NOW() - INTERVAL '5 minutes'`),
-    orElse: () => sql.literal(`DATETIME('now', '-5 minute')`)
+  const tenMinutesAgo = sql.onDialectOrElse({
+    mssql: () => sql.literal(`DATEADD(MINUTE, -10, GETDATE())`),
+    mysql: () => sql.literal(`NOW() - INTERVAL 10 MINUTE`),
+    pg: () => sql.literal(`NOW() - INTERVAL '10 minutes'`),
+    orElse: () => sql.literal(`DATETIME('now', '-10 minute')`)
   })
   const sqlNowString = sql.onDialectOrElse({
     pg: () => "NOW()",
@@ -318,7 +318,7 @@ export const make = Effect.fnUntraced(function*(options?: {
             AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
           )
           AND m.processed = ${sqlFalse}
-          AND (m.last_read IS NULL OR m.last_read < ${fiveMinutesAgo})
+          AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
           AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
           ORDER BY m.rowid ASC
           FOR UPDATE
@@ -339,7 +339,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
         )
         AND processed = ${sqlFalse}
-        AND (m.last_read IS NULL OR m.last_read < ${fiveMinutesAgo})
+        AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
         ORDER BY m.rowid ASC
       `.unprepared.pipe(
@@ -400,7 +400,8 @@ export const make = Effect.fnUntraced(function*(options?: {
         )
       }).pipe(
         Effect.provideService(SqlClient.SafeIntegers, true),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     saveReply: (reply) =>
@@ -415,18 +416,23 @@ export const make = Effect.fnUntraced(function*(options?: {
         )
       }).pipe(
         Effect.asVoid,
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     clearReplies: Effect.fnUntraced(
       function*(requestId) {
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)}`
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
+        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
+          String(requestId)
+        } AND kind = ${messageKindInterrupt}`
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
           String(requestId)
         }`
       },
       sql.withTransaction,
-      PersistenceError.refail
+      PersistenceError.refail,
+      withTracerDisabled
     ),
 
     requestIdForPrimaryKey: (primaryKey) =>
@@ -437,7 +443,8 @@ export const make = Effect.fnUntraced(function*(options?: {
           )
         ),
         Effect.provideService(SqlClient.SafeIntegers, true),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     repliesFor: (requestIds) =>
@@ -590,7 +597,6 @@ export const layer: Layer.Layer<
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-  readonly replyPollInterval?: DurationInput | undefined
 }): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig> =>
   Layer.scoped(MessageStorage.MessageStorage, make(options)).pipe(
     Layer.provide(Snowflake.layerGenerator)
@@ -638,8 +644,7 @@ const migrations = (options?: {
               last_reply_id BIGINT,
               last_read DATETIME,
               deliver_at BIGINT,
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `,
         mysql: () =>
@@ -665,8 +670,7 @@ const migrations = (options?: {
               last_read DATETIME,
               deliver_at BIGINT,
               UNIQUE (id),
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `,
         pg: () =>
@@ -691,8 +695,7 @@ const migrations = (options?: {
               last_reply_id BIGINT,
               last_read TIMESTAMP,
               deliver_at BIGINT,
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `.pipe(Effect.ignore),
         orElse: () =>
@@ -717,8 +720,7 @@ const migrations = (options?: {
               last_reply_id INTEGER,
               last_read TEXT,
               deliver_at INTEGER,
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `
       })
@@ -790,8 +792,7 @@ const migrations = (options?: {
               sequence INT,
               acked BIT NOT NULL DEFAULT 0,
               CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence)
             )
           `,
         mysql: () =>
@@ -806,8 +807,7 @@ const migrations = (options?: {
               acked BOOLEAN NOT NULL DEFAULT FALSE,
               UNIQUE (id),
               UNIQUE (request_id, kind),
-              UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (request_id, sequence)
             )
           `,
         pg: () =>
@@ -821,8 +821,7 @@ const migrations = (options?: {
               sequence INT,
               acked BOOLEAN NOT NULL DEFAULT FALSE,
               UNIQUE (request_id, kind),
-              UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (request_id, sequence)
             )
           `,
         orElse: () =>
@@ -836,8 +835,7 @@ const migrations = (options?: {
               sequence INTEGER,
               acked BOOLEAN NOT NULL DEFAULT FALSE,
               UNIQUE (request_id, kind),
-              UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (request_id, sequence)
             )
           `
       })

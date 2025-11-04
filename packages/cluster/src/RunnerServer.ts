@@ -3,20 +3,22 @@
  */
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Effect from "effect/Effect"
+import type * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import { constant } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
-import * as ClusterError from "./ClusterError.js"
+import * as Runtime from "effect/Runtime"
+import type * as ClusterError from "./ClusterError.js"
 import * as Message from "./Message.js"
 import * as MessageStorage from "./MessageStorage.js"
 import * as Reply from "./Reply.js"
+import * as RunnerHealth from "./RunnerHealth.js"
 import * as Runners from "./Runners.js"
+import type * as RunnerStorage from "./RunnerStorage.js"
 import * as Sharding from "./Sharding.js"
 import { ShardingConfig } from "./ShardingConfig.js"
-import * as ShardManager from "./ShardManager.js"
-import * as ShardStorage from "./ShardStorage.js"
-import * as SynchronizedClock from "./SynchronizedClock.js"
 
 const constVoid = constant(Effect.void)
 
@@ -41,41 +43,60 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
           : new Message.IncomingEnvelope({ envelope })
       ),
     Effect: ({ persisted, request }) => {
-      let resume: (reply: Effect.Effect<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>) => void
-      let replyEncoded: Reply.ReplyEncoded<any> | undefined
+      let replyEncoded:
+        | Effect.Effect<
+          Reply.ReplyEncoded<any>,
+          ClusterError.EntityNotAssignedToRunner
+        >
+        | undefined = undefined
+      let resume = (reply: Effect.Effect<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>) => {
+        replyEncoded = reply
+      }
       const message = new Message.IncomingRequest({
         envelope: request,
         lastSentReply: Option.none(),
         respond(reply) {
-          return Effect.flatMap(Reply.serialize(reply), (reply) => {
-            if (resume) {
-              resume(Effect.succeed(reply))
-            } else {
-              replyEncoded = reply
-            }
-            return Effect.void
-          })
+          resume(Effect.orDie(Reply.serialize(reply)))
+          return Effect.void
         }
       })
+      if (persisted) {
+        return Effect.async<
+          Reply.ReplyEncoded<any>,
+          ClusterError.EntityNotAssignedToRunner
+        >((resume_) => {
+          resume = resume_
+          const parent = Option.getOrThrow(Fiber.getCurrentFiber())
+          const runtime = Runtime.make({
+            context: parent.currentContext,
+            runtimeFlags: Runtime.defaultRuntimeFlags,
+            fiberRefs: parent.getFiberRefs()
+          })
+          const onExit = (
+            exit: Exit.Exit<
+              any,
+              ClusterError.EntityNotAssignedToRunner
+            >
+          ) => {
+            if (exit._tag === "Failure") {
+              resume(exit as any)
+            }
+          }
+          const fiber = Runtime.runFork(runtime)(storage.registerReplyHandler(message))
+          fiber.addObserver(onExit)
+          Runtime.runFork(runtime)(Effect.catchTag(
+            sharding.notify(message, constWaitUntilRead),
+            "AlreadyProcessingMessage",
+            () => Effect.void
+          )).addObserver(onExit)
+          return Fiber.interrupt(fiber)
+        })
+      }
       return Effect.zipRight(
-        persisted ?
-          Effect.zipRight(
-            storage.registerReplyHandler(
-              message,
-              Effect.sync(() =>
-                resume(Effect.fail(
-                  new ClusterError.EntityNotAssignedToRunner({
-                    address: request.address
-                  })
-                ))
-              )
-            ),
-            sharding.notify(message)
-          ) :
-          sharding.send(message),
+        sharding.send(message),
         Effect.async<Reply.ReplyEncoded<any>, ClusterError.EntityNotAssignedToRunner>((resume_) => {
           if (replyEncoded) {
-            resume_(Effect.succeed(replyEncoded))
+            resume_(replyEncoded)
           } else {
             resume = resume_
           }
@@ -99,17 +120,12 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
           return Effect.as(
             persisted ?
               Effect.zipRight(
-                storage.registerReplyHandler(
-                  message,
-                  Effect.suspend(() =>
-                    mailbox.fail(
-                      new ClusterError.EntityNotAssignedToRunner({
-                        address: request.address
-                      })
-                    )
-                  )
+                storage.registerReplyHandler(message).pipe(
+                  Effect.onError((cause) => mailbox.failCause(cause)),
+                  Effect.forkScoped,
+                  Effect.interruptible
                 ),
-                sharding.notify(message)
+                sharding.notify(message, constWaitUntilRead)
               ) :
               sharding.send(message),
             mailbox
@@ -119,6 +135,8 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
     Envelope: ({ envelope }) => sharding.send(new Message.IncomingEnvelope({ envelope }))
   }
 }))
+
+const constWaitUntilRead = { waitUntilRead: true } as const
 
 /**
  * The `RunnerServer` recieves messages from other Runners and forwards them to the
@@ -151,18 +169,17 @@ export const layerWithClients: Layer.Layer<
   | ShardingConfig
   | Runners.RpcClientProtocol
   | MessageStorage.MessageStorage
-  | ShardStorage.ShardStorage
+  | RunnerStorage.RunnerStorage
+  | RunnerHealth.RunnerHealth
 > = layer.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provideMerge(Runners.layerRpc),
-  Layer.provideMerge(SynchronizedClock.layer),
-  Layer.provide(ShardManager.layerClientRpc)
+  Layer.provideMerge(Runners.layerRpc)
 )
 
 /**
  * A `Runners` layer that is client only.
  *
- * It will not register with the ShardManager and recieve shard assignments,
+ * It will not register with RunnerStorage and recieve shard assignments,
  * so this layer can be used to embed a cluster client inside another effect
  * application.
  *
@@ -175,10 +192,10 @@ export const layerClientOnly: Layer.Layer<
   | ShardingConfig
   | Runners.RpcClientProtocol
   | MessageStorage.MessageStorage
+  | RunnerStorage.RunnerStorage
 > = Sharding.layer.pipe(
   Layer.provideMerge(Runners.layerRpc),
-  Layer.provide(ShardManager.layerClientRpc),
-  Layer.provide(ShardStorage.layerNoop),
+  Layer.provide(RunnerHealth.layerNoop),
   Layer.updateService(ShardingConfig, (config) => ({
     ...config,
     runnerAddress: Option.none()

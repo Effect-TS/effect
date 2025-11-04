@@ -377,6 +377,12 @@ export * as Hash from "./Hash.js"
 export * as HashMap from "./HashMap.js"
 
 /**
+ * @since 3.19.0
+ * @experimental
+ */
+export * as HashRing from "./HashRing.js"
+
+/**
  * # HashSet
  *
  * An immutable `HashSet` provides a collection of unique values with efficient

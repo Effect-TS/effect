@@ -24,12 +24,7 @@ import * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
 import { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type {
-  AlreadyProcessingMessage,
-  EntityNotManagedByRunner,
-  MailboxFull,
-  PersistenceError
-} from "./ClusterError.js"
+import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
 import { ShardGroup } from "./ClusterSchema.js"
 import { EntityAddress } from "./EntityAddress.js"
 import type { EntityId } from "./EntityId.js"
@@ -114,7 +109,7 @@ export interface Entity<
       entityId: string
     ) => RpcClient.RpcClient.From<
       Rpcs,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
+      MailboxFull | AlreadyProcessingMessage | PersistenceError
     >,
     never,
     Sharding

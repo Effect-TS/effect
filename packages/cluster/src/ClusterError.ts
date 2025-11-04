@@ -46,30 +46,6 @@ export class EntityNotAssignedToRunner extends Schema.TaggedError<EntityNotAssig
 }
 
 /**
- * Represents an error that occurs when a Runner receives a message for an entity
- * that it is not responsible for managing.
- *
- * @since 1.0.0
- * @category errors
- */
-export class EntityNotManagedByRunner extends Schema.TaggedError<EntityNotManagedByRunner>()(
-  "EntityNotManagedByRunner",
-  { address: EntityAddress }
-) {
-  /**
-   * @since 1.0.0
-   */
-  readonly [TypeId] = TypeId
-
-  /**
-   * @since 1.0.0
-   */
-  static is(u: unknown): u is EntityNotManagedByRunner {
-    return hasProperty(u, TypeId) && isTagged(u, "EntityNotManagedByRunner")
-  }
-}
-
-/**
  * Represents an error that occurs when a message fails to be properly
  * deserialized by an entity.
  *

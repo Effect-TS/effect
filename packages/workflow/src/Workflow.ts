@@ -335,7 +335,11 @@ export const make = <
           parent: Option.getOrUndefined(parentInstance)
         })
         if (Option.isSome(parentInstance)) {
-          result = yield* wrapActivityResult(run, (result) => result._tag === "Suspended")
+          result = yield* run
+          if (result._tag === "Suspended") {
+            yield* engine.resume(self, executionId)
+            result = yield* wrapActivityResult(run, (result) => result._tag === "Suspended")
+          }
           if (result._tag === "Suspended") {
             return yield* suspend(parentInstance.value)
           }
@@ -565,31 +569,31 @@ export const intoResult = <A, E, R>(
     const instance = Context.get(context, InstanceTag)
     const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
     const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
-    return Effect.uninterruptibleMask((restore) =>
-      restore(effect).pipe(
-        // So we can use external interruption to suspend a workflow
-        Effect.fork,
-        Effect.flatMap((fiber) => Effect.onInterrupt(Fiber.join(fiber), () => Fiber.interrupt(fiber))),
-        suspendOnFailure ?
-          Effect.catchAllCause((cause) => {
-            instance.suspended = true
-            if (!Cause.isInterruptedOnly(cause)) {
-              instance.cause = Cause.die(Cause.squash(cause))
-            }
-            return Effect.interrupt
-          }) :
-          identity,
-        Effect.scoped,
-        Effect.matchCauseEffect({
-          onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
-          onFailure: (cause): Effect.Effect<Result<A, E>> =>
-            instance.suspended
-              ? Effect.succeed(new Suspended({ cause: instance.cause }))
-              : (!instance.interrupted && Cause.isInterruptedOnly(cause)) || (!captureDefects && Cause.isDie(cause))
-              ? Effect.failCause(cause as Cause.Cause<never>)
-              : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
-        })
-      )
+    return effect.pipe(
+      // So we can use external interruption to suspend a workflow
+      Effect.fork,
+      Effect.flatMap((fiber) => Effect.onInterrupt(Fiber.join(fiber), () => Fiber.interrupt(fiber))),
+      Effect.interruptible,
+      suspendOnFailure ?
+        Effect.catchAllCause((cause) => {
+          instance.suspended = true
+          if (!Cause.isInterruptedOnly(cause)) {
+            instance.cause = Cause.die(Cause.squash(cause))
+          }
+          return Effect.interrupt
+        }) :
+        identity,
+      Effect.scoped,
+      Effect.matchCauseEffect({
+        onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
+        onFailure: (cause): Effect.Effect<Result<A, E>> =>
+          instance.suspended
+            ? Effect.succeed(new Suspended({ cause: instance.cause }))
+            : (!instance.interrupted && Cause.isInterruptedOnly(cause)) || (!captureDefects && Cause.isDie(cause))
+            ? Effect.failCause(cause as Cause.Cause<never>)
+            : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
+      }),
+      Effect.uninterruptible
     )
   })
 

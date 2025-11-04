@@ -1,17 +1,11 @@
-import {
-  ClusterWorkflowEngine,
-  MessageStorage,
-  Runners,
-  Sharding,
-  ShardingConfig,
-  ShardManager,
-  ShardStorage
-} from "@effect/cluster"
+import { ClusterWorkflowEngine, MessageStorage, Runners, Sharding, ShardingConfig } from "@effect/cluster"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Activity, DurableClock, DurableDeferred, Workflow } from "@effect/workflow"
 import { WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 import * as Cause from "effect/Cause"
+import * as RunnerHealth from "../src/RunnerHealth.js"
+import * as RunnerStorage from "../src/RunnerStorage.js"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
   it.effect("should run a workflow", () =>
@@ -205,6 +199,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         id: "123"
       }).pipe(Effect.fork)
       yield* TestClock.adjust(1)
+      yield* TestClock.adjust(5000)
 
       assert.isUndefined(flags.get("parent-end"))
       assert.isUndefined(flags.get("child-end"))
@@ -235,6 +230,20 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("suspended"))
       assert.include(flags.get("cause"), "boom")
     }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("catchAllCause activity", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* CatchWorkflow.execute({
+        id: ""
+      }).pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+      yield* Fiber.join(fiber)
+
+      assert.isTrue(flags.get("catch"))
+    }).pipe(Effect.provide(TestWorkflowLayer)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({
@@ -247,10 +256,10 @@ const TestShardingConfig = ShardingConfig.layer({
 
 const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
   Layer.provideMerge(Sharding.layer),
-  Layer.provide(ShardManager.layerClientLocal),
-  Layer.provide(ShardStorage.layerMemory),
   Layer.provide(Runners.layerNoop),
   Layer.provideMerge(MessageStorage.layerMemory),
+  Layer.provide(RunnerStorage.layerMemory),
+  Layer.provide(RunnerHealth.layerNoop),
   Layer.provide(TestShardingConfig)
 )
 
@@ -509,12 +518,41 @@ const SuspendOnFailureWorkflowLayer = SuspendOnFailureWorkflow.toLayer(Effect.fn
   })
 }))
 
+const CatchWorkflow = Workflow.make({
+  name: "CatchWorkflow",
+  payload: {
+    id: Schema.String
+  },
+  idempotencyKey(payload) {
+    return payload.id
+  }
+})
+
+const CatchWorkflowLayer = CatchWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  yield* Activity.make({
+    name: "fail",
+    execute: Effect.die("boom")
+  }).pipe(
+    Effect.catchAllCause((cause) =>
+      Activity.make({
+        name: "log",
+        execute: Effect.suspend(() => {
+          flags.set("catch", true)
+          return Effect.log(cause)
+        })
+      })
+    )
+  )
+}))
+
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(SuspendOnFailureWorkflowLayer),
+  Layer.merge(CatchWorkflowLayer),
   Layer.provideMerge(Flags.Default),
   Layer.provideMerge(TestWorkflowEngine)
 )

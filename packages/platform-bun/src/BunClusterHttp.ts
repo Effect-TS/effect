@@ -3,12 +3,13 @@
  */
 import * as HttpRunner from "@effect/cluster/HttpRunner"
 import * as MessageStorage from "@effect/cluster/MessageStorage"
-import type * as Runners from "@effect/cluster/Runners"
+import * as RunnerHealth from "@effect/cluster/RunnerHealth"
+import * as Runners from "@effect/cluster/Runners"
+import * as RunnerStorage from "@effect/cluster/RunnerStorage"
 import type { Sharding } from "@effect/cluster/Sharding"
 import * as ShardingConfig from "@effect/cluster/ShardingConfig"
-import * as ShardStorage from "@effect/cluster/ShardStorage"
 import * as SqlMessageStorage from "@effect/cluster/SqlMessageStorage"
-import * as SqlShardStorage from "@effect/cluster/SqlShardStorage"
+import * as SqlRunnerStorage from "@effect/cluster/SqlRunnerStorage"
 import type * as Etag from "@effect/platform/Etag"
 import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
 import type { HttpPlatform } from "@effect/platform/HttpPlatform"
@@ -16,7 +17,6 @@ import type { HttpServer } from "@effect/platform/HttpServer"
 import type { ServeError } from "@effect/platform/HttpServerError"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
 import type { SqlClient } from "@effect/sql/SqlClient"
-import type { SqlError } from "@effect/sql/SqlError"
 import type { ConfigError } from "effect/ConfigError"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
@@ -38,11 +38,9 @@ export const layerHttpServer: Layer.Layer<
   ShardingConfig.ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig.ShardingConfig
-  const listenAddress = config.runnerListenAddress.pipe(
-    Option.orElse(() => config.runnerAddress)
-  )
-  if (Option.isNone(listenAddress)) {
-    return yield* Effect.dieMessage("BunClusterHttpRunners.layerHttpServer: ShardingConfig.runnerAddress is None")
+  const listenAddress = Option.orElse(config.runnerListenAddress, () => config.runnerAddress)
+  if (listenAddress._tag === "None") {
+    return yield* Effect.die("BunClusterHttp.layerHttpServer: ShardingConfig.runnerAddress is None")
   }
   return BunHttpServer.layer(listenAddress.value)
 }).pipe(Layer.unwrapEffect)
@@ -53,7 +51,7 @@ export const layerHttpServer: Layer.Layer<
  */
 export const layer = <
   const ClientOnly extends boolean = false,
-  const Storage extends "noop" | "sql" = never
+  const Storage extends "local" | "sql" | "byo" = never
 >(options: {
   readonly transport: "http" | "websocket"
   readonly serialization?: "msgpack" | "ndjson" | undefined
@@ -61,14 +59,18 @@ export const layer = <
   readonly storage?: Storage | undefined
   readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
 }): ClientOnly extends true ? Layer.Layer<
-    Sharding | Runners.Runners | MessageStorage.MessageStorage,
-    ConfigError | ("sql" extends Storage ? SqlError : never),
-    "sql" extends Storage ? SqlClient : never
+    Sharding | Runners.Runners | ("byo" extends Storage ? never : MessageStorage.MessageStorage),
+    ConfigError,
+    "local" extends Storage ? never
+      : "byo" extends Storage ? (MessageStorage.MessageStorage | RunnerStorage.RunnerStorage)
+      : SqlClient
   > :
   Layer.Layer<
     Sharding | Runners.Runners | MessageStorage.MessageStorage,
-    ServeError | ConfigError | ("sql" extends Storage ? SqlError : never),
-    "sql" extends Storage ? SqlClient : never
+    ServeError | ConfigError,
+    "local" extends Storage ? never
+      : "byo" extends Storage ? (MessageStorage.MessageStorage | RunnerStorage.RunnerStorage)
+      : SqlClient
   > =>
 {
   const layer: Layer.Layer<any, any, any> = options.clientOnly
@@ -81,16 +83,37 @@ export const layer = <
     ? Layer.provide(HttpRunner.layerHttp, [layerHttpServer, FetchHttpClient.layer])
     : Layer.provide(HttpRunner.layerWebsocket, [layerHttpServer, BunSocket.layerWebSocketConstructor])
 
+  const runnerHealth: Layer.Layer<any, any, any> = options?.clientOnly
+    ? Layer.empty as any
+    // TODO: when bun supports adding custom CA certificates
+    // : options?.runnerHealth === "k8s"
+    // ? RunnerHealth.layerK8s().pipe(
+    //   Layer.provide([NodeFileSystem.layer, layerHttpClientK8s])
+    // )
+    : RunnerHealth.layerPing.pipe(
+      Layer.provide(Runners.layerRpc),
+      Layer.provide(
+        options.transport === "http"
+          ? HttpRunner.layerClientProtocolHttpDefault.pipe(Layer.provide(FetchHttpClient.layer))
+          : HttpRunner.layerClientProtocolWebsocketDefault.pipe(Layer.provide(BunSocket.layerWebSocketConstructor))
+      )
+    )
+
   return layer.pipe(
+    Layer.provide(runnerHealth),
     Layer.provideMerge(
-      options?.storage === "sql" ?
-        SqlMessageStorage.layer
-        : MessageStorage.layerNoop
+      options?.storage === "local"
+        ? MessageStorage.layerNoop
+        : options?.storage === "byo"
+        ? Layer.empty
+        : Layer.orDie(SqlMessageStorage.layer)
     ),
     Layer.provide(
-      options?.storage === "sql"
-        ? options.clientOnly ? Layer.empty : SqlShardStorage.layer
-        : ShardStorage.layerNoop
+      options?.storage === "local"
+        ? RunnerStorage.layerMemory
+        : options?.storage === "byo"
+        ? Layer.empty
+        : Layer.orDie(SqlRunnerStorage.layer)
     ),
     Layer.provide(ShardingConfig.layerFromEnv(options?.shardingConfig)),
     Layer.provide(
