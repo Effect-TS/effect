@@ -376,6 +376,7 @@ export const toWeb = (self: ServerRequest.HttpServerRequest): globalThis.Request
   // Check if the request is a ServerRequestImpl wrapping a global Request
   if (
     typeof globalThis.Request !== "undefined" &&
+    self.source != null &&
     self.source instanceof globalThis.Request
   ) {
     return self.source
@@ -394,7 +395,9 @@ export const toWeb = (self: ServerRequest.HttpServerRequest): globalThis.Request
   // Prepare RequestInit options
   const init: RequestInit = {
     method: self.method,
-    headers: self.headers as any
+    // Headers type in platform is ReadonlyRecord<string, string | undefined>
+    // which is compatible with HeadersInit
+    headers: self.headers as HeadersInit
     // Body is intentionally omitted for non-wrapping implementations
     // to keep this synchronous and simple
   }
