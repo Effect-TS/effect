@@ -245,7 +245,12 @@ export const make = Effect.gen(function*() {
       const engine = this
       return Effect.suspend(() => {
         if (entities.has(workflow.name)) {
-          return Effect.dieMessage(`Workflow ${workflow.name} already registered`)
+          return Effect.logWarning(`Workflow ${workflow.name} already registered`).pipe(
+            Effect.annotateLogs({
+              package: "@effect/cluster",
+              module: "ClusterWorkflowEngine"
+            })
+          )
         }
         return sharding.registerEntity(
           ensureEntity(workflow),
