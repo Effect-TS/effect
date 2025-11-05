@@ -310,10 +310,10 @@ export const make = Effect.gen(function*() {
                   Workflow.intoResult,
                   Effect.catchAllCause((cause) => {
                     const interruptors = Cause.interruptors(cause)
-                    // we only want to store explicit interrupts
+                    // we only want to store interrupts as suspends when the
+                    // client requested it
                     const ids = Array.from(interruptors, (id) => Array.from(FiberId.ids(id))).flat()
-                    const suspend = ids.includes(RpcServer.fiberIdClientInterrupt.id) ||
-                      ids.includes(RpcServer.fiberIdTransientInterrupt.id)
+                    const suspend = ids.includes(RpcServer.fiberIdClientInterrupt.id)
                     return suspend ? Effect.succeed(new Workflow.Suspended()) : Effect.failCause(cause)
                   }),
                   Effect.provideService(WorkflowInstance, instance),
