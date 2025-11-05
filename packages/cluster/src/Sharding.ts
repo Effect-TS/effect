@@ -122,7 +122,10 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   ) => Effect.Effect<
     void,
     never,
-    Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | Exclude<RX, Scope.Scope | CurrentAddress | CurrentRunnerAddress>
+    | Scope.Scope
+    | Rpc.Context<Rpcs>
+    | Rpc.Middleware<Rpcs>
+    | Exclude<RX, Scope.Scope | CurrentAddress | CurrentRunnerAddress>
   >
 
   /**
@@ -134,7 +137,7 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
     options?: {
       readonly shardGroup?: string | undefined
     }
-  ) => Effect.Effect<void, never, Exclude<R, Scope.Scope>>
+  ) => Effect.Effect<void, never, R | Scope.Scope>
 
   /**
    * Sends a message to the specified entity.
@@ -187,9 +190,8 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
 
 interface EntityManagerState {
   readonly entity: Entity<any, any>
-  readonly scope: Scope.CloseableScope
   readonly manager: EntityManager.EntityManager
-  closed: boolean
+  status: "alive" | "closing" | "closed"
 }
 
 const make = Effect.gen(function*() {
@@ -436,17 +438,19 @@ const make = Effect.gen(function*() {
             // reset address in the case that the entity is slow to register
             MutableHashSet.add(resetAddresses, address)
             return Effect.void
-          } else if (state.closed) {
+          } else if (state.status === "closed") {
             return Effect.void
           }
 
           const isProcessing = state.manager.isProcessingFor(message)
 
-          // If the message might affect a currently processing request, we
-          // send it to the entity manager to be processed.
           if (message._tag === "IncomingEnvelope" && isProcessing) {
+            // If the message might affect a currently processing request, we
+            // send it to the entity manager to be processed.
             return state.manager.send(message)
-          } else if (isProcessing) {
+          } else if (isProcessing || state.status === "closing") {
+            // If the request is already processing, we skip it.
+            // Or if the entity is closing, we skip all incoming messages.
             return Effect.void
           } else if (message._tag === "IncomingRequest" && pendingNotifications.has(message.envelope.requestId)) {
             const entry = pendingNotifications.get(message.envelope.requestId)!
@@ -691,7 +695,7 @@ const make = Effect.gen(function*() {
       const state = entityManagers.get(address.entityType)
       if (!state) {
         return Effect.flatMap(waitForEntityManager(address.entityType), loop)
-      } else if (state.closed || (isShutdown.current && message._tag === "IncomingRequest")) {
+      } else if (state.status === "closed" || (state.status === "closing" && message._tag === "IncomingRequest")) {
         // if we are shutting down, we don't accept new requests
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
@@ -727,7 +731,7 @@ const make = Effect.gen(function*() {
       const state = entityManagers.get(address.entityType)
       if (!state) {
         return Effect.flatMap(waitForEntityManager(address.entityType), loop)
-      } else if (state.closed || !isEntityOnLocalShards(address)) {
+      } else if (state.status === "closed" || !isEntityOnLocalShards(address)) {
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
 
@@ -1180,6 +1184,12 @@ const make = Effect.gen(function*() {
         yield* Effect.logDebug("Starting singleton", address)
         yield* FiberMap.run(singletonFibers, address, wrappedRun)
       }
+
+      yield* Effect.addFinalizer(() => {
+        const map = singletons.get(address.shardId)!
+        MutableHashMap.remove(map, address)
+        return FiberMap.remove(singletonFibers, address)
+      })
     },
     withSingletonLock
   )
@@ -1214,11 +1224,11 @@ const make = Effect.gen(function*() {
   const registerEntity: Sharding["Type"]["registerEntity"] = Effect.fnUntraced(
     function*(entity, build, options) {
       if (Option.isNone(config.runnerAddress) || entityManagers.has(entity.type)) return
-      const scope = yield* Scope.make()
+      const scope = yield* Effect.scope
       yield* Scope.addFinalizer(
         scope,
         Effect.sync(() => {
-          state.closed = true
+          state.status = "closed"
         })
       )
       const manager = yield* EntityManager.make(entity, build, {
@@ -1235,10 +1245,17 @@ const make = Effect.gen(function*() {
       ) as Effect.Effect<EntityManager.EntityManager>
       const state: EntityManagerState = {
         entity,
-        scope,
-        closed: false,
+        status: "alive",
         manager
       }
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.fiberIdWith((id) => {
+          state.status = "closing"
+          internalInterruptors.add(id)
+          return Effect.void
+        })
+      )
 
       // register entities while storage is idle
       // this ensures message order is preserved
@@ -1252,20 +1269,6 @@ const make = Effect.gen(function*() {
 
       yield* PubSub.publish(events, EntityRegistered({ entity }))
     }
-  )
-
-  yield* Scope.addFinalizerExit(
-    shardingScope,
-    (exit) =>
-      Effect.forEach(
-        entityManagers.values(),
-        (state) =>
-          Effect.catchAllCause(Scope.close(state.scope, exit), (cause) =>
-            Effect.annotateLogs(Effect.logError("Error closing entity manager", cause), {
-              entity: state.entity.type
-            })),
-        { concurrency: "unbounded", discard: true }
-      )
   )
 
   const waitForEntityManager = (entityType: string) => {
