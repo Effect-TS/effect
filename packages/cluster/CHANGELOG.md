@@ -1,5 +1,20 @@
 # @effect/cluster
 
+## 0.52.0
+
+### Patch Changes
+
+- [#5684](https://github.com/Effect-TS/effect/pull/5684) [`15100f6`](https://github.com/Effect-TS/effect/commit/15100f6ed1ae554c295fb8034623e942dcdc6a72) Thanks @tim-smart! - retry interrupted workflow activities
+
+- [#5689](https://github.com/Effect-TS/effect/pull/5689) [`0d77928`](https://github.com/Effect-TS/effect/commit/0d779286eec84e679b55e0dbcd7d0dd981c28f18) Thanks @tim-smart! - only store client interrupts as suspends
+
+- [#5691](https://github.com/Effect-TS/effect/pull/5691) [`c2133fa`](https://github.com/Effect-TS/effect/commit/c2133fad3a5c3f73c0e0920be779390d24aa253f) Thanks @tim-smart! - prevent interrupt suspends from propagating
+
+- Updated dependencies [[`15100f6`](https://github.com/Effect-TS/effect/commit/15100f6ed1ae554c295fb8034623e942dcdc6a72), [`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313), [`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452)]:
+  - @effect/workflow@0.12.1
+  - @effect/sql@0.48.0
+  - @effect/rpc@0.72.1
+
 ## 0.51.0
 
 ### Minor Changes
