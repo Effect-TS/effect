@@ -169,7 +169,11 @@ export const make = (
             if (err) {
               resume(Effect.fail(new SqlError({ cause: err, message: "Failed to execute statement" })))
             } else {
-              resume(Effect.succeed(result.rows))
+              // Multi-statement queries return an array of results
+              const rows = Array.isArray(result)
+                ? result.flatMap((r) => r.rows ?? [])
+                : result.rows ?? []
+              resume(Effect.succeed(rows))
             }
           })
         })

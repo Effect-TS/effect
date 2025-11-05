@@ -1,4 +1,5 @@
 import { PgClient } from "@effect/sql-pg"
+import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
 import { Effect, String } from "effect"
@@ -251,5 +252,23 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       const [query, params] = sql`INSERT INTO people ${sql.insert({ first_name: "Tim", age: 10 })}`.compile()
       expect(query).toEqual(`INSERT INTO people ("first_name","age") VALUES ($1,$2)`)
       expect(params).toEqual(["Tim", 10])
+    }))
+
+  it.effect("multi-statement queries", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+
+      yield* sql`CREATE TABLE test_multi (id TEXT PRIMARY KEY, name TEXT)`
+
+      const result = yield* sql<{ id: string; name: string }>`
+        INSERT INTO test_multi (id, name) VALUES ('id1', 'test1') RETURNING *;
+        INSERT INTO test_multi (id, name) VALUES ('id2', 'test2') RETURNING *;
+      `
+
+      expect(result).toHaveLength(2)
+      expect(result[0]).toEqual({ id: "id1", name: "test1" })
+      expect(result[1]).toEqual({ id: "id2", name: "test2" })
+
+      yield* sql`DROP TABLE test_multi`
     }))
 })
