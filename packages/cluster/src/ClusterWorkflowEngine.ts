@@ -26,6 +26,7 @@ import type * as Record from "effect/Record"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import * as ClusterSchema from "./ClusterSchema.js"
 import * as DeliverAt from "./DeliverAt.js"
 import * as Entity from "./Entity.js"
@@ -243,16 +244,8 @@ export const make = Effect.gen(function*() {
     register(workflow, execute) {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       const engine = this
-      return Effect.suspend(() => {
-        if (entities.has(workflow.name)) {
-          return Effect.logWarning(`Workflow ${workflow.name} already registered`).pipe(
-            Effect.annotateLogs({
-              package: "@effect/cluster",
-              module: "ClusterWorkflowEngine"
-            })
-          )
-        }
-        return sharding.registerEntity(
+      return Effect.suspend(() =>
+        sharding.registerEntity(
           ensureEntity(workflow),
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
@@ -347,8 +340,8 @@ export const make = Effect.gen(function*() {
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
           })
-        ) as Effect.Effect<void>
-      })
+        ) as Effect.Effect<void, never, Scope.Scope>
+      )
     },
 
     execute: ({ discard, executionId, parent, payload, workflow }) => {
@@ -429,14 +422,16 @@ export const make = Effect.gen(function*() {
         const instance = Context.get(context, WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
         const activityId = `${instance.executionId}/${activity.name}`
-        activities.set(activityId, { activity, runtime })
-        const latch = activityLatches.get(activityId)
-        if (latch) {
-          yield* latch.release
-          activityLatches.delete(activityId)
-        }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow.name))(instance.executionId)
         while (true) {
+          if (!activities.has(activityId)) {
+            activities.set(activityId, { activity, runtime })
+            const latch = activityLatches.get(activityId)
+            if (latch) {
+              yield* latch.release
+              activityLatches.delete(activityId)
+            }
+          }
           const result = yield* Effect.orDie(client.activity({ name: activity.name, attempt }))
           // If the activity has suspended and did not execute, we need to resume
           // it by resetting the attempt and re-executing.

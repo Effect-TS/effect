@@ -394,7 +394,7 @@ export const make = <
         })
     ),
     toLayer: (execute) =>
-      Layer.effectContext(Effect.gen(function*() {
+      Layer.scopedContext(Effect.gen(function*() {
         const context = yield* Effect.context<WorkflowEngine>()
         const engine = Context.get(context, EngineTag)
         yield* engine.register(self, (payload, executionId) =>

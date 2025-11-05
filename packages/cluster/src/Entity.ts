@@ -265,7 +265,7 @@ const Proto = {
           options
         )
       ),
-      Layer.effectDiscard
+      Layer.scopedDiscard
     )
   },
   of: identity,

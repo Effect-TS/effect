@@ -6,6 +6,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Option from "effect/Option"
 import type * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import type * as Activity from "./Activity.js"
 import type { DurableClock } from "./DurableClock.js"
 import type * as DurableDeferred from "./DurableDeferred.js"
@@ -27,7 +28,7 @@ export class WorkflowEngine extends Context.Tag("@effect/workflow/WorkflowEngine
         payload: object,
         executionId: string
       ) => Effect.Effect<unknown, unknown, WorkflowInstance | WorkflowEngine>
-    ) => Effect.Effect<void>
+    ) => Effect.Effect<void, never, Scope.Scope>
 
     /**
      * Execute a registered workflow.
