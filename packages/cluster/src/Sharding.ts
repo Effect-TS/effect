@@ -1323,18 +1323,22 @@ const make = Effect.gen(function*() {
 
   // --- Finalization ---
 
-  yield* Scope.addFinalizer(
-    shardingScope,
-    Effect.withFiberRuntime((fiber) => {
-      MutableRef.set(isShutdown, true)
-      internalInterruptors.add(fiber.id())
-      return selfRunner ? Effect.ignore(runnerStorage.unregister(selfRunner.address)) : Effect.void
-    })
-  )
-
   yield* Scope.addFinalizerExit(
     shardingScope,
-    (exit) => Effect.logDebug("Shutting down sharding", exit._tag === "Success" ? {} : exit.cause)
+    Effect.fnUntraced(function*(exit) {
+      yield* Effect.logDebug("Shutting down", exit._tag === "Success" ? {} : exit.cause).pipe(
+        Effect.annotateLogs({
+          package: "@effect/cluster",
+          module: "Sharding"
+        })
+      )
+      const fiberId = yield* Effect.fiberId
+      MutableRef.set(isShutdown, true)
+      internalInterruptors.add(fiberId)
+      if (selfRunner) {
+        yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
+      }
+    })
   )
 
   const activeEntityCount = Effect.gen(function*() {
