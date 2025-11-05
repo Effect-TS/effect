@@ -12,7 +12,8 @@ const users = D.pgTable("users", {
   id: D.serial("id").primaryKey(),
   name: D.text("name").notNull(),
   snakeCase: D.text("snake_case").notNull(),
-  jsonData: D.jsonb("json_data")
+  jsonData: D.jsonb("json_data"),
+  jsonArray: D.jsonb("json_array").$type<Array<string>>()
 })
 
 class ORM extends Effect.Service<ORM>()("ORM", { effect: Pg.make({ schema: { users } }) }) {
@@ -25,10 +26,10 @@ describe.sequential("Pg", () => {
       const sql = yield* SqlClient.SqlClient
       const db = yield* Pg.PgDrizzle
 
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB, json_array JSONB)`
       yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
       const results = yield* db.select().from(users)
-      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice", jsonData: null }])
+      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice", jsonData: null, jsonArray: null }])
     }).pipe(
       Effect.provide(DrizzlePgLive),
       Effect.catchTag("ContainerError", () => Effect.void)
@@ -41,10 +42,10 @@ describe.sequential("Pg", () => {
       const sql = yield* SqlClient.SqlClient
       const db = yield* ORM
 
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB, json_array JSONB)`
       yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
       const results = yield* db.query.users.findMany()
-      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice", jsonData: null }])
+      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice", jsonData: null, jsonArray: null }])
     }).pipe(
       Effect.provide(ORM.Client),
       Effect.catchTag("ContainerError", () => Effect.void)
@@ -56,10 +57,10 @@ describe.sequential("Pg", () => {
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const db = yield* Pg.PgDrizzle
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB, json_array JSONB)`
       yield* Effect.promise(() => db.insert(users).values({ name: "Alice", snakeCase: "snake" }))
       const results = yield* Effect.promise(() => db.select().from(users))
-      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake", jsonData: null }])
+      assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake", jsonData: null, jsonArray: null }])
     }).pipe(
       Effect.provide(DrizzlePgLive),
       Effect.catchTag("ContainerError", () => Effect.void)
@@ -77,7 +78,7 @@ describe.sequential("Pg", () => {
       const sql = yield* SqlClient.SqlClient
       const db = yield* Pg.PgDrizzle
 
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, snake_case TEXT NOT NULL, json_data JSONB)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, snake_case TEXT NOT NULL, json_data JSONB, json_array JSONB)`
       yield* db.insert(users).values({ name: "Alice", snakeCase: "test" })
       yield* Effect.flip(
         db.insert(users).values({ name: "Alice", snakeCase: "test" })
@@ -98,18 +99,20 @@ describe.sequential("Pg", () => {
       const sql = yield* SqlClient.SqlClient
       const db = yield* Pg.PgDrizzle
 
-      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB)`
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL, json_data JSONB, json_array JSONB)`
       yield* db.insert(users).values({
         name: "Bob",
         snakeCase: "bob",
-        jsonData: { age: 30, hobbies: ["reading", "gaming"] }
+        jsonData: { age: 30, hobbies: ["reading", "gaming"] },
+        jsonArray: ["reading", "gaming"]
       })
       const results = yield* db.select().from(users)
       assert.deepStrictEqual(results, [{
         id: 1,
         name: "Bob",
         snakeCase: "bob",
-        jsonData: { age: 30, hobbies: ["reading", "gaming"] }
+        jsonData: { age: 30, hobbies: ["reading", "gaming"] },
+        jsonArray: ["reading", "gaming"]
       }])
     }).pipe(
       Effect.provide(DrizzlePgLive),
