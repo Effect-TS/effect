@@ -44,5 +44,6 @@
   "editor.suggestSelection": "recentlyUsed",
   "editor.wordBasedSuggestions": "matchingDocuments",
   "editor.parameterHints.enabled": true,
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "python.defaultInterpreterPath": "/home/nikel/.local/share/mise/installs/python/3.14.0/bin/python"
 }
