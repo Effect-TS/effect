@@ -423,12 +423,6 @@ const make = Effect.gen(function*() {
       const send = Effect.catchAllCause(
         Effect.suspend(() => {
           const message = messages[index]
-          // if we are shutting down, we don't accept new requests
-          if (message._tag === "IncomingRequest" && isShutdown.current) {
-            if (isShutdown.current) {
-              return Effect.void
-            }
-          }
           const address = message.envelope.address
           if (!MutableHashSet.has(acquiredShards, address.shardId)) {
             return Effect.void

@@ -422,14 +422,16 @@ export const make = Effect.gen(function*() {
         const instance = Context.get(context, WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
         const activityId = `${instance.executionId}/${activity.name}`
-        activities.set(activityId, { activity, runtime })
-        const latch = activityLatches.get(activityId)
-        if (latch) {
-          yield* latch.release
-          activityLatches.delete(activityId)
-        }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow.name))(instance.executionId)
         while (true) {
+          if (!activities.has(activityId)) {
+            activities.set(activityId, { activity, runtime })
+            const latch = activityLatches.get(activityId)
+            if (latch) {
+              yield* latch.release
+              activityLatches.delete(activityId)
+            }
+          }
           const result = yield* Effect.orDie(client.activity({ name: activity.name, attempt }))
           // If the activity has suspended and did not execute, we need to resume
           // it by resetting the attempt and re-executing.
