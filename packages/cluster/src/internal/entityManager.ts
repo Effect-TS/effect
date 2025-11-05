@@ -180,7 +180,7 @@ export const make = Effect.fnUntraced(function*<
                   Context.get(request.rpc.annotations, Persisted) &&
                   Exit.isFailure(response.exit) &&
                   Exit.isInterrupted(response.exit) &&
-                  (isShuttingDown || Context.get(request.rpc.annotations, Uninterruptible) ||
+                  (isShuttingDown || Uninterruptible.forServer(request.rpc.annotations) ||
                     isInterruptIgnore(response.exit.cause))
                 ) {
                   if (!isShuttingDown) {

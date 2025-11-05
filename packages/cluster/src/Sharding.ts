@@ -1035,7 +1035,7 @@ const make = Effect.gen(function*() {
             const entry = clientRequests.get(requestId)!
             if (!entry) return Effect.void
             clientRequests.delete(requestId)
-            if (Context.get(entry.rpc.annotations, Uninterruptible)) {
+            if (Uninterruptible.forClient(entry.rpc.annotations)) {
               return Effect.void
             }
             // for durable messages, we ignore interrupts on shutdown or as a
