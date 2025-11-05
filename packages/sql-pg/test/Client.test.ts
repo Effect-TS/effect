@@ -258,17 +258,15 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
 
-      yield* sql`CREATE TABLE test_multi (id TEXT PRIMARY KEY, name TEXT)`
-
       const result = yield* sql<{ id: string; name: string }>`
+        CREATE TABLE test_multi (id TEXT PRIMARY KEY, name TEXT);
         INSERT INTO test_multi (id, name) VALUES ('id1', 'test1') RETURNING *;
         INSERT INTO test_multi (id, name) VALUES ('id2', 'test2') RETURNING *;
       `
 
-      expect(result).toHaveLength(2)
-      expect(result[0]).toEqual([{ id: "id1", name: "test1" }])
-      expect(result[1]).toEqual([{ id: "id2", name: "test2" }])
-
-      yield* sql`DROP TABLE test_multi`
+      expect(result).toHaveLength(3)
+      expect(result[0]).toEqual([])
+      expect(result[1]).toEqual([{ id: "id1", name: "test1" }])
+      expect(result[2]).toEqual([{ id: "id2", name: "test2" }])
     }))
 })
