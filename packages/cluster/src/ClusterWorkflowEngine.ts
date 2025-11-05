@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as Rpc from "@effect/rpc/Rpc"
-import * as RpcServer from "@effect/rpc/RpcServer"
 import { DurableDeferred } from "@effect/workflow"
 import * as Activity from "@effect/workflow/Activity"
 import * as DurableClock from "@effect/workflow/DurableClock"
@@ -16,7 +15,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as FiberId from "effect/FiberId"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
@@ -308,14 +306,9 @@ export const make = Effect.gen(function*() {
                   )
                 }).pipe(
                   Workflow.intoResult,
-                  Effect.catchAllCause((cause) => {
-                    const interruptors = Cause.interruptors(cause)
-                    // we only want to store explicit interrupts
-                    const ids = Array.from(interruptors, (id) => Array.from(FiberId.ids(id))).flat()
-                    const suspend = ids.includes(RpcServer.fiberIdClientInterrupt.id) ||
-                      ids.includes(RpcServer.fiberIdTransientInterrupt.id)
-                    return suspend ? Effect.succeed(new Workflow.Suspended()) : Effect.failCause(cause)
-                  }),
+                  Effect.catchAllCause((cause) =>
+                    Cause.isInterrupted(cause) ? Effect.succeed(new Workflow.Suspended()) : Effect.failCause(cause)
+                  ),
                   Effect.provideService(WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, request.payload.attempt),
                   Effect.ensuring(Effect.sync(() => {
@@ -520,7 +513,9 @@ const ActivityRpc = Rpc.make("activity", {
     success: Schema.Unknown,
     error: Schema.Unknown
   })
-}).annotate(ClusterSchema.Persisted, true)
+})
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, "server")
 
 const payloadParentKey = "~@effect/workflow/parent" as const
 

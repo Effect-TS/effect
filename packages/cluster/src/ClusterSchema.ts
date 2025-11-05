@@ -19,9 +19,24 @@ export class Persisted extends Context.Reference<Persisted>()("@effect/cluster/C
  */
 export class Uninterruptible
   extends Context.Reference<Uninterruptible>()("@effect/cluster/ClusterSchema/Uninterruptible", {
-    defaultValue: constFalse
+    defaultValue: (): boolean | "client" | "server" => false
   })
-{}
+{
+  /**
+   * @since 1.0.0
+   */
+  static forServer(context: Context.Context<never>): boolean {
+    const value = Context.get(context, Uninterruptible)
+    return value === true || value === "server"
+  }
+  /**
+   * @since 1.0.0
+   */
+  static forClient(context: Context.Context<never>): boolean {
+    const value = Context.get(context, Uninterruptible)
+    return value === true || value === "client"
+  }
+}
 
 /**
  * @since 1.0.0

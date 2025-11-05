@@ -9,12 +9,9 @@ import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
-import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
-import * as Function from "effect/Function"
 import * as HashMap from "effect/HashMap"
-import * as HashSet from "effect/HashSet"
 import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
@@ -180,8 +177,7 @@ export const make = Effect.fnUntraced(function*<
                   Context.get(request.rpc.annotations, Persisted) &&
                   Exit.isFailure(response.exit) &&
                   Exit.isInterrupted(response.exit) &&
-                  (isShuttingDown || Context.get(request.rpc.annotations, Uninterruptible) ||
-                    isInterruptIgnore(response.exit.cause))
+                  (isShuttingDown || Uninterruptible.forServer(request.rpc.annotations))
                 ) {
                   if (!isShuttingDown) {
                     return server.write(0, {
@@ -587,17 +583,3 @@ const retryRespond = <A, E, R>(times: number, effect: Effect.Effect<A, E, R>): E
   times === 0 ?
     effect :
     Effect.catchAll(effect, () => Effect.delay(retryRespond(times - 1, effect), 200))
-
-const IsInterruptedIgnoreReducer: Cause.CauseReducer<unknown, unknown, boolean> = {
-  emptyCase: Function.constFalse,
-  failCase: Function.constFalse,
-  dieCase: Function.constFalse,
-  interruptCase: (_, fiberId) => HashSet.has(FiberId.ids(fiberId), -1),
-  sequentialCase: (_, left, right) => left || right,
-  parallelCase: (_, left, right) => left || right
-}
-
-const isInterruptIgnore: (self: Cause.Cause<unknown>) => boolean = Cause.reduceWithContext(
-  undefined,
-  IsInterruptedIgnoreReducer
-)
