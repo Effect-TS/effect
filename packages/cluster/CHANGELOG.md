@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.52.1
+
+### Patch Changes
+
+- [#5693](https://github.com/Effect-TS/effect/pull/5693) [`c7e572c`](https://github.com/Effect-TS/effect/commit/c7e572c3504ea9115df5fa1256d4791b03f33133) Thanks @tim-smart! - change workflow re-registration defect to a warning
+
 ## 0.52.0
 
 ### Patch Changes
