@@ -266,8 +266,8 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       `
 
       expect(result).toHaveLength(2)
-      expect(result[0]).toEqual({ id: "id1", name: "test1" })
-      expect(result[1]).toEqual({ id: "id2", name: "test2" })
+      expect(result[0]).toEqual([{ id: "id1", name: "test1" }])
+      expect(result[1]).toEqual([{ id: "id2", name: "test2" }])
 
       yield* sql`DROP TABLE test_multi`
     }))

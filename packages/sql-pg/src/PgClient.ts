@@ -171,7 +171,7 @@ export const make = (
             } else {
               // Multi-statement queries return an array of results
               const rows = Array.isArray(result)
-                ? result.flatMap((r) => r.rows ?? [])
+                ? result.map((r) => r.rows ?? [])
                 : result.rows ?? []
               resume(Effect.succeed(rows))
             }
