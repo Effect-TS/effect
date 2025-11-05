@@ -24,6 +24,7 @@ import type * as Types from "../Types.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
+import * as ExecutionStrategy from "./executionStrategy.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as circularManagedRuntime from "./managedRuntime/circular.js"
 import * as EffectOpCodes from "./opCodes/effect.js"
@@ -444,15 +445,17 @@ const makeBuilder = <RIn, E, ROut>(
       )
     }
     case "ZipWith": {
-      return core.sync(() => (memoMap: Layer.MemoMap) =>
-        pipe(
-          memoMap.getOrElseMemoize(op.first, scope),
-          fiberRuntime.zipWithOptions(
-            memoMap.getOrElseMemoize(op.second, scope),
-            op.zipK,
-            { concurrent: true }
+      return core.map(
+        core.scopeFork(scope, ExecutionStrategy.parallel),
+        (scope) => (memoMap: Layer.MemoMap) =>
+          pipe(
+            memoMap.getOrElseMemoize(op.first, scope),
+            fiberRuntime.zipWithOptions(
+              memoMap.getOrElseMemoize(op.second, scope),
+              op.zipK,
+              { concurrent: true }
+            )
           )
-        )
       )
     }
   }
