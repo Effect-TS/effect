@@ -109,6 +109,7 @@ export const make = Effect.gen(function*() {
     readonly activity: Activity.Any
     readonly runtime: Runtime.Runtime<any>
   }>()
+  const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Effect.Latch>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
@@ -287,6 +288,7 @@ export const make = Effect.gen(function*() {
               activity(request: Entity.Request<any>) {
                 const activityId = `${executionId}/${request.payload.name}`
                 const instance = WorkflowInstance.initial(workflow, executionId)
+                interruptedActivities.delete(activityId)
                 return Effect.gen(function*() {
                   let entry = activities.get(activityId)
                   while (!entry) {
@@ -314,7 +316,11 @@ export const make = Effect.gen(function*() {
                     // client requested it
                     const ids = Array.from(interruptors, (id) => Array.from(FiberId.ids(id))).flat()
                     const suspend = ids.includes(RpcServer.fiberIdClientInterrupt.id)
-                    return suspend ? Effect.succeed(new Workflow.Suspended()) : Effect.failCause(cause)
+                    if (suspend) {
+                      interruptedActivities.add(activityId)
+                      return Effect.succeed(new Workflow.Suspended())
+                    }
+                    return Effect.failCause(cause)
                   }),
                   Effect.provideService(WorkflowInstance, instance),
                   Effect.provideService(Activity.CurrentAttempt, request.payload.attempt),
@@ -429,7 +435,7 @@ export const make = Effect.gen(function*() {
           const result = yield* Effect.orDie(client.activity({ name: activity.name, attempt }))
           // If the activity has suspended and did not execute, we need to resume
           // it by resetting the attempt and re-executing.
-          if (result._tag === "Suspended" && activities.has(activityId)) {
+          if (result._tag === "Suspended" && (activities.has(activityId) || interruptedActivities.has(activityId))) {
             yield* resetActivityAttempt({
               workflow: instance.workflow,
               executionId: instance.executionId,
