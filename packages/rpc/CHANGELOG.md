@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.72.1
+
+### Patch Changes
+
+- [#5682](https://github.com/Effect-TS/effect/pull/5682) [`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452) Thanks @jrmdayn! - Fix some typings around RpcServer context argument
+
 ## 0.72.0
 
 ### Patch Changes

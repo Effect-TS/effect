@@ -1,5 +1,19 @@
 # @effect/sql-pg
 
+## 0.49.0
+
+### Minor Changes
+
+- [#5686](https://github.com/Effect-TS/effect/pull/5686) [`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313) Thanks @tim-smart! - allow any type to be used as sql parameters
+
+### Patch Changes
+
+- [#5690](https://github.com/Effect-TS/effect/pull/5690) [`106abe0`](https://github.com/Effect-TS/effect/commit/106abe042658ebe12b221d00fe704fc2ee9b9be8) Thanks @lucas-barake! - fix handling of multi-statement queries (pg returns an array of results)
+
+- Updated dependencies [[`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313)]:
+  - @effect/sql@0.48.0
+  - @effect/experimental@0.57.0
+
 ## 0.48.0
 
 ### Minor Changes

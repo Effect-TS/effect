@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.12.1
+
+### Patch Changes
+
+- [#5684](https://github.com/Effect-TS/effect/pull/5684) [`15100f6`](https://github.com/Effect-TS/effect/commit/15100f6ed1ae554c295fb8034623e942dcdc6a72) Thanks @tim-smart! - retry interrupted workflow activities
+
+- Updated dependencies [[`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452)]:
+  - @effect/rpc@0.72.1
+
 ## 0.12.0
 
 ### Minor Changes
