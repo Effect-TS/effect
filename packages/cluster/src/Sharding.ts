@@ -1332,6 +1332,11 @@ const make = Effect.gen(function*() {
     })
   )
 
+  yield* Scope.addFinalizerExit(
+    shardingScope,
+    (exit) => Effect.logDebug("Shutting down sharding", exit._tag === "Success" ? {} : exit.cause)
+  )
+
   const activeEntityCount = Effect.gen(function*() {
     let count = 0
     for (const state of entityManagers.values()) {
