@@ -370,3 +370,35 @@ export const toURL = (self: ServerRequest.HttpServerRequest): Option.Option<URL>
     return Option.none()
   }
 }
+
+/** @internal */
+export const toWeb = (self: ServerRequest.HttpServerRequest): globalThis.Request => {
+  // Check if the request is a ServerRequestImpl wrapping a global Request
+  if (
+    typeof globalThis.Request !== "undefined" &&
+    self.source instanceof globalThis.Request
+  ) {
+    return self.source
+  }
+
+  // Reconstruct a new Request for non-wrapping implementations
+  // Determine the URL to use
+  let url: string
+  const urlOption = toURL(self)
+  if (Option.isSome(urlOption)) {
+    url = urlOption.value.href
+  } else {
+    url = self.originalUrl || self.url || "/"
+  }
+
+  // Prepare RequestInit options
+  const init: RequestInit = {
+    method: self.method,
+    headers: self.headers as any
+    // Body is intentionally omitted for non-wrapping implementations
+    // to keep this synchronous and simple
+  }
+
+  // Create and return the Request
+  return new globalThis.Request(url, init)
+}
