@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.1
+
+### Patch Changes
+
+- [#5695](https://github.com/Effect-TS/effect/pull/5695) [`63f2bf3`](https://github.com/Effect-TS/effect/commit/63f2bf393ef4bb3e46db59abdf1b2160e8ee71d4) Thanks @tim-smart! - allow parallel finalization of merged layers
+
 ## 3.19.0
 
 ### Minor Changes
