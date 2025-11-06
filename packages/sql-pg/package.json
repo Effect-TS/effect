@@ -62,6 +62,8 @@
   },
   "dependencies": {
     "pg": "^8.16.3",
-    "pg-cursor": "^2.15.3"
+    "pg-cursor": "^2.15.3",
+    "pg-pool": "^3.10.1",
+    "pg-types": "^4.1.0"
   }
 }

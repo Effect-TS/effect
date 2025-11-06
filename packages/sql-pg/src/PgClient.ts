@@ -159,43 +159,43 @@ export const make = (
     )
 
     class ConnectionImpl implements Connection {
-      readonly pg: Pg.Pool | Pg.PoolClient
-      constructor(pg: Pg.Pool | Pg.PoolClient) {
+      readonly pg: Pg.PoolClient | undefined
+      constructor(pg?: Pg.PoolClient) {
         this.pg = pg
       }
 
       private runWithClient<A>(f: (client: Pg.PoolClient, resume: (_: Effect.Effect<A, SqlError>) => void) => void) {
-        if ("totalCount" in this.pg) {
+        if (this.pg !== undefined) {
           return Effect.async<A, SqlError>((resume) => {
-            let done = false
-            let cancel: Effect.Effect<void> | undefined = undefined
-            let release = Function.constVoid
-            this.pg.connect((err, client, release_) => {
-              if (err) {
-                return resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection" })))
-              } else if (done) {
-                return release()
-              }
-              release = release_
-              cancel = makeCancel(pool, client!)
-              f(client!, (eff) => {
-                release()
-                resume(eff)
-              })
-            })
-            return Effect.suspend(() => {
-              done = true
-              if (!cancel) {
-                release()
-                return Effect.void
-              }
-              return Effect.ensuring(cancel, Effect.sync(release))
-            })
+            f(this.pg!, resume)
+            return makeCancel(pool, this.pg!)
           })
         }
         return Effect.async<A, SqlError>((resume) => {
-          f(this.pg as Pg.PoolClient, resume)
-          return makeCancel(pool, this.pg as any)
+          let done = false
+          let cancel: Effect.Effect<void> | undefined = undefined
+          let release = Function.constVoid
+          pool.connect((err, client, release_) => {
+            if (err) {
+              return resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection" })))
+            } else if (done) {
+              return release()
+            }
+            release = release_
+            cancel = makeCancel(pool, client!)
+            f(client!, (eff) => {
+              release()
+              resume(eff)
+            })
+          })
+          return Effect.suspend(() => {
+            done = true
+            if (!cancel) {
+              release()
+              return Effect.void
+            }
+            return Effect.ensuring(cancel, Effect.sync(release))
+          })
         })
       }
 
@@ -273,7 +273,7 @@ export const make = (
         const self = this
         return Effect.gen(function*() {
           const cursor = yield* Effect.acquireRelease(
-            Effect.sync(() => self.pg.query(new Cursor(sql, params as any))),
+            Effect.sync(() => (self.pg ?? pool).query(new Cursor(sql, params as any))),
             (cursor) => Effect.sync(() => cursor.close())
           )
           const pull = Effect.async<Chunk.Chunk<any>, Option.Option<SqlError>>((resume) => {
@@ -313,7 +313,7 @@ export const make = (
 
     return Object.assign(
       yield* Client.make({
-        acquirer: Effect.succeed(new ConnectionImpl(pool)),
+        acquirer: Effect.succeed(new ConnectionImpl()),
         transactionAcquirer: reserve,
         compiler,
         spanAttributes: [
