@@ -8,7 +8,6 @@ import * as Arr from "effect/Array"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Resource from "effect/Resource"
 import { PersistenceError } from "./ClusterError.js"
 import * as RunnerStorage from "./RunnerStorage.js"
@@ -243,13 +242,8 @@ export const make = Effect.fnUntraced(function*(options: {
         if (toAcquire.size === 0) {
           return acquiredShardIds
         }
-        const maybeResults = yield* conn.executeUnprepared(`SELECT ${pgLocks(toAcquire)}`, [], undefined).pipe(
-          Effect.timeoutOption(Duration.seconds(5))
-        )
-        if (Option.isNone(maybeResults)) {
-          return acquiredShardIds
-        }
-        const results = maybeResults.value[0] as Record<string, boolean>
+        const rows = yield* conn.executeUnprepared(`SELECT ${pgLocks(toAcquire)}`, [], undefined)
+        const results = rows[0] as Record<string, boolean>
         for (const shardId in results) {
           if (results[shardId]) {
             acquiredShardIds.push(shardId)
@@ -453,9 +447,7 @@ export const make = Effect.fnUntraced(function*(options: {
           function*(_address, shardId) {
             const lockNum = lockNumbers.get(shardId)!
             const conn = yield* Resource.get(lockConnRef!)
-            const release = conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, []).pipe(
-              Effect.timeoutOption(Duration.seconds(5))
-            )
+            const release = conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
             const check = conn.executeValues(
               `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
               []
@@ -466,6 +458,7 @@ export const make = Effect.fnUntraced(function*(options: {
               if (takenLocks.length === 0) return
             }
           },
+          Effect.timeout(config.shardLockExpiration),
           Effect.onError(() => Resource.refresh(lockConnRef!)),
           Effect.asVoid,
           PersistenceError.refail,
@@ -487,6 +480,7 @@ export const make = Effect.fnUntraced(function*(options: {
               if (takenLocks.length === 0 || takenLocks[0][0] !== 1) return
             }
           },
+          Effect.timeout(config.shardLockExpiration),
           Effect.onError(() => Resource.refresh(lockConnRef!)),
           Effect.asVoid,
           PersistenceError.refail,
