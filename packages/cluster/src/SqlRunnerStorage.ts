@@ -452,11 +452,12 @@ export const make = Effect.fnUntraced(function*(options: {
               `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
               []
             )
-            while (true) {
+            for (let i = 0; i < 5; i++) {
               yield* release
               const takenLocks = yield* check
               if (takenLocks.length === 0) return
             }
+            yield* conn.executeRaw(`SELECT pg_advisory_unlock_all()`, [])
           },
           Effect.onError(() => Resource.refresh(lockConnRef!)),
           Effect.asVoid,

@@ -381,7 +381,10 @@ const makeCancel = (pool: Pg.Pool, client: Pg.PoolClient) => {
       pool.query(`SELECT pg_cancel_backend(${processId})`, () => {
         resume(Effect.void)
       })
-    }) :
+    }).pipe(
+      Effect.interruptible,
+      Effect.timeoutOption(5000)
+    ) :
     undefined
   cancelEffects.set(client, eff)
   return eff
