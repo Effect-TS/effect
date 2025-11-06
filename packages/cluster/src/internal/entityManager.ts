@@ -9,6 +9,7 @@ import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
+import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
@@ -434,12 +435,21 @@ export const make = Effect.fnUntraced(function*<
     )
   }
 
+  const entityRemovalMap = yield* FiberMap.make<EntityAddress>()
+
   const interruptShard = (shardId: ShardId) =>
     Effect.suspend(function loop(): Effect.Effect<void> {
       const toAwait = Arr.empty<Effect.Effect<void>>()
       activeServers.forEach((state) => {
         if (shardId[Equal.symbol](state.address.shardId)) {
-          toAwait.push(Effect.forkIn(entities.removeIgnore(state.address), managerScope))
+          toAwait.push(
+            FiberMap.run(
+              entityRemovalMap,
+              state.address,
+              entities.removeIgnore(state.address),
+              { onlyIfMissing: true }
+            )
+          )
         }
       })
       serverCloseLatches.forEach((latch, address) => {
