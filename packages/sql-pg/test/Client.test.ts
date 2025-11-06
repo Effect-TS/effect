@@ -3,6 +3,8 @@ import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
 import { Effect, String } from "effect"
+import * as TestContext from "effect/TestContext"
+import * as TestServices from "effect/TestServices"
 import { PgContainer } from "./utils.js"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
@@ -268,5 +270,17 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       expect(result[0]).toEqual([])
       expect(result[1]).toEqual([{ id: "id1", name: "test1" }])
       expect(result[2]).toEqual([{ id: "id2", name: "test2" }])
+    }))
+
+  it.scoped("interruption", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const conn = yield* sql.reserve
+      yield* conn.executeRaw("select pg_sleep(1000)", []).pipe(
+        Effect.timeoutOption("50 millis"),
+        TestServices.provideLive
+      )
+      const value = yield* conn.executeValues("select 1", [])
+      expect(value).toEqual([[1]])
     }))
 })
