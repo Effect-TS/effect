@@ -439,7 +439,7 @@ export const make = Effect.fnUntraced(function*<
       const toAwait = Arr.empty<Effect.Effect<void>>()
       activeServers.forEach((state) => {
         if (shardId[Equal.symbol](state.address.shardId)) {
-          toAwait.push(entities.removeIgnore(state.address))
+          toAwait.push(Effect.forkIn(entities.removeIgnore(state.address), managerScope))
         }
       })
       serverCloseLatches.forEach((latch, address) => {
