@@ -15,6 +15,7 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as RcRef from "effect/RcRef"
@@ -158,22 +159,58 @@ export const make = (
     )
 
     class ConnectionImpl implements Connection {
-      readonly pg: Pg.Pool | Pg.PoolClient
-      constructor(pg: Pg.Pool | Pg.PoolClient) {
+      readonly pg: Pg.PoolClient | undefined
+      constructor(pg?: Pg.PoolClient) {
         this.pg = pg
       }
 
+      private runWithClient<A>(f: (client: Pg.PoolClient, resume: (_: Effect.Effect<A, SqlError>) => void) => void) {
+        if (this.pg !== undefined) {
+          return Effect.async<A, SqlError>((resume) => {
+            f(this.pg!, resume)
+            return makeCancel(pool, this.pg!)
+          })
+        }
+        return Effect.async<A, SqlError>((resume) => {
+          let done = false
+          let cancel: Effect.Effect<void> | undefined = undefined
+          let release = Function.constVoid
+          pool.connect((err, client, release_) => {
+            if (err) {
+              return resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection" })))
+            } else if (done) {
+              return release()
+            }
+            release = release_
+            cancel = makeCancel(pool, client!)
+            f(client!, (eff) => {
+              release()
+              resume(eff)
+            })
+          })
+          return Effect.suspend(() => {
+            done = true
+            if (!cancel) {
+              release()
+              return Effect.void
+            }
+            return Effect.ensuring(cancel, Effect.sync(release))
+          })
+        })
+      }
+
       private run(query: string, params: ReadonlyArray<unknown>) {
-        return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
-          this.pg.query(query, params as any, (err, result) => {
+        return this.runWithClient<ReadonlyArray<any>>((client, resume) => {
+          client.query(query, params as any, (err, result) => {
             if (err) {
               resume(Effect.fail(new SqlError({ cause: err, message: "Failed to execute statement" })))
             } else {
               // Multi-statement queries return an array of results
-              const rows = Array.isArray(result)
-                ? result.map((r) => r.rows ?? [])
-                : result.rows ?? []
-              resume(Effect.succeed(rows))
+              resume(Effect.succeed(
+                Array.isArray(result)
+                  ? result.map((r) => r.rows ?? [])
+                  : result.rows ?? []
+              ))
             }
           })
         })
@@ -189,8 +226,8 @@ export const make = (
           : this.run(sql, params)
       }
       executeRaw(sql: string, params: ReadonlyArray<unknown>) {
-        return Effect.async<Pg.Result, SqlError>((resume) => {
-          this.pg.query(sql, params as any, (err, result) => {
+        return this.runWithClient<Pg.Result>((client, resume) => {
+          client.query(sql, params as any, (err, result) => {
             if (err) {
               resume(Effect.fail(new SqlError({ cause: err, message: "Failed to execute statement" })))
             } else {
@@ -203,8 +240,8 @@ export const make = (
         return this.run(sql, params)
       }
       executeValues(sql: string, params: ReadonlyArray<unknown>) {
-        return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
-          this.pg.query(
+        return this.runWithClient<ReadonlyArray<any>>((client, resume) => {
+          client.query(
             {
               text: sql,
               rowMode: "array",
@@ -236,7 +273,7 @@ export const make = (
         const self = this
         return Effect.gen(function*() {
           const cursor = yield* Effect.acquireRelease(
-            Effect.sync(() => self.pg.query(new Cursor(sql, params as any))),
+            Effect.sync(() => (self.pg ?? pool).query(new Cursor(sql, params as any))),
             (cursor) => Effect.sync(() => cursor.close())
           )
           const pull = Effect.async<Chunk.Chunk<any>, Option.Option<SqlError>>((resume) => {
@@ -276,7 +313,7 @@ export const make = (
 
     return Object.assign(
       yield* Client.make({
-        acquirer: Effect.succeed(new ConnectionImpl(pool)),
+        acquirer: Effect.succeed(new ConnectionImpl()),
         transactionAcquirer: reserve,
         compiler,
         spanAttributes: [
@@ -332,6 +369,23 @@ export const make = (
       }
     )
   })
+
+const cancelEffects = new WeakMap<Pg.PoolClient, Effect.Effect<void> | undefined>()
+const makeCancel = (pool: Pg.Pool, client: Pg.PoolClient) => {
+  if (cancelEffects.has(client)) {
+    return cancelEffects.get(client)!
+  }
+  const processId = (client as any).processID
+  const eff = processId !== undefined ?
+    Effect.async<void>((resume) => {
+      pool.query(`SELECT pg_cancel_backend(${processId})`, () => {
+        resume(Effect.void)
+      })
+    }) :
+    undefined
+  cancelEffects.set(client, eff)
+  return eff
+}
 
 /**
  * @category layers
