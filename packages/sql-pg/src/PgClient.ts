@@ -376,16 +376,18 @@ const makeCancel = (pool: Pg.Pool, client: Pg.PoolClient) => {
     return cancelEffects.get(client)!
   }
   const processId = (client as any).processID
-  const eff = processId !== undefined ?
-    Effect.async<void>((resume) => {
+  const eff = processId !== undefined
+    // query cancelation is best-effort, so we don't fail if it doesn't work
+    ? Effect.async<void>((resume) => {
+      if (pool.ending) return resume(Effect.void)
       pool.query(`SELECT pg_cancel_backend(${processId})`, () => {
         resume(Effect.void)
       })
     }).pipe(
       Effect.interruptible,
       Effect.timeoutOption(5000)
-    ) :
-    undefined
+    )
+    : undefined
   cancelEffects.set(client, eff)
   return eff
 }
