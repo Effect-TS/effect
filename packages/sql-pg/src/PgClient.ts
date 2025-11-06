@@ -384,8 +384,8 @@ const makeCancel = (pool: Pg.Pool, client: Pg.PoolClient) => {
         resume(Effect.void)
       })
     }).pipe(
-      Effect.interruptible,
-      Effect.timeoutOption(5000)
+      Effect.timeoutOption(5000),
+      Effect.interruptible
     )
     : undefined
   cancelEffects.set(client, eff)

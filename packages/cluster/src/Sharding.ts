@@ -8,6 +8,7 @@ import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
@@ -887,16 +888,17 @@ const make = Effect.gen(function*() {
     const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
     let nextRunners = MutableHashMap.empty<Runner, boolean>()
     const healthyRunners = MutableHashSet.empty<Runner>()
+    const withTimeout = Effect.timeout(Duration.seconds(5))
 
     while (true) {
       // Ensure the current runner is registered
       if (selfRunner && !isShutdown.current && !MutableHashMap.has(allRunners, selfRunner)) {
         yield* Effect.logDebug("Registering runner", selfRunner)
-        const machineId = yield* runnerStorage.register(selfRunner, true)
+        const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
         yield* snowflakeGen.setMachineId(machineId)
       }
 
-      const runners = yield* runnerStorage.getRunners
+      const runners = yield* withTimeout(runnerStorage.getRunners)
       let changed = false
       for (let i = 0; i < runners.length; i++) {
         const [runner, healthy] = runners[i]
@@ -979,7 +981,7 @@ const make = Effect.gen(function*() {
         yield* Effect.logWarning("No healthy runners available")
         // to prevent a deadlock, we will mark the current node as healthy to
         // start the health check singleton again
-        yield* runnerStorage.setRunnerHealth(selfRunner.address, true)
+        yield* withTimeout(runnerStorage.setRunnerHealth(selfRunner.address, true))
       }
 
       yield* Effect.sleep(config.refreshAssignmentsInterval)
