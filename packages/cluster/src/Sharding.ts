@@ -266,13 +266,14 @@ const make = Effect.gen(function*() {
           entityManagers.values(),
           (state) =>
             state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId).pipe(
-              Effect.timeout(config.entityTerminationTimeout),
               Effect.withSpan("EntityManager.interruptShard", {
                 captureStackTrace: false,
                 attributes: { entityType: state.entity.type }
               })
             ),
           { concurrency: "unbounded", discard: true }
+        ).pipe(
+          Effect.timeout(config.entityTerminationTimeout)
         )
         yield* runnerStorage.release(selfAddress, shardId)
         MutableHashSet.remove(releasingShards, shardId)
