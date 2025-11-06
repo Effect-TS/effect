@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.52.5
+
+### Patch Changes
+
+- [#5703](https://github.com/Effect-TS/effect/pull/5703) [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5) Thanks @tim-smart! - close release FiberHandle after acquisition fiber
+
+- Updated dependencies [[`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5), [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5)]:
+  - effect@3.19.2
+
 ## 0.52.4
 
 ### Patch Changes
