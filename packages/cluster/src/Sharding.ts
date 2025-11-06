@@ -260,14 +260,13 @@ const make = Effect.gen(function*() {
     })
 
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
-    const releaseShard = Effect.fn("Sharding.releaseShard")(
+    const releaseShard = Effect.fnUntraced(
       function*(shardId: ShardId) {
-        yield* Effect.logDebug(`Releasing shard`)
-        yield* Effect.annotateCurrentSpan({ shardId })
         yield* Effect.forEach(
           entityManagers.values(),
           (state) =>
             state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId).pipe(
+              Effect.timeout(config.entityTerminationTimeout),
               Effect.withSpan("EntityManager.interruptShard", {
                 captureStackTrace: false,
                 attributes: { entityType: state.entity.type }
@@ -283,14 +282,20 @@ const make = Effect.gen(function*() {
       Effect.tapError((cause) => Effect.logDebug(`Could not release shard, retrying`, cause)),
       Effect.eventually,
       (effect, shardId) =>
-        Effect.annotateLogs(effect, {
-          package: "@effect/cluster",
-          module: "Sharding",
-          fiber: "releaseShard",
-          runner: selfAddress,
-          shardId
-        }),
-      (effect, shardId) => FiberMap.run(releaseShardsMap, shardId, effect, { onlyIfMissing: true })
+        effect.pipe(
+          Effect.annotateLogs({
+            package: "@effect/cluster",
+            module: "Sharding",
+            fiber: "releaseShard",
+            runner: selfAddress,
+            shardId
+          }),
+          Effect.withSpan("Sharding.releaseShard", {
+            captureStackTrace: false,
+            attributes: { shardId }
+          }),
+          FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
+        )
     )
     const releaseShards = Effect.gen(function*() {
       for (const shardId of releasingShards) {
