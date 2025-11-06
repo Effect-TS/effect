@@ -237,6 +237,14 @@ const make = Effect.gen(function*() {
     return MutableHashSet.has(acquiredShards, address.shardId)
   }
 
+  yield* Scope.addFinalizer(
+    shardingScope,
+    Effect.logDebug("Shutdown complete").pipe(Effect.annotateLogs({
+      package: "@effect/cluster",
+      module: "Sharding"
+    }))
+  )
+
   // --- Shard acquisition ---
   //
   // Responsible for acquiring and releasing shards from RunnerStorage.
@@ -273,7 +281,8 @@ const make = Effect.gen(function*() {
       )
     ).pipe(
       Effect.repeat({ until: () => MutableHashSet.size(releasingShards) === 0 }),
-      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
+      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true }),
+      Effect.interruptible
     )
 
     yield* Effect.gen(function*() {
