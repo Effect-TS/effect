@@ -447,7 +447,9 @@ export const make = Effect.fnUntraced(function*(options: {
           function*(_address, shardId) {
             const lockNum = lockNumbers.get(shardId)!
             const conn = yield* Resource.get(lockConnRef!)
-            const release = conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
+            const release = conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, []).pipe(
+              Effect.timeoutOption(Duration.seconds(5))
+            )
             const check = conn.executeValues(
               `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
               []

@@ -281,7 +281,15 @@ const make = Effect.gen(function*() {
           continue
         }
 
-        const acquired = yield* runnerStorage.acquire(selfAddress, unacquiredShards)
+        const oacquired = yield* runnerStorage.acquire(selfAddress, unacquiredShards).pipe(
+          Effect.timeoutOption(config.shardLockRefreshInterval)
+        )
+        if (Option.isNone(oacquired)) {
+          activeShardsLatch.unsafeOpen()
+          continue
+        }
+
+        const acquired = oacquired.value
         yield* Effect.ignore(storage.resetShards(acquired))
         for (const shardId of acquired) {
           if (MutableHashSet.has(releasingShards, shardId) || !MutableHashSet.has(selfShards, shardId)) {
