@@ -461,8 +461,7 @@ export const make = Effect.fnUntraced(function*(options: {
           },
           Effect.onError(() => Resource.refresh(lockConnRef!)),
           Effect.asVoid,
-          PersistenceError.refail,
-          withTracerDisabled
+          PersistenceError.refail
         ),
       mysql: () =>
         Effect.fnUntraced(
@@ -482,13 +481,11 @@ export const make = Effect.fnUntraced(function*(options: {
           },
           Effect.onError(() => Resource.refresh(lockConnRef!)),
           Effect.asVoid,
-          PersistenceError.refail,
-          withTracerDisabled
+          PersistenceError.refail
         ),
       orElse: () => (address, shardId) =>
         sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`.pipe(
-          PersistenceError.refail,
-          withTracerDisabled
+          PersistenceError.refail
         )
     }),
 
