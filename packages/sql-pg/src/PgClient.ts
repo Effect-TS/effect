@@ -176,12 +176,13 @@ export const make = (
           let cancel: Effect.Effect<void> | undefined = undefined
           let release = Function.constVoid
           pool.connect((err, client, release_) => {
+            release = release_
             if (err) {
+              release()
               return resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection" })))
             } else if (done) {
               return release()
             }
-            release = release_
             cancel = makeCancel(pool, client!)
             f(client!, (eff) => {
               release()
