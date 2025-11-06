@@ -8,12 +8,12 @@ import * as Arr from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import type { DurationInput } from "effect/Duration"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
 import type * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as FiberHandle from "effect/FiberHandle"
 import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberSet from "effect/FiberSet"
@@ -260,36 +260,51 @@ const make = Effect.gen(function*() {
       return Effect.ignore(runnerStorage.releaseAll(selfAddress))
     })
 
-    const releaseShardsHandle = yield* FiberHandle.make()
-    const releaseShards = Effect.suspend(function loop(): Effect.Effect<void, PersistenceError> {
-      return Effect.flatMap(
-        Effect.forEach(
-          releasingShards,
-          (shardId) =>
-            Effect.forEach(
-              entityManagers.values(),
-              (state) => state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId),
-              { concurrency: "unbounded", discard: true }
-            ).pipe(
-              Effect.andThen(runnerStorage.release(selfAddress, shardId)),
-              Effect.annotateLogs({ runner: selfAddress }),
-              Effect.flatMap(() => {
-                MutableHashSet.remove(releasingShards, shardId)
-                return storage.unregisterShardReplyHandlers(shardId)
+    const releaseShardsMap = yield* FiberMap.make<ShardId>()
+    const releaseShard = Effect.fnUntraced(
+      function*(shardId: ShardId) {
+        yield* Effect.forEach(
+          entityManagers.values(),
+          (state) =>
+            state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId).pipe(
+              Effect.withSpan("EntityManager.interruptShard", {
+                captureStackTrace: false,
+                attributes: { entityType: state.entity.type }
               })
             ),
           { concurrency: "unbounded", discard: true }
-        ),
-        () => {
-          if (MutableHashSet.size(releasingShards) === 0) {
-            return Effect.void
-          }
-          return loop()
-        }
-      )
-    }).pipe(
-      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
+        ).pipe(
+          Effect.timeout(config.entityTerminationTimeout)
+        )
+        yield* runnerStorage.release(selfAddress, shardId)
+        MutableHashSet.remove(releasingShards, shardId)
+        yield* storage.unregisterShardReplyHandlers(shardId)
+      },
+      Effect.sandbox,
+      Effect.tapError((cause) => Effect.logDebug(`Could not release shard, retrying`, cause)),
+      Effect.eventually,
+      (effect, shardId) =>
+        effect.pipe(
+          Effect.annotateLogs({
+            package: "@effect/cluster",
+            module: "Sharding",
+            fiber: "releaseShard",
+            runner: selfAddress,
+            shardId
+          }),
+          Effect.withSpan("Sharding.releaseShard", { captureStackTrace: false }),
+          Effect.annotateSpans({
+            shardId,
+            runner: selfAddress
+          }),
+          FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
+        )
     )
+    const releaseShards = Effect.gen(function*() {
+      for (const shardId of releasingShards) {
+        yield* releaseShard(shardId)
+      }
+    })
 
     yield* Effect.gen(function*() {
       activeShardsLatch.unsafeOpen()
@@ -873,16 +888,17 @@ const make = Effect.gen(function*() {
     const hashRings = new Map<string, HashRing.HashRing<RunnerAddress>>()
     let nextRunners = MutableHashMap.empty<Runner, boolean>()
     const healthyRunners = MutableHashSet.empty<Runner>()
+    const withTimeout = Effect.timeout(Duration.seconds(5))
 
     while (true) {
       // Ensure the current runner is registered
       if (selfRunner && !isShutdown.current && !MutableHashMap.has(allRunners, selfRunner)) {
         yield* Effect.logDebug("Registering runner", selfRunner)
-        const machineId = yield* runnerStorage.register(selfRunner, true)
+        const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
         yield* snowflakeGen.setMachineId(machineId)
       }
 
-      const runners = yield* runnerStorage.getRunners
+      const runners = yield* withTimeout(runnerStorage.getRunners)
       let changed = false
       for (let i = 0; i < runners.length; i++) {
         const [runner, healthy] = runners[i]
@@ -965,7 +981,7 @@ const make = Effect.gen(function*() {
         yield* Effect.logWarning("No healthy runners available")
         // to prevent a deadlock, we will mark the current node as healthy to
         // start the health check singleton again
-        yield* runnerStorage.setRunnerHealth(selfRunner.address, true)
+        yield* withTimeout(runnerStorage.setRunnerHealth(selfRunner.address, true))
       }
 
       yield* Effect.sleep(config.refreshAssignmentsInterval)

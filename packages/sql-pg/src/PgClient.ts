@@ -176,12 +176,13 @@ export const make = (
           let cancel: Effect.Effect<void> | undefined = undefined
           let release = Function.constVoid
           pool.connect((err, client, release_) => {
+            release = release_
             if (err) {
+              release()
               return resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection" })))
             } else if (done) {
               return release()
             }
-            release = release_
             cancel = makeCancel(pool, client!)
             f(client!, (eff) => {
               release()
@@ -376,13 +377,18 @@ const makeCancel = (pool: Pg.Pool, client: Pg.PoolClient) => {
     return cancelEffects.get(client)!
   }
   const processId = (client as any).processID
-  const eff = processId !== undefined ?
-    Effect.async<void>((resume) => {
+  const eff = processId !== undefined
+    // query cancelation is best-effort, so we don't fail if it doesn't work
+    ? Effect.async<void>((resume) => {
+      if (pool.ending) return resume(Effect.void)
       pool.query(`SELECT pg_cancel_backend(${processId})`, () => {
         resume(Effect.void)
       })
-    }) :
-    undefined
+    }).pipe(
+      Effect.interruptible,
+      Effect.timeoutOption(5000)
+    )
+    : undefined
   cancelEffects.set(client, eff)
   return eff
 }

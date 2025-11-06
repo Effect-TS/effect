@@ -8,8 +8,9 @@ import * as Arr from "effect/Array"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Resource from "effect/Resource"
+import * as Scope from "effect/Scope"
 import { PersistenceError } from "./ClusterError.js"
+import { ResourceRef } from "./internal/resourceRef.js"
 import * as RunnerStorage from "./RunnerStorage.js"
 import * as ShardId from "./ShardId.js"
 import * as ShardingConfig from "./ShardingConfig.js"
@@ -27,22 +28,27 @@ export const make = Effect.fnUntraced(function*(options: {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
+
   const acquireLockConn = sql.onDialectOrElse({
     pg: () =>
-      Effect.gen(function*() {
-        const conn = yield* Effect.orDie(sql.reserve)
-        yield* Effect.addFinalizer(() => Effect.orDie(conn.executeRaw("SELECT pg_advisory_unlock_all()", [])))
+      Effect.fnUntraced(function*(scope: Scope.Scope) {
+        const conn = yield* Effect.orDie(sql.reserve).pipe(
+          Scope.extend(scope)
+        )
+        yield* Scope.addFinalizerExit(scope, () => Effect.orDie(conn.executeRaw("SELECT pg_advisory_unlock_all()", [])))
         return conn
       }),
     mysql: () =>
-      Effect.gen(function*() {
-        const conn = yield* Effect.orDie(sql.reserve)
-        yield* Effect.addFinalizer(() => Effect.orDie(conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", [])))
+      Effect.fnUntraced(function*(scope: Scope.Scope) {
+        const conn = yield* Effect.orDie(sql.reserve).pipe(
+          Scope.extend(scope)
+        )
+        yield* Scope.addFinalizerExit(scope, () => Effect.orDie(conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", [])))
         return conn
       }),
     orElse: () => undefined
   })
-  const lockConnRef = acquireLockConn && (yield* Resource.manual(acquireLockConn))
+  const lockConn = acquireLockConn && (yield* ResourceRef.from(yield* Effect.scope, acquireLockConn))
 
   const runnersTable = table("runners")
   const runnersTableSql = sql(runnersTable)
@@ -206,28 +212,28 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   const execWithLockConn = <A>(effect: Statement.Statement<A>): Effect.Effect<unknown, SqlError> => {
-    if (!lockConnRef) return effect
+    if (!lockConn) return effect
     const [query, params] = effect.compile()
-    return Resource.get(lockConnRef).pipe(
+    return lockConn.await.pipe(
       Effect.flatMap((conn) => conn.executeRaw(query, params)),
-      Effect.onError(() => Resource.refresh(lockConnRef!))
+      Effect.onError(() => lockConn.unsafeRebuild())
     )
   }
   const execWithLockConnValues = <A>(
     effect: Statement.Statement<A>
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<any>>, SqlError> => {
-    if (!lockConnRef) return effect.values
+    if (!lockConn) return effect.values
     const [query, params] = effect.compile()
-    return Resource.get(lockConnRef).pipe(
+    return lockConn.await.pipe(
       Effect.flatMap((conn) => conn.executeValues(query, params)),
-      Effect.onError(() => Resource.refresh(lockConnRef!))
+      Effect.onError(() => lockConn.unsafeRebuild())
     )
   }
 
   const acquireLock = sql.onDialectOrElse({
     pg: () =>
       Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
-        const conn = yield* Resource.get(lockConnRef!)
+        const conn = yield* lockConn!.await
         const acquiredShardIds: Array<string> = []
         const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
         const takenLocks = yield* conn.executeValues(
@@ -250,11 +256,11 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         }
         return acquiredShardIds
-      }, Effect.onError(() => Resource.refresh(lockConnRef!))),
+      }, Effect.onError(() => lockConn!.unsafeRebuild())),
 
     mysql: () =>
       Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
-        const conn = yield* Resource.get(lockConnRef!)
+        const conn = yield* lockConn!.await
         const takenLocks = (yield* conn.executeUnprepared(`SELECT ${allMySqlTakenLocks}`, [], undefined))[0] as Record<
           string,
           1 | null
@@ -281,7 +287,7 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         }
         return acquiredShardIds
-      }, Effect.onError(() => Resource.refresh(lockConnRef!))),
+      }, Effect.onError(() => lockConn!.unsafeRebuild())),
 
     mssql: () => (address: string, shardIds: ReadonlyArray<string>) => {
       const values = shardIds.map((shardId) => sql`(${stringLiteral(shardId)}, ${stringLiteral(address)}, ${sqlNow})`)
@@ -446,48 +452,43 @@ export const make = Effect.fnUntraced(function*(options: {
         Effect.fnUntraced(
           function*(_address, shardId) {
             const lockNum = lockNumbers.get(shardId)!
-            const conn = yield* Resource.get(lockConnRef!)
-            const release = conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
-            const check = conn.executeValues(
-              `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
-              []
-            )
-            while (true) {
-              yield* release
-              const takenLocks = yield* check
+            for (let i = 0; i < 5; i++) {
+              const conn = yield* lockConn!.await
+              yield* conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
+              const takenLocks = yield* conn.executeValues(
+                `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
+                []
+              )
               if (takenLocks.length === 0) return
             }
+            const conn = yield* lockConn!.await
+            yield* conn.executeRaw(`SELECT pg_advisory_unlock_all()`, [])
           },
-          Effect.onError(() => Resource.refresh(lockConnRef!)),
+          Effect.onError(() => lockConn!.unsafeRebuild()),
           Effect.asVoid,
-          PersistenceError.refail,
-          withTracerDisabled
+          PersistenceError.refail
         ),
       mysql: () =>
         Effect.fnUntraced(
           function*(_address, shardId) {
-            const conn = yield* Resource.get(lockConnRef!)
             const lockName = lockNames.get(shardId)!
-            const release = conn.executeRaw(`SELECT RELEASE_LOCK('${lockName}')`, [])
-            const check = conn.executeValues(
-              `SELECT IS_USED_LOCK('${lockName}') = CONNECTION_ID() AS is_taken`,
-              []
-            )
             while (true) {
-              yield* release
-              const takenLocks = yield* check
+              const conn = yield* lockConn!.await
+              yield* conn.executeRaw(`SELECT RELEASE_LOCK('${lockName}')`, [])
+              const takenLocks = yield* conn.executeValues(
+                `SELECT IS_USED_LOCK('${lockName}') = CONNECTION_ID() AS is_taken`,
+                []
+              )
               if (takenLocks.length === 0 || takenLocks[0][0] !== 1) return
             }
           },
-          Effect.onError(() => Resource.refresh(lockConnRef!)),
+          Effect.onError(() => lockConn!.unsafeRebuild()),
           Effect.asVoid,
-          PersistenceError.refail,
-          withTracerDisabled
+          PersistenceError.refail
         ),
       orElse: () => (address, shardId) =>
         sql`DELETE FROM ${locksTableSql} WHERE address = ${address} AND shard_id = ${shardId}`.pipe(
-          PersistenceError.refail,
-          withTracerDisabled
+          PersistenceError.refail
         )
     }),
 
