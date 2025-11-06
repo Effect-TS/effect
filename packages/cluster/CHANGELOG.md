@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.52.3
+
+### Patch Changes
+
+- [#5698](https://github.com/Effect-TS/effect/pull/5698) [`19e14ec`](https://github.com/Effect-TS/effect/commit/19e14ec89065ed938f0b3d27a9e8838dac81f3c8) Thanks @tim-smart! - add premptiveShutdown option to ShardingConfig
+
 ## 0.52.2
 
 ### Patch Changes
