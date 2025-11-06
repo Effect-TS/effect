@@ -3,7 +3,6 @@ import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
 import { Effect, String } from "effect"
-import * as TestContext from "effect/TestContext"
 import * as TestServices from "effect/TestServices"
 import { PgContainer } from "./utils.js"
 
