@@ -262,26 +262,33 @@ const make = Effect.gen(function*() {
     yield* Scope.addFinalizer(shardingScope, Effect.logDebug("Shard release shutdown complete"))
 
     const releaseShardsHandle = yield* FiberHandle.make()
-    const releaseShards = Effect.suspend(() =>
-      Effect.forEach(
-        releasingShards,
-        (shardId) =>
-          Effect.forEach(
-            entityManagers.values(),
-            (state) => state.manager.interruptShard(shardId),
-            { concurrency: "unbounded", discard: true }
-          ).pipe(
-            Effect.andThen(runnerStorage.release(selfAddress, shardId)),
-            Effect.annotateLogs({ runner: selfAddress }),
-            Effect.flatMap(() => {
-              MutableHashSet.remove(releasingShards, shardId)
-              return storage.unregisterShardReplyHandlers(shardId)
-            })
-          ),
-        { concurrency: "unbounded", discard: true }
+    const releaseShards = Effect.suspend(function loop(): Effect.Effect<void, PersistenceError> {
+      return Effect.flatMap(
+        Effect.forEach(
+          releasingShards,
+          (shardId) =>
+            Effect.forEach(
+              entityManagers.values(),
+              (state) => state.manager.interruptShard(shardId),
+              { concurrency: "unbounded", discard: true }
+            ).pipe(
+              Effect.andThen(runnerStorage.release(selfAddress, shardId)),
+              Effect.annotateLogs({ runner: selfAddress }),
+              Effect.flatMap(() => {
+                MutableHashSet.remove(releasingShards, shardId)
+                return storage.unregisterShardReplyHandlers(shardId)
+              })
+            ),
+          { concurrency: "unbounded", discard: true }
+        ),
+        () => {
+          if (MutableHashSet.size(releasingShards) === 0) {
+            return Effect.void
+          }
+          return loop()
+        }
       )
-    ).pipe(
-      Effect.repeat({ until: () => MutableHashSet.size(releasingShards) === 0 }),
+    }).pipe(
       FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
     )
 
