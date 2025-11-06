@@ -259,6 +259,7 @@ const make = Effect.gen(function*() {
       // the locks expire over time, so if this fails we ignore it
       return Effect.ignore(runnerStorage.releaseAll(selfAddress))
     })
+    yield* Scope.addFinalizer(shardingScope, Effect.logDebug("Shard release shutdown complete"))
 
     const releaseShardsHandle = yield* FiberHandle.make()
     const releaseShards = Effect.suspend(() =>
@@ -281,9 +282,10 @@ const make = Effect.gen(function*() {
       )
     ).pipe(
       Effect.repeat({ until: () => MutableHashSet.size(releasingShards) === 0 }),
-      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true }),
-      Effect.interruptible
+      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
     )
+
+    yield* Scope.addFinalizer(shardingScope, Effect.logDebug("Shard acquisition loop shut down"))
 
     yield* Effect.gen(function*() {
       activeShardsLatch.unsafeOpen()
