@@ -252,6 +252,30 @@ const make = Effect.gen(function*() {
       return Effect.ignore(runnerStorage.releaseAll(selfAddress))
     })
 
+    const releaseShardsHandle = yield* FiberHandle.make()
+    const releaseShards = Effect.suspend(() =>
+      Effect.forEach(
+        releasingShards,
+        (shardId) =>
+          Effect.forEach(
+            entityManagers.values(),
+            (state) => state.manager.interruptShard(shardId),
+            { concurrency: "unbounded", discard: true }
+          ).pipe(
+            Effect.andThen(runnerStorage.release(selfAddress, shardId)),
+            Effect.annotateLogs({ runner: selfAddress }),
+            Effect.flatMap(() => {
+              MutableHashSet.remove(releasingShards, shardId)
+              return storage.unregisterShardReplyHandlers(shardId)
+            })
+          ),
+        { concurrency: "unbounded", discard: true }
+      )
+    ).pipe(
+      Effect.repeat({ until: () => MutableHashSet.size(releasingShards) === 0 }),
+      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
+    )
+
     yield* Effect.gen(function*() {
       activeShardsLatch.unsafeOpen()
 
@@ -320,7 +344,8 @@ const make = Effect.gen(function*() {
         fiber: "Shard acquisition loop",
         runner: selfAddress
       }),
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // refresh the shard locks every `shardLockRefreshInterval`
@@ -360,30 +385,6 @@ const make = Effect.gen(function*() {
       Effect.repeat(Schedule.fixed(config.shardLockRefreshInterval)),
       Effect.forever,
       Effect.forkIn(shardingScope)
-    )
-
-    const releaseShardsHandle = yield* FiberHandle.make()
-    const releaseShards = Effect.suspend(() =>
-      Effect.forEach(
-        releasingShards,
-        (shardId) =>
-          Effect.forEach(
-            entityManagers.values(),
-            (state) => state.manager.interruptShard(shardId),
-            { concurrency: "unbounded", discard: true }
-          ).pipe(
-            Effect.andThen(runnerStorage.release(selfAddress, shardId)),
-            Effect.annotateLogs({ runner: selfAddress }),
-            Effect.flatMap(() => {
-              MutableHashSet.remove(releasingShards, shardId)
-              return storage.unregisterShardReplyHandlers(shardId)
-            })
-          ),
-        { concurrency: "unbounded", discard: true }
-      )
-    ).pipe(
-      Effect.repeat({ until: () => MutableHashSet.size(releasingShards) === 0 }),
-      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
     )
 
     // open the shard latch every poll interval

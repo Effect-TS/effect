@@ -1,4 +1,4 @@
-import * as Array from "../Array.js"
+import type * as Arr from "../Array.js"
 import * as Cause from "../Cause.js"
 import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
@@ -174,7 +174,7 @@ export interface ZipWithPar extends
 /** @internal */
 export interface MergeAll extends
   Op<OpCodes.OP_MERGE_ALL, {
-    readonly layers: Array.NonEmptyReadonlyArray<Layer.Layer<unknown>>
+    readonly layers: Arr.NonEmptyReadonlyArray<Layer.Layer<unknown>>
   }>
 {}
 
@@ -474,21 +474,19 @@ const makeBuilder = <RIn, E, ROut>(
       return core.map(
         core.scopeFork(scope, ExecutionStrategy.parallel),
         (parallelScope) => (memoMap: Layer.MemoMap) => {
-          const outputMap = new Map<string, unknown>()
+          const contexts = new Array<Context.Context<any>>(layers.length)
           return core.map(
             fiberRuntime.forEachConcurrentDiscard(
               layers,
-              core.fnUntraced(function*(layer) {
+              core.fnUntraced(function*(layer, i) {
                 const scope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
                 const context = yield* memoMap.getOrElseMemoize(layer, scope)
-                context.unsafeMap.forEach((value, key) => {
-                  outputMap.set(key, value)
-                })
+                contexts[i] = context
               }),
               false,
               false
             ),
-            () => Context.unsafeMake(outputMap)
+            () => Context.mergeAll(...contexts)
           )
         }
       )

@@ -299,10 +299,10 @@ export const mergeAll = <T extends Array<unknown>>(
   ...ctxs: [...{ [K in keyof T]: C.Context<T[K]> }]
 ): C.Context<T[number]> => {
   const map = new Map()
-  for (const ctx of ctxs) {
-    for (const [tag, s] of ctx.unsafeMap) {
-      map.set(tag, s)
-    }
+  for (let i = 0; i < ctxs.length; i++) {
+    ctxs[i].unsafeMap.forEach((value, key) => {
+      map.set(key, value)
+    })
   }
   return makeContext(map)
 }
