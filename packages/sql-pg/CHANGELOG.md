@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.49.1
+
+### Patch Changes
+
+- [#5701](https://github.com/Effect-TS/effect/pull/5701) [`c00268d`](https://github.com/Effect-TS/effect/commit/c00268d6ae82fcceda6d71a99e1ec4c5072c1deb) Thanks @tim-smart! - support query interuption in sql-pg
+
 ## 0.49.0
 
 ### Minor Changes
