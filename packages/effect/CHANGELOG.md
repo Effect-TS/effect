@@ -1,5 +1,13 @@
 # effect
 
+## 3.19.2
+
+### Patch Changes
+
+- [#5703](https://github.com/Effect-TS/effect/pull/5703) [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5) Thanks @tim-smart! - preserve Layer.mergeAll context order
+
+- [#5703](https://github.com/Effect-TS/effect/pull/5703) [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5) Thanks @tim-smart! - ensure FiberHandle.run state transition is atomic
+
 ## 3.19.1
 
 ### Patch Changes
