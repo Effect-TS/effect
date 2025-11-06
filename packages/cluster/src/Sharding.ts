@@ -269,7 +269,7 @@ const make = Effect.gen(function*() {
           (shardId) =>
             Effect.forEach(
               entityManagers.values(),
-              (state) => state.manager.interruptShard(shardId),
+              (state) => state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId),
               { concurrency: "unbounded", discard: true }
             ).pipe(
               Effect.andThen(runnerStorage.release(selfAddress, shardId)),
