@@ -384,14 +384,16 @@ const make = Effect.gen(function*() {
       ),
       Effect.repeat(Schedule.fixed(config.shardLockRefreshInterval)),
       Effect.forever,
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // open the shard latch every poll interval
     yield* activeShardsLatch.open.pipe(
       Effect.delay(config.entityMessagePollInterval),
       Effect.forever,
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
   }
 
@@ -556,14 +558,16 @@ const make = Effect.gen(function*() {
         runner: selfAddress
       }),
       Effect.withUnhandledErrorLogLevel(Option.none()),
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // open the storage latch every poll interval
     yield* storageReadLatch.open.pipe(
       Effect.delay(config.entityMessagePollInterval),
       Effect.forever,
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // Resume unprocessed messages for entities that reached a full mailbox.
@@ -683,7 +687,8 @@ const make = Effect.gen(function*() {
           Effect.sync(() => MutableHashMap.remove(entityResumptionState, address))
         ),
       Effect.withUnhandledErrorLogLevel(Option.none()),
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
   }
 
@@ -959,7 +964,8 @@ const make = Effect.gen(function*() {
       fiber: "RunnerStorage sync",
       runner: config.runnerAddress
     }),
-    Effect.forkIn(shardingScope)
+    Effect.forkIn(shardingScope),
+    Effect.interruptible
   )
 
   // --- Clients ---
