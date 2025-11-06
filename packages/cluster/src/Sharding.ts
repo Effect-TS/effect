@@ -237,6 +237,14 @@ const make = Effect.gen(function*() {
     return MutableHashSet.has(acquiredShards, address.shardId)
   }
 
+  yield* Scope.addFinalizer(
+    shardingScope,
+    Effect.logDebug("Shutdown complete").pipe(Effect.annotateLogs({
+      package: "@effect/cluster",
+      module: "Sharding"
+    }))
+  )
+
   // --- Shard acquisition ---
   //
   // Responsible for acquiring and releasing shards from RunnerStorage.
@@ -251,6 +259,37 @@ const make = Effect.gen(function*() {
       // the locks expire over time, so if this fails we ignore it
       return Effect.ignore(runnerStorage.releaseAll(selfAddress))
     })
+
+    const releaseShardsHandle = yield* FiberHandle.make()
+    const releaseShards = Effect.suspend(function loop(): Effect.Effect<void, PersistenceError> {
+      return Effect.flatMap(
+        Effect.forEach(
+          releasingShards,
+          (shardId) =>
+            Effect.forEach(
+              entityManagers.values(),
+              (state) => state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId),
+              { concurrency: "unbounded", discard: true }
+            ).pipe(
+              Effect.andThen(runnerStorage.release(selfAddress, shardId)),
+              Effect.annotateLogs({ runner: selfAddress }),
+              Effect.flatMap(() => {
+                MutableHashSet.remove(releasingShards, shardId)
+                return storage.unregisterShardReplyHandlers(shardId)
+              })
+            ),
+          { concurrency: "unbounded", discard: true }
+        ),
+        () => {
+          if (MutableHashSet.size(releasingShards) === 0) {
+            return Effect.void
+          }
+          return loop()
+        }
+      )
+    }).pipe(
+      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
+    )
 
     yield* Effect.gen(function*() {
       activeShardsLatch.unsafeOpen()
@@ -320,7 +359,8 @@ const make = Effect.gen(function*() {
         fiber: "Shard acquisition loop",
         runner: selfAddress
       }),
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // refresh the shard locks every `shardLockRefreshInterval`
@@ -359,38 +399,16 @@ const make = Effect.gen(function*() {
       ),
       Effect.repeat(Schedule.fixed(config.shardLockRefreshInterval)),
       Effect.forever,
-      Effect.forkIn(shardingScope)
-    )
-
-    const releaseShardsHandle = yield* FiberHandle.make()
-    const releaseShards = Effect.suspend(() =>
-      Effect.forEach(
-        releasingShards,
-        (shardId) =>
-          Effect.forEach(
-            entityManagers.values(),
-            (state) => state.manager.interruptShard(shardId),
-            { concurrency: "unbounded", discard: true }
-          ).pipe(
-            Effect.andThen(runnerStorage.release(selfAddress, shardId)),
-            Effect.annotateLogs({ runner: selfAddress }),
-            Effect.flatMap(() => {
-              MutableHashSet.remove(releasingShards, shardId)
-              return storage.unregisterShardReplyHandlers(shardId)
-            })
-          ),
-        { concurrency: "unbounded", discard: true }
-      )
-    ).pipe(
-      Effect.repeat({ until: () => MutableHashSet.size(releasingShards) === 0 }),
-      FiberHandle.run(releaseShardsHandle, { onlyIfMissing: true })
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // open the shard latch every poll interval
     yield* activeShardsLatch.open.pipe(
       Effect.delay(config.entityMessagePollInterval),
       Effect.forever,
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
   }
 
@@ -555,14 +573,16 @@ const make = Effect.gen(function*() {
         runner: selfAddress
       }),
       Effect.withUnhandledErrorLogLevel(Option.none()),
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // open the storage latch every poll interval
     yield* storageReadLatch.open.pipe(
       Effect.delay(config.entityMessagePollInterval),
       Effect.forever,
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
 
     // Resume unprocessed messages for entities that reached a full mailbox.
@@ -682,7 +702,8 @@ const make = Effect.gen(function*() {
           Effect.sync(() => MutableHashMap.remove(entityResumptionState, address))
         ),
       Effect.withUnhandledErrorLogLevel(Option.none()),
-      Effect.forkIn(shardingScope)
+      Effect.forkIn(shardingScope),
+      Effect.interruptible
     )
   }
 
@@ -958,7 +979,8 @@ const make = Effect.gen(function*() {
       fiber: "RunnerStorage sync",
       runner: config.runnerAddress
     }),
-    Effect.forkIn(shardingScope)
+    Effect.forkIn(shardingScope),
+    Effect.interruptible
   )
 
   // --- Clients ---

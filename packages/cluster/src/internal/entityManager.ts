@@ -127,7 +127,7 @@ export const make = Effect.fnUntraced(function*<
       () => {
         serverCloseLatches.get(address)?.unsafeOpen()
         serverCloseLatches.delete(address)
-        return Effect.ignore(options.storage.resetAddress(address))
+        return Effect.void
       }
     )
 
