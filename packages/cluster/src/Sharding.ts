@@ -11,6 +11,7 @@ import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import * as Equal from "effect/Equal"
+import type * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
@@ -1247,7 +1248,9 @@ const make = Effect.gen(function*() {
         Effect.fiberIdWith((id) => {
           state.status = "closing"
           internalInterruptors.add(id)
-          return Effect.void
+          // if preemptive shutdown is enabled, we start shutting down Sharding
+          // too
+          return config.preemptiveShutdown ? shutdown() : Effect.void
         })
       )
 
@@ -1320,23 +1323,27 @@ const make = Effect.gen(function*() {
 
   // --- Finalization ---
 
-  yield* Scope.addFinalizerExit(
-    shardingScope,
-    Effect.fnUntraced(function*(exit) {
-      yield* Effect.logDebug("Shutting down", exit._tag === "Success" ? {} : exit.cause).pipe(
+  const shutdown = Effect.fnUntraced(function*(exit?: Exit.Exit<unknown, unknown>) {
+    if (exit) {
+      yield* Effect.logDebug("Shutting down", exit._tag === "Failure" ? exit.cause : {}).pipe(
         Effect.annotateLogs({
           package: "@effect/cluster",
           module: "Sharding"
         })
       )
-      const fiberId = yield* Effect.fiberId
-      MutableRef.set(isShutdown, true)
-      internalInterruptors.add(fiberId)
-      if (selfRunner) {
-        yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
-      }
-    })
-  )
+    }
+
+    const fiberId = yield* Effect.fiberId
+    internalInterruptors.add(fiberId)
+    if (isShutdown.current) return
+
+    MutableRef.set(isShutdown, true)
+    if (selfRunner) {
+      yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
+    }
+  })
+
+  yield* Scope.addFinalizerExit(shardingScope, shutdown)
 
   const activeEntityCount = Effect.gen(function*() {
     let count = 0

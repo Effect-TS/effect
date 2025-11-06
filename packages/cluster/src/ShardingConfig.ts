@@ -64,6 +64,12 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly shardLockExpiration: DurationInput
   /**
+   * Start shutting down as soon as an Entity has started shutting down.
+   *
+   * Defaults to `true`.
+   */
+  readonly preemptiveShutdown: boolean
+  /**
    * The default capacity of the mailbox for entities.
    */
   readonly entityMailboxCapacity: number | "unbounded"
@@ -118,6 +124,7 @@ export const defaults: ShardingConfig["Type"] = {
   runnerShardWeight: 1,
   shardsPerGroup: 300,
   shardGroups: ["default"],
+  preemptiveShutdown: true,
   shardLockRefreshInterval: Duration.seconds(10),
   shardLockExpiration: Duration.seconds(35),
   entityMailboxCapacity: 4096,
@@ -178,6 +185,10 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   shardsPerGroup: Config.integer("shardsPerGroup").pipe(
     Config.withDefault(defaults.shardsPerGroup),
     Config.withDescription("The number of shards to allocate per shard group.")
+  ),
+  preemptiveShutdown: Config.boolean("preemptiveShutdown").pipe(
+    Config.withDefault(defaults.preemptiveShutdown),
+    Config.withDescription("Start shutting down as soon as an Entity has started shutting down.")
   ),
   shardLockRefreshInterval: Config.duration("shardLockRefreshInterval").pipe(
     Config.withDefault(defaults.shardLockRefreshInterval),
