@@ -291,9 +291,10 @@ const make = Effect.gen(function*() {
             runner: selfAddress,
             shardId
           }),
-          Effect.withSpan("Sharding.releaseShard", {
-            captureStackTrace: false,
-            attributes: { shardId }
+          Effect.withSpan("Sharding.releaseShard", { captureStackTrace: false }),
+          Effect.annotateSpans({
+            shardId,
+            runner: selfAddress
           }),
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
