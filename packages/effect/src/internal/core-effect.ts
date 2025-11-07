@@ -2034,9 +2034,9 @@ export const currentParentSpan: Effect.Effect<Tracer.AnySpan, Cause.NoSuchElemen
 export const currentSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementException> = core.flatMap(
   core.context<never>(),
   (context) => {
-    const span = context.unsafeMap.get(internalTracer.spanTag.key) as Tracer.AnySpan | undefined
-    return span !== undefined && span._tag === "Span"
-      ? core.succeed(span)
+    const span = filterDisablePropagation(Context.getOption(context, internalTracer.spanTag))
+    return span !== undefined && span._tag === "Some" && span.value._tag === "Span"
+      ? core.succeed(span.value)
       : core.fail(new core.NoSuchElementException())
   }
 )
