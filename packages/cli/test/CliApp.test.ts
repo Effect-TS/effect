@@ -97,5 +97,21 @@ describe("CliApp", () => {
         yield* cli(["node", "logging.js", "--log-level", "debug"])
         expect(logLevel).toEqual(LogLevel.Debug)
       }).pipe(runEffect))
+
+    it("should set the minimum log level when using equals syntax (--log-level=...)", () =>
+      Effect.gen(function*() {
+        let logLevel: LogLevel.LogLevel | undefined = undefined
+        const logging = Command.make("logging").pipe(Command.withHandler(() =>
+          Effect.gen(function*() {
+            logLevel = yield* FiberRef.get(FiberRef.currentMinimumLogLevel)
+          })
+        ))
+        const cli = Command.run(logging, {
+          name: "Test",
+          version: "1.0.0"
+        })
+        yield* cli(["node", "logging.js", "--log-level=debug"])
+        expect(logLevel).toEqual(LogLevel.Debug)
+      }).pipe(runEffect))
   })
 })
