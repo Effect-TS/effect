@@ -2070,12 +2070,13 @@ export const linkSpans = dual<
 
 const bigint0 = BigInt(0)
 
-const filterDisablePropagation: (self: Option.Option<Tracer.AnySpan>) => Option.Option<Tracer.AnySpan> = Option.flatMap(
-  (span) =>
-    Context.get(span.context, internalTracer.DisablePropagation)
-      ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
-      : Option.some(span)
-)
+export const filterDisablePropagation: (self: Option.Option<Tracer.AnySpan>) => Option.Option<Tracer.AnySpan> = Option
+  .flatMap(
+    (span) =>
+      Context.get(span.context, internalTracer.DisablePropagation)
+        ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
+        : Option.some(span)
+  )
 
 /** @internal */
 export const unsafeMakeSpan = <XA, XE>(
