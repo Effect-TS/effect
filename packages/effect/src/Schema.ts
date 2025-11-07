@@ -29,6 +29,7 @@ import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as hashMap_ from "./HashMap.js"
 import * as hashSet_ from "./HashSet.js"
+import * as Inspectable from "./Inspectable.js"
 import * as internalCause_ from "./internal/cause.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as schemaId_ from "./internal/schema/schemaId.js"
@@ -6647,8 +6648,8 @@ export const lessThanDate = <S extends Schema.Any>(
     filter((a: Date) => a < max, {
       schemaId: LessThanDateSchemaId,
       [LessThanDateSchemaId]: { max },
-      title: `lessThanDate(${util_.formatDate(max)})`,
-      description: `a date before ${util_.formatDate(max)}`,
+      title: `lessThanDate(${Inspectable.formatDate(max)})`,
+      description: `a date before ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6674,8 +6675,8 @@ export const lessThanOrEqualToDate = <S extends Schema.Any>(
     filter((a: Date) => a <= max, {
       schemaId: LessThanOrEqualToDateSchemaId,
       [LessThanOrEqualToDateSchemaId]: { max },
-      title: `lessThanOrEqualToDate(${util_.formatDate(max)})`,
-      description: `a date before or equal to ${util_.formatDate(max)}`,
+      title: `lessThanOrEqualToDate(${Inspectable.formatDate(max)})`,
+      description: `a date before or equal to ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6699,8 +6700,8 @@ export const greaterThanDate = <S extends Schema.Any>(
     filter((a: Date) => a > min, {
       schemaId: GreaterThanDateSchemaId,
       [GreaterThanDateSchemaId]: { min },
-      title: `greaterThanDate(${util_.formatDate(min)})`,
-      description: `a date after ${util_.formatDate(min)}`,
+      title: `greaterThanDate(${Inspectable.formatDate(min)})`,
+      description: `a date after ${Inspectable.formatDate(min)}`,
       ...annotations
     })
   )
@@ -6726,8 +6727,8 @@ export const greaterThanOrEqualToDate = <S extends Schema.Any>(
     filter((a: Date) => a >= min, {
       schemaId: GreaterThanOrEqualToDateSchemaId,
       [GreaterThanOrEqualToDateSchemaId]: { min },
-      title: `greaterThanOrEqualToDate(${util_.formatDate(min)})`,
-      description: `a date after or equal to ${util_.formatDate(min)}`,
+      title: `greaterThanOrEqualToDate(${Inspectable.formatDate(min)})`,
+      description: `a date after or equal to ${Inspectable.formatDate(min)}`,
       ...annotations
     })
   )
@@ -6752,8 +6753,8 @@ export const betweenDate = <S extends Schema.Any>(
     filter((a: Date) => a <= max && a >= min, {
       schemaId: BetweenDateSchemaId,
       [BetweenDateSchemaId]: { max, min },
-      title: `betweenDate(${util_.formatDate(min)}, ${util_.formatDate(max)})`,
-      description: `a date between ${util_.formatDate(min)} and ${util_.formatDate(max)}`,
+      title: `betweenDate(${Inspectable.formatDate(min)}, ${Inspectable.formatDate(max)})`,
+      description: `a date between ${Inspectable.formatDate(min)} and ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6822,7 +6823,7 @@ export class DateFromString extends transform(
   {
     strict: true,
     decode: (i) => new Date(i),
-    encode: (a) => util_.formatDate(a)
+    encode: (a) => Inspectable.formatDate(a)
   }
 ).annotations({ identifier: "DateFromString" }) {}
 
@@ -6885,7 +6886,8 @@ export class DateTimeUtcFromSelf extends declare(
 const decodeDateTimeUtc = <A extends dateTime.DateTime.Input>(input: A, ast: AST.AST) =>
   ParseResult.try({
     try: () => dateTime.unsafeMake(input),
-    catch: () => new ParseResult.Type(ast, input, `Unable to decode ${util_.formatUnknown(input)} into a DateTime.Utc`)
+    catch: () =>
+      new ParseResult.Type(ast, input, `Unable to decode ${Inspectable.formatUnknown(input)} into a DateTime.Utc`)
   })
 
 /**
@@ -8847,7 +8849,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
       get() {
         return `{ ${
           Reflect.ownKeys(fields)
-            .map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown((this)[p])}`)
+            .map((p: any) => `${Inspectable.formatPropertyKey(p)}: ${Inspectable.formatUnknown((this)[p])}`)
             .join(", ")
         } }`
       },
@@ -9112,7 +9114,9 @@ const makeClass = <Fields extends Struct.Fields>(
     Object.defineProperty(klass.prototype, "toString", {
       value() {
         return `${identifier}({ ${
-          Reflect.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          Reflect.ownKeys(fields).map((p: any) =>
+            `${Inspectable.formatPropertyKey(p)}: ${Inspectable.formatUnknown(this[p])}`
+          )
             .join(", ")
         } })`
       },

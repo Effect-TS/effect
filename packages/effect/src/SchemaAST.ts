@@ -7,6 +7,7 @@ import type { Effect } from "./Effect.js"
 import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
+import * as Inspectable from "./Inspectable.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Number from "./Number.js"
@@ -533,7 +534,7 @@ export class Literal implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.literal))
+    return Option.getOrElse(getExpected(this), () => Inspectable.formatUnknown(this.literal))
   }
   /**
    * @since 3.10.0
@@ -577,7 +578,7 @@ export class UniqueSymbol implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.symbol))
+    return Option.getOrElse(getExpected(this), () => Inspectable.formatUnknown(this.symbol))
   }
   /**
    * @since 3.10.0
@@ -2968,7 +2969,7 @@ const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), (
 function getBrands(ast: Annotated): string {
   return Option.match(getBrandAnnotation(ast), {
     onNone: () => "",
-    onSome: (brands) => brands.map((brand) => ` & Brand<${util_.formatUnknown(brand)}>`).join("")
+    onSome: (brands) => brands.map((brand) => ` & Brand<${Inspectable.formatUnknown(brand)}>`).join("")
   })
 }
 
