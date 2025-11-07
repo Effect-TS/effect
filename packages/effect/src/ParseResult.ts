@@ -1873,7 +1873,7 @@ function getDefaultTypeMessage(issue: Type): string {
     return issue.message
   }
   const expected = AST.isRefinement(issue.ast) ? getRefinementExpected(issue.ast) : String(issue.ast)
-  return `Expected ${expected}, actual ${util_.formatUnknown(issue.actual)}`
+  return `Expected ${expected}, actual ${Inspectable.formatUnknown(issue.actual)}`
 }
 
 const formatTypeMessage = (issue: Type): Effect.Effect<string> =>

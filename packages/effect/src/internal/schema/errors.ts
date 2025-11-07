@@ -1,4 +1,5 @@
 import * as array_ from "../../Array.js"
+import * as Inspectable from "../../Inspectable.js"
 import type * as AST from "../../SchemaAST.js"
 import * as util_ from "./util.js"
 
@@ -105,7 +106,7 @@ export const getJSONSchemaUnsupportedPostRestElementsErrorMessage = (path: Reado
 
 /** @internal */
 export const getJSONSchemaUnsupportedKeyErrorMessage = (key: PropertyKey, path: ReadonlyArray<PropertyKey>): string =>
-  getErrorMessage("Unsupported key", `Cannot encode ${util_.formatPropertyKey(key)} key to JSON Schema`, path)
+  getErrorMessage("Unsupported key", `Cannot encode ${Inspectable.formatPropertyKey(key)} key to JSON Schema`, path)
 
 // ---------------------------------------------
 // Pretty
@@ -125,7 +126,13 @@ export const getPrettyNoMatchingSchemaErrorMessage = (
   actual: unknown,
   path: ReadonlyArray<PropertyKey>,
   ast: AST.AST
-) => getErrorMessage("Unexpected Error", `Cannot find a matching schema for ${util_.formatUnknown(actual)}`, path, ast)
+) =>
+  getErrorMessage(
+    "Unexpected Error",
+    `Cannot find a matching schema for ${Inspectable.formatUnknown(actual)}`,
+    path,
+    ast
+  )
 
 // ---------------------------------------------
 // Schema
@@ -153,7 +160,7 @@ export const getASTUnsupportedKeySchemaErrorMessage = (ast: AST.AST) =>
 
 /** @internal */
 export const getASTUnsupportedLiteralErrorMessage = (literal: AST.LiteralValue) =>
-  getErrorMessage("Unsupported literal", `literal value: ${util_.formatUnknown(literal)}`)
+  getErrorMessage("Unsupported literal", `literal value: ${Inspectable.formatUnknown(literal)}`)
 
 /** @internal */
 export const getASTDuplicateIndexSignatureErrorMessage = (type: "string" | "symbol"): string =>
@@ -173,7 +180,7 @@ export const getASTRequiredElementFollowinAnOptionalElementErrorMessage = getErr
 
 /** @internal */
 export const getASTDuplicatePropertySignatureTransformationErrorMessage = (key: PropertyKey): string =>
-  getErrorMessage("Duplicate property signature transformation", `Duplicate key ${util_.formatUnknown(key)}`)
+  getErrorMessage("Duplicate property signature transformation", `Duplicate key ${Inspectable.formatUnknown(key)}`)
 
 /** @internal */
 export const getASTUnsupportedRenameSchemaErrorMessage = (ast: AST.AST): string =>
@@ -181,4 +188,4 @@ export const getASTUnsupportedRenameSchemaErrorMessage = (ast: AST.AST): string 
 
 /** @internal */
 export const getASTDuplicatePropertySignatureErrorMessage = (key: PropertyKey): string =>
-  getErrorMessage("Duplicate property signature", `Duplicate key ${util_.formatUnknown(key)}`)
+  getErrorMessage("Duplicate property signature", `Duplicate key ${Inspectable.formatUnknown(key)}`)

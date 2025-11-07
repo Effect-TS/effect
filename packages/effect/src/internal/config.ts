@@ -8,6 +8,7 @@ import type { LazyArg } from "../Function.js"
 import { constTrue, dual, pipe } from "../Function.js"
 import type * as HashMap from "../HashMap.js"
 import * as HashSet from "../HashSet.js"
+import { formatUnknown } from "../Inspectable.js"
 import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
 import { hasProperty, type Predicate, type Refinement } from "../Predicate.js"
@@ -170,7 +171,7 @@ export const boolean = (name?: string): Config.Config<boolean> => {
         default: {
           const error = configError.InvalidData(
             [],
-            `Expected a boolean value but received ${text}`
+            `Expected a boolean value but received ${formatUnknown(text)}`
           )
           return Either.left(error)
         }
@@ -187,7 +188,7 @@ export const url = (name?: string): Config.Config<URL> => {
     (text) =>
       Either.try({
         try: () => new URL(text),
-        catch: (_) => configError.InvalidData([], `Expected an URL value but received ${text}`)
+        catch: (_) => configError.InvalidData([], `Expected an URL value but received ${formatUnknown(text)}`)
       })
   )
   return name === undefined ? config : nested(config, name)
@@ -210,7 +211,7 @@ export const port = (name?: string): Config.Config<number> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected a network port value but received ${text}`
+            `Expected a network port value but received ${formatUnknown(text)}`
           )
         )
       }
@@ -240,7 +241,7 @@ export const date = (name?: string): Config.Config<Date> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected a Date value but received ${text}`
+            `Expected a Date value but received ${formatUnknown(text)}`
           )
         )
       }
@@ -269,7 +270,7 @@ export const number = (name?: string): Config.Config<number> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected a number value but received ${text}`
+            `Expected a number value but received ${formatUnknown(text)}`
           )
         )
       }
@@ -289,7 +290,7 @@ export const integer = (name?: string): Config.Config<number> => {
         return Either.left(
           configError.InvalidData(
             [],
-            `Expected an integer value but received ${text}`
+            `Expected an integer value but received ${formatUnknown(text)}`
           )
         )
       }
@@ -311,7 +312,7 @@ export const literal = <Literals extends ReadonlyArray<Config.LiteralValue>>(...
       return Either.left(
         configError.InvalidData(
           [],
-          `Expected one of (${valuesString}) but received ${text}`
+          `Expected one of (${valuesString}) but received ${formatUnknown(text)}`
         )
       )
     }
@@ -326,7 +327,9 @@ export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
     const label = value.toUpperCase()
     const level = core.allLogLevels.find((level) => level.label === label)
     return level === undefined
-      ? Either.left(configError.InvalidData([], `Expected a log level but received ${value}`))
+      ? Either.left(
+        configError.InvalidData([], `Expected a log level but received ${formatUnknown(value)}`)
+      )
       : Either.right(level)
   })
   return name === undefined ? config : nested(config, name)
@@ -336,7 +339,10 @@ export const logLevel = (name?: string): Config.Config<LogLevel.LogLevel> => {
 export const duration = (name?: string): Config.Config<Duration.Duration> => {
   const config = mapOrFail(string(), (value) => {
     const duration = Duration.decodeUnknown(value)
-    return Either.fromOption(duration, () => configError.InvalidData([], `Expected a duration but received ${value}`))
+    return Either.fromOption(
+      duration,
+      () => configError.InvalidData([], `Expected a duration but received ${formatUnknown(value)}`)
+    )
   })
   return name === undefined ? config : nested(config, name)
 }
