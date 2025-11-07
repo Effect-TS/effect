@@ -1966,7 +1966,7 @@ export const annotateCurrentSpan: {
 } = function(): Effect.Effect<void> {
   const args = arguments
   return ignore(core.flatMap(
-    currentSpan,
+    currentPropagatedSpan,
     (span) =>
       core.sync(() => {
         if (typeof args[0] === "string") {
@@ -2034,8 +2034,18 @@ export const currentParentSpan: Effect.Effect<Tracer.AnySpan, Cause.NoSuchElemen
 export const currentSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementException> = core.flatMap(
   core.context<never>(),
   (context) => {
+    const span = context.unsafeMap.get(internalTracer.spanTag.key) as Tracer.AnySpan | undefined
+    return span !== undefined && span._tag === "Span"
+      ? core.succeed(span)
+      : core.fail(new core.NoSuchElementException())
+  }
+)
+
+export const currentPropagatedSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementException> = core.flatMap(
+  core.context<never>(),
+  (context) => {
     const span = filterDisablePropagation(Context.getOption(context, internalTracer.spanTag))
-    return span !== undefined && span._tag === "Some" && span.value._tag === "Span"
+    return span._tag === "Some" && span.value._tag === "Span"
       ? core.succeed(span.value)
       : core.fail(new core.NoSuchElementException())
   }
