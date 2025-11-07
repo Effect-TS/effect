@@ -11,6 +11,7 @@ import type { HashSet } from "effect/HashSet"
 import type { Layer } from "effect/Layer"
 import type { Option } from "effect/Option"
 import { type Pipeable } from "effect/Pipeable"
+import type { Predicate } from "effect/Predicate"
 import type * as Types from "effect/Types"
 import type { Args } from "./Args.js"
 import type { CliApp } from "./CliApp.js"
@@ -435,9 +436,88 @@ export const run: {
     config: Omit<CliApp.ConstructorArgs<never>, "command">
   ): <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>
-  ) => (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
+  ) => (
+    args: ReadonlyArray<string>
+  ) => Effect<void, E | ValidationError | QuitException, R | CliApp.Environment | FileSystem | Path | Terminal>
   <Name extends string, R, E, A>(
     self: Command<Name, R, E, A>,
     config: Omit<CliApp.ConstructorArgs<never>, "command">
-  ): (args: ReadonlyArray<string>) => Effect<void, E | ValidationError, R | CliApp.Environment>
+  ): (
+    args: ReadonlyArray<string>
+  ) => Effect<void, E | ValidationError | QuitException, R | CliApp.Environment | FileSystem | Path | Terminal>
 } = Internal.run
+
+/**
+ * A combinator that wraps a command to conditionally trigger a behavior (like wizard mode)
+ * based on a predicate evaluated against the CLI arguments.
+ *
+ * This is a composable approach to adding conditional behaviors to commands. Instead of
+ * having separate `runWith*` methods for each behavior, this single combinator can handle
+ * wizard mode, help display, or any custom behavior.
+ *
+ * The predicate parameter accepts Effect's `Predicate` type, allowing you to use predicate
+ * combinators like `Predicate.and`, `Predicate.or`, and `Predicate.not` for complex conditions.
+ *
+ * @example
+ * ```typescript
+ * import { Command, Options } from "@effect/cli"
+ * import { Effect, Predicate } from "effect"
+ *
+ * const command = Command.make("greet", {
+ *   name: Options.text("name")
+ * }, ({ name }) =>
+ *   Effect.log(\`Hello, \${name}!\`)
+ * )
+ *
+ * // Run wizard mode when no arguments are provided (besides the command name)
+ * const commandWithWizard = Command.withConditionalBehavior(
+ *   command,
+ *   (args) => args.length <= 1,
+ *   "wizard"
+ * )
+ *
+ * // Or use Predicate combinators for complex conditions
+ * const hasNoArgs = (args: ReadonlyArray<string>) => args.length <= 1
+ * const hasHelpFlag = (args: ReadonlyArray<string>) => args.includes("--help")
+ *
+ * const commandWithComplexPredicate = Command.withConditionalBehavior(
+ *   command,
+ *   Predicate.or(hasNoArgs, hasHelpFlag),
+ *   "wizard"
+ * )
+ *
+ * const cli = Command.run(commandWithWizard, {
+ *   name: "MyApp",
+ *   version: "1.0.0"
+ * })
+ *
+ * // Running \`mycli\` (no args) will start wizard mode
+ * // Running \`mycli --name John\` will execute normally
+ * ```
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withConditionalBehavior: {
+  <Name extends string, R, E, A>(
+    predicate: Predicate<ReadonlyArray<string>>,
+    behavior:
+      | "wizard"
+      | ((
+        command: Command<Name, R, E, A>,
+        args: ReadonlyArray<string>
+      ) => Effect<ReadonlyArray<string>, QuitException | ValidationError, FileSystem | Path | Terminal>)
+  ): (
+    self: Command<Name, R, E, A>
+  ) => Command<Name, R, E, A>
+  <Name extends string, R, E, A>(
+    self: Command<Name, R, E, A>,
+    predicate: Predicate<ReadonlyArray<string>>,
+    behavior:
+      | "wizard"
+      | ((
+        command: Command<Name, R, E, A>,
+        args: ReadonlyArray<string>
+      ) => Effect<ReadonlyArray<string>, QuitException | ValidationError, FileSystem | Path | Terminal>)
+  ): Command<Name, R, E, A>
+} = Internal.withConditionalBehavior
