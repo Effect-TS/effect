@@ -688,7 +688,7 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
           if (
             nextPart.type === "tool" &&
             nextPart.id === currentPart.id &&
-            nextPart.value.state === "result-done"
+            (nextPart.value.state === "result-done" || nextPart.value.state === "result-error")
           ) {
             parts[lastIndex] = nextPart
           } else {
@@ -699,7 +699,7 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
 
             parts.push(nextPart)
           }
-        } else if (currentPart.value.state === "result-done") {
+        } else {
           if (toolExists) {
             toolMap.delete(toolExists.id)
             parts.splice(toolExists.index, 1)
@@ -751,7 +751,6 @@ export const accumulateParts = Function.dual<
       {
         name: string
         params?: string | unknown
-        result?: unknown | undefined
         providerExecuted: boolean
         providerName?: string | undefined
       }
@@ -765,7 +764,7 @@ export const accumulateParts = Function.dual<
           case "text": {
             const id = yield* idGenerator.generateId()
             return makePart("text-accumulated", {
-              state: "streaming",
+              state: "done",
               text: part.text,
               metadata: part.metadata,
               id
@@ -774,7 +773,7 @@ export const accumulateParts = Function.dual<
           case "reasoning": {
             const id = yield* idGenerator.generateId()
             return makePart("reasoning-accumulated", {
-              state: "streaming",
+              state: "done",
               text: part.text,
               metadata: part.metadata,
               id
@@ -785,14 +784,14 @@ export const accumulateParts = Function.dual<
               name: part.name,
               params: part.params,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({}))
             })
 
             return makePart("tool", {
               id: part.id,
               name: part.name,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName,
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
                 state: "params-done",
                 params: part.params as any
@@ -803,20 +802,13 @@ export const accumulateParts = Function.dual<
           case "tool-result": {
             const value = toolMap.get(part.id)!
 
-            toolMap.set(part.id, {
-              name: value.name,
-              params: value.params,
-              result: part.result,
-              providerExecuted: value.providerExecuted
-            })
-
             return makePart("tool", {
               id: part.id,
               name: part.name,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName,
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: "result-done",
+                state: part.isFailure ? "result-error" : "result-done",
                 params: value.params as any,
                 result: part.result,
                 encodedResult: part.encodedResult
@@ -858,7 +850,6 @@ export const accumulateStreamParts = Function.dual<
       {
         name: string
         params?: string | unknown
-        result?: unknown | undefined
         providerExecuted: boolean
         providerName?: string | undefined
       }
@@ -868,19 +859,39 @@ export const accumulateStreamParts = Function.dual<
       .filter(
         (part) =>
           !(
-            part.type === "text-start" ||
-            part.type === "text-end" ||
-            part.type === "reasoning-start" ||
-            part.type === "reasoning-end" ||
             part.type === "tool-params-end"
           )
       )
       .map((part): AccumulatedPart<any> => {
         switch (part.type) {
+          case "text-start": {
+            return makePart("text-accumulated", {
+              state: "streaming",
+              text: "",
+              metadata: part.metadata,
+              id: part.id
+            })
+          }
           case "text-delta": {
             return makePart("text-accumulated", {
               state: "streaming",
               text: part.delta,
+              metadata: part.metadata,
+              id: part.id
+            })
+          }
+          case "text-end": {
+            return makePart("text-accumulated", {
+              state: "done",
+              text: "",
+              metadata: part.metadata,
+              id: part.id
+            })
+          }
+          case "reasoning-start": {
+            return makePart("reasoning-accumulated", {
+              state: "streaming",
+              text: "",
               metadata: part.metadata,
               id: part.id
             })
@@ -893,19 +904,27 @@ export const accumulateStreamParts = Function.dual<
               id: part.id
             })
           }
+          case "reasoning-end": {
+            return makePart("reasoning-accumulated", {
+              state: "done",
+              text: "",
+              metadata: part.metadata,
+              id: part.id
+            })
+          }
           case "tool-call": {
             toolMap.set(part.id, {
               name: part.name,
               params: part.params,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({}))
             })
 
             return makePart("tool", {
               id: part.id,
               name: part.name,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName,
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
                 state: "params-done",
                 params: part.params as any
@@ -917,20 +936,13 @@ export const accumulateStreamParts = Function.dual<
           case "tool-result": {
             const value = toolMap.get(part.id)!
 
-            toolMap.set(part.id, {
-              name: value.name,
-              params: value.params,
-              result: part.result,
-              providerExecuted: value.providerExecuted
-            })
-
             return makePart("tool", {
               id: part.id,
               name: part.name,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName,
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: "result-done",
+                state: part.isFailure ? "result-error" : "result-done",
                 params: value.params as any,
                 result: part.result,
                 encodedResult: part.encodedResult
@@ -943,14 +955,14 @@ export const accumulateStreamParts = Function.dual<
             toolMap.set(part.id, {
               name: part.name,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({}))
             })
 
             return makePart("tool", {
               id: part.id,
               name: part.name,
               providerExecuted: part.providerExecuted,
-              providerName: part.providerName,
+              ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
                 state: "params-start"
               },
@@ -971,7 +983,7 @@ export const accumulateStreamParts = Function.dual<
               id: part.id,
               name: value.name,
               providerExecuted: value.providerExecuted,
-              providerName: value.providerName,
+              ...(value.providerName ? ({ providerName: value.providerName }) : ({})),
               value: {
                 state: "params-streaming",
                 params: part.delta
