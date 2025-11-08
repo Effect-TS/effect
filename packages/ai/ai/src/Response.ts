@@ -3087,7 +3087,10 @@ export const toolPart = <
       readonly params: infer Params
       readonly result: infer Success
     }
-  } ? ToolPart<Name, Params, Success, never> :
+  } ? ToolPart<Name, Params, Success, never>
+  : Params extends {
+    readonly name: infer Name extends string
+  } ? ToolPart<Name, never, never, never> :
   never => makePart("tool", params) as any
 
 // =============================================================================
