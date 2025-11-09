@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.3
+
+### Patch Changes
+
+- [#5712](https://github.com/Effect-TS/effect/pull/5712) [`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7) Thanks @gcanti! - Use standard formatting function in Config error messages, closes #5709
+
 ## 3.19.2
 
 ### Patch Changes

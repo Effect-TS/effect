@@ -1,5 +1,14 @@
 # @effect/cli
 
+## 0.72.1
+
+### Patch Changes
+
+- [#5677](https://github.com/Effect-TS/effect/pull/5677) [`f8273c9`](https://github.com/Effect-TS/effect/commit/f8273c9de13ffa6d96c08686f28951177b59f430) Thanks @nemmtor! - fix log level cli arg infinite loop
+
+- Updated dependencies [[`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7)]:
+  - effect@3.19.3
+
 ## 0.72.0
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @effect/ai
 
+## 0.32.1
+
+### Patch Changes
+
+- [#5685](https://github.com/Effect-TS/effect/pull/5685) [`fb53370`](https://github.com/Effect-TS/effect/commit/fb533705e058500a7192810f5373f663c33f0ca4) Thanks @janglad! - Fix Response.Part, AllParts, StreamPart not inferring Schema properly if toolkit is WithHandler
+
+- Updated dependencies [[`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7)]:
+  - effect@3.19.3
+
 ## 0.32.0
 
 ### Patch Changes
