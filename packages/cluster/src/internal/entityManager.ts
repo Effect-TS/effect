@@ -9,11 +9,13 @@ import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
+import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as Metric from "effect/Metric"
 import * as Option from "effect/Option"
+import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -34,6 +36,7 @@ import type { Sharding } from "../Sharding.js"
 import { ShardingConfig } from "../ShardingConfig.js"
 import * as Snowflake from "../Snowflake.js"
 import { EntityReaper } from "./entityReaper.js"
+import { joinAllDiscard } from "./fiber.js"
 import { internalInterruptors } from "./interruptors.js"
 import { ResourceMap } from "./resourceMap.js"
 import { ResourceRef } from "./resourceRef.js"
@@ -434,35 +437,31 @@ export const make = Effect.fnUntraced(function*<
     )
   }
 
-  const interruptShard = (shardId: ShardId) =>
-    Effect.suspend(function loop(): Effect.Effect<void> {
-      const toAwait = Arr.empty<Effect.Effect<void>>()
-      activeServers.forEach((state) => {
-        if (shardId[Equal.symbol](state.address.shardId)) {
-          toAwait.push(entities.removeIgnore(state.address))
-        }
-      })
-      serverCloseLatches.forEach((latch, address) => {
-        if (shardId[Equal.symbol](address.shardId)) {
-          toAwait.push(latch.await)
-        }
-      })
-      if (toAwait.length === 0) {
-        return Effect.void
-      }
-      return Effect.flatMap(
-        Effect.all(toAwait, {
-          concurrency: "unbounded",
-          discard: true
-        }),
-        loop
-      )
-    })
-
   const decodeMessage = Schema.decode(makeMessageSchema(entity))
 
+  const runFork = Runtime.runFork(
+    yield* Effect.runtime<never>().pipe(
+      Effect.interruptible
+    )
+  )
+
   return identity<EntityManager>({
-    interruptShard,
+    interruptShard: (shardId: ShardId) =>
+      Effect.suspend(function loop(): Effect.Effect<void> {
+        const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+        activeServers.forEach((state) => {
+          if (shardId[Equal.symbol](state.address.shardId)) {
+            fibers.push(runFork(entities.removeIgnore(state.address)))
+          }
+        })
+        serverCloseLatches.forEach((latch, address) => {
+          if (shardId[Equal.symbol](address.shardId)) {
+            fibers.push(runFork(latch.await))
+          }
+        })
+        if (fibers.length === 0) return Effect.void
+        return Effect.flatMap(joinAllDiscard(fibers), loop)
+      }),
     isProcessingFor(message, options) {
       if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {
         return true
