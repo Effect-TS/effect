@@ -72,7 +72,7 @@ export const make = Effect.gen(function*() {
         Schema.Struct<{ name: typeof Schema.String; attempt: typeof Schema.Number }>,
         Schema.Schema<Workflow.Result<any, any>>
       >
-      | Rpc.Rpc<"resume">
+      | Rpc.Rpc<"resume", Schema.Struct<{}>>
     >
   >()
   const partialEntities = new Map<
@@ -236,8 +236,20 @@ export const make = Effect.gen(function*() {
     readonly workflowName: string
     readonly executionId: string
   }) {
-    const client = (yield* RcMap.get(clientsPartial, options.workflowName))(options.executionId)
-    return yield* client.resume(void 0, { discard: true })
+    const requestId = yield* requestIdFor({
+      workflow: workflows.get(options.workflowName)!,
+      entityType: `Workflow/${options.workflowName}`,
+      executionId: options.executionId,
+      tag: "resume",
+      id: ""
+    })
+    if (Option.isNone(requestId)) {
+      const client = (yield* RcMap.get(clientsPartial, options.workflowName))(options.executionId)
+      return yield* client.resume({} as any, { discard: true })
+    }
+    const reply = yield* replyForRequestId(requestId.value)
+    if (Option.isNone(reply)) return
+    yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
   return WorkflowEngine.of({
@@ -573,7 +585,10 @@ const DeferredRpc = Rpc.make("deferred", {
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
 
-const ResumeRpc = Rpc.make("resume")
+const ResumeRpc = Rpc.make("resume", {
+  payload: {},
+  primaryKey: () => ""
+})
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
 
