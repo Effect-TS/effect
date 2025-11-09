@@ -174,28 +174,39 @@ export const make = (
         return Effect.async<A, SqlError>((resume) => {
           let done = false
           let cancel: Effect.Effect<void> | undefined = undefined
-          let release = Function.constVoid
-          pool.connect((err, client, release_) => {
+          let client: Pg.PoolClient | undefined = undefined
+          let release: (err?: Error) => void = Function.constVoid
+          function onError(cause: Error) {
+            release(cause)
+            resume(Effect.fail(new SqlError({ cause, message: "Connection error" })))
+          }
+          function cleanup(cause?: Error) {
+            if (!done) release(cause)
+            done = true
+            client?.off("error", onError)
+          }
+          pool.connect((cause, client_, release_) => {
             release = release_
-            if (err) {
-              release()
-              return resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection" })))
+            if (cause) {
+              return resume(Effect.fail(new SqlError({ cause, message: "Failed to acquire connection" })))
             } else if (done) {
-              return release()
-            }
-            cancel = makeCancel(pool, client!)
-            f(client!, (eff) => {
               release()
+              return
+            }
+            client = client_!
+            client.once("error", onError)
+            cancel = makeCancel(pool, client)
+            f(client, (eff) => {
+              cleanup()
               resume(eff)
             })
           })
           return Effect.suspend(() => {
-            done = true
             if (!cancel) {
-              release()
+              cleanup()
               return Effect.void
             }
-            return Effect.ensuring(cancel, Effect.sync(release))
+            return Effect.ensuring(cancel, Effect.sync(cleanup))
           })
         })
       }
@@ -298,12 +309,26 @@ export const make = (
     const reserveRaw = Effect.async<Pg.PoolClient, SqlError, Scope.Scope>((resume) => {
       const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
       const scope = Context.unsafeGet(fiber.currentContext, Scope.Scope)
+      let cause: Error | undefined = undefined
       pool.connect((err, client, release) => {
         if (err) {
           resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection for transaction" })))
         } else {
-          resume(Effect.as(Scope.addFinalizer(scope, Effect.sync(release)), client!))
+          resume(Effect.as(
+            Scope.addFinalizer(
+              scope,
+              Effect.sync(() => {
+                client!.off("error", onError)
+                release(cause)
+              })
+            ),
+            client!
+          ))
         }
+        function onError(cause_: Error) {
+          cause = cause_
+        }
+        client!.on("error", onError)
       })
     })
     const reserve = Effect.map(reserveRaw, (client) => new ConnectionImpl(client))
