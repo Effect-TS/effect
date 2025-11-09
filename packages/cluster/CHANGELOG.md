@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.52.7
+
+### Patch Changes
+
+- [#5716](https://github.com/Effect-TS/effect/pull/5716) [`629b98d`](https://github.com/Effect-TS/effect/commit/629b98d3b696df6c928f0930b867ca3f27829af0) Thanks @tim-smart! - optimize Sharding shard release
+
+- Updated dependencies [[`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7)]:
+  - effect@3.19.3
+
 ## 0.52.6
 
 ### Patch Changes
