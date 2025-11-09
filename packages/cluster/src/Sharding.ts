@@ -42,6 +42,7 @@ import { make as makeEntityId } from "./EntityId.js"
 import * as Envelope from "./Envelope.js"
 import * as EntityManager from "./internal/entityManager.js"
 import { EntityReaper } from "./internal/entityReaper.js"
+import { joinAllDiscard } from "./internal/fiber.js"
 import { hashString } from "./internal/hash.js"
 import { internalInterruptors } from "./internal/interruptors.js"
 import { ResourceMap } from "./internal/resourceMap.js"
@@ -263,45 +264,37 @@ const make = Effect.gen(function*() {
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
     const releaseShard = Effect.fnUntraced(
       function*(shardId: ShardId) {
-        yield* Effect.forEach(
-          entityManagers.values(),
-          (state) =>
-            state.status === "closed" ? Effect.void : state.manager.interruptShard(shardId).pipe(
-              Effect.withSpan("EntityManager.interruptShard", {
-                captureStackTrace: false,
-                attributes: { entityType: state.entity.type }
-              })
-            ),
-          { concurrency: "unbounded", discard: true }
-        ).pipe(
-          Effect.timeout(config.entityTerminationTimeout)
-        )
+        const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+        for (const state of entityManagers.values()) {
+          if (state.status === "closed") continue
+          fibers.push(yield* Effect.fork(state.manager.interruptShard(shardId)))
+        }
+        yield* joinAllDiscard(fibers)
         yield* runnerStorage.release(selfAddress, shardId)
         MutableHashSet.remove(releasingShards, shardId)
         yield* storage.unregisterShardReplyHandlers(shardId)
       },
       Effect.sandbox,
-      Effect.tapError((cause) => Effect.logDebug(`Could not release shard, retrying`, cause)),
-      Effect.eventually,
       (effect, shardId) =>
         effect.pipe(
-          Effect.annotateLogs({
-            package: "@effect/cluster",
-            module: "Sharding",
-            fiber: "releaseShard",
-            runner: selfAddress,
-            shardId
-          }),
-          Effect.withSpan("Sharding.releaseShard", { captureStackTrace: false }),
-          Effect.annotateSpans({
-            shardId,
-            runner: selfAddress
-          }),
+          Effect.tapError((cause) =>
+            Effect.logDebug(`Could not release shard, retrying`, cause).pipe(
+              Effect.annotateLogs({
+                package: "@effect/cluster",
+                module: "Sharding",
+                fiber: "releaseShard",
+                runner: selfAddress,
+                shardId
+              })
+            )
+          ),
+          Effect.eventually,
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )
     const releaseShards = Effect.gen(function*() {
       for (const shardId of releasingShards) {
+        if (FiberMap.unsafeHas(releaseShardsMap, shardId)) continue
         yield* releaseShard(shardId)
       }
     })
@@ -1115,8 +1108,8 @@ const make = Effect.gen(function*() {
 
     yield* Scope.addFinalizer(
       yield* Effect.scope,
-      Effect.withFiberRuntime((fiber) => {
-        internalInterruptors.add(fiber.id())
+      Effect.fiberIdWith((fiberId) => {
+        internalInterruptors.add(fiberId)
         return Effect.void
       })
     )
@@ -1384,8 +1377,7 @@ const make = Effect.gen(function*() {
       )
     }
 
-    const fiberId = yield* Effect.fiberId
-    internalInterruptors.add(fiberId)
+    internalInterruptors.add(yield* Effect.fiberId)
     if (isShutdown.current) return
 
     MutableRef.set(isShutdown, true)
