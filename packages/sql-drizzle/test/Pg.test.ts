@@ -1,6 +1,7 @@
 import { SqlClient } from "@effect/sql"
 import * as Pg from "@effect/sql-drizzle/Pg"
 import { assert, describe, it } from "@effect/vitest"
+import { sql as dsql } from "drizzle-orm"
 import * as D from "drizzle-orm/pg-core"
 import { Effect, Layer } from "effect"
 import * as Logger from "effect/Logger"
@@ -28,6 +29,27 @@ describe.sequential("Pg", () => {
       yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
       const results = yield* db.select().from(users)
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "alice" }])
+    }).pipe(
+      Effect.provide(DrizzlePgLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), {
+    timeout: 60000
+  })
+
+  it.effect("execute", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* Pg.PgDrizzle
+
+      yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
+      yield* db.insert(users).values({ name: "Alice", snakeCase: "alice" })
+
+      const results = yield* db.execute<{
+        id: number
+        name: string
+      }>(dsql`select id, name from users`)
+
+      assert.deepStrictEqual(results, [{ id: 1, name: "Alice" }])
     }).pipe(
       Effect.provide(DrizzlePgLive),
       Effect.catchTag("ContainerError", () => Effect.void)
