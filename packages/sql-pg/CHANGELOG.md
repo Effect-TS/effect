@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.49.3
+
+### Patch Changes
+
+- [#5717](https://github.com/Effect-TS/effect/pull/5717) [`d277a32`](https://github.com/Effect-TS/effect/commit/d277a32b6c9e095553263eac204c026ecd2711fe) Thanks @tim-smart! - improve pg client error handling
+
 ## 0.49.2
 
 ### Patch Changes

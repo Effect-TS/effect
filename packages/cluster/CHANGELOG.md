@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.52.8
+
+### Patch Changes
+
+- [#5719](https://github.com/Effect-TS/effect/pull/5719) [`3689a18`](https://github.com/Effect-TS/effect/commit/3689a183c5ace2fc31faec1910347a12b0e70364) Thanks @tim-smart! - re-use resume parent messages for child workflows
+
 ## 0.52.7
 
 ### Patch Changes
