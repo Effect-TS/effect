@@ -315,9 +315,9 @@ export const getEquivalence = <A, E>({ left, right }: {
   left: Equivalence.Equivalence<E>
 }): Equivalence.Equivalence<Either<A, E>> =>
   Equivalence.make((x, y) =>
-    isLeft(x) ?
-      isLeft(y) && left(x.left, y.left) :
-      isRight(y) && right(x.right, y.right)
+    isRight(x) ?
+      isRight(y) && right(x.right, y.right) :
+      isLeft(y) && left(x.left, y.left)
   )
 
 /**
@@ -338,7 +338,7 @@ export const mapBoth: {
   <A, E, E2, A2>(self: Either<A, E>, { onLeft, onRight }: {
     readonly onLeft: (left: E) => E2
     readonly onRight: (right: A) => A2
-  }): Either<A2, E2> => isLeft(self) ? left(onLeft(self.left)) : right(onRight(self.right))
+  }): Either<A2, E2> => isRight(self) ? right(onRight(self.right)) : left(onLeft(self.left))
 )
 
 /**
@@ -353,7 +353,7 @@ export const mapLeft: {
 } = dual(
   2,
   <A, E, E2>(self: Either<A, E>, f: (left: E) => E2): Either<A, E2> =>
-    isLeft(self) ? left(f(self.left)) : right(self.right)
+    isRight(self) ? right(self.right) : left(f(self.left))
 )
 
 /**
@@ -408,7 +408,7 @@ export const match: {
   <A, E, B, C = B>(self: Either<A, E>, { onLeft, onRight }: {
     readonly onLeft: (left: E) => B
     readonly onRight: (right: A) => C
-  }): B | C => isLeft(self) ? onLeft(self.left) : onRight(self.right)
+  }): B | C => isRight(self) ? onRight(self.right) : onLeft(self.left)
 )
 
 /**
@@ -538,7 +538,7 @@ export const getOrElse: {
   <A, E, A2>(self: Either<A, E>, onLeft: (left: E) => A2): A | A2
 } = dual(
   2,
-  <A, E, A2>(self: Either<A, E>, onLeft: (left: E) => A2): A | A2 => isLeft(self) ? onLeft(self.left) : self.right
+  <A, E, A2>(self: Either<A, E>, onLeft: (left: E) => A2): A | A2 => isRight(self) ? self.right : onLeft(self.left)
 )
 
 /**
@@ -637,7 +637,7 @@ export const orElse: {
 } = dual(
   2,
   <A, E, A2, E2>(self: Either<A, E>, that: (left: E) => Either<A2, E2>): Either<A | A2, E2> =>
-    isLeft(self) ? that(self.left) : right(self.right)
+    isRight(self) ? right(self.right) : that(self.left)
 )
 
 /**
@@ -650,7 +650,7 @@ export const flatMap: {
 } = dual(
   2,
   <A, E, A2, E2>(self: Either<A, E>, f: (right: A) => Either<A2, E2>): Either<A2, E | E2> =>
-    isLeft(self) ? left(self.left) : f(self.right)
+    isRight(self) ? f(self.right) : left(self.left)
 )
 
 /**
@@ -773,7 +773,7 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
  * @since 2.0.0
  * @category mapping
  */
-export const flip = <A, E>(self: Either<A, E>): Either<E, A> => isLeft(self) ? right(self.left) : left(self.right)
+export const flip = <A, E>(self: Either<A, E>): Either<E, A> => isRight(self) ? left(self.right) : right(self.left)
 
 const adapter = Gen.adapter<EitherTypeLambda>()
 
