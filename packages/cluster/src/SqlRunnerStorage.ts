@@ -35,17 +35,30 @@ export const make = Effect.fnUntraced(function*(options: {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.extend(scope)
         )
+        const pid = (yield* conn.executeValues("SELECT pg_backend_pid()", []))[0][0] as number
         yield* Scope.addFinalizerExit(scope, () => Effect.orDie(conn.executeRaw("SELECT pg_advisory_unlock_all()", [])))
-        return conn
-      }),
+        return [conn, pid] as const
+      }, Effect.orDie),
     mysql: () =>
       Effect.fnUntraced(function*(scope: Scope.Scope) {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
           Scope.extend(scope)
         )
+        // we need to get the connection id using IS_USED_LOCK to properly
+        // support vitess
+        let pid: number | undefined = undefined
+        while (pid === undefined) {
+          const address = `cluster:pid:${(Math.random() * Number.MAX_SAFE_INTEGER) | 0}`
+          const taken = (yield* conn.executeValues(
+            `SELECT GET_LOCK('${address}', 10), IS_USED_LOCK('${address}')`,
+            []
+          ))[0] as [1 | null, number]
+          if (taken[0] === null) continue
+          pid = taken[1]
+        }
         yield* Scope.addFinalizerExit(scope, () => Effect.orDie(conn.executeRaw("SELECT RELEASE_ALL_LOCKS()", [])))
-        return conn
-      }),
+        return [conn, pid] as const
+      }, Effect.orDie),
     orElse: () => undefined
   })
   const lockConn = acquireLockConn && (yield* ResourceRef.from(yield* Effect.scope, acquireLockConn))
@@ -215,7 +228,7 @@ export const make = Effect.fnUntraced(function*(options: {
     if (!lockConn) return effect
     const [query, params] = effect.compile()
     return lockConn.await.pipe(
-      Effect.flatMap((conn) => conn.executeRaw(query, params)),
+      Effect.flatMap(([conn]) => conn.executeRaw(query, params)),
       Effect.onError(() => lockConn.unsafeRebuild())
     )
   }
@@ -225,7 +238,7 @@ export const make = Effect.fnUntraced(function*(options: {
     if (!lockConn) return effect.values
     const [query, params] = effect.compile()
     return lockConn.await.pipe(
-      Effect.flatMap((conn) => conn.executeValues(query, params)),
+      Effect.flatMap(([conn]) => conn.executeValues(query, params)),
       Effect.onError(() => lockConn.unsafeRebuild())
     )
   }
@@ -233,11 +246,11 @@ export const make = Effect.fnUntraced(function*(options: {
   const acquireLock = sql.onDialectOrElse({
     pg: () =>
       Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
-        const conn = yield* lockConn!.await
+        const [conn, pid] = yield* lockConn!.await
         const acquiredShardIds: Array<string> = []
         const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
         const takenLocks = yield* conn.executeValues(
-          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() ORDER BY objid`,
+          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = ${pid} ORDER BY objid`,
           []
         )
         for (let i = 0; i < takenLocks.length; i++) {
@@ -260,15 +273,14 @@ export const make = Effect.fnUntraced(function*(options: {
 
     mysql: () =>
       Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
-        const conn = yield* lockConn!.await
-        const takenLocks = (yield* conn.executeUnprepared(`SELECT ${allMySqlTakenLocks}`, [], undefined))[0] as Record<
-          string,
-          1 | null
-        >
+        const [conn, pid] = yield* lockConn!.await
+        const takenLocks = (yield* conn.executeValues(`SELECT ${allMySqlTakenLocks}`, []))[0] as Array<number | null>
         const acquiredShardIds: Array<string> = []
         const toAcquire: Array<string> = []
-        for (const shardId in takenLocks) {
-          if (takenLocks[shardId] === 1) {
+        for (let i = 0; i < shardIds.length; i++) {
+          const shardId = shardIds[i]
+          const lockTakenBy = takenLocks[shardIdsIndex.get(shardId)!]
+          if (lockTakenBy === pid) {
             acquiredShardIds.push(shardId)
           } else if (shardIds.includes(shardId)) {
             toAcquire.push(shardId)
@@ -277,13 +289,10 @@ export const make = Effect.fnUntraced(function*(options: {
         if (toAcquire.length === 0) {
           return acquiredShardIds
         }
-        const results = (yield* conn.executeUnprepared(`SELECT ${mysqlLocks(toAcquire)}`, [], undefined))[0] as Record<
-          string,
-          number
-        >
-        for (const shardId in results) {
-          if (results[shardId] === 1) {
-            acquiredShardIds.push(shardId)
+        const results = (yield* conn.executeValues(`SELECT ${mysqlLocks(toAcquire)}`, []))[0] as Array<number>
+        for (let i = 0; i < results.length; i++) {
+          if (results[i] === 1) {
+            acquiredShardIds.push(toAcquire[i])
           }
         }
         return acquiredShardIds
@@ -341,15 +350,20 @@ export const make = Effect.fnUntraced(function*(options: {
     }
   }
 
+  const shardIdsIndex = new Map<string, number>()
   const lockNames = new Map<string, string>()
   const lockNamesReverse = new Map<string, string>()
-  for (let i = 0; i < config.shardGroups.length; i++) {
-    const group = config.shardGroups[i]
-    for (let shard = 1; shard <= config.shardsPerGroup; shard++) {
-      const shardId = ShardId.make(group, shard).toString()
-      const lockName = `${prefix}.${shardId}`
-      lockNames.set(shardId, lockName)
-      lockNamesReverse.set(lockName, shardId)
+  {
+    let index = 0
+    for (let i = 0; i < config.shardGroups.length; i++) {
+      const group = config.shardGroups[i]
+      for (let shard = 1; shard <= config.shardsPerGroup; shard++) {
+        const shardId = ShardId.make(group, shard).toString()
+        const lockName = `${prefix}.${shardId}`
+        shardIdsIndex.set(shardId, index++)
+        lockNames.set(shardId, lockName)
+        lockNamesReverse.set(lockName, shardId)
+      }
     }
   }
 
@@ -364,7 +378,7 @@ export const make = Effect.fnUntraced(function*(options: {
 
   const allMySqlTakenLocks = Array.from(
     lockNames.entries(),
-    ([shardId, lockName]) => `IS_USED_LOCK('${lockName}') = CONNECTION_ID() AS "${shardId}"`
+    ([shardId, lockName]) => `IS_USED_LOCK('${lockName}') AS "${shardId}"`
   ).join(", ")
 
   const acquiredLocks = (address: string, shardIds: ReadonlyArray<string>) =>
@@ -453,7 +467,7 @@ export const make = Effect.fnUntraced(function*(options: {
           function*(_address, shardId) {
             const lockNum = lockNumbers.get(shardId)!
             for (let i = 0; i < 5; i++) {
-              const conn = yield* lockConn!.await
+              const [conn] = yield* lockConn!.await
               yield* conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
               const takenLocks = yield* conn.executeValues(
                 `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
@@ -461,7 +475,7 @@ export const make = Effect.fnUntraced(function*(options: {
               )
               if (takenLocks.length === 0) return
             }
-            const conn = yield* lockConn!.await
+            const [conn] = yield* lockConn!.await
             yield* conn.executeRaw(`SELECT pg_advisory_unlock_all()`, [])
           },
           Effect.onError(() => lockConn!.unsafeRebuild()),
@@ -473,13 +487,13 @@ export const make = Effect.fnUntraced(function*(options: {
           function*(_address, shardId) {
             const lockName = lockNames.get(shardId)!
             while (true) {
-              const conn = yield* lockConn!.await
+              const [conn, pid] = yield* lockConn!.await
               yield* conn.executeRaw(`SELECT RELEASE_LOCK('${lockName}')`, [])
               const takenLocks = yield* conn.executeValues(
-                `SELECT IS_USED_LOCK('${lockName}') = CONNECTION_ID() AS is_taken`,
+                `SELECT IS_USED_LOCK('${lockName}')`,
                 []
               )
-              if (takenLocks.length === 0 || takenLocks[0][0] !== 1) return
+              if (takenLocks.length === 0 || takenLocks[0][0] !== pid) return
             }
           },
           Effect.onError(() => lockConn!.unsafeRebuild()),

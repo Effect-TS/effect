@@ -14,6 +14,7 @@ describe("SqlRunnerStorage", () => {
   ;([
     ["pg", Layer.orDie(PgContainer.ClientLive)],
     ["mysql", Layer.orDie(MysqlContainer.ClientLive)],
+    ["vitess", Layer.orDie(MysqlContainer.ClientLiveVitess)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer())), {
@@ -38,7 +39,7 @@ describe("SqlRunnerStorage", () => {
 
           yield* storage.unregister(runnerAddress1)
           expect(yield* storage.getRunners).toEqual([])
-        }))
+        }), 30_000)
 
       it.effect("acquireShards", () =>
         Effect.gen(function*() {
