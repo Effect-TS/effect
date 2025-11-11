@@ -39,6 +39,7 @@
     "@effect/typeclass": "workspace:*",
     "@effect/vitest": "workspace:*",
     "@effect/workflow": "workspace:*",
+    "@opentelemetry/sdk-trace-node": "^2.0.1",
     "effect": "workspace:*"
   }
 }

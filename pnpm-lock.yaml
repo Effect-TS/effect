@@ -1149,6 +1149,9 @@ importers:
       '@effect/workflow':
         specifier: workspace:*
         version: link:../packages/workflow
+      '@opentelemetry/sdk-trace-node':
+        specifier: ^2.0.1
+        version: 2.0.1(@opentelemetry/api@1.9.0)
       effect:
         specifier: workspace:*
         version: link:../packages/effect
