@@ -2,8 +2,9 @@ import { PgClient } from "@effect/sql-pg"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
-import { Effect, String } from "effect"
+import { Effect, Redacted, String } from "effect"
 import * as TestServices from "effect/TestServices"
+import { parse as parsePgConnectionString } from "pg-connection-string"
 import { PgContainer } from "./utils.js"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
@@ -281,5 +282,23 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       )
       const value = yield* conn.executeValues("select 1", [])
       expect(value).toEqual([[1]])
+    }))
+
+  it.effect("Should populate config", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+
+      assert.isDefined(sql.config.url)
+
+      const parsedConfig = parsePgConnectionString(Redacted.value(sql.config.url))
+
+      expect(sql.config.host).toEqual(parsedConfig.host)
+      assert.isNotNull(parsedConfig.port)
+      assert.isDefined(parsedConfig.port)
+      expect(sql.config.port).toEqual(parseInt(parsedConfig.port))
+      expect(sql.config.username).toEqual(parsedConfig.user)
+      assert.isDefined(sql.config.password)
+      expect(Redacted.value(sql.config.password)).toEqual(parsedConfig.password)
+      expect(sql.config.database).toEqual(parsedConfig.database)
     }))
 })
