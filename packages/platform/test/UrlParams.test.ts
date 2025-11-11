@@ -117,6 +117,28 @@ describe("UrlParams", () => {
     })
   })
 
+  describe("setAll", () => {
+    it("overwrites provided keys while preserving others", () => {
+      const prev = UrlParams.fromInput({
+        baz: "c",
+        foo: "d"
+      })
+      const next = UrlParams.fromInput({
+        foo: "a",
+        bar: "b"
+      })
+
+      deepStrictEqual(
+        UrlParams.toRecord(UrlParams.setAll(prev, next)),
+        {
+          baz: "c",
+          foo: "a",
+          bar: "b"
+        }
+      )
+    })
+  })
+
   describe("schemaStruct", () => {
     it.effect("works when empty", () =>
       Effect.gen(function*() {
