@@ -261,14 +261,15 @@ export const make = Effect.fnUntraced(function*(options: {
     mysql: () =>
       Effect.fnUntraced(function*(_address: string, shardIds: ReadonlyArray<string>) {
         const conn = yield* lockConn!.await
+        const connectionId = (yield* conn.executeValues(`SELECT CONNECTION_ID()`, []))[0][0] as number
         const takenLocks = (yield* conn.executeUnprepared(`SELECT ${allMySqlTakenLocks}`, [], undefined))[0] as Record<
           string,
-          1 | null
+          number | null
         >
         const acquiredShardIds: Array<string> = []
         const toAcquire: Array<string> = []
         for (const shardId in takenLocks) {
-          if (takenLocks[shardId] === 1) {
+          if (takenLocks[shardId] === connectionId) {
             acquiredShardIds.push(shardId)
           } else if (shardIds.includes(shardId)) {
             toAcquire.push(shardId)
@@ -364,7 +365,7 @@ export const make = Effect.fnUntraced(function*(options: {
 
   const allMySqlTakenLocks = Array.from(
     lockNames.entries(),
-    ([shardId, lockName]) => `IS_USED_LOCK('${lockName}') = CONNECTION_ID() AS "${shardId}"`
+    ([shardId, lockName]) => `IS_USED_LOCK('${lockName}') AS "${shardId}"`
   ).join(", ")
 
   const acquiredLocks = (address: string, shardIds: ReadonlyArray<string>) =>
