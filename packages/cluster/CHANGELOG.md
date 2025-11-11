@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.52.9
+
+### Patch Changes
+
+- [#5726](https://github.com/Effect-TS/effect/pull/5726) [`d34476e`](https://github.com/Effect-TS/effect/commit/d34476eebf1b61ce80b2127689d95d3b0c703aab) Thanks @tim-smart! - support and test against vitess for SqlRunnerStorage
+
 ## 0.52.8
 
 ### Patch Changes
