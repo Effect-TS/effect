@@ -14,7 +14,6 @@ import type * as ConfigError from "effect/ConfigError"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
 import * as Fiber from "effect/Fiber"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -26,7 +25,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { ConnectionOptions } from "node:tls"
 import * as Pg from "pg"
-import { parse as parsePgConnectionString } from "pg-connection-string"
+import * as PgConnString from "pg-connection-string"
 import Cursor from "pg-cursor"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
@@ -340,18 +339,22 @@ export const make = (
       acquire: reserveRaw
     })
 
-    const configFromUrl = pool.options.connectionString === undefined
-      ? undefined
-      : Either.try(() => parsePgConnectionString(pool.options.connectionString ?? "")).pipe(
-        Either.map((parsedConfig) => ({
-          host: parsedConfig.host ?? undefined,
-          port: parsedConfig.port ? Number.parse(parsedConfig.port).pipe(Option.getOrUndefined) : undefined,
-          username: parsedConfig.user,
-          password: parsedConfig.password ? Redacted.make(parsedConfig.password) : undefined,
-          database: parsedConfig.database ?? undefined
-        })),
-        Either.getOrUndefined
-      )
+    let config = options
+    if (pool.options.connectionString) {
+      try {
+        const parsed = PgConnString.parse(pool.options.connectionString)
+        config = {
+          ...config,
+          host: config.host ?? parsed.host ?? undefined,
+          port: config.port ?? (parsed.port ? Option.getOrUndefined(Number.parse(parsed.port)) : undefined),
+          username: config.username ?? parsed.user ?? undefined,
+          password: config.password ?? (parsed.password ? Redacted.make(parsed.password) : undefined),
+          database: config.database ?? parsed.database ?? undefined
+        }
+      } catch {
+        //
+      }
+    }
 
     return Object.assign(
       yield* Client.make({
@@ -369,16 +372,7 @@ export const make = (
       }),
       {
         [TypeId]: TypeId as TypeId,
-        config: {
-          ...options,
-          host: pool.options.host ?? configFromUrl?.host,
-          port: pool.options.port ?? configFromUrl?.port,
-          username: pool.options.user ?? configFromUrl?.username,
-          password: typeof pool.options.password === "string"
-            ? Redacted.make(pool.options.password)
-            : configFromUrl?.password,
-          database: pool.options.database ?? configFromUrl?.database
-        },
+        config,
         json: (_: unknown) => PgJson(_),
         listen: (channel: string) =>
           Stream.asyncPush<string, SqlError>(Effect.fnUntraced(function*(emit) {
