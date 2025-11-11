@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.49.4
+
+### Patch Changes
+
+- [#5725](https://github.com/Effect-TS/effect/pull/5725) [`06b49b9`](https://github.com/Effect-TS/effect/commit/06b49b9b6ab8cb445a426aa13123795c4914b953) Thanks @janglad! - Fix: populate PgClient config with values parsed from URL if not provided
+
 ## 0.49.3
 
 ### Patch Changes
