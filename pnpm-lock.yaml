@@ -883,6 +883,9 @@ importers:
       pg:
         specifier: ^8.16.3
         version: 8.16.3
+      pg-connection-string:
+        specifier: 2.9.1
+        version: 2.9.1
       pg-cursor:
         specifier: ^2.15.3
         version: 2.15.3(pg@8.16.3)

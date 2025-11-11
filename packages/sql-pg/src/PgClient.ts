@@ -17,6 +17,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as RcRef from "effect/RcRef"
 import * as Redacted from "effect/Redacted"
@@ -24,6 +25,7 @@ import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { ConnectionOptions } from "node:tls"
 import * as Pg from "pg"
+import * as PgConnString from "pg-connection-string"
 import Cursor from "pg-cursor"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
@@ -337,6 +339,23 @@ export const make = (
       acquire: reserveRaw
     })
 
+    let config = options
+    if (pool.options.connectionString) {
+      try {
+        const parsed = PgConnString.parse(pool.options.connectionString)
+        config = {
+          ...config,
+          host: config.host ?? parsed.host ?? undefined,
+          port: config.port ?? (parsed.port ? Option.getOrUndefined(Number.parse(parsed.port)) : undefined),
+          username: config.username ?? parsed.user ?? undefined,
+          password: config.password ?? (parsed.password ? Redacted.make(parsed.password) : undefined),
+          database: config.database ?? parsed.database ?? undefined
+        }
+      } catch {
+        //
+      }
+    }
+
     return Object.assign(
       yield* Client.make({
         acquirer: Effect.succeed(new ConnectionImpl()),
@@ -353,14 +372,7 @@ export const make = (
       }),
       {
         [TypeId]: TypeId as TypeId,
-        config: {
-          ...options,
-          host: pool.options.host,
-          port: pool.options.port,
-          username: pool.options.user,
-          password: typeof pool.options.password === "string" ? Redacted.make(pool.options.password) : undefined,
-          database: pool.options.database
-        },
+        config,
         json: (_: unknown) => PgJson(_),
         listen: (channel: string) =>
           Stream.asyncPush<string, SqlError>(Effect.fnUntraced(function*(emit) {
