@@ -4,6 +4,7 @@ import { Activity, DurableClock, DurableDeferred, Workflow } from "@effect/workf
 import { WorkflowInstance } from "@effect/workflow/WorkflowEngine"
 import { DateTime, Effect, Exit, Fiber, Layer, Schema, TestClock } from "effect"
 import * as Cause from "effect/Cause"
+import * as Duration from "effect/Duration"
 import * as RunnerHealth from "../src/RunnerHealth.js"
 import * as RunnerStorage from "../src/RunnerStorage.js"
 
@@ -322,7 +323,8 @@ const EmailWorkflowLayer = EmailWorkflow.toLayer(Effect.fn(function*(payload) {
       // suspended inside Activity
       yield* DurableClock.sleep({
         name: "Some sleep",
-        duration: "10 seconds"
+        duration: "10 seconds",
+        inMemoryThreshold: Duration.zero
       })
       return yield* DateTime.now
     })
@@ -423,7 +425,8 @@ const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(f
       error: Schema.Never,
       execute: DurableClock.sleep({
         name: "Activity1",
-        duration: 50000
+        duration: 50000,
+        inMemoryThreshold: Duration.zero
       }).pipe(
         Effect.as("Activity1")
       )
@@ -434,7 +437,8 @@ const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(f
       error: Schema.Never,
       execute: DurableClock.sleep({
         name: "Activity2",
-        duration: 10000
+        duration: 10000,
+        inMemoryThreshold: Duration.zero
       }).pipe(
         Effect.as("Activity2")
       )
@@ -445,7 +449,8 @@ const DurableRaceWorkflowLayer = DurableRaceWorkflow.toLayer(Effect.fnUntraced(f
       error: Schema.Never,
       execute: DurableClock.sleep({
         name: "Activity3",
-        duration: 1000
+        duration: 1000,
+        inMemoryThreshold: Duration.zero
       }).pipe(
         Effect.as("Activity3")
       )
