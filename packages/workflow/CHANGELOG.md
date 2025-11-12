@@ -1,5 +1,16 @@
 # @effect/workflow
 
+## 0.12.3
+
+### Patch Changes
+
+- [#5731](https://github.com/Effect-TS/effect/pull/5731) [`796a3b5`](https://github.com/Effect-TS/effect/commit/796a3b5aa3f6e0bd85583cc59f39bc059403345a) Thanks @tim-smart! - add in memory threshold to DurableClock.sleep
+
+- [#5731](https://github.com/Effect-TS/effect/pull/5731) [`796a3b5`](https://github.com/Effect-TS/effect/commit/796a3b5aa3f6e0bd85583cc59f39bc059403345a) Thanks @tim-smart! - add DurableRateLimiter module to @effect/workflow
+
+- Updated dependencies [[`796a3b5`](https://github.com/Effect-TS/effect/commit/796a3b5aa3f6e0bd85583cc59f39bc059403345a)]:
+  - @effect/experimental@0.57.1
+
 ## 0.12.2
 
 ### Patch Changes
