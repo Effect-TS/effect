@@ -77,11 +77,18 @@ export const sleep: (
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly duration: Duration.DurationInput
+  readonly inMemoryThreshold?: Duration.DurationInput | undefined
 }) {
   const duration = Duration.decode(options.duration)
   if (Duration.isZero(duration)) {
     return
-  } else if (Duration.lessThanOrEqualTo(duration, defaultInMemoryThreshold)) {
+  }
+
+  const inMemoryThreshold = options.inMemoryThreshold
+    ? Duration.decode(options.inMemoryThreshold)
+    : defaultInMemoryThreshold
+
+  if (Duration.lessThanOrEqualTo(duration, inMemoryThreshold)) {
     return yield* Activity.make({
       name: `DurableClock/${options.name}`,
       execute: Effect.sleep(duration)
