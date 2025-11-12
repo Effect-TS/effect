@@ -5,6 +5,7 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import type * as Schema from "effect/Schema"
+import * as Activity from "./Activity.js"
 import * as DurableDeferred from "./DurableDeferred.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -61,6 +62,13 @@ export const sleep: (
   options: {
     readonly name: string
     readonly duration: Duration.DurationInput
+    /**
+     * If the duration is less than or equal to this threshold, the clock will
+     * be executed in memory.
+     *
+     * Defaults to 60 seconds.
+     */
+    readonly inMemoryThreshold?: Duration.DurationInput | undefined
   }
 ) => Effect.Effect<
   void,
@@ -72,6 +80,12 @@ export const sleep: (
 }) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
+  if (Duration.lessThanOrEqualTo(options.duration, defaultInMemoryThreshold)) {
+    return yield* Activity.make({
+      name: `DurableClock/${options.name}`,
+      execute: Effect.sleep(options.duration)
+    })
+  }
   const clock = make(options)
   yield* engine.scheduleClock({
     workflow: instance.workflow,
@@ -80,3 +94,5 @@ export const sleep: (
   })
   return yield* DurableDeferred.await(clock.deferred)
 })
+
+const defaultInMemoryThreshold = Duration.seconds(60)
