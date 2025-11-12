@@ -41,13 +41,17 @@ export interface RateLimiter {
  * @since 1.0.0
  * @category Tags
  */
-export const RateLimiter = Context.GenericTag<RateLimiter>(TypeId)
+export const RateLimiter: Context.Tag<RateLimiter, RateLimiter> = Context.GenericTag<RateLimiter>(TypeId)
 
 /**
  * @since 1.0.0
  * @category Constructors
  */
-export const make = Effect.gen(function*() {
+export const make: Effect.Effect<
+  RateLimiter,
+  never,
+  RateLimiterStore
+> = Effect.gen(function*() {
   const store = yield* RateLimiterStore
 
   return identity<RateLimiter>({
@@ -135,7 +139,7 @@ export const make = Effect.gen(function*() {
               return Effect.fail(
                 new RateLimitExceeded({
                   key: options.key,
-                  retryAfter: Duration.times(refillRate, tokens),
+                  retryAfter: Duration.times(refillRate, -remaining),
                   limit: options.limit,
                   remaining: 0
                 })
@@ -259,10 +263,10 @@ export type RateLimiterError = RateLimitExceeded | RateLimitStoreError
  */
 export interface ConsumeResult {
   /**
-   * The amount of delay to wait before making the next request.
+   * The amount of delay to wait before making the next request, when the rate
+   * limiter is using the "delay" `onExceeded` strategy.
    *
-   * It will be Duration.zero if the request is allowed immediately or "fail"
-   * mode is used.
+   * It will be Duration.zero if the request is allowed immediately.
    */
   readonly delay: Duration.Duration
 
@@ -294,7 +298,10 @@ export class RateLimiterStore extends Context.Tag("@effect/experimental/RateLimi
      * live for the `key`.
      *
      * If `limit` is provided, the number of taken tokens will be capped at the
-     * limit (but still can exceed the count in the case the limit is exceeded).
+     * limit.
+     *
+     * In the case the limit is exceeded, the returned count will be greater
+     * than the limit, but the TTL will not be updated.
      */
     readonly fixedWindow: (options: {
       readonly key: string
@@ -308,6 +315,10 @@ export class RateLimiterStore extends Context.Tag("@effect/experimental/RateLimi
      * specified amount of tokens.
      *
      * If `allowOverflow` is true, the number of tokens can drop below zero.
+     *
+     * In the case of no overflow, the returned token count will only be
+     * negative if the requested tokens exceed the available tokens, but the
+     * real token count will not be persisted below zero.
      */
     readonly tokenBucket: (options: {
       readonly key: string
@@ -323,7 +334,9 @@ export class RateLimiterStore extends Context.Tag("@effect/experimental/RateLimi
  * @since 1.0.0
  * @category RateLimiterStore
  */
-export const layerStoreMemory = Layer.sync(RateLimiterStore, () => {
+export const layerStoreMemory: Layer.Layer<
+  RateLimiterStore
+> = Layer.sync(RateLimiterStore, () => {
   const fixedCounters = new Map<string, { count: number; expiresAt: number }>()
   const tokenBuckets = new Map<string, { tokens: number; lastRefill: number }>()
 

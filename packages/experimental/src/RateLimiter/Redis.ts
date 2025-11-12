@@ -50,7 +50,7 @@ if not current then
   return { tokens, nextpttl }
 end
 
-local currentpttl = tonumber(redis.call("PTTL", key))
+local currentpttl = tonumber(redis.call("PTTL", key) or "0")
 local next = current + tokens
 if limit and next > limit then
   return { next, currentpttl }
