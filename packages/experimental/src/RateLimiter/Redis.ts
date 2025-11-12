@@ -23,7 +23,7 @@ interface RedisWithRateLimiting extends Redis {
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = Effect.fnUntraced(function*(
   options: RedisOptions & {
