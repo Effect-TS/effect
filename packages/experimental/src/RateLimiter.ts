@@ -61,22 +61,21 @@ export const make = Effect.gen(function*() {
       const refillRate = Duration.unsafeDivide(window, options.limit)
 
       if (tokens > options.limit) {
-        if (onExceeded === "fail") {
-          return Effect.fail(
+        return onExceeded === "fail"
+          ? Effect.fail(
             new RateLimitExceeded({
               key: options.key,
-              resetAfter: window,
+              retryAfter: window,
               limit: options.limit,
               remaining: 0
             })
           )
-        }
-        return Effect.succeed<ConsumeResult>({
-          delay: window,
-          limit: options.limit,
-          remaining: 0,
-          resetAfter: window
-        })
+          : Effect.succeed<ConsumeResult>({
+            delay: window,
+            limit: options.limit,
+            remaining: 0,
+            resetAfter: window
+          })
       }
 
       if (algorithm === "fixed-window") {
@@ -94,7 +93,7 @@ export const make = Effect.gen(function*() {
                 return Effect.fail(
                   new RateLimitExceeded({
                     key: options.key,
-                    resetAfter: Duration.millis(ttl),
+                    retryAfter: Duration.millis(ttl),
                     limit: options.limit,
                     remaining: 0
                   })
@@ -122,8 +121,6 @@ export const make = Effect.gen(function*() {
         )
       }
 
-      const resetAfter = Duration.times(refillRate, options.limit)
-
       return Effect.flatMap(
         store.tokenBucket({
           key: options.key,
@@ -138,7 +135,7 @@ export const make = Effect.gen(function*() {
               return Effect.fail(
                 new RateLimitExceeded({
                   key: options.key,
-                  resetAfter,
+                  retryAfter: Duration.times(refillRate, tokens),
                   limit: options.limit,
                   remaining: 0
                 })
@@ -200,7 +197,7 @@ export type ErrorTypeId = "~@effect/experimental/RateLimiter/RateLimiterError"
 export class RateLimitExceeded extends Schema.TaggedError<RateLimitExceeded>(
   "@effect/experimental/RateLimiter/RateLimitExceeded"
 )("RateLimiterError", {
-  resetAfter: Schema.DurationFromMillis,
+  retryAfter: Schema.DurationFromMillis,
   key: Schema.String,
   limit: Schema.Number,
   remaining: Schema.Number

@@ -1,5 +1,5 @@
 import { RateLimiter } from "@effect/experimental"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as Duration from "effect/Duration"
 import * as TestClock from "effect/TestClock"
@@ -47,13 +47,15 @@ describe("RateLimiter", () => {
         let result = yield* consume
         expect(result.delay).toEqual(Duration.zero)
         let error = yield* Effect.flip(consume)
-        expect(error.resetAfter).toEqual(Duration.minutes(1))
+        assert(error.reason === "Exceeded")
+        expect(error.retryAfter).toEqual(Duration.minutes(1))
         expect(error.remaining).toEqual(0)
 
         yield* TestClock.adjust(Duration.seconds(30))
 
         error = yield* Effect.flip(consume)
-        expect(error.resetAfter).toEqual(Duration.seconds(30))
+        assert(error.reason === "Exceeded")
+        expect(error.retryAfter).toEqual(Duration.seconds(30))
         expect(error.remaining).toEqual(0)
 
         yield* TestClock.adjust(Duration.seconds(30))
@@ -112,7 +114,8 @@ describe("RateLimiter", () => {
         let result = yield* consume
         expect(result.delay).toEqual(Duration.zero)
         const error = yield* Effect.flip(consume)
-        expect(error.resetAfter).toEqual(Duration.minutes(1))
+        assert(error.reason === "Exceeded")
+        expect(error.retryAfter).toEqual(Duration.seconds(12))
         expect(error.remaining).toEqual(0)
 
         yield* TestClock.adjust(Duration.times(refillRate, 3))
