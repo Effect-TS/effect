@@ -38,7 +38,13 @@ export interface RateLimiter {
 }
 
 /**
- * @since 1ode.0.0
+ * @since 1.0.0
+ * @category Tags
+ */
+export const RateLimiter = Context.GenericTag<RateLimiter>(TypeId)
+
+/**
+ * @since 1.0.0
  * @category Constructors
  */
 export const make = Effect.gen(function*() {
@@ -141,6 +147,16 @@ export const make = Effect.gen(function*() {
     }
   })
 })
+
+/**
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layer: Layer.Layer<
+  RateLimiter,
+  never,
+  RateLimiterStore
+> = Layer.effect(RateLimiter, make)
 
 /**
  * @since 1.0.0
