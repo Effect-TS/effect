@@ -57,7 +57,27 @@ export const make = Effect.gen(function*() {
       const onExceeded = options.onExceeded ?? "fail"
       const algorithm = options.algorithm ?? "fixed-window"
       const window = Duration.decode(options.window)
+      const windowMillis = Duration.toMillis(window)
       const refillRate = Duration.unsafeDivide(window, options.limit)
+
+      if (tokens > options.limit) {
+        if (onExceeded === "fail") {
+          return Effect.fail(
+            new RateLimitExceeded({
+              key: options.key,
+              resetAfter: window,
+              limit: options.limit,
+              remaining: 0
+            })
+          )
+        }
+        return Effect.succeed<ConsumeResult>({
+          delay: window,
+          limit: options.limit,
+          remaining: 0,
+          resetAfter: window
+        })
+      }
 
       if (algorithm === "fixed-window") {
         return Effect.flatMap(
@@ -68,8 +88,8 @@ export const make = Effect.gen(function*() {
             limit: onExceeded === "fail" ? options.limit : undefined
           }),
           ([count, ttl]) => {
-            const remaining = options.limit - count
             if (onExceeded === "fail") {
+              const remaining = options.limit - count
               if (remaining < 0) {
                 return Effect.fail(
                   new RateLimitExceeded({
@@ -87,12 +107,15 @@ export const make = Effect.gen(function*() {
                 resetAfter: Duration.millis(ttl)
               })
             }
+            const windowsTotal = Math.floor(count / options.limit) * windowMillis
+            const windowsExpired = Math.max(0, Math.floor((windowsTotal - ttl) / windowMillis))
+            count = count - windowsExpired * options.limit
             const windowsOver = Math.max(0, Math.ceil(count / options.limit) - 1)
             const delay = windowsOver === 0 ? Duration.zero : Duration.times(window, windowsOver)
             return Effect.succeed<ConsumeResult>({
               delay,
               limit: options.limit,
-              remaining,
+              remaining: options.limit - count,
               resetAfter: Duration.times(window, windowsOver + 1)
             })
           }
