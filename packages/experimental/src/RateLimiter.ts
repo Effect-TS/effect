@@ -62,21 +62,38 @@ export const make = Effect.gen(function*() {
             limit: onExceeded === "fail" ? options.limit : undefined
           }),
           ([count, ttl]) => {
-            const delay = count <= options.limit ?
-              Duration.zero :
-              Duration.times(window, Math.ceil(count / options.limit) - 2).pipe(
-                Duration.sum(ttl)
-              )
             const remaining = options.limit - count
+            if (onExceeded === "fail") {
+              if (remaining < 0) {
+                return Effect.fail(
+                  new RateLimitExceeded({
+                    key: options.key,
+                    resetAfter: Duration.millis(ttl),
+                    limit: options.limit,
+                    remaining: 0
+                  })
+                )
+              }
+              return Effect.succeed<ConsumeResult>({
+                delay: Duration.zero,
+                limit: options.limit,
+                remaining,
+                resetAfter: Duration.millis(ttl)
+              })
+            }
+            const windowsOver = Math.max(0, Math.ceil(count / options.limit) - 1)
+            const delay = windowsOver === 0 ? Duration.zero : Duration.times(window, windowsOver)
             return Effect.succeed<ConsumeResult>({
               delay,
               limit: options.limit,
               remaining,
-              resetIn: delay
+              resetAfter: Duration.times(window, windowsOver + 1)
             })
           }
         )
       }
+
+      const resetAfter = Duration.times(refillRate, options.limit)
 
       return Effect.flatMap(
         store.tokenBucket({
@@ -86,13 +103,40 @@ export const make = Effect.gen(function*() {
           refillRate,
           allowOverflow: onExceeded === "delay"
         }),
-        (remaining) =>
-          Effect.succeed<ConsumeResult>({
-            delay: remaining >= 0 ? Duration.zero : Duration.times(refillRate, -remaining),
+        (remaining) => {
+          if (onExceeded === "fail") {
+            if (remaining < 0) {
+              return Effect.fail(
+                new RateLimitExceeded({
+                  key: options.key,
+                  resetAfter,
+                  limit: options.limit,
+                  remaining: 0
+                })
+              )
+            }
+            return Effect.succeed<ConsumeResult>({
+              delay: Duration.zero,
+              limit: options.limit,
+              remaining,
+              resetAfter: Duration.times(refillRate, options.limit - remaining)
+            })
+          }
+          if (remaining >= 0) {
+            return Effect.succeed<ConsumeResult>({
+              delay: Duration.zero,
+              limit: options.limit,
+              remaining,
+              resetAfter: Duration.times(refillRate, options.limit - remaining)
+            })
+          }
+          return Effect.succeed<ConsumeResult>({
+            delay: Duration.times(refillRate, -remaining),
             limit: options.limit,
             remaining,
-            resetIn: Duration.times(refillRate, options.limit - remaining)
+            resetAfter: Duration.times(refillRate, options.limit - remaining)
           })
+        }
       )
     }
   })
@@ -123,7 +167,7 @@ export type RateLimiterError = RateLimitExceeded
 export class RateLimitExceeded extends Schema.TaggedError<RateLimitExceeded>(
   "@effect/experimental/RateLimiter/RateLimitExceeded"
 )("RateLimiterError", {
-  retryAfter: Schema.DurationFromMillis,
+  resetAfter: Schema.DurationFromMillis,
   key: Schema.String,
   limit: Schema.Number,
   remaining: Schema.Number
@@ -171,7 +215,7 @@ export interface ConsumeResult {
   /**
    * The time until the rate limit resets.
    */
-  readonly resetIn: Duration.Duration
+  readonly resetAfter: Duration.Duration
 }
 
 /**
@@ -182,17 +226,18 @@ export class RateLimiterStore extends Context.Tag("@effect/experimental/RateLimi
   RateLimiterStore,
   {
     /**
-     * Returns the current taken tokens and time to live for the `key`.
+     * Returns the token count *after* taking the specified `tokens` and time to
+     * live for the `key`.
      *
      * If `limit` is provided, the number of taken tokens will be capped at the
-     * limit.
+     * limit (but still can exceed the count in the case the limit is exceeded).
      */
     readonly fixedWindow: (options: {
       readonly key: string
       readonly tokens: number
       readonly refillRate: Duration.Duration
       readonly limit: number | undefined
-    }) => Effect.Effect<readonly [count: number, ttl: Duration.Duration], RateLimiterError>
+    }) => Effect.Effect<readonly [count: number, ttl: number], RateLimiterError>
 
     /**
      * Returns the current remaining tokens for the `key` after consuming the
@@ -220,31 +265,26 @@ export const layerStoreMemory = Layer.sync(RateLimiterStore, () => {
 
   return RateLimiterStore.of({
     fixedWindow: (options) =>
-      Effect.clockWith((clock) => {
-        const refillRateMillis = Duration.toMillis(options.refillRate)
-        const now = clock.unsafeCurrentTimeMillis()
-        let counter = fixedCounters.get(options.key)
-        if (!counter || counter.expiresAt <= now) {
-          counter = { count: 0, expiresAt: now }
-          fixedCounters.set(options.key, counter)
-        }
-        if (options.limit && counter.count + options.tokens > options.limit) {
-          return Effect.fail(
-            new RateLimitExceeded({
-              key: options.key,
-              retryAfter: Duration.millis(counter.expiresAt - now),
-              limit: options.limit,
-              remaining: options.limit - counter.count
-            })
-          )
-        }
-        counter.count += options.tokens
-        counter.expiresAt += refillRateMillis * options.tokens
-        return Effect.succeed([counter.count, Duration.millis(counter.expiresAt - now)] as const)
-      }),
+      Effect.clockWith((clock) =>
+        Effect.sync(() => {
+          const refillRateMillis = Duration.toMillis(options.refillRate)
+          const now = clock.unsafeCurrentTimeMillis()
+          let counter = fixedCounters.get(options.key)
+          if (!counter || counter.expiresAt <= now) {
+            counter = { count: 0, expiresAt: now }
+            fixedCounters.set(options.key, counter)
+          }
+          if (options.limit && counter.count + options.tokens > options.limit) {
+            return [counter.count + options.tokens, counter.expiresAt - now] as const
+          }
+          counter.count += options.tokens
+          counter.expiresAt += refillRateMillis * options.tokens
+          return [counter.count, counter.expiresAt - now] as const
+        })
+      ),
     tokenBucket: (options) =>
       Effect.clockWith((clock) =>
-        Effect.suspend(() => {
+        Effect.sync(() => {
           const refillRateMillis = Duration.toMillis(options.refillRate)
           const now = clock.unsafeCurrentTimeMillis()
           let bucket = tokenBuckets.get(options.key)
@@ -254,25 +294,17 @@ export const layerStoreMemory = Layer.sync(RateLimiterStore, () => {
           } else {
             const elapsed = now - bucket.lastRefill
             const tokensToAdd = Math.floor(elapsed / refillRateMillis)
-            bucket.tokens = Math.min(options.limit, bucket.tokens + tokensToAdd)
-            bucket.lastRefill += tokensToAdd * refillRateMillis
+            if (tokensToAdd > 0) {
+              bucket.tokens = Math.min(options.limit, bucket.tokens + tokensToAdd)
+              bucket.lastRefill += tokensToAdd * refillRateMillis
+            }
           }
 
           const newTokenCount = bucket.tokens - options.tokens
-          if (!options.allowOverflow && newTokenCount < 0) {
-            return Effect.fail(
-              new RateLimitExceeded({
-                key: options.key,
-                retryAfter: Duration.millis(
-                  refillRateMillis * (options.tokens - bucket.tokens)
-                ),
-                limit: options.limit,
-                remaining: bucket.tokens
-              })
-            )
+          if (options.allowOverflow || newTokenCount >= 0) {
+            bucket.tokens = newTokenCount
           }
-          bucket.tokens = newTokenCount
-          return Effect.succeed(bucket.tokens)
+          return newTokenCount
         })
       )
   })
