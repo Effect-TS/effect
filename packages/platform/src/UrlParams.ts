@@ -158,12 +158,16 @@ export const setAll: {
   (input: Input): (self: UrlParams) => UrlParams
   (self: UrlParams, input: Input): UrlParams
 } = dual(2, (self: UrlParams, input: Input): UrlParams => {
-  const toSet = fromInput(input)
-  const keys = toSet.map(([k]) => k)
-  return Arr.appendAll(
-    Arr.filter(self, ([k]) => keys.includes(k)),
-    toSet
-  )
+  const out = fromInput(input) as Array<readonly [string, string]>
+  const keys = new Set()
+  for (let i = 0; i < out.length; i++) {
+    keys.add(out[i][0])
+  }
+  for (let i = 0; i < self.length; i++) {
+    if (keys.has(self[i][0])) continue
+    out.push(self[i])
+  }
+  return out
 })
 
 /**
