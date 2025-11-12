@@ -78,14 +78,18 @@ export const sleep: (
   readonly name: string
   readonly duration: Duration.DurationInput
 }) {
-  const engine = yield* EngineTag
-  const instance = yield* InstanceTag
-  if (Duration.lessThanOrEqualTo(options.duration, defaultInMemoryThreshold)) {
+  const duration = Duration.decode(options.duration)
+  if (Duration.isZero(duration)) {
+    return
+  } else if (Duration.lessThanOrEqualTo(duration, defaultInMemoryThreshold)) {
     return yield* Activity.make({
       name: `DurableClock/${options.name}`,
-      execute: Effect.sleep(options.duration)
+      execute: Effect.sleep(duration)
     })
   }
+
+  const engine = yield* EngineTag
+  const instance = yield* InstanceTag
   const clock = make(options)
   yield* engine.scheduleClock({
     workflow: instance.workflow,
