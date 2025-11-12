@@ -158,12 +158,6 @@ export type ErrorTypeId = "~@effect/experimental/RateLimiter/RateLimiterError"
  * @since 1.0.0
  * @category Errors
  */
-export type RateLimiterError = RateLimitExceeded
-
-/**
- * @since 1.0.0
- * @category Errors
- */
 export class RateLimitExceeded extends Schema.TaggedError<RateLimitExceeded>(
   "@effect/experimental/RateLimiter/RateLimitExceeded"
 )("RateLimiterError", {
@@ -192,13 +186,47 @@ export class RateLimitExceeded extends Schema.TaggedError<RateLimitExceeded>(
 
 /**
  * @since 1.0.0
+ * @category Errors
+ */
+export class RateLimitStoreError extends Schema.TaggedError<RateLimitStoreError>(
+  "@effect/experimental/RateLimiter/RateLimitStoreError"
+)("RateLimiterError", {
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect)
+}) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [ErrorTypeId]: ErrorTypeId = ErrorTypeId
+
+  /**
+   * @since 1.0.0
+   */
+  readonly reason = "StoreError"
+}
+
+/**
+ * @since 1.0.0
+ * @category Errors
+ */
+export const RateLimiterError = Schema.Union(RateLimitExceeded, RateLimitStoreError)
+
+/**
+ * @since 1.0.0
+ * @category Errors
+ */
+export type RateLimiterError = RateLimitExceeded | RateLimitStoreError
+
+/**
+ * @since 1.0.0
  * @category Models
  */
 export interface ConsumeResult {
   /**
    * The amount of delay to wait before making the next request.
    *
-   * It will be Duration.zero if the request is allowed immediately.
+   * It will be Duration.zero if the request is allowed immediately or "fail"
+   * mode is used.
    */
   readonly delay: Duration.Duration
 
@@ -213,7 +241,7 @@ export interface ConsumeResult {
   readonly remaining: number
 
   /**
-   * The time until the rate limit resets.
+   * The time until the rate limit fully resets.
    */
   readonly resetAfter: Duration.Duration
 }
