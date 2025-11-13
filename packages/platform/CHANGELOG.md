@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.93.2
+
+### Patch Changes
+
+- [#5737](https://github.com/Effect-TS/effect/pull/5737) [`2bb8242`](https://github.com/Effect-TS/effect/commit/2bb8242cb094e516665116707b798fc8e2bc5837) Thanks @tim-smart! - ensure HttpApiScalar source is tree-shakable
+
 ## 0.93.1
 
 ### Patch Changes
