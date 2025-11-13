@@ -57,7 +57,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(
         it.flakyTest,
         Effect.provide(layer)
-      ))
+      ), 30000)
 
     it.effect("google followRedirects", () =>
       Effect.gen(function*() {
@@ -71,7 +71,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(
         it.flakyTest,
         Effect.provide(layer)
-      ))
+      ), 30000)
 
     it.effect("google stream", () =>
       Effect.gen(function*() {
@@ -85,7 +85,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(
         it.flakyTest,
         Effect.provide(layer)
-      ))
+      ), 30000)
 
     it.effect("jsonplaceholder", () =>
       Effect.gen(function*() {
@@ -99,7 +99,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         Effect.provide(JsonPlaceholderLive.pipe(
           Layer.provide(layer)
         ))
-      ))
+      ), 30000)
 
     it.effect("jsonplaceholder schemaBodyJson", () =>
       Effect.gen(function*() {
@@ -115,7 +115,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
         Effect.provide(JsonPlaceholderLive.pipe(
           Layer.provide(layer)
         ))
-      ))
+      ), 30000)
 
     it.effect("head request with schemaJson", () =>
       Effect.gen(function*() {
@@ -129,7 +129,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(
         it.flakyTest,
         Effect.provide(layer)
-      ))
+      ), 30000)
 
     it.live("interrupt", () =>
       Effect.gen(function*() {
@@ -150,6 +150,6 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
       }).pipe(
         it.flakyTest,
         Effect.provide(layer)
-      ))
+      ), 30000)
   })
 })

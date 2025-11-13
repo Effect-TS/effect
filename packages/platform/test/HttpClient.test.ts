@@ -71,7 +71,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(FetchHttpClient.layer)
-    ))
+    ), 30000)
 
   it.effect("google withCookiesRef", () =>
     Effect.gen(function*() {
@@ -97,7 +97,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(FetchHttpClient.layer)
-    ))
+    ), 30000)
 
   it.effect("google stream", () =>
     Effect.gen(function*() {
@@ -111,7 +111,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(FetchHttpClient.layer)
-    ))
+    ), 30000)
 
   it.effect("jsonplaceholder", () =>
     Effect.gen(function*() {
@@ -123,7 +123,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(JsonPlaceholderLive)
-    ))
+    ), 30000)
 
   it.effect("jsonplaceholder schemaFunction", () =>
     Effect.gen(function*() {
@@ -137,7 +137,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(JsonPlaceholderLive)
-    ))
+    ), 30000)
 
   it.effect("jsonplaceholder schemaJson", () =>
     Effect.gen(function*() {
@@ -149,7 +149,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(JsonPlaceholderLive)
-    ))
+    ), 30000)
 
   it.effect("request processing order", () =>
     Effect.gen(function*() {
@@ -165,7 +165,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(FetchHttpClient.layer)
-    ))
+    ), 30000)
 
   it.effect("streamBody accesses the current runtime", () =>
     Effect.gen(function*() {
@@ -189,7 +189,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(FetchHttpClient.layer)
-    ))
+    ), 30000)
 
   it("ClientRequest parses URL instances", () => {
     const request = HttpClientRequest.get(new URL("https://example.com/?foo=bar#hash")).pipe(
@@ -218,7 +218,7 @@ describe("HttpClient", () => {
     }).pipe(
       it.flakyTest,
       Effect.provide(JsonPlaceholderLive)
-    ))
+    ), 30000)
 
   it("ClientRequest redacts headers", () => {
     const request = HttpClientRequest.get(new URL("https://example.com")).pipe(
@@ -260,5 +260,5 @@ describe("HttpClient", () => {
       it.flakyTest,
       Effect.provide(FetchHttpClient.layer),
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" })
-    ))
+    ), 30000)
 })
