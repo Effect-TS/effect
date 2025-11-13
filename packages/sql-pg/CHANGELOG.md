@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.49.5
+
+### Patch Changes
+
+- [#5735](https://github.com/Effect-TS/effect/pull/5735) [`973c90a`](https://github.com/Effect-TS/effect/commit/973c90af48a43a48070a56128f8ce0d0b98afbab) Thanks @tim-smart! - handle undefined pg client
+
 ## 0.49.4
 
 ### Patch Changes

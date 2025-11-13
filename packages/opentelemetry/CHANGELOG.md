@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.59.1
+
+### Patch Changes
+
+- [#5735](https://github.com/Effect-TS/effect/pull/5735) [`973c90a`](https://github.com/Effect-TS/effect/commit/973c90af48a43a48070a56128f8ce0d0b98afbab) Thanks @tim-smart! - convert bigints to string for opentelemetry attributes
+
 ## 0.59.0
 
 ### Patch Changes
