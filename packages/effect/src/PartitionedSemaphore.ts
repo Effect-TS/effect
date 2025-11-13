@@ -75,54 +75,52 @@ export const makeUnsafe = <K = unknown>(options: {
   const partitions = MutableHashMap.empty<K, Set<Waiter>>()
 
   const take = <A, E, R>(key: K, permits: number, effect: Effect.Effect<A, E, R>) =>
-    Effect.uninterruptibleMask((restore) =>
-      Effect.async<A, E, R>((resume) => {
-        if (options.permits < permits) {
-          return resume(restore(Effect.never))
-        } else if (totalPermits >= permits) {
-          totalPermits -= permits
-          return resume(Effect.ensuring(restore(effect), release(permits)))
-        }
+    Effect.async<A, E, R>((resume) => {
+      if (options.permits < permits) {
+        return resume(Effect.never)
+      } else if (totalPermits >= permits) {
+        totalPermits -= permits
+        return resume(Effect.ensuring(effect, release(permits)))
+      }
 
-        const needed = permits - totalPermits
-        const taken = permits - needed
-        if (totalPermits > 0) {
-          totalPermits = 0
-        }
-        waitingPermits += needed
+      const needed = permits - totalPermits
+      const taken = permits - needed
+      if (totalPermits > 0) {
+        totalPermits = 0
+      }
+      waitingPermits += needed
 
-        const waiters = Option.getOrElse(
-          MutableHashMap.get(partitions, key),
-          () => {
-            const set = new Set<Waiter>()
-            MutableHashMap.set(partitions, key, set)
-            return set
-          }
-        )
+      const waiters = Option.getOrElse(
+        MutableHashMap.get(partitions, key),
+        () => {
+          const set = new Set<Waiter>()
+          MutableHashMap.set(partitions, key, set)
+          return set
+        }
+      )
 
-        const entry: Waiter = {
-          permits: needed,
-          resume() {
-            cleanup()
-            resume(Effect.ensuring(restore(effect), release(permits)))
-          }
-        }
-        function cleanup() {
-          waiters.delete(entry)
-          if (waiters.size === 0) {
-            MutableHashMap.remove(partitions, key)
-          }
-        }
-        waiters.add(entry)
-        return Effect.sync(() => {
+      const entry: Waiter = {
+        permits: needed,
+        resume() {
           cleanup()
-          waitingPermits -= entry.permits
-          if (taken > 0) {
-            releaseUnsafe(taken)
-          }
-        })
+          resume(Effect.ensuring(effect, release(permits)))
+        }
+      }
+      function cleanup() {
+        waiters.delete(entry)
+        if (waiters.size === 0) {
+          MutableHashMap.remove(partitions, key)
+        }
+      }
+      waiters.add(entry)
+      return Effect.sync(() => {
+        cleanup()
+        waitingPermits -= entry.permits
+        if (taken > 0) {
+          releaseUnsafe(taken)
+        }
       })
-    )
+    })
 
   let iterator = partitions[Symbol.iterator]()
   const releaseUnsafe = (permits: number) => {
