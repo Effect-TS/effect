@@ -15,7 +15,6 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
-import * as Function from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Number from "effect/Number"
 import * as Option from "effect/Option"
@@ -177,25 +176,29 @@ export const make = (
           let done = false
           let cancel: Effect.Effect<void> | undefined = undefined
           let client: Pg.PoolClient | undefined = undefined
-          let release: (err?: Error) => void = Function.constVoid
           function onError(cause: Error) {
-            release(cause)
+            cleanup(cause)
             resume(Effect.fail(new SqlError({ cause, message: "Connection error" })))
           }
           function cleanup(cause?: Error) {
-            if (!done) release(cause)
+            if (!done) client?.release(cause)
             done = true
             client?.off("error", onError)
           }
-          pool.connect((cause, client_, release_) => {
-            release = release_
+          pool.connect((cause, client_) => {
             if (cause) {
               return resume(Effect.fail(new SqlError({ cause, message: "Failed to acquire connection" })))
+            } else if (!client_) {
+              return resume(
+                Effect.fail(
+                  new SqlError({ message: "Failed to acquire connection", cause: new Error("No client returned") })
+                )
+              )
             } else if (done) {
-              release()
+              client_.release()
               return
             }
-            client = client_!
+            client = client_
             client.once("error", onError)
             cancel = makeCancel(pool, client)
             f(client, (eff) => {
