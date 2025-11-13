@@ -74,13 +74,13 @@ export const makeUnsafe = <K = unknown>(options: {
   }
   const partitions = MutableHashMap.empty<K, Set<Waiter>>()
 
-  const take = <A, E, R>(key: K, permits: number, effect: Effect.Effect<A, E, R>) =>
-    Effect.async<A, E, R>((resume) => {
+  const take = (key: K, permits: number) =>
+    Effect.async<void>((resume) => {
       if (options.permits < permits) {
         return resume(Effect.never)
       } else if (totalPermits >= permits) {
         totalPermits -= permits
-        return resume(Effect.ensuring(effect, release(permits)))
+        return resume(Effect.void)
       }
 
       const needed = permits - totalPermits
@@ -103,7 +103,7 @@ export const makeUnsafe = <K = unknown>(options: {
         permits: needed,
         resume() {
           cleanup()
-          resume(Effect.ensuring(effect, release(permits)))
+          resume(Effect.void)
         }
       }
       function cleanup() {
@@ -144,11 +144,29 @@ export const makeUnsafe = <K = unknown>(options: {
       permits--
     }
   }
-  const release = (permits: number) => Effect.sync(() => releaseUnsafe(permits))
 
   return {
     [TypeId]: TypeId,
-    withPermits: (key, permits) => (effect) => take(key, permits, effect)
+    withPermits: (key, permits) => {
+      const takePermits = take(key, permits)
+      const release: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> = Effect.matchCauseEffect({
+        onFailure(cause) {
+          releaseUnsafe(permits)
+          return Effect.failCause(cause)
+        },
+        onSuccess(value) {
+          releaseUnsafe(permits)
+          return Effect.succeed(value)
+        }
+      })
+      return (effect) =>
+        Effect.uninterruptibleMask((restore) =>
+          Effect.flatMap(
+            restore(takePermits),
+            () => release(restore(effect))
+          )
+        )
+    }
   }
 }
 
