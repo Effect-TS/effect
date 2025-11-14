@@ -12,42 +12,42 @@ describe("Response", () => {
         const parts = [
           Response.textAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "Hello"
           }),
           Response.textAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: ", "
           }),
           Response.textAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "World!"
           }),
           Response.textAccumulatedPart({
             id: "1",
-            state: "done",
+            status: "done",
             text: ""
           }),
           Response.reasoningAccumulatedPart({
             id: "2",
-            state: "streaming",
+            status: "streaming",
             text: "I "
           }),
           Response.reasoningAccumulatedPart({
             id: "2",
-            state: "streaming",
+            status: "streaming",
             text: "am "
           }),
           Response.reasoningAccumulatedPart({
             id: "2",
-            state: "streaming",
+            status: "streaming",
             text: "thinking!"
           }),
           Response.reasoningAccumulatedPart({
             id: "2",
-            state: "done",
+            status: "done",
             text: ""
           })
         ]
@@ -56,12 +56,12 @@ describe("Response", () => {
           Response.textAccumulatedPart({
             id: "1",
             text: "Hello, World!",
-            state: "done"
+            status: "done"
           }),
           Response.reasoningAccumulatedPart({
             id: "2",
             text: "I am thinking!",
-            state: "done"
+            status: "done"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -74,17 +74,17 @@ describe("Response", () => {
         const parts = [
           Response.textAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "Hello"
           }),
           Response.textAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: ", "
           }),
           Response.textAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "World!"
           })
         ]
@@ -93,7 +93,7 @@ describe("Response", () => {
           Response.textAccumulatedPart({
             id: "1",
             text: "Hello, World!",
-            state: "streaming"
+            status: "streaming"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -106,17 +106,17 @@ describe("Response", () => {
         const parts = [
           Response.reasoningAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "I "
           }),
           Response.reasoningAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "am "
           }),
           Response.reasoningAccumulatedPart({
             id: "1",
-            state: "streaming",
+            status: "streaming",
             text: "thinking!"
           })
         ]
@@ -125,7 +125,7 @@ describe("Response", () => {
           Response.reasoningAccumulatedPart({
             id: "1",
             text: "I am thinking!",
-            state: "streaming"
+            status: "streaming"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -141,7 +141,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-start"
+              status: "params-start"
             }
           }),
           Response.toolPart({
@@ -149,7 +149,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "{location: '"
             }
           }),
@@ -158,7 +158,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "NYC"
             }
           }),
@@ -167,7 +167,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "'}"
             }
           }),
@@ -176,7 +176,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-done",
+              status: "params-done",
               params: {
                 location: "NYC"
               }
@@ -190,7 +190,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-done",
+              status: "params-done",
               params: {
                 location: "NYC"
               }
@@ -210,7 +210,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-start"
+              status: "params-start"
             }
           }),
           Response.toolPart({
@@ -218,7 +218,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "{location: '"
             }
           }),
@@ -227,7 +227,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "NYC"
             }
           })
@@ -239,7 +239,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "{location: 'NYC"
             }
           })
@@ -257,7 +257,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-start"
+              status: "params-start"
             }
           }),
           Response.toolPart({
@@ -265,7 +265,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "{location: '"
             }
           }),
@@ -274,7 +274,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "NYC"
             }
           }),
@@ -283,7 +283,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "'}"
             }
           }),
@@ -292,7 +292,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-done",
+              status: "params-done",
               params: {
                 location: "NYC"
               }
@@ -303,7 +303,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-done",
+              status: "result-done",
               params: {
                 location: "NYC"
               },
@@ -323,7 +323,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-done",
+              status: "result-done",
               params: {
                 location: "NYC"
               },
@@ -349,7 +349,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-start"
+              status: "params-start"
             }
           }),
           Response.toolPart({
@@ -357,7 +357,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "{location: '"
             }
           }),
@@ -366,7 +366,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "NYC"
             }
           }),
@@ -375,7 +375,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "'}"
             }
           }),
@@ -384,7 +384,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-done",
+              status: "params-done",
               params: {
                 location: "NYC"
               }
@@ -395,7 +395,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-error",
+              status: "result-error",
               params: {
                 location: "NYC"
               },
@@ -415,7 +415,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-error",
+              status: "result-error",
               params: {
                 location: "NYC"
               },
@@ -472,7 +472,7 @@ describe("Response", () => {
           Response.textAccumulatedPart({
             id: "1",
             text: "Hello, World!",
-            state: "done"
+            status: "done"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -507,7 +507,7 @@ describe("Response", () => {
           Response.reasoningAccumulatedPart({
             id: "2",
             text: "I am thinking!",
-            state: "done"
+            status: "done"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -539,7 +539,7 @@ describe("Response", () => {
           Response.textAccumulatedPart({
             id: "1",
             text: "Hello, World!",
-            state: "streaming"
+            status: "streaming"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -571,7 +571,7 @@ describe("Response", () => {
           Response.reasoningAccumulatedPart({
             id: "2",
             text: "I am thinking!",
-            state: "streaming"
+            status: "streaming"
           })
         ]
         assert.deepStrictEqual(accumulatedParts, expected)
@@ -618,7 +618,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-done",
+              status: "params-done",
               params: {
                 location: "NYC"
               }
@@ -654,7 +654,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "params-streaming",
+              status: "params-streaming",
               params: "{location: 'NYC"
             }
           })
@@ -715,7 +715,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-done",
+              status: "result-done",
               params: {
                 location: "NYC"
               },
@@ -784,7 +784,7 @@ describe("Response", () => {
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-error",
+              status: "result-error",
               params: {
                 location: "NYC"
               },
@@ -887,19 +887,19 @@ describe("Response", () => {
           Response.reasoningAccumulatedPart({
             id: "2",
             text: "I am thinking!",
-            state: "done"
+            status: "done"
           }),
           Response.textAccumulatedPart({
             id: "1",
             text: "Hello, World!",
-            state: "done"
+            status: "done"
           }),
           Response.toolPart({
             id: "1",
             name: "getWeather",
             providerExecuted: false,
             value: {
-              state: "result-error",
+              status: "result-error",
               params: {
                 location: "NYC"
               },
@@ -957,7 +957,7 @@ describe("Response", () => {
             Response.textAccumulatedPart({
               id: "1",
               text: "Hello, World!",
-              state: "done"
+              status: "done"
             })
           ]
           assert.deepStrictEqual(accumulatedParts, expected)
@@ -980,7 +980,7 @@ describe("Response", () => {
             Response.reasoningAccumulatedPart({
               id: "1",
               text: "I am thinking!",
-              state: "done"
+              status: "done"
             })
           ]
           assert.deepStrictEqual(accumulatedParts, expected)
@@ -1010,7 +1010,7 @@ describe("Response", () => {
               name: "getWeather",
               providerExecuted: false,
               value: {
-                state: "params-done",
+                status: "params-done",
                 params: {
                   location: "NYC"
                 }
@@ -1056,7 +1056,7 @@ describe("Response", () => {
               name: "getWeather",
               providerExecuted: false,
               value: {
-                state: "result-done",
+                status: "result-done",
                 params: {
                   location: "NYC"
                 },
@@ -1108,7 +1108,7 @@ describe("Response", () => {
               name: "getWeather",
               providerExecuted: false,
               value: {
-                state: "result-error",
+                status: "result-error",
                 params: {
                   location: "NYC"
                 },
@@ -1163,12 +1163,12 @@ describe("Response", () => {
           const expected: Array<Response.AccumulatedPart<any>> = [
             Response.reasoningAccumulatedPart({
               id: "1",
-              state: "done",
+              status: "done",
               text: "I am thinking!"
             }),
             Response.textAccumulatedPart({
               id: "2",
-              state: "done",
+              status: "done",
               text: "Hello, World!"
             }),
             Response.toolPart({
@@ -1176,7 +1176,7 @@ describe("Response", () => {
               name: "getWeather",
               providerExecuted: false,
               value: {
-                state: "result-error",
+                status: "result-error",
                 params: {
                   location: "NYC"
                 },

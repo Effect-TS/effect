@@ -570,19 +570,19 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
       case "text-accumulated": {
         if (
           nextPart.type === "text-accumulated" &&
-          currentPart.state === "streaming"
+          currentPart.status === "streaming"
         ) {
-          if (currentPart.state === "streaming") {
-            currentPart.state = nextPart.state
+          if (currentPart.status === "streaming") {
+            currentPart.status = nextPart.status
 
-            if (nextPart.state === "streaming") {
+            if (nextPart.status === "streaming") {
               currentPart.text += nextPart.text
             }
 
             parts[lastIndex] = currentPart
           }
-        } else if (currentPart.state === "streaming") {
-          currentPart.state = "done"
+        } else if (currentPart.status === "streaming") {
+          currentPart.status = "done"
           parts[lastIndex] = currentPart
           parts.push(nextPart)
         } else {
@@ -595,17 +595,17 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
       case "reasoning-accumulated": {
         if (
           nextPart.type === "reasoning-accumulated" &&
-          currentPart.state === "streaming"
+          currentPart.status === "streaming"
         ) {
-          currentPart.state = nextPart.state
+          currentPart.status = nextPart.status
 
-          if (nextPart.state === "streaming") {
+          if (nextPart.status === "streaming") {
             currentPart.text += nextPart.text
           }
 
           parts[lastIndex] = currentPart
-        } else if (currentPart.state === "streaming") {
-          currentPart.state = "done"
+        } else if (currentPart.status === "streaming") {
+          currentPart.status = "done"
           parts[lastIndex] = currentPart
           parts.push(nextPart)
         } else {
@@ -618,11 +618,11 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
       case "tool": {
         const toolExists = toolMap.get(currentPart.id)
 
-        if (currentPart.value.state === "params-start") {
+        if (currentPart.value.status === "params-start") {
           if (
             nextPart.type === "tool" &&
             nextPart.id === currentPart.id &&
-            nextPart.value.state === "params-streaming"
+            nextPart.value.status === "params-streaming"
           ) {
             parts[lastIndex] = nextPart
           } else {
@@ -635,12 +635,12 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
             })
             parts.push(nextPart)
           }
-        } else if (currentPart.value.state === "params-streaming") {
+        } else if (currentPart.value.status === "params-streaming") {
           if (toolExists) {
             toolMap.delete(toolExists.id)
             parts.splice(toolExists.index, 1)
             lastIndex--
-            if (toolExists.value.state === "params-streaming") {
+            if (toolExists.value.status === "params-streaming") {
               toolMap.set(currentPart.id, {
                 ...currentPart,
                 value: {
@@ -661,10 +661,10 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
             nextPart.type === "tool" &&
             nextPart.id === currentPart.id
           ) {
-            if (nextPart.value.state === "params-streaming") {
+            if (nextPart.value.status === "params-streaming") {
               currentPart.value.params += nextPart.value.params
               parts[lastIndex] = currentPart
-            } else if (nextPart.value.state === "params-done") {
+            } else if (nextPart.value.status === "params-done") {
               parts[lastIndex] = nextPart
             }
           } else {
@@ -678,7 +678,7 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
 
             parts.push(nextPart)
           }
-        } else if (currentPart.value.state === "params-done") {
+        } else if (currentPart.value.status === "params-done") {
           if (toolExists) {
             toolMap.delete(toolExists.id)
             parts.splice(toolExists.index, 1)
@@ -688,7 +688,7 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
           if (
             nextPart.type === "tool" &&
             nextPart.id === currentPart.id &&
-            (nextPart.value.state === "result-done" || nextPart.value.state === "result-error")
+            (nextPart.value.status === "result-done" || nextPart.value.status === "result-error")
           ) {
             parts[lastIndex] = nextPart
           } else {
@@ -764,7 +764,7 @@ export const accumulateParts = Function.dual<
           case "text": {
             const id = yield* idGenerator.generateId()
             return makePart("text-accumulated", {
-              state: "done",
+              status: "done",
               text: part.text,
               metadata: part.metadata,
               id
@@ -773,7 +773,7 @@ export const accumulateParts = Function.dual<
           case "reasoning": {
             const id = yield* idGenerator.generateId()
             return makePart("reasoning-accumulated", {
-              state: "done",
+              status: "done",
               text: part.text,
               metadata: part.metadata,
               id
@@ -793,7 +793,7 @@ export const accumulateParts = Function.dual<
               providerExecuted: part.providerExecuted,
               ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: "params-done",
+                status: "params-done",
                 params: part.params as any
               },
               metadata: part.metadata
@@ -808,7 +808,7 @@ export const accumulateParts = Function.dual<
               providerExecuted: part.providerExecuted,
               ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: part.isFailure ? "result-error" : "result-done",
+                status: part.isFailure ? "result-error" : "result-done",
                 params: value.params as any,
                 result: part.result,
                 encodedResult: part.encodedResult
@@ -866,7 +866,7 @@ export const accumulateStreamParts = Function.dual<
         switch (part.type) {
           case "text-start": {
             return makePart("text-accumulated", {
-              state: "streaming",
+              status: "streaming",
               text: "",
               metadata: part.metadata,
               id: part.id
@@ -874,7 +874,7 @@ export const accumulateStreamParts = Function.dual<
           }
           case "text-delta": {
             return makePart("text-accumulated", {
-              state: "streaming",
+              status: "streaming",
               text: part.delta,
               metadata: part.metadata,
               id: part.id
@@ -882,7 +882,7 @@ export const accumulateStreamParts = Function.dual<
           }
           case "text-end": {
             return makePart("text-accumulated", {
-              state: "done",
+              status: "done",
               text: "",
               metadata: part.metadata,
               id: part.id
@@ -890,7 +890,7 @@ export const accumulateStreamParts = Function.dual<
           }
           case "reasoning-start": {
             return makePart("reasoning-accumulated", {
-              state: "streaming",
+              status: "streaming",
               text: "",
               metadata: part.metadata,
               id: part.id
@@ -898,7 +898,7 @@ export const accumulateStreamParts = Function.dual<
           }
           case "reasoning-delta": {
             return makePart("reasoning-accumulated", {
-              state: "streaming",
+              status: "streaming",
               text: part.delta,
               metadata: part.metadata,
               id: part.id
@@ -906,7 +906,7 @@ export const accumulateStreamParts = Function.dual<
           }
           case "reasoning-end": {
             return makePart("reasoning-accumulated", {
-              state: "done",
+              status: "done",
               text: "",
               metadata: part.metadata,
               id: part.id
@@ -926,7 +926,7 @@ export const accumulateStreamParts = Function.dual<
               providerExecuted: part.providerExecuted,
               ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: "params-done",
+                status: "params-done",
                 params: part.params as any
               },
               metadata: part.metadata
@@ -942,7 +942,7 @@ export const accumulateStreamParts = Function.dual<
               providerExecuted: part.providerExecuted,
               ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: part.isFailure ? "result-error" : "result-done",
+                status: part.isFailure ? "result-error" : "result-done",
                 params: value.params as any,
                 result: part.result,
                 encodedResult: part.encodedResult
@@ -964,7 +964,7 @@ export const accumulateStreamParts = Function.dual<
               providerExecuted: part.providerExecuted,
               ...(part.providerName ? ({ providerName: part.providerName }) : ({})),
               value: {
-                state: "params-start"
+                status: "params-start"
               },
               metadata: part.metadata
             })
@@ -985,7 +985,7 @@ export const accumulateStreamParts = Function.dual<
               providerExecuted: value.providerExecuted,
               ...(value.providerName ? ({ providerName: value.providerName }) : ({})),
               value: {
-                state: "params-streaming",
+                status: "params-streaming",
                 params: part.delta
               },
 
@@ -1222,7 +1222,7 @@ export const textPart = (params: ConstructorParams<TextPart>): TextPart => makeP
  *
  * const textAccumulatedPart: Response.TextAccumulatedPart = Response.makePart("text-accumulated", {
  *   text: "The answer to your question is 42.",
- *   state: "done"
+ *   status: "done"
  * })
  * ```
  *
@@ -1239,9 +1239,9 @@ export interface TextAccumulatedPart extends BasePart<"text-accumulated", TextAc
    */
   readonly text: string
   /**
-   * The text content state.
+   * The text content status.
    */
-  readonly state: "done" | "streaming"
+  readonly status: "done" | "streaming"
 }
 
 /**
@@ -1260,9 +1260,9 @@ export interface TextAccumulatedPartEncoded extends BasePartEncoded<"text-accumu
    */
   readonly text: string
   /**
-   * The text content state.
+   * The text content status.
    */
-  readonly state: "done" | "streaming"
+  readonly status: "done" | "streaming"
 }
 
 /**
@@ -1287,7 +1287,7 @@ export const TextAccumulatedPart: Schema.Schema<
   id: Schema.String,
   type: Schema.Literal("text-accumulated"),
   text: Schema.String,
-  state: Schema.Literal("done", "streaming"),
+  status: Schema.Literal("done", "streaming"),
   metadata: Schema.optionalWith(ProviderMetadata, {
     default: constEmptyObject
   })
@@ -1592,7 +1592,7 @@ export const reasoningPart = (params: ConstructorParams<ReasoningPart>): Reasoni
  *
  * const reasoningAccumulatedPart: Response.ReasoningAccumulatedPart = Response.makePart("reasoning-accumulated", {
  *   text: "The answer to your question is 42.",
- *   state: "done"
+ *   status: "done"
  * })
  * ```
  *
@@ -1609,9 +1609,9 @@ export interface ReasoningAccumulatedPart extends BasePart<"reasoning-accumulate
    */
   readonly text: string
   /**
-   * The reasoning content state.
+   * The reasoning content status.
    */
-  readonly state: "done" | "streaming"
+  readonly status: "done" | "streaming"
 }
 
 /**
@@ -1632,9 +1632,9 @@ export interface ReasoningAccumulatedPartEncoded
    */
   readonly text: string
   /**
-   * The reasoning content state.
+   * The reasoning content status.
    */
-  readonly state: "done" | "streaming"
+  readonly status: "done" | "streaming"
 }
 
 /**
@@ -1659,7 +1659,7 @@ export const ReasoningAccumulatedPart: Schema.Schema<
   id: Schema.String,
   type: Schema.Literal("reasoning-accumulated"),
   text: Schema.String,
-  state: Schema.Literal("done", "streaming"),
+  status: Schema.Literal("done", "streaming"),
   metadata: Schema.optionalWith(ProviderMetadata, {
     default: constEmptyObject
   })
@@ -2565,7 +2565,7 @@ export const toolResultPart = <
  *   id: "call_123",
  *   name: "get_weather",
  *   value: {
- *      state: "result-done",
+ *      status: "result-done",
  *      params: {
  *         location: 500,
  *      },
@@ -2611,20 +2611,20 @@ export interface ToolPart<Name extends string, Params, Success, Failure> extends
    */
   readonly providerExecuted: boolean
   /**
-   * the tool value depedning on the state of the tool
+   * the tool value depedning on the status of the tool
    */
   readonly value:
     | {
       /**
-       * the state when params are started to streaming in
+       * the status when params are started to streaming in
        */
-      readonly state: "params-start"
+      readonly status: "params-start"
     }
     | {
       /**
-       * the state when params are streaming in
+       * the status when params are streaming in
        */
-      readonly state: "params-streaming"
+      readonly status: "params-streaming"
       /**
        * Parameters to pass to the tool.
        */
@@ -2632,9 +2632,9 @@ export interface ToolPart<Name extends string, Params, Success, Failure> extends
     }
     | {
       /**
-       * the state when params are malformed
+       * the status when params are malformed
        */
-      readonly state: "params-malformed"
+      readonly status: "params-malformed"
       /**
        * Parameters to pass to the tool.
        */
@@ -2642,9 +2642,9 @@ export interface ToolPart<Name extends string, Params, Success, Failure> extends
     }
     | {
       /**
-       * the state when params are done streaming
+       * the status when params are done streaming
        */
-      readonly state: "params-done"
+      readonly status: "params-done"
       /**
        * Parameters passed to the tool.
        */
@@ -2652,9 +2652,9 @@ export interface ToolPart<Name extends string, Params, Success, Failure> extends
     }
     | {
       /**
-       * the state when the tool returned an error result
+       * the status when the tool returned an error result
        */
-      readonly state: "result-error"
+      readonly status: "result-error"
       /**
        * Parameters passed to the tool.
        */
@@ -2670,9 +2670,9 @@ export interface ToolPart<Name extends string, Params, Success, Failure> extends
     }
     | {
       /**
-       * the state when the tool call result is returned
+       * the status when the tool call result is returned
        */
-      readonly state: "result-done"
+      readonly status: "result-done"
       /**
        * Parameters passed to the tool.
        */
@@ -2718,20 +2718,20 @@ export interface ToolPartEncoded extends BasePartEncoded<"tool", ToolPartMetadat
    */
   readonly providerExecuted?: boolean | undefined
   /**
-   * the tool value depedning on the state of the tool
+   * the tool value depedning on the status of the tool
    */
   readonly value:
     | {
       /**
-       * the state when params are started to streaming in
+       * the status when params are started to streaming in
        */
-      readonly state: "params-start"
+      readonly status: "params-start"
     }
     | {
       /**
-       * the state when params are streaming in
+       * the status when params are streaming in
        */
-      readonly state: "params-streaming"
+      readonly status: "params-streaming"
       /**
        * Parameters to pass to the tool.
        */
@@ -2739,9 +2739,9 @@ export interface ToolPartEncoded extends BasePartEncoded<"tool", ToolPartMetadat
     }
     | {
       /**
-       * the state when params are malformed
+       * the status when params are malformed
        */
-      readonly state: "params-malformed"
+      readonly status: "params-malformed"
       /**
        * Parameters to pass to the tool.
        */
@@ -2749,9 +2749,9 @@ export interface ToolPartEncoded extends BasePartEncoded<"tool", ToolPartMetadat
     }
     | {
       /**
-       * the state when params are done streaming
+       * the status when params are done streaming
        */
-      readonly state: "params-done"
+      readonly status: "params-done"
       /**
        * Parameters passed to the tool.
        */
@@ -2759,9 +2759,9 @@ export interface ToolPartEncoded extends BasePartEncoded<"tool", ToolPartMetadat
     }
     | {
       /**
-       * the state when the tool returned an error result
+       * the status when the tool returned an error result
        */
-      readonly state: "result-error"
+      readonly status: "result-error"
       /**
        * Parameters passed to the tool.
        */
@@ -2773,9 +2773,9 @@ export interface ToolPartEncoded extends BasePartEncoded<"tool", ToolPartMetadat
     }
     | {
       /**
-       * the state when the tool call result is returned
+       * the status when the tool call result is returned
        */
-      readonly state: "result-done"
+      readonly status: "result-done"
       /**
        * Parameters passed to the tool.
        */
@@ -2826,27 +2826,27 @@ export const ToolPart = <
     name: Schema.String,
     value: Schema.Union(
       Schema.Struct({
-        state: Schema.Literal("params-start")
+        status: Schema.Literal("params-start")
       }),
       Schema.Struct({
-        state: Schema.Literal("params-streaming"),
+        status: Schema.Literal("params-streaming"),
         params: Schema.String
       }),
       Schema.Struct({
-        state: Schema.Literal("params-malformed"),
+        status: Schema.Literal("params-malformed"),
         params: Schema.String
       }),
       Schema.Struct({
-        state: Schema.Literal("params-done"),
+        status: Schema.Literal("params-done"),
         params: Schema.encodedSchema(params)
       }),
       Schema.Struct({
-        state: Schema.Literal("result-error"),
+        status: Schema.Literal("result-error"),
         params: Schema.encodedSchema(params),
         result: Schema.encodedSchema(failure as any)
       }),
       Schema.Struct({
-        state: Schema.Literal("result-done"),
+        status: Schema.Literal("result-done"),
         params: Schema.encodedSchema(params),
         result: Schema.encodedSchema(success)
       })
@@ -2860,28 +2860,28 @@ export const ToolPart = <
     name: Schema.Literal(name),
     value: Schema.Union(
       Schema.Struct({
-        state: Schema.Literal("params-start")
+        status: Schema.Literal("params-start")
       }),
       Schema.Struct({
-        state: Schema.Literal("params-streaming"),
+        status: Schema.Literal("params-streaming"),
         params: Schema.String
       }),
       Schema.Struct({
-        state: Schema.Literal("params-malformed"),
+        status: Schema.Literal("params-malformed"),
         params: Schema.String
       }),
       Schema.Struct({
-        state: Schema.Literal("params-done"),
+        status: Schema.Literal("params-done"),
         params: Schema.typeSchema(params)
       }),
       Schema.Struct({
-        state: Schema.Literal("result-error"),
+        status: Schema.Literal("result-error"),
         params: Schema.typeSchema(params),
         result: Schema.typeSchema(failure as any),
         encodedResult: Schema.encodedSchema(failure as any)
       }),
       Schema.Struct({
-        state: Schema.Literal("result-done"),
+        status: Schema.Literal("result-done"),
         params: Schema.typeSchema(params),
         result: Schema.typeSchema(success),
         encodedResult: Schema.encodedSchema(success)
@@ -2904,7 +2904,7 @@ export const ToolPart = <
   return Schema.transformOrFail(Encoded, Decoded, {
     strict: true,
     decode: Effect.fnUntraced(function*(encoded) {
-      if (encoded.value.state === "result-error") {
+      if (encoded.value.status === "result-error") {
         const decodedResultFailure = yield* decodeResultFailure(
           encoded.value.result
         )
@@ -2915,7 +2915,7 @@ export const ToolPart = <
           [PartTypeId]: PartTypeId,
           name: encoded.name as Name,
           value: {
-            state: "result-error",
+            status: "result-error",
             params: decodedParams,
             result: decodedResultFailure as Schema.Schema.Type<Failure>,
             encodedResult: encoded.value.result
@@ -2923,7 +2923,7 @@ export const ToolPart = <
           metadata: encoded.metadata ?? {},
           providerExecuted: encoded.providerExecuted ?? false
         } satisfies Decoded
-      } else if (encoded.value.state === "result-done") {
+      } else if (encoded.value.status === "result-done") {
         const decodedResultSucces = yield* decodeResultSucces(
           encoded.value.result
         )
@@ -2934,7 +2934,7 @@ export const ToolPart = <
           [PartTypeId]: PartTypeId,
           name: encoded.name as Name,
           value: {
-            state: "result-done" as const,
+            status: "result-done" as const,
             params: decodedParams,
             result: decodedResultSucces as Schema.Schema.Type<Success>,
             encodedResult: encoded.value.result
@@ -2942,7 +2942,7 @@ export const ToolPart = <
           metadata: encoded.metadata ?? {},
           providerExecuted: encoded.providerExecuted ?? false
         } satisfies Decoded
-      } else if (encoded.value.state === "params-done") {
+      } else if (encoded.value.status === "params-done") {
         const decodedParams = yield* decodeParams(encoded.value.params)
 
         return {
@@ -2950,19 +2950,19 @@ export const ToolPart = <
           [PartTypeId]: PartTypeId,
           name: encoded.name as Name,
           value: {
-            state: "params-done" as const,
+            status: "params-done" as const,
             params: decodedParams
           },
           metadata: encoded.metadata ?? {},
           providerExecuted: encoded.providerExecuted ?? false
         } satisfies Decoded
-      } else if (encoded.value.state === "params-start") {
+      } else if (encoded.value.status === "params-start") {
         return {
           ...encoded,
           [PartTypeId]: PartTypeId,
           name: encoded.name as Name,
           value: {
-            state: "params-start"
+            status: "params-start"
           },
           metadata: encoded.metadata ?? {},
           providerExecuted: encoded.providerExecuted ?? false
@@ -2979,7 +2979,7 @@ export const ToolPart = <
       }
     }),
     encode: Effect.fnUntraced(function*(decoded) {
-      if (decoded.value.state === "result-error") {
+      if (decoded.value.status === "result-error") {
         const encodedResultFailure = yield* encodeResultFailure(
           decoded.value.result
         )
@@ -2988,7 +2988,7 @@ export const ToolPart = <
         return {
           ...decoded,
           value: {
-            state: "result-error" as const,
+            status: "result-error" as const,
             result: encodedResultFailure,
             params: encodedParams
           },
@@ -3000,7 +3000,7 @@ export const ToolPart = <
             ? { providerExecuted: true }
             : {})
         } satisfies Encoded
-      } else if (decoded.value.state === "result-done") {
+      } else if (decoded.value.status === "result-done") {
         const encodedResultSuccess = yield* encodeResultSucces(
           decoded.value.result
         )
@@ -3009,7 +3009,7 @@ export const ToolPart = <
         return {
           ...decoded,
           value: {
-            state: "result-done" as const,
+            status: "result-done" as const,
             result: encodedResultSuccess,
             params: encodedParams
           },
@@ -3021,13 +3021,13 @@ export const ToolPart = <
             ? { providerExecuted: true }
             : {})
         } satisfies Encoded
-      } else if (decoded.value.state === "params-done") {
+      } else if (decoded.value.status === "params-done") {
         const encodedParams = yield* encodeParams(decoded.value.params)
 
         return {
           ...decoded,
           value: {
-            state: "params-done" as const,
+            status: "params-done" as const,
             params: encodedParams
           },
           ...(decoded.metadata ?? {}),
@@ -3068,14 +3068,14 @@ export const toolPart = <
 ): Params extends {
   readonly name: infer Name extends string
   readonly value: {
-    readonly state: "params-done"
+    readonly status: "params-done"
     readonly params: infer Params
   }
 } ? ToolPart<Name, Params, never, never>
   : Params extends {
     readonly name: infer Name extends string
     readonly value: {
-      readonly state: "result-error"
+      readonly status: "result-error"
       readonly params: infer Params
       readonly result: infer Failure
     }
@@ -3083,7 +3083,7 @@ export const toolPart = <
   : Params extends {
     readonly name: infer Name extends string
     readonly value: {
-      readonly state: "result-done"
+      readonly status: "result-done"
       readonly params: infer Params
       readonly result: infer Success
     }
