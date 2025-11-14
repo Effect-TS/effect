@@ -336,7 +336,7 @@ export const make = <
         })
         if (Option.isSome(parentInstance)) {
           result = yield* run
-          if (result._tag === "Suspended") {
+          if (result._tag === "Suspended" && !result.cause) {
             yield* engine.resume(self, executionId)
             result = yield* wrapActivityResult(run, (result) => result._tag === "Suspended")
           }
