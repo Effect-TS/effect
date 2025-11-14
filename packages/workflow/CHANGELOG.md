@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.12.4
+
+### Patch Changes
+
+- [#5742](https://github.com/Effect-TS/effect/pull/5742) [`8c49696`](https://github.com/Effect-TS/effect/commit/8c49696f374dafa4fa628bec3957597f923a148d) Thanks @tim-smart! - don't try resume a child workflow if it has a defect
+
 ## 0.12.3
 
 ### Patch Changes
