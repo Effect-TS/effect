@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.12.5
+
+### Patch Changes
+
+- [#5744](https://github.com/Effect-TS/effect/pull/5744) [`7f3c781`](https://github.com/Effect-TS/effect/commit/7f3c781c11ceea5291d61adf107d0e098e5d1e07) Thanks @tim-smart! - remove auto-resumption of child workflows
+
 ## 0.12.4
 
 ### Patch Changes
