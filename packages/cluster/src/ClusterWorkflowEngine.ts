@@ -271,8 +271,9 @@ export const make = Effect.gen(function*() {
                   parent = payload[payloadParentKey]
                 }
                 return execute(workflow.payloadSchema.make(payload), executionId).pipe(
-                  Effect.ensuring(Effect.suspend(() => {
-                    if (!instance.suspended) {
+                  Effect.onExit((exit) => {
+                    const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
+                    if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
                       return parent ? ensureSuccess(sendResumeParent(parent)) : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
@@ -289,7 +290,7 @@ export const make = Effect.gen(function*() {
                       }),
                       Effect.orDie
                     )
-                  })),
+                  }),
                   Workflow.intoResult,
                   Effect.provideService(WorkflowInstance, instance)
                 ) as any
