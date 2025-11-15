@@ -236,3 +236,9 @@ export const fromWeb: (request: Request) => HttpServerRequest = internal.fromWeb
  * @category conversions
  */
 export const toURL: (self: HttpServerRequest) => Option<URL> = internal.toURL
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toWeb: (self: HttpServerRequest) => Request = internal.toWeb
