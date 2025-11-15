@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.52.10
+
+### Patch Changes
+
+- [#5748](https://github.com/Effect-TS/effect/pull/5748) [`b93fc63`](https://github.com/Effect-TS/effect/commit/b93fc638da9a4e840a02417e422c34c8a735413c) Thanks @tim-smart! - don't resume parent workflow when suspending on failure
+
 ## 0.52.9
 
 ### Patch Changes
