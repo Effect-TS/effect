@@ -1215,12 +1215,12 @@ export const updateService = dual<
   <I, A>(
     tag: Context.Tag<I, A>,
     f: (a: A) => A
-  ) => <A1, E1, R1>(layer: Layer<A1, E1, R1>) => Layer<A1, E1, I | R1>,
+  ) => <A1, E1, R1>(layer: Layer<A1, E1, R1>) => Layer<I | A1, E1, I | R1>,
   <A1, E1, R1, I, A>(
     layer: Layer<A1, E1, R1>,
     tag: Context.Tag<I, A>,
     f: (a: A) => A
-  ) => Layer<A1, E1, I | R1>
+  ) => Layer<I | A1, E1, I | R1>
 >(3, (layer, tag, f) =>
   provide(
     layer,
