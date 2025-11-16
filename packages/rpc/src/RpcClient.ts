@@ -116,7 +116,8 @@ export declare namespace RpcClient {
       infer _Payload,
       infer _Success,
       infer _Error,
-      infer _Middleware
+      infer _Middleware,
+      infer _Requirements
     > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsMailbox extends true ? Effect.Effect<
             Mailbox.ReadonlyMailbox<_A["Type"], _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"]>,
             never,
@@ -166,7 +167,8 @@ export declare namespace RpcClient {
     infer _Payload,
     infer _Success,
     infer _Error,
-    infer _Middleware
+    infer _Middleware,
+    infer _Requirements
   > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsMailbox extends true ? Effect.Effect<
           Mailbox.ReadonlyMailbox<_A["Type"], _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"]>,
           never,
