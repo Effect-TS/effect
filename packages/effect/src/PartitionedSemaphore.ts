@@ -65,6 +65,13 @@ export interface PartitionedSemaphore<in K> {
 export const makeUnsafe = <K = unknown>(options: {
   readonly permits: number
 }): PartitionedSemaphore<K> => {
+  if (!Number.isFinite(options.permits)) {
+    return {
+      [TypeId]: TypeId,
+      withPermits: () => (effect) => effect
+    }
+  }
+
   let totalPermits = options.permits
   let waitingPermits = 0
 
