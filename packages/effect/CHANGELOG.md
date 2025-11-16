@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.4
+
+### Patch Changes
+
+- [#5752](https://github.com/Effect-TS/effect/pull/5752) [`f445b87`](https://github.com/Effect-TS/effect/commit/f445b87bab342188a5c223cfc76c697d65594d1d) Thanks @janglad! - Fix Types.DeepMutable mapping over functions
+
 ## 3.19.3
 
 ### Patch Changes
