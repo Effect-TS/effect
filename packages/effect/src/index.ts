@@ -1091,6 +1091,12 @@ export * as Ordering from "./Ordering.js"
 export * as ParseResult from "./ParseResult.js"
 
 /**
+ * @since 3.19.4
+ * @experimental
+ */
+export * as PartitionedSemaphore from "./PartitionedSemaphore.js"
+
+/**
  * @since 2.0.0
  */
 export * as Pipeable from "./Pipeable.js"
