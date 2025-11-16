@@ -65,14 +65,16 @@ export interface PartitionedSemaphore<in K> {
 export const makeUnsafe = <K = unknown>(options: {
   readonly permits: number
 }): PartitionedSemaphore<K> => {
-  if (!Number.isFinite(options.permits)) {
+  const maxPermits = Math.max(0, options.permits)
+
+  if (!Number.isFinite(maxPermits)) {
     return {
       [TypeId]: TypeId,
       withPermits: () => (effect) => effect
     }
   }
 
-  let totalPermits = options.permits
+  let totalPermits = maxPermits
   let waitingPermits = 0
 
   type Waiter = {
@@ -83,7 +85,7 @@ export const makeUnsafe = <K = unknown>(options: {
 
   const take = (key: K, permits: number) =>
     Effect.async<void>((resume) => {
-      if (options.permits < permits) {
+      if (maxPermits < permits) {
         return resume(Effect.never)
       } else if (totalPermits >= permits) {
         totalPermits -= permits
