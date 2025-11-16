@@ -144,6 +144,25 @@ describe("Types", () => {
       >().type.toBe<[string, number, boolean, bigint, symbol, never, null, "a", 1, true]>()
     })
 
+    it("functions", () => {
+      expect<Types.DeepMutable<(arg: 1) => 2>>().type.toBe<(arg: 1) => 2>()
+    })
+
+    it("built in objects", () => {
+      expect<
+        [
+          Types.DeepMutable<String>,
+          Types.DeepMutable<Number>,
+          Types.DeepMutable<Boolean>,
+          Types.DeepMutable<BigInt>,
+          Types.DeepMutable<Symbol>,
+          Types.DeepMutable<Date>,
+          Types.DeepMutable<RegExp>,
+          Types.DeepMutable<Generator>
+        ]
+      >().type.toBeAssignableTo<[String, Number, Boolean, BigInt, Symbol, Date, RegExp, Generator]>()
+    })
+
     describe("Branded", () => {
       it("should leave a string brand unchanged", () => {
         type T = string & Brand.Brand<"mybrand">
