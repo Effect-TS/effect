@@ -289,23 +289,10 @@ export const make = (
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this
         return Effect.gen(function*() {
-          const { cursor } = yield* Effect.acquireRelease(
-            Effect.tryPromise({
-              try: async () => {
-                const client = self.pg ?? await pool.connect()
-                const cursor = client.query(new Cursor(sql, params as any))
-
-                return { client: self.pg ? undefined : client, cursor }
-              },
-              catch: (cause) => new SqlError({ cause, message: "Failed to acquire pg client for stream" })
-            }),
-            ({ client, cursor }) =>
-              Effect.promise(async () => {
-                await cursor.close()
-                // Only release the client if it was acquired from the pool
-                client?.release()
-              })
-          )
+          const scope = yield* Effect.scope
+          const client = self.pg ?? (yield* reserveRaw)
+          yield* Scope.addFinalizer(scope, Effect.promise(() => cursor.close()))
+          const cursor = client.query(new Cursor(sql, params as any))
           const pull = Effect.async<Chunk.Chunk<any>, Option.Option<SqlError>>((resume) => {
             cursor.read(128, (err, rows) => {
               if (err) {
