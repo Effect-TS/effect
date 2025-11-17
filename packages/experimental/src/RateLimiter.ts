@@ -63,6 +63,7 @@ export const make: Effect.Effect<
       const window = Duration.decode(options.window)
       const windowMillis = Duration.toMillis(window)
       const refillRate = Duration.unsafeDivide(window, options.limit)
+      const refillRateMillis = Duration.toMillis(refillRate)
 
       if (tokens > options.limit) {
         return onExceeded === "fail"
@@ -113,8 +114,12 @@ export const make: Effect.Effect<
             const windowsTotal = Math.floor(count / options.limit) * windowMillis
             const windowsExpired = Math.max(0, Math.floor((windowsTotal - ttl) / windowMillis))
             count = count - windowsExpired * options.limit
+            ttl = ttl - windowsExpired * windowMillis
+            const partialTtl = (refillRateMillis * count) - ttl
             const windowsOver = Math.max(0, Math.ceil(count / options.limit) - 1)
-            const delay = windowsOver === 0 ? Duration.zero : Duration.times(window, windowsOver)
+            const delay = windowsOver === 0 ? Duration.zero : Duration.millis(
+              (windowsOver * windowMillis) - partialTtl
+            )
             return Effect.succeed<ConsumeResult>({
               delay,
               limit: options.limit,

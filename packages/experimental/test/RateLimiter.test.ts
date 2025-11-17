@@ -28,6 +28,16 @@ describe("RateLimiter", () => {
         expect(result.delay).toEqual(Duration.minutes(1))
         result = yield* consume // 11
         expect(result.delay).toEqual(Duration.minutes(2))
+
+        yield* TestClock.adjust(Duration.seconds(30))
+
+        result = yield* consume // 12
+        expect(result.delay).toEqual(Duration.seconds(90))
+
+        yield* TestClock.adjust(Duration.seconds(45))
+
+        result = yield* consume // 13
+        expect(result.delay).toEqual(Duration.seconds(45))
       }).pipe(
         Effect.provide(RateLimiter.layerStoreMemory)
       ))
