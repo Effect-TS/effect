@@ -3,6 +3,8 @@ import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
 import { Effect, Redacted, String } from "effect"
+import * as Chunk from "effect/Chunk"
+import * as Stream from "effect/Stream"
 import * as TestServices from "effect/TestServices"
 import { parse as parsePgConnectionString } from "pg-connection-string"
 import { PgContainer } from "./utils.js"
@@ -236,6 +238,20 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
       const sql = yield* PgClient.PgClient
       const rows = yield* sql<{ json: unknown }>`select ${{ testValue: 123 }}::jsonb as json`
       expect(rows[0].json).toEqual({ testValue: 123 })
+    }))
+
+  it.effect("stream", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const rows = yield* sql`SELECT generate_series(1, 3)`.stream.pipe(
+        Stream.runCollect,
+        Effect.map(Chunk.toReadonlyArray)
+      )
+      expect(rows).toEqual([
+        { "generate_series": 1 },
+        { "generate_series": 2 },
+        { "generate_series": 3 }
+      ])
     }))
 })
 

@@ -289,10 +289,10 @@ export const make = (
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this
         return Effect.gen(function*() {
-          const cursor = yield* Effect.acquireRelease(
-            Effect.sync(() => (self.pg ?? pool).query(new Cursor(sql, params as any))),
-            (cursor) => Effect.sync(() => cursor.close())
-          )
+          const scope = yield* Effect.scope
+          const client = self.pg ?? (yield* reserveRaw)
+          yield* Scope.addFinalizer(scope, Effect.promise(() => cursor.close()))
+          const cursor = client.query(new Cursor(sql, params as any))
           const pull = Effect.async<Chunk.Chunk<any>, Option.Option<SqlError>>((resume) => {
             cursor.read(128, (err, rows) => {
               if (err) {
