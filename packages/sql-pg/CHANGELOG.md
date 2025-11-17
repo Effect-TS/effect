@@ -1,5 +1,15 @@
 # @effect/sql-pg
 
+## 0.49.6
+
+### Patch Changes
+
+- [#5758](https://github.com/Effect-TS/effect/pull/5758) [`fe2792a`](https://github.com/Effect-TS/effect/commit/fe2792a670529b1d6da91aa1865e6ab125b263bb) Thanks @rocwang! - Fix query result streaming in @effect/sql-pg
+
+- Updated dependencies [[`1deeb6a`](https://github.com/Effect-TS/effect/commit/1deeb6a58cde29e99f57c56d9adcdcda7ac610d0), [`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f)]:
+  - @effect/experimental@0.57.2
+  - @effect/platform@0.93.3
+
 ## 0.49.5
 
 ### Patch Changes
