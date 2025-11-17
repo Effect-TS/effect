@@ -243,7 +243,8 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
   it.effect("stream", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
-      const rows = yield* Stream.runCollect(sql`SELECT generate_series(1, 3)`.stream).pipe(
+      const rows = yield* sql`SELECT generate_series(1, 3)`.stream.pipe(
+        Stream.runCollect,
         Effect.map(Chunk.toReadonlyArray)
       )
       expect(rows).toEqual([
