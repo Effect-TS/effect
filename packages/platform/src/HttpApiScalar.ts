@@ -23,10 +23,11 @@ export type ScalarThemeId =
   | "purple"
   | "solarized"
   | "bluePlanet"
-  | "deepSpace"
   | "saturn"
   | "kepler"
   | "mars"
+  | "deepSpace"
+  | "laserwave"
   | "none"
 
 /**
@@ -41,9 +42,7 @@ export type ScalarConfig = {
   /** The layout to use for the references */
   layout?: "modern" | "classic"
   /** URL to a request proxy for the API client */
-  proxy?: string
-  /** Whether the spec input should show */
-  isEditable?: boolean
+  proxyUrl?: string
   /** Whether to show the sidebar */
   showSidebar?: boolean
   /**
@@ -52,12 +51,6 @@ export type ScalarConfig = {
    * Default: `false`
    */
   hideModels?: boolean
-  /**
-   * Whether to show the “Download OpenAPI Document” button
-   *
-   * Default: `false`
-   */
-  hideDownloadButton?: boolean
   /**
    * Whether to show the “Test Request” button
    *
@@ -175,20 +168,18 @@ export const layer = (options?: {
   readonly path?: `/${string}` | undefined
   readonly scalar?: ScalarConfig
 }): Layer.Layer<never, never, Api> =>
-  Router.use((router) =>
-    Effect.gen(function*() {
-      const { api } = yield* Api
-      const handler = makeHandler({
-        ...options,
-        api,
-        source: {
-          _tag: "Inline",
-          source: internal.javascript
-        }
-      })
-      yield* router.get(options?.path ?? "/docs", handler)
+  Router.use(Effect.fnUntraced(function*(router) {
+    const { api } = yield* Api
+    const handler = makeHandler({
+      ...options,
+      api,
+      source: {
+        _tag: "Inline",
+        source: internal.javascript
+      }
     })
-  )
+    yield* router.get(options?.path ?? "/docs", handler)
+  }))
 
 /**
  * @since 1.0.0
@@ -199,20 +190,18 @@ export const layerCdn = (options?: {
   readonly scalar?: ScalarConfig
   readonly version?: string | undefined
 }): Layer.Layer<never, never, Api> =>
-  Router.use((router) =>
-    Effect.gen(function*() {
-      const { api } = yield* Api
-      const handler = makeHandler({
-        ...options,
-        api,
-        source: {
-          _tag: "Cdn",
-          version: options?.version
-        }
-      })
-      yield* router.get(options?.path ?? "/docs", handler)
+  Router.use(Effect.fnUntraced(function*(router) {
+    const { api } = yield* Api
+    const handler = makeHandler({
+      ...options,
+      api,
+      source: {
+        _tag: "Cdn",
+        version: options?.version
+      }
     })
-  )
+    yield* router.get(options?.path ?? "/docs", handler)
+  }))
 
 /**
  * @since 1.0.0
