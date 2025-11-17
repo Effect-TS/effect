@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.93.3
+
+### Patch Changes
+
+- [#5759](https://github.com/Effect-TS/effect/pull/5759) [`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f) Thanks @rohovskoi! - fix scalar configuration and types
+
 ## 0.93.2
 
 ### Patch Changes
