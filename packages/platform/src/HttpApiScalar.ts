@@ -124,7 +124,7 @@ const makeHandler = (options: {
   const source = options?.source
 
   const scalarConfig = {
-    _integration: "http",
+    _integration: "html",
     ...options?.scalar
   }
 
