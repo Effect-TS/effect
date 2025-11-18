@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.52.11
+
+### Patch Changes
+
+- [#5765](https://github.com/Effect-TS/effect/pull/5765) [`f38c215`](https://github.com/Effect-TS/effect/commit/f38c215f99920c9ce8809a01ddb38b1c96d18d44) Thanks @tim-smart! - add entityRegistrationTimeout to ShardingConfig
+
 ## 0.52.10
 
 ### Patch Changes
