@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.57.3
+
+### Patch Changes
+
+- [#5763](https://github.com/Effect-TS/effect/pull/5763) [`1df657e`](https://github.com/Effect-TS/effect/commit/1df657e4688f602262d854947c15634849f2ba98) Thanks @tim-smart! - fix RateLimiter fixed window alogrithim
+
 ## 0.57.2
 
 ### Patch Changes
