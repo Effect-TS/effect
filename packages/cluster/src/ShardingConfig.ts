@@ -79,6 +79,13 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly entityMaxIdleTime: DurationInput
   /**
+   * If an entity does not register itself within this time after a message is
+   * sent to it, the message will be marked as failed.
+   *
+   * Defaults to 1 minute.
+   */
+  readonly entityRegistrationTimeout: DurationInput
+  /**
    * The maximum duration of time to wait for an entity to terminate.
    *
    * By default this is set to 15 seconds to stay within kubernetes defaults.
@@ -129,6 +136,7 @@ export const defaults: ShardingConfig["Type"] = {
   shardLockExpiration: Duration.seconds(35),
   entityMailboxCapacity: 4096,
   entityMaxIdleTime: Duration.minutes(1),
+  entityRegistrationTimeout: Duration.minutes(1),
   entityTerminationTimeout: Duration.seconds(15),
   entityMessagePollInterval: Duration.seconds(10),
   entityReplyPollInterval: Duration.millis(200),
@@ -206,6 +214,12 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
     Config.withDefault(defaults.entityMaxIdleTime),
     Config.withDescription(
       "The maximum duration of inactivity (i.e. without receiving a message) after which an entity will be interrupted."
+    )
+  ),
+  entityRegistrationTimeout: Config.duration("entityRegistrationTimeout").pipe(
+    Config.withDefault(defaults.entityRegistrationTimeout),
+    Config.withDescription(
+      "If an entity does not register itself within this time after a message is sent to it, the message will be marked as failed."
     )
   ),
   entityTerminationTimeout: Config.duration("entityTerminationTimeout").pipe(
