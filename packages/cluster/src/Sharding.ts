@@ -199,6 +199,7 @@ interface EntityManagerState {
 
 const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
+  const clock = yield* Effect.clock
 
   const runnersService = yield* Runners
   const runnerHealth = yield* RunnerHealth.RunnerHealth
@@ -444,6 +445,8 @@ const make = Effect.gen(function*() {
 
   if (storageEnabled && Option.isSome(config.runnerAddress)) {
     const selfAddress = config.runnerAddress.value
+    const entityRegistrationTimeoutMillis = Duration.toMillis(config.entityRegistrationTimeout)
+    const storageStartMillis = clock.unsafeCurrentTimeMillis()
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -469,9 +472,14 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            // reset address in the case that the entity is slow to register
-            MutableHashSet.add(resetAddresses, address)
-            return Effect.void
+            const sinceStart = clock.unsafeCurrentTimeMillis() - storageStartMillis
+            if (sinceStart < entityRegistrationTimeoutMillis) {
+              // reset address in the case that the entity is slow to register
+              MutableHashSet.add(resetAddresses, address)
+              return Effect.void
+            }
+            // if the entity did not register in time, we save a defect reply
+            return Effect.die(new Error(`Entity type '${address.entityType}' not registered`))
           } else if (state.status === "closed") {
             return Effect.void
           }
