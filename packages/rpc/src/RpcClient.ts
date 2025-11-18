@@ -934,7 +934,7 @@ export const layerProtocolHttp = (options: {
  */
 export const makeProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
-  readonly retrySchedule?: Schedule.Schedule<any, unknown> | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Effect.Effect<
   Protocol["Type"],
   never,
@@ -1244,7 +1244,7 @@ export const layerProtocolWorker = (
  */
 export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
-  readonly retrySchedule?: Schedule.Schedule<any, unknown> | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Layer.Layer<
   Protocol,
   never,
