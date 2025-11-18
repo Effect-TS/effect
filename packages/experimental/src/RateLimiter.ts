@@ -111,20 +111,16 @@ export const make: Effect.Effect<
                 resetAfter: Duration.millis(ttl)
               })
             }
-            const windowsTotal = Math.floor(count / options.limit) * windowMillis
-            const windowsExpired = Math.max(0, Math.floor((windowsTotal - ttl) / windowMillis))
-            count = count - windowsExpired * options.limit
-            ttl = ttl - windowsExpired * windowMillis
-            const partialTtl = (refillRateMillis * count) - ttl
-            const windowsOver = Math.max(0, Math.ceil(count / options.limit) - 1)
-            const delay = windowsOver === 0 ? Duration.zero : Duration.millis(
-              (windowsOver * windowMillis) - partialTtl
-            )
+            const ttlTotal = count * refillRateMillis
+            const elapsed = ttlTotal - ttl
+            const windowNumber = Math.floor((count - 1) / options.limit)
+            const remaining = (windowNumber * windowMillis) - elapsed
+            const delay = remaining <= 0 ? Duration.zero : Duration.millis(remaining)
             return Effect.succeed<ConsumeResult>({
               delay,
               limit: options.limit,
               remaining: options.limit - count,
-              resetAfter: Duration.times(window, windowsOver + 1)
+              resetAfter: Duration.times(window, Math.ceil(ttl / windowMillis))
             })
           }
         )
