@@ -73,6 +73,7 @@ export interface Any {
   readonly name: string
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
+  readonly execute: Effect.Effect<any, any, any>
   readonly executeEncoded: Effect.Effect<any, any, any>
 }
 
