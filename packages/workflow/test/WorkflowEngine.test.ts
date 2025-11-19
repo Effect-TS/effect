@@ -1,13 +1,10 @@
 import { describe, expect, it } from "@effect/vitest"
-import {} from "@effect/workflow"
+import { DurableClock, Workflow, WorkflowEngine } from "@effect/workflow"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as TestClock from "effect/TestClock"
-import * as DurableClock from "../src/DurableClock.js"
-import * as Workflow from "../src/Workflow.js"
-import * as WorkflowEngine from "../src/WorkflowEngine.js"
 
 describe("WorkflowEngine", () => {
   it.effect("works with TestClock", () =>
