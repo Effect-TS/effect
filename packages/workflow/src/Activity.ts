@@ -47,10 +47,10 @@ export interface Activity<
   readonly name: string
   readonly successSchema: Success
   readonly errorSchema: Error
-  readonly exitSchema: Schema.ExitFromSelf<
-    Success,
-    Error,
-    typeof Schema.Defect
+  readonly exitSchema: Schema.Schema<
+    Exit.Exit<Success["Type"], Error["Type"]>,
+    Exit.Exit<Success["Encoded"], Error["Encoded"]>,
+    Success["Context"] | Error["Context"]
   >
   readonly execute: Effect.Effect<
     Success["Type"],
