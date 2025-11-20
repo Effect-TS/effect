@@ -184,6 +184,103 @@ export const layer: Layer.Layer<
 > = Layer.effect(RateLimiter, make)
 
 /**
+ * Access a function that applies rate limiting to an effect.
+ *
+ * ```ts
+ * import { RateLimiter } from "@effect/experimental"
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   // Access the `withLimiter` function from the RateLimiter module
+ *   const withLimiter = yield* RateLimiter.makeWithRateLimiter
+ *
+ *   // Apply a rate limiter to an effect
+ *   yield* Effect.log("Making a request with rate limiting").pipe(
+ *     withLimiter({
+ *       key: "some-key",
+ *       limit: 10,
+ *       onExceeded: "delay",
+ *       window: "5 seconds",
+ *       algorithm: "fixed-window"
+ *     })
+ *   )
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Accessors
+ */
+export const makeWithRateLimiter: Effect.Effect<
+  ((options: {
+    readonly algorithm?: "fixed-window" | "token-bucket" | undefined
+    readonly onExceeded?: "delay" | "fail" | undefined
+    readonly window: Duration.DurationInput
+    readonly limit: number
+    readonly key: string
+    readonly tokens?: number | undefined
+  }) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | RateLimiterError, R>),
+  never,
+  RateLimiter
+> = Effect.map(
+  RateLimiter,
+  (limiter) => (options) => (effect) =>
+    Effect.flatMap(limiter.consume(options), ({ delay }) => {
+      if (Duration.isZero(delay)) return effect
+      return Effect.delay(effect, delay)
+    })
+)
+
+/**
+ * Access a function that sleeps when the rate limit is exceeded.
+ *
+ * ```ts
+ * import { RateLimiter } from "@effect/experimental"
+ * import { Effect } from "effect"
+ *
+ * export default Effect.gen(function*() {
+ *   // Access the `sleep` function from the RateLimiter module
+ *   const sleep = yield* RateLimiter.makeSleep
+ *
+ *   // Use the `sleep` function with specific rate limiting parameters.
+ *   // This will only sleep if the rate limit has been exceeded.
+ *   yield* sleep({
+ *     key: "some-key",
+ *     limit: 10,
+ *     window: "5 seconds",
+ *     algorithm: "fixed-window"
+ *   })
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Accessors
+ */
+export const makeSleep: Effect.Effect<
+  ((options: {
+    readonly algorithm?: "fixed-window" | "token-bucket" | undefined
+    readonly window: Duration.DurationInput
+    readonly limit: number
+    readonly key: string
+    readonly tokens?: number | undefined
+  }) => Effect.Effect<ConsumeResult, RateLimitStoreError>),
+  never,
+  RateLimiter
+> = Effect.map(
+  RateLimiter,
+  (limiter) => (options) =>
+    Effect.flatMap(
+      limiter.consume({
+        ...options,
+        onExceeded: "delay"
+      }) as Effect.Effect<ConsumeResult, RateLimitStoreError>,
+      (result) => {
+        if (Duration.isZero(result.delay)) return Effect.succeed(result)
+        return Effect.as(Effect.sleep(result.delay), result)
+      }
+    )
+)
+
+/**
  * @since 1.0.0
  * @category Errors
  */
