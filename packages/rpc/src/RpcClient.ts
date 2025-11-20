@@ -100,7 +100,7 @@ export declare namespace RpcClient {
       const Discard = false
     >(
       input: Rpc.PayloadConstructor<Current>,
-      options?: Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R> ? {
+      options?: [Rpc.SuccessSchema<Current>] extends [RpcSchema.Stream<infer _A, infer _E>] ? {
           readonly asMailbox?: AsMailbox | undefined
           readonly streamBufferSize?: number | undefined
           readonly headers?: Headers.Input | undefined

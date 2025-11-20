@@ -73,6 +73,7 @@ export interface Any {
   readonly name: string
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
+  readonly execute: Effect.Effect<any, any, any>
   readonly executeEncoded: Effect.Effect<any, any, any>
 }
 
@@ -228,19 +229,13 @@ const makeExecute = Effect.fnUntraced(function*<
   const attempt = yield* CurrentAttempt
   yield* Effect.annotateCurrentSpan({ executionId: instance.executionId })
   const result = yield* Workflow.wrapActivityResult(
-    engine.activityExecute({
-      activity,
-      attempt
-    }),
+    engine.activityExecute(activity, attempt),
     (_) => _._tag === "Suspended"
   )
   if (result._tag === "Suspended") {
     return yield* Workflow.suspend(instance)
   }
-  const exit = yield* Effect.orDie(
-    Schema.decode(activity.exitSchema)(result.exit)
-  )
-  return yield* exit
+  return yield* result.exit
 }, (effect, activity) =>
   Effect.withSpan(effect, activity.name, {
     captureStackTrace: false
