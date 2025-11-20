@@ -49,6 +49,20 @@ Effect.gen(function*() {
     limit: 5,
     key: "user-123"
   })
+
+  // You can also use `RateLimiter.makeWithRateLimiter` to access a function
+  // that applies rate limiting to an effect.
+  const withRateLimiter = yield* RateLimiter.makeWithRateLimiter
+
+  yield* Effect.log("Attempting rate limited operation").pipe(
+    withRateLimiter({
+      algorithm: "token-bucket",
+      onExceeded: "delay",
+      window: "10 seconds",
+      limit: 5,
+      key: "user-123"
+    })
+  )
 }).pipe(
   Effect.provide(RateLimiterLayer),
   NodeRuntime.runMain
