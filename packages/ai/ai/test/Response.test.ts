@@ -69,6 +69,690 @@ describe("Response", () => {
     )
 
     it.effect(
+      "should merge two fully streamed text parts, both ending with 'done' status",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "done",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.textAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "done"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved text parts where one stream is 'done' and the other is still 'streaming'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.textAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "streaming"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved text parts, preserving correct order when part sequence is non-consecutive but both streams are 'done'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "done",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.textAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "done"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved text parts, preserving correct order when part sequence is non-consecutive, and one stream is still 'streaming'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.textAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "streaming"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge multiple small, highly interleaved text parts from two streams, both resulting in 'done' status",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "lo,"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: " Wo"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "lo, "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "rld"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Worl"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "done",
+            text: "d!"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.textAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "done"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge multiple small, highly interleaved text parts from two streams, with one stream finishing as 'done' and the other as 'streaming'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "lo,"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: " Wo"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "rld"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "lo, "
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "!"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Worl"
+          }),
+          Response.textAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "d!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.textAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "streaming"
+          }),
+          Response.textAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge two fully streamed reasoned parts, both ending with 'done' status",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "done",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "done"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved reasoning parts where one stream is 'done' and the other is still 'streaming'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "streaming"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved reasoning parts, preserving correct order when part sequence is non-consecutive but both streams are 'done'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "done",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "done"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved reasoning parts, preserving correct order when part sequence is non-consecutive, and one stream is still 'streaming'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hello"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "World!"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: ", "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "World!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "streaming"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge multiple small, highly interleaved reasoning parts from two streams, both resulting in 'done' status",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "lo,"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: " Wo"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "lo, "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "rld"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Worl"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "done",
+            text: "d!"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "done"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge multiple small, highly interleaved reasoning parts from two streams, with one stream finishing as 'done' and the other as 'streaming'",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "Hel"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "lo,"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: " Wo"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "streaming",
+            text: "rld"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "lo, "
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            status: "done",
+            text: "!"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "Worl"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            status: "streaming",
+            text: "d!"
+          })
+        ]
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.reasoningAccumulatedPart({
+            id: "1",
+            text: "Hello, World!",
+            status: "streaming"
+          }),
+          Response.reasoningAccumulatedPart({
+            id: "2",
+            text: "Hello, World!",
+            status: "done"
+          })
+        ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
       "should handle incomplete text delta with status 'streaming'",
       Effect.fnUntraced(function*() {
         const parts = [
@@ -128,6 +812,132 @@ describe("Response", () => {
             status: "streaming"
           })
         ]
+        assert.deepStrictEqual(accumulatedParts, expected)
+      })
+    )
+
+    it.effect(
+      "should merge interleaved parameter streaming chunks for multiple concurrent tool calls, both reaching 'params-done' status",
+      Effect.fnUntraced(function*() {
+        const parts = [
+          Response.toolPart({
+            id: "1",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-start"
+            }
+          }),
+          Response.toolPart({
+            id: "1",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-streaming",
+              params: "{location: '"
+            }
+          }),
+          Response.toolPart({
+            id: "1",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-streaming",
+              params: "NYC"
+            }
+          }),
+          Response.toolPart({
+            id: "2",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-start"
+            }
+          }),
+          Response.toolPart({
+            id: "1",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-streaming",
+              params: "'}"
+            }
+          }),
+          Response.toolPart({
+            id: "1",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-done",
+              params: {
+                location: "NYC"
+              }
+            }
+          }),
+          Response.toolPart({
+            id: "2",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-streaming",
+              params: "{location: '"
+            }
+          }),
+          Response.toolPart({
+            id: "2",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-streaming",
+              params: "NYC"
+            }
+          }),
+          Response.toolPart({
+            id: "2",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-streaming",
+              params: "'}"
+            }
+          }),
+          Response.toolPart({
+            id: "2",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-done",
+              params: {
+                location: "NYC"
+              }
+            }
+          })
+        ] as Array<Response.AccumulatedPart<any>>
+        const accumulatedParts = yield* Response.mergeAccumulatedParts(parts)
+        const expected = [
+          Response.toolPart({
+            id: "1",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-done",
+              params: {
+                location: "NYC"
+              }
+            }
+          }),
+          Response.toolPart({
+            id: "2",
+            name: "getWeather",
+            providerExecuted: false,
+            value: {
+              status: "params-done",
+              params: {
+                location: "NYC"
+              }
+            }
+          })
+        ] as Array<Response.AccumulatedPart<any>>
         assert.deepStrictEqual(accumulatedParts, expected)
       })
     )
