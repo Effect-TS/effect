@@ -6,17 +6,27 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
 import * as Layer from "effect/Layer"
 import * as Runtime from "effect/Runtime"
 import { OtelSpan } from "../src/internal/tracer.js"
 
-const TracingLive = NodeSdk.layer(Effect.sync(() => ({
-  resource: {
-    serviceName: "test"
-  },
-  spanProcessor: [new SimpleSpanProcessor(new InMemorySpanExporter())]
-})))
+class Exporter extends Effect.Service<Exporter>()("Exporter", {
+  effect: Effect.sync(() => ({ exporter: new InMemorySpanExporter() }))
+}) {}
+
+const TracingLive = Layer.unwrapEffect(Effect.gen(function*() {
+  const { exporter } = yield* Exporter
+
+  return NodeSdk.layer(Effect.sync(() => ({
+    resource: {
+      serviceName: "test"
+    },
+    spanProcessor: [new SimpleSpanProcessor(exporter)]
+  })))
+})).pipe(Layer.provideMerge(Exporter.Default))
 
 // needed to test context propagation
 const contextManager = new AsyncHooksContextManager()
@@ -159,5 +169,60 @@ describe("Tracer", () => {
         ),
         OtlpTracingLive
       ))
+  })
+
+  describe("Log Attributes", () => {
+    it.effect("propagates attributes with Effect.fnUntraced", () =>
+      Effect.gen(function*() {
+        const f = Effect.fnUntraced(function*() {
+          yield* Effect.logWarning("FooBar")
+          return yield* Effect.fail("Oops")
+        })
+
+        const p = f().pipe(Effect.withSpan("p"))
+
+        yield* Effect.ignore(p)
+
+        const { exporter } = yield* Exporter
+
+        assert.isNotEmpty(exporter.getFinishedSpans()[0].events.filter((_) => _.name === "FooBar"))
+        assert.isNotEmpty(exporter.getFinishedSpans()[0].events.filter((_) => _.name === "exception"))
+      }).pipe(Effect.provide(TracingLive)))
+
+    it.effect("propagates attributes with Effect.fn(name)", () =>
+      Effect.gen(function*() {
+        const f = Effect.fn("f")(function*() {
+          yield* Effect.logWarning("FooBar")
+          return yield* Effect.fail("Oops")
+        })
+
+        const p = f().pipe(Effect.withSpan("p"))
+
+        yield* Effect.ignore(p)
+
+        const { exporter } = yield* Exporter
+
+        assert.isNotEmpty(exporter.getFinishedSpans()[0].events.filter((_) => _.name === "FooBar"))
+        assert.isNotEmpty(exporter.getFinishedSpans()[0].events.filter((_) => _.name === "exception"))
+      }).pipe(Effect.provide(TracingLive)))
+
+    it.effect("propagates attributes with Effect.fn", () =>
+      Effect.gen(function*() {
+        const f = Effect.fn(function*() {
+          yield* Effect.logWarning("FooBar")
+          return yield* Effect.fail("Oops")
+        })
+
+        const p = f().pipe(Effect.withSpan("p"))
+
+        yield* Effect.ignore(p)
+
+        const { exporter } = yield* Exporter
+
+        yield* Console.log(Array.from(yield* FiberRef.get(FiberRef.currentLoggers)))
+
+        assert.isNotEmpty(exporter.getFinishedSpans()[0].events.filter((_) => _.name === "FooBar"))
+        assert.isNotEmpty(exporter.getFinishedSpans()[0].events.filter((_) => _.name === "exception"))
+      }).pipe(Effect.provide(TracingLive)))
   })
 })
