@@ -301,7 +301,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.scoped(
         }
         const activityInstance = WorkflowInstance.initial(instance.workflow, instance.executionId)
         activityInstance.interrupted = instance.interrupted
-        return yield* options.activity.execute.pipe(
+        return yield* options.activity.executeEncoded.pipe(
           Workflow.intoResult,
           Effect.provideService(WorkflowInstance, activityInstance),
           Effect.onExit((exit) => {
