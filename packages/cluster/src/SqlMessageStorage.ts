@@ -302,30 +302,36 @@ export const make = Effect.fnUntraced(function*(options?: {
     mssql: () => (s: string) => `N'${s}'`,
     orElse: () => (s: string) => `'${s}'`
   })
+  const forUpdate = sql.onDialectOrElse({
+    sqlite: () => sql.literal(""),
+    orElse: () => sql.literal("FOR UPDATE")
+  })
 
   const getUnprocessedMessages = sql.onDialectOrElse({
     pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
       sql<MessageJoinRow>`
-        UPDATE ${messagesTableSql} m
-        SET last_read = ${sqlNow}
-        FROM (
-          SELECT m.*
-          FROM ${messagesTableSql} m
-          WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-          AND NOT EXISTS (
-            SELECT 1 FROM ${repliesTableSql}
-            WHERE request_id = m.request_id
-            AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
-          )
-          AND m.processed = ${sqlFalse}
-          AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
-          AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-          ORDER BY m.rowid ASC
-          FOR UPDATE
-        ) AS ids
-        LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
-        WHERE m.id = ids.id
-        RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        WITH messages AS (
+          UPDATE ${messagesTableSql} m
+          SET last_read = ${sqlNow}
+          FROM (
+            SELECT m.*
+            FROM ${messagesTableSql} m
+            WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+            AND NOT EXISTS (
+              SELECT 1 FROM ${repliesTableSql}
+              WHERE request_id = m.request_id
+              AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
+            )
+            AND m.processed = ${sqlFalse}
+            AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
+            AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
+            FOR UPDATE
+          ) AS ids
+          LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
+          WHERE m.id = ids.id
+          RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        )
+        SELECT * FROM messages ORDER BY rowid ASC
       `,
     orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
       sql<MessageJoinRow>`
@@ -342,6 +348,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
         ORDER BY m.rowid ASC
+        ${forUpdate}
       `.unprepared.pipe(
         Effect.tap((rows) => {
           if (rows.length === 0) {

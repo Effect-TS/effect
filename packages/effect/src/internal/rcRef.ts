@@ -99,6 +99,7 @@ export const get = <A, E>(
   self_: RcRef.RcRef<A, E>
 ): Effect<A, E, Scope.Scope> => {
   const self = self_ as RcRefImpl<A, E>
+  const isInfinite = self.idleTimeToLive && !Duration.isFinite(self.idleTimeToLive)
   return core.uninterruptibleMask((restore) =>
     core.suspend(() => {
       switch (self.state._tag) {
@@ -143,7 +144,7 @@ export const get = <A, E>(
       scope.addFinalizer(() =>
         core.suspend(() => {
           state.refCount--
-          if (state.refCount > 0) {
+          if (state.refCount > 0 || isInfinite) {
             return core.void
           }
           if (self.idleTimeToLive === undefined) {
@@ -173,4 +174,19 @@ export const get = <A, E>(
     ),
     core.map(({ state }) => state.value)
   )
+}
+
+/** @internal */
+export const invalidate = <A, E>(
+  self_: RcRef.RcRef<A, E>
+): Effect<void> => {
+  const self = self_ as RcRefImpl<A, E>
+  return core.uninterruptible(core.suspend(() => {
+    if (self.state._tag !== "Acquired") {
+      return core.void
+    }
+    const state = self.state
+    self.state = stateEmpty
+    return state.scope.close(core.exitVoid)
+  }))
 }

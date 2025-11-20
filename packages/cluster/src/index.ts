@@ -56,6 +56,11 @@ export * as EntityProxyServer from "./EntityProxyServer.js"
 /**
  * @since 1.0.0
  */
+export * as EntityResource from "./EntityResource.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as EntityType from "./EntityType.js"
 
 /**

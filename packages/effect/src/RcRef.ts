@@ -113,3 +113,10 @@ export const make: <A, E, R>(
  * @category combinators
  */
 export const get: <A, E>(self: RcRef<A, E>) => Effect.Effect<A, E, Scope.Scope> = internal.get
+
+/**
+ * @since 3.19.6
+ * @category combinators
+ * @experimental
+ */
+export const invalidate: <A, E>(self: RcRef<A, E>) => Effect.Effect<void> = internal.invalidate
