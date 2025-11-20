@@ -1517,13 +1517,15 @@ export const tracerLogger = globalValue(
       logLevel,
       message
     }) => {
-      const span = Context.getOption(
+      const span = internalEffect.filterDisablePropagation(Context.getOption(
         fiberRefs.getOrDefault(context, core.currentContext),
         tracer.spanTag
-      )
+      ))
+
       if (span._tag === "None" || span.value._tag === "ExternalSpan") {
         return
       }
+
       const clockService = Context.unsafeGet(
         fiberRefs.getOrDefault(context, defaultServices.currentServices),
         clock.clockTag
