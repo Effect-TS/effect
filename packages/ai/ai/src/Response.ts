@@ -545,71 +545,61 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
   Tools extends Record<string, Tool.Any>
 >(accumulatedParts: Array<AccumulatedPart<Tools>>) {
   const parts: Array<Types.DeepMutable<AccumulatedPart<Tools>>> = []
+
   const toolMap = new Map<
     string,
-    ToolPart<any, any, any, any> & { index: number }
+    Types.DeepMutable<ToolPart<any, any, any, any>>
+  >()
+
+  const textAccumulatedMap = new Map<
+    string,
+    Types.DeepMutable<TextAccumulatedPart>
+  >()
+
+  const reasoningAccumulatedMap = new Map<
+    string,
+    Types.DeepMutable<ReasoningAccumulatedPart>
   >()
 
   for (let i = 0; i < accumulatedParts.length; i++) {
-    if (i === 0) {
-      parts.push(
-        accumulatedParts[i] as Types.DeepMutable<AccumulatedPart<Tools>>
-      )
-      continue
-    }
-
-    let lastIndex = parts.length - 1
-    const currentPart = parts[lastIndex]! as Types.DeepMutable<
-      AccumulatedPart<Tools>
-    >
-    const nextPart = accumulatedParts[i]! as Types.DeepMutable<
-      AccumulatedPart<Tools>
-    >
+    const currentPart = accumulatedParts[i] as Types.DeepMutable<AccumulatedPart<Tools>>
 
     switch (currentPart.type) {
       case "text-accumulated": {
+        const textAccumulatedExists = textAccumulatedMap.get(currentPart.id)
+
         if (
-          nextPart.type === "text-accumulated" &&
-          currentPart.status === "streaming"
+          textAccumulatedExists
         ) {
-          if (currentPart.status === "streaming") {
-            currentPart.status = nextPart.status
+          textAccumulatedExists.status = currentPart.status
+          textAccumulatedExists.text += currentPart.text
 
-            if (nextPart.status === "streaming") {
-              currentPart.text += nextPart.text
-            }
-
-            parts[lastIndex] = currentPart
+          if (textAccumulatedExists.status === "done") {
+            textAccumulatedMap.delete(currentPart.id)
           }
-        } else if (currentPart.status === "streaming") {
-          currentPart.status = "done"
-          parts[lastIndex] = currentPart
-          parts.push(nextPart)
         } else {
-          parts.push(nextPart)
+          textAccumulatedMap.set(currentPart.id, currentPart)
+          parts.push(currentPart)
         }
 
         break
       }
 
       case "reasoning-accumulated": {
+        const reasoningAccumulatedExists = reasoningAccumulatedMap.get(currentPart.id)
+
         if (
-          nextPart.type === "reasoning-accumulated" &&
-          currentPart.status === "streaming"
+          reasoningAccumulatedExists
         ) {
-          currentPart.status = nextPart.status
+          reasoningAccumulatedExists.status = currentPart.status
+          reasoningAccumulatedExists.text += currentPart.text
 
-          if (nextPart.status === "streaming") {
-            currentPart.text += nextPart.text
+          if (reasoningAccumulatedExists.status === "done") {
+            reasoningAccumulatedMap.delete(currentPart.id)
           }
-
-          parts[lastIndex] = currentPart
-        } else if (currentPart.status === "streaming") {
-          currentPart.status = "done"
-          parts[lastIndex] = currentPart
-          parts.push(nextPart)
         } else {
-          parts.push(nextPart)
+          reasoningAccumulatedMap.set(currentPart.id, currentPart)
+          parts.push(currentPart)
         }
 
         break
@@ -618,102 +608,31 @@ export const mergeAccumulatedParts = Effect.fnUntraced(function*<
       case "tool": {
         const toolExists = toolMap.get(currentPart.id)
 
-        if (currentPart.value.status === "params-start") {
-          if (
-            nextPart.type === "tool" &&
-            nextPart.id === currentPart.id &&
-            nextPart.value.status === "params-streaming"
-          ) {
-            parts[lastIndex] = nextPart
-          } else {
-            toolMap.set(currentPart.id, {
-              ...currentPart,
-              value: {
-                ...currentPart.value
-              },
-              index: lastIndex
-            })
-            parts.push(nextPart)
-          }
-        } else if (currentPart.value.status === "params-streaming") {
-          if (toolExists) {
-            toolMap.delete(toolExists.id)
-            parts.splice(toolExists.index, 1)
-            lastIndex--
-            if (toolExists.value.status === "params-streaming") {
-              toolMap.set(currentPart.id, {
-                ...currentPart,
-                value: {
-                  ...currentPart.value,
-                  params: toolExists.value.params +
-                    currentPart.value.params
-                },
-                index: lastIndex
-              })
-
-              currentPart.value.params = toolExists.value.params +
-                currentPart.value.params
-              parts[lastIndex] = currentPart
+        if (toolExists) {
+          if (toolExists.value.status === "params-start" && currentPart.value.status === "params-streaming") {
+            toolExists.value = currentPart.value
+          } else if (toolExists.value.status === "params-streaming") {
+            if (currentPart.value.status === "params-streaming") {
+              toolExists.value.params += currentPart.value.params
+            } else if (currentPart.value.status === "params-done") {
+              toolExists.value = currentPart.value
             }
-          }
-
-          if (
-            nextPart.type === "tool" &&
-            nextPart.id === currentPart.id
-          ) {
-            if (nextPart.value.status === "params-streaming") {
-              currentPart.value.params += nextPart.value.params
-              parts[lastIndex] = currentPart
-            } else if (nextPart.value.status === "params-done") {
-              parts[lastIndex] = nextPart
+          } else if (toolExists.value.status === "params-done") {
+            if (currentPart.value.status === "result-done" || currentPart.value.status === "result-error") {
+              toolExists.value = currentPart.value
+              toolMap.delete(currentPart.id)
             }
-          } else {
-            toolMap.set(currentPart.id, {
-              ...currentPart,
-              value: {
-                ...currentPart.value
-              },
-              index: lastIndex
-            })
-
-            parts.push(nextPart)
-          }
-        } else if (currentPart.value.status === "params-done") {
-          if (toolExists) {
-            toolMap.delete(toolExists.id)
-            parts.splice(toolExists.index, 1)
-            lastIndex--
-          }
-
-          if (
-            nextPart.type === "tool" &&
-            nextPart.id === currentPart.id &&
-            (nextPart.value.status === "result-done" || nextPart.value.status === "result-error")
-          ) {
-            parts[lastIndex] = nextPart
-          } else {
-            toolMap.set(currentPart.id, {
-              ...(currentPart as ToolPart<string, any, any, any>),
-              index: lastIndex
-            })
-
-            parts.push(nextPart)
           }
         } else {
-          if (toolExists) {
-            toolMap.delete(toolExists.id)
-            parts.splice(toolExists.index, 1)
-            lastIndex--
-          }
-
-          parts.push(nextPart)
+          toolMap.set(currentPart.id, currentPart)
+          parts.push(currentPart)
         }
 
         break
       }
 
       default: {
-        parts.push(nextPart)
+        parts.push(currentPart)
         break
       }
     }
