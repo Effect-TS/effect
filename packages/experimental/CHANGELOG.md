@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.57.4
+
+### Patch Changes
+
+- [#5773](https://github.com/Effect-TS/effect/pull/5773) [`9283499`](https://github.com/Effect-TS/effect/commit/9283499a1c1e6caa9cc9090c8419e8d49b575cd8) Thanks @tim-smart! - add RateLimiter helpers `makeWithRateLimiter` and `makeSleep`
+
 ## 0.57.3
 
 ### Patch Changes
