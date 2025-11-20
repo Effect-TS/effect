@@ -194,10 +194,20 @@ const contOpSuccess = {
     cont: core.FromIterator,
     value: unknown
   ) => {
-    const state = internalCall(() => cont.effect_instruction_i0.next(value))
-    if (state.done) return core.exitSucceed(state.value)
-    self.pushStack(cont)
-    return yieldWrapGet(state.value)
+    while (true) {
+      const state = internalCall(() => cont.effect_instruction_i0.next(value))
+      if (state.done) {
+        return core.exitSucceed(state.value)
+      }
+      const primitive = yieldWrapGet(state.value)
+      if (!core.exitIsExit(primitive)) {
+        self.pushStack(cont)
+        return primitive
+      } else if (primitive._tag === "Failure") {
+        return primitive
+      }
+      value = primitive.value
+    }
   }
 }
 
