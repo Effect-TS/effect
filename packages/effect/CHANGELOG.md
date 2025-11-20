@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.6
+
+### Patch Changes
+
+- [#5778](https://github.com/Effect-TS/effect/pull/5778) [`af7916a`](https://github.com/Effect-TS/effect/commit/af7916a3f00acdfc8ce451eabd3f5fb02914d0bb) Thanks @tim-smart! - add RcRef.invalidate api
+
 ## 3.19.5
 
 ### Patch Changes
