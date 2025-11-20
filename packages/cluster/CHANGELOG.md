@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.53.1
+
+### Patch Changes
+
+- [#5775](https://github.com/Effect-TS/effect/pull/5775) [`b92632d`](https://github.com/Effect-TS/effect/commit/b92632ded7a976c9279985013c295260c6603b14) Thanks @tim-smart! - ensure ClusterCron's can be resumed if re-added
+
 ## 0.53.0
 
 ### Patch Changes
