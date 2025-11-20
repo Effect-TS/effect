@@ -66,12 +66,11 @@ export const make = <E, R>(options: {
   const InitialRun = Singleton.make(
     `ClusterCron/${options.name}`,
     Effect.gen(function*() {
-      const client = (yield* CronEntity.client)("initial")
       const now = yield* DateTime.now
-      const next = Cron.next(options.cron, now)
-      yield* client.run({
-        dateTime: DateTime.unsafeFromDate(next)
-      }, { discard: true })
+      const next = DateTime.unsafeFromDate(Cron.next(options.cron, now))
+      const entityId = options.calculateNextRunFromPrevious ? "initial" : DateTime.formatIso(next)
+      const client = (yield* CronEntity.client)(entityId)
+      yield* client.run({ dateTime: next }, { discard: true })
     }),
     { shardGroup: options.shardGroup }
   )
