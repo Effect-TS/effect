@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.5
+
+### Patch Changes
+
+- [#5772](https://github.com/Effect-TS/effect/pull/5772) [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea) Thanks @tim-smart! - backport Effect.gen optimization
+
 ## 3.19.4
 
 ### Patch Changes
