@@ -47,10 +47,10 @@ export interface Activity<
   readonly name: string
   readonly successSchema: Success
   readonly errorSchema: Error
-  readonly exitSchema: Schema.Schema<
-    Exit.Exit<Success["Type"], Error["Type"]>,
-    Exit.Exit<Success["Encoded"], Error["Encoded"]>,
-    Success["Context"] | Error["Context"]
+  readonly exitSchema: Schema.ExitFromSelf<
+    Success,
+    Error,
+    typeof Schema.Defect
   >
   readonly execute: Effect.Effect<
     Success["Type"],
@@ -229,19 +229,13 @@ const makeExecute = Effect.fnUntraced(function*<
   const attempt = yield* CurrentAttempt
   yield* Effect.annotateCurrentSpan({ executionId: instance.executionId })
   const result = yield* Workflow.wrapActivityResult(
-    engine.activityExecute({
-      activity,
-      attempt
-    }),
+    engine.activityExecute(activity, attempt),
     (_) => _._tag === "Suspended"
   )
   if (result._tag === "Suspended") {
     return yield* Workflow.suspend(instance)
   }
-  const exit = yield* Effect.orDie(
-    Schema.decode(activity.exitSchema)(result.exit)
-  )
-  return yield* exit
+  return yield* result.exit
 }, (effect, activity) =>
   Effect.withSpan(effect, activity.name, {
     captureStackTrace: false

@@ -13,7 +13,7 @@ import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
-import * as Schedule from "effect/Schedule"
+import type * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
@@ -151,7 +151,7 @@ export interface Workflow<
       executionId: string
     ) => Effect.Effect<Success["Type"], Error["Type"], R>
   ) => Layer.Layer<
-    WorkflowEngine,
+    never,
     never,
     | WorkflowEngine
     | Exclude<R, WorkflowEngine | WorkflowInstance | Execution<Name> | Scope.Scope>
@@ -278,7 +278,6 @@ export const make = <
     readonly annotations?: Context.Context<never>
   }
 ): Workflow<Name, Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error> => {
-  const suspendedRetrySchedule = options.suspendedRetrySchedule ?? defaultRetrySchedule
   const makeExecutionId = (payload: any) => makeHashDigest(`${options.name}-${options.idempotencyKey(payload)}`)
   const self: Workflow<Name, any, Success, Error> = {
     [TypeId]: TypeId,
@@ -305,61 +304,19 @@ export const make = <
         const engine = yield* EngineTag
         const executionId = yield* makeExecutionId(payload)
         yield* Effect.annotateCurrentSpan({ executionId })
-
-        const parentInstance = yield* Effect.serviceOption(InstanceTag)
-        let result: Result<unknown, unknown>
-        if (Option.isSome(parentInstance)) {
-          const instance = parentInstance.value
-          yield* Effect.addFinalizer(() => {
-            if (!instance.interrupted || result?._tag === "Complete") {
-              return Effect.void
-            }
-            return engine.interrupt(self, executionId)
-          })
-        }
-
-        if (opts?.discard) {
-          yield* engine.execute({
-            workflow: self,
-            executionId,
-            payload,
-            discard: true
-          })
-          return executionId
-        }
-        const run = engine.execute({
-          workflow: self,
+        return yield* engine.execute(self, {
           executionId,
           payload,
-          discard: false,
-          parent: Option.getOrUndefined(parentInstance)
+          discard: opts?.discard,
+          suspendedRetrySchedule: options.suspendedRetrySchedule
         })
-        if (Option.isSome(parentInstance)) {
-          result = yield* run
-          if (result._tag === "Suspended") {
-            return yield* suspend(parentInstance.value)
-          }
-          return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
-        }
-
-        let sleep: Effect.Effect<any> | undefined
-        while (true) {
-          result = yield* run
-          if (result._tag === "Complete") {
-            return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
-          }
-          sleep ??= (yield* Schedule.driver(suspendedRetrySchedule)).next(void 0).pipe(
-            Effect.catchAll(() => Effect.dieMessage(`${options.name}.execute: suspendedRetrySchedule exhausted`))
-          )
-          yield* sleep
-        }
       },
       Effect.withSpan(`${options.name}.execute`, { captureStackTrace: false })
     ),
     poll: Effect.fnUntraced(
       function*(executionId: string) {
         const engine = yield* EngineTag
-        return yield* engine.poll({ workflow: self, executionId })
+        return yield* engine.poll(self, executionId)
       },
       (effect, executionId) =>
         Effect.withSpan(effect, `${options.name}.poll`, {
@@ -390,14 +347,9 @@ export const make = <
         })
     ),
     toLayer: (execute) =>
-      Layer.scopedContext(Effect.gen(function*() {
-        const context = yield* Effect.context<WorkflowEngine>()
-        const engine = Context.get(context, EngineTag)
-        yield* engine.register(self, (payload, executionId) =>
-          Effect.suspend(() => execute(payload, executionId)).pipe(
-            Effect.mapInputContext((input) => Context.merge(context, input))
-          ) as any)
-        return EngineTag.context(engine)
+      Layer.scopedDiscard(Effect.gen(function*() {
+        const engine = yield* EngineTag
+        return yield* engine.register(self, execute)
       })) as any,
     executionId: (payload) => makeExecutionId(self.payloadSchema.make(payload)),
     withCompensation
@@ -405,10 +357,6 @@ export const make = <
 
   return self
 }
-
-const defaultRetrySchedule = Schedule.exponential(200, 1.5).pipe(
-  Schedule.union(Schedule.spaced(30000))
-)
 
 /**
  * @since 1.0.0

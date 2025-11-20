@@ -17,7 +17,7 @@ describe("WorkflowEngine", () => {
         .toEqual(new Workflow.Complete({ exit: Exit.void }))
     }).pipe(
       Effect.provide(LongWorkflowLayer.pipe(
-        Layer.provide(WorkflowEngine.layerMemory)
+        Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
 
@@ -32,7 +32,7 @@ describe("WorkflowEngine", () => {
     }).pipe(
       Effect.provide(
         Layer.mergeAll(ParentWorkflowLayer, ChildWorkflowLayer).pipe(
-          Layer.provide(WorkflowEngine.layerMemory)
+          Layer.provideMerge(WorkflowEngine.layerMemory)
         )
       )
     ))

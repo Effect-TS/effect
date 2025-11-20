@@ -192,6 +192,19 @@ export type Tag<R> = R extends Rpc<
  * @since 1.0.0
  * @category models
  */
+export type SuccessSchema<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Success
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export type Success<R> = R extends Rpc<
   infer _Tag,
   infer _Payload,
@@ -218,15 +231,16 @@ export type SuccessEncoded<R> = R extends Rpc<
  * @since 1.0.0
  * @category models
  */
-export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+export type SuccessExit<R> = SuccessSchema<R> extends infer S ?
+  S extends RpcSchema.Stream<infer _A, infer _E> ? void : Schema.Schema.Type<S>
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type SuccessExitEncoded<R> = SuccessEncoded<R> extends infer T ?
-  T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+export type SuccessExitEncoded<R> = SuccessSchema<R> extends infer S ?
+  S extends RpcSchema.Stream<infer _A, infer _E> ? void : Schema.Schema.Encoded<S>
   : never
 
 /**
@@ -269,14 +283,15 @@ export type ErrorEncoded<R> = Schema.Schema.Encoded<ErrorSchema<R>>
  * @since 1.0.0
  * @category models
  */
-export type ErrorExit<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _E | Error<R> : Error<R>
+export type ErrorExit<R> = SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ? _E["Type"] | Error<R>
+  : Error<R>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type ErrorExitEncoded<R> = SuccessEncoded<R> extends Stream<infer _A, infer _E, infer _Env>
-  ? _E | ErrorEncoded<R>
+export type ErrorExitEncoded<R> = SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ?
+  _E["Encoded"] | ErrorEncoded<R>
   : ErrorEncoded<R>
 
 /**
