@@ -609,6 +609,7 @@ export const keepAlive: (
   const address = yield* CurrentAddress
   const requestId = yield* sharding.getSnowflake
   const span = yield* Effect.orDie(Effect.currentSpan)
+  olatch.value.unsafeClose()
   yield* Effect.orDie(sharding.sendOutgoing(
     new Message.OutgoingRequest({
       rpc: KeepAliveRpc,

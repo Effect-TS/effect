@@ -131,7 +131,7 @@ export const make = Effect.fnUntraced(function*<
 
     const scope = yield* Effect.scope
     const endLatch = Effect.unsafeMakeLatch()
-    const keepAliveLatch = Effect.unsafeMakeLatch()
+    const keepAliveLatch = Effect.unsafeMakeLatch(false)
 
     // on shutdown, reset the storage for the entity
     yield* Scope.addFinalizerExit(
@@ -420,7 +420,6 @@ export const make = Effect.fnUntraced(function*<
 
                 if (server.keepAliveEnabled) return reply
                 server.keepAliveEnabled = true
-                server.keepAliveLatch.unsafeClose()
                 return server.keepAliveLatch.whenOpen(Effect.suspend(() => {
                   server.keepAliveEnabled = false
                   return reply
@@ -537,7 +536,7 @@ export const make = Effect.fnUntraced(function*<
                   requestId: message.envelope.requestId,
                   exit: Exit.die(new MalformedMessage({ cause }))
                 }),
-                rpc: entity.protocol.requests.get(message.envelope.tag)!,
+                rpc: entityRpcs.get(message.envelope.tag)!,
                 context
               })
             ))
@@ -549,7 +548,7 @@ export const make = Effect.fnUntraced(function*<
               )
             }
             const request = message as Message.IncomingRequest<any>
-            const rpc = entity.protocol.requests.get(decoded.envelope.tag)!
+            const rpc = entityRpcs.get(decoded.envelope.tag)!
             return sendLocal(
               new Message.IncomingRequestLocal({
                 envelope: decoded.envelope,
