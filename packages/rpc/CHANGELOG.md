@@ -1,5 +1,16 @@
 # @effect/rpc
 
+## 0.72.2
+
+### Patch Changes
+
+- [#5771](https://github.com/Effect-TS/effect/pull/5771) [`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749) Thanks @tim-smart! - fix Rpc success types that sub-class Stream
+
+- [#5769](https://github.com/Effect-TS/effect/pull/5769) [`62f7636`](https://github.com/Effect-TS/effect/commit/62f76361ee01ed816687774c5302e7f8c5ff6a42) Thanks @tim-smart! - make RpcClient socket retry schedule configurable
+
+- Updated dependencies [[`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea)]:
+  - effect@3.19.5
+
 ## 0.72.1
 
 ### Patch Changes
