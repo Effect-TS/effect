@@ -115,7 +115,9 @@ export const make: <A, E, R>(options: {
  */
 export const makeK8sPod: (
   spec: v1.Pod,
-  options?: { readonly idleTimeToLive?: Duration.DurationInput | undefined } | undefined
+  options?: {
+    readonly idleTimeToLive?: Duration.DurationInput | undefined
+  } | undefined
 ) => Effect.Effect<
   EntityResource<K8sHttpClient.Pod>,
   never,

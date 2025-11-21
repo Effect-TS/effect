@@ -177,7 +177,9 @@ export class Pod extends Schema.Class<Pod>("@effect/cluster/K8sHttpClient/Pod")(
       type: Schema.String,
       status: Schema.String,
       lastTransitionTime: Schema.String
-    })),
+    })).pipe(
+      Schema.optionalWith({ default: () => [] })
+    ),
     podIP: Schema.String
   })
 }) {
