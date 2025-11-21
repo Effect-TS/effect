@@ -110,10 +110,16 @@ export const makeCreatePod = Effect.gen(function*() {
     }
     const namespace = spec.metadata?.namespace ?? "default"
     const name = spec.metadata!.name!
-    const readPod = HttpClientRequest.get(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
-      client.execute,
+    const readPodRaw = HttpClientRequest.get(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
+      client.execute
+    )
+    const readPod = readPodRaw.pipe(
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
       Effect.orDie
+    )
+    const isPodFound = readPodRaw.pipe(
+      Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 404, () => Effect.succeed(false)),
+      Effect.as(true)
     )
     const createPod = HttpClientRequest.post(`/v1/namespaces/${namespace}/pods`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
@@ -130,7 +136,17 @@ export const makeCreatePod = Effect.gen(function*() {
       Effect.orDie,
       Effect.asVoid
     )
-    yield* Effect.addFinalizer(() => deletePod)
+    yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
+      yield* deletePod
+      yield* Effect.sleep("1 seconds")
+      yield* isPodFound.pipe(
+        Effect.repeat({
+          until: (found) => !found,
+          schedule: Schedule.spaced("3 seconds")
+        }),
+        Effect.orDie
+      )
+    }))
 
     let pod = yield* createPod
     while (!pod.isReady) {
