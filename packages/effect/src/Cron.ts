@@ -442,16 +442,27 @@ const daysInMonth = (date: Date): number =>
  * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
  * @throws `Error` if the next run date cannot be found within 10,000 iterations.
  *
- * @since 2.0.0
+ * @since 3.20.0
  */
 export const next = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
   return stepCron(cron, startFrom, "next")
 }
 
+/**
+ * Returns the previous run `Date` for the given `Cron` instance.
+ *
+ * Uses the current time as a starting point if no value is provided for `startFrom`.
+ *
+ * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
+ * @throws `Error` if the previous run date cannot be found within 10,000 iterations.
+ *
+ * @since 3.20.0
+ */
 export const prev = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
   return stepCron(cron, startFrom, "prev")
 }
 
+/** @internal */
 const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
   const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.unsafeMakeZoned(startFrom ?? new Date(), {
@@ -648,7 +659,7 @@ export const sequence = function*(cron: Cron, startFrom?: DateTime.DateTime.Inpu
  * Returns an `IterableIterator` which yields the sequence of `Date`s that match the `Cron` instance,
  * in reverse direction.
  *
- * @since 2.0.0
+ * @since 3.20.0
  */
 export const sequenceReverse = function*(cron: Cron, startFrom?: DateTime.DateTime.Input): IterableIterator<Date> {
   while (true) {
