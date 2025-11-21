@@ -118,27 +118,35 @@ export const makeCreatePod = Effect.gen(function*() {
       Effect.orDie
     )
     const isPodFound = readPodRaw.pipe(
-      Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 404, () => Effect.succeed(false)),
+      Effect.catchIf(
+        (err) => err._tag === "ResponseError" && err.response.status === 404,
+        () => Effect.succeed(false)
+      ),
       Effect.as(true)
     )
     const createPod = HttpClientRequest.post(`/v1/namespaces/${namespace}/pods`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
       client.execute,
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
-      Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 409, () => readPod),
+      Effect.catchIf(
+        (err) => err._tag === "ResponseError" && err.response.status === 409,
+        () => readPod
+      ),
       Effect.tapErrorCause(Effect.logInfo)
     )
     const deletePod = HttpClientRequest.del(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
       Effect.flatMap((res) => res.json),
-      Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 404, () => Effect.void),
-      Effect.tapErrorCause(Effect.log),
+      Effect.catchIf(
+        (err) => err._tag === "ResponseError" && err.response.status === 404,
+        () => Effect.void
+      ),
+      Effect.tapErrorCause(Effect.logInfo),
       Effect.orDie,
       Effect.asVoid
     )
     yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
       yield* deletePod
-      yield* Effect.sleep("1 seconds")
       yield* isPodFound.pipe(
         Effect.repeat({
           until: (found) => !found,
@@ -154,7 +162,7 @@ export const makeCreatePod = Effect.gen(function*() {
       pod = yield* readPod
     }
     return pod
-  }, Effect.withSpan("createPod"))
+  }, Effect.withSpan("K8sHttpClient.createPod"))
 })
 
 /**
