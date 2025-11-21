@@ -7,7 +7,9 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as RcRef from "effect/RcRef"
 import * as Scope from "effect/Scope"
+import type * as v1 from "kubernetes-types/core/v1.d.ts"
 import * as Entity from "./Entity.js"
+import * as K8sHttpClient from "./K8sHttpClient.js"
 import type { Sharding } from "./Sharding.js"
 
 /**
@@ -104,5 +106,31 @@ export const make: <A, E, R>(options: {
     [TypeId]: TypeId,
     get: RcRef.get(ref),
     close: RcRef.invalidate(ref)
+  })
+})
+
+/**
+ * @since 1.0.0
+ * @category Kubernetes
+ */
+export const makeK8sPod: (
+  spec: v1.Pod,
+  options?: { readonly idleTimeToLive?: Duration.DurationInput | undefined } | undefined
+) => Effect.Effect<
+  EntityResource<void>,
+  never,
+  Scope.Scope | Sharding | Entity.CurrentAddress | K8sHttpClient.K8sHttpClient
+> = Effect.fnUntraced(function*(spec: v1.Pod, options?: {
+  readonly idleTimeToLive?: Duration.DurationInput | undefined
+}) {
+  const createPod = yield* K8sHttpClient.makeCreatePod
+  return yield* make({
+    ...options,
+    acquire: Effect.gen(function*() {
+      const scope = yield* CloseScope
+      yield* createPod(spec).pipe(
+        Scope.extend(scope)
+      )
+    })
   })
 })

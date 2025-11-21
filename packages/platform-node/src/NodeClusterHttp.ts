@@ -21,12 +21,19 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import { createServer } from "node:http"
-import { layerHttpClientK8s } from "./NodeClusterSocket.js"
+import { layerK8sHttpClient } from "./NodeClusterSocket.js"
 import type { NodeContext } from "./NodeContext.js"
-import * as NodeFileSystem from "./NodeFileSystem.js"
 import * as NodeHttpClient from "./NodeHttpClient.js"
 import * as NodeHttpServer from "./NodeHttpServer.js"
 import * as NodeSocket from "./NodeSocket.js"
+
+export {
+  /**
+   * @since 1.0.0
+   * @category Re-exports
+   */
+  layerK8sHttpClient
+} from "./NodeClusterSocket.js"
 
 /**
  * @since 1.0.0
@@ -76,7 +83,7 @@ export const layer = <
     ? Layer.empty as any
     : options?.runnerHealth === "k8s"
     ? RunnerHealth.layerK8s(options.runnerHealthK8s).pipe(
-      Layer.provide([NodeFileSystem.layer, layerHttpClientK8s])
+      Layer.provide(layerK8sHttpClient)
     )
     : RunnerHealth.layerPing.pipe(
       Layer.provide(Runners.layerRpc),

@@ -76,6 +76,11 @@ export * as HttpRunner from "./HttpRunner.js"
 /**
  * @since 1.0.0
  */
+export * as K8sHttpClient from "./K8sHttpClient.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as MachineId from "./MachineId.js"
 
 /**

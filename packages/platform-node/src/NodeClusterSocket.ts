@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as K8sHttpClient from "@effect/cluster/K8sHttpClient"
 import * as MessageStorage from "@effect/cluster/MessageStorage"
 import * as RunnerHealth from "@effect/cluster/RunnerHealth"
 import * as Runners from "@effect/cluster/Runners"
@@ -12,7 +13,6 @@ import * as SqlMessageStorage from "@effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "@effect/cluster/SqlRunnerStorage"
 import { layerClientProtocol, layerSocketServer } from "@effect/platform-node-shared/NodeClusterSocket"
 import * as FileSystem from "@effect/platform/FileSystem"
-import type * as HttpClient from "@effect/platform/HttpClient"
 import type * as SocketServer from "@effect/platform/SocketServer"
 import * as RpcSerialization from "@effect/rpc/RpcSerialization"
 import type { SqlClient } from "@effect/sql/SqlClient"
@@ -81,7 +81,7 @@ export const layer = <
     ? Layer.empty as any
     : options?.runnerHealth === "k8s"
     ? RunnerHealth.layerK8s(options.runnerHealthK8s).pipe(
-      Layer.provide([NodeFileSystem.layer, layerHttpClientK8s])
+      Layer.provide(layerK8sHttpClient)
     )
     : RunnerHealth.layerPing.pipe(
       Layer.provide(Runners.layerRpc),
@@ -139,12 +139,13 @@ export const layerDispatcherK8s: Layer.Layer<NodeHttpClient.Dispatcher> = Layer.
 ).pipe(
   Layer.provide(NodeFileSystem.layer)
 )
+
 /**
  * @since 1.0.0
  * @category Layers
  */
-export const layerHttpClientK8s: Layer.Layer<HttpClient.HttpClient> = Layer.fresh(
-  NodeHttpClient.layerUndiciWithoutDispatcher
-).pipe(
-  Layer.provide(layerDispatcherK8s)
+export const layerK8sHttpClient: Layer.Layer<K8sHttpClient.K8sHttpClient> = K8sHttpClient.layer.pipe(
+  Layer.provide(Layer.fresh(NodeHttpClient.layerUndiciWithoutDispatcher)),
+  Layer.provide(layerDispatcherK8s),
+  Layer.provide(NodeFileSystem.layer)
 )
