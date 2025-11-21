@@ -207,6 +207,36 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, sunday), new Date("2025-10-17T01:00:00.000Z")) // Friday
   })
 
+  it("prev chooses the later occurrence in DST fall-back", () => {
+    const make = (s: string) => DateTime.makeZonedFromString(s).pipe(Option.getOrThrow)
+    const tz = "Europe/Berlin"
+    const cron = Cron.unsafeParse("0 30 2 * * *", tz)
+    const before = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]")
+    const result = DateTime.unsafeMakeZoned(prev(cron, before), { timeZone: tz })
+    deepStrictEqual(result.pipe(DateTime.formatIsoZoned), "2024-10-27T02:30:00.000+02:00[Europe/Berlin]")
+  })
+
+  it("prev respects combined day-of-month and weekday constraints", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 0 9 1,15 * MON", tz)
+    const before = new Date("2024-04-02T12:00:00.000Z") // Tue after a matching Monday the 1st
+    deepStrictEqual(prev(cron, before), new Date("2024-04-01T09:00:00.000Z"))
+  })
+
+  it("prev handles step expressions across day boundary", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 */7 8-10 * * *", tz)
+    const before = new Date("2024-01-01T08:01:00.000Z")
+    deepStrictEqual(prev(cron, before), new Date("2024-01-01T08:00:00.000Z"))
+  })
+
+  it("prev works with fixed offset time zones", () => {
+    const offset = DateTime.zoneMakeOffset(2 * 60 * 60 * 1000) // UTC+2
+    const cron = Cron.unsafeParse("0 0 10 * * *", offset)
+    const before = new Date("2024-05-01T07:00:00.000Z") // before 10:00 local (08:00Z)
+    deepStrictEqual(prev(cron, before), new Date("2024-04-30T08:00:00.000Z"))
+  })
+
   it("sequence", () => {
     const start = new Date("2024-01-01 00:00:00")
     const generator = Cron.sequence(Cron.unsafeParse("23 0-20/2 * * 0"), start)

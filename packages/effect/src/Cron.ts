@@ -465,14 +465,17 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
   const adjustDst = utc ? constVoid : (current: Date) => {
     const adjusted = dateTime.unsafeMakeZoned(current, {
       timeZone: zoned.zone,
-      adjustForTimeZone: true // ,
-      // disambiguation: direction === "prev" ? "later" : "earlier"
+      adjustForTimeZone: true,
+      disambiguation: direction === "prev" ? "later" : undefined
     }).pipe(dateTime.toDate)
 
-    // TODO: This implementation currently only skips forward when transitioning into daylight savings time.
     const drift = current.getTime() - adjusted.getTime()
-    if (drift > 0) {
-      current.setTime(current.getTime() + drift)
+    if (direction === "prev") {
+      if (drift !== 0) {
+        current.setTime(adjusted.getTime())
+      }
+    } else if (drift > 0) {
+      current.setTime(adjusted.getTime())
     }
   }
 
@@ -558,6 +561,7 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
             nextWeekday - currentWeekday
         }
 
+        // Only check day-of-month if weekday constraint not already satisfied (they're OR'd)
         if (cron.days.size !== 0 && a !== 0) {
           const currentDay = current.getUTCDate()
           const nextDay = table.day[currentDay]
@@ -565,6 +569,9 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
             (
               direction === "next" ?
                 daysInMonth(current) - currentDay + wrapDay :
+                // When wrapping to previous month, calculate days back:
+                // Current day offset + gap from end of prev month to target day
+                // Example: June 3 → May 20 with wrapDay=20: -(3 + (31 - 20)) = -14
                 -(currentDay + (daysInMonth(new Date(Date.UTC(
                   current.getUTCFullYear(),
                   current.getUTCMonth(),
