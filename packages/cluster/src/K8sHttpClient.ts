@@ -10,6 +10,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
@@ -115,10 +116,12 @@ export const makeCreatePod = Effect.gen(function*() {
     )
     const readPod = readPodRaw.pipe(
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
+      Effect.asSome,
       Effect.retry({
         while: (e) => e._tag === "ParseError",
         schedule: Schedule.spaced("1 seconds")
       }),
+      Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 404, () => Effect.succeedNone),
       Effect.orDie
     )
     const isPodFound = readPodRaw.pipe(
@@ -160,13 +163,15 @@ export const makeCreatePod = Effect.gen(function*() {
       )
     }))
 
-    yield* createPod
-    let pod = yield* readPod
-    while (!pod.isReady) {
-      yield* Effect.sleep("5 seconds")
-      pod = yield* readPod
+    let opod = Option.none<Pod>()
+    while (Option.isNone(opod) || !opod.value.isReady) {
+      if (Option.isNone(opod)) {
+        yield* createPod
+      }
+      yield* Effect.sleep("3 seconds")
+      opod = yield* readPod
     }
-    return pod
+    return opod.value
   }, Effect.withSpan("K8sHttpClient.createPod"))
 })
 
