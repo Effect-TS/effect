@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -32,6 +33,19 @@ export interface EntityResource<out A, out E = never> {
 }
 
 /**
+ * A `Scope` that is only closed when the resource is explicitly closed.
+ *
+ * It is not closed during restarts, due to shard movement or node shutdowns.
+ *
+ * @since 1.0.0
+ * @category Scope
+ */
+export class CloseScope extends Context.Tag("@effect/cluster/EntityResource/CloseScope")<
+  CloseScope,
+  Scope.Scope
+>() {}
+
+/**
  * A `EntityResource` is a resource that can be acquired inside a cluster
  * entity, which will keep the entity alive even across restarts.
  *
@@ -47,55 +61,32 @@ export interface EntityResource<out A, out E = never> {
 export const make: <A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
   readonly idleTimeToLive?: Duration.DurationInput | undefined
-  /**
-   * When to close the resource Scope.
-   *
-   * If set to "explicit", the resource will only be cleaned up when either the
-   * `idleTimeToLive` is reached, or the .close effect is called.
-   *
-   * Defaults to "always", which means the resource will be cleaned up when the
-   * the parent Scope is closed.
-   */
-  readonly shutdownMode?: "explicit" | "always" | undefined
 }) => Effect.Effect<
   EntityResource<A, E>,
   E,
-  Scope.Scope | R | Sharding | Entity.CurrentAddress
+  Scope.Scope | Exclude<R, CloseScope> | Sharding | Entity.CurrentAddress
 > = Effect.fnUntraced(function*<A, E, R>(options: {
   readonly acquire: Effect.Effect<A, E, R>
   readonly idleTimeToLive?: Duration.DurationInput | undefined
-  readonly shutdownMode?: "explicit" | "always" | undefined
 }) {
-  const shutdownMode = options.shutdownMode ?? "always"
   let shuttingDown = false
 
   const ref = yield* RcRef.make({
     acquire: Effect.gen(function*() {
-      let scope = yield* Effect.scope
+      const closeable = yield* Scope.make()
 
-      if (shutdownMode === "explicit") {
-        const closeable = yield* Scope.make()
-        const context = yield* Effect.context<Sharding | Entity.CurrentAddress>()
-        yield* Scope.addFinalizerExit(
-          scope,
-          Effect.fnUntraced(function*(exit) {
-            if (shuttingDown) return
-            yield* Scope.close(closeable, exit)
-            yield* Entity.keepAlive(false)
-          }, Effect.provide(context))
-        )
-        scope = closeable
-      } else {
-        yield* Effect.addFinalizer(() => {
-          if (shuttingDown) return Effect.void
-          return Entity.keepAlive(false)
+      yield* Effect.addFinalizer(
+        Effect.fnUntraced(function*(exit) {
+          if (shuttingDown) return
+          yield* Scope.close(closeable, exit)
+          yield* Entity.keepAlive(false)
         })
-      }
+      )
 
       yield* Entity.keepAlive(true)
 
       return yield* options.acquire.pipe(
-        Scope.extend(scope)
+        Effect.provideService(CloseScope, closeable)
       )
     }),
     idleTimeToLive: options.idleTimeToLive ?? Duration.infinity
