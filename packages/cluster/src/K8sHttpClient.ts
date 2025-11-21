@@ -115,6 +115,10 @@ export const makeCreatePod = Effect.gen(function*() {
     )
     const readPod = readPodRaw.pipe(
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
+      Effect.retry({
+        while: (e) => e._tag === "ParseError",
+        schedule: Schedule.spaced("1 seconds")
+      }),
       Effect.orDie
     )
     const isPodFound = readPodRaw.pipe(
@@ -127,7 +131,6 @@ export const makeCreatePod = Effect.gen(function*() {
     const createPod = HttpClientRequest.post(`/v1/namespaces/${namespace}/pods`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
       client.execute,
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
       Effect.catchIf(
         (err) => err._tag === "ResponseError" && err.response.status === 409,
         () => readPod
@@ -157,7 +160,8 @@ export const makeCreatePod = Effect.gen(function*() {
       )
     }))
 
-    let pod = yield* createPod
+    yield* createPod
+    let pod = yield* readPod
     while (!pod.isReady) {
       yield* Effect.sleep("5 seconds")
       pod = yield* readPod
@@ -177,9 +181,7 @@ export class Pod extends Schema.Class<Pod>("@effect/cluster/K8sHttpClient/Pod")(
       type: Schema.String,
       status: Schema.String,
       lastTransitionTime: Schema.String
-    })).pipe(
-      Schema.optionalWith({ default: () => [] })
-    ),
+    })),
     podIP: Schema.String
   })
 }) {
