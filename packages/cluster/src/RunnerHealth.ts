@@ -1,17 +1,12 @@
 /**
  * @since 1.0.0
  */
-import * as FileSystem from "@effect/platform/FileSystem"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as HttpClientResponse from "@effect/platform/HttpClientResponse"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Schedule from "effect/Schedule"
-import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import * as K8s from "./K8sHttpClient.js"
 import type { RunnerAddress } from "./RunnerAddress.js"
 import * as Runners from "./Runners.js"
 
@@ -87,85 +82,15 @@ export const makeK8s = Effect.fnUntraced(function*(options?: {
   readonly namespace?: string | undefined
   readonly labelSelector?: string | undefined
 }) {
-  const fs = yield* FileSystem.FileSystem
-  const token = yield* fs.readFileString("/var/run/secrets/kubernetes.io/serviceaccount/token").pipe(
-    Effect.option
-  )
-  const client = (yield* HttpClient.HttpClient).pipe(
-    HttpClient.filterStatusOk
-  )
-  const baseRequest = HttpClientRequest.get("https://kubernetes.default.svc/api").pipe(
-    token._tag === "Some" ? HttpClientRequest.bearerToken(token.value.trim()) : identity
-  )
-  const getPods = baseRequest.pipe(
-    HttpClientRequest.appendUrl(options?.namespace ? `/v1/namespaces/${options.namespace}/pods` : "/v1/pods"),
-    HttpClientRequest.setUrlParam("fieldSelector", "status.phase=Running"),
-    options?.labelSelector ? HttpClientRequest.setUrlParam("labelSelector", options.labelSelector) : identity
-  )
-  const allPods = yield* client.execute(getPods).pipe(
-    Effect.flatMap(HttpClientResponse.schemaBodyJson(PodList)),
-    Effect.map((list) => {
-      const pods = new Map<string, Pod>()
-      for (let i = 0; i < list.items.length; i++) {
-        const pod = list.items[i]
-        pods.set(pod.status.podIP, pod)
-      }
-      return pods
-    }),
-    Effect.tapErrorCause((cause) => Effect.logWarning("Failed to fetch pods from Kubernetes API", cause)),
-    Effect.cachedWithTTL("10 seconds")
-  )
+  const allPods = yield* K8s.makeGetPods(options)
 
   return RunnerHealth.of({
     isAlive: (address) =>
       allPods.pipe(
-        Effect.map((pods) => pods.get(address.host)?.isReady ?? false),
+        Effect.map((pods) => pods.get(address.host)?.isReadyOrInitializing ?? false),
         Effect.catchAllCause(() => Effect.succeed(true))
       )
   })
-})
-
-class Pod extends Schema.Class<Pod>("effect/cluster/RunnerHealth/Pod")({
-  status: Schema.Struct({
-    phase: Schema.String,
-    conditions: Schema.Array(Schema.Struct({
-      type: Schema.String,
-      status: Schema.String,
-      lastTransitionTime: Schema.String
-    })),
-    podIP: Schema.String
-  })
-}) {
-  get isReady(): boolean {
-    let initializedAt: string | undefined
-    let readyAt: string | undefined
-    for (let i = 0; i < this.status.conditions.length; i++) {
-      const condition = this.status.conditions[i]
-      switch (condition.type) {
-        case "Initialized": {
-          if (condition.status !== "True") {
-            return true
-          }
-          initializedAt = condition.lastTransitionTime
-          break
-        }
-        case "Ready": {
-          if (condition.status === "True") {
-            return true
-          }
-          readyAt = condition.lastTransitionTime
-          break
-        }
-      }
-    }
-    // if the pod is still booting up, consider it ready as it would have
-    // already registered itself with RunnerStorage by now
-    return initializedAt === readyAt
-  }
-}
-
-const PodList = Schema.Struct({
-  items: Schema.Array(Pod)
 })
 
 /**
@@ -188,5 +113,5 @@ export const layerK8s = (
 ): Layer.Layer<
   RunnerHealth,
   never,
-  HttpClient.HttpClient | FileSystem.FileSystem
+  K8s.K8sHttpClient
 > => Layer.effect(RunnerHealth, makeK8s(options))

@@ -51,5 +51,8 @@
     "@testcontainers/mysql": "^10.25.0",
     "@testcontainers/postgresql": "^10.25.0",
     "effect": "workspace:^"
+  },
+  "dependencies": {
+    "kubernetes-types": "^1.30.0"
   }
 }
