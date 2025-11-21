@@ -73,6 +73,8 @@ export const make: <A, E, R>(options: {
 }) {
   let shuttingDown = false
 
+  yield* Entity.keepAlive(true)
+
   const ref = yield* RcRef.make({
     acquire: Effect.gen(function*() {
       const closeable = yield* Scope.make()
@@ -84,8 +86,6 @@ export const make: <A, E, R>(options: {
           yield* Entity.keepAlive(false)
         })
       )
-
-      yield* Entity.keepAlive(true)
 
       return yield* options.acquire.pipe(
         Effect.provideService(CloseScope, closeable)
