@@ -17,6 +17,7 @@ describe("Client", () => {
   test("works", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
+      const rawClient = yield* sql.rawClient
       yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
       yield* sql`INSERT INTO test (name) VALUES ('hello')`
       let rows = yield* sql`SELECT * FROM test`
@@ -24,6 +25,11 @@ describe("Client", () => {
       yield* pipe(sql`INSERT INTO test (name) VALUES ('world')`, sql.withTransaction)
       rows = yield* sql`SELECT * FROM test`
       expect(rows).toEqual([
+        { id: 1, name: "hello" },
+        { id: 2, name: "world" }
+      ])
+      const rawRows = yield* Effect.try(() => rawClient.query("SELECT * FROM test").all())
+      expect(rawRows).toEqual([
         { id: 1, name: "hello" },
         { id: 2, name: "world" }
       ])
