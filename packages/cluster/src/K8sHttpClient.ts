@@ -110,12 +110,14 @@ export const makeCreatePod = Effect.gen(function*() {
     const upsertPod = HttpClientRequest.put(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
       client.execute,
+      Effect.tapErrorCause(Effect.log),
       Effect.retry({ times: 3 }),
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
       Effect.orDie
     )
     const readPod = HttpClientRequest.get(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
+      Effect.tapErrorCause(Effect.log),
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
       Effect.orDie
     )
@@ -134,6 +136,7 @@ export const makeCreatePod = Effect.gen(function*() {
       yield* Effect.sleep("5 seconds")
       pod = yield* readPod
     }
+    return pod
   })
 })
 

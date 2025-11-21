@@ -117,7 +117,7 @@ export const makeK8sPod: (
   spec: v1.Pod,
   options?: { readonly idleTimeToLive?: Duration.DurationInput | undefined } | undefined
 ) => Effect.Effect<
-  EntityResource<void>,
+  EntityResource<K8sHttpClient.Pod>,
   never,
   Scope.Scope | Sharding | Entity.CurrentAddress | K8sHttpClient.K8sHttpClient
 > = Effect.fnUntraced(function*(spec: v1.Pod, options?: {
@@ -128,7 +128,7 @@ export const makeK8sPod: (
     ...options,
     acquire: Effect.gen(function*() {
       const scope = yield* CloseScope
-      yield* createPod(spec).pipe(
+      return yield* createPod(spec).pipe(
         Scope.extend(scope)
       )
     })
