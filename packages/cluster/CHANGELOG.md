@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.53.5
+
+### Patch Changes
+
+- [#5785](https://github.com/Effect-TS/effect/pull/5785) [`47bf3d2`](https://github.com/Effect-TS/effect/commit/47bf3d2324ab914f6a33e95cda7ff2aac01519a6) Thanks @tim-smart! - immediately set entity keep alive in EntityResource
+
 ## 0.53.4
 
 ### Patch Changes
