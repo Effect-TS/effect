@@ -122,11 +122,11 @@ export const makeCreatePod = Effect.gen(function*() {
       Effect.orDie
     )
     const isPodFound = readPodRaw.pipe(
+      Effect.as(true),
       Effect.catchIf(
         (err) => err._tag === "ResponseError" && err.response.status === 404,
         () => Effect.succeed(false)
-      ),
-      Effect.as(true)
+      )
     )
     const createPod = HttpClientRequest.post(`/v1/namespaces/${namespace}/pods`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
