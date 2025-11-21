@@ -132,7 +132,8 @@ export const makeCreatePod = Effect.gen(function*() {
         (err) => err._tag === "ResponseError" && err.response.status === 409,
         () => readPod
       ),
-      Effect.tapErrorCause(Effect.logInfo)
+      Effect.tapErrorCause(Effect.logInfo),
+      Effect.orDie
     )
     const deletePod = HttpClientRequest.del(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
