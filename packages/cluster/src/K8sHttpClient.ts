@@ -110,29 +110,17 @@ export const makeCreatePod = Effect.gen(function*() {
     }
     const namespace = spec.metadata?.namespace ?? "default"
     const name = spec.metadata!.name!
-    const replacePod = HttpClientRequest.put(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
-      HttpClientRequest.bodyUnsafeJson(spec),
+    const readPod = HttpClientRequest.get(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod))
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
+      Effect.orDie
     )
     const createPod = HttpClientRequest.post(`/v1/namespaces/${namespace}/pods`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
       client.execute,
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod))
-    )
-    const upsertPod = createPod.pipe(
-      Effect.catchIf(
-        (err) => err._tag === "ResponseError" && err.response.status === 409,
-        () => replacePod
-      ),
-      Effect.tapErrorCause(Effect.log),
-      Effect.orDie
-    )
-    const readPod = HttpClientRequest.get(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
-      client.execute,
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
-      Effect.tapErrorCause(Effect.log),
-      Effect.orDie
+      Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 409, () => readPod),
+      Effect.tapErrorCause(Effect.logInfo)
     )
     const deletePod = HttpClientRequest.del(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
@@ -144,7 +132,7 @@ export const makeCreatePod = Effect.gen(function*() {
     )
     yield* Effect.addFinalizer(() => deletePod)
 
-    let pod = yield* upsertPod
+    let pod = yield* createPod
     while (!pod.isReady) {
       yield* Effect.sleep("5 seconds")
       pod = yield* readPod
