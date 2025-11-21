@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.53.3
+
+### Patch Changes
+
+- [#5781](https://github.com/Effect-TS/effect/pull/5781) [`df69cb5`](https://github.com/Effect-TS/effect/commit/df69cb5ed590045b18d1527162518ea0197ddd2e) Thanks @tim-smart! - provide seperate close scope to EntityResource via context
+
 ## 0.53.2
 
 ### Patch Changes
