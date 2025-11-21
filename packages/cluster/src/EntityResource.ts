@@ -119,7 +119,7 @@ export const makeK8sPod: (
     readonly idleTimeToLive?: Duration.DurationInput | undefined
   } | undefined
 ) => Effect.Effect<
-  EntityResource<K8sHttpClient.Pod>,
+  EntityResource<K8sHttpClient.PodStatus>,
   never,
   Scope.Scope | Sharding | Entity.CurrentAddress | K8sHttpClient.K8sHttpClient
 > = Effect.fnUntraced(function*(spec: v1.Pod, options?: {

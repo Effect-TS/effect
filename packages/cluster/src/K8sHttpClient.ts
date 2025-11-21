@@ -171,7 +171,7 @@ export const makeCreatePod = Effect.gen(function*() {
       yield* Effect.sleep("3 seconds")
       opod = yield* readPod
     }
-    return opod.value
+    return opod.value.status
   }, Effect.withSpan("K8sHttpClient.createPod"))
 })
 
@@ -179,16 +179,23 @@ export const makeCreatePod = Effect.gen(function*() {
  * @since 1.0.0
  * @category Schemas
  */
+export class PodStatus extends Schema.Class<PodStatus>("@effect/cluster/K8sHttpClient/PodStatus")({
+  phase: Schema.String,
+  conditions: Schema.Array(Schema.Struct({
+    type: Schema.String,
+    status: Schema.String,
+    lastTransitionTime: Schema.String
+  })),
+  podIP: Schema.String,
+  hostIP: Schema.String
+}) {}
+
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class Pod extends Schema.Class<Pod>("@effect/cluster/K8sHttpClient/Pod")({
-  status: Schema.Struct({
-    phase: Schema.String,
-    conditions: Schema.Array(Schema.Struct({
-      type: Schema.String,
-      status: Schema.String,
-      lastTransitionTime: Schema.String
-    })),
-    podIP: Schema.String
-  })
+  status: PodStatus
 }) {
   get isReady(): boolean {
     for (let i = 0; i < this.status.conditions.length; i++) {
