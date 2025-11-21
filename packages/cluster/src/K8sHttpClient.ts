@@ -42,7 +42,10 @@ export const layer: Layer.Layer<
     return (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest(HttpClientRequest.prependUrl("https://kubernetes.default.svc/api")),
       token._tag === "Some" ? HttpClient.mapRequest(HttpClientRequest.bearerToken(token.value.trim())) : identity,
-      HttpClient.filterStatusOk
+      HttpClient.filterStatusOk,
+      HttpClient.retryTransient({
+        schedule: Schedule.spaced(5000)
+      })
     )
   })
 )
@@ -107,37 +110,47 @@ export const makeCreatePod = Effect.gen(function*() {
     }
     const namespace = spec.metadata?.namespace ?? "default"
     const name = spec.metadata!.name!
-    const upsertPod = HttpClientRequest.put(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
+    const replacePod = HttpClientRequest.put(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       HttpClientRequest.bodyUnsafeJson(spec),
       client.execute,
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod))
+    )
+    const createPod = HttpClientRequest.post(`/v1/namespaces/${namespace}/pods`).pipe(
+      HttpClientRequest.bodyUnsafeJson(spec),
+      client.execute,
+      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod))
+    )
+    const upsertPod = createPod.pipe(
+      Effect.catchIf(
+        (err) => err._tag === "ResponseError" && err.response.status === 409,
+        () => replacePod
+      ),
       Effect.tapErrorCause(Effect.log),
-      Effect.retry({ times: 3 }),
-      Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
       Effect.orDie
     )
     const readPod = HttpClientRequest.get(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
-      Effect.tapErrorCause(Effect.log),
       Effect.flatMap(HttpClientResponse.schemaBodyJson(Pod)),
+      Effect.tapErrorCause(Effect.log),
       Effect.orDie
     )
     const deletePod = HttpClientRequest.del(`/v1/namespaces/${namespace}/pods/${name}`).pipe(
       client.execute,
       Effect.flatMap((res) => res.json),
       Effect.catchIf((err) => err._tag === "ResponseError" && err.response.status === 404, () => Effect.void),
-      Effect.retry(Schedule.spaced(5000)),
+      Effect.tapErrorCause(Effect.log),
       Effect.orDie,
       Effect.asVoid
     )
     yield* Effect.addFinalizer(() => deletePod)
 
-    let pod = yield* Effect.orDie(upsertPod)
+    let pod = yield* upsertPod
     while (!pod.isReady) {
       yield* Effect.sleep("5 seconds")
       pod = yield* readPod
     }
     return pod
-  })
+  }, Effect.withSpan("createPod"))
 })
 
 /**
