@@ -957,7 +957,7 @@ export const makeProtocolWithHttpApp: Effect.Effect<
     const request = yield* HttpServerRequest.HttpServerRequest
     const scope = yield* Effect.scope
     const requestHeaders = Object.entries(request.headers)
-    const data = yield* Effect.orDie<string | Uint8Array<ArrayBuffer>, HttpServerError.HttpServerError, never>(
+    const data = yield* Effect.orDie<string | Uint8Array, HttpServerError.HttpServerError, never>(
       isBinary ? Effect.map(request.arrayBuffer, (ab) => new Uint8Array(ab)) : request.text
     )
     const id = clientId++
