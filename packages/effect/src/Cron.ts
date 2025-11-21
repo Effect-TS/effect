@@ -445,14 +445,14 @@ const daysInMonth = (date: Date): number =>
  * @since 2.0.0
  */
 export const next = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
-  return increment(cron, startFrom, "next")
+  return stepCron(cron, startFrom, "next")
 }
 
 export const prev = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
-  return increment(cron, startFrom, "prev")
+  return stepCron(cron, startFrom, "prev")
 }
 
-const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
+const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
   const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.unsafeMakeZoned(startFrom ?? new Date(), {
     timeZone: tz
@@ -572,11 +572,13 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
                 // When wrapping to previous month, calculate days back:
                 // Current day offset + gap from end of prev month to target day
                 // Example: June 3 → May 20 with wrapDay=20: -(3 + (31 - 20)) = -14
-                -(currentDay + (daysInMonth(new Date(Date.UTC(
-                  current.getUTCFullYear(),
-                  current.getUTCMonth(),
-                  0
-                ))) - wrapDay))
+                -(currentDay + (daysInMonth(
+                  new Date(Date.UTC(
+                    current.getUTCFullYear(),
+                    current.getUTCMonth(),
+                    0
+                  ))
+                ) - wrapDay))
             ) :
             nextDay - currentDay
         }
@@ -593,9 +595,18 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
       if (cron.months.size !== 0) {
         const currentMonth = current.getUTCMonth() + 1
         const nextMonth = table.month[currentMonth]
+        const clampBoundaryDay = (targetMonthIndex: number): number => {
+          if (cron.days.size !== 0) {
+            return boundary.day
+          }
+          const maxDayInMonth = daysInMonth(
+            new Date(Date.UTC(current.getUTCFullYear(), targetMonthIndex, 1))
+          )
+          return Math.min(boundary.day, maxDayInMonth)
+        }
         if (nextMonth === undefined) {
           current.setUTCFullYear(current.getUTCFullYear() + tick)
-          current.setUTCMonth(boundary.month, boundary.day)
+          current.setUTCMonth(boundary.month, clampBoundaryDay(boundary.month))
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
           adjustDst(current)
           continue
@@ -605,7 +616,8 @@ const increment = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, d
             nextMonth > currentMonth :
             nextMonth < currentMonth
         ) {
-          current.setUTCMonth(nextMonth - 1, boundary.day)
+          const targetMonthIndex = nextMonth - 1
+          current.setUTCMonth(targetMonthIndex, clampBoundaryDay(targetMonthIndex))
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
           adjustDst(current)
           continue

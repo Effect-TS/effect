@@ -237,6 +237,35 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, before), new Date("2024-04-30T08:00:00.000Z"))
   })
 
+  it("prev wraps across year boundary", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 0 1 1 *", tz)
+    const from = new Date("2024-01-01T00:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2023-01-01T00:00:00.000Z"))
+  })
+
+  it("prev handles day 31 skipping months without it", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 0 31 * *", tz)
+    const from = new Date("2024-03-01T00:00:00.000Z")
+    // Should skip Feb (no day 31) and go to Jan 31
+    deepStrictEqual(prev(cron, from), new Date("2024-01-31T00:00:00.000Z"))
+  })
+
+  it("prev clamps to the last valid day when rolling back a month with only month constraints", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 0 0 * FEB *", tz)
+    const from = new Date("2024-03-31T12:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2024-02-29T00:00:00.000Z"))
+  })
+
+  it("prev with multiple months specified", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 0 15 1,4,7,10 *", tz) // Quarterly on 15th
+    const from = new Date("2024-05-01T00:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2024-04-15T00:00:00.000Z"))
+  })
+
   it("sequence", () => {
     const start = new Date("2024-01-01 00:00:00")
     const generator = Cron.sequence(Cron.unsafeParse("23 0-20/2 * * 0"), start)
