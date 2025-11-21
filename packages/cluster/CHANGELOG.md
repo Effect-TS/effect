@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.53.4
+
+### Patch Changes
+
+- [#5783](https://github.com/Effect-TS/effect/pull/5783) [`8b879fb`](https://github.com/Effect-TS/effect/commit/8b879fb3b886a7262c9c8d9b2050cc128c5eb6f8) Thanks @tim-smart! - add EntityResource.makeK8sPod
+
 ## 0.53.3
 
 ### Patch Changes
