@@ -20,7 +20,7 @@ import type { Pipeable } from "./Pipeable.js"
  * @property label - A label associated with the log level.
  * @property syslog -The syslog severity level of the log level.
  */
-export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
+export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None | Off
 
 /**
  * @since 2.0.0
@@ -111,6 +111,17 @@ export interface Trace extends Pipeable {
  */
 export interface None extends Pipeable {
   readonly _tag: "None"
+  readonly label: "NONE"
+  readonly syslog: 7
+  readonly ordinal: number
+}
+
+/**
+ * @since 2.0.0
+ * @category model
+ */
+export interface Off extends Pipeable {
+  readonly _tag: "Off"
   readonly label: "OFF"
   readonly syslog: 7
   readonly ordinal: number
@@ -163,6 +174,12 @@ export const Trace: LogLevel = core.logLevelTrace
  * @category constructors
  */
 export const None: LogLevel = core.logLevelNone
+
+/**
+ * @since 2.0.0
+ * @category constructors
+ */
+export const Off: LogLevel = core.logLevelOff
 
 /**
  * @since 2.0.0
@@ -277,6 +294,8 @@ export const fromLiteral = (literal: Literal): LogLevel => {
       return Info
     case "Trace":
       return Trace
+    case "Off":
+      return Off
     case "None":
       return None
     case "Warning":
