@@ -235,8 +235,11 @@ export interface FileSystem {
    * By default, only changes to the direct children of the directory are reported.
    * Set the `recursive` option to `true` to watch for changes in subdirectories as well.
    *
-   * Note: The `recursive` option is only supported on macOS and Windows.
-   * On other platforms, it will be ignored.
+   * Note: The `recursive` option behavior depends on the backend implementation:
+   * - When using `@parcel/watcher` (default in `@effect/platform-node`):
+   *   Watching is always recursive on all platforms. This option is ignored.
+   * - When using Node.js `fs.watch()` fallback: The `recursive` option is
+   *   supported on all platforms (Node.js v20+).
    */
   readonly watch: (path: string, options?: WatchOptions) => Stream<WatchEvent, PlatformError>
   /**

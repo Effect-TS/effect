@@ -488,7 +488,7 @@
 
   Added a `recursive` option to `FileSystem.watch` that allows watching for changes in subdirectories. When set to `true`, the watcher will monitor changes in all nested directories.
 
-  Note: The recursive option is only supported on macOS and Windows. On other platforms, it will be ignored.
+  Note: The `recursive` option behavior depends on the backend implementation. When using `@parcel/watcher` (default), watching is always recursive on all platforms and this option is ignored. When using the Node.js `fs.watch()` fallback, the `recursive` option is supported on all platforms (Node.js v20+).
 
   Example:
 
