@@ -7,8 +7,7 @@ import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
-import * as assert from "node:assert"
-import { assert as vassert } from "vitest"
+import { assert } from "vitest"
 
 // ----------------------------
 // Primitives
@@ -38,7 +37,7 @@ export function deepStrictEqual<A>(actual: A, expected: A, message?: string, ...
  * @since 0.21.0
  */
 export function notDeepStrictEqual<A>(actual: A, expected: A, message?: string, ..._: Array<never>) {
-  assert.notDeepStrictEqual(actual, expected, message)
+  assert.notDeepEqual(actual, expected, message)
 }
 
 /**
@@ -86,8 +85,8 @@ export function assertInstanceOf<C extends abstract new(...args: any) => any>(
   message?: string,
   ..._: Array<never>
 ): asserts value is InstanceType<C> {
-  // @ts-ignore
-  vassert.instanceOf(value, constructor, message)
+  // @ts-expect-error Chai type does not allow abstract constructors
+  assert.instanceOf(value, constructor, message)
 }
 
 /**
