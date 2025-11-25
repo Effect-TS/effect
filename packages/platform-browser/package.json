@@ -55,6 +55,7 @@
     "@effect/platform": "workspace:^",
     "@effect/rpc": "workspace:^",
     "effect": "workspace:^",
+    "fake-indexeddb": "^6.0.0",
     "happy-dom": "^17.4.7",
     "mock-xmlhttprequest": "^8.4.1"
   },
