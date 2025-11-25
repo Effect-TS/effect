@@ -92,7 +92,7 @@ export const layer = <
     Layer.provide(runnerHealth),
     Layer.provideMerge(
       options?.storage === "local"
-        ? MessageStorage.layerNoop
+        ? MessageStorage.layerMemory
         : options?.storage === "byo"
         ? Layer.empty
         : Layer.orDie(SqlMessageStorage.layer)
