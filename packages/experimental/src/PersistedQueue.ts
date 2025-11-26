@@ -40,7 +40,7 @@ export interface PersistedQueue<in out A, out R = never> {
    *
    * If the returned effect succeeds, the element is marked as processed,
    * otherwise it will be retried according to the provided options.
-   *
+   * ake
    * By default, max attempts is set to 10.
    */
   readonly take: <XA, XE, XR>(
@@ -67,6 +67,19 @@ export class PersistedQueueFactory extends Context.Tag("@effect/experimental/Per
     }) => Effect.Effect<PersistedQueue<A, R>>
   }
 >() {}
+
+/**
+ * @since 1.0.0
+ * @category Accessors
+ */
+export const make = <A, I, R>(options: {
+  readonly name: string
+  readonly schema: Schema.Schema<A, I, R>
+}): Effect.Effect<PersistedQueue<A, R>, never, PersistedQueueFactory> =>
+  Effect.flatMap(
+    PersistedQueueFactory,
+    (factory) => factory.make(options)
+  )
 
 /**
  * @since 1.0.0
@@ -115,6 +128,16 @@ export const makeFactory = Effect.gen(function*() {
     }
   })
 })
+
+/**
+ * @since 1.0.0
+ * @category Factory
+ */
+export const layer: Layer.Layer<
+  PersistedQueueFactory,
+  never,
+  PersistedQueueStore
+> = Layer.effect(PersistedQueueFactory, makeFactory)
 
 /**
  * @since 1.0.0
