@@ -11,8 +11,10 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
 import type { ActionContextError } from "./ActionError.js"
+import * as internal from "./internal/actionContext.js"
 
 /**
  * @since 1.0.0
@@ -89,4 +91,128 @@ export const ActionContext: Context.Tag<ActionContext, ActionContext> = Context.
   "@effect-native/platform-github/ActionContext"
 )
 
-// Accessor functions will be added after implementation
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: Layer.Layer<ActionContext> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const eventName: Effect.Effect<string, never, ActionContext> = Effect.map(
+  ActionContext,
+  (ctx) => ctx.eventName
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const payload: Effect.Effect<Record<string, unknown>, never, ActionContext> = Effect.map(
+  ActionContext,
+  (ctx) => ctx.payload
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const workflow: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.workflow)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const action: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.action)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const actor: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.actor)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const job: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.job)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const runId: Effect.Effect<number, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.runId)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const runNumber: Effect.Effect<number, never, ActionContext> = Effect.map(
+  ActionContext,
+  (ctx) => ctx.runNumber
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const runAttempt: Effect.Effect<number, never, ActionContext> = Effect.map(
+  ActionContext,
+  (ctx) => ctx.runAttempt
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const ref: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.ref)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const sha: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.sha)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const apiUrl: Effect.Effect<string, never, ActionContext> = Effect.map(ActionContext, (ctx) => ctx.apiUrl)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const serverUrl: Effect.Effect<string, never, ActionContext> = Effect.map(
+  ActionContext,
+  (ctx) => ctx.serverUrl
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const graphqlUrl: Effect.Effect<string, never, ActionContext> = Effect.map(
+  ActionContext,
+  (ctx) => ctx.graphqlUrl
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const repo: Effect.Effect<RepoContext, ActionContextError, ActionContext> = Effect.flatMap(
+  ActionContext,
+  (ctx) => ctx.repo
+)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const issue: Effect.Effect<IssueContext, ActionContextError, ActionContext> = Effect.flatMap(
+  ActionContext,
+  (ctx) => ctx.issue
+)

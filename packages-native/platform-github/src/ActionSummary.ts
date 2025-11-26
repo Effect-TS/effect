@@ -11,8 +11,10 @@
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
 import type { ActionSummaryError } from "./ActionError.js"
+import * as internal from "./internal/actionSummary.js"
 
 /**
  * @since 1.0.0
@@ -93,4 +95,26 @@ export const ActionSummary: Context.Tag<ActionSummary, ActionSummary> = Context.
   "@effect-native/platform-github/ActionSummary"
 )
 
-// Factory and layer will be added after implementation
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: Layer.Layer<ActionSummary> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const write: (options?: {
+  overwrite?: boolean
+}) => Effect.Effect<ActionSummary, ActionSummaryError, ActionSummary> = (options) =>
+  Effect.flatMap(ActionSummary, (summary) => summary.write(options))
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const clear: Effect.Effect<ActionSummary, ActionSummaryError, ActionSummary> = Effect.flatMap(
+  ActionSummary,
+  (summary) => summary.clear()
+)

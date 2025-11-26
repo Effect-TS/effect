@@ -11,8 +11,10 @@
  */
 import type { GitHub } from "@actions/github/lib/utils.js"
 import * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
 import type { ActionApiError } from "./ActionError.js"
+import * as internal from "./internal/actionClient.js"
 
 /**
  * @since 1.0.0
@@ -77,4 +79,44 @@ export const ActionClient: Context.Tag<ActionClient, ActionClient> = Context.Gen
   "@effect-native/platform-github/ActionClient"
 )
 
-// Accessor functions and layer will be added after implementation
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layer: (token: string) => Layer.Layer<ActionClient> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const octokit: Effect.Effect<Octokit, never, ActionClient> = Effect.map(ActionClient, (client) => client.octokit)
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const request: <T>(
+  route: string,
+  options?: Record<string, unknown>
+) => Effect.Effect<T, ActionApiError, ActionClient> = (route, options) =>
+  Effect.flatMap(ActionClient, (client) => client.request(route, options))
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const graphql: <T>(
+  query: string,
+  variables?: Record<string, unknown>
+) => Effect.Effect<T, ActionApiError, ActionClient> = (query, variables) =>
+  Effect.flatMap(ActionClient, (client) => client.graphql(query, variables))
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const paginate: <T>(
+  route: string,
+  options?: Record<string, unknown>
+) => Effect.Effect<ReadonlyArray<T>, ActionApiError, ActionClient> = (route, options) =>
+  Effect.flatMap(ActionClient, (client) => client.paginate(route, options))
