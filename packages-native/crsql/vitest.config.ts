@@ -14,7 +14,11 @@ process.env.CRSQLITE_PATH ??= LibCrSql.pathToCrSqliteExtension
 const config: ViteUserConfig = {
   test: {
     // Integration tests need longer timeout for nix run commands
-    testTimeout: 30000 // 30 seconds
+    testTimeout: 30000, // 30 seconds
+    // Use forks pool for native module compatibility (crsqlite).
+    // The default threads pool can cause "Channel closed" errors during
+    // cleanup when native modules are loaded.
+    pool: "forks"
   }
 }
 

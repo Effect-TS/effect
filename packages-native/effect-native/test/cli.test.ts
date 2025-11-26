@@ -35,7 +35,7 @@ describe("effect-native cli", () => {
 
     const output = lines.join("\n")
 
-    expect(output).toContain("effect-native 0.0.1")
+    expect(output).toContain("effect-native 0.1.0")
     expect(output).toContain("USAGE")
     expect(output).toContain("tight feedback loops")
     expect(output).toContain("Slice time very thinly")
