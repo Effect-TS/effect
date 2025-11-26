@@ -3,6 +3,7 @@
   "include": [],
   "references": [
     { "path": "packages-native/bun-test" },
+    { "path": "packages-native/github-action-scratchpad" },
     { "path": "packages-native/patterns" }
   ]
 }

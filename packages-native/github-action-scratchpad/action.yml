@@ -1,0 +1,25 @@
+name: Effect GitHub Action Scratchpad
+description: Prototype GitHub Action using Effect with native TypeScript (no build step)
+author: effect-native
+
+branding:
+  icon: zap
+  color: purple
+
+inputs:
+  greeting:
+    description: 'A greeting message to display'
+    required: false
+    default: 'Hello from Effect!'
+  who-to-greet:
+    description: 'Who to greet'
+    required: true
+    default: 'World'
+
+outputs:
+  message:
+    description: 'The full greeting message that was displayed'
+
+runs:
+  using: node24
+  main: main.ts
