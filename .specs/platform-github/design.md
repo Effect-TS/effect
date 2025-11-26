@@ -753,6 +753,173 @@ const program = Effect.gen(function* () {
 
 ---
 
+## Action Composition System
+
+### Overview
+
+Actions can be composed from reusable sub-actions, enabling:
+- Type-safe sequential and parallel composition
+- Map/reduce patterns for matrix-like operations
+- Compensation/rollback on failure
+- Handler registration via Layers
+
+### ActionDefinition<I, O, E>
+
+Defines a reusable sub-action with typed schemas:
+
+```typescript
+const BuildAction = Action.define({
+  name: "build",
+  input: Schema.Struct({
+    target: Schema.String,
+    optimize: Schema.Boolean
+  }),
+  output: Schema.Struct({
+    artifact: Schema.String,
+    size: Schema.Number
+  }),
+  error: BuildError
+})
+// Type: ActionDefinition<{ target: string; optimize: boolean }, { artifact: string; size: number }, BuildError>
+```
+
+### Action.handler
+
+Registers a handler for an ActionDefinition, returning a Layer:
+
+```typescript
+const BuildHandler = Action.handler(BuildAction, (input) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem
+    // ... build logic using platform services
+    return { artifact: "dist/app.js", size: 12345 }
+  })
+)
+// Type: Layer<ActionHandlers, never, FileSystem>
+```
+
+Multiple handlers compose via Layer.mergeAll:
+
+```typescript
+const AllHandlers = Layer.mergeAll(
+  BuildHandler,
+  TestHandler,
+  DeployHandler
+)
+```
+
+### Action.invoke
+
+Invokes a registered sub-action:
+
+```typescript
+const result = yield* Action.invoke(BuildAction, {
+  target: "production",
+  optimize: true
+})
+// result: { artifact: string; size: number }
+```
+
+With idempotency key:
+
+```typescript
+yield* Action.invoke(BuildAction, input, {
+  idempotencyKey: `build-${ctx.runId}-${target}`
+})
+```
+
+### Parallel Execution
+
+**All (fail-fast)**:
+```typescript
+const results = yield* Action.invokeAll([
+  [BuildAction, { target: "linux", optimize: true }],
+  [BuildAction, { target: "macos", optimize: true }],
+  [BuildAction, { target: "windows", optimize: true }]
+], { concurrency: 3 })
+// results: Array<{ artifact: string; size: number }>
+```
+
+**ForEach (map pattern)**:
+```typescript
+const targets = ["linux", "macos", "windows"]
+const results = yield* Action.forEach(
+  targets,
+  (target) => [BuildAction, { target, optimize: true }],
+  { concurrency: "unbounded" }
+)
+```
+
+**AllSettled (no fail-fast)**:
+```typescript
+const results = yield* Action.invokeAllSettled([
+  [BuildAction, { target: "linux" }],
+  [BuildAction, { target: "macos" }]
+])
+// results: Array<Exit<{ artifact: string; size: number }, BuildError>>
+```
+
+### Compensation Pattern
+
+For multi-step operations that need rollback on failure:
+
+```typescript
+yield* Action.invoke(DeployAction, { env: "production" }).pipe(
+  Action.withCompensation((result, cause) =>
+    Action.invoke(RollbackAction, { deploymentId: result.deploymentId })
+  )
+)
+```
+
+Multiple compensations run in reverse order:
+
+```typescript
+Effect.gen(function* () {
+  // If deploy fails, rollback runs
+  // If healthCheck fails, both rollback AND unpublish run (in reverse order)
+  
+  yield* Action.invoke(PublishAction, input).pipe(
+    Action.withCompensation(() => Action.invoke(UnpublishAction, input))
+  )
+  
+  yield* Action.invoke(DeployAction, input).pipe(
+    Action.withCompensation((r) => Action.invoke(RollbackAction, r))
+  )
+  
+  yield* Action.invoke(HealthCheckAction, input)
+})
+```
+
+### ActionHandlers Service
+
+Sub-action handlers are provided via the `ActionHandlers` service:
+
+**Tag Identifier**: "@effect-native/platform-github/ActionHandlers"
+
+The service is a registry that maps ActionDefinition names to their handlers.
+
+**Layer composition**:
+```typescript
+const program = Effect.gen(function* () {
+  yield* Action.invoke(BuildAction, input)
+  yield* Action.invoke(TestAction, input)
+}).pipe(
+  Effect.provide(Layer.mergeAll(BuildHandler, TestHandler))
+)
+```
+
+### Error Types
+
+**ActionHandlerNotFoundError**:
+- Raised when invoking an action with no registered handler
+- Contains: actionName
+
+**ActionInvocationError**:
+- Wraps errors from sub-action execution
+- Contains: actionName, cause
+
+---
+
 ## Testing Support
 
 ### Test Layers
