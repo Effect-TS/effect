@@ -753,170 +753,116 @@ const program = Effect.gen(function* () {
 
 ---
 
-## Action Composition System
+## Composition Patterns (Documentation)
 
-### Overview
+**No custom composition APIs are provided.** Use Effect's native primitives.
 
-Actions can be composed from reusable sub-actions, enabling:
-- Type-safe sequential and parallel composition
-- Map/reduce patterns for matrix-like operations
-- Compensation/rollback on failure
-- Handler registration via Layers
+### Sub-Actions are Functions
 
-### ActionDefinition<I, O, E>
-
-Defines a reusable sub-action with typed schemas:
+A "sub-action" is simply a function returning Effect:
 
 ```typescript
-const BuildAction = Action.define({
-  name: "build",
-  input: Schema.Struct({
-    target: Schema.String,
-    optimize: Schema.Boolean
-  }),
-  output: Schema.Struct({
-    artifact: Schema.String,
-    size: Schema.Number
-  }),
-  error: BuildError
-})
-// Type: ActionDefinition<{ target: string; optimize: boolean }, { artifact: string; size: number }, BuildError>
-```
-
-### Action.handler
-
-Registers a handler for an ActionDefinition, returning a Layer:
-
-```typescript
-const BuildHandler = Action.handler(BuildAction, (input) =>
+// Define a reusable sub-action as a function
+const build = (target: string): Effect<BuildResult, BuildError, FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem
-    // ... build logic using platform services
-    return { artifact: "dist/app.js", size: 12345 }
+    // ... build logic
+    return { artifact: `dist/${target}/app`, size: 12345 }
   })
-)
-// Type: Layer<ActionHandlers, never, FileSystem>
+
+// Or as a service for late-binding
+interface BuildService {
+  build: (target: string) => Effect<BuildResult, BuildError>
+}
+const BuildService = Context.GenericTag<BuildService>("BuildService")
 ```
 
-Multiple handlers compose via Layer.mergeAll:
+### Sequential Composition
+
+Use `Effect.gen` with `yield*`:
 
 ```typescript
-const AllHandlers = Layer.mergeAll(
-  BuildHandler,
-  TestHandler,
-  DeployHandler
-)
-```
-
-### Action.invoke
-
-Invokes a registered sub-action:
-
-```typescript
-const result = yield* Action.invoke(BuildAction, {
-  target: "production",
-  optimize: true
-})
-// result: { artifact: string; size: number }
-```
-
-With idempotency key:
-
-```typescript
-yield* Action.invoke(BuildAction, input, {
-  idempotencyKey: `build-${ctx.runId}-${target}`
+const program = Effect.gen(function* () {
+  const buildResult = yield* build("linux")
+  const testResult = yield* test(buildResult)
+  const deployResult = yield* deploy(testResult)
+  return { buildResult, testResult, deployResult }
 })
 ```
 
-### Parallel Execution
+### Parallel Composition
 
-**All (fail-fast)**:
+Use `Effect.all`:
+
 ```typescript
-const results = yield* Action.invokeAll([
-  [BuildAction, { target: "linux", optimize: true }],
-  [BuildAction, { target: "macos", optimize: true }],
-  [BuildAction, { target: "windows", optimize: true }]
+// All must succeed (fail-fast)
+const results = yield* Effect.all([
+  build("linux"),
+  build("macos"),
+  build("windows")
 ], { concurrency: 3 })
-// results: Array<{ artifact: string; size: number }>
+
+// Collect all results including failures
+const results = yield* Effect.allSettled([
+  build("linux"),
+  build("macos")
+])
 ```
 
-**ForEach (map pattern)**:
+### Map Pattern
+
+Use `Effect.forEach`:
+
 ```typescript
 const targets = ["linux", "macos", "windows"]
-const results = yield* Action.forEach(
+const results = yield* Effect.forEach(
   targets,
-  (target) => [BuildAction, { target, optimize: true }],
+  (target) => build(target),
   { concurrency: "unbounded" }
 )
 ```
 
-**AllSettled (no fail-fast)**:
-```typescript
-const results = yield* Action.invokeAllSettled([
-  [BuildAction, { target: "linux" }],
-  [BuildAction, { target: "macos" }]
-])
-// results: Array<Exit<{ artifact: string; size: number }, BuildError>>
-```
+### Error Handling
 
-### Compensation Pattern
-
-For multi-step operations that need rollback on failure:
+Use `Effect.catchTag` or `Effect.catchAll`:
 
 ```typescript
-yield* Action.invoke(DeployAction, { env: "production" }).pipe(
-  Action.withCompensation((result, cause) =>
-    Action.invoke(RollbackAction, { deploymentId: result.deploymentId })
+yield* deploy(input).pipe(
+  Effect.catchTag("DeployError", (e) =>
+    Effect.fail(new RetryableError({ cause: e }))
   )
 )
 ```
 
-Multiple compensations run in reverse order:
+### Cleanup on Failure
+
+Use `Effect.onError` for compensation:
 
 ```typescript
-Effect.gen(function* () {
-  // If deploy fails, rollback runs
-  // If healthCheck fails, both rollback AND unpublish run (in reverse order)
-  
-  yield* Action.invoke(PublishAction, input).pipe(
-    Action.withCompensation(() => Action.invoke(UnpublishAction, input))
-  )
-  
-  yield* Action.invoke(DeployAction, input).pipe(
-    Action.withCompensation((r) => Action.invoke(RollbackAction, r))
-  )
-  
-  yield* Action.invoke(HealthCheckAction, input)
-})
-```
-
-### ActionHandlers Service
-
-Sub-action handlers are provided via the `ActionHandlers` service:
-
-**Tag Identifier**: "@effect-native/platform-github/ActionHandlers"
-
-The service is a registry that maps ActionDefinition names to their handlers.
-
-**Layer composition**:
-```typescript
-const program = Effect.gen(function* () {
-  yield* Action.invoke(BuildAction, input)
-  yield* Action.invoke(TestAction, input)
-}).pipe(
-  Effect.provide(Layer.mergeAll(BuildHandler, TestHandler))
+yield* deploy(input).pipe(
+  Effect.onError(() => rollback(input))
 )
 ```
 
-### Error Types
+For ordered cleanup, use Scope:
 
-**ActionHandlerNotFoundError**:
-- Raised when invoking an action with no registered handler
-- Contains: actionName
+```typescript
+yield* Effect.scoped(
+  Effect.gen(function* () {
+    yield* Effect.addFinalizer((exit) =>
+      Exit.isFailure(exit) ? unpublish() : Effect.void
+    )
+    yield* publish()
 
-**ActionInvocationError**:
-- Wraps errors from sub-action execution
-- Contains: actionName, cause
+    yield* Effect.addFinalizer((exit) =>
+      Exit.isFailure(exit) ? rollback() : Effect.void
+    )
+    yield* deploy()
+
+    yield* healthCheck()
+  })
+)
+```
 
 ---
 

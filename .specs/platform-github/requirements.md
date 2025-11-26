@@ -63,22 +63,16 @@ Input schemas shall be validated eagerly when inputs are parsed, before the prog
 **AR-5.3** (Ubiquitous)
 Validation errors shall reference input/context names, never environment variable names.
 
-### AR-6: Action Composition
+### AR-6: Composition via Effect Primitives
 
 **AR-6.1** (Ubiquitous)
-The package shall support defining reusable sub-actions with typed inputs, outputs, and errors.
+The package shall NOT introduce custom composition abstractions; users shall use Effect's native primitives.
 
 **AR-6.2** (Ubiquitous)
-Sub-actions shall be invocable from parent actions with full type safety.
+Documentation shall show patterns for using Effect.gen, Effect.all, Effect.forEach, etc. for action composition.
 
 **AR-6.3** (Ubiquitous)
-Parallel execution of sub-actions shall be supported via fan-out/fan-in patterns.
-
-**AR-6.4** (Ubiquitous)
-Sequential composition of sub-actions shall preserve type information through the chain.
-
-**AR-6.5** (Ubiquitous)
-Map/reduce patterns over collections shall be supported for matrix-like operations.
+Reusable "sub-actions" shall be plain functions returning `Effect<A, E, R>`.
 
 ---
 
@@ -312,100 +306,7 @@ Terminal shall respect `RUNNER_DEBUG` for debug output visibility.
 **FR-9.5** (Ubiquitous)
 `ActionSummaryError` shall contain: reason (MissingPath, WriteError).
 
----
 
-### FR-10: Sub-Action Definition
-
-#### FR-10.1: Action.define
-
-**FR-10.1.1** (Ubiquitous)
-`Action.define` shall accept a configuration with name, input schema, output schema, and error schema.
-
-**FR-10.1.2** (Ubiquitous)
-The returned `ActionDefinition<I, O, E>` shall be a type-safe descriptor for the sub-action.
-
-**FR-10.1.3** (Ubiquitous)
-ActionDefinition shall be serializable for potential future distributed execution.
-
-#### FR-10.2: Action.handler
-
-**FR-10.2.1** (Ubiquitous)
-`Action.handler` shall create a Layer that registers a handler for an ActionDefinition.
-
-**FR-10.2.2** (Ubiquitous)
-The handler function shall receive typed input and return typed output or error.
-
-**FR-10.2.3** (Ubiquitous)
-Multiple handlers can be composed via Layer.mergeAll.
-
----
-
-### FR-11: Sub-Action Invocation
-
-#### FR-11.1: Action.invoke
-
-**FR-11.1.1** (Event-Driven)
-When `Action.invoke(definition, input)` is called,
-the System shall lookup the handler for that ActionDefinition and execute it.
-
-**FR-11.1.2** (Ubiquitous)
-The return type shall be `Effect<O, E, ActionHandlers>` with fully typed output and error.
-
-**FR-11.1.3** (Event-Driven)
-When the handler is not registered,
-the System shall fail with `ActionHandlerNotFoundError`.
-
-#### FR-11.2: Idempotency
-
-**FR-11.2.1** (Event-Driven)
-When `Action.invoke` is called with an `idempotencyKey` option,
-the System shall use that key for deduplication.
-
----
-
-### FR-12: Parallel Action Execution
-
-#### FR-12.1: Fan-Out
-
-**FR-12.1.1** (Event-Driven)
-When `Action.invokeAll` is called with an array of action/input pairs,
-the System shall execute all actions in parallel with the specified concurrency.
-
-**FR-12.1.2** (Ubiquitous)
-The return type shall be `Effect<Array<O>, E, ActionHandlers>`.
-
-**FR-12.1.3** (Unwanted Behavior)
-If any action fails,
-the System shall fail with that action's error (fail-fast by default).
-
-#### FR-12.2: Map Pattern
-
-**FR-12.2.1** (Event-Driven)
-When `Action.forEach` is called with items and a mapping function,
-the System shall invoke the specified action for each item.
-
-**FR-12.2.2** (Ubiquitous)
-Concurrency shall be configurable via options.
-
-#### FR-12.3: Collect All (No Fail-Fast)
-
-**FR-12.3.1** (Event-Driven)
-When `Action.invokeAllSettled` is called,
-the System shall return all results including failures as `Exit<O, E>[]`.
-
----
-
-### FR-13: Compensation Pattern
-
-**FR-13.1** (Event-Driven)
-When `Action.withCompensation` wraps an action invocation,
-the System shall run the compensation effect if the wrapped action fails.
-
-**FR-13.2** (Ubiquitous)
-The compensation effect shall receive the partial result (if any) and the failure cause.
-
-**FR-13.3** (Ubiquitous)
-Compensation effects shall be run in reverse order of registration (stack-like).
 
 ---
 
