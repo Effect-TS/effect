@@ -1,370 +1,773 @@
 # @effect-native/platform-github Design
 
-## Package Structure
+## Architecture Overview
 
-The package follows Effect platform conventions with a clear separation between public API and internal implementations.
+The package provides three main capabilities:
+
+1. **Runtime**: `GitHubRuntime.runMain` for running Effects as GitHub Actions with proper error handling
+2. **Platform Layer**: Implementations of `@effect/platform` services for GitHub Actions runtime
+3. **Action Framework**: Declarative schema-based inputs/outputs inspired by `@effect/cli`
+
+### Core Design Principle: No Magic Strings
+
+**Programs must never need to know environment variable names.**
+
+All GitHub Actions environment data is exposed through:
+- Typed services (ActionContext, ActionRunner, etc.)
+- Schema-validated inputs (Input<A>)
+- Schema-validated outputs (Output<A>)
+
+There is no legitimate reason for a program to access `process.env.GITHUB_*` directly. The platform layer handles all environment interaction internally.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        User's Action Code                                │
+│  Effect.gen(function* () {                                              │
+│    const { token, owner, repo } = yield* myInputs                       │
+│    const ctx = yield* ActionContext                                     │
+│    const fs = yield* FileSystem                                         │
+│    // ... action logic using @effect/platform abstractions              │
+│    yield* Outputs.set(myOutputs, { issueNumber: 42 })                   │
+│  })                                                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    GitHubContext.layer                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │  FileSystem  │ │     Path     │ │   Terminal   │ │ HttpClient   │   │
+│  │   (Node)     │ │   (Node)     │ │  (Actions)   │ │   (Node)     │   │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │ActionContext │ │ ActionRunner │ │ActionSummary │ │ ActionClient │   │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    GitHub Actions Runtime                                │
+│  @actions/core │ @actions/github │ Node.js APIs │ Environment Variables │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Package Structure
 
 ### File Organization
 
-- **src/ActionRunner.ts** - Runner service public module
-- **src/ActionContext.ts** - Context service public module  
-- **src/ActionClient.ts** - Client service public module
-- **src/ActionSummary.ts** - Summary service public module
-- **src/ActionError.ts** - Shared error types
-- **src/Action.ts** - Combined layer and re-exports
-- **src/index.ts** - Package entry point
-- **src/internal/actionRunner.ts** - Runner implementation
-- **src/internal/actionContext.ts** - Context implementation
-- **src/internal/actionClient.ts** - Client implementation
-- **src/internal/actionSummary.ts** - Summary implementation
+```
+src/
+├── index.ts                    # Package exports
+│
+├── # Runtime (like NodeRuntime, BunRuntime)
+├── GitHubRuntime.ts            # runMain for GitHub Actions
+│
+├── # Declarative I/O (like @effect/cli)
+├── Input.ts                    # Input<A> definition and primitives
+├── Inputs.ts                   # Composition and combinators
+├── Output.ts                   # Output<A> definition and primitives
+├── Outputs.ts                  # Composition and combinators
+├── Action.ts                   # Action definition helper
+│
+├── # GitHub-specific services
+├── ActionContext.ts            # Workflow context service
+├── ActionRunner.ts             # Low-level runner communication
+├── ActionClient.ts             # GitHub API client
+├── ActionSummary.ts            # Job summary builder
+├── ActionError.ts              # Error types
+│
+├── # Platform layer
+├── GitHubContext.ts            # Combined platform layer
+├── GitHubTerminal.ts           # Actions-aware Terminal impl
+│
+└── internal/
+    ├── runtime.ts
+    ├── input.ts
+    ├── inputs.ts
+    ├── output.ts
+    ├── outputs.ts
+    ├── action.ts
+    ├── actionContext.ts
+    ├── actionRunner.ts
+    ├── actionClient.ts
+    ├── actionSummary.ts
+    └── githubTerminal.ts
+```
 
 ---
 
-## Data Models
+## GitHubRuntime
 
-### Input Options
+### runMain
 
-- **InputOptions** - Configuration for input retrieval
-  - required: optional boolean, defaults to false
-  - trimWhitespace: optional boolean, defaults to true
+The primary entry point for running an Effect as a GitHub Action. Similar to `NodeRuntime.runMain` and `BunRuntime.runMain`, but with GitHub Actions-specific behavior.
 
-### Annotation Properties
+**Key difference from NodeRuntime.runMain**: The error type must be `never`, forcing explicit error handling within the program. Unhandled defects are caught and reported via `setFailed`.
 
-- **AnnotationProperties** - Metadata for annotations (warnings, errors, notices)
-  - title: optional string
-  - file: optional string (file path)
-  - startLine: optional positive integer
-  - endLine: optional positive integer
-  - startColumn: optional positive integer
-  - endColumn: optional positive integer
+**Signature**:
+```
+runMain: (options?: RunMainOptions) => <A>(effect: Effect<A, never, GitHubContext>) => void
+runMain: <A>(effect: Effect<A, never, GitHubContext>, options?: RunMainOptions) => void
+```
 
-### Webhook Payload
+**RunMainOptions**:
+- disableErrorReporting: boolean (default false) - Turn off automatic error logging
+- disablePrettyLogger: boolean (default false) - Use default logger instead of pretty
 
-- **WebhookPayload** - GitHub webhook event payload
-  - Extends Record with string keys to any values
-  - Known properties: repository, issue, pull_request, sender, action, installation, comment
+**Behavior**:
+1. Provides `GitHubContext.layer` automatically (FileSystem, Path, Terminal, ActionRunner, etc.)
+2. Runs the Effect to completion
+3. On success: exits with code 0
+4. On defect (unexpected error): calls `setFailed` with defect message, exits with code 1
+5. On interrupt (SIGINT/SIGTERM): interrupts fiber, exits gracefully
 
-### Repository Reference
+**Why `never` error type?**
 
-- **RepoRef** - Repository owner and name
-  - owner: string
-  - repo: string
+GitHub Actions have a binary outcome: success or failure. By requiring `E = never`, the type system ensures:
+- All expected errors are explicitly handled within the program
+- The program decides how to handle each error case (retry, fail, warn, etc.)
+- Only truly unexpected defects cause action failure
 
-### Issue Reference
+**Example**:
+```typescript
+import { GitHubRuntime, ActionRunner } from "@effect-native/platform-github"
+import { Effect } from "effect"
 
-- **IssueRef** - Repository with issue/PR number
-  - owner: string
-  - repo: string
-  - number: positive integer
+const program = Effect.gen(function* () {
+  const runner = yield* ActionRunner
+  yield* runner.info("Hello from GitHub Action!")
+  
+  // All errors must be handled - this won't compile with unhandled errors:
+  yield* someEffectThatCanFail.pipe(
+    Effect.catchAll((error) => 
+      runner.warning(`Non-fatal error: ${error.message}`)
+    )
+  )
+})
 
-### Summary Table Types
+// Type: Effect<void, never, GitHubContext>
+GitHubRuntime.runMain(program)
+```
 
-- **SummaryTableCell** - Individual table cell
-  - data: string (cell content)
-  - header: optional boolean (render as th)
-  - colspan: optional string (column span)
-  - rowspan: optional string (row span)
-
-- **SummaryTableRow** - Array of cells or strings
-
-### Summary Image Options
-
-- **SummaryImageOptions** - Image sizing
-  - width: optional string (pixels)
-  - height: optional string (pixels)
-
-### Summary Write Options
-
-- **SummaryWriteOptions** - Write behavior
-  - overwrite: optional boolean (default false = append)
+**Handling expected failures**:
+```typescript
+const program = Effect.gen(function* () {
+  const runner = yield* ActionRunner
+  
+  yield* riskyOperation.pipe(
+    Effect.catchTag("NetworkError", (e) => 
+      // Decide: is this fatal?
+      runner.setFailed(`Network error: ${e.message}`)
+    ),
+    Effect.catchTag("ValidationError", (e) =>
+      // Non-fatal, just warn
+      runner.warning(`Validation issue: ${e.message}`)
+    )
+  )
+})
+```
 
 ---
 
-## Service Interfaces
+## Declarative Input System
 
-### ActionRunner
+### Design Philosophy
 
-The ActionRunner service provides all runner communication functionality.
+**No magic strings, ever.**
 
-**Tag Identifier**: "@effect-native/platform-github/ActionRunner"
+The input name (e.g., "token") is only specified once - in the Input definition. Programs never need to know that this maps to `INPUT_TOKEN` environment variable. The platform handles all environment interaction.
 
-**Methods**:
+**Schema-first validation.**
 
-| Method | Parameters | Return Type | Description |
-|--------|------------|-------------|-------------|
-| getInput | name, options? | Effect of string or ActionInputError | Get input value |
-| getMultilineInput | name, options? | Effect of string array or ActionInputError | Get multiline input |
-| getBooleanInput | name, options? | Effect of boolean or ActionInputError | Get boolean input |
-| setOutput | name, value | Effect of void | Set output value |
-| debug | message | Effect of void | Write debug log |
-| info | message | Effect of void | Write info log |
-| warning | message, properties? | Effect of void | Create warning annotation |
-| error | message, properties? | Effect of void | Create error annotation |
-| notice | message, properties? | Effect of void | Create notice annotation |
-| isDebug | - | Effect of boolean | Check if debug mode |
-| startGroup | name | Effect of void | Begin log group |
-| endGroup | - | Effect of void | End log group |
-| group | name, effect | Effect of A, E, R | Run effect in group |
-| exportVariable | name, value | Effect of void | Set environment variable |
-| addPath | inputPath | Effect of void | Add to PATH |
-| setSecret | secret | Effect of void | Mask value in logs |
-| saveState | name, value | Effect of void | Save action state |
-| getState | name | Effect of string | Get action state |
-| setFailed | message | Effect of void | Fail the action |
-| getIDToken | audience? | Effect of string or ActionOIDCError | Get OIDC token |
+All inputs are validated against their schemas before the program runs. This ensures:
+- Type errors are caught immediately
+- Clear error messages reference input names, not env vars
+- Programs receive fully-typed, validated data
+
+### Input<A> Type
+
+`Input<A>` is a description of how to obtain a value of type `A` from action inputs.
+
+**Tag Identifier**: "@effect-native/platform-github/Input"
+
+**Internal AST structure** (similar to @effect/cli):
+
+- Empty - yields void
+- Single - single named input with primitive type
+- Map - transformed input
+- Both - two inputs combined
+- Optional - wrapped in Option
+- WithDefault - has fallback value
+- WithSchema - validated against Schema
+- WithFallbackConfig - Config fallback
+- WithDescription - documentation
+
+### Input Primitives
+
+Each primitive is backed by an implicit Schema:
+
+| Constructor | Return Type | Implicit Schema |
+|-------------|-------------|-----------------|
+| `Input.text(name)` | `Input<string>` | `Schema.String` |
+| `Input.integer(name)` | `Input<number>` | `Schema.NumberFromString` + integer check |
+| `Input.float(name)` | `Input<number>` | `Schema.NumberFromString` |
+| `Input.boolean(name)` | `Input<boolean>` | YAML 1.2 boolean schema |
+| `Input.secret(name)` | `Input<Redacted<string>>` | `Schema.Redacted(Schema.String)` |
+| `Input.multiline(name)` | `Input<Array<string>>` | Split + `Schema.Array(Schema.String)` |
+| `Input.json(name)` | `Input<unknown>` | `Schema.parseJson(Schema.Unknown)` |
+| `Input.choice(name, choices)` | `Input<A>` | `Schema.Literal(...choices)` |
+
+### Schema-Based Input
+
+For full control, use `Input.schema`:
+
+```typescript
+const MyConfig = Schema.Struct({
+  retries: Schema.Number,
+  timeout: Schema.Number,
+  tags: Schema.Array(Schema.String)
+})
+
+// Parses JSON input and validates against schema
+const configInput = Input.schema("config", MyConfig)
+// Type: Input<{ retries: number; timeout: number; tags: string[] }>
+```
+
+### Input Combinators
+
+| Combinator | Effect |
+|------------|--------|
+| `Inputs.all({ a, b })` | Combine to object `{ a: A, b: B }` |
+| `input.pipe(Inputs.optional)` | Wrap in `Option<A>` |
+| `input.pipe(Inputs.withDefault(v))` | Use default if missing |
+| `input.pipe(Inputs.withSchema(s))` | Additional schema validation |
+| `input.pipe(Inputs.withDescription(d))` | Add documentation |
+| `input.pipe(Inputs.withFallbackConfig(c))` | Try Effect Config if missing |
+| `input.pipe(Inputs.fromContext(fn))` | Derive default from ActionContext |
+| `input.pipe(Inputs.map(f))` | Transform value |
+
+### Input Parsing
+
+Inputs are parsed eagerly when the action starts. By the time your program runs, all inputs are validated and typed:
+
+```typescript
+const inputs = Inputs.all({
+  token: Input.secret("token"),
+  owner: Input.text("owner").pipe(
+    Inputs.fromContext(ctx => ctx.repo.owner)  // default from context
+  ),
+  count: Input.integer("count").pipe(
+    Inputs.withDefault(10)
+  )
+})
+
+// In program - inputs are already parsed and typed
+const program = Effect.gen(function* () {
+  const { token, owner, count } = yield* inputs
+  // token: Redacted<string>
+  // owner: string  
+  // count: number
+})
+```
+
+### Error Messages
+
+Validation errors reference the input name, never environment variables:
+
+```
+InputValidationError: Required input 'token' was not provided
+InputValidationError: Input 'count' must be an integer, got 'abc'
+InputValidationError: Input 'config' failed schema validation:
+  - retries: expected number, got string
+```
+
+---
+
+## Declarative Output System
+
+### Output<A> Type
+
+`Output<A>` is a description of how to write a value of type `A` to action outputs.
+
+**Tag Identifier**: "@effect-native/platform-github/Output"
+
+### Output Primitives
+
+| Constructor | Return Type | Behavior |
+|-------------|-------------|----------|
+| `Output.text(name)` | `Output<string>` | Write string |
+| `Output.integer(name)` | `Output<number>` | Write number |
+| `Output.boolean(name)` | `Output<boolean>` | Write boolean |
+| `Output.json(name)` | `Output<unknown>` | Serialize as JSON |
+
+### Output Combinators
+
+| Combinator | Effect |
+|------------|--------|
+| `Outputs.all({ a, b })` | Combine to object schema |
+| `output.pipe(Outputs.optional)` | Value is optional |
+| `output.pipe(Outputs.withSchema(s))` | Validate before writing |
+
+### Output Writing
+
+**Set signature**:
+```
+Outputs.set: <A>(outputs: Outputs<A>, values: A) => Effect<void, never, ActionRunner>
+```
+
+---
+
+## Action Definition
+
+### Action.make
+
+Creates a complete action definition with typed inputs and outputs:
+
+```
+Action.make(name, config, handler)
+```
+
+**Parameters**:
+- name: string - Action name for logging/identification
+- config.inputs: Input<I> - Declarative input schema
+- config.outputs: Outputs<O> - Declarative output schema
+- handler: (inputs: I) => Effect<O, E, R> - Action logic
+
+**Returns**: `Action<I, O, E, R>`
+
+### Action.run
+
+Executes an action with full lifecycle management:
+
+```
+Action.run(action)
+```
+
+**Behavior**:
+1. Initialize GitHubContext layer
+2. Parse inputs according to schema
+3. Execute handler with parsed inputs
+4. Write outputs according to schema
+5. Handle errors (call setFailed, set exit code)
+6. Handle success (exit code 0)
+
+---
+
+## Platform Layer
+
+### GitHubContext
+
+Combines all platform services for GitHub Actions:
+
+**Type**:
+```
+type GitHubContext =
+  | FileSystem
+  | Path
+  | CommandExecutor
+  | Terminal
+  | ActionContext
+  | ActionRunner
+  | ActionSummary
+```
+
+**Layer composition**:
+```
+GitHubContext.layer = Layer.mergeAll(
+  NodeFileSystem.layer,
+  NodePath.layer,
+  NodeCommandExecutor.layer,
+  GitHubTerminal.layer,
+  ActionContext.layer,
+  ActionRunner.layer,
+  ActionSummary.layer
+)
+```
+
+### GitHubTerminal
+
+Custom Terminal implementation that maps to runner commands:
+
+| Terminal Method | Runner Output |
+|-----------------|---------------|
+| write (stdout) | Direct stdout |
+| writeLine | stdout + EOL |
+| log | ::debug:: if RUNNER_DEBUG, else info |
+
+---
+
+## Service Specifications
 
 ### ActionContext
 
-The ActionContext service provides typed access to workflow execution context.
-
 **Tag Identifier**: "@effect-native/platform-github/ActionContext"
 
-**Properties** (all return Effect):
+Provides fully-typed, schema-validated access to all GitHub Actions context. Programs never need to know environment variable names - everything is accessed through this service.
 
-| Property | Return Type | Source |
-|----------|-------------|--------|
-| payload | Effect of WebhookPayload | GITHUB_EVENT_PATH file |
-| eventName | Effect of string | GITHUB_EVENT_NAME |
-| sha | Effect of string | GITHUB_SHA |
-| ref | Effect of string | GITHUB_REF |
-| workflow | Effect of string | GITHUB_WORKFLOW |
-| action | Effect of string | GITHUB_ACTION |
-| actor | Effect of string | GITHUB_ACTOR |
-| job | Effect of string | GITHUB_JOB |
-| runAttempt | Effect of number | GITHUB_RUN_ATTEMPT |
-| runNumber | Effect of number | GITHUB_RUN_NUMBER |
-| runId | Effect of number | GITHUB_RUN_ID |
-| apiUrl | Effect of string | GITHUB_API_URL or default |
-| serverUrl | Effect of string | GITHUB_SERVER_URL or default |
-| graphqlUrl | Effect of string | GITHUB_GRAPHQL_URL or default |
-| repo | Effect of RepoRef or ActionContextError | Computed |
-| issue | Effect of IssueRef or ActionContextError | Computed |
+**Schema Types** (defined with @effect/schema):
+
+```
+// All context data is validated at layer construction
+ActionContextData = Schema.Struct({
+  // Event information
+  eventName: Schema.String,
+  payload: WebhookPayload,
+  
+  // Git information  
+  sha: Schema.String,              // commit SHA
+  ref: Schema.String,              // refs/heads/main, refs/tags/v1, etc.
+  
+  // Workflow information
+  workflow: Schema.String,         // workflow name
+  action: Schema.String,           // action name or step id
+  actor: Schema.String,            // user who triggered
+  job: Schema.String,              // job id
+  
+  // Run information
+  runId: Schema.Number,            // unique run identifier
+  runNumber: Schema.Number,        // run number for this workflow
+  runAttempt: Schema.Number,       // attempt number (for re-runs)
+  
+  // URLs (for API access, GitHub Enterprise support)
+  apiUrl: Schema.String,           // https://api.github.com or GHES URL
+  serverUrl: Schema.String,        // https://github.com or GHES URL
+  graphqlUrl: Schema.String,       // GraphQL endpoint
+  
+  // Repository (validated structure)
+  repo: Schema.Struct({
+    owner: Schema.String,
+    name: Schema.String
+  }),
+  
+  // Issue/PR context (when applicable)
+  issue: Schema.optional(Schema.Struct({
+    owner: Schema.String,
+    repo: Schema.String,
+    number: Schema.Number
+  }))
+})
+```
+
+**Service interface**:
+
+The service exposes the validated data directly - no Effects needed for simple property access since validation happens at startup:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| eventName | string | Event that triggered workflow |
+| payload | WebhookPayload | Full webhook payload (typed) |
+| sha | string | Commit SHA |
+| ref | string | Git ref |
+| workflow | string | Workflow name |
+| action | string | Action/step identifier |
+| actor | string | Triggering user |
+| job | string | Job identifier |
+| runId | number | Unique run ID |
+| runNumber | number | Run number |
+| runAttempt | number | Attempt number |
+| apiUrl | string | API base URL |
+| serverUrl | string | Server base URL |
+| graphqlUrl | string | GraphQL endpoint |
+| repo | { owner, name } | Repository info |
+| issue | Option<{ owner, repo, number }> | Issue/PR info if applicable |
+
+**Why eager validation?**
+
+Context is validated once when `GitHubContext.layer` is constructed. If any required environment data is missing or malformed, the layer fails immediately with a clear error - before the program runs. This ensures programs can rely on context data being present and correctly typed.
+
+### ActionRunner (Low-Level)
+
+**Tag Identifier**: "@effect-native/platform-github/ActionRunner"
+
+For advanced use cases when declarative I/O doesn't fit:
+
+| Method | Purpose |
+|--------|---------|
+| debug(msg) | Write debug message |
+| info(msg) | Write info message |
+| warning(msg, props?) | Create warning annotation |
+| error(msg, props?) | Create error annotation |
+| notice(msg, props?) | Create notice annotation |
+| startGroup(name) | Begin log group |
+| endGroup | End log group |
+| group(name, effect) | Run in group |
+| exportVariable(name, value) | Set env var |
+| addPath(path) | Add to PATH |
+| setSecret(secret) | Mask in logs |
+| saveState(name, value) | Save state |
+| getState(name) | Get state |
+| setFailed(msg) | Fail action |
+| getIDToken(audience?) | Get OIDC token |
 
 ### ActionClient
 
-The ActionClient service provides Effect-wrapped GitHub API access.
-
 **Tag Identifier**: "@effect-native/platform-github/ActionClient"
 
-**Methods**:
-
-| Method | Parameters | Return Type | Description |
-|--------|------------|-------------|-------------|
-| octokit | - | Effect of Octokit | Get raw Octokit instance |
-| request | fn returning Promise | Effect of T or ActionApiError | Execute API request |
-| graphql | query, variables? | Effect of T or ActionApiError | Execute GraphQL query |
-| paginate | fn returning AsyncIterator | Effect of T[] or ActionApiError | Collect paginated results |
+| Method | Purpose |
+|--------|---------|
+| octokit | Get configured Octokit instance |
+| request(fn) | Effect-wrapped API request |
+| graphql(query, vars?) | Effect-wrapped GraphQL |
+| paginate(fn) | Collect paginated results |
 
 ### ActionSummary
 
-The ActionSummary service provides a chainable job summary builder.
-
 **Tag Identifier**: "@effect-native/platform-github/ActionSummary"
 
-**Chainable Methods** (all return ActionSummary):
+Chainable builder returning ActionSummary:
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| addRaw | text, addEOL? | Add raw text |
-| addEOL | - | Add newline |
-| addCodeBlock | code, lang? | Add code block |
-| addList | items, ordered? | Add list |
-| addTable | rows | Add table |
-| addDetails | label, content | Add collapsible details |
-| addImage | src, alt, options? | Add image |
-| addHeading | text, level? | Add heading (h1-h6) |
-| addSeparator | - | Add horizontal rule |
-| addBreak | - | Add line break |
-| addQuote | text, cite? | Add blockquote |
-| addLink | text, href | Add link |
-| emptyBuffer | - | Clear buffer |
+| Method | HTML Output |
+|--------|-------------|
+| addRaw(text) | Raw text |
+| addCodeBlock(code, lang?) | `<pre><code>` |
+| addList(items, ordered?) | `<ul>` or `<ol>` |
+| addTable(rows) | `<table>` |
+| addDetails(label, content) | `<details>` |
+| addImage(src, alt, opts?) | `<img>` |
+| addHeading(text, level?) | `<h1>`-`<h6>` |
+| addSeparator() | `<hr>` |
+| addBreak() | `<br>` |
+| addQuote(text, cite?) | `<blockquote>` |
+| addLink(text, href) | `<a>` |
 
-**Query Methods**:
+Effect methods:
 
-| Method | Return Type | Description |
-|--------|-------------|-------------|
-| stringify | string | Get buffer contents |
-| isEmptyBuffer | boolean | Check if buffer empty |
-
-**Effect Methods**:
-
-| Method | Parameters | Return Type | Description |
-|--------|------------|-------------|-------------|
-| write | options? | Effect of void or ActionSummaryError | Write to summary file |
-| clear | - | Effect of void or ActionSummaryError | Clear summary file |
+| Method | Purpose |
+|--------|---------|
+| write(opts?) | Write buffer to file |
+| clear() | Clear buffer and file |
 
 ---
 
 ## Error Types
 
-### ActionInputError
-
-Represents input retrieval failures.
+### InputValidationError
 
 **Fields**:
-- reason: one of "MissingRequired", "InvalidBoolean", "InvalidFormat"
-- name: the input name that caused the error
-- value: optional, the invalid value (for InvalidBoolean)
+- input: string (input name)
+- reason: "MissingRequired" | "InvalidType" | "InvalidSchema" | "InvalidChoice"
+- value: optional (the invalid value)
+- parseError: optional Schema.ParseError
 
-**Message Format**:
-- MissingRequired: "Required input 'name' was not supplied"
-- InvalidBoolean: "Input 'name' has invalid boolean value 'value'. Expected: true|True|TRUE|false|False|FALSE"
-- InvalidFormat: "Input 'name' has invalid format"
+**Message examples**:
+- "Required input 'token' was not supplied"
+- "Input 'count' expected integer but got 'abc'"
+- "Input 'email' failed validation: expected valid email format"
 
 ### ActionContextError
 
-Represents context access failures.
-
 **Fields**:
-- reason: one of "MissingRepository", "InvalidPayload"
-- details: optional additional information
-
-**Message Format**:
-- MissingRepository: "Could not determine repository. Set GITHUB_REPOSITORY or ensure payload contains repository"
-- InvalidPayload: "Failed to parse webhook payload: details"
+- reason: "MissingRepository" | "InvalidPayload"
+- details: optional string
 
 ### ActionApiError
 
-Represents GitHub API failures.
-
 **Fields**:
-- status: optional HTTP status code
-- message: error message
-- endpoint: optional API endpoint that failed
-- rateLimitReset: optional Date when rate limit resets
-
-**Message Format**: "GitHub API error (status): message at endpoint"
-
-**Computed Properties**:
-- isRateLimited: true if status is 403 and rateLimitReset is set
+- status: optional number
+- message: string
+- endpoint: optional string
+- rateLimitReset: optional Date
 
 ### ActionOIDCError
 
-Represents OIDC token failures.
-
 **Fields**:
-- reason: one of "MissingEnvironment", "RequestFailed", "TokenInvalid"
-- details: optional additional information
-
-**Message Format**:
-- MissingEnvironment: "OIDC token request requires ACTIONS_ID_TOKEN_REQUEST_URL and ACTIONS_ID_TOKEN_REQUEST_TOKEN"
-- RequestFailed: "OIDC token request failed: details"
-- TokenInvalid: "OIDC token is invalid: details"
+- reason: "MissingEnvironment" | "RequestFailed"
+- details: optional string
 
 ### ActionSummaryError
 
-Represents summary file failures.
-
 **Fields**:
-- reason: one of "MissingPath", "WriteError"
-- details: optional additional information
-
-**Message Format**:
-- MissingPath: "GITHUB_STEP_SUMMARY environment variable not set"
-- WriteError: "Failed to write summary: details"
+- reason: "MissingPath" | "WriteError"
+- details: optional string
 
 ---
 
-## Layer Architecture
+## Usage Examples
 
-### Individual Layers
+### Example 1: Simple Action with GitHubRuntime.runMain
 
-- **ActionRunner.layer** - Provides ActionRunner using @actions/core
-- **ActionContext.layer** - Provides ActionContext using @actions/github context
-- **ActionClient.layer(token)** - Provides ActionClient configured with token
-- **ActionSummary.layer** - Provides ActionSummary using @actions/core summary
+```typescript
+import { GitHubRuntime, ActionContext, ActionRunner } from "@effect-native/platform-github"
+import { Effect } from "effect"
 
-### Combined Layer
+// Program with error type = never (all errors handled)
+const program = Effect.gen(function* () {
+  const ctx = yield* ActionContext
+  const runner = yield* ActionRunner
+  
+  yield* runner.info(`Running in ${ctx.repo.owner}/${ctx.repo.name}`)
+  yield* runner.info(`Triggered by: ${ctx.actor}`)
+  yield* runner.info(`Event: ${ctx.eventName}`)
+})
 
-- **Action.layer(token)** - Provides all four services
+// Run - GitHubContext provided automatically
+GitHubRuntime.runMain(program)
+```
 
-The combined layer composes individual layers:
-1. ActionRunner.layer (no dependencies)
-2. ActionContext.layer (no dependencies)
-3. ActionClient.layer(token) (no dependencies)
-4. ActionSummary.layer (no dependencies)
+### Example 2: Declarative Inputs and Outputs
+
+```typescript
+import { 
+  GitHubRuntime, 
+  Input, 
+  Inputs, 
+  Output, 
+  Outputs,
+  ActionContext,
+  ActionClient 
+} from "@effect-native/platform-github"
+import { Effect, Option } from "effect"
+
+// Define inputs declaratively - names specified once, never again
+const inputs = Inputs.all({
+  token: Input.secret("token").pipe(
+    Inputs.withDescription("GitHub token for authentication")
+  ),
+  title: Input.text("title").pipe(
+    Inputs.withDescription("Issue title")
+  ),
+  body: Input.text("body").pipe(
+    Inputs.optional,
+    Inputs.withDescription("Issue body (optional)")
+  ),
+  labels: Input.multiline("labels").pipe(
+    Inputs.withDefault([]),
+    Inputs.withDescription("Labels to add, one per line")
+  )
+})
+
+// Define outputs declaratively
+const outputs = Outputs.all({
+  issueNumber: Output.integer("issue-number"),
+  issueUrl: Output.text("issue-url")
+})
+
+// Program receives fully-typed, validated inputs
+const program = Effect.gen(function* () {
+  // Parse inputs - validated against schemas
+  const { token, title, body, labels } = yield* inputs
+  // token: Redacted<string>
+  // title: string
+  // body: Option<string>
+  // labels: string[]
+  
+  const ctx = yield* ActionContext
+  const client = yield* ActionClient
+  
+  // Use typed context - no env vars needed
+  const { owner, name } = ctx.repo
+  
+  const response = yield* client.request(octokit =>
+    octokit.rest.issues.create({
+      owner,
+      repo: name,
+      title,
+      body: Option.getOrUndefined(body),
+      labels
+    })
+  ).pipe(
+    // Handle API errors explicitly
+    Effect.catchTag("ActionApiError", (e) =>
+      Effect.fail(new Error(`Failed to create issue: ${e.message}`))
+    )
+  )
+  
+  // Set outputs
+  yield* Outputs.set(outputs, {
+    issueNumber: response.data.number,
+    issueUrl: response.data.html_url
+  })
+}).pipe(
+  // All errors must be handled - setFailed for fatal errors
+  Effect.catchAll((error) =>
+    Effect.flatMap(ActionRunner, runner =>
+      runner.setFailed(error.message)
+    )
+  )
+)
+
+// Type: Effect<void, never, GitHubContext>
+GitHubRuntime.runMain(program)
+```
+
+### Example 3: Using Platform Services
+
+```typescript
+import { GitHubRuntime, ActionRunner } from "@effect-native/platform-github"
+import { FileSystem, Path } from "@effect/platform"
+import { Effect } from "effect"
+
+// Standard @effect/platform code - works on GitHub Actions
+const program = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const runner = yield* ActionRunner
+  
+  // Read file using platform FileSystem
+  const content = yield* fs.readFileString("package.json")
+  const pkg = JSON.parse(content)
+  
+  yield* runner.info(`Package: ${pkg.name}@${pkg.version}`)
+  
+  // Write output file
+  const outPath = path.join("dist", "report.json")
+  yield* fs.writeFileString(outPath, JSON.stringify({ success: true }))
+}).pipe(
+  Effect.catchAll((error) =>
+    Effect.flatMap(ActionRunner, r => r.setFailed(String(error)))
+  )
+)
+
+GitHubRuntime.runMain(program)
+```
+
+### Example 4: Schema-Validated JSON Input
+
+```typescript
+import { GitHubRuntime, Input, Inputs } from "@effect-native/platform-github"
+import { Schema } from "@effect/schema"
+import { Effect } from "effect"
+
+// Define a schema for complex input
+const DeployConfig = Schema.Struct({
+  environment: Schema.Literal("staging", "production"),
+  regions: Schema.Array(Schema.String),
+  replicas: Schema.Number.pipe(Schema.int(), Schema.positive()),
+  features: Schema.optional(Schema.Record(Schema.String, Schema.Boolean))
+})
+
+// Input that parses and validates JSON against schema
+const configInput = Input.schema("config", DeployConfig)
+
+const program = Effect.gen(function* () {
+  // Fully typed and validated
+  const config = yield* configInput
+  // config: { environment: "staging" | "production"; regions: string[]; ... }
+  
+  yield* Effect.log(`Deploying to ${config.environment}`)
+  yield* Effect.log(`Regions: ${config.regions.join(", ")}`)
+})
+```
+
+---
+
+## Testing Support
 
 ### Test Layers
 
-- **ActionRunner.layerTest(inputs?)** - Mock runner with optional input map
-- **ActionContext.layerTest(data)** - Mock context with provided data
-- **ActionClient.layerTest(responses?)** - Mock client with optional response map
-- **ActionSummary.layerTest** - Mock summary that captures buffer
-
----
-
-## Module Dependencies
-
-### External Dependencies
-
-- @actions/core - Runner communication primitives
-- @actions/github - Context and Octokit factory
-- effect - Core Effect types and utilities
-- @effect/schema - Error type definitions
-
-### Internal Dependencies
-
-- ActionRunner depends on: @actions/core
-- ActionContext depends on: @actions/github (Context class)
-- ActionClient depends on: @actions/github (getOctokit function)
-- ActionSummary depends on: @actions/core (summary singleton)
-- ActionError depends on: @effect/schema
-
----
-
-## Implementation Patterns
-
-### Effect Wrapping
-
-Synchronous @actions/core functions are wrapped with Effect.sync:
-- getInput, setOutput, debug, info, etc.
-
-Async @actions/core functions are wrapped with Effect.tryPromise:
-- getIDToken
-- summary.write, summary.clear
-
-Error-prone functions are wrapped with Effect.try:
-- getBooleanInput (can throw on invalid format)
-- getInput with required: true (can throw if missing)
-
-### Service Construction
-
-Each service follows the pattern:
-1. Define TypeId symbol in internal module
-2. Define interface with TypeId field in public module
-3. Export Context.GenericTag in public module
-4. Implement make function in internal module
-5. Export layer in public module
-
-### Accessor Functions
-
-Each service method has a corresponding top-level accessor:
-- Accessor calls Effect.flatMap(Tag, service => service.method(...))
-- This enables both styles: Tag.method() or Effect.flatMap(Tag, s => s.method())
-
----
-
-## Testing Approach
-
-### Unit Tests
-
-Each service has a test file that:
-1. Uses mock layers (no real GitHub environment)
-2. Tests success cases for all methods
-3. Tests error cases (invalid input, missing env vars)
-4. Uses @effect/vitest for Effect-aware testing
-
-### Integration Tests
-
-Run in GitHub Actions CI:
-1. Use real environment variables
-2. Test against actual runner
-3. Verify outputs, logs, and summary appear correctly
+| Layer | Purpose |
+|-------|---------|
+| `GitHubContext.layerTest(config)` | Full mock platform |
+| `ActionContext.layerTest(data)` | Mock context data |
+| `ActionRunner.layerTest(inputs?)` | Mock with input values |
+| `ActionClient.layerTest(responses?)` | Mock API responses |
+| `ActionSummary.layerTest` | Capture summary buffer |
 
 ### Test Utilities
 
-The package exports test helpers:
-- mockInputs: Set up INPUT_* environment variables
-- mockState: Set up STATE_* environment variables
-- mockPayload: Write mock event payload to temp file
-- captureOutputs: Capture setOutput calls for verification
+| Utility | Purpose |
+|---------|---------|
+| `Input.parseTest(input, inputs)` | Parse with mock env |
+| `Action.runTest(action, inputs)` | Run with mock environment |

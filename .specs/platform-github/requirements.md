@@ -1,379 +1,322 @@
 # @effect-native/platform-github Requirements
 
+## Architectural Requirements
+
+### AR-1: Platform Compatibility
+
+**AR-1.1** (Ubiquitous)
+Code written using `@effect/platform` abstractions (FileSystem, Path, Terminal, HttpClient, etc.) shall execute correctly when provided with `@effect-native/platform-github` layers.
+
+**AR-1.2** (Ubiquitous)
+The package shall export a `GitHubContext` layer that provides all platform services, analogous to `NodeContext` from `@effect/platform-node`.
+
+**AR-1.3** (Ubiquitous)
+The package shall re-use Node.js implementations for services where GitHub Actions runners are Node-based (FileSystem, Path, CommandExecutor).
+
+### AR-2: No Magic Strings
+
+**AR-2.1** (Ubiquitous)
+Programs shall NOT need to know any environment variable names (GITHUB_*, INPUT_*, etc.).
+
+**AR-2.2** (Ubiquitous)
+All environment data shall be accessible exclusively through typed services and Schema-validated inputs/outputs.
+
+**AR-2.3** (Ubiquitous)
+There shall be no legitimate reason for a program to access `process.env` directly.
+
+### AR-3: Declarative Input/Output
+
+**AR-3.1** (Ubiquitous)
+Action inputs shall be defined declaratively using a schema-based API, similar to `@effect/cli` Args and Options.
+
+**AR-3.2** (Ubiquitous)
+Action outputs shall be defined declaratively using a schema-based API.
+
+**AR-3.3** (Ubiquitous)
+All inputs and outputs shall be validated against Effect Schemas automatically.
+
+**AR-3.4** (Ubiquitous)
+The package shall NOT require manual `getInput()` calls inside program bodies.
+
+### AR-4: Runtime Entry Point
+
+**AR-4.1** (Ubiquitous)
+The package shall provide `GitHubRuntime.runMain` analogous to `NodeRuntime.runMain` and `BunRuntime.runMain`.
+
+**AR-4.2** (Ubiquitous)
+`GitHubRuntime.runMain` shall require the program error type to be `never`, forcing explicit error handling.
+
+**AR-4.3** (Ubiquitous)
+`GitHubRuntime.runMain` shall automatically provide `GitHubContext.layer`.
+
+**AR-4.4** (Ubiquitous)
+On defects (unhandled exceptions), `GitHubRuntime.runMain` shall call `setFailed` and exit with code 1.
+
+### AR-5: Eager Validation
+
+**AR-5.1** (Ubiquitous)
+ActionContext shall be validated at layer construction time, before the program runs.
+
+**AR-5.2** (Ubiquitous)
+Input schemas shall be validated eagerly when inputs are parsed, before the program logic executes.
+
+**AR-5.3** (Ubiquitous)
+Validation errors shall reference input/context names, never environment variable names.
+
+---
+
 ## Functional Requirements
 
-### FR-1: ActionRunner Service
+### FR-1: Inputs (Declarative Schema)
 
-#### FR-1.1: Input Operations
+#### FR-1.1: Input Primitives
 
-**FR-1.1.1** (Event-Driven)
-When `getInput` is called with an input name,
-the System shall return the value from the `INPUT_{NAME}` environment variable (uppercase, spaces to underscores).
+**FR-1.1.1** (Ubiquitous)
+The `Inputs.text(name)` constructor shall return an `Input<string>` that reads from `INPUT_{NAME}`.
 
-**FR-1.1.2** (Event-Driven)
-When `getInput` is called with `required: true` and the input is empty,
-the System shall fail with an `ActionInputError` containing reason "MissingRequired" and the input name.
+**FR-1.1.2** (Ubiquitous)
+The `Inputs.integer(name)` constructor shall return an `Input<number>` that parses an integer.
 
-**FR-1.1.3** (Event-Driven)
-When `getInput` is called with `trimWhitespace: true` (default),
-the System shall trim leading and trailing whitespace from the value.
+**FR-1.1.3** (Ubiquitous)
+The `Inputs.boolean(name)` constructor shall return an `Input<boolean>` that parses YAML 1.2 booleans.
 
-**FR-1.1.4** (Event-Driven)
-When `getMultilineInput` is called,
-the System shall return an array of non-empty lines from the input value.
+**FR-1.1.4** (Ubiquitous)
+The `Inputs.secret(name)` constructor shall return an `Input<Redacted<string>>` and automatically mask the value in logs.
 
-**FR-1.1.5** (Event-Driven)
-When `getBooleanInput` is called with a value matching `true|True|TRUE|false|False|FALSE`,
-the System shall return the corresponding boolean.
+**FR-1.1.5** (Ubiquitous)
+The `Inputs.multiline(name)` constructor shall return an `Input<Array<string>>` splitting by newlines.
 
-**FR-1.1.6** (Event-Driven)
-When `getBooleanInput` is called with a non-matching value,
-the System shall fail with an `ActionInputError` containing reason "InvalidBoolean".
+**FR-1.1.6** (Ubiquitous)
+The `Inputs.json(name)` constructor shall return an `Input<unknown>` that parses JSON.
 
-#### FR-1.2: Output Operations
+#### FR-1.2: Input Composition
 
 **FR-1.2.1** (Event-Driven)
-When `setOutput` is called with a name and value,
-the System shall write the output to the `GITHUB_OUTPUT` file in the required format.
+When `Inputs.all({ a, b, c })` is called with named inputs,
+the System shall return an `Input<{ a: A; b: B; c: C }>`.
 
-#### FR-1.3: Logging Operations
+**FR-1.2.2** (Event-Driven)
+When `input.pipe(Inputs.optional)` is called,
+the System shall return an `Input<Option<A>>` that succeeds with `None` if missing.
+
+**FR-1.2.3** (Event-Driven)
+When `input.pipe(Inputs.withDefault(value))` is called,
+the System shall return an `Input<A>` that uses the default if missing.
+
+**FR-1.2.4** (Event-Driven)
+When `input.pipe(Inputs.withSchema(schema))` is called,
+the System shall validate the parsed value against the Schema.
+
+**FR-1.2.5** (Event-Driven)
+When `input.pipe(Inputs.withDescription(text))` is called,
+the System shall associate the description for documentation/help generation.
+
+#### FR-1.3: Input Fallbacks
 
 **FR-1.3.1** (Event-Driven)
-When `debug` is called with a message,
-the System shall emit a `::debug::` command to stdout.
+When `input.pipe(Inputs.withFallbackConfig(config))` is called,
+the System shall try the Config if the input is not provided.
 
 **FR-1.3.2** (Event-Driven)
-When `info` is called with a message,
-the System shall write the message to stdout with a newline.
+When `input.pipe(Inputs.fromContext(fn))` is called,
+the System shall derive the default from ActionContext (e.g., repo owner).
 
-**FR-1.3.3** (Event-Driven)
-When `warning` is called with a message and optional properties,
-the System shall emit a `::warning::` command to stdout with the message and properties.
+#### FR-1.4: Input Validation
 
-**FR-1.3.4** (Event-Driven)
-When `error` is called with a message and optional properties,
-the System shall emit an `::error::` command to stdout with the message and properties.
+**FR-1.4.1** (Unwanted Behavior)
+If a required input is missing,
+the System shall fail with an `InputValidationError` containing the input name.
 
-**FR-1.3.5** (Event-Driven)
-When `notice` is called with a message and optional properties,
-the System shall emit a `::notice::` command to stdout with the message and properties.
-
-**FR-1.3.6** (State-Driven)
-While `RUNNER_DEBUG` equals "1",
-the `isDebug` property shall return `true`.
-
-#### FR-1.4: Group Operations
-
-**FR-1.4.1** (Event-Driven)
-When `startGroup` is called with a name,
-the System shall emit a `::group::` command to stdout.
-
-**FR-1.4.2** (Event-Driven)
-When `endGroup` is called,
-the System shall emit an `::endgroup::` command to stdout.
-
-**FR-1.4.3** (Event-Driven)
-When `group` is called with a name and an Effect,
-the System shall:
-1. Call `startGroup` before executing the Effect
-2. Execute the provided Effect
-3. Call `endGroup` after the Effect completes (success or failure)
-
-#### FR-1.5: Environment Operations
-
-**FR-1.5.1** (Event-Driven)
-When `exportVariable` is called with a name and value,
-the System shall:
-1. Write to the `GITHUB_ENV` file in the required format
-2. Set `process.env[name]` to the stringified value
-
-**FR-1.5.2** (Event-Driven)
-When `addPath` is called with a path,
-the System shall:
-1. Write to the `GITHUB_PATH` file
-2. Prepend to `process.env.PATH`
-
-**FR-1.5.3** (Event-Driven)
-When `setSecret` is called with a value,
-the System shall emit an `::add-mask::` command to mask the value in logs.
-
-#### FR-1.6: State Operations
-
-**FR-1.6.1** (Event-Driven)
-When `saveState` is called with a name and value,
-the System shall write to the `GITHUB_STATE` file in the required format.
-
-**FR-1.6.2** (Event-Driven)
-When `getState` is called with a name,
-the System shall return the value from the `STATE_{NAME}` environment variable.
-
-#### FR-1.7: Result Operations
-
-**FR-1.7.1** (Event-Driven)
-When `setFailed` is called with a message,
-the System shall:
-1. Set `process.exitCode` to 1
-2. Emit an error annotation with the message
-
-#### FR-1.8: OIDC Operations
-
-**FR-1.8.1** (Event-Driven)
-When `getIDToken` is called and `ACTIONS_ID_TOKEN_REQUEST_URL` is not set,
-the System shall fail with an `ActionOIDCError` containing reason "MissingEnvironment".
-
-**FR-1.8.2** (Event-Driven)
-When `getIDToken` is called with valid environment,
-the System shall request a JWT token from the OIDC provider and return it.
-
-**FR-1.8.3** (Unwanted Behavior)
-If the OIDC token request fails,
-the System shall fail with an `ActionOIDCError` containing reason "RequestFailed".
+**FR-1.4.2** (Unwanted Behavior)
+If an input fails schema validation,
+the System shall fail with an `InputValidationError` containing the parse error.
 
 ---
 
-### FR-2: ActionContext Service
+### FR-2: Outputs (Declarative Schema)
 
-#### FR-2.1: Event Properties
+#### FR-2.1: Output Primitives
 
 **FR-2.1.1** (Ubiquitous)
-The `payload` property shall return the parsed JSON from `GITHUB_EVENT_PATH`.
+The `Outputs.text(name)` constructor shall return an `Output<string>`.
 
 **FR-2.1.2** (Ubiquitous)
-The `eventName` property shall return the value of `GITHUB_EVENT_NAME`.
+The `Outputs.integer(name)` constructor shall return an `Output<number>`.
 
-#### FR-2.2: Commit Properties
+**FR-2.1.3** (Ubiquitous)
+The `Outputs.boolean(name)` constructor shall return an `Output<boolean>`.
 
-**FR-2.2.1** (Ubiquitous)
-The `sha` property shall return the value of `GITHUB_SHA`.
+**FR-2.1.4** (Ubiquitous)
+The `Outputs.json(name)` constructor shall return an `Output<unknown>` that serializes to JSON.
 
-**FR-2.2.2** (Ubiquitous)
-The `ref` property shall return the value of `GITHUB_REF`.
+#### FR-2.2: Output Composition
 
-#### FR-2.3: Workflow Properties
+**FR-2.2.1** (Event-Driven)
+When `Outputs.all({ a, b, c })` is called with named outputs,
+the System shall return an `Outputs<{ a: A; b: B; c: C }>`.
 
-**FR-2.3.1** (Ubiquitous)
-The `workflow` property shall return the value of `GITHUB_WORKFLOW`.
+**FR-2.2.2** (Event-Driven)
+When `output.pipe(Outputs.withSchema(schema))` is called,
+the System shall validate values before writing.
 
-**FR-2.3.2** (Ubiquitous)
-The `action` property shall return the value of `GITHUB_ACTION`.
+#### FR-2.3: Output Operations
 
-**FR-2.3.3** (Ubiquitous)
-The `actor` property shall return the value of `GITHUB_ACTOR`.
-
-**FR-2.3.4** (Ubiquitous)
-The `job` property shall return the value of `GITHUB_JOB`.
-
-#### FR-2.4: Run Properties
-
-**FR-2.4.1** (Ubiquitous)
-The `runAttempt` property shall return the integer value of `GITHUB_RUN_ATTEMPT`.
-
-**FR-2.4.2** (Ubiquitous)
-The `runNumber` property shall return the integer value of `GITHUB_RUN_NUMBER`.
-
-**FR-2.4.3** (Ubiquitous)
-The `runId` property shall return the integer value of `GITHUB_RUN_ID`.
-
-#### FR-2.5: URL Properties
-
-**FR-2.5.1** (Ubiquitous)
-The `apiUrl` property shall return `GITHUB_API_URL` or default to `https://api.github.com`.
-
-**FR-2.5.2** (Ubiquitous)
-The `serverUrl` property shall return `GITHUB_SERVER_URL` or default to `https://github.com`.
-
-**FR-2.5.3** (Ubiquitous)
-The `graphqlUrl` property shall return `GITHUB_GRAPHQL_URL` or default to `https://api.github.com/graphql`.
-
-#### FR-2.6: Computed Properties
-
-**FR-2.6.1** (Event-Driven)
-When `repo` is accessed and `GITHUB_REPOSITORY` is set,
-the System shall return `{ owner, repo }` parsed from `owner/repo` format.
-
-**FR-2.6.2** (Event-Driven)
-When `repo` is accessed and `GITHUB_REPOSITORY` is not set,
-the System shall attempt to read from `payload.repository`.
-
-**FR-2.6.3** (Unwanted Behavior)
-If neither `GITHUB_REPOSITORY` nor `payload.repository` is available,
-the System shall fail with an `ActionContextError` containing reason "MissingRepository".
-
-**FR-2.6.4** (Event-Driven)
-When `issue` is accessed,
-the System shall return `{ owner, repo, number }` combining `repo` with the issue/PR number from the payload.
+**FR-2.3.1** (Event-Driven)
+When `Outputs.set(outputs, values)` is called,
+the System shall write all output values to `GITHUB_OUTPUT` in the required format.
 
 ---
 
-### FR-3: ActionClient Service
+### FR-3: Action Definition
 
-#### FR-3.1: Client Access
+#### FR-3.1: Action Constructor
 
-**FR-3.1.1** (Event-Driven)
-When `octokit` is accessed,
-the System shall return a configured Octokit instance with REST methods and pagination.
+**FR-3.1.1** (Ubiquitous)
+The `Action.make(name, config, handler)` constructor shall create an action definition with:
+- name: Action identifier
+- config.inputs: Declarative input schema
+- config.outputs: Declarative output schema
+- handler: Effect that receives parsed inputs and returns outputs
 
 **FR-3.1.2** (Ubiquitous)
-The Octokit instance shall be configured with the provided authentication token.
+The handler function shall receive strongly-typed parsed inputs.
 
 **FR-3.1.3** (Ubiquitous)
-The Octokit instance shall respect `GITHUB_API_URL` for GitHub Enterprise Server support.
+The handler function shall return values matching the output schema.
 
-#### FR-3.2: Request Helpers
+#### FR-3.2: Action Execution
 
 **FR-3.2.1** (Event-Driven)
-When `request` is called with a function that invokes Octokit,
-the System shall execute the function and return the result wrapped in an Effect.
+When `Action.run(action)` is called,
+the System shall:
+1. Parse all inputs according to their schemas
+2. Execute the handler with parsed inputs
+3. Write outputs according to their schemas
+4. Set exit code based on success/failure
 
 **FR-3.2.2** (Unwanted Behavior)
-If the Octokit request fails,
-the System shall fail with an `ActionApiError` containing the status code and message.
-
-**FR-3.2.3** (Event-Driven)
-When `graphql` is called with a query and variables,
-the System shall execute the GraphQL query and return the result wrapped in an Effect.
-
-**FR-3.2.4** (Event-Driven)
-When `paginate` is called with a paginated endpoint,
-the System shall collect all pages and return the combined results as an array.
+If the handler fails,
+the System shall call `setFailed` with the error message and set exit code to 1.
 
 ---
 
-### FR-4: ActionSummary Service
+### FR-4: ActionContext Service
 
-#### FR-4.1: Content Building
+**FR-4.1** (Ubiquitous)
+The `ActionContext` service shall provide typed access to workflow execution context.
 
-**FR-4.1.1** (Event-Driven)
-When any `add*` method is called,
-the System shall append the corresponding HTML to an internal buffer and return the summary instance.
+**FR-4.2** (Ubiquitous)
+Context properties shall include: payload, eventName, sha, ref, workflow, action, actor, job, runAttempt, runNumber, runId, apiUrl, serverUrl, graphqlUrl.
 
-**FR-4.1.2** (Ubiquitous)
-The `addCodeBlock` method shall wrap content in `<pre><code>` tags with optional language attribute.
-
-**FR-4.1.3** (Ubiquitous)
-The `addTable` method shall generate a `<table>` with `<tr>`, `<th>`, and `<td>` elements.
-
-**FR-4.1.4** (Ubiquitous)
-The `addDetails` method shall generate a `<details><summary>` element.
-
-#### FR-4.2: Buffer Operations
-
-**FR-4.2.1** (Event-Driven)
-When `stringify` is called,
-the System shall return the current buffer contents as a string.
-
-**FR-4.2.2** (Event-Driven)
-When `emptyBuffer` is called,
-the System shall clear the buffer and return the summary instance.
-
-**FR-4.2.3** (Event-Driven)
-When `isEmptyBuffer` is called,
-the System shall return `true` if the buffer is empty.
-
-#### FR-4.3: File Operations
-
-**FR-4.3.1** (Event-Driven)
-When `write` is called,
-the System shall append the buffer contents to the file at `GITHUB_STEP_SUMMARY`.
-
-**FR-4.3.2** (Event-Driven)
-When `write` is called with `overwrite: true`,
-the System shall replace the file contents instead of appending.
-
-**FR-4.3.3** (Event-Driven)
-When `clear` is called,
-the System shall empty the buffer and truncate the summary file.
-
-**FR-4.3.4** (Unwanted Behavior)
-If `GITHUB_STEP_SUMMARY` is not set,
-the System shall fail with an `ActionSummaryError` containing reason "MissingPath".
+**FR-4.3** (Ubiquitous)
+Computed properties `repo` and `issue` shall be derived from environment and payload.
 
 ---
 
-### FR-5: Error Types
+### FR-5: ActionClient Service
 
-#### FR-5.1: ActionInputError
+**FR-5.1** (Ubiquitous)
+The `ActionClient` service shall provide an Effect-wrapped Octokit instance.
 
-**FR-5.1.1** (Ubiquitous)
-The `ActionInputError` shall have a `reason` field with values: "MissingRequired", "InvalidBoolean", "InvalidFormat".
-
-**FR-5.1.2** (Ubiquitous)
-The `ActionInputError` shall include the input `name` and optionally the invalid `value`.
-
-**FR-5.1.3** (Ubiquitous)
-The `message` getter shall return an actionable description of the error.
-
-#### FR-5.2: ActionContextError
-
-**FR-5.2.1** (Ubiquitous)
-The `ActionContextError` shall have a `reason` field with values: "MissingRepository", "InvalidPayload".
-
-#### FR-5.3: ActionApiError
-
-**FR-5.3.1** (Ubiquitous)
-The `ActionApiError` shall include optional `status`, `message`, `endpoint`, and `rateLimitReset` fields.
-
-**FR-5.3.2** (Ubiquitous)
-The `isRateLimited` getter shall return `true` if the error is due to rate limiting.
-
-#### FR-5.4: ActionOIDCError
-
-**FR-5.4.1** (Ubiquitous)
-The `ActionOIDCError` shall have a `reason` field with values: "MissingEnvironment", "RequestFailed", "TokenInvalid".
-
-#### FR-5.5: ActionSummaryError
-
-**FR-5.5.1** (Ubiquitous)
-The `ActionSummaryError` shall have a `reason` field with values: "MissingPath", "WriteError".
+**FR-5.2** (Event-Driven)
+When `ActionClient.request(fn)` is called,
+the System shall execute the Octokit function and convert errors to `ActionApiError`.
 
 ---
 
-### FR-6: Layer Support
+### FR-6: ActionRunner Service (Low-Level)
 
-#### FR-6.1: Live Layers
+**FR-6.1** (Ubiquitous)
+The `ActionRunner` service shall provide direct access to runner communication for advanced use cases.
 
-**FR-6.1.1** (Ubiquitous)
-The package shall export `ActionRunner.layer` providing a live implementation.
+**FR-6.2** (Ubiquitous)
+Methods shall include: debug, info, warning, error, notice, startGroup, endGroup, group, exportVariable, addPath, setSecret, saveState, getState, setFailed, getIDToken.
 
-**FR-6.1.2** (Ubiquitous)
-The package shall export `ActionContext.layer` providing a live implementation.
+**FR-6.3** (Ubiquitous)
+Users should prefer declarative Inputs/Outputs over direct ActionRunner methods.
 
-**FR-6.1.3** (Ubiquitous)
-The package shall export `ActionClient.layer(token)` providing a live implementation.
+---
 
-**FR-6.1.4** (Ubiquitous)
-The package shall export `ActionSummary.layer` providing a live implementation.
+### FR-7: ActionSummary Service
 
-**FR-6.1.5** (Ubiquitous)
-The package shall export `Action.layer(token)` combining all services.
+**FR-7.1** (Ubiquitous)
+The `ActionSummary` service shall provide a chainable job summary builder.
 
-#### FR-6.2: Test Layers
+**FR-7.2** (Ubiquitous)
+Content methods shall include: addRaw, addCodeBlock, addList, addTable, addDetails, addImage, addHeading, addSeparator, addBreak, addQuote, addLink.
 
-**FR-6.2.1** (Ubiquitous)
-The package shall export test/mock layers for each service.
+**FR-7.3** (Event-Driven)
+When `ActionSummary.write()` is called,
+the System shall write the buffer to `GITHUB_STEP_SUMMARY`.
+
+---
+
+### FR-8: Platform Services
+
+#### FR-8.1: GitHubContext Layer
+
+**FR-8.1.1** (Ubiquitous)
+The `GitHubContext.layer` shall provide:
+- FileSystem (from @effect/platform-node)
+- Path (from @effect/platform-node)
+- CommandExecutor (from @effect/platform-node)
+- Terminal (GitHub Actions-aware logging)
+- ActionContext
+- ActionRunner
+- ActionSummary
+
+#### FR-8.2: Terminal Implementation
+
+**FR-8.2.1** (Ubiquitous)
+The GitHub Actions Terminal implementation shall map logging to runner commands.
+
+**FR-8.2.2** (Ubiquitous)
+Debug output shall emit `::debug::` commands.
+
+**FR-8.2.3** (Ubiquitous)
+Terminal shall respect `RUNNER_DEBUG` for debug output visibility.
+
+---
+
+### FR-9: Error Types
+
+**FR-9.1** (Ubiquitous)
+`InputValidationError` shall contain: input name, reason, value (if applicable), parse error (if applicable).
+
+**FR-9.2** (Ubiquitous)
+`ActionContextError` shall contain: reason (MissingRepository, InvalidPayload).
+
+**FR-9.3** (Ubiquitous)
+`ActionApiError` shall contain: status, message, endpoint, rateLimitReset.
+
+**FR-9.4** (Ubiquitous)
+`ActionOIDCError` shall contain: reason (MissingEnvironment, RequestFailed).
+
+**FR-9.5** (Ubiquitous)
+`ActionSummaryError` shall contain: reason (MissingPath, WriteError).
 
 ---
 
 ## Non-Functional Requirements
 
-### NFR-1: Performance
+### NFR-1: Compatibility
 
 **NFR-1.1**
-Input retrieval operations shall complete in under 1ms (they read from environment variables).
-
-**NFR-1.2**
-Logging operations shall not block the main Effect fiber.
-
-### NFR-2: Compatibility
-
-**NFR-2.1**
 The package shall work with Node.js versions 18, 20, and 22.
 
-**NFR-2.2**
+**NFR-1.2**
 The package shall work with the `node20` GitHub Actions runner.
 
-**NFR-2.3**
-The package shall support GitHub Enterprise Server via environment variable configuration.
+**NFR-1.3**
+The package shall support GitHub Enterprise Server via environment variables.
+
+### NFR-2: Performance
+
+**NFR-2.1**
+Input parsing shall complete in under 10ms for typical action inputs.
+
+**NFR-2.2**
+Platform layer initialization shall complete in under 50ms.
 
 ### NFR-3: Documentation
 
@@ -381,15 +324,18 @@ The package shall support GitHub Enterprise Server via environment variable conf
 All public exports shall have JSDoc with `@since` and `@category` tags.
 
 **NFR-3.2**
-Error messages shall be actionable and include relevant context.
+Error messages shall be actionable and include input names/context.
+
+**NFR-3.3**
+Input schemas shall support description generation for action.yml.
 
 ### NFR-4: Testing
 
 **NFR-4.1**
-All services shall have corresponding test suites.
+All services shall have mock layers for testing.
 
 **NFR-4.2**
-Tests shall be runnable without a GitHub Actions environment.
+Tests shall run without GitHub Actions environment.
 
 ---
 
@@ -398,24 +344,24 @@ Tests shall be runnable without a GitHub Actions environment.
 ### C-1: Dependencies
 
 **C-1.1**
-The package shall depend on `@actions/core` for runner communication.
+The package shall depend on `@actions/core` and `@actions/github`.
 
 **C-1.2**
-The package shall depend on `@actions/github` for context and Octokit.
+The package shall depend on `@effect/platform-node-shared` for Node implementations.
 
 **C-1.3**
-The package shall use Effect peer dependencies matching the effect-native monorepo.
+Effect packages shall be peer dependencies.
 
 ### C-2: Effect Patterns
 
 **C-2.1**
-All services shall use the TypeId pattern with `Symbol.for()`.
+All services shall use TypeId + Context.GenericTag pattern.
 
 **C-2.2**
-All services shall use `Context.GenericTag` for dependency injection.
+Error types shall use Schema.TaggedError or Data.TaggedError.
 
 **C-2.3**
-Error types shall use `Schema.TaggedError` or `Data.TaggedError`.
+Inputs/Outputs shall follow @effect/cli composition patterns.
 
 ### C-3: Package Structure
 
@@ -423,4 +369,4 @@ Error types shall use `Schema.TaggedError` or `Data.TaggedError`.
 The package shall be located at `packages-native/platform-github/`.
 
 **C-3.2**
-The package shall follow the effect-native monorepo conventions for configuration.
+The package shall follow effect-native monorepo conventions.
