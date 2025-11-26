@@ -7,18 +7,20 @@ branding:
   color: purple
 
 inputs:
-  greeting:
-    description: 'A greeting message to display'
-    required: false
-    default: 'Hello from Effect!'
-  who-to-greet:
-    description: 'Who to greet'
+  github-token:
+    description: 'GitHub token for API access'
     required: true
-    default: 'World'
+    default: ${{ github.token }}
 
 outputs:
-  message:
-    description: 'The full greeting message that was displayed'
+  repo:
+    description: 'The repository (owner/repo)'
+  sha:
+    description: 'The commit SHA'
+  actor:
+    description: 'The actor who triggered the workflow'
+  event:
+    description: 'The event that triggered the workflow'
 
 runs:
   using: node24

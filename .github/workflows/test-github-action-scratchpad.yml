@@ -1,0 +1,28 @@
+name: Test Effect GitHub Action
+
+on:
+  pull_request:
+    branches: ["*"]
+    paths:
+      - "packages-native/github-action-scratchpad/**"
+      - ".github/workflows/test-github-action-scratchpad.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Install dependencies
+        uses: effect-native/effect-native/.github/actions/setup@effect-native/main
+
+      - name: Run Effect GitHub Action
+        uses: ./packages-native/github-action-scratchpad
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
