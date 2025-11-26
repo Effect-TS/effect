@@ -99,4 +99,101 @@ describe("Prompt", () => {
       assert.deepStrictEqual(merged, prompt)
     })
   })
+
+  describe("appendSystem", () => {
+    it("should append text to existing system message", () => {
+      const prompt = Prompt.make([
+        { role: "system", content: "You are an expert in programming." },
+        { role: "user", content: "Hello, world!" }
+      ])
+
+      const result = Prompt.appendSystem(prompt, " You are a helpful assistant.")
+
+      assert.deepStrictEqual(
+        result.content[0],
+        Prompt.makeMessage("system", {
+          content: "You are an expert in programming. You are a helpful assistant."
+        })
+      )
+    })
+
+    it("should create a new system message if none exists", () => {
+      const prompt = Prompt.make([
+        { role: "user", content: "Hello, world!" }
+      ])
+
+      const result = Prompt.appendSystem(prompt, "You are a helpful assistant.")
+
+      assert.deepStrictEqual(
+        result.content[0],
+        Prompt.makeMessage("system", {
+          content: "You are a helpful assistant."
+        })
+      )
+    })
+
+    it("should work with empty prompt", () => {
+      const prompt = Prompt.empty
+
+      const result = Prompt.appendSystem(prompt, "You are a helpful assistant.")
+
+      assert.deepStrictEqual(
+        result.content[0],
+        Prompt.makeMessage("system", { content: "You are a helpful assistant." })
+      )
+    })
+  })
+
+  describe("prependSystem", () => {
+    it("should prepend text to existing system message", () => {
+      const prompt = Prompt.make([
+        {
+          role: "system",
+          content: "You are an expert in programming."
+        },
+        {
+          role: "user",
+          content: "Hello, world!"
+        }
+      ])
+
+      const result = Prompt.prependSystem(prompt, "You are a helpful assistant. ")
+
+      assert.deepStrictEqual(
+        result.content[0],
+        Prompt.makeMessage("system", {
+          content: "You are a helpful assistant. You are an expert in programming."
+        })
+      )
+    })
+
+    it("should create a new system message if none exists", () => {
+      const prompt = Prompt.make([
+        {
+          role: "user",
+          content: "Hello, world!"
+        }
+      ])
+
+      const result = Prompt.prependSystem(prompt, "You are a helpful assistant.")
+
+      assert.deepStrictEqual(
+        result.content[0],
+        Prompt.makeMessage("system", {
+          content: "You are a helpful assistant."
+        })
+      )
+    })
+
+    it("should work with empty prompt", () => {
+      const prompt = Prompt.empty
+
+      const result = Prompt.prependSystem(prompt, "You are a helpful assistant.")
+
+      assert.deepStrictEqual(
+        result.content[0],
+        Prompt.makeMessage("system", { content: "You are a helpful assistant." })
+      )
+    })
+  })
 })
