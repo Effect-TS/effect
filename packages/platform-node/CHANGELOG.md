@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.101.2
+
+### Patch Changes
+
+- [#5797](https://github.com/Effect-TS/effect/pull/5797) [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5) Thanks @tim-smart! - use original status code if headers have already been sent
+
+- Updated dependencies [[`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411), [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/cluster@0.53.6
+  - @effect/platform@0.93.4
+
 ## 0.101.1
 
 ### Patch Changes
