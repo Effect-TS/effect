@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.53.6
+
+### Patch Changes
+
+- [#5793](https://github.com/Effect-TS/effect/pull/5793) [`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411) Thanks @tim-smart! - allow advisory locks to be disabled
+
+- Updated dependencies [[`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/platform@0.93.4
+
 ## 0.53.5
 
 ### Patch Changes
