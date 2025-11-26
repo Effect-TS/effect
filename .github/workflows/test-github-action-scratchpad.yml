@@ -2,7 +2,6 @@ name: Test Effect GitHub Action
 
 on:
   pull_request:
-    branches: ["*"]
   workflow_dispatch:
 
 permissions:
