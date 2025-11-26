@@ -1,86 +1,10 @@
 import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import { ActionApiError } from "../src/ActionError.js"
 import * as ActionClient from "../src/ActionClient.js"
+import * as ActionClientTest from "../src/ActionClientTest.js"
 
-// Mock Octokit type for testing
-type MockOctokit = {
-  request: (route: string, options?: Record<string, unknown>) => Promise<unknown>
-  graphql: <T>(query: string, variables?: Record<string, unknown>) => Promise<T>
-  paginate: (route: string, options?: Record<string, unknown>) => Promise<unknown[]>
-}
-
-// Test layer that mocks @actions/github.getOctokit
-const makeTestLayer = (options?: {
-  requestResult?: unknown | Error
-  graphqlResult?: unknown | Error
-  paginateResult?: unknown[] | Error
-}) => {
-  const mockOctokit: MockOctokit = {
-    request: async (_route, _options) => {
-      if (options?.requestResult instanceof Error) {
-        throw options.requestResult
-      }
-      return options?.requestResult ?? { data: {} }
-    },
-    graphql: async <T>(_query: string, _variables?: Record<string, unknown>) => {
-      if (options?.graphqlResult instanceof Error) {
-        throw options.graphqlResult
-      }
-      return (options?.graphqlResult ?? {}) as T
-    },
-    paginate: async (_route, _options) => {
-      if (options?.paginateResult instanceof Error) {
-        throw options.paginateResult
-      }
-      return options?.paginateResult ?? []
-    }
-  }
-
-  const client: ActionClient.ActionClient = {
-    [ActionClient.TypeId]: ActionClient.TypeId,
-
-    octokit: mockOctokit as unknown as ActionClient.Octokit,
-
-    request: <T>(route: string, opts?: Record<string, unknown>) =>
-      Effect.tryPromise({
-        try: () => mockOctokit.request(route, opts) as Promise<T>,
-        catch: (error) =>
-          new ActionApiError({
-            method: route,
-            status: (error as { status?: number }).status,
-            description: error instanceof Error ? error.message : String(error),
-            cause: error
-          })
-      }),
-
-    graphql: <T>(query: string, variables?: Record<string, unknown>) =>
-      Effect.tryPromise({
-        try: () => mockOctokit.graphql<T>(query, variables),
-        catch: (error) =>
-          new ActionApiError({
-            method: "graphql",
-            description: error instanceof Error ? error.message : String(error),
-            cause: error
-          })
-      }),
-
-    paginate: <T>(route: string, opts?: Record<string, unknown>) =>
-      Effect.tryPromise({
-        try: () => mockOctokit.paginate(route, opts) as Promise<ReadonlyArray<T>>,
-        catch: (error) =>
-          new ActionApiError({
-            method: route,
-            status: (error as { status?: number }).status,
-            description: error instanceof Error ? error.message : String(error),
-            cause: error
-          })
-      })
-  }
-
-  return Layer.succeed(ActionClient.ActionClient, client)
-}
+// Re-export for backwards compatibility in tests
+const makeTestLayer = ActionClientTest.make
 
 describe("ActionClient", () => {
   describe("octokit", () => {

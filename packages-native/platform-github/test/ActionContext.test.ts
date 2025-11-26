@@ -1,66 +1,10 @@
 import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import { ActionContextError } from "../src/ActionError.js"
 import * as ActionContext from "../src/ActionContext.js"
+import * as ActionContextTest from "../src/ActionContextTest.js"
 
-// Test layer that mocks @actions/github.context
-const makeTestLayer = (options: {
-  eventName?: string
-  payload?: Record<string, unknown>
-  workflow?: string
-  action?: string
-  actor?: string
-  job?: string
-  runId?: number
-  runNumber?: number
-  runAttempt?: number
-  ref?: string
-  sha?: string
-  apiUrl?: string
-  serverUrl?: string
-  graphqlUrl?: string
-  repo?: { owner: string; repo: string } | Error
-  issue?: { owner: string; repo: string; number: number } | Error
-}) => {
-  const context: ActionContext.ActionContext = {
-    [ActionContext.TypeId]: ActionContext.TypeId,
-    eventName: options.eventName ?? "push",
-    payload: options.payload ?? {},
-    workflow: options.workflow ?? "CI",
-    action: options.action ?? "run",
-    actor: options.actor ?? "octocat",
-    job: options.job ?? "build",
-    runId: options.runId ?? 12345,
-    runNumber: options.runNumber ?? 1,
-    runAttempt: options.runAttempt ?? 1,
-    ref: options.ref ?? "refs/heads/main",
-    sha: options.sha ?? "abc123",
-    apiUrl: options.apiUrl ?? "https://api.github.com",
-    serverUrl: options.serverUrl ?? "https://github.com",
-    graphqlUrl: options.graphqlUrl ?? "https://api.github.com/graphql",
-    repo:
-      options.repo instanceof Error
-        ? Effect.fail(
-            new ActionContextError({
-              reason: "InvalidRepo",
-              description: options.repo.message
-            })
-          )
-        : Effect.succeed(options.repo ?? { owner: "octocat", repo: "hello-world" }),
-    issue:
-      options.issue instanceof Error
-        ? Effect.fail(
-            new ActionContextError({
-              reason: "InvalidRepo",
-              description: options.issue.message
-            })
-          )
-        : Effect.succeed(options.issue ?? { owner: "octocat", repo: "hello-world", number: 1 })
-  }
-
-  return Layer.succeed(ActionContext.ActionContext, context)
-}
+// Re-export for backwards compatibility in tests
+const makeTestLayer = ActionContextTest.make
 
 describe("ActionContext", () => {
   describe("basic properties", () => {
