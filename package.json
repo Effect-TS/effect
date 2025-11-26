@@ -20,7 +20,7 @@
     "docgen": "pnpm --recursive --filter \"./packages-native/**/*\" --filter \"!./packages-native/*-demos\" exec docgen && node scripts/docs.mjs",
     "test-types": "tstyche",
     "changeset-version": "changeset version && node scripts/version.mjs && node scripts/force-libsqlite-embedded.mjs",
-    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish && node scripts/postpublish-dist-tags.mjs"
+    "changeset-publish": "pnpm codemod && pnpm build && TEST_DIST= pnpm vitest && changeset publish --provenance && node scripts/postpublish-dist-tags.mjs"
   },
   "resolutions": {
     "effect": "latest",
