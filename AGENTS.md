@@ -150,3 +150,31 @@ This project uses Nix for dependency management and reproducible builds. All dev
   - Then re-run tests: `nix develop --command pnpm test`
 
 In practice: relying on `nix develop` 100% of the time avoids ABI mismatches and “everything just works.”
+
+## Git and GitHub Workflow
+
+### Repository Context
+
+This is the `effect-native/effect-native` repository - a fork of `Effect-TS/effect` with additional native packages and tooling.
+
+- **origin**: `https://github.com/effect-native/effect-native.git` (our fork)
+- **upstream**: `https://github.com/Effect-TS/effect.git` (upstream Effect-TS)
+
+### Pull Request Defaults
+
+**When creating pull requests, ALWAYS target the `effect-native/effect-native` repository by default:**
+
+```bash
+# ✅ Correct - PR to our fork
+gh pr create --repo effect-native/effect-native --base effect-native/main --head feature-branch
+
+# ❌ Wrong - PR to upstream (only do this when explicitly asked)
+gh pr create # defaults to upstream when in a fork
+```
+
+**Rationale:**
+- Most development happens in our fork
+- PRs to upstream require explicit intent and coordination
+- Accidentally creating PRs to upstream creates noise and confusion
+
+**Exception:** Only create PRs to upstream `Effect-TS/effect` when explicitly asked to contribute changes upstream.
