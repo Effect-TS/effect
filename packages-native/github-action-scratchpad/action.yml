@@ -1,0 +1,27 @@
+name: Effect GitHub Action Scratchpad
+description: Prototype GitHub Action using Effect with native TypeScript (no build step)
+author: effect-native
+
+branding:
+  icon: zap
+  color: purple
+
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+    default: ${{ github.token }}
+
+outputs:
+  repo:
+    description: 'The repository (owner/repo)'
+  sha:
+    description: 'The commit SHA'
+  actor:
+    description: 'The actor who triggered the workflow'
+  event:
+    description: 'The event that triggered the workflow'
+
+runs:
+  using: node24
+  main: run.mjs
