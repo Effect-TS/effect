@@ -1,5 +1,14 @@
 # @effect/sql
 
+## 0.48.3
+
+### Patch Changes
+
+- [#5816](https://github.com/Effect-TS/effect/pull/5816) [`a9206ce`](https://github.com/Effect-TS/effect/commit/a9206ceee64daf3b12a778b60ee2bfdede748c57) Thanks @tim-smart! - add dynamic batch size to PersistedQueue based on pending takers
+
+- Updated dependencies [[`a9206ce`](https://github.com/Effect-TS/effect/commit/a9206ceee64daf3b12a778b60ee2bfdede748c57)]:
+  - @effect/experimental@0.57.6
+
 ## 0.48.2
 
 ### Patch Changes
