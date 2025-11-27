@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
+import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as RcMap from "effect/RcMap"
 import * as Schedule from "effect/Schedule"
@@ -24,7 +25,6 @@ export const make: (
   options?: {
     readonly tableName?: string | undefined
     readonly pollInterval?: Duration.DurationInput | undefined
-    readonly pollBatchSize?: number | undefined
     readonly lockRefreshInterval?: Duration.DurationInput | undefined
     readonly lockExpiration?: Duration.DurationInput | undefined
   } | undefined
@@ -39,8 +39,6 @@ export const make: (
   const pollInterval = options?.pollInterval
     ? Duration.decode(options.pollInterval)
     : Duration.millis(1000)
-  const pollBatchSize = options?.pollBatchSize ?? 1
-  const pollBatchSizeSql = sql.literal(pollBatchSize.toString())
   const lockRefreshInterval = options?.lockRefreshInterval
     ? Duration.decode(options.lockRefreshInterval)
     : Duration.seconds(30)
@@ -244,6 +242,9 @@ export const make: (
   const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*({ maxAttempts, name }: QueueKey) {
       const mailbox = yield* Mailbox.make<Element>()
+      const takers = MutableRef.make(0)
+      const pollLatch = Effect.unsafeMakeLatch()
+      const takenLatch = Effect.unsafeMakeLatch()
 
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(mailbox.clear, (elements) => {
@@ -253,7 +254,7 @@ export const make: (
       )
 
       const poll = sql.onDialectOrElse({
-        pg: () =>
+        pg: () => (size: number) =>
           sql<Element>`
             UPDATE ${tableNameSql}
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
@@ -265,7 +266,7 @@ export const make: (
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY updated_at ASC
               FOR UPDATE SKIP LOCKED
-              LIMIT ${pollBatchSizeSql}
+              LIMIT ${sql.literal(size.toString())}
             )
             RETURNING id, queue_name, element, attempts, updated_at
         `.pipe(
@@ -273,7 +274,7 @@ export const make: (
               (rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
             )
           ),
-        mysql: () =>
+        mysql: () => (size: number) =>
           sql<Element>`
             SELECT id, queue_name, element, attempts, updated_at FROM ${tableNameSql}
             WHERE queue_name = ${name}
@@ -281,7 +282,7 @@ export const make: (
             AND attempts < ${maxAttempts}
             AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
             ORDER BY updated_at ASC
-            LIMIT ${pollBatchSizeSql}
+            LIMIT ${sql.literal(size.toString())}
             FOR UPDATE SKIP LOCKED
           `.pipe(
             Effect.tap((rows) => {
@@ -295,10 +296,10 @@ export const make: (
             }),
             sql.withTransaction
           ),
-        mssql: () =>
+        mssql: () => (size: number) =>
           sql<Element>`
             WITH cte AS (
-              SELECT TOP ${pollBatchSizeSql} id FROM ${tableNameSql}
+              SELECT TOP ${sql.literal(size.toString())} id FROM ${tableNameSql}
               WHERE queue_name = ${name}
               AND completed = 0
               AND attempts < ${maxAttempts}
@@ -312,7 +313,7 @@ export const make: (
             INNER JOIN cte ON q.id = cte.id
           `,
         // sqlite
-        orElse: () =>
+        orElse: () => (size: number) =>
           sql<Element>`
             UPDATE ${tableNameSql}
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
@@ -323,7 +324,7 @@ export const make: (
               AND attempts < ${maxAttempts}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY updated_at ASC
-              LIMIT ${pollBatchSizeSql}
+              LIMIT ${sql.literal(size.toString())}
             )
             RETURNING id, queue_name, element, attempts, updated_at
           `.pipe(
@@ -341,18 +342,21 @@ export const make: (
 
       yield* Effect.gen(function*() {
         while (true) {
-          const size = Option.getOrElse(yield* mailbox.size, () => 0)
-          const results = size === 0 ? yield* poll : []
-          if (results.length > 0) {
-            for (let i = 0; i < results.length; i++) {
-              const element = results[i]
-              element.element = JSON.parse(element.element)
-            }
-            yield* mailbox.offerAll(results)
-          } else {
-            // TODO: use listen/notify or equivalent to avoid polling
+          yield* pollLatch.await
+          yield* Effect.yieldNow()
+          const results = takers.current === 0 ? [] : yield* poll(takers.current)
+          if (results.length === 0) {
             yield* Effect.sleep(pollInterval)
+            continue
           }
+          takenLatch.unsafeClose()
+          for (let i = 0; i < results.length; i++) {
+            const element = results[i]
+            element.element = JSON.parse(element.element)
+          }
+          yield* mailbox.offerAll(results)
+          yield* takenLatch.await
+          yield* Effect.yieldNow()
         }
       }).pipe(
         Effect.sandbox,
@@ -361,8 +365,9 @@ export const make: (
         Effect.interruptible
       )
 
-      return mailbox
-    })
+      return { mailbox, takers, pollLatch, takenLatch } as const
+    }),
+    idleTimeToLive: Duration.seconds(30)
   })
 
   return PersistedQueue.PersistedQueueStore.of({
@@ -385,7 +390,21 @@ export const make: (
     take: ({ maxAttempts, name }) =>
       Effect.uninterruptibleMask((restore) =>
         RcMap.get(mailboxes, new QueueKey({ name, maxAttempts })).pipe(
-          Effect.flatMap((m) => Effect.orDie(m.take)),
+          Effect.flatMap(({ mailbox, pollLatch, takenLatch, takers }) => {
+            takers.current++
+            if (takers.current === 1) {
+              pollLatch.unsafeOpen()
+            }
+            return Effect.tap(restore(mailbox.take as Effect.Effect<Element>), () => {
+              takers.current--
+              if (takers.current === 0) {
+                pollLatch.unsafeClose()
+                takenLatch.unsafeOpen()
+              } else if (Option.getOrUndefined(mailbox.unsafeSize()) === 0) {
+                takenLatch.unsafeOpen()
+              }
+            })
+          }),
           Effect.scoped,
           restore,
           Effect.tap((element) =>
@@ -414,7 +433,6 @@ class QueueKey extends Data.Class<{
 export const layerStore = (options?: {
   readonly tableName?: string | undefined
   readonly pollInterval?: Duration.DurationInput | undefined
-  readonly pollBatchSize?: number | undefined
   readonly lockRefreshInterval?: Duration.DurationInput | undefined
   readonly lockExpiration?: Duration.DurationInput | undefined
 }): Layer.Layer<

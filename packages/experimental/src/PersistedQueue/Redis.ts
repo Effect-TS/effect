@@ -9,7 +9,10 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
+import * as MutableRef from "effect/MutableRef"
+import * as Option from "effect/Option"
 import * as RcMap from "effect/RcMap"
+import * as Schedule from "effect/Schedule"
 import type { RedisOptions } from "ioredis"
 import { Redis } from "ioredis"
 import * as PersistedQueue from "../PersistedQueue.js"
@@ -27,8 +30,9 @@ interface RedisWithQueue extends Redis {
     keyPending: string,
     prefix: string,
     workerId: string,
+    batchSize: number,
     pttl: number
-  ): Promise<string>
+  ): Promise<Array<string> | null>
   complete(
     keyPending: string,
     keyLock: string,
@@ -50,10 +54,13 @@ interface RedisWithQueue extends Redis {
 export const make = Effect.fnUntraced(function*(
   options: RedisOptions & {
     readonly prefix?: string | undefined
+    readonly pollInterval?: Duration.DurationInput | undefined
     readonly lockRefreshInterval?: Duration.DurationInput | undefined
     readonly lockExpiration?: Duration.DurationInput | undefined
   }
 ) {
+  const pollInterval = options.pollInterval ? Duration.decode(options.pollInterval) : Duration.seconds(1)
+
   const acquireClient = Effect.gen(function*() {
     const redis = yield* Effect.acquireRelease(
       Effect.sync(() => new Redis(options) as RedisWithQueue),
@@ -70,7 +77,7 @@ local payload = ARGV[2]
 
 redis.call("DEL", key_lock)
 redis.call("HDEL", key_pending, id)
-redis.call("LPUSH", key_queue, payload)
+redis.call("RPUSH", key_queue, payload)
 `,
       numberOfKeys: 3,
       readOnly: false
@@ -111,20 +118,22 @@ local key_queue = KEYS[1]
 local key_pending = KEYS[2]
 local prefix = ARGV[1]
 local worker_id = ARGV[2]
-local pttl = ARGV[3]
+local batch_size = tonumber(ARGV[3])
+local pttl = ARGV[4]
 
-local item = redis.call("BLPOP", key_queue, 0)
-if not item then
+local payloads = redis.call("LPOP", key_queue, batch_size)
+if not payloads then
   return nil
 end
 
-local payload = item[2]
-local id = cjson.decode(payload).id
-local key_lock = prefix .. id .. ":lock"
-redis.call("SET", key_lock, worker_id, "PX", pttl)
-redis.call("HSET", key_pending, id, payload)
+for i, payload in ipairs(payloads) do
+  local id = cjson.decode(payload).id
+  local key_lock = prefix .. id .. ":lock"
+  redis.call("SET", key_lock, worker_id, "PX", pttl)
+  redis.call("HSET", key_pending, id, payload)
+end
 
-return payload
+return payloads
 `,
       numberOfKeys: 2,
       readOnly: false
@@ -162,46 +171,78 @@ return payload
         if (locks[i] !== null) continue
         toReset.push(elements[i][1])
       }
-      yield* Effect.promise(() => offerClient.lpush(keyQueue(name), ...toReset))
+      if (toReset.length === 0) return
+      yield* Effect.promise(() => offerClient.rpush(keyQueue(name), ...toReset))
     }),
     capacity: Number.MAX_SAFE_INTEGER,
     timeToLive: Duration.minutes(15)
   })
 
-  const clients = yield* RcMap.make({
+  const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
       yield* resetPending.get(name)
       const redis = yield* acquireClient
-      const clientId = yield* Effect.promise(() => redis.client("ID"))
+      const queueKey = keyQueue(name)
+      const pendingKey = keyPending(name)
+      const mailbox = yield* Mailbox.make<RedisElement>()
+      const takers = MutableRef.make(0)
+      const pollLatch = Effect.unsafeMakeLatch()
+      const takenLatch = Effect.unsafeMakeLatch()
 
-      return { clientId, redis } as const
-    }),
-    idleTimeToLive: Duration.seconds(15)
-  })
+      yield* Effect.addFinalizer(() =>
+        Effect.flatMap(
+          mailbox.clear,
+          (elements) =>
+            elements.length === 0
+              ? Effect.void
+              : Effect.promise(() =>
+                Promise.all(Array.from(elements, (element) =>
+                  offerClient.requeue(
+                    queueKey,
+                    pendingKey,
+                    keyLock(element.id),
+                    element.id,
+                    JSON.stringify(element)
+                  )))
+              )
+        )
+      )
 
-  const mailboxes = yield* RcMap.make({
-    lookup: Effect.fnUntraced(function*(name: string) {
-      const { clientId, redis } = yield* RcMap.get(clients, name)
-      const mailbox = yield* Mailbox.make<RedisElement>({ capacity: 0 })
-
-      yield* Effect.promise(() =>
+      const poll = Effect.promise(() =>
         redis.take(
-          keyQueue(name),
-          keyPending(name),
+          queueKey,
+          pendingKey,
           prefix,
           workerId,
+          takers.current,
           lockExpirationMillis
         )
-      ).pipe(
-        Effect.onInterrupt(() => Effect.promise(() => offerClient.client("UNBLOCK", clientId))),
-        Effect.flatMap((payload) => payload ? mailbox.offer(JSON.parse(payload)) : Effect.void),
-        Effect.forever,
+      )
+
+      yield* Effect.gen(function*() {
+        while (true) {
+          yield* pollLatch.await
+          yield* Effect.yieldNow()
+          const results = takers.current === 0 ? null : yield* poll
+          if (results === null) {
+            yield* Effect.sleep(pollInterval)
+            continue
+          }
+          takenLatch.unsafeClose()
+          yield* mailbox.offerAll(results.map((json) => JSON.parse(json)))
+          yield* takenLatch.await
+          yield* Effect.yieldNow()
+        }
+      }).pipe(
+        Effect.sandbox,
+        Effect.retry(Schedule.spaced(500)),
         Effect.forkScoped,
         Effect.interruptible
       )
 
-      return mailbox
-    })
+      return { mailbox, takers, pollLatch, takenLatch } as const
+    }),
+    idleTimeToLive: Duration.seconds(15)
   })
 
   const activeLockKeys = new Set<string>()
@@ -236,9 +277,23 @@ return payload
           })
       }),
     take: (options) =>
-      Effect.uninterruptibleMask((restore) =>
-        RcMap.get(mailboxes, options.name).pipe(
-          Effect.flatMap((m) => Effect.orDie(restore(m.take))),
+      Effect.uninterruptibleMask((restore) => {
+        return RcMap.get(mailboxes, options.name).pipe(
+          Effect.flatMap(({ mailbox, pollLatch, takenLatch, takers }) => {
+            takers.current++
+            if (takers.current === 1) {
+              pollLatch.unsafeOpen()
+            }
+            return Effect.tap(restore(mailbox.take as Effect.Effect<RedisElement>), () => {
+              takers.current--
+              if (takers.current === 0) {
+                pollLatch.unsafeClose()
+                takenLatch.unsafeOpen()
+              } else if (Option.getOrUndefined(mailbox.unsafeSize()) === 0) {
+                takenLatch.unsafeOpen()
+              }
+            })
+          }),
           Effect.scoped,
           Effect.tap((element) => {
             const lock = keyLock(element.id)
@@ -293,7 +348,7 @@ return payload
             }))
           })
         )
-      )
+      })
   })
 })
 
@@ -301,8 +356,14 @@ return payload
  * @since 1.0.0
  * @category Layers
  */
-export const layerStore = (options: RedisOptions & { readonly prefix?: string | undefined }) =>
-  Layer.scoped(PersistedQueue.PersistedQueueStore, make(options))
+export const layerStore = (
+  options: RedisOptions & {
+    readonly prefix?: string | undefined
+    readonly pollInterval?: Duration.DurationInput | undefined
+    readonly lockRefreshInterval?: Duration.DurationInput | undefined
+    readonly lockExpiration?: Duration.DurationInput | undefined
+  }
+) => Layer.scoped(PersistedQueue.PersistedQueueStore, make(options))
 
 /**
  * @since 1.0.0
