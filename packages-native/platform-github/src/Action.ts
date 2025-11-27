@@ -62,26 +62,32 @@ export const layer = (token: string): Layer.Layer<ActionRequirements> =>
  * - Automatically provides ActionRequirements
  * - Sets failure status and exits appropriately
  *
+ * On defects (unexpected errors), this function will:
+ * 1. Call `setFailed` with the error message
+ * 2. Re-throw the error
+ *
  * @since 1.0.0
  * @category running
  */
-export const runMain = <A>(
+export const runMain = async <A>(
   effect: Effect.Effect<A, never, ActionRequirements>,
   token?: string
 ): Promise<A> => {
+  // Note: process.env access is intentional bootstrap code.
+  // User code accesses the token via ActionClient, never directly.
   const githubToken = token ?? process.env.GITHUB_TOKEN ?? ""
   const actionLayer = layer(githubToken)
-
   const program = Effect.provide(effect, actionLayer)
 
-  return Effect.runPromise(program).catch((error) => {
-    // If we get here, something went wrong with the runtime itself
-    // Use @actions/core directly to report the failure
-    import("@actions/core").then((core) => {
-      core.setFailed(error instanceof Error ? error.message : String(error))
-    })
+  try {
+    return await Effect.runPromise(program)
+  } catch (error) {
+    // If we get here, something went wrong with the runtime itself.
+    // Await the import to ensure setFailed completes before re-throwing.
+    const core = await import("@actions/core")
+    core.setFailed(error instanceof Error ? error.message : String(error))
     throw error
-  })
+  }
 }
 
 /**

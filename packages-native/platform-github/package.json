@@ -48,6 +48,7 @@
     "@effect/platform": "latest",
     "@effect/platform-node": "latest",
     "@effect/vitest": "latest",
+    "@types/node": "^22.10.1",
     "effect": "latest"
   }
 }

@@ -27,19 +27,40 @@ const program = Effect.gen(function* () {
   yield* ActionRunner.info(`Hello, ${name}!`)
 
   // Access workflow context
-  const ctx = yield* ActionContext.ActionContext
-  yield* ActionRunner.info(`Running in ${ctx.repo.owner}/${ctx.repo.repo}`)
+  const eventName = yield* ActionContext.eventName
+  const repo = yield* ActionContext.repo
+  yield* ActionRunner.info(`Event: ${eventName}, Repo: ${repo.owner}/${repo.repo}`)
 
   // Use GitHub API
-  const client = yield* ActionClient.ActionClient
-  const { data: user } = yield* client.request("GET /user")
-  yield* ActionRunner.info(`Authenticated as ${user.login}`)
+  const result = yield* ActionClient.request<{ data: { login: string } }>("GET /user")
+  yield* ActionRunner.info(`Authenticated as ${result.data.login}`)
 
   yield* ActionRunner.setOutput("greeting", `Hello, ${name}!`)
 })
 
 // Run with all services provided
 Action.runMain(program)
+```
+
+## Testing
+
+The package exports test utilities for each service:
+
+```typescript
+import { Effect } from "effect"
+import { ActionRunner, ActionRunnerTest } from "@effect-native/platform-github"
+import { it, expect } from "@effect/vitest"
+
+it.effect("my action works", () =>
+  Effect.gen(function* () {
+    const test = ActionRunnerTest.make({ inputs: { name: "world" } })
+    const result = yield* ActionRunner.getInput("name").pipe(Effect.provide(test.layer))
+    expect(result).toBe("world")
+    
+    yield* ActionRunner.setOutput("greeting", "Hello!").pipe(Effect.provide(test.layer))
+    expect(test.outputs["greeting"]).toBe("Hello!")
+  })
+)
 ```
 
 ## License
