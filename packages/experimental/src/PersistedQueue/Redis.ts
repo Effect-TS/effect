@@ -18,6 +18,11 @@ import { Redis } from "ioredis"
 import * as PersistedQueue from "../PersistedQueue.js"
 
 interface RedisWithQueue extends Redis {
+  resetQueue(
+    keyQueue: string,
+    keyPending: string,
+    prefix: string
+  ): Promise<void>
   requeue(
     keyQueue: string,
     keyPending: string,
@@ -61,14 +66,33 @@ export const make = Effect.fnUntraced(function*(
 ) {
   const pollInterval = options.pollInterval ? Duration.decode(options.pollInterval) : Duration.seconds(1)
 
-  const acquireClient = Effect.gen(function*() {
-    const redis = yield* Effect.acquireRelease(
-      Effect.sync(() => new Redis(options) as RedisWithQueue),
-      (redis) => Effect.promise(() => redis.quit())
-    )
+  const redis = yield* Effect.acquireRelease(
+    Effect.sync(() => new Redis(options) as RedisWithQueue),
+    (redis) => Effect.promise(() => redis.quit())
+  )
 
-    redis.defineCommand("requeue", {
-      lua: `
+  redis.defineCommand("resetQueue", {
+    lua: `
+local key_queue = KEYS[1]
+local key_pending = KEYS[2]
+local prefix = ARGV[1]
+
+local entries = redis.call("HGETALL", key_pending)
+for id, payload in pairs(entries) do
+  local lock_key = prefix .. id .. ":lock"
+  local exists = redis.call("EXISTS", lock_key)
+  if exists == 0 then
+    redis.call("RPUSH", key_queue, payload)
+    redis.call("HDEL", key_pending, id)
+  end
+end
+`,
+    numberOfKeys: 2,
+    readOnly: false
+  })
+
+  redis.defineCommand("requeue", {
+    lua: `
 local key_queue = KEYS[1]
 local key_pending = KEYS[2]
 local key_lock = KEYS[3]
@@ -79,12 +103,12 @@ redis.call("DEL", key_lock)
 redis.call("HDEL", key_pending, id)
 redis.call("RPUSH", key_queue, payload)
 `,
-      numberOfKeys: 3,
-      readOnly: false
-    })
+    numberOfKeys: 3,
+    readOnly: false
+  })
 
-    redis.defineCommand("complete", {
-      lua: `
+  redis.defineCommand("complete", {
+    lua: `
 local key_pending = KEYS[1]
 local key_lock = KEYS[2]
 local id = ARGV[1]
@@ -92,12 +116,12 @@ local id = ARGV[1]
 redis.call("DEL", key_lock)
 redis.call("HDEL", key_pending, id)
 `,
-      numberOfKeys: 2,
-      readOnly: false
-    })
+    numberOfKeys: 2,
+    readOnly: false
+  })
 
-    redis.defineCommand("failed", {
-      lua: `
+  redis.defineCommand("failed", {
+    lua: `
 local key_pending = KEYS[1]
 local key_lock = KEYS[2]
 local key_failed = KEYS[3]
@@ -108,12 +132,12 @@ redis.call("DEL", key_lock)
 redis.call("HDEL", key_pending, id)
 redis.call("RPUSH", key_failed, payload)
 `,
-      numberOfKeys: 2,
-      readOnly: false
-    })
+    numberOfKeys: 2,
+    readOnly: false
+  })
 
-    redis.defineCommand("take", {
-      lua: `
+  redis.defineCommand("take", {
+    lua: `
 local key_queue = KEYS[1]
 local key_pending = KEYS[2]
 local prefix = ARGV[1]
@@ -135,14 +159,9 @@ end
 
 return payloads
 `,
-      numberOfKeys: 2,
-      readOnly: false
-    })
-
-    return redis
+    numberOfKeys: 2,
+    readOnly: false
   })
-
-  const offerClient = yield* acquireClient
 
   const lockRefreshMillis = options.lockRefreshInterval ? Duration.toMillis(options.lockRefreshInterval) : 30_000
   const lockExpirationMillis = options.lockExpiration ? Duration.toMillis(options.lockExpiration) : 90_000
@@ -153,41 +172,23 @@ return payloads
   const keyFailed = (name: string) => `${prefix}${name}:failed`
   const workerId = crypto.randomUUID()
 
-  type RedisElement = {
+  type Element = {
     readonly id: string
     readonly element: unknown
     attempts: number
     lastFailure?: string
   }
 
-  const resetPending = yield* Cache.make({
-    lookup: Effect.fnUntraced(function*(name: string) {
-      const key = keyPending(name)
-      const elements = Object.entries(yield* Effect.promise(() => offerClient.hgetall(key)))
-      if (elements.length === 0) return
-      const locks = yield* Effect.promise(() => offerClient.mget(...elements.map(([id]) => keyLock(id))))
-      const toReset: Array<string> = []
-      for (let i = 0; i < elements.length; i++) {
-        if (locks[i] !== null) continue
-        toReset.push(elements[i][1])
-      }
-      if (toReset.length === 0) return
-      yield* Effect.promise(() => offerClient.rpush(keyQueue(name), ...toReset))
-    }),
-    capacity: Number.MAX_SAFE_INTEGER,
-    timeToLive: Duration.minutes(15)
-  })
-
   const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
-      yield* resetPending.get(name)
-      const redis = yield* acquireClient
       const queueKey = keyQueue(name)
       const pendingKey = keyPending(name)
-      const mailbox = yield* Mailbox.make<RedisElement>()
+      const mailbox = yield* Mailbox.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Effect.unsafeMakeLatch()
       const takenLatch = Effect.unsafeMakeLatch()
+
+      redis.resetQueue(queueKey, pendingKey, prefix)
 
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(
@@ -197,7 +198,7 @@ return payloads
               ? Effect.void
               : Effect.promise(() =>
                 Promise.all(Array.from(elements, (element) =>
-                  offerClient.requeue(
+                  redis.requeue(
                     queueKey,
                     pendingKey,
                     keyLock(element.id),
@@ -208,22 +209,23 @@ return payloads
         )
       )
 
-      const poll = Effect.promise(() =>
-        redis.take(
-          queueKey,
-          pendingKey,
-          prefix,
-          workerId,
-          takers.current,
-          lockExpirationMillis
+      const poll = (size: number) =>
+        Effect.promise(() =>
+          redis.take(
+            queueKey,
+            pendingKey,
+            prefix,
+            workerId,
+            size,
+            lockExpirationMillis
+          )
         )
-      )
 
       yield* Effect.gen(function*() {
         while (true) {
           yield* pollLatch.await
           yield* Effect.yieldNow()
-          const results = takers.current === 0 ? null : yield* poll
+          const results = takers.current === 0 ? null : yield* poll(takers.current)
           if (results === null) {
             yield* Effect.sleep(pollInterval)
             continue
@@ -242,7 +244,7 @@ return payloads
 
       return { mailbox, takers, pollLatch, takenLatch } as const
     }),
-    idleTimeToLive: Duration.seconds(15)
+    idleTimeToLive: Duration.seconds(30)
   })
 
   const activeLockKeys = new Set<string>()
@@ -250,13 +252,11 @@ return payloads
   yield* Effect.gen(function*() {
     while (true) {
       yield* Effect.sleep(lockRefreshMillis)
-      yield* Effect.promise(() =>
-        Promise.all(Array.from(activeLockKeys, (key) => offerClient.pexpire(key, lockExpirationMillis)))
-      )
+      activeLockKeys.forEach((key) => {
+        redis.pexpire(key, lockExpirationMillis)
+      })
     }
   }).pipe(
-    Effect.catchAllCause(Effect.logWarning),
-    Effect.forever,
     Effect.forkScoped,
     Effect.interruptible,
     Effect.annotateLogs({
@@ -269,7 +269,7 @@ return payloads
   return PersistedQueue.PersistedQueueStore.of({
     offer: (name, id, element) =>
       Effect.tryPromise({
-        try: () => offerClient.lpush(`${prefix}${name}`, JSON.stringify({ id, element, attempts: 0 })),
+        try: () => redis.lpush(`${prefix}${name}`, JSON.stringify({ id, element, attempts: 0 })),
         catch: (cause) =>
           new PersistedQueue.PersistedQueueError({
             message: "Failed to offer element to persisted queue",
@@ -277,14 +277,14 @@ return payloads
           })
       }),
     take: (options) =>
-      Effect.uninterruptibleMask((restore) => {
-        return RcMap.get(mailboxes, options.name).pipe(
+      Effect.uninterruptibleMask((restore) =>
+        RcMap.get(mailboxes, options.name).pipe(
           Effect.flatMap(({ mailbox, pollLatch, takenLatch, takers }) => {
             takers.current++
             if (takers.current === 1) {
               pollLatch.unsafeOpen()
             }
-            return Effect.tap(restore(mailbox.take as Effect.Effect<RedisElement>), () => {
+            return Effect.tap(restore(mailbox.take as Effect.Effect<Element>), () => {
               takers.current--
               if (takers.current === 0) {
                 pollLatch.unsafeClose()
@@ -304,7 +304,7 @@ return payloads
                 const nextAttempts = element.attempts + 1
                 if (nextAttempts >= options.maxAttempts) {
                   return Effect.promise(() =>
-                    offerClient.failed(
+                    redis.failed(
                       keyPending(options.name),
                       lock,
                       keyFailed(options.name),
@@ -318,7 +318,7 @@ return payloads
                   )
                 }
                 return Effect.promise(() =>
-                  offerClient.requeue(
+                  redis.requeue(
                     keyQueue(options.name),
                     keyPending(options.name),
                     lock,
@@ -338,7 +338,7 @@ return payloads
               onSuccess: () => {
                 activeLockKeys.delete(lock)
                 return Effect.promise(() =>
-                  offerClient.complete(
+                  redis.complete(
                     keyPending(options.name),
                     lock,
                     element.id
@@ -348,7 +348,7 @@ return payloads
             }))
           })
         )
-      })
+      )
   })
 })
 
