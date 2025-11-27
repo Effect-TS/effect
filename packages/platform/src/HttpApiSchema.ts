@@ -606,28 +606,35 @@ export const deunionize = (
  * @since 1.0.0
  * @category empty errors
  */
-export interface EmptyErrorClass<Self, Tag> extends Schema.Schema<Self, void>, Effect.Effect<never, Self> {
+export interface EmptyError<Self, Tag> extends Effect.Effect<never, Self> {
   readonly _tag: Tag
-  new(_: void): this
   [Unify.typeSymbol]?: unknown
-  [Unify.unifySymbol]?: EmptyErrorClassUnify<this>
-  [Unify.ignoreSymbol]?: EmptyErrorClassUnifyIgnore
+  [Unify.unifySymbol]?: EmptyErrorUnify<this>
+  [Unify.ignoreSymbol]?: EmptyErrorUnifyIgnore
 }
 
 /**
  * @category models
  * @since 1.0.0
  */
-export interface EmptyErrorClassUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
-  EmptyErrorClass?: () => A[Unify.typeSymbol] extends EmptyErrorClass<infer Self, infer _Tag> | infer _ ? Self
+export interface EmptyErrorUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  EmptyError?: () => A[Unify.typeSymbol] extends EmptyError<infer Self, infer _Tag> | infer _ ? Self
     : never
 }
 
 /**
+ * @since 1.0.0
+ * @category empty errors
+ */
+export interface EmptyErrorClass<Self, Tag> extends Schema.Schema<Self, void> {
+  new(_: void): EmptyError<Self, Tag>
+}
+
+/**
  * @category models
  * @since 1.0.0
  */
-export interface EmptyErrorClassUnifyIgnore extends Effect.EffectUnifyIgnore {
+export interface EmptyErrorUnifyIgnore extends Effect.EffectUnifyIgnore {
   Effect?: true
 }
 
