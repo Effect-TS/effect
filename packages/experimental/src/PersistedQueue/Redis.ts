@@ -176,7 +176,7 @@ return payload
 
       return { clientId, redis } as const
     }),
-    idleTimeToLive: Duration.minutes(1)
+    idleTimeToLive: Duration.seconds(15)
   })
 
   const mailboxes = yield* RcMap.make({
