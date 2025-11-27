@@ -68,7 +68,7 @@ export const make: (
         id VARCHAR(36) PRIMARY KEY,
         queue_name VARCHAR(100) NOT NULL,
         element TEXT NOT NULL,
-        status INT NOT NULL DEFAULT 0,
+        completed BOOLEAN NOT NULL,
         attempts INT NOT NULL DEFAULT 0,
         last_failure TEXT NULL,
         acquired_at DATETIME NULL,
@@ -81,7 +81,7 @@ export const make: (
         id UUID PRIMARY KEY,
         queue_name VARCHAR(100) NOT NULL,
         element TEXT NOT NULL,
-        status INTEGER NOT NULL DEFAULT 0,
+        completed BOOLEAN NOT NULL,
         attempts INTEGER NOT NULL DEFAULT 0,
         last_failure TEXT NULL,
         acquired_at TIMESTAMP NULL,
@@ -95,7 +95,7 @@ export const make: (
         id UNIQUEIDENTIFIER PRIMARY KEY,
         queue_name NVARCHAR(100) NOT NULL,
         element NVARCHAR(MAX) NOT NULL,
-        status INT NOT NULL DEFAULT 0,
+        completed BIT NOT NULL,
         attempts INT NOT NULL DEFAULT 0,
         last_failure NVARCHAR(MAX) NULL,
         acquired_at DATETIME2 NULL,
@@ -109,7 +109,7 @@ export const make: (
         id TEXT PRIMARY KEY,
         queue_name TEXT NOT NULL,
         element TEXT NOT NULL,
-        status INTEGER NOT NULL DEFAULT 0,
+        completed BOOLEAN NOT NULL,
         attempts INTEGER NOT NULL DEFAULT 0,
         last_failure TEXT NULL,
         acquired_at DATETIME NULL,
@@ -122,14 +122,16 @@ export const make: (
   yield* sql.onDialectOrElse({
     mssql: () =>
       sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_take')
-        CREATE INDEX idx_${tableNameSql}_take ON ${tableNameSql} (queue_name, status, attempts, acquired_at)`,
+        CREATE INDEX idx_${tableNameSql}_take ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`,
     mysql: () =>
-      sql`CREATE INDEX ${sql(`idx_${tableName}_take`)} ON ${tableNameSql} (queue_name, status, attempts, acquired_at)`
+      sql`CREATE INDEX ${
+        sql(`idx_${tableName}_take`)
+      } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
         .pipe(Effect.ignore),
     orElse: () =>
       sql`CREATE INDEX IF NOT EXISTS ${
         sql(`idx_${tableName}_take`)
-      } ON ${tableNameSql} (queue_name, status, attempts, acquired_at)`
+      } ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`
   })
 
   yield* sql.onDialectOrElse({
@@ -148,6 +150,15 @@ export const make: (
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
   const stringLiteralArr = (arr: ReadonlyArray<string>) => sql.literal(`(${arr.map(wrapString).join(",")})`)
 
+  const sqlTrue = sql.onDialectOrElse({
+    sqlite: () => sql.literal("1"),
+    orElse: () => sql.literal("TRUE")
+  })
+  const sqlFalse = sql.onDialectOrElse({
+    sqlite: () => sql.literal("0"),
+    orElse: () => sql.literal("FALSE")
+  })
+
   const workerIdSql = stringLiteral(workerId)
   const elementIds = new Set<string>()
   const refreshLocks = (): Effect.Effect<void, SqlError> => {
@@ -164,7 +175,7 @@ export const make: (
     elementIds.delete(id)
     return sql`
       UPDATE ${tableNameSql}
-      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, status = 1, attempts = ${attempts}
+      SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, completed = ${sqlTrue}, attempts = ${attempts}
       WHERE id = ${id}
       AND acquired_by = ${workerIdSql}
     `.pipe(
@@ -240,7 +251,7 @@ export const make: (
             WHERE id IN (
               SELECT id FROM ${tableNameSql}
               WHERE queue_name = ${name}
-              AND status = 0
+              AND completed = FALSE
               AND attempts < ${maxAttempts}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY updated_at ASC
@@ -253,7 +264,7 @@ export const make: (
           sql<Element>`
             SELECT id, queue_name, element, attempts FROM ${tableNameSql}
             WHERE queue_name = ${name}
-            AND status = 0
+            AND completed = FALSE
             AND attempts < ${maxAttempts}
             AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
             ORDER BY updated_at ASC
@@ -275,7 +286,7 @@ export const make: (
             WITH cte AS (
               SELECT TOP ${pollBatchSizeSql} id FROM ${tableNameSql}
               WHERE queue_name = ${name}
-              AND status = 0
+              AND completed = 0
               AND attempts < ${maxAttempts}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY updated_at ASC
@@ -294,7 +305,7 @@ export const make: (
             WHERE id IN (
               SELECT id FROM ${tableNameSql}
               WHERE queue_name = ${name}
-              AND status = 0
+              AND completed = 0
               AND attempts < ${maxAttempts}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
               ORDER BY updated_at ASC
@@ -336,8 +347,8 @@ export const make: (
   return PersistedQueue.PersistedQueueStore.of({
     offer: (name, id, element) =>
       sql`
-        INSERT INTO ${tableNameSql} (id, queue_name, element, status, attempts, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 0, 0, ${sqlNow}, ${sqlNow})
+        INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, ${sqlFalse}, 0, ${sqlNow}, ${sqlNow})
       `.unprepared.pipe(
         Effect.mapError((cause) =>
           new PersistedQueue.PersistedQueueError({
