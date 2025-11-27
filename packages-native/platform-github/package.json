@@ -36,8 +36,6 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "@effect/platform": "*",
-    "@effect/platform-node": "*",
     "effect": "*"
   },
   "dependencies": {

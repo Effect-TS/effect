@@ -253,16 +253,12 @@ importers:
 
   packages-native/github-action-scratchpad:
     dependencies:
-      '@actions/core':
-        specifier: ^1.11.1
-        version: 1.11.1
-      '@actions/github':
-        specifier: ^6.0.1
-        version: 6.0.1
+      '@effect-native/platform-github':
+        specifier: workspace:*
+        version: link:../platform-github
       effect:
         specifier: latest
         version: 3.19.6
-    publishDirectory: dist
 
   packages-native/libcrsql:
     dependencies:
