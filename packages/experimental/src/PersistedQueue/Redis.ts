@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as Cache from "effect/Cache"
 import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import * as Duration from "effect/Duration"
