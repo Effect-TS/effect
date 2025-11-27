@@ -1,5 +1,14 @@
 # @effect/experimental
 
+## 0.57.7
+
+### Patch Changes
+
+- [#5820](https://github.com/Effect-TS/effect/pull/5820) [`c379c45`](https://github.com/Effect-TS/effect/commit/c379c45777cea3ec8c985d55f597902813bd3ae2) Thanks @tim-smart! - ensure redis PersistedQueue removes stale pending items on reset
+
+- Updated dependencies [[`f03b8e5`](https://github.com/Effect-TS/effect/commit/f03b8e55f12019cc855a1306e9cbfc7611a9e281)]:
+  - effect@3.19.8
+
 ## 0.57.6
 
 ### Patch Changes
