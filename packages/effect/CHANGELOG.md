@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.8
+
+### Patch Changes
+
+- [#5815](https://github.com/Effect-TS/effect/pull/5815) [`f03b8e5`](https://github.com/Effect-TS/effect/commit/f03b8e55f12019cc855a1306e9cbfc7611a9e281) Thanks @lokhmakov! - Prevent multiple iterations over the same Iterable in Array.intersectionWith and Array.differenceWith
+
 ## 3.19.7
 
 ### Patch Changes
