@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.7
+
+### Patch Changes
+
+- [#5813](https://github.com/Effect-TS/effect/pull/5813) [`7ef13d3`](https://github.com/Effect-TS/effect/commit/7ef13d30147dd50eae1cdbb67a1978141751cad5) Thanks @tim-smart! - fix SqlPersistedQueue batch size
+
 ## 3.19.6
 
 ### Patch Changes
