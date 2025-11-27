@@ -4,21 +4,6 @@
  * This module provides a simple, Schema-first API for parsing action inputs.
  * The core functions are `raw` and `parse`, with convenience helpers for common cases.
  *
- * @example
- * ```typescript
- * import { Input } from "@effect-native/platform-github"
- * import { Effect, Schema } from "effect"
- *
- * const program = Effect.gen(function* () {
- *   // Parse with any Schema
- *   const count = yield* Input.parse("count", Schema.NumberFromString)
- *
- *   // Use convenience helpers
- *   const name = yield* Input.string("name")
- *   const token = yield* Input.secret("token")
- * })
- * ```
- *
  * @since 1.0.0
  */
 import * as Effect from "effect/Effect"
@@ -69,33 +54,12 @@ export const YamlBoolean: Schema.Schema<boolean, string> = Schema.transformOrFai
  */
 export const raw = (
   name: string
-): Effect.Effect<string, never, ActionRunner.ActionRunner> =>
-  ActionRunner.getInput(name)
+): Effect.Effect<string, never, ActionRunner.ActionRunner> => ActionRunner.getInput(name)
 
 /**
  * Parse an input value using an Effect Schema.
  *
  * On validation failure, returns an `InputValidationFailure` with details.
- *
- * @example
- * ```typescript
- * // Required integer
- * const count = yield* Input.parse("count", Schema.NumberFromString.pipe(Schema.int()))
- *
- * // Required non-empty string
- * const title = yield* Input.parse("title", Schema.NonEmptyString)
- *
- * // JSON config with schema validation
- * const config = yield* Input.parse("config", Schema.parseJson(MyConfigSchema))
- *
- * // Optional (use Effect.option)
- * const body = yield* Input.parse("body", Schema.String).pipe(Effect.option)
- *
- * // With default (use Effect.orElseSucceed)
- * const count = yield* Input.parse("count", Schema.NumberFromString).pipe(
- *   Effect.orElseSucceed(() => 10)
- * )
- * ```
  *
  * @since 1.0.0
  * @category primitives
@@ -115,8 +79,7 @@ export const parse = <A, I, R>(
           cause: parseError
         })
       )
-    )
-  )
+    ))
 
 /**
  * Format a ParseError for display.
@@ -145,8 +108,7 @@ const formatParseError = (error: ParseResult.ParseError): string => {
  */
 export const string = (
   name: string
-): Effect.Effect<string, InputValidationFailure, ActionRunner.ActionRunner> =>
-  parse(name, Schema.String)
+): Effect.Effect<string, InputValidationFailure, ActionRunner.ActionRunner> => parse(name, Schema.String)
 
 /**
  * Parse input as a non-empty string.
@@ -158,8 +120,7 @@ export const string = (
  */
 export const nonEmptyString = (
   name: string
-): Effect.Effect<string, InputValidationFailure, ActionRunner.ActionRunner> =>
-  parse(name, Schema.NonEmptyString)
+): Effect.Effect<string, InputValidationFailure, ActionRunner.ActionRunner> => parse(name, Schema.NonEmptyString)
 
 /**
  * Parse input as an integer.
@@ -180,8 +141,7 @@ export const integer = (
  */
 export const number = (
   name: string
-): Effect.Effect<number, InputValidationFailure, ActionRunner.ActionRunner> =>
-  parse(name, Schema.NumberFromString)
+): Effect.Effect<number, InputValidationFailure, ActionRunner.ActionRunner> => parse(name, Schema.NumberFromString)
 
 /**
  * Parse input as a boolean (YAML 1.2 style).
@@ -193,8 +153,7 @@ export const number = (
  */
 export const boolean = (
   name: string
-): Effect.Effect<boolean, InputValidationFailure, ActionRunner.ActionRunner> =>
-  parse(name, YamlBoolean)
+): Effect.Effect<boolean, InputValidationFailure, ActionRunner.ActionRunner> => parse(name, YamlBoolean)
 
 /**
  * Parse input as a secret (Redacted string).
@@ -218,5 +177,4 @@ export const secret = (
 export const json = <A, I, R>(
   name: string,
   schema: Schema.Schema<A, I, R>
-): Effect.Effect<A, InputValidationFailure, ActionRunner.ActionRunner | R> =>
-  parse(name, Schema.parseJson(schema))
+): Effect.Effect<A, InputValidationFailure, ActionRunner.ActionRunner | R> => parse(name, Schema.parseJson(schema))

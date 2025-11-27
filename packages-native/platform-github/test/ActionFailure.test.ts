@@ -45,7 +45,7 @@ describe("ActionFailure", () => {
       const failure = new InputValidationFailure({
         input: "config",
         reason: "SchemaValidation",
-        value: '{"invalid": json}',
+        value: "{\"invalid\": json}",
         message: "failed to parse JSON",
         cause
       })

@@ -13,11 +13,12 @@ describe("Input", () => {
         const value = yield* Input.raw("my-input")
         expect(value).toBe("hello world")
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { "my-input": "hello world" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { "my-input": "hello world" }
+          }).layer
+        )
+      ))
 
     it.effect("returns empty string when input is missing", () =>
       Effect.gen(function*() {
@@ -25,8 +26,7 @@ describe("Input", () => {
         expect(value).toBe("")
       }).pipe(
         Effect.provide(ActionRunnerTest.make({ inputs: {} }).layer)
-      )
-    )
+      ))
   })
 
   describe("parse", () => {
@@ -35,22 +35,24 @@ describe("Input", () => {
         const value = yield* Input.parse("name", Schema.String)
         expect(value).toBe("Alice")
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { name: "Alice" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { name: "Alice" }
+          }).layer
+        )
+      ))
 
     it.effect("parses integer input", () =>
       Effect.gen(function*() {
         const value = yield* Input.parse("count", Schema.NumberFromString.pipe(Schema.int()))
         expect(value).toBe(42)
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { count: "42" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { count: "42" }
+          }).layer
+        )
+      ))
 
     it.effect("fails on invalid integer", () =>
       Effect.gen(function*() {
@@ -64,11 +66,12 @@ describe("Input", () => {
           expect(result.left.reason).toBe("SchemaValidation")
         }
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { count: "not-a-number" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { count: "not-a-number" }
+          }).layer
+        )
+      ))
 
     it.effect("fails on missing required input with NonEmptyString", () =>
       Effect.gen(function*() {
@@ -82,8 +85,7 @@ describe("Input", () => {
         }
       }).pipe(
         Effect.provide(ActionRunnerTest.make({ inputs: {} }).layer)
-      )
-    )
+      ))
 
     it.effect("parses JSON input", () =>
       Effect.gen(function*() {
@@ -94,11 +96,12 @@ describe("Input", () => {
         const value = yield* Input.parse("config", Schema.parseJson(MySchema))
         expect(value).toEqual({ name: "test", count: 5 })
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { config: '{"name": "test", "count": 5}' }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { config: "{\"name\": \"test\", \"count\": 5}" }
+          }).layer
+        )
+      ))
 
     it.effect("fails on invalid JSON", () =>
       Effect.gen(function*() {
@@ -111,11 +114,12 @@ describe("Input", () => {
           expect(result.left.input).toBe("config")
         }
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { config: "not valid json{" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { config: "not valid json{" }
+          }).layer
+        )
+      ))
 
     it.effect("parses Redacted input", () =>
       Effect.gen(function*() {
@@ -123,11 +127,12 @@ describe("Input", () => {
         // Redacted values are opaque
         expect(typeof value).toBe("object")
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { token: "secret-token-123" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { token: "secret-token-123" }
+          }).layer
+        )
+      ))
 
     it.effect("works with Effect.option for optional inputs", () =>
       Effect.gen(function*() {
@@ -137,11 +142,12 @@ describe("Input", () => {
           expect(value.value).toBe("present")
         }
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { optional: "present" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { optional: "present" }
+          }).layer
+        )
+      ))
 
     it.effect("works with Effect.orElseSucceed for defaults", () =>
       Effect.gen(function*() {
@@ -150,11 +156,12 @@ describe("Input", () => {
         )
         expect(value).toBe(10)
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: {} // missing
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: {} // missing
+          }).layer
+        )
+      ))
   })
 
   describe("YamlBoolean", () => {
@@ -176,17 +183,18 @@ describe("Input", () => {
       { input: "", expected: false }
     ]
 
-    for (const { input, expected } of testCases) {
+    for (const { expected, input } of testCases) {
       it.effect(`parses "${input}" as ${expected}`, () =>
         Effect.gen(function*() {
           const value = yield* Input.parse("flag", Input.YamlBoolean)
           expect(value).toBe(expected)
         }).pipe(
-          Effect.provide(ActionRunnerTest.make({
-            inputs: { flag: input }
-          }).layer)
-        )
-      )
+          Effect.provide(
+            ActionRunnerTest.make({
+              inputs: { flag: input }
+            }).layer
+          )
+        ))
     }
 
     it.effect("fails on invalid boolean", () =>
@@ -196,11 +204,12 @@ describe("Input", () => {
         )
         expect(result._tag).toBe("Left")
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { flag: "maybe" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { flag: "maybe" }
+          }).layer
+        )
+      ))
   })
 
   describe("convenience helpers", () => {
@@ -209,44 +218,48 @@ describe("Input", () => {
         const value = yield* Input.string("name")
         expect(value).toBe("test")
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { name: "test" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { name: "test" }
+          }).layer
+        )
+      ))
 
     it.effect("Input.integer returns number", () =>
       Effect.gen(function*() {
         const value = yield* Input.integer("count")
         expect(value).toBe(42)
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { count: "42" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { count: "42" }
+          }).layer
+        )
+      ))
 
     it.effect("Input.boolean returns boolean", () =>
       Effect.gen(function*() {
         const value = yield* Input.boolean("flag")
         expect(value).toBe(true)
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { flag: "yes" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { flag: "yes" }
+          }).layer
+        )
+      ))
 
     it.effect("Input.secret returns Redacted", () =>
       Effect.gen(function*() {
         const value = yield* Input.secret("token")
         expect(typeof value).toBe("object")
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { token: "secret" }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { token: "secret" }
+          }).layer
+        )
+      ))
 
     it.effect("Input.json parses and validates", () =>
       Effect.gen(function*() {
@@ -254,10 +267,11 @@ describe("Input", () => {
         const value = yield* Input.json("data", MySchema)
         expect(value).toEqual({ x: 5 })
       }).pipe(
-        Effect.provide(ActionRunnerTest.make({
-          inputs: { data: '{"x": 5}' }
-        }).layer)
-      )
-    )
+        Effect.provide(
+          ActionRunnerTest.make({
+            inputs: { data: "{\"x\": 5}" }
+          }).layer
+        )
+      ))
   })
 })

@@ -12,9 +12,9 @@ import * as core from "@actions/core"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import type * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
-import type * as FiberId from "effect/FiberId"
 import { constVoid } from "effect/Function"
 import * as HashSet from "effect/HashSet"
 import * as Layer from "effect/Layer"
@@ -148,17 +148,6 @@ const addPrettyLogger = (refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) =>
  * - `core.setFailed()` is called with the error message
  * - Exit code is set appropriately (0 for success, 1 for failure)
  *
- * @example
- * ```typescript
- * const program = Effect.gen(function* () {
- *   const count = yield* Input.parse("count", Schema.NumberFromString)
- *   yield* ActionRunner.info(`Count: ${count}`)
- * })
- *
- * // Errors handled automatically
- * Action.runMain(program)
- * ```
- *
  * @since 1.0.0
  * @category running
  */
@@ -177,11 +166,11 @@ export const runMain = <E, A>(
   const withLogging = options?.disableErrorReporting === true
     ? withLayer
     : Effect.tapErrorCause(withLayer, (cause) => {
-        if (Cause.isInterruptedOnly(cause)) {
-          return Effect.void
-        }
-        return Effect.logError(cause)
-      })
+      if (Cause.isInterruptedOnly(cause)) {
+        return Effect.void
+      }
+      return Effect.logError(cause)
+    })
 
   // Start the fiber
   const fiber = Effect.runFork(withLogging, {
