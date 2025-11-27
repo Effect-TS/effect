@@ -2,7 +2,7 @@
 "@effect/workflow": patch
 ---
 
-add DurableDeferred module
+add DurableQueue module
 
 A `DurableQueue` wraps a `PersistedQueue`, providing a way to wait for items
 to finish processing using a `DurableDeferred`.
