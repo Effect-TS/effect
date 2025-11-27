@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.57.5
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
 ## 0.57.4
 
 ### Patch Changes

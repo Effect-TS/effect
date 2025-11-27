@@ -1,5 +1,17 @@
 # @effect/sql-mysql2
 
+## 0.49.1
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - set default pool maxIdle to 0
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
+- Updated dependencies [[`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b)]:
+  - @effect/experimental@0.57.5
+  - @effect/sql@0.48.1
+
 ## 0.49.0
 
 ### Minor Changes
