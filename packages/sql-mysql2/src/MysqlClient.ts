@@ -7,7 +7,6 @@ import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import { asyncPauseResume } from "@effect/sql/SqlStream"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -19,6 +18,11 @@ import * as Redacted from "effect/Redacted"
 import type { Scope } from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Mysql from "mysql2"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const ATTR_DB_NAMESPACE = "db.namespace"
+const ATTR_SERVER_ADDRESS = "server.address"
+const ATTR_SERVER_PORT = "server.port"
 
 /**
  * @category type ids
@@ -126,22 +130,22 @@ export const make = (
 
       execute(
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         return transformRows
           ? Effect.map(this.run(sql, params), transformRows)
           : this.run(sql, params)
       }
-      executeRaw(sql: string, params: ReadonlyArray<Statement.Primitive>) {
+      executeRaw(sql: string, params: ReadonlyArray<unknown>) {
         return this.runRaw(sql, params)
       }
-      executeValues(sql: string, params: ReadonlyArray<Statement.Primitive>) {
+      executeValues(sql: string, params: ReadonlyArray<unknown>) {
         return this.run(sql, params, true)
       }
       executeUnprepared(
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         return transformRows
@@ -150,7 +154,7 @@ export const make = (
       }
       executeStream(
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         const stream = queryStream(this.conn as any, sql, params)
@@ -185,6 +189,7 @@ export const make = (
         multipleStatements: true,
         supportBigNumbers: true,
         connectionLimit: options.maxConnections,
+        maxIdle: options.poolConfig?.maxIdle ?? 0,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(options.connectionTTL)
           : undefined
@@ -242,13 +247,13 @@ export const make = (
 
     const spanAttributes: Array<[string, unknown]> = [
       ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-      [OtelSemConv.ATTR_DB_SYSTEM_NAME, OtelSemConv.DB_SYSTEM_NAME_VALUE_MYSQL],
-      [OtelSemConv.ATTR_SERVER_ADDRESS, options.host ?? "localhost"],
-      [OtelSemConv.ATTR_SERVER_PORT, options.port ?? 3306]
+      [ATTR_DB_SYSTEM_NAME, "mysql"],
+      [ATTR_SERVER_ADDRESS, options.host ?? "localhost"],
+      [ATTR_SERVER_PORT, options.port ?? 3306]
     ]
 
     if (options.database) {
-      spanAttributes.push([OtelSemConv.ATTR_DB_NAMESPACE, options.database])
+      spanAttributes.push([ATTR_DB_NAMESPACE, options.database])
     }
 
     return Object.assign(

@@ -3,6 +3,7 @@
  */
 import { TypeIdError } from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
+import * as Arr from "effect/Array"
 import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
@@ -109,6 +110,9 @@ export interface BackingPersistenceStore {
     value: unknown,
     ttl: Option.Option<Duration.Duration>
   ) => Effect.Effect<void, PersistenceError>
+  readonly setMany: (
+    entries: ReadonlyArray<readonly [key: string, value: unknown, ttl: Option.Option<Duration.Duration>]>
+  ) => Effect.Effect<void, PersistenceError>
   readonly remove: (key: string) => Effect.Effect<void, PersistenceError>
   readonly clear: Effect.Effect<void, PersistenceError>
 }
@@ -162,11 +166,29 @@ export interface ResultPersistenceStore {
     key: ResultPersistence.Key<R, IE, E, IA, A>,
     value: Exit.Exit<A, E>
   ) => Effect.Effect<void, PersistenceError, R>
+  readonly setMany: <R, IE, E, IA, A>(
+    entries: Iterable<readonly [ResultPersistence.Key<R, IE, E, IA, A>, Exit.Exit<A, E>]>
+  ) => Effect.Effect<void, PersistenceError, R>
   readonly remove: <R, IE, E, IA, A>(
     key: ResultPersistence.Key<R, IE, E, IA, A>
   ) => Effect.Effect<void, PersistenceError>
   readonly clear: Effect.Effect<void, PersistenceError>
 }
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Persistable<A extends Schema.Schema.Any, E extends Schema.Schema.All> extends
+  Schema.WithResult<
+    A["Type"],
+    A["Encoded"],
+    E["Type"],
+    E["Encoded"],
+    A["Context"] | E["Context"]
+  >,
+  PrimaryKey.PrimaryKey
+{}
 
 /**
  * @since 1.0.0
@@ -178,19 +200,18 @@ export declare namespace ResultPersistence {
    * @category models
    */
   export interface Key<R, IE, E, IA, A> extends Schema.WithResult<A, IA, E, IE, R>, PrimaryKey.PrimaryKey {}
-
   /**
    * @since 1.0.0
    * @category models
    */
-  export type KeyAny = Key<any, any, any, any, any> | Key<any, never, never, any, any>
+  export type KeyAny = Persistable<any, any>
 
   /**
    * @since 1.0.0
    * @category models
    */
   export type TimeToLiveArgs<A> = A extends infer K
-    ? K extends Key<infer _R, infer _IE, infer _E, infer _IA, infer _A> ? [request: K, exit: Exit.Exit<_A, _E>]
+    ? K extends Persistable<infer _A, infer _E> ? [request: K, exit: Exit.Exit<_A["Type"], _E["Type"]>]
     : never
     : never
 }
@@ -276,6 +297,19 @@ export const layerResult = Layer.effect(
                 )
               )
             },
+            setMany: Effect.fnUntraced(function*(entries) {
+              const encodedEntries = Arr.empty<readonly [string, unknown, Option.Option<Duration.Duration>]>()
+              for (const [key, value] of entries) {
+                const ttl = Duration.decode(timeToLive(key, value))
+                if (Duration.isZero(ttl)) continue
+                const encoded = yield* encode("setMany", key, value)
+                encodedEntries.push([makeKey(key), encoded, Duration.isFinite(ttl) ? Option.some(ttl) : Option.none()])
+              }
+              if (encodedEntries.length === 0) return
+              return yield* storage.setMany(encodedEntries).pipe(
+                Effect.catchAll((error) => Effect.fail(PersistenceBackingError.make("setMany", error)))
+              )
+            }),
             remove: (key) => storage.remove(makeKey(key)),
             clear: storage.clear
           })
@@ -319,6 +353,12 @@ export const layerMemory: Layer.Layer<BackingPersistence> = Layer.sync(
             get: (key) => Effect.sync(() => unsafeGet(key)),
             getMany: (keys) => Effect.sync(() => keys.map(unsafeGet)),
             set: (key, value, ttl) => Effect.sync(() => map.set(key, [value, unsafeTtlToExpires(clock, ttl)])),
+            setMany: (entries) =>
+              Effect.sync(() => {
+                for (const [key, value, ttl] of entries) {
+                  map.set(key, [value, unsafeTtlToExpires(clock, ttl)])
+                }
+              }),
             remove: (key) => Effect.sync(() => map.delete(key)),
             clear: Effect.sync(() => map.clear())
           })
@@ -367,7 +407,7 @@ export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValue
             )
           return identity<BackingPersistenceStore>({
             get: (key) => get("get", key),
-            getMany: (keys) => Effect.forEach(keys, (key) => get("getMany", key)),
+            getMany: (keys) => Effect.forEach(keys, (key) => get("getMany", key), { concurrency: "unbounded" }),
             set: (key, value, ttl) =>
               Effect.flatMap(
                 Effect.try({
@@ -379,6 +419,15 @@ export const layerKeyValueStore: Layer.Layer<BackingPersistence, never, KeyValue
                     store.set(key, u),
                     (error) => PersistenceBackingError.make("set", error)
                   )
+              ),
+            setMany: (entries) =>
+              Effect.forEach(entries, ([key, value, ttl]) => {
+                const expires = unsafeTtlToExpires(clock, ttl)
+                if (expires === null) return Effect.void
+                const encoded = JSON.stringify([value, expires])
+                return store.set(key, encoded)
+              }, { concurrency: "unbounded", discard: true }).pipe(
+                Effect.mapError((error) => PersistenceBackingError.make("setMany", error))
               ),
             remove: (key) =>
               Effect.mapError(

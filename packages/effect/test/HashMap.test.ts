@@ -458,9 +458,20 @@ describe("HashMap", () => {
   })
 
   it("findFirst", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    assertSome(HM.findFirst(map1, (_v, k) => k.n === 0), [key(0), value("a")])
-    assertSome(HM.findFirst(map1, (v, _k) => v.s === "bb"), [key(1), value("bb")])
-    assertNone(HM.findFirst(map1, (v, k) => k.n === 0 && v.s === "bb"))
+    const map = HM.make([key(0), value("a")], [key(1), value("bb")])
+    assertSome(HM.findFirst(map, (_v, k) => k.n === 0), [key(0), value("a")])
+    assertSome(HM.findFirst(map, (v, _k) => v.s === "bb"), [key(1), value("bb")])
+    assertNone(HM.findFirst(map, (v, k) => k.n === 0 && v.s === "bb"))
+  })
+
+  it("countBy", () => {
+    const map = HM.make([key(1), value("a")], [key(2), value("b")], [key(3), value("c")])
+    strictEqual(HM.countBy(map, (_v, k) => k.n % 2 === 1), 2)
+    strictEqual(HM.countBy(map, (v, k) => k.n % 2 === 1 && v.s === "a"), 1)
+    strictEqual(HM.countBy(map, (v, k) => k.n % 2 === 1 && v.s === "b"), 0)
+
+    strictEqual(pipe(map, HM.countBy((_v, k) => k.n % 2 === 1)), 2)
+    strictEqual(pipe(map, HM.countBy((v, k) => k.n % 2 === 1 && v.s === "a")), 1)
+    strictEqual(pipe(map, HM.countBy((v, k) => k.n % 2 === 1 && v.s === "b")), 0)
   })
 })

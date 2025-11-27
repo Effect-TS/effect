@@ -230,8 +230,16 @@ export class ReasoningContentBlock extends Schema.Union(
       text: Schema.String,
       signature: Schema.optional(Schema.String)
     })
-  }),
-  Schema.Struct({ redactedContent: Schema.Uint8ArrayFromBase64 })
+  }).pipe(
+    Schema.attachPropertySignature("type", "reasoning"),
+    Schema.annotations({ identifier: "ReasoningTextContentBlock" })
+  ),
+  Schema.Struct({
+    redactedContent: Schema.String
+  }).pipe(
+    Schema.attachPropertySignature("type", "redacted-reasoning"),
+    Schema.annotations({ identifier: "RedactedReasoningContentBlock" })
+  )
 ) {}
 
 /**
@@ -303,15 +311,42 @@ export class ToolUseBlock extends Schema.Class<ToolUseBlock>(makeIdentifier("Too
  * @category Schemas
  */
 export class ContentBlock extends Schema.Union(
-  Schema.Struct({ cachePoint: CachePointBlock }),
-  Schema.Struct({ document: DocumentBlock }),
-  Schema.Struct({ guardContent: GuardrailConverseContentBlock }),
-  Schema.Struct({ image: ImageBlock }),
-  Schema.Struct({ reasoningContent: ReasoningContentBlock }),
-  Schema.Struct({ text: Schema.String }),
-  Schema.Struct({ toolResult: ToolResultBlock }),
-  Schema.Struct({ toolUse: ToolUseBlock }),
-  Schema.Struct({ video: VideoBlock })
+  Schema.Struct({ cachePoint: CachePointBlock }).pipe(
+    Schema.attachPropertySignature("type", "cachePoint"),
+    Schema.annotations({ identifier: "CachePointContentBlock" })
+  ),
+  Schema.Struct({ document: DocumentBlock }).pipe(
+    Schema.attachPropertySignature("type", "document"),
+    Schema.annotations({ identifier: "DocumentContentBlock" })
+  ),
+  Schema.Struct({ guardContent: GuardrailConverseContentBlock }).pipe(
+    Schema.attachPropertySignature("type", "guardContent"),
+    Schema.annotations({ identifier: "GuardrailContentBlock" })
+  ),
+  Schema.Struct({ image: ImageBlock }).pipe(
+    Schema.attachPropertySignature("type", "image"),
+    Schema.annotations({ identifier: "ImageContentBlock" })
+  ),
+  Schema.Struct({ reasoningContent: ReasoningContentBlock }).pipe(
+    Schema.attachPropertySignature("type", "reasoningContent"),
+    Schema.annotations({ identifier: "ResponseContentBlock" })
+  ),
+  Schema.Struct({ text: Schema.String }).pipe(
+    Schema.attachPropertySignature("type", "text"),
+    Schema.annotations({ identifier: "TextContentBlock" })
+  ),
+  Schema.Struct({ toolResult: ToolResultBlock }).pipe(
+    Schema.attachPropertySignature("type", "toolResult"),
+    Schema.annotations({ identifier: "ToolResultContentBlock" })
+  ),
+  Schema.Struct({ toolUse: ToolUseBlock }).pipe(
+    Schema.attachPropertySignature("type", "toolUse"),
+    Schema.annotations({ identifier: "ToolUseContentBlock" })
+  ),
+  Schema.Struct({ video: VideoBlock }).pipe(
+    Schema.attachPropertySignature("type", "video"),
+    Schema.annotations({ identifier: "VideoContentBlock" })
+  )
 ) {}
 
 /**
@@ -690,8 +725,8 @@ export class InferenceConfiguration extends Schema.Class<InferenceConfiguration>
       Schema.maxItems(4)
     )
   ),
-  temperature: Schema.Number.pipe(Schema.between(0, 1)),
-  topP: Schema.Number.pipe(Schema.between(0, 1))
+  temperature: Schema.optional(Schema.Number.pipe(Schema.between(0, 1))),
+  topP: Schema.optional(Schema.Number.pipe(Schema.between(0, 1)))
 }) {}
 
 /**
@@ -840,7 +875,7 @@ export class ConverseResponse extends Schema.Class<ConverseResponse>(makeIdentif
  * @category Schemas
  */
 export class ReasoningContentBlockDelta extends Schema.Union(
-  Schema.Struct({ redactedContent: Schema.Uint8ArrayFromBase64 }),
+  Schema.Struct({ redactedContent: Schema.String }),
   Schema.Struct({ signature: Schema.String }),
   Schema.Struct({ text: Schema.String })
 ) {}
@@ -871,7 +906,7 @@ export class ToolUseBlockStart extends Schema.Class<ToolUseBlockStart>(
 export class ContentBlockStart extends Schema.Class<ContentBlockStart>(
   makeIdentifier("ContentBlockStart")
 )({
-  toolUse: ToolUseBlockStart
+  toolUse: Schema.optional(ToolUseBlockStart)
 }) {}
 
 /**
@@ -910,9 +945,15 @@ export class ToolUseBlockDelta extends Schema.Class<ToolUseBlockDelta>(
  * @category Schemas
  */
 export class ContentBlockDelta extends Schema.Union(
-  Schema.Struct({ reasoningContent: ReasoningContentBlockDelta }),
-  Schema.Struct({ text: Schema.String }),
-  Schema.Struct({ toolUse: ToolUseBlockDelta })
+  Schema.Struct({ reasoningContent: ReasoningContentBlockDelta }).pipe(
+    Schema.attachPropertySignature("type", "reasoningContent")
+  ),
+  Schema.Struct({ text: Schema.String }).pipe(
+    Schema.attachPropertySignature("type", "text")
+  ),
+  Schema.Struct({ toolUse: ToolUseBlockDelta }).pipe(
+    Schema.attachPropertySignature("type", "toolUse")
+  )
 ) {}
 
 /**
@@ -1006,33 +1047,80 @@ export class ConverseStreamMetadataEvent extends Schema.Class<ConverseStreamMeta
  * @since 1.0.0
  * @category Schemas
  */
-export class ConverseStreamResponse extends Schema.Class<ConverseStreamResponse>(
-  makeIdentifier("ConverseStreamResponse")
-)({
-  contentBlockStart: Schema.optional(ContentBlockStartEvent),
-  contentBlockStop: Schema.optional(ContentBlockStopEvent),
-  contentBlockDelta: Schema.optional(ContentBlockDeltaEvent),
-  messageStart: Schema.optional(MessageStartEvent),
-  messageStop: Schema.optional(MessageStopEvent),
-  metadata: Schema.optional(ConverseStreamMetadataEvent),
-  internalServerException: Schema.optional(Schema.Record({
-    key: Schema.String,
-    value: Schema.Unknown
-  })),
-  modelStreamErrorException: Schema.optional(Schema.Record({
-    key: Schema.String,
-    value: Schema.Unknown
-  })),
-  serviceUnavailableException: Schema.optional(Schema.Record({
-    key: Schema.String,
-    value: Schema.Unknown
-  })),
-  throttlingException: Schema.optional(Schema.Record({
-    key: Schema.String,
-    value: Schema.Unknown
-  })),
-  validationException: Schema.optional(Schema.Record({
-    key: Schema.String,
-    value: Schema.Unknown
-  }))
-}) {}
+export const ConverseResponseStreamEvent = Schema.Union(
+  Schema.Struct({ messageStart: MessageStartEvent }).pipe(
+    Schema.attachPropertySignature("type", "messageStart"),
+    Schema.annotations({ identifier: "MessageStartEvent" })
+  ),
+  Schema.Struct({ messageStop: MessageStopEvent }).pipe(
+    Schema.attachPropertySignature("type", "messageStop"),
+    Schema.annotations({ identifier: "MessageStopEvent" })
+  ),
+  Schema.Struct({ contentBlockStart: ContentBlockStartEvent }).pipe(
+    Schema.attachPropertySignature("type", "contentBlockStart"),
+    Schema.annotations({ identifier: "ContentBlockStartEvent" })
+  ),
+  Schema.Struct({ contentBlockDelta: ContentBlockDeltaEvent }).pipe(
+    Schema.attachPropertySignature("type", "contentBlockDelta"),
+    Schema.annotations({ identifier: "ContentBlockDeltaEvent" })
+  ),
+  Schema.Struct({ contentBlockStop: ContentBlockStopEvent }).pipe(
+    Schema.attachPropertySignature("type", "contentBlockStop"),
+    Schema.annotations({ identifier: "ContentBlockDeltaEvent" })
+  ),
+  Schema.Struct({ metadata: ConverseStreamMetadataEvent }).pipe(
+    Schema.attachPropertySignature("type", "metadata"),
+    Schema.annotations({ identifier: "ConverseStreamMetadataEvent" })
+  ),
+  Schema.Struct({
+    internalServerException: Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  }).pipe(
+    Schema.attachPropertySignature("type", "internalServerException"),
+    Schema.annotations({ identifier: "InternalServerException" })
+  ),
+  Schema.Struct({
+    modelStreamErrorException: Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  }).pipe(
+    Schema.attachPropertySignature("type", "modelStreamErrorException"),
+    Schema.annotations({ identifier: "ModelStreamErrorException" })
+  ),
+  Schema.Struct({
+    serviceUnavailableException: Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  }).pipe(
+    Schema.attachPropertySignature("type", "serviceUnavailableException"),
+    Schema.annotations({ identifier: "ServiceUnavailableException" })
+  ),
+  Schema.Struct({
+    throttlingException: Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  }).pipe(
+    Schema.attachPropertySignature("type", "throttlingException"),
+    Schema.annotations({ identifier: "ThrottlingException" })
+  ),
+  Schema.Struct({
+    validationException: Schema.Record({
+      key: Schema.String,
+      value: Schema.Unknown
+    })
+  }).pipe(
+    Schema.attachPropertySignature("type", "validationException"),
+    Schema.annotations({ identifier: "ValidationException" })
+  )
+).pipe(Schema.asSchema).annotations({ identifier: "ConverseResponseStreamEvent" })
+
+/**
+ * @since 1.0.0
+ * @category Models
+ */
+export type ConverseResponseStreamEvent = typeof ConverseResponseStreamEvent.Type

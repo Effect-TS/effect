@@ -193,6 +193,9 @@ importers:
       '@effect/ai':
         specifier: workspace:^
         version: link:../ai
+      '@effect/ai-anthropic':
+        specifier: workspace:^
+        version: link:../anthropic
       '@effect/experimental':
         specifier: workspace:^
         version: link:../../experimental
@@ -284,6 +287,28 @@ importers:
         version: link:../../effect
     publishDirectory: dist
 
+  packages/ai/openrouter:
+    devDependencies:
+      '@effect/ai':
+        specifier: workspace:^
+        version: link:../ai
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../../experimental
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform-node
+      '@tim-smart/openapi-gen':
+        specifier: ^0.4.10
+        version: 0.4.13
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+    publishDirectory: dist
+
   packages/cli:
     dependencies:
       ini:
@@ -317,6 +342,10 @@ importers:
     publishDirectory: dist
 
   packages/cluster:
+    dependencies:
+      kubernetes-types:
+        specifier: ^1.30.0
+        version: 1.30.0
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -394,6 +423,9 @@ importers:
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform-node
+      '@testcontainers/redis':
+        specifier: ^11.8.1
+        version: 11.8.1
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
@@ -457,9 +489,6 @@ importers:
 
   packages/platform:
     dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
       find-my-way-ts:
         specifier: ^0.1.6
         version: 0.1.6
@@ -634,6 +663,10 @@ importers:
     publishDirectory: dist
 
   packages/rpc:
+    dependencies:
+      msgpackr:
+        specifier: ^1.11.4
+        version: 1.11.4
     devDependencies:
       '@effect/platform':
         specifier: workspace:^
@@ -645,9 +678,6 @@ importers:
 
   packages/sql:
     dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
       uuid:
         specifier: ^11.0.3
         version: 11.1.0
@@ -668,9 +698,6 @@ importers:
       '@clickhouse/client':
         specifier: ^1.6.0
         version: 1.11.2
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -694,9 +721,6 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250515.0
         version: 4.20250715.0
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -746,17 +770,13 @@ importers:
         version: 10.28.0
       drizzle-orm:
         specifier: ^0.43.1
-        version: 0.43.1(@cloudflare/workers-types@4.20250715.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.80.1(@babel/core@7.28.0)(@types/react@19.1.8)(react@19.1.0))(react@19.1.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(bun-types@1.2.18(@types/react@19.1.8))(kysely@0.28.2)(mysql2@3.14.2)(postgres@3.4.7)
+        version: 0.43.1(@cloudflare/workers-types@4.20250715.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.80.1(@babel/core@7.28.0)(@types/react@19.1.8)(react@19.1.0))(react@19.1.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(bun-types@1.2.18(@types/react@19.1.8))(kysely@0.28.2)(mysql2@3.14.2)(pg@8.16.3)(postgres@3.4.7)
       effect:
         specifier: workspace:^
         version: link:../effect
     publishDirectory: dist
 
   packages/sql-kysely:
-    dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/sql':
         specifier: workspace:^
@@ -801,9 +821,6 @@ importers:
       '@libsql/client':
         specifier: ^0.12.0
         version: 0.12.0
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -824,9 +841,6 @@ importers:
 
   packages/sql-mssql:
     dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
       tedious:
         specifier: ^18.3.0
         version: 18.6.1
@@ -850,9 +864,6 @@ importers:
 
   packages/sql-mysql2:
     dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
       mysql2:
         specifier: ^3.11.0
         version: 3.14.2
@@ -876,12 +887,21 @@ importers:
 
   packages/sql-pg:
     dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
-      postgres:
-        specifier: ^3.4.4
-        version: 3.4.7
+      pg:
+        specifier: ^8.16.3
+        version: 8.16.3
+      pg-connection-string:
+        specifier: 2.9.1
+        version: 2.9.1
+      pg-cursor:
+        specifier: ^2.15.3
+        version: 2.15.3(pg@8.16.3)
+      pg-pool:
+        specifier: ^3.10.1
+        version: 3.10.1(pg@8.16.3)
+      pg-types:
+        specifier: ^4.1.0
+        version: 4.1.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -895,16 +915,18 @@ importers:
       '@testcontainers/postgresql':
         specifier: ^10.25.0
         version: 10.28.0
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.15.6
+      '@types/pg-cursor':
+        specifier: ^2.7.2
+        version: 2.7.2
       effect:
         specifier: workspace:^
         version: link:../effect
     publishDirectory: dist
 
   packages/sql-sqlite-bun:
-    dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -927,10 +949,6 @@ importers:
     publishDirectory: dist
 
   packages/sql-sqlite-do:
-    dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250515.0
@@ -948,9 +966,6 @@ importers:
 
   packages/sql-sqlite-node:
     dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
       better-sqlite3:
         specifier: ^11.10.0
         version: 11.10.0
@@ -976,10 +991,6 @@ importers:
     publishDirectory: dist
 
   packages/sql-sqlite-react-native:
-    dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -996,10 +1007,6 @@ importers:
     publishDirectory: dist
 
   packages/sql-sqlite-wasm:
-    dependencies:
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.33.0
-        version: 1.36.0
     devDependencies:
       '@effect/experimental':
         specifier: workspace:^
@@ -1034,6 +1041,9 @@ importers:
 
   packages/workflow:
     devDependencies:
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../experimental
       '@effect/platform':
         specifier: workspace:^
         version: link:../platform
@@ -1062,6 +1072,9 @@ importers:
       '@effect/ai-openai':
         specifier: workspace:*
         version: link:../packages/ai/openai
+      '@effect/ai-openrouter':
+        specifier: workspace:*
+        version: link:../packages/ai/openrouter
       '@effect/cli':
         specifier: workspace:*
         version: link:../packages/cli
@@ -2692,6 +2705,9 @@ packages:
   '@testcontainers/postgresql@10.28.0':
     resolution: {integrity: sha512-NN25rruG5D4Q7pCNIJuHwB+G85OSeJ3xHZ2fWx0O6sPoPEfCYwvpj8mq99cyn68nxFkFYZeyrZJtSFO+FnydiA==}
 
+  '@testcontainers/redis@11.8.1':
+    resolution: {integrity: sha512-mkcOsPkVvdG7AMZjvWpBlfDoncqFJRRur5mTOmlgFpaK7ISpUpOAGcyOmZ7Da8kdHLE5I3iJoT6cHgsD2LjxqA==}
+
   '@testing-library/dom@10.4.0':
     resolution: {integrity: sha512-pemlzrSESWbdAloYml3bAJMEfNh1Z7EduzqPKprCH5S341frlpYnUEW0H72dLxa6IsYr+mPno20GiSm+h9dEdQ==}
     engines: {node: '>=18'}
@@ -2765,6 +2781,9 @@ packages:
   '@types/dockerode@3.3.42':
     resolution: {integrity: sha512-U1jqHMShibMEWHdxYhj3rCMNCiLx5f35i4e3CEUuW+JSSszc/tVqc6WCAPdhwBymG5R/vgbcceagK0St7Cq6Eg==}
 
+  '@types/dockerode@3.3.47':
+    resolution: {integrity: sha512-ShM1mz7rCjdssXt7Xz0u1/R2BJC7piWa3SJpUBiVjCf2A3XNn4cP6pUVaD8bLanpPVVn4IKzJuw3dOvkJ8IbYw==}
+
   '@types/eslint@8.56.12':
     resolution: {integrity: sha512-03ruubjWyOHlmljCVoxSuNDdmfZDzsrrz0P2LeJsOXr+ZwFQ+0yQIwNCwt/GYhV7Z31fgtXJTAEs+FYlEL851g==}
 
@@ -2831,6 +2850,12 @@ packages:
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
+
+  '@types/pg-cursor@2.7.2':
+    resolution: {integrity: sha512-m3xT8bVFCvx98LuzbvXyuCdT/Hjdd/v8ml4jL4K1QF70Y8clOfCFdgoaEB1FWdcSwcpoFYZTJQaMD9/GQ27efQ==}
+
+  '@types/pg@8.15.6':
+    resolution: {integrity: sha512-NoaMtzhxOrubeL/7UZuNTrejB4MPAJ0RpxZqXQf2qXuVlTPuG6Y8p4u9dKRaue4yjmC7ZhzVO2/Yyyn25znrPQ==}
 
   '@types/react@19.1.8':
     resolution: {integrity: sha512-AwAfQ2Wa5bCx9WP8nZL2uMZWod7J7/JSplxbTmBQ5ms6QpqNYm672H0Vu9ZVKVngQ+ii4R/byguVEUZQyeg44g==}
@@ -3682,6 +3707,15 @@ packages:
       supports-color:
         optional: true
 
+  debug@4.4.3:
+    resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
   decompress-response@6.0.0:
     resolution: {integrity: sha512-aW35yZM6Bb/4oJlZncMH2LCoZtJXTRxES17vE3hoRiowU2kWHaJKFkSBDnDR+cm9J+9QhXmREyIfv0pji9ejCQ==}
     engines: {node: '>=10'}
@@ -3815,12 +3849,20 @@ packages:
     resolution: {integrity: sha512-plizRs/Vf15H+GCVxq2EUvyPK7ei9b/cVesHvjnX4xaXjM9spHe2Ytq0BitndFgvTJ3E3NljPNUEl7BAN43iZw==}
     engines: {node: '>= 6.0.0'}
 
+  docker-compose@1.3.0:
+    resolution: {integrity: sha512-7Gevk/5eGD50+eMD+XDnFnOrruFkL0kSd7jEG4cjmqweDSUhB7i0g8is/nBdVpl+Bx338SqIB2GLKm32M+Vs6g==}
+    engines: {node: '>= 6.0.0'}
+
   docker-modem@5.0.6:
     resolution: {integrity: sha512-ens7BiayssQz/uAxGzH8zGXCtiV24rRWXdjNha5V4zSOcxmAZsfGVm/PPFbwQdqEkDnhG+SyR9E3zSHUbOKXBQ==}
     engines: {node: '>= 8.0'}
 
   dockerode@4.0.7:
     resolution: {integrity: sha512-R+rgrSRTRdU5mH14PZTCPZtW/zw3HDWNTS/1ZAQpL/5Upe/ye5K9WQkIysu4wBoiMwKynsz0a8qWuGsHgEvSAA==}
+    engines: {node: '>= 8.0'}
+
+  dockerode@4.0.9:
+    resolution: {integrity: sha512-iND4mcOWhPaCNh54WmK/KoSb35AFqPAUWFMffTQcp52uQt36b5uNwEJTSXntJZBbeGad72Crbi/hvDIv6us/6Q==}
     engines: {node: '>= 8.0'}
 
   doctrine@2.1.0:
@@ -4120,6 +4162,7 @@ packages:
   eslint-plugin-markdown@4.0.1:
     resolution: {integrity: sha512-5/MnGvYU0i8MbHH5cg8S+Vl3DL+bqRNYshk1xUO86DilNBaxtTkhH+5FD0/yO03AmlI6+lfNFdk2yOw72EPzpA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: Please use @eslint/markdown instead
     peerDependencies:
       eslint: '>=8'
 
@@ -5048,6 +5091,9 @@ packages:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
 
+  kubernetes-types@1.30.0:
+    resolution: {integrity: sha512-Dew1okvhM/SQcIa2rcgujNndZwU8VnSapDgdxlYoB84ZlpAD43U6KLAFqYo17ykSFGHNPrg0qry0bP+GJd9v7Q==}
+
   kysely@0.28.2:
     resolution: {integrity: sha512-4YAVLoF0Sf0UTqlhgQMFU9iQECdah7n+13ANkiuVfRvlK+uI0Etbgd7bVP36dKlG+NXWbhGua8vnGt+sdhvT7A==}
     engines: {node: '>=18.0.0'}
@@ -5070,6 +5116,7 @@ packages:
 
   libsql@0.4.7:
     resolution: {integrity: sha512-T9eIRCs6b0J1SHKYIvD8+KCJMcWZ900iZyxdnSCdqxN12Z1ijzT+jY5nrk72Jw4B0HGzms2NgpryArlJqvc3Lw==}
+    cpu: [x64, arm64, wasm32]
     os: [darwin, linux, win32]
 
   lighthouse-logger@1.4.2:
@@ -5558,6 +5605,9 @@ packages:
     resolution: {integrity: sha512-gXah6aZrcUxjWg2zR2MwouP2eHlCBzdV4pygudehaKXSGW4v2AsRQUK+lwwXhii6KFZcunEnmSUoYp5CXibxtA==}
     engines: {node: '>= 0.4'}
 
+  obuf@1.1.2:
+    resolution: {integrity: sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==}
+
   on-finished@2.3.0:
     resolution: {integrity: sha512-ikqdkGAAyf/X/gPhXGvfgAytDZtDbr+bkNUJ0N9h5MI/dmdgCs3l6hoHrcUv41sRKew3jIwrp4qQDXiK99Utww==}
     engines: {node: '>= 0.8'}
@@ -5711,6 +5761,53 @@ packages:
     resolution: {integrity: sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ==}
     engines: {node: '>= 14.16'}
 
+  pg-cloudflare@1.2.7:
+    resolution: {integrity: sha512-YgCtzMH0ptvZJslLM1ffsY4EuGaU0cx4XSdXLRFae8bPP4dS5xL1tNB3k2o/N64cHJpwU7dxKli/nZ2lUa5fLg==}
+
+  pg-connection-string@2.9.1:
+    resolution: {integrity: sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==}
+
+  pg-cursor@2.15.3:
+    resolution: {integrity: sha512-eHw63TsiGtFEfAd7tOTZ+TLy+i/2ePKS20H84qCQ+aQ60pve05Okon9tKMC+YN3j6XyeFoHnaim7Lt9WVafQsA==}
+    peerDependencies:
+      pg: ^8
+
+  pg-int8@1.0.1:
+    resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
+    engines: {node: '>=4.0.0'}
+
+  pg-numeric@1.0.2:
+    resolution: {integrity: sha512-BM/Thnrw5jm2kKLE5uJkXqqExRUY/toLHda65XgFTBTFYZyopbKjBe29Ii3RbkvlsMoFwD+tHeGaCjjv0gHlyw==}
+    engines: {node: '>=4'}
+
+  pg-pool@3.10.1:
+    resolution: {integrity: sha512-Tu8jMlcX+9d8+QVzKIvM/uJtp07PKr82IUOYEphaWcoBhIYkoHpLXN3qO59nAI11ripznDsEzEv8nUxBVWajGg==}
+    peerDependencies:
+      pg: '>=8.0'
+
+  pg-protocol@1.10.3:
+    resolution: {integrity: sha512-6DIBgBQaTKDJyxnXaLiLR8wBpQQcGWuAESkRBX/t6OwA8YsqP+iVSiond2EDy6Y/dsGk8rh/jtax3js5NeV7JQ==}
+
+  pg-types@2.2.0:
+    resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
+    engines: {node: '>=4'}
+
+  pg-types@4.1.0:
+    resolution: {integrity: sha512-o2XFanIMy/3+mThw69O8d4n1E5zsLhdO+OPqswezu7Z5ekP4hYDqlDjlmOpYMbzY2Br0ufCwJLdDIXeNVwcWFg==}
+    engines: {node: '>=10'}
+
+  pg@8.16.3:
+    resolution: {integrity: sha512-enxc1h0jA/aq5oSDMvqyW3q89ra6XIIDZgCX9vkMrnz5DFTw/Ny3Li2lFQ+pt3L6MCgm/5o2o8HW9hiJji+xvw==}
+    engines: {node: '>= 16.0.0'}
+    peerDependencies:
+      pg-native: '>=3.0.1'
+    peerDependenciesMeta:
+      pg-native:
+        optional: true
+
+  pgpass@1.0.5:
+    resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -5764,6 +5861,41 @@ packages:
   postcss@8.5.6:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
+
+  postgres-array@2.0.0:
+    resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
+    engines: {node: '>=4'}
+
+  postgres-array@3.0.4:
+    resolution: {integrity: sha512-nAUSGfSDGOaOAEGwqsRY27GPOea7CNipJPOA7lPbdEpx5Kg3qzdP0AaWC5MlhTWV9s4hFX39nomVZ+C4tnGOJQ==}
+    engines: {node: '>=12'}
+
+  postgres-bytea@1.0.0:
+    resolution: {integrity: sha512-xy3pmLuQqRBZBXDULy7KbaitYqLcmxigw14Q5sj8QBVLqEwXfeybIKVWiqAXTlcvdvb0+xkOtDbfQMOf4lST1w==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-bytea@3.0.0:
+    resolution: {integrity: sha512-CNd4jim9RFPkObHSjVHlVrxoVQXz7quwNFpz7RY1okNNme49+sVyiTvTRobiLV548Hx/hb1BG+iE7h9493WzFw==}
+    engines: {node: '>= 6'}
+
+  postgres-date@1.0.7:
+    resolution: {integrity: sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-date@2.1.0:
+    resolution: {integrity: sha512-K7Juri8gtgXVcDfZttFKVmhglp7epKb1K4pgrkLxehjqkrgPhfG6OO8LHLkfaqkbpjNRnra018XwAr1yQFWGcA==}
+    engines: {node: '>=12'}
+
+  postgres-interval@1.2.0:
+    resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-interval@3.0.0:
+    resolution: {integrity: sha512-BSNDnbyZCXSxgA+1f5UU2GmwhoI0aU5yMxRGO8CdFEcY2BQF9xm/7MqKnYoM1nJDk8nONNWDk9WeSmePFhQdlw==}
+    engines: {node: '>=12'}
+
+  postgres-range@1.1.4:
+    resolution: {integrity: sha512-i/hbxIE9803Alj/6ytL7UHQxRvZkI9O4Sy+J3HGc4F4oo/2eQAjTSNJ0bfxyse3bH0nuVesCk+3IRLaMtG3H6w==}
 
   postgres@3.4.7:
     resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
@@ -6216,6 +6348,10 @@ packages:
   split-ca@1.0.1:
     resolution: {integrity: sha512-Q5thBSxp5t8WPTTJQS59LrGqOZqOsrhDGDVm8azCqIBjSBd7nd9o2PM+mDulQQkh8h//4U6hFZnc/mul8t5pWQ==}
 
+  split2@4.2.0:
+    resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
+    engines: {node: '>= 10.x'}
+
   sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
 
@@ -6368,8 +6504,14 @@ packages:
   tar-fs@2.1.3:
     resolution: {integrity: sha512-090nwYJDmlhwFwEW3QQl+vaNnxsO2yVsd45eTKRBzSzu+hlb1w2K9inVq5b0ngXuLVqQ4ApvsUHHnu/zQNkWAg==}
 
+  tar-fs@2.1.4:
+    resolution: {integrity: sha512-mDAjwmZdh7LTT6pNleZ05Yt65HC3E+NiQzl672vQG38jIrehtJk/J3mNwIg+vShQPcLF/LV7CMnDW6vjj6sfYQ==}
+
   tar-fs@3.1.0:
     resolution: {integrity: sha512-5Mty5y/sOF1YWj1J6GiBodjlDc05CUR8PKXrsnFAiSG0xA+GHeWLovaZPYUDXkH/1iKRf2+M5+OrRgzC7O9b7w==}
+
+  tar-fs@3.1.1:
+    resolution: {integrity: sha512-LZA0oaPOc2fVo82Txf3gw+AkEd38szODlptMYejQUhndHMLQ9M059uXR+AfS7DNo0NpINvSqDsvyaCrBVkptWg==}
 
   tar-stream@2.2.0:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
@@ -6405,6 +6547,9 @@ packages:
 
   testcontainers@10.28.0:
     resolution: {integrity: sha512-1fKrRRCsgAQNkarjHCMKzBKXSJFmzNTiTbhb5E/j5hflRXChEtHvkefjaHlgkNUjfw92/Dq8LTgwQn6RDBFbMg==}
+
+  testcontainers@11.8.1:
+    resolution: {integrity: sha512-XeqoHbgVA8lx9ufrgYIKlYV4eubVCn3CL6Dh7sdHT793/hbDu/S7N786MqBxQZjzDG+YRKFSCNPTEwp8lREY9Q==}
 
   text-decoder@1.2.3:
     resolution: {integrity: sha512-3/o9z3X0X0fTupwsYvR03pJ/DjWuqqrfwBgTQzdWDiQSm9KitAyz/9WqsT2JQW7KV2m+bC2ol/zqpW37NHxLaA==}
@@ -6453,6 +6598,10 @@ packages:
 
   tmp@0.2.3:
     resolution: {integrity: sha512-nZD7m9iCPC5g0pYmcaxogYKggSfLsdxl8of3Q/oIbqCqLLIO9IAF0GWjX1z9NZRHPiXv8Wex4yDCaZsgEw0Y8w==}
+    engines: {node: '>=14.14'}
+
+  tmp@0.2.5:
+    resolution: {integrity: sha512-voyz6MApa1rQGUxT3E+BK7/ROe8itEx7vD8/HEvt4xwXucvQ5G5oeEiHkmHZJuBO21RpOf+YYm9MOivj709jow==}
     engines: {node: '>=14.14'}
 
   tmpl@1.0.5:
@@ -6593,6 +6742,10 @@ packages:
 
   undici@7.11.0:
     resolution: {integrity: sha512-heTSIac3iLhsmZhUCjyS3JQEkZELateufzZuBaVM5RHXdSBMb1LPMQf5x+FH7qjsZYDP0ttAc3nnVpUB+wYbOg==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.16.0:
+    resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
     engines: {node: '>=20.18.1'}
 
   unist-util-stringify-position@2.0.3:
@@ -7957,7 +8110,7 @@ snapshots:
     dependencies:
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       jest-mock: 29.7.0
 
   '@jest/expect-utils@29.7.0':
@@ -7968,7 +8121,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.3
       '@sinonjs/fake-timers': 10.3.0
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       jest-message-util: 29.7.0
       jest-mock: 29.7.0
       jest-util: 29.7.0
@@ -8577,6 +8730,13 @@ snapshots:
       - bare-buffer
       - supports-color
 
+  '@testcontainers/redis@11.8.1':
+    dependencies:
+      testcontainers: 11.8.1
+    transitivePeerDependencies:
+      - bare-buffer
+      - supports-color
+
   '@testing-library/dom@10.4.0':
     dependencies:
       '@babel/code-frame': 7.27.1
@@ -8672,6 +8832,12 @@ snapshots:
       '@types/node': 22.16.4
       '@types/ssh2': 1.15.5
 
+  '@types/dockerode@3.3.47':
+    dependencies:
+      '@types/docker-modem': 3.0.6
+      '@types/node': 22.16.4
+      '@types/ssh2': 1.15.5
+
   '@types/eslint@8.56.12':
     dependencies:
       '@types/estree': 1.0.8
@@ -8686,7 +8852,7 @@ snapshots:
 
   '@types/graceful-fs@4.1.9':
     dependencies:
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
 
   '@types/ini@4.1.1': {}
 
@@ -8740,8 +8906,20 @@ snapshots:
   '@types/node@24.0.14':
     dependencies:
       undici-types: 7.8.0
+    optional: true
 
   '@types/normalize-package-data@2.4.4': {}
+
+  '@types/pg-cursor@2.7.2':
+    dependencies:
+      '@types/node': 22.16.4
+      '@types/pg': 8.15.6
+
+  '@types/pg@8.15.6':
+    dependencies:
+      '@types/node': 22.16.4
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
 
   '@types/react@19.1.8':
     dependencies:
@@ -9552,7 +9730,7 @@ snapshots:
 
   chrome-launcher@0.15.2:
     dependencies:
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -9561,7 +9739,7 @@ snapshots:
 
   chromium-edge-launcher@0.2.0:
     dependencies:
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       escape-string-regexp: 4.0.0
       is-wsl: 2.2.0
       lighthouse-logger: 1.4.2
@@ -9732,6 +9910,10 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  debug@4.4.3:
+    dependencies:
+      ms: 2.1.3
+
   decompress-response@6.0.0:
     dependencies:
       mimic-response: 3.1.0
@@ -9849,6 +10031,10 @@ snapshots:
     dependencies:
       yaml: 2.8.0
 
+  docker-compose@1.3.0:
+    dependencies:
+      yaml: 2.8.0
+
   docker-modem@5.0.6:
     dependencies:
       debug: 4.4.1
@@ -9866,6 +10052,18 @@ snapshots:
       docker-modem: 5.0.6
       protobufjs: 7.5.3
       tar-fs: 2.1.3
+      uuid: 10.0.0
+    transitivePeerDependencies:
+      - supports-color
+
+  dockerode@4.0.9:
+    dependencies:
+      '@balena/dockerignore': 1.0.2
+      '@grpc/grpc-js': 1.13.4
+      '@grpc/proto-loader': 0.7.15
+      docker-modem: 5.0.6
+      protobufjs: 7.5.3
+      tar-fs: 2.1.4
       uuid: 10.0.0
     transitivePeerDependencies:
       - supports-color
@@ -9900,17 +10098,19 @@ snapshots:
 
   dotenv@8.6.0: {}
 
-  drizzle-orm@0.43.1(@cloudflare/workers-types@4.20250715.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.80.1(@babel/core@7.28.0)(@types/react@19.1.8)(react@19.1.0))(react@19.1.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(bun-types@1.2.18(@types/react@19.1.8))(kysely@0.28.2)(mysql2@3.14.2)(postgres@3.4.7):
+  drizzle-orm@0.43.1(@cloudflare/workers-types@4.20250715.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.80.1(@babel/core@7.28.0)(@types/react@19.1.8)(react@19.1.0))(react@19.1.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(bun-types@1.2.18(@types/react@19.1.8))(kysely@0.28.2)(mysql2@3.14.2)(pg@8.16.3)(postgres@3.4.7):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20250715.0
       '@libsql/client': 0.12.0
       '@op-engineering/op-sqlite': 7.1.0(react-native@0.80.1(@babel/core@7.28.0)(@types/react@19.1.8)(react@19.1.0))(react@19.1.0)
       '@opentelemetry/api': 1.9.0
       '@types/better-sqlite3': 7.6.13
+      '@types/pg': 8.15.6
       better-sqlite3: 11.10.0
       bun-types: 1.2.18(@types/react@19.1.8)
       kysely: 0.28.2
       mysql2: 3.14.2
+      pg: 8.16.3
       postgres: 3.4.7
 
   dunder-proto@1.0.1:
@@ -11040,7 +11240,7 @@ snapshots:
       '@jest/environment': 29.7.0
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       jest-mock: 29.7.0
       jest-util: 29.7.0
 
@@ -11050,7 +11250,7 @@ snapshots:
     dependencies:
       '@jest/types': 29.6.3
       '@types/graceful-fs': 4.1.9
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -11084,7 +11284,7 @@ snapshots:
   jest-mock@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       jest-util: 29.7.0
 
   jest-regex-util@29.6.3: {}
@@ -11109,7 +11309,7 @@ snapshots:
 
   jest-worker@29.7.0:
     dependencies:
-      '@types/node': 24.0.14
+      '@types/node': 22.16.4
       jest-util: 29.7.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
@@ -11219,6 +11419,8 @@ snapshots:
   kind-of@6.0.3: {}
 
   kleur@4.1.5: {}
+
+  kubernetes-types@1.30.0: {}
 
   kysely@0.28.2: {}
 
@@ -11855,6 +12057,8 @@ snapshots:
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
 
+  obuf@1.1.2: {}
+
   on-finished@2.3.0:
     dependencies:
       ee-first: 1.1.1
@@ -12018,6 +12222,57 @@ snapshots:
 
   pathval@2.0.1: {}
 
+  pg-cloudflare@1.2.7:
+    optional: true
+
+  pg-connection-string@2.9.1: {}
+
+  pg-cursor@2.15.3(pg@8.16.3):
+    dependencies:
+      pg: 8.16.3
+
+  pg-int8@1.0.1: {}
+
+  pg-numeric@1.0.2: {}
+
+  pg-pool@3.10.1(pg@8.16.3):
+    dependencies:
+      pg: 8.16.3
+
+  pg-protocol@1.10.3: {}
+
+  pg-types@2.2.0:
+    dependencies:
+      pg-int8: 1.0.1
+      postgres-array: 2.0.0
+      postgres-bytea: 1.0.0
+      postgres-date: 1.0.7
+      postgres-interval: 1.2.0
+
+  pg-types@4.1.0:
+    dependencies:
+      pg-int8: 1.0.1
+      pg-numeric: 1.0.2
+      postgres-array: 3.0.4
+      postgres-bytea: 3.0.0
+      postgres-date: 2.1.0
+      postgres-interval: 3.0.0
+      postgres-range: 1.1.4
+
+  pg@8.16.3:
+    dependencies:
+      pg-connection-string: 2.9.1
+      pg-pool: 3.10.1(pg@8.16.3)
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.2.7
+
+  pgpass@1.0.5:
+    dependencies:
+      split2: 4.2.0
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.1: {}
@@ -12059,7 +12314,30 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postgres@3.4.7: {}
+  postgres-array@2.0.0: {}
+
+  postgres-array@3.0.4: {}
+
+  postgres-bytea@1.0.0: {}
+
+  postgres-bytea@3.0.0:
+    dependencies:
+      obuf: 1.1.2
+
+  postgres-date@1.0.7: {}
+
+  postgres-date@2.1.0: {}
+
+  postgres-interval@1.2.0:
+    dependencies:
+      xtend: 4.0.2
+
+  postgres-interval@3.0.0: {}
+
+  postgres-range@1.1.4: {}
+
+  postgres@3.4.7:
+    optional: true
 
   prebuild-install@7.1.3:
     dependencies:
@@ -12650,6 +12928,8 @@ snapshots:
 
   split-ca@1.0.1: {}
 
+  split2@4.2.0: {}
+
   sprintf-js@1.0.3: {}
 
   sprintf-js@1.1.3: {}
@@ -12805,7 +13085,24 @@ snapshots:
       pump: 3.0.3
       tar-stream: 2.2.0
 
+  tar-fs@2.1.4:
+    dependencies:
+      chownr: 1.1.4
+      mkdirp-classic: 0.5.3
+      pump: 3.0.3
+      tar-stream: 2.2.0
+
   tar-fs@3.1.0:
+    dependencies:
+      pump: 3.0.3
+      tar-stream: 3.1.7
+    optionalDependencies:
+      bare-fs: 4.1.6
+      bare-path: 3.0.0
+    transitivePeerDependencies:
+      - bare-buffer
+
+  tar-fs@3.1.1:
     dependencies:
       pump: 3.0.3
       tar-stream: 3.1.7
@@ -12895,6 +13192,27 @@ snapshots:
       - bare-buffer
       - supports-color
 
+  testcontainers@11.8.1:
+    dependencies:
+      '@balena/dockerignore': 1.0.2
+      '@types/dockerode': 3.3.47
+      archiver: 7.0.1
+      async-lock: 1.4.1
+      byline: 5.0.0
+      debug: 4.4.3
+      docker-compose: 1.3.0
+      dockerode: 4.0.9
+      get-port: 7.1.0
+      proper-lockfile: 4.1.2
+      properties-reader: 2.3.0
+      ssh-remote-port-forward: 1.0.4
+      tar-fs: 3.1.1
+      tmp: 0.2.5
+      undici: 7.16.0
+    transitivePeerDependencies:
+      - bare-buffer
+      - supports-color
+
   text-decoder@1.2.3:
     dependencies:
       b4a: 1.6.7
@@ -12932,6 +13250,8 @@ snapshots:
       os-tmpdir: 1.0.2
 
   tmp@0.2.3: {}
+
+  tmp@0.2.5: {}
 
   tmpl@1.0.5: {}
 
@@ -13061,13 +13381,16 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici-types@7.8.0: {}
+  undici-types@7.8.0:
+    optional: true
 
   undici@5.29.0:
     dependencies:
       '@fastify/busboy': 2.1.1
 
   undici@7.11.0: {}
+
+  undici@7.16.0: {}
 
   unist-util-stringify-position@2.0.3:
     dependencies:

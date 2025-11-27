@@ -44,19 +44,13 @@ export const make: (
   never,
   HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
+  const clock = yield* Effect.clock
   const scope = yield* Effect.scope
   const exportInterval = Duration.decode(options.exportInterval)
+  let disabledUntil: number | undefined = undefined
 
   const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient).pipe(
-    HttpClient.tapError((error) => {
-      if (error._tag !== "ResponseError" || error.response.status !== 429) {
-        return Effect.void
-      }
-      const retryAfter = error.response.headers["retry-after"]
-      const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : 5
-      return Effect.sleep(Duration.seconds(retryAfterSeconds))
-    }),
-    HttpClient.retryTransient({ schedule: policy })
+    HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
   let headers = Headers.unsafeFromRecord({
@@ -69,6 +63,11 @@ export const make: (
   const request = HttpClientRequest.post(options.url, { headers })
   let buffer: Array<any> = []
   const runExport = Effect.suspend(() => {
+    if (disabledUntil !== undefined && clock.unsafeCurrentTimeMillis() < disabledUntil) {
+      return Effect.void
+    } else if (disabledUntil !== undefined) {
+      disabledUntil = undefined
+    }
     const items = buffer
     if (options.maxBatchSize !== "disabled") {
       if (buffer.length === 0) {
@@ -82,7 +81,13 @@ export const make: (
       Effect.asVoid,
       Effect.withTracerEnabled(false)
     )
-  })
+  }).pipe(
+    Effect.catchAllCause((cause) => {
+      if (disabledUntil !== undefined) return Effect.void
+      disabledUntil = clock.unsafeCurrentTimeMillis() + Duration.toMillis("1 minute")
+      return Effect.logDebug(`Disabling ${options.label} for 60 seconds`, cause)
+    })
+  )
 
   yield* Scope.addFinalizer(
     scope,
@@ -93,15 +98,9 @@ export const make: (
     )
   )
 
-  let disabled = false
-
   yield* Effect.sleep(exportInterval).pipe(
     Effect.zipRight(runExport),
     Effect.forever,
-    Effect.catchAllCause((cause) => {
-      disabled = true
-      return Effect.logDebug("Failed to export", cause)
-    }),
     Effect.annotateLogs({
       package: "@effect/opentelemetry",
       module: options.label
@@ -115,7 +114,7 @@ export const make: (
   )
   return {
     push(data) {
-      if (disabled) return
+      if (disabledUntil !== undefined) return
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
         runFork(runExport)

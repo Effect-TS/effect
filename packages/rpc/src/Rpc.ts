@@ -143,7 +143,10 @@ export interface Rpc<
 export interface Handler<Tag extends string> {
   readonly _: unique symbol
   readonly tag: Tag
-  readonly handler: (request: any, headers: Headers) => Effect<any, any> | Stream<any, any>
+  readonly handler: (request: any, options: {
+    readonly clientId: number
+    readonly headers: Headers
+  }) => Effect<any, any> | Stream<any, any>
   readonly context: Context<never>
 }
 
@@ -189,6 +192,19 @@ export type Tag<R> = R extends Rpc<
  * @since 1.0.0
  * @category models
  */
+export type SuccessSchema<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Success
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
 export type Success<R> = R extends Rpc<
   infer _Tag,
   infer _Payload,
@@ -215,15 +231,16 @@ export type SuccessEncoded<R> = R extends Rpc<
  * @since 1.0.0
  * @category models
  */
-export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+export type SuccessExit<R> = SuccessSchema<R> extends infer S ?
+  S extends RpcSchema.Stream<infer _A, infer _E> ? void : Schema.Schema.Type<S>
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type SuccessExitEncoded<R> = SuccessEncoded<R> extends infer T ?
-  T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+export type SuccessExitEncoded<R> = SuccessSchema<R> extends infer S ?
+  S extends RpcSchema.Stream<infer _A, infer _E> ? void : Schema.Schema.Encoded<S>
   : never
 
 /**
@@ -266,14 +283,15 @@ export type ErrorEncoded<R> = Schema.Schema.Encoded<ErrorSchema<R>>
  * @since 1.0.0
  * @category models
  */
-export type ErrorExit<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _E | Error<R> : Error<R>
+export type ErrorExit<R> = SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ? _E["Type"] | Error<R>
+  : Error<R>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type ErrorExitEncoded<R> = SuccessEncoded<R> extends Stream<infer _A, infer _E, infer _Env>
-  ? _E | ErrorEncoded<R>
+export type ErrorExitEncoded<R> = SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ?
+  _E["Encoded"] | ErrorEncoded<R>
   : ErrorEncoded<R>
 
 /**
@@ -416,8 +434,11 @@ export type ToHandler<R extends Any> = R extends Rpc<
  */
 export type ToHandlerFn<Current extends Any, R = any> = (
   payload: Payload<Current>,
-  headers: Headers
-) => ResultFrom<Current, R> | Fork<ResultFrom<Current, R>>
+  options: {
+    readonly clientId: number
+    readonly headers: Headers
+  }
+) => ResultFrom<Current, R> | Wrapper<ResultFrom<Current, R>>
 
 /**
  * @since 1.0.0
@@ -734,24 +755,55 @@ export const exitSchema = <R extends Any>(
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const ForkTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Fork")
+export const WrapperTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Wrapper")
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export type ForkTypeId = typeof ForkTypeId
+export type WrapperTypeId = typeof WrapperTypeId
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export interface Fork<A> {
-  readonly [ForkTypeId]: ForkTypeId
+export interface Wrapper<A> {
+  readonly [WrapperTypeId]: WrapperTypeId
   readonly value: A
+  readonly fork: boolean
+  readonly uninterruptible: boolean
 }
+
+/**
+ * @since 1.0.0
+ * @category Wrapper
+ */
+export const isWrapper = (u: object): u is Wrapper<any> => WrapperTypeId in u
+
+/**
+ * @since 1.0.0
+ * @category Wrapper
+ */
+export const wrap = (options: {
+  readonly fork?: boolean | undefined
+  readonly uninterruptible?: boolean | undefined
+}) =>
+<A extends object>(value: A): A extends Wrapper<infer _> ? A : Wrapper<A> =>
+  (isWrapper(value) ?
+    {
+      [WrapperTypeId]: WrapperTypeId,
+      value: value.value,
+      fork: options.fork ?? value.fork,
+      uninterruptible: options.uninterruptible ?? value.uninterruptible
+    } :
+    {
+      [WrapperTypeId]: WrapperTypeId,
+      value,
+      fork: options.fork ?? false,
+      uninterruptible: options.uninterruptible ?? false
+    }) as any
 
 /**
  * You can use `fork` to wrap a response Effect or Stream, to ensure that the
@@ -759,12 +811,17 @@ export interface Fork<A> {
  * setting.
  *
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const fork = <A>(value: A): Fork<A> => ({ [ForkTypeId]: ForkTypeId, value })
+export const fork: <A extends object>(value: A) => A extends Wrapper<infer _> ? A : Wrapper<A> = wrap({ fork: true })
 
 /**
+ * You can use `uninterruptible` to wrap a response Effect or Stream, to ensure
+ * that it is executed inside an uninterruptible region.
+ *
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const isFork = (u: object): u is Fork<any> => ForkTypeId in u
+export const uninterruptible: <A extends object>(value: A) => A extends Wrapper<infer _> ? A : Wrapper<A> = wrap({
+  uninterruptible: true
+})

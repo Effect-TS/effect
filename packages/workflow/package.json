@@ -1,7 +1,7 @@
 {
   "name": "@effect/workflow",
   "type": "module",
-  "version": "0.5.1",
+  "version": "0.13.0",
   "description": "Durable workflows for Effect",
   "publishConfig": {
     "access": "public",
@@ -34,11 +34,13 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/rpc": "workspace:^"
   },
   "devDependencies": {
     "effect": "workspace:^",
+    "@effect/experimental": "workspace:^",
     "@effect/platform": "workspace:^",
     "@effect/rpc": "workspace:^"
   }

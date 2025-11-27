@@ -7,7 +7,7 @@ import * as Effectable from "effect/Effectable"
 import type { LazyArg } from "effect/Function"
 import { constant, constVoid, dual } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
-import type * as Option from "effect/Option"
+import * as Option from "effect/Option"
 import { hasProperty } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
@@ -285,10 +285,18 @@ export const param: {
   <Name extends string, S extends Schema.Schema.Any | Schema.PropertySignature.Any>(
     name: Name,
     schema: S
-  ): Param<Name, S> =>
-    schema.annotations({
+  ): Param<Name, S> => {
+    const annotations: Record<string | symbol, unknown> = {
       [AnnotationParam]: { name, schema }
-    }) as any
+    }
+    if (Schema.isSchema(schema)) {
+      const identifier = AST.getIdentifierAnnotation(schema.ast)
+      if (Option.isSome(identifier)) {
+        annotations[AST.IdentifierAnnotationId] = identifier.value
+      }
+    }
+    return schema.annotations(annotations) as any
+  }
 )
 
 /**

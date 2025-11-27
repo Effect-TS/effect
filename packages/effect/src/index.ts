@@ -351,6 +351,12 @@ export * as Function from "./Function.js"
 export * as GlobalValue from "./GlobalValue.js"
 
 /**
+ * @experimental
+ * @since 3.18.0
+ */
+export * as Graph from "./Graph.js"
+
+/**
  * @since 2.0.0
  */
 export * as GroupBy from "./GroupBy.js"
@@ -369,6 +375,12 @@ export * as Hash from "./Hash.js"
  * @since 2.0.0
  */
 export * as HashMap from "./HashMap.js"
+
+/**
+ * @since 3.19.0
+ * @experimental
+ */
+export * as HashRing from "./HashRing.js"
 
 /**
  * # HashSet
@@ -1077,6 +1089,12 @@ export * as Ordering from "./Ordering.js"
  * @since 3.10.0
  */
 export * as ParseResult from "./ParseResult.js"
+
+/**
+ * @since 3.19.4
+ * @experimental
+ */
+export * as PartitionedSemaphore from "./PartitionedSemaphore.js"
 
 /**
  * @since 2.0.0

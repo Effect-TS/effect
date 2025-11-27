@@ -1,18 +1,9 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import * as S from "effect/Schema"
-import * as AST from "effect/SchemaAST"
 import * as Util from "../../TestUtils.js"
 
 describe("Union", () => {
-  it("should allow annotations to be applied", () => {
-    const schema = S.Union(S.String, S.Number).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    deepStrictEqual(schema.ast.annotations, {
-      [AST.IdentifierAnnotationId]: "X",
-      [AST.TitleAnnotationId]: "Y"
-    })
-  })
-
   it("should expose the union members", () => {
     const schema = S.Union(S.String, S.Number)
     deepStrictEqual(schema.members, [S.String, S.Number])

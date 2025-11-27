@@ -49,7 +49,7 @@ import type * as MetricLabel from "./MetricLabel.js"
 import type * as Option from "./Option.js"
 import type { Pipeable } from "./Pipeable.js"
 import type { Predicate, Refinement } from "./Predicate.js"
-import type * as Random from "./Random.js"
+import * as Random from "./Random.js"
 import type * as Ref from "./Ref.js"
 import * as Request from "./Request.js"
 import type { RequestBlock } from "./RequestBlock.js"
@@ -184,13 +184,13 @@ declare module "./Context.js" {
  * @category Models
  */
 declare module "./Either.js" {
-  interface Left<L, R> extends Effect<R, L> {
+  interface Left<E, A> extends Effect<A, E> {
     readonly _tag: "Left"
-    [Symbol.iterator](): EffectGenerator<Left<L, R>>
+    [Symbol.iterator](): EffectGenerator<Left<E, A>>
   }
-  interface Right<L, R> extends Effect<R, L> {
+  interface Right<E, A> extends Effect<A, E> {
     readonly _tag: "Right"
-    [Symbol.iterator](): EffectGenerator<Right<L, R>>
+    [Symbol.iterator](): EffectGenerator<Right<E, A>>
   }
   interface EitherUnifyIgnore {
     Effect?: true
@@ -263,7 +263,7 @@ export declare namespace Effect {
     T extends Effect<infer _A, infer _E, infer _R> ? _A : never,
     T extends Effect<infer _A, infer _E, infer _R> ? _E : never,
     T extends Effect<infer _A, infer _E, infer _R> ? _R : never
-  >
+  > extends infer Q ? Q : never
 }
 
 /**
@@ -7541,7 +7541,7 @@ export const mapInputContext: {
  * @category Context
  */
 export const provide: {
-  <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+  <const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     layers: Layers
   ): <A, E, R>(
     self: Effect<A, E, R>
@@ -7559,7 +7559,7 @@ export const provide: {
   <E2, R2>(
     managedRuntime: ManagedRuntime.ManagedRuntime<R2, E2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, R2>>
-  <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+  <A, E, R, const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
     self: Effect<A, E, R>,
     layers: Layers
   ): Effect<
@@ -11573,6 +11573,33 @@ export const withRandom: {
 } = defaultServices.withRandom
 
 /**
+ * Executes the specified effect with a `Random` service that cycles through
+ * a provided array of values.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * Effect.gen(function*() {
+ *   console.log(yield* Random.next) // 0.2
+ *   console.log(yield* Random.next) // 0.5
+ *   console.log(yield* Random.next) // 0.8
+ * }).pipe(Effect.withRandomFixed([0.2, 0.5, 0.8]))
+ * ```
+ *
+ * @since 3.11.0
+ * @category Random
+ */
+export const withRandomFixed: {
+  <T extends RA.NonEmptyArray<any>>(values: T): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <T extends RA.NonEmptyArray<any>, A, E, R>(effect: Effect<A, E, R>, values: T): Effect<A, E, R>
+} = dual(
+  2,
+  <T extends RA.NonEmptyArray<any>, A, E, R>(effect: Effect<A, E, R>, values: T): Effect<A, E, R> =>
+    withRandom(effect, Random.fixed(values))
+)
+
+/**
  * Sets the implementation of the `Random` service to the specified value and
  * restores it to its original value when the scope is closed.
  *
@@ -11743,6 +11770,11 @@ export interface Permit {
  * @since 2.0.0
  */
 export interface Semaphore {
+  /**
+   * Adjusts the number of permits available in the semaphore.
+   */
+  resize(permits: number): Effect<void>
+
   /**
    * Runs an effect with the given number of permits and releases the permits
    * when the effect completes.
@@ -13417,7 +13449,14 @@ const makeTagProxy = (TagClass: Context.Tag<any, any> & Record<PropertyKey, any>
       const cn = core.andThen(target, (s: any) => s[prop])
       // @effect-diagnostics-next-line floatingEffect:off
       Object.assign(fn, cn)
-      Object.setPrototypeOf(fn, Object.getPrototypeOf(cn))
+      const apply = fn.apply
+      const bind = fn.bind
+      const call = fn.call
+      const proto = Object.setPrototypeOf({}, Object.getPrototypeOf(cn))
+      proto.apply = apply
+      proto.bind = bind
+      proto.call = call
+      Object.setPrototypeOf(fn, proto)
       cache.set(prop, fn)
       return fn
     }
@@ -13907,6 +13946,11 @@ export declare namespace Service {
  * @category Models
  */
 export namespace fn {
+  /**
+   * @since 3.19.0
+   * @category Models
+   */
+  export type Return<A, E = never, R = never> = Generator<YieldWrap<Effect<any, E, R>>, A, any>
   /**
    * @since 3.11.0
    * @category Models
@@ -14713,3 +14757,53 @@ function fnApply(options: {
  * @category Tracing
  */
 export const fnUntraced: fn.Untraced = core.fnUntraced
+
+// -----------------------------------------------------------------------------
+// Type constraints
+// -----------------------------------------------------------------------------
+
+/**
+ * A no-op type constraint that enforces the success channel of an Effect conforms to
+ * the specified success type `A`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not expose any unhandled errors.
+ * const program = Effect.succeed(42).pipe(Effect.ensureSuccessType<number>())
+ *
+ * @since 3.17.0
+ * @category Type constraints
+ */
+export const ensureSuccessType = <A>() => <A2 extends A, E, R>(effect: Effect<A2, E, R>): Effect<A2, E, R> => effect
+
+/**
+ * A no-op type constraint that enforces the error channel of an Effect conforms to
+ * the specified error type `E`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not expose any unhandled errors.
+ * const program = Effect.succeed(42).pipe(Effect.ensureErrorType<never>())
+ *
+ * @since 3.17.0
+ * @category Type constraints
+ */
+export const ensureErrorType = <E>() => <A, E2 extends E, R>(effect: Effect<A, E2, R>): Effect<A, E2, R> => effect
+
+/**
+ * A no-op type constraint that enforces the requirements channel of an Effect conforms to
+ * the specified requirements type `R`.
+ *
+ * @example
+ * import { Effect } from "effect"
+ *
+ * // Ensure that the program does not have any requirements.
+ * const program = Effect.succeed(42).pipe(Effect.ensureRequirementsType<never>())
+ *
+ * @since 3.17.0
+ * @category Type constraints
+ */
+export const ensureRequirementsType = <R>() => <A, E, R2 extends R>(effect: Effect<A, E, R2>): Effect<A, E, R2> =>
+  effect

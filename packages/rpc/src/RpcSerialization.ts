@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import { Msgpackr } from "@effect/platform/MsgPack"
 import * as Context from "effect/Context"
 import * as Layer from "effect/Layer"
 import { hasProperty } from "effect/Predicate"
+import * as Msgpackr from "msgpackr"
 import type * as RpcMessage from "./RpcMessage.js"
 
 /**
@@ -318,6 +318,8 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
           data: response.defect
         }
       }
+    case "ClientProtocolError":
+      return {} as never
   }
 }
 
@@ -360,8 +362,29 @@ export const msgPack: RpcSerialization["Type"] = RpcSerialization.of({
     const unpackr = new Msgpackr.Unpackr()
     const packr = new Msgpackr.Packr()
     const encoder = new TextEncoder()
+    let incomplete: Uint8Array | undefined = undefined
     return {
-      decode: (bytes) => unpackr.unpackMultiple(typeof bytes === "string" ? encoder.encode(bytes) : bytes),
+      decode: (bytes) => {
+        let buf = typeof bytes === "string" ? encoder.encode(bytes) : bytes
+        if (incomplete !== undefined) {
+          const prev = buf
+          bytes = new Uint8Array(incomplete.length + buf.length)
+          bytes.set(incomplete)
+          bytes.set(prev, incomplete.length)
+          buf = bytes
+          incomplete = undefined
+        }
+        try {
+          return unpackr.unpackMultiple(buf)
+        } catch (error_) {
+          const error = error_ as any
+          if (error.incomplete) {
+            incomplete = buf.subarray(error.lastPosition)
+            return error.values ?? []
+          }
+          return []
+        }
+      },
       encode: (response) => packr.pack(response)
     }
   }

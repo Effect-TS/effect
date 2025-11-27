@@ -8,8 +8,8 @@ import { describe, expect, it } from "@effect/vitest"
 import { Array, Console, Effect, FiberRef, Layer, LogLevel } from "effect"
 import * as MockConsole from "./services/MockConsole.js"
 
-const MainLive = Effect.gen(function*(_) {
-  const console = yield* _(MockConsole.make)
+const MainLive = Effect.gen(function*() {
+  const console = yield* MockConsole.make
   return Layer.mergeAll(
     Console.setConsole(console),
     NodeContext.layer
@@ -95,6 +95,22 @@ describe("CliApp", () => {
           version: "1.0.0"
         })
         yield* cli(["node", "logging.js", "--log-level", "debug"])
+        expect(logLevel).toEqual(LogLevel.Debug)
+      }).pipe(runEffect))
+
+    it("should set the minimum log level when using equals syntax (--log-level=...)", () =>
+      Effect.gen(function*() {
+        let logLevel: LogLevel.LogLevel | undefined = undefined
+        const logging = Command.make("logging").pipe(Command.withHandler(() =>
+          Effect.gen(function*() {
+            logLevel = yield* FiberRef.get(FiberRef.currentMinimumLogLevel)
+          })
+        ))
+        const cli = Command.run(logging, {
+          name: "Test",
+          version: "1.0.0"
+        })
+        yield* cli(["node", "logging.js", "--log-level=debug"])
         expect(logLevel).toEqual(LogLevel.Debug)
       }).pipe(runEffect))
   })

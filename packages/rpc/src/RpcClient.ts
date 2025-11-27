@@ -35,6 +35,7 @@ import type { Span } from "effect/Tracer"
 import type { Mutable } from "effect/Types"
 import { withRun } from "./internal/utils.js"
 import * as Rpc from "./Rpc.js"
+import { RpcClientError } from "./RpcClientError.js"
 import type * as RpcGroup from "./RpcGroup.js"
 import type { FromClient, FromClientEncoded, FromServer, FromServerEncoded, Request } from "./RpcMessage.js"
 import { constPing, RequestId } from "./RpcMessage.js"
@@ -99,7 +100,7 @@ export declare namespace RpcClient {
       const Discard = false
     >(
       input: Rpc.PayloadConstructor<Current>,
-      options?: Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R> ? {
+      options?: [Rpc.SuccessSchema<Current>] extends [RpcSchema.Stream<infer _A, infer _E>] ? {
           readonly asMailbox?: AsMailbox | undefined
           readonly streamBufferSize?: number | undefined
           readonly headers?: Headers.Input | undefined
@@ -192,7 +193,7 @@ export declare namespace RpcClient {
  * @since 1.0.0
  * @category client
  */
-export type FromGroup<Group> = RpcClient<RpcGroup.Rpcs<Group>>
+export type FromGroup<Group, E = never> = RpcClient<RpcGroup.Rpcs<Group>, E>
 
 let requestIdCounter = BigInt(0)
 
@@ -267,9 +268,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   let isShutdown = false
   yield* Scope.addFinalizer(
     scope,
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       isShutdown = true
-      return clearEntries(Exit.interrupt(fiberId))
+      return clearEntries(Exit.interrupt(fiberIdTransientInterrupt))
     })
   )
 
@@ -364,6 +365,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         runtimeFlags: Runtime.defaultRuntime.runtimeFlags
       })
       let fiber: Fiber.RuntimeFiber<any, any>
+      let completed = false
       return Effect.onInterrupt(
         Effect.async<any, any>((resume) => {
           const entry: ClientEntry = {
@@ -371,6 +373,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             rpc,
             context,
             resume(exit) {
+              completed = true
               resume(exit)
               if (fiber && !fiber.unsafePoll()) {
                 parentFiber.currentScheduler.scheduleTask(() => {
@@ -398,6 +401,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           })
         }),
         (interruptors) => {
+          if (completed) return Effect.void
           entries.delete(id)
           const ids = Array.from(interruptors).flatMap((id) => Array.from(FiberId.toSet(id)))
           return Effect.zipRight(
@@ -600,6 +604,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   return { client, write } as const
 })
 
+const fiberIdTransientInterrupt = FiberId.make(-503, 0) as FiberId.Runtime
+
 /**
  * @since 1.0.0
  * @category client
@@ -614,7 +620,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly flatten?: Flatten | undefined
   } | undefined
 ) => Effect.Effect<
-  Flatten extends true ? RpcClient.Flat<Rpcs> : RpcClient<Rpcs>,
+  Flatten extends true ? RpcClient.Flat<Rpcs, RpcClientError> : RpcClient<Rpcs, RpcClientError>,
   never,
   Protocol | Rpc.MiddlewareClient<Rpcs> | Scope.Scope
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any, const Flatten extends boolean = false>(
@@ -672,7 +678,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
                 headers: Object.entries(message.headers)
               }, collector && collector.unsafeClear())
             )
-          ) as Effect.Effect<void>
+          ) as Effect.Effect<void, RpcClientError>
         }
         case "Ack": {
           const entry = entries.get(message.requestId)
@@ -680,7 +686,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           return send({
             _tag: "Ack",
             requestId: String(message.requestId)
-          }) as Effect.Effect<void>
+          }) as Effect.Effect<void, RpcClientError>
         }
         case "Interrupt": {
           const entry = entries.get(message.requestId)
@@ -689,7 +695,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           return send({
             _tag: "Interrupt",
             requestId: String(message.requestId)
-          }) as Effect.Effect<void>
+          }) as Effect.Effect<void, RpcClientError>
         }
         case "Eof": {
           return Effect.void
@@ -735,7 +741,18 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         ) as Effect.Effect<void>
       }
       case "Defect": {
+        entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect) })
+      }
+      case "ClientProtocolError": {
+        const exit = Exit.fail(message.error)
+        return Effect.forEach(
+          entries.keys(),
+          (requestId) => {
+            entries.delete(requestId)
+            return write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
+          }
+        )
       }
       default: {
         return Effect.void
@@ -803,7 +820,7 @@ export class Protocol extends Context.Tag("@effect/rpc/RpcClient/Protocol")<Prot
   readonly send: (
     request: FromClientEncoded,
     transferables?: ReadonlyArray<globalThis.Transferable>
-  ) => Effect.Effect<void>
+  ) => Effect.Effect<void, RpcClientError>
   readonly supportsAck: boolean
   readonly supportsTransferables: boolean
 }>() {
@@ -826,7 +843,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
     const serialization = yield* RpcSerialization.RpcSerialization
     const isJson = serialization.contentType === "application/json"
 
-    const send = (request: FromClientEncoded): Effect.Effect<void> => {
+    const send = (request: FromClientEncoded): Effect.Effect<void, RpcClientError> => {
       if (request._tag !== "Request") {
         return Effect.void
       }
@@ -841,7 +858,13 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
       if (isJson) {
         return client.post("", { body }).pipe(
           Effect.flatMap((r) => r.json),
-          Effect.scoped,
+          Effect.mapError((cause) =>
+            new RpcClientError({
+              reason: "Protocol",
+              message: "Failed to send HTTP request",
+              cause
+            })
+          ),
           Effect.flatMap((u) => {
             if (!Array.isArray(u)) {
               return Effect.dieMessage(`Expected an array of responses, but got: ${u}`)
@@ -852,8 +875,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
               body: () => writeResponse(u[i++]),
               step: constVoid
             })
-          }),
-          Effect.orDie
+          })
         )
       }
 
@@ -870,7 +892,13 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
             })
           })
         ),
-        Effect.orDie
+        Effect.mapError((cause) =>
+          new RpcClientError({
+            reason: "Protocol",
+            message: "Failed to send HTTP request",
+            cause
+          })
+        )
       )
     }
 
@@ -906,6 +934,7 @@ export const layerProtocolHttp = (options: {
  */
 export const makeProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Effect.Effect<
   Protocol["Type"],
   never,
@@ -914,12 +943,14 @@ export const makeProtocolSocket = (options?: {
   Protocol.make(Effect.fnUntraced(function*(writeResponse) {
     const socket = yield* Socket.Socket
     const serialization = yield* RpcSerialization.RpcSerialization
-
     const write = yield* socket.writer
-
     let parser = serialization.unsafeMake()
-
     const pinger = yield* makePinger(write(parser.encode(constPing)!))
+
+    let currentError: RpcClientError | undefined
+    const clearCurrentError = Effect.sync(() => {
+      currentError = undefined
+    })
 
     yield* Effect.suspend(() => {
       parser = serialization.unsafeMake()
@@ -941,9 +972,16 @@ export const makeProtocolSocket = (options?: {
             step: constVoid
           })
         } catch (defect) {
-          return writeResponse({ _tag: "Defect", defect })
+          return writeResponse({
+            _tag: "ClientProtocolError",
+            error: new RpcClientError({
+              reason: "Protocol",
+              message: "Error decoding message",
+              cause: Cause.fail(defect)
+            })
+          })
         }
-      }).pipe(
+      }, { onOpen: clearCurrentError }).pipe(
         Effect.raceFirst(Effect.zipRight(
           pinger.timeout,
           Effect.fail(
@@ -969,9 +1007,17 @@ export const makeProtocolSocket = (options?: {
         ) {
           return Effect.void
         }
-        return writeResponse({ _tag: "Defect", defect: Cause.squash(cause) })
+        currentError = new RpcClientError({
+          reason: "Protocol",
+          message: "Error in socket",
+          cause: Cause.squash(cause)
+        })
+        return writeResponse({
+          _tag: "ClientProtocolError",
+          error: currentError
+        })
       }),
-      Effect.retry(Schedule.spaced(1000)),
+      Effect.retry(options?.retrySchedule ?? defaultRetrySchedule),
       Effect.annotateLogs({
         module: "RpcClient",
         method: "makeProtocolSocket"
@@ -982,6 +1028,9 @@ export const makeProtocolSocket = (options?: {
 
     return {
       send(request) {
+        if (currentError) {
+          return Effect.fail(currentError)
+        }
         const encoded = parser.encode(request)
         if (encoded === undefined) return Effect.void
         return Effect.orDie(write(encoded))
@@ -990,6 +1039,10 @@ export const makeProtocolSocket = (options?: {
       supportsTransferables: false
     }
   }))
+
+const defaultRetrySchedule = Schedule.exponential(500, 1.5).pipe(
+  Schedule.union(Schedule.spaced(5000))
+)
 
 const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>) {
   let recievedPong = true
@@ -1073,7 +1126,16 @@ export const makeProtocolWorker = (
         }
         return writeResponse(response)
       }).pipe(
-        Effect.tapErrorCause((cause) => writeResponse({ _tag: "Defect", defect: Cause.squash(cause) })),
+        Effect.tapErrorCause((cause) =>
+          writeResponse({
+            _tag: "ClientProtocolError",
+            error: new RpcClientError({
+              reason: "Protocol",
+              message: "Error in worker",
+              cause: Cause.squash(cause)
+            })
+          })
+        ),
         Effect.retry(Schedule.spaced(1000)),
         Effect.annotateLogs({
           module: "RpcClient",
@@ -1182,6 +1244,7 @@ export const layerProtocolWorker = (
  */
 export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Layer.Layer<
   Protocol,
   never,

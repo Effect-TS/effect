@@ -2,6 +2,7 @@ import { Headers } from "@effect/platform"
 import { RpcTest } from "@effect/rpc"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
+import type { RpcClientError } from "@effect/rpc/RpcClientError"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcMiddleware from "@effect/rpc/RpcMiddleware"
 import * as RpcSchema from "@effect/rpc/RpcSchema"
@@ -108,7 +109,7 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
     GetUserOption: Effect.fnUntraced(function*(req) {
       return Option.some(new User({ id: req.id, name: "John" }))
     }),
-    StreamUsers: Effect.fnUntraced(function*(req) {
+    StreamUsers: Effect.fnUntraced(function*(req, _) {
       const mailbox = yield* Mailbox.make<User>(0)
 
       yield* Effect.addFinalizer(() =>
@@ -159,7 +160,7 @@ const AuthClient = RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
 
 export class UsersClient extends Context.Tag("UsersClient")<
   UsersClient,
-  RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>>
+  RpcClient.RpcClient<RpcGroup.Rpcs<typeof UserRpcs>, RpcClientError>
 >() {
   static layer = Layer.scoped(UsersClient, RpcClient.make(UserRpcs)).pipe(
     Layer.provide(AuthClient)

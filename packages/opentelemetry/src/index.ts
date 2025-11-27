@@ -20,7 +20,6 @@ export * as Otlp from "./Otlp.js"
 
 /**
  * @since 1.0.0
- * @category Constructors
  */
 export * as OtlpLogger from "./OtlpLogger.js"
 

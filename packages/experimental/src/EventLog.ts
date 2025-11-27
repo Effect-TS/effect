@@ -1,6 +1,8 @@
 /**
  * @since 1.0.0
  */
+import type * as Error from "@effect/platform/Error"
+import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -8,11 +10,13 @@ import * as FiberMap from "effect/FiberMap"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import type * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
 import type * as Record from "effect/Record"
-import type * as Redacted from "effect/Redacted"
+import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
 import type { Covariant } from "effect/Types"
@@ -269,7 +273,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
       payload: Event.PayloadWithTag<Events, Tag>
     ) => Effect.Effect<void>
   }) => Effect.Effect<void, never, R>
-): Layer.Layer<never, never, EventLog | R | Event.Context<Events>> =>
+): Layer.Layer<never, never, Identity | EventJournal | R | Event.Context<Events>> =>
   Effect.gen(function*() {
     const log = yield* EventLog
     const context = yield* Effect.context<R | Event.Context<Events>>()
@@ -337,7 +341,10 @@ export const groupCompaction = <Events extends Event.Any, R>(
         }
       })
     })
-  }).pipe(Layer.scopedDiscard)
+  }).pipe(
+    Layer.scopedDiscard,
+    Layer.provide(layerEventLog)
+  )
 
 /**
  * @since 1.0.0
@@ -348,7 +355,7 @@ export const groupReactivity = <Events extends Event.Any>(
   keys:
     | { readonly [Tag in Event.Tag<Events>]?: ReadonlyArray<string> }
     | ReadonlyArray<string>
-): Layer.Layer<never, never, EventLog> =>
+): Layer.Layer<never, never, Identity | EventJournal> =>
   Effect.gen(function*() {
     const log = yield* EventLog
     if (!Array.isArray(keys)) {
@@ -360,7 +367,10 @@ export const groupReactivity = <Events extends Event.Any>(
       obj[tag] = keys
     }
     yield* log.registerReactivity(obj)
-  }).pipe(Layer.scopedDiscard)
+  }).pipe(
+    Layer.scopedDiscard,
+    Layer.provide(layerEventLog)
+  )
 
 /**
  * @since 1.0.0
@@ -398,7 +408,62 @@ export class Registry extends Context.Tag("@effect/experimental/EventLog/Registr
 export class Identity extends Context.Tag("@effect/experimental/EventLog/Identity")<Identity, {
   readonly publicKey: string
   readonly privateKey: Redacted.Redacted<Uint8Array>
-}>() {}
+}>() {
+  /**
+   * @since 1.0.0
+   */
+  static makeRandom() {
+    return Identity.of({
+      publicKey: crypto.randomUUID(),
+      privateKey: Redacted.make(crypto.getRandomValues(new Uint8Array(32)))
+    })
+  }
+  /**
+   * @since 1.0.0
+   */
+  static readonly Schema = Schema.Struct({
+    publicKey: Schema.String,
+    privateKey: Schema.Redacted(Schema.Uint8ArrayFromBase64)
+  })
+  /**
+   * @since 1.0.0
+   */
+  static readonly SchemaFromString = Schema.StringFromBase64Url.pipe(
+    Schema.compose(Schema.parseJson(this.Schema))
+  )
+
+  /**
+   * @since 1.0.0
+   */
+  static decodeString = (s: string): Identity["Type"] => Schema.decodeSync(Identity.SchemaFromString)(s)
+  /**
+   * @since 1.0.0
+   */
+  static encodeString = (identity: Identity["Type"]): string => Schema.encodeSync(Identity.SchemaFromString)(identity)
+}
+
+/**
+ * Generates a random `Identity` and stores it in a `KeyValueStore`.
+ *
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerIdentityKvs = (options: {
+  readonly key: string
+}): Layer.Layer<Identity, ParseResult.ParseError | Error.PlatformError, KeyValueStore.KeyValueStore> =>
+  Layer.effect(
+    Identity,
+    Effect.gen(function*() {
+      const store = (yield* KeyValueStore.KeyValueStore).forSchema(Identity.Schema)
+      const current = yield* store.get(options.key)
+      if (Option.isSome(current)) {
+        return current.value
+      }
+      const identity = Identity.makeRandom()
+      yield* store.set(options.key, identity)
+      return identity
+    })
+  )
 
 /**
  * @since 1.0.0
@@ -444,8 +509,8 @@ const make = Effect.gen(function*() {
   const reactivity = yield* Reactivity.Reactivity
   const reactivityKeys: Record<string, ReadonlyArray<string>> = {}
 
-  const runRemote = (remote: EventLogRemote) =>
-    Effect.gen(function*() {
+  const runRemote = Effect.fnUntraced(
+    function*(remote: EventLogRemote) {
       const startSequence = yield* journal.nextRemoteSequence(remote.id)
       const changes = yield* remote.changes(identity, startSequence)
 
@@ -455,68 +520,69 @@ const make = Effect.gen(function*() {
             remoteId: remote.id,
             entries: Chunk.toReadonlyArray(entries),
             compact: compactors.size > 0 ?
-              (remoteEntries) =>
-                Effect.gen(function*() {
-                  let unprocessed = remoteEntries as Array<RemoteEntry>
-                  const brackets: Array<[Array<Entry>, Array<RemoteEntry>]> = []
-                  let uncompacted: Array<Entry> = []
-                  let uncompactedRemote: Array<RemoteEntry> = []
-                  while (true) {
-                    let i = 0
-                    for (; i < unprocessed.length; i++) {
-                      const remoteEntry = unprocessed[i]
-                      if (!compactors.has(remoteEntry.entry.event)) {
-                        uncompacted.push(remoteEntry.entry)
-                        uncompactedRemote.push(remoteEntry)
+              Effect.fnUntraced(function*(remoteEntries) {
+                let unprocessed = remoteEntries as Array<RemoteEntry>
+                const brackets: Array<[Array<Entry>, Array<RemoteEntry>]> = []
+                let uncompacted: Array<Entry> = []
+                let uncompactedRemote: Array<RemoteEntry> = []
+                while (true) {
+                  let i = 0
+                  for (; i < unprocessed.length; i++) {
+                    const remoteEntry = unprocessed[i]
+                    if (!compactors.has(remoteEntry.entry.event)) {
+                      uncompacted.push(remoteEntry.entry)
+                      uncompactedRemote.push(remoteEntry)
+                      continue
+                    }
+                    if (uncompacted.length > 0) {
+                      brackets.push([uncompacted, uncompactedRemote])
+                      uncompacted = []
+                      uncompactedRemote = []
+                    }
+                    const compactor = compactors.get(remoteEntry.entry.event)!
+                    const entry = remoteEntry.entry
+                    const entries = [entry]
+                    const remoteEntries = [remoteEntry]
+                    const compacted: Array<Entry> = []
+                    const currentEntries = unprocessed
+                    unprocessed = []
+                    for (let j = i + 1; j < currentEntries.length; j++) {
+                      const nextRemoteEntry = currentEntries[j]
+                      if (!compactor.events.has(nextRemoteEntry.entry.event)) {
+                        unprocessed.push(nextRemoteEntry)
                         continue
                       }
-                      if (uncompacted.length > 0) {
-                        brackets.push([uncompacted, uncompactedRemote])
-                        uncompacted = []
-                        uncompactedRemote = []
-                      }
-                      const compactor = compactors.get(remoteEntry.entry.event)!
-                      const entry = remoteEntry.entry
-                      const entries = [entry]
-                      const remoteEntries = [remoteEntry]
-                      const compacted: Array<Entry> = []
-                      const currentEntries = unprocessed
-                      unprocessed = []
-                      for (let j = i + 1; j < currentEntries.length; j++) {
-                        const nextRemoteEntry = currentEntries[j]
-                        if (!compactor.events.has(nextRemoteEntry.entry.event)) {
-                          unprocessed.push(nextRemoteEntry)
-                          continue
-                        }
-                        entries.push(nextRemoteEntry.entry)
-                        remoteEntries.push(nextRemoteEntry)
-                      }
-                      yield* compactor.effect({
-                        entries,
-                        write(entry) {
-                          return Effect.sync(() => {
-                            compacted.push(entry)
-                          })
-                        }
-                      })
-                      brackets.push([compacted, remoteEntries])
-                      break
+                      entries.push(nextRemoteEntry.entry)
+                      remoteEntries.push(nextRemoteEntry)
                     }
-                    if (i === unprocessed.length) {
-                      brackets.push([unprocessed.map((_) => _.entry), unprocessed])
-                      break
-                    }
+                    yield* compactor.effect({
+                      entries,
+                      write(entry) {
+                        return Effect.sync(() => {
+                          compacted.push(entry)
+                        })
+                      }
+                    })
+                    brackets.push([compacted, remoteEntries])
+                    break
                   }
-                  return brackets
-                }) :
+                  if (i === unprocessed.length) {
+                    brackets.push([unprocessed.map((_) => _.entry), unprocessed])
+                    break
+                  }
+                }
+                return brackets
+              }) :
               undefined,
-            effect: ({ conflicts, entry }) => {
-              const handler = handlers[entry.event]
-              if (!handler) return Effect.logDebug(`Event handler not found for: "${entry.event}"`)
-              const decodePayload = Schema.decode(
-                handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>
-              )
-              return Effect.gen(function*() {
+            effect: Effect.fnUntraced(
+              function*({ conflicts, entry }) {
+                const handler = handlers[entry.event]
+                if (!handler) {
+                  return yield* Effect.logDebug(`Event handler not found for: "${entry.event}"`)
+                }
+                const decodePayload = Schema.decode(
+                  handlers[entry.event].event.payloadMsgPack as unknown as Schema.Schema<any>
+                )
                 const decodedConflicts: Array<{ entry: Entry; payload: any }> = new Array(conflicts.length)
                 for (let i = 0; i < conflicts.length; i++) {
                   decodedConflicts[i] = {
@@ -536,15 +602,15 @@ const make = Effect.gen(function*() {
                     })
                   }
                 }
-              }).pipe(
-                Effect.catchAllCause(Effect.log),
-                Effect.annotateLogs({
+              },
+              Effect.catchAllCause(Effect.log),
+              (effect, { entry }) =>
+                Effect.annotateLogs(effect, {
                   service: "EventLog",
                   effect: "writeFromRemote",
                   entryId: entry.idString
                 })
-              )
-            }
+            )
           }).pipe(journalSemaphore.withPermits(1))
         ),
         Effect.catchAllCause(Effect.log),
@@ -565,11 +631,45 @@ const make = Effect.gen(function*() {
         Effect.catchAllCause(Effect.log),
         Effect.forever
       )
-    }).pipe(
-      Effect.scoped,
-      Effect.provideService(Identity, identity),
-      Effect.interruptible
+    },
+    Effect.scoped,
+    Effect.provideService(Identity, identity),
+    Effect.interruptible
+  )
+
+  const writeHandler = Effect.fnUntraced(function*(handler: Handlers.Item<any>, options: {
+    readonly schema: EventLogSchema<any>
+    readonly event: string
+    readonly payload: any
+  }) {
+    const payload = yield* Effect.orDie(
+      Schema.encode(handlers[options.event].event.payloadMsgPack as unknown as Schema.Schema<Uint8Array>)(
+        options.payload
+      )
     )
+    return yield* journalSemaphore.withPermits(1)(journal.write({
+      event: options.event,
+      primaryKey: handler.event.primaryKey(options.payload),
+      payload,
+      effect: (entry) =>
+        Effect.tap(
+          handler.handler({
+            payload: options.payload,
+            entry,
+            conflicts: []
+          }),
+          () => {
+            if (reactivityKeys[entry.event]) {
+              for (const key of reactivityKeys[entry.event]) {
+                reactivity.unsafeInvalidate({
+                  [key]: [entry.primaryKey]
+                })
+              }
+            }
+          }
+        )
+    }))
+  }, (effect, handler) => Effect.mapInputContext(effect, (context) => Context.merge(handler.context, context)))
 
   return EventLog.of({
     write: (options: {
@@ -581,46 +681,14 @@ const make = Effect.gen(function*() {
       if (handler === undefined) {
         return Effect.die(`Event handler not found for: "${options.event}"`)
       }
-      return Effect.gen(function*() {
-        const payload = yield* Effect.orDie(
-          Schema.encode(handlers[options.event].event.payloadMsgPack as unknown as Schema.Schema<Uint8Array>)(
-            options.payload
-          )
-        )
-        return yield* journalSemaphore.withPermits(1)(journal.write({
-          event: options.event,
-          primaryKey: handler.event.primaryKey(options.payload),
-          payload,
-          effect: (entry) =>
-            Effect.tap(
-              handler.handler({
-                payload: options.payload,
-                entry,
-                conflicts: []
-              }),
-              () => {
-                if (reactivityKeys[entry.event]) {
-                  for (const key of reactivityKeys[entry.event]) {
-                    reactivity.unsafeInvalidate({
-                      [key]: [entry.primaryKey]
-                    })
-                  }
-                }
-              }
-            )
-        }))
-      }).pipe(
-        Effect.mapInputContext((context) => Context.merge(handler.context, context))
-      )
+      return writeHandler(handler, options) as any
     },
     entries: journal.entries,
     registerRemote: (remote) =>
-      Effect.gen(function*() {
-        yield* Effect.acquireRelease(
-          FiberMap.run(remotes, remote.id, runRemote(remote)),
-          () => FiberMap.remove(remotes, remote.id)
-        )
-      }),
+      Effect.acquireRelease(
+        FiberMap.run(remotes, remote.id, runRemote(remote)),
+        () => FiberMap.remove(remotes, remote.id)
+      ),
     registerCompaction: (options) =>
       Effect.acquireRelease(
         Effect.sync(() => {

@@ -1,4 +1,3 @@
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Effect from "effect/Effect"
 import * as Effectable from "effect/Effectable"
 import * as FiberRef from "effect/FiberRef"
@@ -12,6 +11,9 @@ import type * as Tracer from "effect/Tracer"
 import type * as Connection from "../SqlConnection.js"
 import type * as Error from "../SqlError.js"
 import type * as Statement from "../Statement.js"
+
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_QUERY_TEXT = "db.query.text"
 
 /** @internal */
 export const FragmentId: Statement.FragmentId = Symbol.for(
@@ -108,7 +110,7 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
     f: (
       connection: Connection.Connection,
       sql: string,
-      params: ReadonlyArray<Statement.Primitive>
+      params: ReadonlyArray<unknown>
     ) => Effect.Effect<XA, E>,
     withoutTransform = false
   ): Effect.Effect<XA, E | Error.SqlError> {
@@ -121,8 +123,8 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(OtelSemConv.ATTR_DB_OPERATION_NAME, operation)
-          span.attribute(OtelSemConv.ATTR_DB_QUERY_TEXT, sql)
+          span.attribute(ATTR_DB_OPERATION_NAME, operation)
+          span.attribute(ATTR_DB_QUERY_TEXT, sql)
           return Effect.scoped(Effect.flatMap(this.acquirer, (_) => f(_, sql, params)))
         })
     )
@@ -153,15 +155,15 @@ export class StatementPrimitive<A> extends Effectable.Class<ReadonlyArray<A>, Er
           for (const [key, value] of this.spanAttributes) {
             span.attribute(key, value)
           }
-          span.attribute(OtelSemConv.ATTR_DB_OPERATION_NAME, "executeStream")
-          span.attribute(OtelSemConv.ATTR_DB_QUERY_TEXT, sql)
+          span.attribute(ATTR_DB_OPERATION_NAME, "executeStream")
+          span.attribute(ATTR_DB_QUERY_TEXT, sql)
           return Effect.map(this.acquirer, (_) => _.executeStream(sql, params, this.transformRows))
         })
     ))
   }
 
   get values(): Effect.Effect<
-    ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
+    ReadonlyArray<ReadonlyArray<unknown>>,
     Error.SqlError
   > {
     return this.withConnection("executeValues", (connection, sql, params) => connection.executeValues(sql, params))
@@ -205,7 +207,7 @@ class LiteralImpl implements Statement.Literal {
   readonly _tag = "Literal"
   constructor(
     readonly value: string,
-    readonly params?: ReadonlyArray<Statement.Primitive>
+    readonly params?: ReadonlyArray<unknown>
   ) {}
 }
 
@@ -216,12 +218,12 @@ class IdentifierImpl implements Statement.Identifier {
 
 class ParameterImpl implements Statement.Parameter {
   readonly _tag = "Parameter"
-  constructor(readonly value: Statement.Primitive) {}
+  constructor(readonly value: unknown) {}
 }
 
 class ArrayHelperImpl implements Statement.ArrayHelper {
   readonly _tag = "ArrayHelper"
-  constructor(readonly value: ReadonlyArray<Statement.Primitive>) {}
+  constructor(readonly value: ReadonlyArray<unknown>) {}
 }
 
 function identifierWrap(sql: string | Statement.Identifier | Statement.Fragment): string | Statement.Fragment {
@@ -235,7 +237,7 @@ function identifierWrap(sql: string | Statement.Identifier | Statement.Fragment)
 class RecordInsertHelperImpl implements Statement.RecordInsertHelper {
   readonly _tag = "RecordInsertHelper"
   constructor(
-    readonly value: ReadonlyArray<Record<string, Statement.Primitive>>,
+    readonly value: ReadonlyArray<Record<string, unknown>>,
     readonly returningIdentifier: string | Statement.Fragment | undefined
   ) {}
   returning(sql: string | Statement.Identifier | Statement.Fragment) {
@@ -246,7 +248,7 @@ class RecordInsertHelperImpl implements Statement.RecordInsertHelper {
 class RecordUpdateHelperImpl implements Statement.RecordUpdateHelper {
   readonly _tag = "RecordUpdateHelper"
   constructor(
-    readonly value: ReadonlyArray<Record<string, Statement.Primitive>>,
+    readonly value: ReadonlyArray<Record<string, unknown>>,
     readonly alias: string,
     readonly returningIdentifier: string | Statement.Fragment | undefined
   ) {}
@@ -258,7 +260,7 @@ class RecordUpdateHelperImpl implements Statement.RecordUpdateHelper {
 class RecordUpdateHelperSingleImpl implements Statement.RecordUpdateHelperSingle {
   readonly _tag = "RecordUpdateHelperSingle"
   constructor(
-    readonly value: Record<string, Statement.Primitive>,
+    readonly value: Record<string, unknown>,
     readonly omit: ReadonlyArray<string>,
     readonly returningIdentifier: string | Statement.Fragment | undefined
   ) {}
@@ -329,7 +331,7 @@ export const make = (
     {
       unsafe<A extends object = Connection.Row>(
         sql: string,
-        params?: ReadonlyArray<Statement.Primitive>
+        params?: ReadonlyArray<unknown>
       ) {
         return new StatementPrimitive<A>(
           [new LiteralImpl(sql, params)],
@@ -378,7 +380,7 @@ export const statement = (
   acquirer: Connection.Connection.Acquirer,
   compiler: Statement.Compiler,
   strings: TemplateStringsArray,
-  args: Array<Statement.Argument>,
+  args: Array<unknown>,
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
   transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
 ): Statement.Statement<Connection.Row> => {
@@ -408,7 +410,7 @@ export const statement = (
 /** @internal */
 export const unsafeFragment = (
   sql: string,
-  params?: ReadonlyArray<Statement.Primitive>
+  params?: ReadonlyArray<unknown>
 ): Statement.Fragment => new FragmentImpl([new LiteralImpl(sql, params)])
 
 function convertLiteralOrFragment(clause: string | Statement.Fragment): Array<Statement.Segment> {
@@ -418,8 +420,8 @@ function convertLiteralOrFragment(clause: string | Statement.Fragment): Array<St
   return clause.segments as Array<Statement.Segment>
 }
 
-function in_(values: ReadonlyArray<Statement.Primitive>): Statement.ArrayHelper
-function in_(column: string, values: ReadonlyArray<Statement.Primitive>): Statement.Fragment
+function in_(values: ReadonlyArray<unknown>): Statement.ArrayHelper
+function in_(column: string, values: ReadonlyArray<unknown>): Statement.Fragment
 function in_(): Statement.Fragment | Statement.ArrayHelper {
   if (arguments.length === 1) {
     return new ArrayHelperImpl(arguments[0])
@@ -509,25 +511,25 @@ class CompilerImpl implements Statement.Compiler {
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
-      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+      values: ReadonlyArray<ReadonlyArray<unknown>>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
     readonly onCustom: (
       type: Statement.Custom<string, unknown, unknown>,
       placeholder: (u: unknown) => string,
       withoutTransform: boolean
-    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+    ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
-      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+      values: ReadonlyArray<ReadonlyArray<unknown>>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Statement.Primitive>,
-      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+      values: ReadonlyArray<unknown>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
     readonly disableTransforms = false
   ) {}
 
@@ -535,7 +537,7 @@ class CompilerImpl implements Statement.Compiler {
     statement: Statement.Fragment,
     withoutTransform = false,
     placeholderOverride?: (u: unknown) => string
-  ): readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>] {
+  ): readonly [sql: string, binds: ReadonlyArray<unknown>] {
     withoutTransform = withoutTransform || this.disableTransforms
     const cacheSymbol = withoutTransform ? statementCacheNoTransformSymbol : statementCacheSymbol
     if (cacheSymbol in statement) {
@@ -546,7 +548,7 @@ class CompilerImpl implements Statement.Compiler {
     const len = segments.length
 
     let sql = ""
-    const binds: Array<Statement.Primitive> = []
+    const binds: Array<unknown> = []
     let placeholderCount = 0
     const placeholder = placeholderOverride ?? ((u: unknown) => this.parameterPlaceholder(++placeholderCount, u))
     const placeholderNoIncrement = (u: unknown) => this.parameterPlaceholder(placeholderCount, u)
@@ -585,10 +587,10 @@ class CompilerImpl implements Statement.Compiler {
           const keys = Object.keys(segment.value[0])
 
           if (this.onInsert) {
-            const values: Array<ReadonlyArray<Statement.Primitive>> = new Array(segment.value.length)
+            const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
             let placeholders = ""
             for (let i = 0; i < segment.value.length; i++) {
-              const row: Array<Statement.Primitive> = new Array(keys.length)
+              const row: Array<unknown> = new Array(keys.length)
               values[i] = row
               placeholders += i === 0 ? "(" : ",("
               for (let j = 0; j < keys.length; j++) {
@@ -703,10 +705,10 @@ class CompilerImpl implements Statement.Compiler {
 
         case "RecordUpdateHelper": {
           const keys = Object.keys(segment.value[0])
-          const values: Array<ReadonlyArray<Statement.Primitive>> = new Array(segment.value.length)
+          const values: Array<ReadonlyArray<unknown>> = new Array(segment.value.length)
           let placeholders = ""
           for (let i = 0; i < segment.value.length; i++) {
-            const row: Array<Statement.Primitive> = new Array(keys.length)
+            const row: Array<unknown> = new Array(keys.length)
             values[i] = row
             placeholders += i === 0 ? "(" : ",("
             for (let j = 0; j < keys.length; j++) {
@@ -773,25 +775,25 @@ export const makeCompiler = <C extends Statement.Custom<any, any, any, any> = an
       placeholders: string,
       alias: string,
       columns: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
-      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+      values: ReadonlyArray<ReadonlyArray<unknown>>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, params: ReadonlyArray<unknown>]
     readonly onCustom: (
       type: C,
       placeholder: (u: unknown) => string,
       withoutTransform: boolean
-    ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+    ) => readonly [sql: string, params: ReadonlyArray<unknown>]
     readonly onInsert?: (
       columns: ReadonlyArray<string>,
       placeholders: string,
-      values: ReadonlyArray<ReadonlyArray<Statement.Primitive>>,
-      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>]
+      values: ReadonlyArray<ReadonlyArray<unknown>>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, binds: ReadonlyArray<unknown>]
     readonly onRecordUpdateSingle?: (
       columns: ReadonlyArray<string>,
-      values: ReadonlyArray<Statement.Primitive>,
-      returning: readonly [sql: string, params: ReadonlyArray<Statement.Primitive>] | undefined
-    ) => readonly [sql: string, params: ReadonlyArray<Statement.Primitive>]
+      values: ReadonlyArray<unknown>,
+      returning: readonly [sql: string, params: ReadonlyArray<unknown>] | undefined
+    ) => readonly [sql: string, params: ReadonlyArray<unknown>]
   }
 ): Statement.Compiler =>
   new CompilerImpl(
@@ -844,7 +846,7 @@ export function defaultEscape(c: string) {
 }
 
 /** @internal */
-export const primitiveKind = (value: Statement.Primitive): Statement.PrimitiveKind => {
+export const primitiveKind = (value: unknown): Statement.PrimitiveKind => {
   switch (typeof value) {
     case "string":
       return "string"
@@ -868,19 +870,19 @@ export const primitiveKind = (value: Statement.Primitive): Statement.PrimitiveKi
     return "Int8Array"
   }
 
-  return "string"
+  return "object"
 }
 
 const extractPrimitive = (
-  value: Statement.Primitive | Statement.Fragment | undefined,
+  value: unknown,
   onCustom: (
     type: Statement.Custom<string, unknown, unknown>,
     placeholder: (u: unknown) => string,
     withoutTransform: boolean
-  ) => readonly [sql: string, binds: ReadonlyArray<Statement.Primitive>],
+  ) => readonly [sql: string, binds: ReadonlyArray<unknown>],
   placeholder: (u: unknown) => string,
   withoutTransform: boolean
-): Statement.Primitive => {
+): unknown => {
   if (value === undefined) {
     return null
   } else if (isFragment(value)) {

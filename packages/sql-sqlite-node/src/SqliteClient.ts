@@ -6,7 +6,6 @@ import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import Sqlite from "better-sqlite3"
 import * as Cache from "effect/Cache"
 import * as Config from "effect/Config"
@@ -17,6 +16,8 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
 /**
  * @category type ids
@@ -120,7 +121,7 @@ export const make = (
 
       const runStatement = (
         statement: Sqlite.Statement,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         raw: boolean
       ) =>
         Effect.withFiberRuntime<ReadonlyArray<any>, SqlError>((fiber) => {
@@ -140,7 +141,7 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         raw = false
       ) =>
         Effect.flatMap(
@@ -150,7 +151,7 @@ export const make = (
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>
+        params: ReadonlyArray<unknown>
       ) =>
         Effect.acquireUseRelease(
           prepareCache.get(sql),
@@ -160,7 +161,7 @@ export const make = (
                 if (statement.reader) {
                   statement.raw(true)
                   return statement.all(...params) as ReadonlyArray<
-                    ReadonlyArray<Statement.Primitive>
+                    ReadonlyArray<unknown>
                   >
                 }
                 statement.run(...params)
@@ -201,10 +202,13 @@ export const make = (
           })
         },
         loadExtension(path) {
-          return Effect.try({
-            try: () => db.loadExtension(path),
-            catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
-          })
+          return Effect.tap(
+            Effect.try({
+              try: () => db.loadExtension(path),
+              catch: (cause) => new SqlError({ cause, message: "Failed to load extension" })
+            }),
+            () => prepareCache.invalidateAll
+          )
         }
       })
     })
@@ -233,7 +237,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
+          [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
       })) as SqliteClient,

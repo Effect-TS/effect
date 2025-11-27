@@ -1,6 +1,6 @@
 {
   "name": "@effect/experimental",
-  "version": "0.52.2",
+  "version": "0.57.5",
   "type": "module",
   "license": "MIT",
   "description": "Experimental modules for the Effect ecosystem",
@@ -65,6 +65,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250515.0",
     "@effect/platform-node": "workspace:^",
+    "@testcontainers/redis": "^11.8.1",
     "@types/ws": "^8.18.1",
     "ioredis": "^5.6.1",
     "lmdb": "^3.3.0"

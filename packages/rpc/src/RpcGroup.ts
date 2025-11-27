@@ -192,13 +192,13 @@ export type HandlersContext<Rpcs extends Rpc.Any, Handlers> = keyof Handlers ext
 export type HandlerContext<Rpcs extends Rpc.Any, K extends Rpcs["_tag"], Handler> = [Rpc.IsStream<Rpcs, K>] extends
   [true] ? Handler extends (...args: any) =>
     | Stream.Stream<infer _A, infer _E, infer _R>
-    | Rpc.Fork<Stream.Stream<infer _A, infer _E, infer _R>>
+    | Rpc.Wrapper<Stream.Stream<infer _A, infer _E, infer _R>>
     | Effect.Effect<
       ReadonlyMailbox<infer _A, infer _E>,
       infer _EX,
       infer _R
     >
-    | Rpc.Fork<
+    | Rpc.Wrapper<
       Effect.Effect<
         ReadonlyMailbox<infer _A, infer _E>,
         infer _EX,
@@ -208,7 +208,7 @@ export type HandlerContext<Rpcs extends Rpc.Any, K extends Rpcs["_tag"], Handler
   never :
   Handler extends (
     ...args: any
-  ) => Effect.Effect<infer _A, infer _E, infer _R> | Rpc.Fork<Effect.Effect<infer _A, infer _E, infer _R>> ?
+  ) => Effect.Effect<infer _A, infer _E, infer _R> | Rpc.Wrapper<Effect.Effect<infer _A, infer _E, infer _R>> ?
     Rpc.ExcludeProvides<_R, Rpcs, K>
   : never
 
@@ -273,7 +273,7 @@ const RpcGroupProto = {
   },
   prefix<const Prefix extends string>(this: RpcGroup<any>, prefix: Prefix) {
     const requests = new Map<string, any>()
-    for (const [rpc] of this.requests.values()) {
+    for (const rpc of this.requests.values()) {
       const newRpc = rpc.prefix(prefix)
       requests.set(newRpc._tag, newRpc)
     }
@@ -303,9 +303,12 @@ const RpcGroupProto = {
     return Effect.contextWith((parentContext: Context.Context<any>) => {
       const rpc = this.requests.get(tag)!
       const { context, handler } = parentContext.unsafeMap.get(rpc.key) as Rpc.Handler<any>
-      return (payload: Rpc.Payload<any>, headers: Headers) => {
-        const result = handler(payload, headers)
-        const effectOrStream = Rpc.isFork(result) ? result.value : result
+      return (payload: Rpc.Payload<any>, options: {
+        readonly clientId: number
+        readonly headers: Headers
+      }) => {
+        const result = handler(payload, options)
+        const effectOrStream = Rpc.isWrapper(result) ? result.value : result
         return Effect.isEffect(effectOrStream)
           ? Effect.provide(effectOrStream, context)
           : Stream.provideContext(effectOrStream, context)

@@ -47,6 +47,12 @@ export const OP_PROVIDE_MERGE = "ProvideMerge" as const
 export type OP_PROVIDE_MERGE = typeof OP_PROVIDE_MERGE
 
 /** @internal */
+export const OP_MERGE_ALL = "MergeAll" as const
+
+/** @internal */
+export type OP_MERGE_ALL = typeof OP_MERGE_ALL
+
+/** @internal */
 export const OP_ZIP_WITH = "ZipWith" as const
 
 /** @internal */

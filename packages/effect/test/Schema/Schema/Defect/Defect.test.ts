@@ -18,6 +18,14 @@ describe("Defect", () => {
       deepStrictEqual(err, new Error("message", { cause: { message: "message" } }))
     })
 
+    it("a null object with a message", async () => {
+      const defect = Object.create(null)
+      defect.message = "message"
+
+      const err = S.decodeUnknownSync(S.Defect)(defect)
+      deepStrictEqual(err, new Error("message", { cause: defect }))
+    })
+
     it("an object with a message and a name", () => {
       const err = S.decodeUnknownSync(S.Defect)({ message: "message", name: "name" })
       assertInstanceOf(err, Error)
@@ -30,6 +38,17 @@ describe("Defect", () => {
       assertInstanceOf(err, Error)
       strictEqual(err.message, "message")
       strictEqual(err.stack, "stack")
+    })
+
+    it("a null object without a message", async () => {
+      const defect = Object.create(null)
+      defect.a = 1
+
+      await Util.assertions.decoding.succeed(
+        S.Defect,
+        defect,
+        "{\"a\":1}"
+      )
     })
   })
 
@@ -46,6 +65,17 @@ describe("Defect", () => {
       await Util.assertions.encoding.succeed(
         S.Defect,
         { a: 1 },
+        "{\"a\":1}"
+      )
+    })
+
+    it("a null object", async () => {
+      const defect = Object.create(null)
+      defect.a = 1
+
+      await Util.assertions.encoding.succeed(
+        S.Defect,
+        defect,
         "{\"a\":1}"
       )
     })

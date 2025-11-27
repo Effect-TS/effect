@@ -1,5 +1,723 @@
 # effect
 
+## 3.19.7
+
+### Patch Changes
+
+- [#5813](https://github.com/Effect-TS/effect/pull/5813) [`7ef13d3`](https://github.com/Effect-TS/effect/commit/7ef13d30147dd50eae1cdbb67a1978141751cad5) Thanks @tim-smart! - fix SqlPersistedQueue batch size
+
+## 3.19.6
+
+### Patch Changes
+
+- [#5778](https://github.com/Effect-TS/effect/pull/5778) [`af7916a`](https://github.com/Effect-TS/effect/commit/af7916a3f00acdfc8ce451eabd3f5fb02914d0bb) Thanks @tim-smart! - add RcRef.invalidate api
+
+## 3.19.5
+
+### Patch Changes
+
+- [#5772](https://github.com/Effect-TS/effect/pull/5772) [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea) Thanks @tim-smart! - backport Effect.gen optimization
+
+## 3.19.4
+
+### Patch Changes
+
+- [#5752](https://github.com/Effect-TS/effect/pull/5752) [`f445b87`](https://github.com/Effect-TS/effect/commit/f445b87bab342188a5c223cfc76c697d65594d1d) Thanks @janglad! - Fix Types.DeepMutable mapping over functions
+
+- [#5757](https://github.com/Effect-TS/effect/pull/5757) [`d2b68ac`](https://github.com/Effect-TS/effect/commit/d2b68ac9e1ac1d58d7387715843c448195f14675) Thanks @tim-smart! - add experimental PartitionedSemaphore module
+
+  A `PartitionedSemaphore` is a concurrency primitive that can be used to
+  control concurrent access to a resource across multiple partitions identified
+  by keys.
+
+  The total number of permits is shared across all partitions, with waiting
+  permits equally distributed among partitions using a round-robin strategy.
+
+  This is useful when you want to limit the total number of concurrent accesses
+  to a resource, while still allowing for fair distribution of access across
+  different partitions.
+
+  ```ts
+  import { Effect, PartitionedSemaphore } from "effect"
+
+  Effect.gen(function* () {
+    const semaphore = yield* PartitionedSemaphore.make<string>({ permits: 5 })
+
+    // Take the first 5 permits with key "A", then the following permits will be
+    // equally distributed between all the keys using a round-robin strategy
+    yield* Effect.log("A").pipe(
+      Effect.delay(1000),
+      semaphore.withPermits("A", 1),
+      Effect.replicateEffect(15, { concurrency: "unbounded" }),
+      Effect.fork
+    )
+    yield* Effect.log("B").pipe(
+      Effect.delay(1000),
+      semaphore.withPermits("B", 1),
+      Effect.replicateEffect(10, { concurrency: "unbounded" }),
+      Effect.fork
+    )
+    yield* Effect.log("C").pipe(
+      Effect.delay(1000),
+      semaphore.withPermits("C", 1),
+      Effect.replicateEffect(10, { concurrency: "unbounded" }),
+      Effect.fork
+    )
+
+    return yield* Effect.never
+  }).pipe(Effect.runFork)
+  ```
+
+## 3.19.3
+
+### Patch Changes
+
+- [#5712](https://github.com/Effect-TS/effect/pull/5712) [`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7) Thanks @gcanti! - Use standard formatting function in Config error messages, closes #5709
+
+## 3.19.2
+
+### Patch Changes
+
+- [#5703](https://github.com/Effect-TS/effect/pull/5703) [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5) Thanks @tim-smart! - preserve Layer.mergeAll context order
+
+- [#5703](https://github.com/Effect-TS/effect/pull/5703) [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5) Thanks @tim-smart! - ensure FiberHandle.run state transition is atomic
+
+## 3.19.1
+
+### Patch Changes
+
+- [#5695](https://github.com/Effect-TS/effect/pull/5695) [`63f2bf3`](https://github.com/Effect-TS/effect/commit/63f2bf393ef4bb3e46db59abdf1b2160e8ee71d4) Thanks @tim-smart! - allow parallel finalization of merged layers
+
+## 3.19.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a) Thanks @mikearnaldi! - Add Effect.fn.Return to allow typing returns on Effect.fn
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d) Thanks @fubhy! - Backport `Graph` module updates
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - add experimental HashRing module
+
+### Patch Changes
+
+- [#5679](https://github.com/Effect-TS/effect/pull/5679) [`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c) Thanks @KhraksMamtsov! - `Array.window` signature has been improved
+
+## 3.18.5
+
+### Patch Changes
+
+- [#5669](https://github.com/Effect-TS/effect/pull/5669) [`a537469`](https://github.com/Effect-TS/effect/commit/a5374696bdabee005bf75d7b1b57f8bee7763cba) Thanks @fubhy! - Fix Graph.neighbors() returning self-loops in undirected graphs.
+
+  Graph.neighbors() now correctly returns the other endpoint for undirected graphs instead of always returning edge.target, which caused nodes to appear as their own neighbors when queried from the target side of an edge.
+
+- [#5628](https://github.com/Effect-TS/effect/pull/5628) [`52d5963`](https://github.com/Effect-TS/effect/commit/52d59635f35406bd27874ca0090f8642432928f4) Thanks @mikearnaldi! - Make sure AsEffect is computed
+
+- [#5671](https://github.com/Effect-TS/effect/pull/5671) [`463345d`](https://github.com/Effect-TS/effect/commit/463345d734fb462dc284d590193b7843dc104d78) Thanks @gcanti! - JSON Schema generation: add `jsonSchema2020-12` target and fix tuple output for:
+  - JSON Schema 2019-09
+  - OpenAPI 3.1
+
+## 3.18.4
+
+### Patch Changes
+
+- [#5617](https://github.com/Effect-TS/effect/pull/5617) [`6ae2f5d`](https://github.com/Effect-TS/effect/commit/6ae2f5da45a9ed9832605eca12b3e2bf2e2a1a67) Thanks @gcanti! - JSONSchema: Fix issue where invalid `default`s were included in the output.
+
+  Now they are ignored, similar to invalid `examples`.
+
+  Before
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString.annotations({
+    default: ""
+  })
+
+  const jsonSchema = JSONSchema.make(schema)
+
+  console.log(JSON.stringify(jsonSchema, null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "nonEmptyString",
+    "default": "",
+    "minLength": 1
+  }
+  */
+  ```
+
+  After
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NonEmptyString.annotations({
+    default: ""
+  })
+
+  const jsonSchema = JSONSchema.make(schema)
+
+  console.log(JSON.stringify(jsonSchema, null, 2))
+  /*
+  Output:
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "a non empty string",
+    "title": "nonEmptyString",
+    "minLength": 1
+  }
+  */
+  ```
+
+## 3.18.3
+
+### Patch Changes
+
+- [#5612](https://github.com/Effect-TS/effect/pull/5612) [`25fab81`](https://github.com/Effect-TS/effect/commit/25fab8147c8c58e637332cfd9e690f777898c813) Thanks @gcanti! - Fix JSON Schema generation with `topLevelReferenceStrategy: "skip"`, closes #5611
+
+  This patch fixes a bug that occurred when generating JSON Schemas with nested schemas that had identifiers, while using `topLevelReferenceStrategy: "skip"`.
+
+  Previously, the generator would still output `$ref` entries even though references were supposed to be skipped, leaving unresolved definitions.
+
+  **Before**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const A = Schema.Struct({ value: Schema.String }).annotations({
+    identifier: "A"
+  })
+  const B = Schema.Struct({ a: A }).annotations({ identifier: "B" })
+
+  const definitions = {}
+  console.log(
+    JSON.stringify(
+      JSONSchema.fromAST(B.ast, {
+        definitions,
+        topLevelReferenceStrategy: "skip"
+      }),
+      null,
+      2
+    )
+  )
+  /*
+  {
+    "type": "object",
+    "required": ["a"],
+    "properties": {
+      "a": {
+        "$ref": "#/$defs/A"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  console.log(definitions)
+  /*
+  {
+    A: {
+      type: "object",
+      required: ["value"],
+      properties: { value: [Object] },
+      additionalProperties: false
+    }
+  }
+  */
+  ```
+
+  **After**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const A = Schema.Struct({ value: Schema.String }).annotations({
+    identifier: "A"
+  })
+  const B = Schema.Struct({ a: A }).annotations({ identifier: "B" })
+
+  const definitions = {}
+  console.log(
+    JSON.stringify(
+      JSONSchema.fromAST(B.ast, {
+        definitions,
+        topLevelReferenceStrategy: "skip"
+      }),
+      null,
+      2
+    )
+  )
+  /*
+  {
+    "type": "object",
+    "required": ["a"],
+    "properties": {
+      "a": {
+        "type": "object",
+        "required": ["value"],
+        "properties": {
+          "value": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  console.log(definitions)
+  /*
+  {}
+  */
+  ```
+
+  Now schemas are correctly inlined, and no leftover `$ref` entries or unused definitions remain.
+
+## 3.18.2
+
+### Patch Changes
+
+- [#5598](https://github.com/Effect-TS/effect/pull/5598) [`8ba4757`](https://github.com/Effect-TS/effect/commit/8ba47576c75b8b91be4bf9c1dae13995b37018af) Thanks @cyberixae! - Fix Array Do documentation
+
+## 3.18.1
+
+### Patch Changes
+
+- [#5584](https://github.com/Effect-TS/effect/pull/5584) [`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152) Thanks @indietyp! - Enable `console.group` use in `Logger.prettyFormat` when using Bun
+
+## 3.18.0
+
+### Minor Changes
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa) Thanks @schickling! - Add experimental Graph module with comprehensive graph data structure support
+
+  This experimental module provides:
+  - Directed and undirected graph support
+  - Immutable and mutable graph variants
+  - Type-safe node and edge operations
+  - Graph algorithms: DFS, BFS, shortest paths, cycle detection, etc.
+
+  Example usage:
+
+  ```typescript
+  import { Graph } from "effect"
+
+  // Create a graph with mutations
+  const graph = Graph.directed<string, number>((mutable) => {
+    const nodeA = Graph.addNode(mutable, "Node A")
+    const nodeB = Graph.addNode(mutable, "Node B")
+    Graph.addEdge(mutable, nodeA, nodeB, 5)
+  })
+
+  console.log(
+    `Nodes: ${Graph.nodeCount(graph)}, Edges: ${Graph.edgeCount(graph)}`
+  )
+  ```
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137) Thanks @mikearnaldi! - Automatically set otel parent when present as external span
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c) Thanks @tim-smart! - add Effect.Semaphore.resize
+
+- [#5302](https://github.com/Effect-TS/effect/pull/5302) [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2) Thanks @mikearnaldi! - Introduce ReadonlyTag as the covariant side of a tag, enables:
+
+  ```ts
+  import type { Context } from "effect"
+  import { Effect } from "effect"
+
+  export class MyRequirement extends Effect.Service<MyRequirement>()(
+    "MyRequirement",
+    { succeed: () => 42 }
+  ) {}
+
+  export class MyUseCase extends Effect.Service<MyUseCase>()("MyUseCase", {
+    dependencies: [MyRequirement.Default],
+    effect: Effect.gen(function* () {
+      const requirement = yield* MyRequirement
+      return Effect.fn("MyUseCase.execute")(function* () {
+        return requirement()
+      })
+    })
+  }) {}
+
+  export function effectHandler<I, Args extends Array<any>, A, E, R>(
+    service: Context.ReadonlyTag<I, (...args: Args) => Effect.Effect<A, E, R>>
+  ) {
+    return Effect.fn("effectHandler")(function* (...args: Args) {
+      const execute = yield* service
+      yield* execute(...args)
+    })
+  }
+
+  export const program = effectHandler(MyUseCase)
+  ```
+
+## 3.17.14
+
+### Patch Changes
+
+- [#5533](https://github.com/Effect-TS/effect/pull/5533) [`ea95998`](https://github.com/Effect-TS/effect/commit/ea95998de2a7613d844c42e67e7f5b16652c5000) Thanks @IMax153! - Preserve the precision of histogram boundary values
+
+## 3.17.13
+
+### Patch Changes
+
+- [#5462](https://github.com/Effect-TS/effect/pull/5462) [`51bfc78`](https://github.com/Effect-TS/effect/commit/51bfc78a7003e663f24941f7bc18485abf4caf15) Thanks @tim-smart! - ensure tracerLogger does not drop message items
+
+## 3.17.12
+
+### Patch Changes
+
+- [#5456](https://github.com/Effect-TS/effect/pull/5456) [`b359bdc`](https://github.com/Effect-TS/effect/commit/b359bdca4fe25bf0485d0f744c54ec3fed48af70) Thanks @tim-smart! - add preload options to LayerMap
+
+## 3.17.11
+
+### Patch Changes
+
+- [#5449](https://github.com/Effect-TS/effect/pull/5449) [`fb5e414`](https://github.com/Effect-TS/effect/commit/fb5e414943df05654db90952eb4f5339fc8cd9a1) Thanks @tim-smart! - Simplify Effect.raceAll implementation, ensure children fibers are awaited
+
+- [#5451](https://github.com/Effect-TS/effect/pull/5451) [`018363b`](https://github.com/Effect-TS/effect/commit/018363b9cbe3cdd553d59592cb24a0fc0fa47bdd) Thanks @mikearnaldi! - Fix Predicate.isIterable to allow strings
+
+## 3.17.10
+
+### Patch Changes
+
+- [#5368](https://github.com/Effect-TS/effect/pull/5368) [`3b26094`](https://github.com/Effect-TS/effect/commit/3b2609409ac1e8c6939d699584f00b1b99c47e2e) Thanks @gcanti! - ## Annotation Behavior
+
+  When you call `.annotations` on a schema, any identifier annotations that were previously set will now be removed. Identifiers are now always tied to the schema's `ast` reference (this was the intended behavior).
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.URL
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "URL": {
+        "type": "string",
+        "description": "a string to be decoded into a URL"
+      }
+    },
+    "$ref": "#/$defs/URL"
+  }
+  */
+
+  const annotated = Schema.URL.annotations({ description: "description" })
+
+  console.log(JSON.stringify(JSONSchema.make(annotated), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "description"
+  }
+  */
+  ```
+
+  ## OpenAPI 3.1 Compatibility
+
+  OpenAPI 3.1 does not allow `nullable: true`.
+  Instead, the schema will now correctly use `{ "type": "null" }` inside a union.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(
+    JSON.stringify(
+      JSONSchema.fromAST(schema.ast, {
+        definitions: {},
+        target: "openApi3.1"
+      }),
+      null,
+      2
+    )
+  )
+  /*
+  {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ]
+  }
+  */
+  ```
+
+  ## Schema Description Deduplication
+
+  Previously, when a schema was reused, only the first description was kept.
+  Now, every property keeps its own description, even if the schema is reused.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schemaWithAnIdentifier = Schema.String.annotations({
+    identifier: "my-id"
+  })
+
+  const schema = Schema.Struct({
+    a: schemaWithAnIdentifier.annotations({
+      description: "a-description"
+    }),
+    b: schemaWithAnIdentifier.annotations({
+      description: "b-description"
+    })
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "a",
+      "b"
+    ],
+    "properties": {
+      "a": {
+        "type": "string",
+        "description": "a-description"
+      },
+      "b": {
+        "type": "string",
+        "description": "b-description"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+  ## Fragment Detection in Non-Refinement Schemas
+
+  This patch fixes the issue where fragments (e.g. `jsonSchema.format`) were not detected on non-refinement schemas.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.UUID.pipe(
+    Schema.compose(Schema.String),
+    Schema.annotations({
+      identifier: "UUID",
+      title: "title",
+      description: "description",
+      jsonSchema: {
+        format: "uuid" // fragment
+      }
+    })
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "UUID": {
+        "type": "string",
+        "description": "description",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "title": "title"
+      }
+    },
+    "$ref": "#/$defs/UUID"
+  }
+  */
+  ```
+
+  ## Nested Unions
+
+  Nested unions are no longer flattened. Instead, they remain as nested `anyOf` arrays.
+  This is fine because JSON Schema allows nested `anyOf`.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Union(
+    Schema.NullOr(Schema.String),
+    Schema.Literal("a", null)
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "a"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  ## Refinements without `jsonSchema` annotation
+
+  Refinements that don't provide a `jsonSchema` annotation no longer cause errors.
+  They are simply ignored, so you can still generate a JSON Schema even when refinements can't easily be expressed.
+
+- [#5437](https://github.com/Effect-TS/effect/pull/5437) [`a33e491`](https://github.com/Effect-TS/effect/commit/a33e49153d944abd183fed93267fa7e52abae68b) Thanks @tim-smart! - ensure Effect.promise captures span on defect
+
+## 3.17.9
+
+### Patch Changes
+
+- [#5422](https://github.com/Effect-TS/effect/pull/5422) [`0271f14`](https://github.com/Effect-TS/effect/commit/0271f1450c0c861f589e26ff534a73dea7ea97b7) Thanks @gcanti! - backport `formatUnknown` from v4
+
+## 3.17.8
+
+### Patch Changes
+
+- [#5407](https://github.com/Effect-TS/effect/pull/5407) [`84bc300`](https://github.com/Effect-TS/effect/commit/84bc3003b42ad51210e9e1248efd04c5d0e3dd1e) Thanks @thewilkybarkid! - Fix Schema.Defect when seeing a null-prototype object
+
+## 3.17.7
+
+### Patch Changes
+
+- [#5358](https://github.com/Effect-TS/effect/pull/5358) [`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328) Thanks @tim-smart! - expose RcMap.has api
+
+## 3.17.6
+
+### Patch Changes
+
+- [#5322](https://github.com/Effect-TS/effect/pull/5322) [`f187941`](https://github.com/Effect-TS/effect/commit/f187941946c675713b3539fc4d5480123037563a) Thanks @beezee! - Use non-greedy matching for Schema.String in Schema.TemplateLiteralParser
+
+## 3.17.5
+
+### Patch Changes
+
+- [#5315](https://github.com/Effect-TS/effect/pull/5315) [`5f98388`](https://github.com/Effect-TS/effect/commit/5f983881754fce7dc0e2d752145f3b865af27958) Thanks @patroza! - improve provide/merge apis to support readonly array inputs.
+
+## 3.17.4
+
+### Patch Changes
+
+- [#5306](https://github.com/Effect-TS/effect/pull/5306) [`7d7c55d`](https://github.com/Effect-TS/effect/commit/7d7c55dadeea2f9de16e60abff124085733e1953) Thanks @leonitousconforti! - Align RcMap.keys return type with internal signature
+
+## 3.17.3
+
+### Patch Changes
+
+- [#5275](https://github.com/Effect-TS/effect/pull/5275) [`3504555`](https://github.com/Effect-TS/effect/commit/35045558e7cac19c888fe677dda93c4741c7f8a8) Thanks @taylornz! - fix DateTime.makeZoned handling of DST transitions
+
+- [#5282](https://github.com/Effect-TS/effect/pull/5282) [`f6c7ca7`](https://github.com/Effect-TS/effect/commit/f6c7ca752fc9de5f7a2a6c439bbc6cca06566357) Thanks @beezee! - Improve inference on Metric.trackSuccessWith for use in Effect.pipe(...)
+
+- [#5275](https://github.com/Effect-TS/effect/pull/5275) [`3504555`](https://github.com/Effect-TS/effect/commit/35045558e7cac19c888fe677dda93c4741c7f8a8) Thanks @taylornz! - add DateTime.Disambiguation for handling DST edge cases
+
+  Added four disambiguation strategies to `DateTime.Zoned` constructors for handling DST edge cases:
+  - `'compatible'` - Maintains backward compatibility
+  - `'earlier'` - Choose earlier time during ambiguous periods (default)
+  - `'later'` - Choose later time during ambiguous periods
+  - `'reject'` - Throw error for ambiguous times
+
+## 3.17.2
+
+### Patch Changes
+
+- [#5277](https://github.com/Effect-TS/effect/pull/5277) [`6309e0a`](https://github.com/Effect-TS/effect/commit/6309e0abe16e82da8d0091fff1b9962fd9eeb585) Thanks @tim-smart! - Fix Layer.mock dual detection
+
+## 3.17.1
+
+### Patch Changes
+
+- [#5262](https://github.com/Effect-TS/effect/pull/5262) [`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87) Thanks @tim-smart! - remove recursion from Sink fold loop
+
+## 3.17.0
+
+### Minor Changes
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9) Thanks @fubhy! - Added `Random.fixed` to create a version of the `Random` service with fixed
+  values for testing.
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104) Thanks @dmaretskyi! - Add `Struct.entries` function
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63) Thanks @f15u! - Add `Layer.mock`
+
+  Creates a mock layer for testing purposes. You can provide a partial
+  implementation of the service, and any methods not provided will
+  throw an `UnimplementedError` defect when called.
+
+  ```ts
+  import { Context, Effect, Layer } from "effect"
+
+  class MyService extends Context.Tag("MyService")<
+    MyService,
+    {
+      one: Effect.Effect<number>
+      two(): Effect.Effect<number>
+    }
+  >() {}
+
+  const MyServiceTest = Layer.mock(MyService, {
+    two: () => Effect.succeed(2)
+  })
+  ```
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c) Thanks @KhraksMamtsov! - Schedule output has been added into `CurrentIterationMetadata`
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989) Thanks @mikearnaldi! - Remove global state index by version, make version mismatch a warning message
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636) Thanks @devinjameson! - Array: add findFirstWithIndex function
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2) Thanks @vinassefranche! - Add HashMap.countBy
+
+  ```ts
+  import { HashMap } from "effect"
+
+  const map = HashMap.make([1, "a"], [2, "b"], [3, "c"])
+  const result = HashMap.countBy(map, (_v, key) => key % 2 === 1)
+  console.log(result) // 2
+  ```
+
+- [#4949](https://github.com/Effect-TS/effect/pull/4949) [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d) Thanks @tim-smart! - add Effect.ensure{Success,Error,Requirements}Type, for constraining Effect types
+
+## 3.16.17
+
+### Patch Changes
+
+- [#5246](https://github.com/Effect-TS/effect/pull/5246) [`aaa6ad0`](https://github.com/Effect-TS/effect/commit/aaa6ad0673f843a27954fd92821961cce33941ad) Thanks @mikearnaldi! - Copy over apply, bind, call into service proxy
+
+- [#5158](https://github.com/Effect-TS/effect/pull/5158) [`5b74ea5`](https://github.com/Effect-TS/effect/commit/5b74ea5e5862742e2fb60feefb765bc8681171f4) Thanks @cyberixae! - Clarify Tuple length requirements
+
 ## 3.16.16
 
 ### Patch Changes

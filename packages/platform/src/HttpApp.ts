@@ -100,7 +100,7 @@ export const toHandled = <E, R, _, EH, RH>(
   const withMiddleware = unify(
     middleware === undefined ?
       internalMiddleware.tracer(withErrorHandling) :
-      Effect.matchCauseEffect(middleware(internalMiddleware.tracer(withErrorHandling)), {
+      Effect.matchCauseEffect(internalMiddleware.tracer(middleware(withErrorHandling)), {
         onFailure: (cause): Effect.Effect<void, EH, RH> =>
           Effect.withFiberRuntime((fiber) => {
             const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)

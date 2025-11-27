@@ -37,7 +37,7 @@ export type Loader<R = never> = Effect.Effect<
 export type ResolvedMigration = readonly [
   id: number,
   name: string,
-  load: Effect.Effect<any>
+  load: Effect.Effect<any, any, Client.SqlClient>
 ]
 
 /**
@@ -56,6 +56,7 @@ export interface Migration {
  */
 export class MigrationError extends Data.TaggedError("MigrationError")<{
   readonly _tag: "MigrationError"
+  readonly cause?: unknown
   readonly reason:
     | "bad-state"
     | "import-error"
@@ -178,12 +179,13 @@ export const make = <RD = never>({
     const runMigration = (
       id: number,
       name: string,
-      effect: Effect.Effect<unknown>
+      effect: Effect.Effect<unknown, unknown, Client.SqlClient>
     ) =>
-      Effect.orDieWith(effect, (_) =>
+      Effect.orDieWith(effect, (error: unknown) =>
         new MigrationError({
+          cause: error,
           reason: "failed",
-          message: `Migration "${id}_${name}" failed: ${JSON.stringify(_)}`
+          message: `Migration "${id}_${name}" failed`
         }))
 
     // === run
@@ -318,6 +320,25 @@ export const fromBabelGlob = (migrations: Record<string, any>): Loader =>
   pipe(
     Object.keys(migrations),
     Arr.filterMap((_) => Option.fromNullable(_.match(/^_(\d+)_([^.]+?)(Js|Ts)?$/))),
+    Arr.map(
+      ([key, id, name]): ResolvedMigration => [
+        Number(id),
+        name,
+        Effect.succeed(migrations[key])
+      ]
+    ),
+    Arr.sort(migrationOrder),
+    Effect.succeed
+  )
+
+/**
+ * @since 1.0.0
+ * @category loaders
+ */
+export const fromRecord = (migrations: Record<string, Effect.Effect<void, unknown, Client.SqlClient>>): Loader =>
+  pipe(
+    Object.keys(migrations),
+    Arr.filterMap((_) => Option.fromNullable(_.match(/^(\d+)_(.+)$/))),
     Arr.map(
       ([key, id, name]): ResolvedMigration => [
         Number(id),

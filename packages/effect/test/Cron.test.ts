@@ -176,6 +176,16 @@ describe("Cron", () => {
   })
 
   it("handles transition out of daylight savings time", () => {
+    // DST fall-back transition in Europe/Berlin on 2024-10-27:
+    // At 3:00 AM +02:00, clocks "fall back" to 2:00 AM +01:00
+    // This means times from 2:00-2:59 AM occur twice (ambiguous period)
+    //
+    // Correct "once" mode behavior for cron:
+    // - Include all normal times (00:30, 01:30)
+    // - Return first occurrence only of ambiguous times (02:30 +02:00)
+    // - Skip second occurrence of ambiguous times (02:30 +01:00)
+    // - Continue normally after transition (03:30 +01:00)
+
     const make = (date: string) => DateTime.makeZonedFromString(date).pipe(Option.getOrThrow)
     const sequence = Cron.sequence(
       Cron.unsafeParse("30 * * * *", "Europe/Berlin"),
@@ -183,16 +193,17 @@ describe("Cron", () => {
     )
     const next = (): DateTime.Zoned => DateTime.unsafeMakeZoned(sequence.next().value, { timeZone: "Europe/Berlin" })
 
-    const a = make("2024-10-27T00:30:00.000+02:00[Europe/Berlin]")
-    // const x = make("2024-10-27T01:30:00.000+02:00[Europe/Berlin]") // TODO: Our implementation skips this.
-    const b = make("2024-10-27T02:30:00.000+02:00[Europe/Berlin]")
-    const c = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]")
-    const d = make("2024-10-27T04:30:00.000+01:00[Europe/Berlin]")
+    const a = make("2024-10-27T00:30:00.000+02:00[Europe/Berlin]") // Normal time
+    const b = make("2024-10-27T01:30:00.000+02:00[Europe/Berlin]") // Normal time (not ambiguous)
+    const c = make("2024-10-27T02:30:00.000+02:00[Europe/Berlin]") // First occurrence during DST
+    const d = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]") // Standard time (skips 2nd 02:30)
+    const e = make("2024-10-27T04:30:00.000+01:00[Europe/Berlin]") // Standard time
 
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), a.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), c.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), d.pipe(DateTime.formatIsoZoned))
+    deepStrictEqual(next().pipe(DateTime.formatIsoZoned), e.pipe(DateTime.formatIsoZoned))
   })
 
   it("handles utc timezone", () => {

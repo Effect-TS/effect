@@ -4,7 +4,9 @@
 import type { Tag } from "effect/Context"
 import { TaggedError } from "effect/Data"
 import type { Effect } from "effect/Effect"
+import type { ReadonlyMailbox } from "effect/Mailbox"
 import type { Option } from "effect/Option"
+import type * as Scope from "effect/Scope"
 import type { PlatformError } from "./Error.js"
 import * as InternalTerminal from "./internal/terminal.js"
 
@@ -21,9 +23,9 @@ export interface Terminal {
    */
   readonly columns: Effect<number>
   /**
-   * Reads a single input event from the default standard input.
+   * Reads input events from the default standard input.
    */
-  readonly readInput: Effect<UserInput, QuitException>
+  readonly readInput: Effect<ReadonlyMailbox<UserInput>, never, Scope.Scope>
   /**
    * Reads a single line from the default standard input.
    */
@@ -80,6 +82,13 @@ export interface UserInput {
  * @category model
  */
 export class QuitException extends TaggedError("QuitException")<{}> {}
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isQuitException = (u: unknown): u is QuitException =>
+  typeof u === "object" && u != null && "_tag" in u && u._tag === "QuitException"
 
 /**
  * @since 1.0.0

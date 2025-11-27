@@ -1,15 +1,15 @@
 import * as NodeStream from "@effect/platform-node-shared/NodeStream"
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Channel, Chunk, identity, Stream } from "effect"
+import { Array, Channel, Chunk, identity, pipe, Stream } from "effect"
 import * as Effect from "effect/Effect"
 import { Duplex, Readable, Transform } from "stream"
 import { createGzip, createUnzip } from "zlib"
 
 describe("Stream", () => {
   it("should read a stream", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const stream = NodeStream.fromReadable<"error", string>(() => Readable.from(["a", "b", "c"]), () => "error")
-      const items = yield* _(Stream.runCollect(stream))
+      const items = yield* Stream.runCollect(stream)
       assert.deepEqual(
         Chunk.toReadonlyArray(items),
         ["a", "b", "c"]
@@ -17,7 +17,7 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("fromDuplex", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const channel = NodeStream.fromDuplex<never, "error", string>(
         () =>
           new Transform({
@@ -28,7 +28,7 @@ describe("Stream", () => {
         () => "error"
       )
 
-      const items = yield* _(
+      const items = yield* pipe(
         Stream.make("a", "b", "c"),
         Stream.pipeThroughChannelOrFail(channel),
         Stream.decodeText(),
@@ -43,7 +43,7 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("fromDuplex failure", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const channel = NodeStream.fromDuplex<never, "error", string>(
         () =>
           new Transform({
@@ -54,7 +54,7 @@ describe("Stream", () => {
         () => "error"
       )
 
-      const result = yield* _(
+      const result = yield* pipe(
         Stream.make("a", "b", "c"),
         Stream.pipeThroughChannelOrFail(channel),
         Stream.runDrain,
@@ -65,8 +65,8 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("pipeThroughDuplex", () =>
-    Effect.gen(function*(_) {
-      const result = yield* _(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("a", "b", "c"),
         NodeStream.pipeThroughDuplex(
           () =>
@@ -89,13 +89,14 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("pipeThroughDuplex write error", () =>
-    Effect.gen(function*(_) {
-      const result = yield* _(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("a", "b", "c"),
         NodeStream.pipeThroughDuplex(
           () =>
             new Duplex({
-              read() {},
+              read() {
+              },
               write(_chunk, _encoding, callback) {
                 callback(new Error())
               }
@@ -110,8 +111,8 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("pipeThroughSimple", () =>
-    Effect.gen(function*(_) {
-      const result = yield* _(
+    Effect.gen(function*() {
+      const result = yield* pipe(
         Stream.make("a", Buffer.from("b"), "c"),
         NodeStream.pipeThroughSimple(
           () =>
@@ -133,7 +134,7 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("fromDuplex should work with node:zlib", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const text = "abcdefg1234567890"
       const encoder = new TextEncoder()
       const input = encoder.encode(text)
@@ -141,7 +142,7 @@ describe("Stream", () => {
       const deflate = NodeStream.fromDuplex<"error", "error", Uint8Array>(() => createGzip(), () => "error")
       const inflate = NodeStream.fromDuplex<never, "error", Uint8Array>(() => createUnzip(), () => "error")
       const channel = Channel.pipeToOrFail(deflate, inflate)
-      const items = yield* _(
+      const items = yield* pipe(
         stream,
         Stream.pipeThroughChannelOrFail(channel),
         Stream.decodeText(),
@@ -152,13 +153,13 @@ describe("Stream", () => {
     }).pipe(Effect.runPromise))
 
   it("toReadable roundtrip", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const stream = Stream.range(0, 10000).pipe(
         Stream.map((n) => String(n))
       )
-      const readable = yield* _(NodeStream.toReadable(stream))
+      const readable = yield* NodeStream.toReadable(stream)
       const outStream = NodeStream.fromReadable<"error", Uint8Array>(() => readable, () => "error")
-      const items = yield* _(
+      const items = yield* pipe(
         outStream,
         Stream.decodeText(),
         Stream.runCollect

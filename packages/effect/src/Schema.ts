@@ -29,6 +29,7 @@ import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as hashMap_ from "./HashMap.js"
 import * as hashSet_ from "./HashSet.js"
+import * as Inspectable from "./Inspectable.js"
 import * as internalCause_ from "./internal/cause.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as schemaId_ from "./internal/schema/schemaId.js"
@@ -2443,10 +2444,11 @@ const optionalPropertySignatureAST = <A, I, R>(
         ).ast
       }
     } else if (asOption) {
+      const to = OptionFromSelf_(typeSchema(self))
       if (isNullable) {
         return optionalToRequired(
           NullOr(self),
-          OptionFromSelf(typeSchema(self)),
+          to,
           {
             decode: option_.filter(Predicate.isNotNull<A | null>),
             encode: asOptionEncode
@@ -2455,7 +2457,7 @@ const optionalPropertySignatureAST = <A, I, R>(
       } else {
         return optionalToRequired(
           self,
-          OptionFromSelf(typeSchema(self)),
+          to,
           { decode: identity, encode: identity }
         ).ast
       }
@@ -2498,10 +2500,11 @@ const optionalPropertySignatureAST = <A, I, R>(
         ).ast
       }
     } else if (asOption) {
+      const to = OptionFromSelf_(typeSchema(self))
       if (isNullable) {
         return optionalToRequired(
           NullishOr(self),
-          OptionFromSelf(typeSchema(self)),
+          to,
           {
             decode: option_.filter<A | null | undefined, A>((a): a is A => a != null),
             encode: asOptionEncode
@@ -2510,7 +2513,7 @@ const optionalPropertySignatureAST = <A, I, R>(
       } else {
         return optionalToRequired(
           UndefinedOr(self),
-          OptionFromSelf(typeSchema(self)),
+          to,
           {
             decode: option_.filter(Predicate.isNotUndefined<A | undefined>),
             encode: asOptionEncode
@@ -2768,7 +2771,7 @@ const getDefaultTypeLiteralAST = <
   Fields extends Struct.Fields,
   const Records extends IndexSignature.Records
 >(fields: Fields, records: Records) => {
-  const ownKeys = util_.ownKeys(fields)
+  const ownKeys = Reflect.ownKeys(fields)
   const pss: Array<AST.PropertySignature> = []
   if (ownKeys.length > 0) {
     const from: Array<AST.PropertySignature> = []
@@ -2845,7 +2848,7 @@ const lazilyMergeDefaults = (
   fields: Struct.Fields,
   out: Record<PropertyKey, unknown>
 ): { [x: string | symbol]: unknown } => {
-  const ownKeys = util_.ownKeys(fields)
+  const ownKeys = Reflect.ownKeys(fields)
   for (const key of ownKeys) {
     const field = fields[key]
     if (out[key] === undefined && isPropertySignature(field)) {
@@ -4980,7 +4983,7 @@ export const finite =
         schemaId: FiniteSchemaId,
         title: "finite",
         description: "a finite number",
-        jsonSchema: { "type": "number" },
+        jsonSchema: {},
         ...annotations
       })
     )
@@ -6645,8 +6648,8 @@ export const lessThanDate = <S extends Schema.Any>(
     filter((a: Date) => a < max, {
       schemaId: LessThanDateSchemaId,
       [LessThanDateSchemaId]: { max },
-      title: `lessThanDate(${util_.formatDate(max)})`,
-      description: `a date before ${util_.formatDate(max)}`,
+      title: `lessThanDate(${Inspectable.formatDate(max)})`,
+      description: `a date before ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6672,8 +6675,8 @@ export const lessThanOrEqualToDate = <S extends Schema.Any>(
     filter((a: Date) => a <= max, {
       schemaId: LessThanOrEqualToDateSchemaId,
       [LessThanOrEqualToDateSchemaId]: { max },
-      title: `lessThanOrEqualToDate(${util_.formatDate(max)})`,
-      description: `a date before or equal to ${util_.formatDate(max)}`,
+      title: `lessThanOrEqualToDate(${Inspectable.formatDate(max)})`,
+      description: `a date before or equal to ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6697,8 +6700,8 @@ export const greaterThanDate = <S extends Schema.Any>(
     filter((a: Date) => a > min, {
       schemaId: GreaterThanDateSchemaId,
       [GreaterThanDateSchemaId]: { min },
-      title: `greaterThanDate(${util_.formatDate(min)})`,
-      description: `a date after ${util_.formatDate(min)}`,
+      title: `greaterThanDate(${Inspectable.formatDate(min)})`,
+      description: `a date after ${Inspectable.formatDate(min)}`,
       ...annotations
     })
   )
@@ -6724,8 +6727,8 @@ export const greaterThanOrEqualToDate = <S extends Schema.Any>(
     filter((a: Date) => a >= min, {
       schemaId: GreaterThanOrEqualToDateSchemaId,
       [GreaterThanOrEqualToDateSchemaId]: { min },
-      title: `greaterThanOrEqualToDate(${util_.formatDate(min)})`,
-      description: `a date after or equal to ${util_.formatDate(min)}`,
+      title: `greaterThanOrEqualToDate(${Inspectable.formatDate(min)})`,
+      description: `a date after or equal to ${Inspectable.formatDate(min)}`,
       ...annotations
     })
   )
@@ -6750,8 +6753,8 @@ export const betweenDate = <S extends Schema.Any>(
     filter((a: Date) => a <= max && a >= min, {
       schemaId: BetweenDateSchemaId,
       [BetweenDateSchemaId]: { max, min },
-      title: `betweenDate(${util_.formatDate(min)}, ${util_.formatDate(max)})`,
-      description: `a date between ${util_.formatDate(min)} and ${util_.formatDate(max)}`,
+      title: `betweenDate(${Inspectable.formatDate(min)}, ${Inspectable.formatDate(max)})`,
+      description: `a date between ${Inspectable.formatDate(min)} and ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6820,7 +6823,7 @@ export class DateFromString extends transform(
   {
     strict: true,
     decode: (i) => new Date(i),
-    encode: (a) => util_.formatDate(a)
+    encode: (a) => Inspectable.formatDate(a)
   }
 ).annotations({ identifier: "DateFromString" }) {}
 
@@ -6883,7 +6886,8 @@ export class DateTimeUtcFromSelf extends declare(
 const decodeDateTimeUtc = <A extends dateTime.DateTime.Input>(input: A, ast: AST.AST) =>
   ParseResult.try({
     try: () => dateTime.unsafeMake(input),
-    catch: () => new ParseResult.Type(ast, input, `Unable to decode ${util_.formatUnknown(input)} into a DateTime.Utc`)
+    catch: () =>
+      new ParseResult.Type(ast, input, `Unable to decode ${Inspectable.formatUnknown(input)} into a DateTime.Utc`)
   })
 
 /**
@@ -7157,11 +7161,7 @@ export interface OptionFromSelf<Value extends Schema.Any> extends
   >
 {}
 
-/**
- * @category Option transformations
- * @since 3.10.0
- */
-export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
+const OptionFromSelf_ = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
   return declare(
     [value],
     {
@@ -7169,12 +7169,19 @@ export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFr
       encode: (value) => optionParse(ParseResult.encodeUnknown(value))
     },
     {
-      description: `Option<${format(value)}>`,
       pretty: optionPretty,
       arbitrary: optionArbitrary,
       equivalence: option_.getEquivalence
     }
   )
+}
+
+/**
+ * @category Option transformations
+ * @since 3.10.0
+ */
+export const OptionFromSelf = <Value extends Schema.Any>(value: Value): OptionFromSelf<Value> => {
+  return OptionFromSelf_(value).annotations({ description: `Option<${format(value)}>` })
 }
 
 /**
@@ -8464,8 +8471,11 @@ type RequiredKeys<T> = {
 type ClassAnnotations<Self, A> =
   | Annotations.Schema<Self>
   | readonly [
+    // Annotations for the "to" schema
     Annotations.Schema<Self> | undefined,
+    // Annotations for the "transformation schema
     (Annotations.Schema<Self> | undefined)?,
+    // Annotations for the "from" schema
     Annotations.Schema<A>?
   ]
 
@@ -8654,7 +8664,7 @@ type HasFields<Fields extends Struct.Fields> = Struct<Fields> | {
 const isField = (u: unknown) => isSchema(u) || isPropertySignature(u)
 
 const isFields = <Fields extends Struct.Fields>(fields: object): fields is Fields =>
-  util_.ownKeys(fields).every((key) => isField((fields as any)[key]))
+  Reflect.ownKeys(fields).every((key) => isField((fields as any)[key]))
 
 const getFields = <Fields extends Struct.Fields>(hasFields: HasFields<Fields>): Fields =>
   "fields" in hasFields ? hasFields.fields : getFields(hasFields[RefineSchemaId])
@@ -8838,8 +8848,8 @@ export const TaggedError = <Self = never>(identifier?: string) =>
     Object.defineProperty(TaggedErrorClass.prototype, "message", {
       get() {
         return `{ ${
-          util_.ownKeys(fields)
-            .map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown((this)[p])}`)
+          Reflect.ownKeys(fields)
+            .map((p: any) => `${Inspectable.formatPropertyKey(p)}: ${Inspectable.formatUnknown((this)[p])}`)
             .join(", ")
         } }`
       },
@@ -8853,7 +8863,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
 
 const extendFields = (a: Struct.Fields, b: Struct.Fields): Struct.Fields => {
   const out = { ...a }
-  for (const key of util_.ownKeys(b)) {
+  for (const key of Reflect.ownKeys(b)) {
     if (key in a) {
       throw new Error(errors_.getASTDuplicatePropertySignatureErrorMessage(key))
     }
@@ -8926,7 +8936,6 @@ const makeClass = <Fields extends Struct.Fields>(
   })
 
   const transformationSurrogate = schema.annotations({
-    [AST.JSONIdentifierAnnotationId]: identifier,
     ...encodedAnnotations,
     ...typeAnnotations,
     ...transformationAnnotations
@@ -9105,7 +9114,9 @@ const makeClass = <Fields extends Struct.Fields>(
     Object.defineProperty(klass.prototype, "toString", {
       value() {
         return `${identifier}({ ${
-          util_.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          Reflect.ownKeys(fields).map((p: any) =>
+            `${Inspectable.formatPropertyKey(p)}: ${Inspectable.formatUnknown(this[p])}`
+          )
             .join(", ")
         } })`
       },
@@ -9511,7 +9522,7 @@ export class Defect extends transform(
         err.stack = "stack" in i && typeof i.stack === "string" ? i.stack : ""
         return err
       }
-      return String(i)
+      return internalCause_.prettyErrorMessage(i)
     },
     encode: (a) => {
       if (a instanceof Error) {
@@ -10795,7 +10806,7 @@ const go = (ast: AST.AST, path: ReadonlyArray<PropertyKey>): Equivalence.Equival
     }
     case "Union": {
       const searchTree = ParseResult.getSearchTree(ast.types, true)
-      const ownKeys = util_.ownKeys(searchTree.keys)
+      const ownKeys = Reflect.ownKeys(searchTree.keys)
       const len = ownKeys.length
       return Equivalence.make((a, b) => {
         let candidates: Array<AST.AST> = []

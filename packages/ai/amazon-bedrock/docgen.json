@@ -19,8 +19,10 @@
       "@effect/platform/*": ["../../../../platform/src/*.js"],
       "@effect/ai": ["../../../ai/src/index.js"],
       "@effect/ai/*": ["../../../ai/src/*.js"],
-      "@effect/ai-amazon-bedrock": ["../../../ai-amazon-bedrock/src/index.js"],
-      "@effect/ai-amazon-bedrock/*": ["../../../ai-amazon-bedrock/src/*.js"]
+      "@effect/ai-anthropic": ["../../../anthropic/src/index.js"],
+      "@effect/ai-anthropic/*": ["../../../anthropic/src/*.js"],
+      "@effect/ai-amazon-bedrock": ["../../../amazon-bedrock/src/index.js"],
+      "@effect/ai-amazon-bedrock/*": ["../../../amazon-bedrock/src/*.js"]
     }
   }
 }

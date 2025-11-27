@@ -1,5 +1,575 @@
 # @effect/cluster
 
+## 0.53.6
+
+### Patch Changes
+
+- [#5793](https://github.com/Effect-TS/effect/pull/5793) [`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411) Thanks @tim-smart! - allow advisory locks to be disabled
+
+- Updated dependencies [[`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/platform@0.93.4
+
+## 0.53.5
+
+### Patch Changes
+
+- [#5785](https://github.com/Effect-TS/effect/pull/5785) [`47bf3d2`](https://github.com/Effect-TS/effect/commit/47bf3d2324ab914f6a33e95cda7ff2aac01519a6) Thanks @tim-smart! - immediately set entity keep alive in EntityResource
+
+## 0.53.4
+
+### Patch Changes
+
+- [#5783](https://github.com/Effect-TS/effect/pull/5783) [`8b879fb`](https://github.com/Effect-TS/effect/commit/8b879fb3b886a7262c9c8d9b2050cc128c5eb6f8) Thanks @tim-smart! - add EntityResource.makeK8sPod
+
+## 0.53.3
+
+### Patch Changes
+
+- [#5781](https://github.com/Effect-TS/effect/pull/5781) [`df69cb5`](https://github.com/Effect-TS/effect/commit/df69cb5ed590045b18d1527162518ea0197ddd2e) Thanks @tim-smart! - provide seperate close scope to EntityResource via context
+
+## 0.53.2
+
+### Patch Changes
+
+- [#5778](https://github.com/Effect-TS/effect/pull/5778) [`af7916a`](https://github.com/Effect-TS/effect/commit/af7916a3f00acdfc8ce451eabd3f5fb02914d0bb) Thanks @tim-smart! - fix postgres unprocessed message ordering
+
+- [#5778](https://github.com/Effect-TS/effect/pull/5778) [`af7916a`](https://github.com/Effect-TS/effect/commit/af7916a3f00acdfc8ce451eabd3f5fb02914d0bb) Thanks @tim-smart! - add @effect/cluster EntityResource module
+
+  A `EntityResource` is a resource that can be acquired inside a cluster
+  entity, which will keep the entity alive even across restarts.
+
+  The resource will only be fully released when the idle time to live is
+  reached, or when the `close` effect is called.
+
+  By default, the `idleTimeToLive` is infinite, meaning the resource will only
+  be released when `close` is called.
+
+  ```ts
+  import { Entity, EntityResource } from "@effect/cluster"
+  import { Rpc } from "@effect/rpc"
+  import { Effect } from "effect"
+
+  const EntityA = Entity.make("EntityA", [Rpc.make("method")])
+
+  export const EntityALayer = EntityA.toLayer(
+    Effect.gen(function* () {
+      // When the entity receives a message, it will first acquire the resource
+      //
+      // If the entity restarts, the resource will be re-acquired in the new
+      // instance.
+      //
+      // It will only be released when the idle TTL is reached, or when the
+      // `close` effect is called.
+      const resource = yield* EntityResource.make({
+        acquire: Effect.acquireRelease(
+          Effect.logInfo("Acquiring Entity resource"),
+          () => Effect.logInfo("Releasing Entity resource")
+        ),
+        // If the resource is not used for 10 minutes, it will be released and the
+        // entity will be allowed to shut down.
+        idleTimeToLive: "10 minutes"
+      })
+
+      return EntityA.of({
+        method: Effect.fnUntraced(function* () {
+          yield* Effect.logInfo("EntityA.method called")
+          // To access the resource, use `resource.get` inside an Effect.scoped
+          yield* resource.get
+        }, Effect.scoped)
+      })
+    }),
+    {
+      // After the resource is released, if the entity is not used for 1 minute,
+      // the entity will be shut down.
+      maxIdleTime: "1 minute"
+    }
+  )
+  ```
+
+- Updated dependencies [[`af7916a`](https://github.com/Effect-TS/effect/commit/af7916a3f00acdfc8ce451eabd3f5fb02914d0bb)]:
+  - effect@3.19.6
+
+## 0.53.1
+
+### Patch Changes
+
+- [#5775](https://github.com/Effect-TS/effect/pull/5775) [`b92632d`](https://github.com/Effect-TS/effect/commit/b92632ded7a976c9279985013c295260c6603b14) Thanks @tim-smart! - ensure ClusterCron's can be resumed if re-added
+
+## 0.53.0
+
+### Patch Changes
+
+- [#5771](https://github.com/Effect-TS/effect/pull/5771) [`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749) Thanks @tim-smart! - backport Entity keep alive from effect 4.0
+
+- [#5771](https://github.com/Effect-TS/effect/pull/5771) [`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749) Thanks @tim-smart! - add WorkflowEngine.makeUnsafe, which abstracts the serialization boundary
+
+- Updated dependencies [[`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea), [`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`62f7636`](https://github.com/Effect-TS/effect/commit/62f76361ee01ed816687774c5302e7f8c5ff6a42)]:
+  - @effect/rpc@0.72.2
+  - @effect/workflow@0.13.0
+  - effect@3.19.5
+
+## 0.52.11
+
+### Patch Changes
+
+- [#5765](https://github.com/Effect-TS/effect/pull/5765) [`f38c215`](https://github.com/Effect-TS/effect/commit/f38c215f99920c9ce8809a01ddb38b1c96d18d44) Thanks @tim-smart! - add entityRegistrationTimeout to ShardingConfig
+
+## 0.52.10
+
+### Patch Changes
+
+- [#5748](https://github.com/Effect-TS/effect/pull/5748) [`b93fc63`](https://github.com/Effect-TS/effect/commit/b93fc638da9a4e840a02417e422c34c8a735413c) Thanks @tim-smart! - don't resume parent workflow when suspending on failure
+
+## 0.52.9
+
+### Patch Changes
+
+- [#5726](https://github.com/Effect-TS/effect/pull/5726) [`d34476e`](https://github.com/Effect-TS/effect/commit/d34476eebf1b61ce80b2127689d95d3b0c703aab) Thanks @tim-smart! - support and test against vitess for SqlRunnerStorage
+
+## 0.52.8
+
+### Patch Changes
+
+- [#5719](https://github.com/Effect-TS/effect/pull/5719) [`3689a18`](https://github.com/Effect-TS/effect/commit/3689a183c5ace2fc31faec1910347a12b0e70364) Thanks @tim-smart! - re-use resume parent messages for child workflows
+
+## 0.52.7
+
+### Patch Changes
+
+- [#5716](https://github.com/Effect-TS/effect/pull/5716) [`629b98d`](https://github.com/Effect-TS/effect/commit/629b98d3b696df6c928f0930b867ca3f27829af0) Thanks @tim-smart! - optimize Sharding shard release
+
+- Updated dependencies [[`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7)]:
+  - effect@3.19.3
+
+## 0.52.6
+
+### Patch Changes
+
+- [#5705](https://github.com/Effect-TS/effect/pull/5705) [`84d22eb`](https://github.com/Effect-TS/effect/commit/84d22eb75985da4f3c626a59bcfa2b5a19a17fa2) Thanks @tim-smart! - use FiberMap to release shards concurrently
+
+- [#5705](https://github.com/Effect-TS/effect/pull/5705) [`84d22eb`](https://github.com/Effect-TS/effect/commit/84d22eb75985da4f3c626a59bcfa2b5a19a17fa2) Thanks @tim-smart! - if a shard lock fails to release, release all locks
+
+## 0.52.5
+
+### Patch Changes
+
+- [#5703](https://github.com/Effect-TS/effect/pull/5703) [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5) Thanks @tim-smart! - close release FiberHandle after acquisition fiber
+
+- Updated dependencies [[`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5), [`374f58c`](https://github.com/Effect-TS/effect/commit/374f58c10799109b61d8a131a025f3d03ce5aab5)]:
+  - effect@3.19.2
+
+## 0.52.4
+
+### Patch Changes
+
+- [#5701](https://github.com/Effect-TS/effect/pull/5701) [`c00268d`](https://github.com/Effect-TS/effect/commit/c00268d6ae82fcceda6d71a99e1ec4c5072c1deb) Thanks @tim-smart! - add timeout to pg lock queries
+
+## 0.52.3
+
+### Patch Changes
+
+- [#5698](https://github.com/Effect-TS/effect/pull/5698) [`19e14ec`](https://github.com/Effect-TS/effect/commit/19e14ec89065ed938f0b3d27a9e8838dac81f3c8) Thanks @tim-smart! - add premptiveShutdown option to ShardingConfig
+
+## 0.52.2
+
+### Patch Changes
+
+- [#5695](https://github.com/Effect-TS/effect/pull/5695) [`63f2bf3`](https://github.com/Effect-TS/effect/commit/63f2bf393ef4bb3e46db59abdf1b2160e8ee71d4) Thanks @tim-smart! - tie cluster Entity lifetimes to Layer scope
+
+- Updated dependencies [[`63f2bf3`](https://github.com/Effect-TS/effect/commit/63f2bf393ef4bb3e46db59abdf1b2160e8ee71d4), [`63f2bf3`](https://github.com/Effect-TS/effect/commit/63f2bf393ef4bb3e46db59abdf1b2160e8ee71d4)]:
+  - effect@3.19.1
+  - @effect/workflow@0.12.2
+
+## 0.52.1
+
+### Patch Changes
+
+- [#5693](https://github.com/Effect-TS/effect/pull/5693) [`c7e572c`](https://github.com/Effect-TS/effect/commit/c7e572c3504ea9115df5fa1256d4791b03f33133) Thanks @tim-smart! - change workflow re-registration defect to a warning
+
+## 0.52.0
+
+### Patch Changes
+
+- [#5684](https://github.com/Effect-TS/effect/pull/5684) [`15100f6`](https://github.com/Effect-TS/effect/commit/15100f6ed1ae554c295fb8034623e942dcdc6a72) Thanks @tim-smart! - retry interrupted workflow activities
+
+- [#5689](https://github.com/Effect-TS/effect/pull/5689) [`0d77928`](https://github.com/Effect-TS/effect/commit/0d779286eec84e679b55e0dbcd7d0dd981c28f18) Thanks @tim-smart! - only store client interrupts as suspends
+
+- [#5691](https://github.com/Effect-TS/effect/pull/5691) [`c2133fa`](https://github.com/Effect-TS/effect/commit/c2133fad3a5c3f73c0e0920be779390d24aa253f) Thanks @tim-smart! - prevent interrupt suspends from propagating
+
+- Updated dependencies [[`15100f6`](https://github.com/Effect-TS/effect/commit/15100f6ed1ae554c295fb8034623e942dcdc6a72), [`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313), [`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452)]:
+  - @effect/workflow@0.12.1
+  - @effect/sql@0.48.0
+  - @effect/rpc@0.72.1
+
+## 0.51.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - backport @effect/cluster from effect v4
+
+  @effect/cluster no longer requires a Shard Manager, and instead relies on the
+  `RunnerStorage` service to track runner state.
+
+  To migrate, remove any Shard Manager deployments and use the updated layers in
+  `@effect/platform-node` or `@effect/platform-bun`.
+
+  # Breaking Changes
+  - `ShardManager` module has been removed
+  - `EntityNotManagedByRunner` error has been removed
+  - Shard locks now use database advisory locks, which requires stable sessions
+    for database connections. This means load balancers or proxies that rotate
+    connections may cause issues.
+  - `@effect/platform-node/NodeClusterSocketRunner` is now
+    `@effect/cluster/NodeClusterSocket`
+  - `@effect/platform-node/NodeClusterHttpRunner` is now
+    `@effect/cluster/NodeClusterHttp`
+  - `@effect/platform-bun/BunClusterSocketRunner` is now
+    `@effect/cluster/BunClusterSocket`
+  - `@effect/platform-bun/BunClusterHttpRunner` is now
+    `@effect/cluster/BunClusterHttp`
+
+  # New Features
+  - `RunnerHealth.layerK8s` has been added, which uses the Kubernetes API to track
+    runner health and liveness. To use it, you will need a service account with
+    permissions to read pod information.
+
+### Patch Changes
+
+- Updated dependencies [[`27863ab`](https://github.com/Effect-TS/effect/commit/27863abed9047a3cb5d47b4136ff69d5456e2c74), [`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - @effect/workflow@0.12.0
+  - effect@3.19.0
+  - @effect/rpc@0.72.0
+  - @effect/platform@0.93.0
+  - @effect/sql@0.47.0
+
+## 0.50.6
+
+### Patch Changes
+
+- [#5642](https://github.com/Effect-TS/effect/pull/5642) [`b8e3c6d`](https://github.com/Effect-TS/effect/commit/b8e3c6d510aec858ac34bfe5eb2b8fc5506fd669) Thanks @tim-smart! - fix ReferenceError in NodeSocket.fromNet
+
+- Updated dependencies [[`b8e3c6d`](https://github.com/Effect-TS/effect/commit/b8e3c6d510aec858ac34bfe5eb2b8fc5506fd669)]:
+  - @effect/rpc@0.71.1
+  - @effect/workflow@0.11.5
+
+## 0.50.5
+
+### Patch Changes
+
+- [#5640](https://github.com/Effect-TS/effect/pull/5640) [`85ea731`](https://github.com/Effect-TS/effect/commit/85ea731c8305c040fc50b82c204f3e20371c50a4) Thanks @tim-smart! - use external interruption for workflow suspend
+
+- Updated dependencies [[`85ea731`](https://github.com/Effect-TS/effect/commit/85ea731c8305c040fc50b82c204f3e20371c50a4)]:
+  - @effect/workflow@0.11.4
+
+## 0.50.4
+
+### Patch Changes
+
+- [#5618](https://github.com/Effect-TS/effect/pull/5618) [`d2140c1`](https://github.com/Effect-TS/effect/commit/d2140c1604a575186075e0907ecc05d9ab197c23) Thanks @tim-smart! - don't restart an entity during shutdown
+
+## 0.50.3
+
+### Patch Changes
+
+- [#5602](https://github.com/Effect-TS/effect/pull/5602) [`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf) Thanks @tim-smart! - guard against race conditions in NodeSocketServer
+
+- Updated dependencies [[`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf)]:
+  - @effect/workflow@0.11.3
+
+## 0.50.2
+
+### Patch Changes
+
+- [#5590](https://github.com/Effect-TS/effect/pull/5590) [`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646) Thanks @tim-smart! - add openTimeout options to NodeSocket.makeNet
+
+- Updated dependencies [[`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646), [`f6987c0`](https://github.com/Effect-TS/effect/commit/f6987c04ebf1386dc37729dfea1631ce364a5a96)]:
+  - @effect/workflow@0.11.2
+  - @effect/platform@0.92.1
+
+## 0.50.1
+
+### Patch Changes
+
+- [#5585](https://github.com/Effect-TS/effect/pull/5585) [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69) Thanks @tim-smart! - keep socket error listener attached in NodeSocket
+
+- Updated dependencies [[`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152), [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69)]:
+  - effect@3.18.1
+  - @effect/workflow@0.11.1
+
+## 0.50.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/rpc@0.71.0
+  - @effect/sql@0.46.0
+  - @effect/workflow@0.11.0
+
+## 0.49.6
+
+### Patch Changes
+
+- [#5581](https://github.com/Effect-TS/effect/pull/5581) [`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd) Thanks @tim-smart! - persist activity interrupts as "Suspended"
+
+- Updated dependencies [[`dd7b459`](https://github.com/Effect-TS/effect/commit/dd7b4591b79ed88f3c0fcc607f9e42f22883f9bd)]:
+  - @effect/rpc@0.70.2
+  - @effect/workflow@0.10.3
+
+## 0.49.5
+
+### Patch Changes
+
+- [#5577](https://github.com/Effect-TS/effect/pull/5577) [`c9e1e40`](https://github.com/Effect-TS/effect/commit/c9e1e4064cef4c4324318ec76b35bbbdc026dace) Thanks @tim-smart! - ignore non-client interrupts in workflow activities
+
+- Updated dependencies [[`c9e1e40`](https://github.com/Effect-TS/effect/commit/c9e1e4064cef4c4324318ec76b35bbbdc026dace)]:
+  - @effect/rpc@0.70.1
+  - @effect/workflow@0.10.2
+
+## 0.49.4
+
+### Patch Changes
+
+- [#5575](https://github.com/Effect-TS/effect/pull/5575) [`d0e97d7`](https://github.com/Effect-TS/effect/commit/d0e97d74a9e4d4a436ac8d148db81144cf872cc6) Thanks @tim-smart! - fix SqlMessageStorage last reply for sqlite
+
+- Updated dependencies [[`d0e97d7`](https://github.com/Effect-TS/effect/commit/d0e97d74a9e4d4a436ac8d148db81144cf872cc6)]:
+  - @effect/workflow@0.10.1
+
+## 0.49.3
+
+### Patch Changes
+
+- [#5563](https://github.com/Effect-TS/effect/pull/5563) [`fc7e32a`](https://github.com/Effect-TS/effect/commit/fc7e32af793214b542262f912a30c89f85068bb4) Thanks @tim-smart! - prevent EntityNotAssigned when sending to local runner
+
+## 0.49.2
+
+### Patch Changes
+
+- [#5561](https://github.com/Effect-TS/effect/pull/5561) [`1a9e601`](https://github.com/Effect-TS/effect/commit/1a9e60163d25da51294e7aaba33bbf0bde7fe231) Thanks @tim-smart! - optimize SqlShardStorage queries
+
+## 0.49.1
+
+### Patch Changes
+
+- [#5557](https://github.com/Effect-TS/effect/pull/5557) [`978b6ff`](https://github.com/Effect-TS/effect/commit/978b6ffc0b124d67d62a797211eff795f22cd1e6) Thanks @tim-smart! - allow NodeSocket.makeNet open to be interrupted
+
+## 0.49.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/rpc@0.70.0
+  - @effect/sql@0.45.0
+  - @effect/workflow@0.10.0
+
+## 0.48.16
+
+### Patch Changes
+
+- [#5543](https://github.com/Effect-TS/effect/pull/5543) [`2b9db9e`](https://github.com/Effect-TS/effect/commit/2b9db9e7f930d3ae269b123286c881ea34d3afca) Thanks @tim-smart! - propagate workflow interruption to unfinished children
+
+- Updated dependencies [[`2b9db9e`](https://github.com/Effect-TS/effect/commit/2b9db9e7f930d3ae269b123286c881ea34d3afca)]:
+  - @effect/workflow@0.9.6
+
+## 0.48.15
+
+### Patch Changes
+
+- [#5541](https://github.com/Effect-TS/effect/pull/5541) [`4f07ee0`](https://github.com/Effect-TS/effect/commit/4f07ee06e59fa81762761b12938224f5c931b119) Thanks @tim-smart! - backport MessageStorage.unregisterReplyHandler
+
+- Updated dependencies [[`ea95998`](https://github.com/Effect-TS/effect/commit/ea95998de2a7613d844c42e67e7f5b16652c5000)]:
+  - effect@3.17.14
+
+## 0.48.14
+
+### Patch Changes
+
+- [#5529](https://github.com/Effect-TS/effect/pull/5529) [`d9c8bce`](https://github.com/Effect-TS/effect/commit/d9c8bce027a45da82190303cc6eb6838074f4fb9) Thanks @tim-smart! - catch interruptions in Sharding storage loop
+
+## 0.48.13
+
+### Patch Changes
+
+- [#5527](https://github.com/Effect-TS/effect/pull/5527) [`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df) Thanks @tim-smart! - attempt to prevent InterruptedException leaks into entity replies
+
+- Updated dependencies [[`e3dac95`](https://github.com/Effect-TS/effect/commit/e3dac9527ab8ff645c82b30ca2bba5a975b103df)]:
+  - @effect/rpc@0.69.4
+
+## 0.48.12
+
+### Patch Changes
+
+- [#5525](https://github.com/Effect-TS/effect/pull/5525) [`7edc074`](https://github.com/Effect-TS/effect/commit/7edc074f67d300957b749c9e20ea9706036dc0e0) Thanks @tim-smart! - backport ClusterWorkflowEngine partial entity clients
+
+## 0.48.11
+
+### Patch Changes
+
+- [#5519](https://github.com/Effect-TS/effect/pull/5519) [`92c533f`](https://github.com/Effect-TS/effect/commit/92c533fb52d6d3869728071e92596f80b4c7aa36) Thanks @tim-smart! - improve SqlMessageStorage insert queries
+
+## 0.48.10
+
+### Patch Changes
+
+- [#5517](https://github.com/Effect-TS/effect/pull/5517) [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8) Thanks @tim-smart! - backport cluster improvements from effect 4
+
+- Updated dependencies [[`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8)]:
+  - @effect/platform@0.90.10
+  - @effect/rpc@0.69.3
+
+## 0.48.9
+
+### Patch Changes
+
+- [#5512](https://github.com/Effect-TS/effect/pull/5512) [`934c1d9`](https://github.com/Effect-TS/effect/commit/934c1d9517a7c8bcac1b362908fa474371f7f0fa) Thanks @tim-smart! - backport active shard latch changes from effect 4
+
+## 0.48.8
+
+### Patch Changes
+
+- [#5510](https://github.com/Effect-TS/effect/pull/5510) [`c2fed22`](https://github.com/Effect-TS/effect/commit/c2fed22a131fbd9ba54482af1886cc1e869a72cd) Thanks @tim-smart! - re-add two phase runner health check
+
+## 0.48.7
+
+### Patch Changes
+
+- [#5505](https://github.com/Effect-TS/effect/pull/5505) [`1c4b6ae`](https://github.com/Effect-TS/effect/commit/1c4b6ae81daf17bce1f67c0a0bc298dc4ce8f461) Thanks @tim-smart! - ensure ShardManager and Runner get fresh versions of the rpc protocol
+
+- [#5508](https://github.com/Effect-TS/effect/pull/5508) [`26d1267`](https://github.com/Effect-TS/effect/commit/26d12678b08ee3021f5529bed97b63377155a7fe) Thanks @tim-smart! - ensure runner detects when it has been externally unregistered
+
+## 0.48.6
+
+### Patch Changes
+
+- [#5501](https://github.com/Effect-TS/effect/pull/5501) [`a874567`](https://github.com/Effect-TS/effect/commit/a874567c59fa1b135268d8e86222a4afd693ae12) Thanks @tim-smart! - don't remove entities from map on shutdown
+
+## 0.48.5
+
+### Patch Changes
+
+- [#5486](https://github.com/Effect-TS/effect/pull/5486) [`85a60a0`](https://github.com/Effect-TS/effect/commit/85a60a0f06e596991dec1d64bdfccac8df880f84) Thanks @tim-smart! - add Workflow.poll api
+
+- Updated dependencies [[`85a60a0`](https://github.com/Effect-TS/effect/commit/85a60a0f06e596991dec1d64bdfccac8df880f84)]:
+  - @effect/workflow@0.9.4
+
+## 0.48.4
+
+### Patch Changes
+
+- [#5484](https://github.com/Effect-TS/effect/pull/5484) [`0a9ec23`](https://github.com/Effect-TS/effect/commit/0a9ec23dca104ac6fd7ea5841e98f5fa7796be40) Thanks @tim-smart! - fix multiple persisted requests subscribing to the same id
+
+- Updated dependencies [[`333be04`](https://github.com/Effect-TS/effect/commit/333be046b50e8300f5cb70b871448e0628b7b37c)]:
+  - @effect/platform@0.90.8
+
+## 0.48.3
+
+### Patch Changes
+
+- [#5472](https://github.com/Effect-TS/effect/pull/5472) [`fb00cd6`](https://github.com/Effect-TS/effect/commit/fb00cd6cf20da70592125c0c682225de51a977d5) Thanks @tim-smart! - ensure defects don't cause loops in ClusterCron
+
+## 0.48.2
+
+### Patch Changes
+
+- [#5415](https://github.com/Effect-TS/effect/pull/5415) [`4cb3af5`](https://github.com/Effect-TS/effect/commit/4cb3af5aeae8535a04f84fb0f64c3f2be19e2aed) Thanks @tim-smart! - fix rpc msgpack serialization when chunk contains partial frames
+
+- Updated dependencies [[`4cb3af5`](https://github.com/Effect-TS/effect/commit/4cb3af5aeae8535a04f84fb0f64c3f2be19e2aed)]:
+  - @effect/rpc@0.69.1
+  - @effect/workflow@0.9.2
+
+## 0.48.1
+
+### Patch Changes
+
+- [#5394](https://github.com/Effect-TS/effect/pull/5394) [`59547d9`](https://github.com/Effect-TS/effect/commit/59547d94dc625b19da62b5d1f3ddffa59efb0ff2) Thanks @tim-smart! - add DurableDeferred.withActivityAttempt, for scoping it to the current activity run
+
+- Updated dependencies [[`59547d9`](https://github.com/Effect-TS/effect/commit/59547d94dc625b19da62b5d1f3ddffa59efb0ff2)]:
+  - @effect/workflow@0.9.1
+
+## 0.48.0
+
+### Patch Changes
+
+- Updated dependencies [[`3e163b2`](https://github.com/Effect-TS/effect/commit/3e163b24cc2b647e25566ba29ef25c3f57609042)]:
+  - @effect/rpc@0.69.0
+  - @effect/workflow@0.9.0
+
+## 0.47.0
+
+### Minor Changes
+
+- [#5358](https://github.com/Effect-TS/effect/pull/5358) [`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328) Thanks @tim-smart! - improve RunnerHealth by detecting if Runner is connected to the host
+
+### Patch Changes
+
+- Updated dependencies [[`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328)]:
+  - effect@3.17.7
+
+## 0.46.4
+
+### Patch Changes
+
+- [#5350](https://github.com/Effect-TS/effect/pull/5350) [`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14) Thanks @tim-smart! - add Migrator.fromRecord api
+
+- Updated dependencies [[`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14)]:
+  - @effect/sql@0.44.1
+  - @effect/workflow@0.8.3
+
+## 0.46.3
+
+### Patch Changes
+
+- [#5345](https://github.com/Effect-TS/effect/pull/5345) [`58d56d5`](https://github.com/Effect-TS/effect/commit/58d56d549fa49d6d06cfedb975a046872ac44f85) Thanks @tim-smart! - increase size of entity_type on cluster_messages table
+
+- [#5345](https://github.com/Effect-TS/effect/pull/5345) [`58d56d5`](https://github.com/Effect-TS/effect/commit/58d56d549fa49d6d06cfedb975a046872ac44f85) Thanks @tim-smart! - log defects in Entity & Workflow proxy for HttpApi endpoints
+
+- Updated dependencies [[`58d56d5`](https://github.com/Effect-TS/effect/commit/58d56d549fa49d6d06cfedb975a046872ac44f85)]:
+  - @effect/workflow@0.8.2
+
+## 0.46.2
+
+### Patch Changes
+
+- [#5297](https://github.com/Effect-TS/effect/pull/5297) [`eedbab5`](https://github.com/Effect-TS/effect/commit/eedbab5a02f6752acbd835bfeff338b1fd7c0deb) Thanks @tim-smart! - Remove retry from ClusterCron in favour of user supplied retry
+
+## 0.46.1
+
+### Patch Changes
+
+- [#5283](https://github.com/Effect-TS/effect/pull/5283) [`de92b1c`](https://github.com/Effect-TS/effect/commit/de92b1c46a57761df9dd46e59e42d5a54beb6e34) Thanks @tim-smart! - disable tracing for ClusterCron client to disconnect parent span
+
+## 0.46.0
+
+### Patch Changes
+
+- Updated dependencies [[`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87), [`e9cbd26`](https://github.com/Effect-TS/effect/commit/e9cbd2673401723aa811b0535202e4f57baf6d2c)]:
+  - effect@3.17.1
+  - @effect/rpc@0.68.0
+  - @effect/workflow@0.8.0
+
+## 0.45.0
+
+### Patch Changes
+
+- Updated dependencies [[`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f)]:
+  - @effect/platform@0.90.0
+  - @effect/rpc@0.67.0
+  - @effect/sql@0.44.0
+  - @effect/workflow@0.7.0
+
+## 0.44.0
+
+### Patch Changes
+
+- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
+  - effect@3.17.0
+  - @effect/platform@0.89.0
+  - @effect/rpc@0.66.0
+  - @effect/sql@0.43.0
+  - @effect/workflow@0.6.0
+
 ## 0.43.1
 
 ### Patch Changes

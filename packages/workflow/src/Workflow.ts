@@ -6,13 +6,14 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import { constFalse, constTrue, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import type { Pipeable } from "effect/Pipeable"
 import * as Predicate from "effect/Predicate"
 import * as PrimaryKey from "effect/PrimaryKey"
-import * as Schedule from "effect/Schedule"
+import type * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
@@ -24,6 +25,41 @@ import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
  * @category Symbols
  */
 export const TypeId: unique symbol = Symbol.for("@effect/workflow/Workflow")
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace Workflow {
+  /**
+   * Extracts the type of the Payload of a `Workflow`.
+   *
+   * @since 1.0.0
+   * @category Type-level Utils
+   */
+  export type Payload<W extends Workflow<any, any, any, any>> = W extends Workflow<any, infer Payload, any, any>
+    ? Payload["Type"]
+    : never
+
+  /**
+   * Extracts the type of the Success of a `Workflow`.
+   *
+   * @since 1.0.0
+   * @category Type-level Utils
+   */
+  export type Success<W extends Workflow<any, any, any, any>> = W extends Workflow<any, any, infer Success, any>
+    ? Success["Type"]
+    : never
+
+  /**
+   * Extracts the type of the Error of a `Workflow`.
+   *
+   * @since 1.0.0
+   * @category Type-level Utils
+   */
+  export type Error<W extends Workflow<any, any, any, any>> = W extends Workflow<any, any, any, infer Error>
+    ? Error["Type"]
+    : never
+}
 
 /**
  * @since 1.0.0
@@ -78,9 +114,21 @@ export interface Workflow<
       readonly discard?: Discard
     }
   ) => Effect.Effect<
-    Discard extends true ? void : Success["Type"],
+    Discard extends true ? string : Success["Type"],
     Discard extends true ? never : Error["Type"],
     WorkflowEngine | Payload["Context"] | Success["Context"] | Error["Context"]
+  >
+
+  /**
+   * Poll a workflow execution for its current status.
+   *
+   * If the workflow has not run yet, it will return `undefined`, otherwise it
+   * will return the current `Workflow.Result`.
+   */
+  readonly poll: (executionId: string) => Effect.Effect<
+    Result<Success["Type"], Error["Type"]> | undefined,
+    never,
+    WorkflowEngine | Success["Context"] | Error["Context"]
   >
 
   /**
@@ -103,7 +151,7 @@ export interface Workflow<
       executionId: string
     ) => Effect.Effect<Success["Type"], Error["Type"], R>
   ) => Layer.Layer<
-    WorkflowEngine,
+    never,
     never,
     | WorkflowEngine
     | Exclude<R, WorkflowEngine | WorkflowInstance | Execution<Name> | Scope.Scope>
@@ -230,7 +278,6 @@ export const make = <
     readonly annotations?: Context.Context<never>
   }
 ): Workflow<Name, Payload extends Schema.Struct.Fields ? Schema.Struct<Payload> : Payload, Success, Error> => {
-  const suspendedRetrySchedule = options.suspendedRetrySchedule ?? defaultRetrySchedule
   const makeExecutionId = (payload: any) => makeHashDigest(`${options.name}-${options.idempotencyKey(payload)}`)
   const self: Workflow<Name, any, Success, Error> = {
     [TypeId]: TypeId,
@@ -257,44 +304,25 @@ export const make = <
         const engine = yield* EngineTag
         const executionId = yield* makeExecutionId(payload)
         yield* Effect.annotateCurrentSpan({ executionId })
-        if (opts?.discard) {
-          return yield* engine.execute({
-            workflow: self,
-            executionId,
-            payload,
-            discard: true
-          })
-        }
-        const parentInstance = yield* Effect.serviceOption(InstanceTag)
-        const run = engine.execute({
-          workflow: self,
+        return yield* engine.execute(self, {
           executionId,
           payload,
-          discard: false,
-          parent: Option.getOrUndefined(parentInstance)
+          discard: opts?.discard,
+          suspendedRetrySchedule: options.suspendedRetrySchedule
         })
-        if (Option.isSome(parentInstance)) {
-          const result = yield* wrapActivityResult(run, (result) => result._tag === "Suspended")
-          if (result._tag === "Suspended") {
-            parentInstance.value.suspended = true
-            return yield* Effect.interrupt
-          }
-          return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
-        }
-
-        let sleep: Effect.Effect<any> | undefined
-        while (true) {
-          const result = yield* run
-          if (result._tag === "Complete") {
-            return yield* result.exit as Exit.Exit<Success["Type"], Error["Type"]>
-          }
-          sleep ??= (yield* Schedule.driver(suspendedRetrySchedule)).next(void 0).pipe(
-            Effect.catchAll(() => Effect.dieMessage(`${options.name}.execute: suspendedRetrySchedule exhausted`))
-          )
-          yield* sleep
-        }
       },
       Effect.withSpan(`${options.name}.execute`, { captureStackTrace: false })
+    ),
+    poll: Effect.fnUntraced(
+      function*(executionId: string) {
+        const engine = yield* EngineTag
+        return yield* engine.poll(self, executionId)
+      },
+      (effect, executionId) =>
+        Effect.withSpan(effect, `${options.name}.poll`, {
+          captureStackTrace: false,
+          attributes: { executionId }
+        })
     ),
     interrupt: Effect.fnUntraced(
       function*(executionId: string) {
@@ -319,14 +347,9 @@ export const make = <
         })
     ),
     toLayer: (execute) =>
-      Layer.effectContext(Effect.gen(function*() {
-        const context = yield* Effect.context<WorkflowEngine>()
-        const engine = Context.get(context, EngineTag)
-        yield* engine.register(self, (payload, executionId) =>
-          execute(payload, executionId).pipe(
-            Effect.mapInputContext((input) => Context.merge(context, input))
-          ) as any)
-        return EngineTag.context(engine)
+      Layer.scopedDiscard(Effect.gen(function*() {
+        const engine = yield* EngineTag
+        return yield* engine.register(self, execute)
       })) as any,
     executionId: (payload) => makeExecutionId(self.payloadSchema.make(payload)),
     withCompensation
@@ -334,10 +357,6 @@ export const make = <
 
   return self
 }
-
-const defaultRetrySchedule = Schedule.exponential(200, 1.5).pipe(
-  Schedule.union(Schedule.spaced(30000))
-)
 
 /**
  * @since 1.0.0
@@ -459,7 +478,9 @@ export interface CompleteEncoded<A, E> {
  * @since 1.0.0
  * @category Result
  */
-export class Suspended extends Schema.TaggedClass<Suspended>("@effect/workflow/Workflow/Suspended")("Suspended", {}) {
+export class Suspended extends Schema.TaggedClass<Suspended>("@effect/workflow/Workflow/Suspended")("Suspended", {
+  cause: Schema.optional(Schema.Cause({ error: Schema.Never, defect: Schema.Defect }))
+}) {
   /**
    * @since 1.0.0
    */
@@ -492,25 +513,31 @@ export const intoResult = <A, E, R>(
     const instance = Context.get(context, InstanceTag)
     const captureDefects = Context.get(instance.workflow.annotations, CaptureDefects)
     const suspendOnFailure = Context.get(instance.workflow.annotations, SuspendOnFailure)
-    return Effect.uninterruptibleMask((restore) =>
-      restore(effect).pipe(
-        suspendOnFailure ?
-          Effect.catchAllCause(() => {
-            instance.suspended = true
-            return Effect.interrupt
-          }) :
-          identity,
-        Effect.scoped,
-        Effect.matchCauseEffect({
-          onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
-          onFailure: (cause): Effect.Effect<Result<A, E>> =>
-            instance.suspended
-              ? Effect.succeed(new Suspended())
-              : !captureDefects && Cause.isDie(cause)
-              ? Effect.failCause(cause as Cause.Cause<never>)
-              : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
-        })
-      )
+    return effect.pipe(
+      // So we can use external interruption to suspend a workflow
+      Effect.fork,
+      Effect.flatMap((fiber) => Effect.onInterrupt(Fiber.join(fiber), () => Fiber.interrupt(fiber))),
+      Effect.interruptible,
+      suspendOnFailure ?
+        Effect.catchAllCause((cause) => {
+          instance.suspended = true
+          if (!Cause.isInterruptedOnly(cause)) {
+            instance.cause = Cause.die(Cause.squash(cause))
+          }
+          return Effect.interrupt
+        }) :
+        identity,
+      Effect.scoped,
+      Effect.matchCauseEffect({
+        onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
+        onFailure: (cause): Effect.Effect<Result<A, E>> =>
+          instance.suspended
+            ? Effect.succeed(new Suspended({ cause: instance.cause }))
+            : (!instance.interrupted && Cause.isInterruptedOnly(cause)) || (!captureDefects && Cause.isDie(cause))
+            ? Effect.failCause(cause as Cause.Cause<never>)
+            : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
+      }),
+      Effect.uninterruptible
     )
   })
 
@@ -529,15 +556,18 @@ export const wrapActivityResult = <A, E, R>(
       return state.count > 0 ?
         state.latch.await.pipe(
           Effect.andThen(Effect.yieldNow()),
-          Effect.andThen(Effect.interrupt)
+          Effect.andThen(suspend(instance))
         ) :
-        Effect.interrupt
+        suspend(instance)
     }
     if (state.count === 0) state.latch.unsafeClose()
     state.count++
     return Effect.onExit(effect, (exit) => {
       state.count--
       const isSuspended = Exit.isSuccess(exit) && isSuspend(exit.value)
+      if (Exit.isSuccess(exit) && isResult(exit.value) && exit.value._tag === "Suspended" && exit.value.cause) {
+        instance.cause = instance.cause ? Cause.sequential(instance.cause, exit.value.cause) : exit.value.cause
+      }
       return state.count === 0 ? state.latch.open : isSuspended ? state.latch.await : Effect.void
     })
   })
@@ -580,6 +610,16 @@ export const withCompensation: {
         )
     )
   ))
+
+/**
+ * @since 1.0.0
+ */
+export const suspend = (instance: WorkflowInstance["Type"]): Effect.Effect<never> =>
+  Effect.interruptible(Effect.async<never>(() => {
+    instance.suspended = true
+    const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+    fiber.unsafeInterruptAsFork(fiber.id())
+  }))
 
 /**
  * If you set this annotation to `true` for a workflow, it will capture defects

@@ -21,7 +21,7 @@ server.listen({
 
 describe("Ndjson", () => {
   test("socket", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const socket = NodeSocket.makeNetChannel<Ndjson.NdjsonError>({ port, host: "localhost" }).pipe(
         Ndjson.duplex()
       )
@@ -30,13 +30,13 @@ describe("Ndjson", () => {
         Stream.pipeThroughChannel(socket),
         Stream.runCollect
       )
-      const output = yield* _(outputEffect)
+      const output = yield* outputEffect
 
       assert.deepStrictEqual(Chunk.toArray(output), [{ hello: "world" }, { test: 123 }])
     }).pipe(Effect.runPromise))
 
   test("socket x10000", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const socket = NodeSocket.makeNetChannel<Ndjson.NdjsonError>({ port }).pipe(
         Ndjson.duplex()
       )
@@ -46,7 +46,7 @@ describe("Ndjson", () => {
         Stream.pipeThroughChannel(socket),
         Stream.runCollect
       )
-      const output = yield* _(outputEffect)
+      const output = yield* outputEffect
 
       assert.deepStrictEqual(Chunk.toArray(output), msgs)
     }).pipe(Effect.runPromise))

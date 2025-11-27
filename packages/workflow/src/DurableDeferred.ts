@@ -9,8 +9,9 @@ import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
 import * as Exit from "effect/Exit"
 import { dual } from "effect/Function"
-import * as Option from "effect/Option"
+import * as Predicate from "effect/Predicate"
 import * as Schema from "effect/Schema"
+import type * as Activity from "./Activity.js"
 import * as Workflow from "./Workflow.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -38,7 +39,8 @@ export interface DurableDeferred<
   readonly name: string
   readonly successSchema: Success
   readonly errorSchema: Error
-  readonly exitSchema: Schema.Exit<Success, Error, typeof Schema.Defect>
+  readonly exitSchema: Schema.ExitFromSelf<Success, Error, typeof Schema.Defect>
+  readonly withActivityAttempt: Effect.Effect<DurableDeferred<Success, Error>>
 }
 
 /**
@@ -50,7 +52,7 @@ export interface Any {
   readonly name: string
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
-  readonly exitSchema: Schema.Exit<any, any, any>
+  readonly exitSchema: Schema.ExitFromSelf<any, any, any>
 }
 
 /**
@@ -61,17 +63,24 @@ export const make = <
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Error extends Schema.Schema.All = typeof Schema.Never
 >(name: string, options?: {
-  readonly success?: Success
-  readonly error?: Error
+  readonly success?: Success | undefined
+  readonly error?: Error | undefined
 }): DurableDeferred<Success, Error> => ({
   [TypeId]: TypeId,
   name,
   successSchema: options?.success ?? Schema.Void as any,
   errorSchema: options?.error ?? Schema.Never as any,
-  exitSchema: Schema.Exit({
+  exitSchema: Schema.ExitFromSelf({
     success: options?.success ?? Schema.Void as any,
     failure: options?.error ?? Schema.Never as any,
     defect: Schema.Defect
+  }),
+  withActivityAttempt: Effect.gen(function*() {
+    const attempt = yield* CurrentAttempt
+    return make(`${name}/${attempt}`, {
+      success: options?.success,
+      error: options?.error
+    })
   })
 })
 
@@ -81,6 +90,13 @@ const EngineTag = Context.GenericTag<WorkflowEngine, WorkflowEngine["Type"]>(
 
 const InstanceTag = Context.GenericTag<WorkflowInstance, WorkflowInstance["Type"]>(
   "@effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
+)
+
+const CurrentAttempt = Context.Reference<Activity.CurrentAttempt>()(
+  "@effect/workflow/Activity/CurrentAttempt" satisfies typeof Activity.CurrentAttempt.key,
+  {
+    defaultValue: () => 1
+  }
 )
 
 const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
@@ -95,14 +111,14 @@ const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.Al
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
-  const oexit = yield* Workflow.wrapActivityResult(engine.deferredResult(self), Option.isNone)
-  if (Option.isNone(oexit)) {
-    instance.suspended = true
-    return yield* Effect.interrupt
+  const exit = yield* Workflow.wrapActivityResult(
+    engine.deferredResult(self),
+    Predicate.isUndefined
+  )
+  if (exit === undefined) {
+    return yield* Workflow.suspend(instance)
   }
-  return yield* Effect.flatten(Effect.orDie(
-    Schema.decodeUnknown(self.exitSchema)(oexit.value)
-  ))
+  return yield* exit
 })
 
 export {
@@ -144,19 +160,15 @@ export const into: {
   Effect.contextWithEffect((context: Context.Context<WorkflowEngine | WorkflowInstance>) => {
     const engine = Context.get(context, EngineTag)
     const instance = Context.get(context, InstanceTag)
-    return Effect.onExit(
-      effect,
-      Effect.fnUntraced(function*(exit) {
-        if (instance.suspended) return
-        const encodedExit = yield* Effect.orDie(Schema.encode(self.exitSchema)(exit))
-        yield* engine.deferredDone({
-          workflowName: instance.workflow.name,
-          executionId: instance.executionId,
-          deferred: self,
-          exit: encodedExit as any
-        })
+    return Effect.onExit(effect, (exit) => {
+      if (instance.suspended) return Effect.void
+      return engine.deferredDone(self, {
+        workflowName: instance.workflow.name,
+        executionId: instance.executionId,
+        deferredName: self.name,
+        exit
       })
-    )
+    })
   }))
 
 /**
@@ -197,11 +209,9 @@ export const raceAll = <
   })
   return Effect.gen(function*() {
     const engine = yield* EngineTag
-    const oexit = yield* Workflow.wrapActivityResult(engine.deferredResult(deferred), Option.isNone)
-    if (Option.isSome(oexit)) {
-      return yield* (Effect.flatten(Effect.orDie(
-        Schema.decodeUnknown(deferred.exitSchema)(oexit.value)
-      )) as Effect.Effect<any, any, any>)
+    const exit = yield* Workflow.wrapActivityResult(engine.deferredResult(deferred), Predicate.isUndefined)
+    if (exit) {
+      return yield* (Effect.flatten(exit) as Effect.Effect<any, any, any>)
     }
     return yield* into(Effect.raceAll(options.effects), deferred)
   })
@@ -394,14 +404,13 @@ export const done: {
   ) {
     const engine = yield* EngineTag
     const token = TokenParsed.fromString(options.token)
-    const exit = yield* Schema.encode(self.exitSchema)(options.exit)
-    yield* engine.deferredDone({
+    yield* engine.deferredDone(self, {
       workflowName: token.workflowName,
       executionId: token.executionId,
-      deferred: self,
-      exit: exit as any
+      deferredName: token.deferredName,
+      exit: options.exit
     })
-  }, Effect.orDie)
+  })
 )
 
 /**

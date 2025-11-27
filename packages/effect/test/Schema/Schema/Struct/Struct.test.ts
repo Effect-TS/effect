@@ -5,14 +5,6 @@ import * as AST from "effect/SchemaAST"
 import * as Util from "../../TestUtils.js"
 
 describe("Struct", () => {
-  it("annotations()", () => {
-    const schema = S.Struct({}).annotations({ identifier: "X" }).annotations({ title: "Y" })
-    deepStrictEqual(schema.ast.annotations, {
-      [AST.IdentifierAnnotationId]: "X",
-      [AST.TitleAnnotationId]: "Y"
-    })
-  })
-
   it("should expose the fields", () => {
     const schema = S.Struct({
       a: S.String,

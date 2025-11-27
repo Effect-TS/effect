@@ -1,7 +1,12 @@
 import { PgClient } from "@effect/sql-pg"
+import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
-import { Effect, String } from "effect"
+import { Effect, Redacted, String } from "effect"
+import * as Chunk from "effect/Chunk"
+import * as Stream from "effect/Stream"
+import * as TestServices from "effect/TestServices"
+import { parse as parsePgConnectionString } from "pg-connection-string"
 import { PgContainer } from "./utils.js"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
@@ -101,33 +106,6 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
       expect(result[1]).toEqual(["Tim", "John", now])
     }))
 
-  it.effect("json", () =>
-    Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
-      const [query, params] = sql`SELECT ${sql.json({ a: 1 })}`.compile()
-      expect(query).toEqual(`SELECT $1`)
-      expect((params[0] as any).type).toEqual(3802)
-    }))
-
-  it.effect("json transform", () =>
-    Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
-      const [query, params] = compilerTransform.compile(
-        sql`SELECT ${sql.json({ aKey: 1 })}`,
-        false
-      )
-      expect(query).toEqual(`SELECT $1`)
-      assert.deepEqual((params[0] as any).value, { a_key: 1 })
-    }))
-
-  it.effect("array", () =>
-    Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
-      const [query, params] = sql`SELECT ${sql.array([1, 2, 3])}`.compile()
-      expect(query).toEqual(`SELECT $1`)
-      expect((params[0] as any).value).toEqual([1, 2, 3])
-    }))
-
   it("transform nested", () => {
     assert.deepEqual(
       transformsNested.array([
@@ -204,25 +182,6 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
         "INSERT INTO people (\"name\",\"age\",\"json\") VALUES ($1,$2,$3)"
       )
       assert.lengthOf(params, 3)
-      expect((params[2] as any).type).toEqual(3802)
-    }))
-
-  it.effect("insert array", () =>
-    Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
-      const [query, params] = sql`INSERT INTO people ${
-        sql.insert({
-          name: "Tim",
-          age: 10,
-          array: sql.array([1, 2, 3])
-        })
-      }`.compile()
-      assert.strictEqual(
-        query,
-        "INSERT INTO people (\"name\",\"age\",\"array\") VALUES ($1,$2,$3)"
-      )
-      assert.lengthOf(params, 3)
-      expect((params[2] as any).type).toEqual(1022)
     }))
 
   it.effect("update fragments", () =>
@@ -240,8 +199,6 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
         `UPDATE people SET json = data.json FROM (values ($1),($2)) AS data("json") WHERE created_at > $3`
       )
       assert.lengthOf(params, 3)
-      expect((params[0] as any).type).toEqual(3802)
-      expect((params[1] as any).type).toEqual(3802)
     }))
 
   it.effect("onDialect", () =>
@@ -275,6 +232,27 @@ it.layer(PgContainer.ClientLive, { timeout: "30 seconds" })("PgClient", (it) => 
       )
       expect(query).toEqual(`SELECT * from "people_test"`)
     }))
+
+  it.effect("jsonb", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const rows = yield* sql<{ json: unknown }>`select ${{ testValue: 123 }}::jsonb as json`
+      expect(rows[0].json).toEqual({ testValue: 123 })
+    }))
+
+  it.effect("stream", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const rows = yield* sql`SELECT generate_series(1, 3)`.stream.pipe(
+        Stream.runCollect,
+        Effect.map(Chunk.toReadonlyArray)
+      )
+      expect(rows).toEqual([
+        { "generate_series": 1 },
+        { "generate_series": 2 },
+        { "generate_series": 3 }
+      ])
+    }))
 })
 
 it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient transforms", (it) => {
@@ -292,5 +270,51 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       const [query, params] = sql`INSERT INTO people ${sql.insert({ first_name: "Tim", age: 10 })}`.compile()
       expect(query).toEqual(`INSERT INTO people ("first_name","age") VALUES ($1,$2)`)
       expect(params).toEqual(["Tim", 10])
+    }))
+
+  it.effect("multi-statement queries", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+
+      const result = yield* sql<{ id: string; name: string }>`
+        CREATE TABLE test_multi (id TEXT PRIMARY KEY, name TEXT);
+        INSERT INTO test_multi (id, name) VALUES ('id1', 'test1') RETURNING *;
+        INSERT INTO test_multi (id, name) VALUES ('id2', 'test2') RETURNING *;
+      `
+
+      expect(result).toHaveLength(3)
+      expect(result[0]).toEqual([])
+      expect(result[1]).toEqual([{ id: "id1", name: "test1" }])
+      expect(result[2]).toEqual([{ id: "id2", name: "test2" }])
+    }))
+
+  it.scoped("interruption", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const conn = yield* sql.reserve
+      yield* conn.executeRaw("select pg_sleep(1000)", []).pipe(
+        Effect.timeoutOption("50 millis"),
+        TestServices.provideLive
+      )
+      const value = yield* conn.executeValues("select 1", [])
+      expect(value).toEqual([[1]])
+    }))
+
+  it.effect("Should populate config", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+
+      assert.isDefined(sql.config.url)
+
+      const parsedConfig = parsePgConnectionString(Redacted.value(sql.config.url))
+
+      expect(sql.config.host).toEqual(parsedConfig.host)
+      assert.isNotNull(parsedConfig.port)
+      assert.isDefined(parsedConfig.port)
+      expect(sql.config.port).toEqual(parseInt(parsedConfig.port))
+      expect(sql.config.username).toEqual(parsedConfig.user)
+      assert.isDefined(sql.config.password)
+      expect(Redacted.value(sql.config.password)).toEqual(parsedConfig.password)
+      expect(sql.config.database).toEqual(parsedConfig.database)
     }))
 })

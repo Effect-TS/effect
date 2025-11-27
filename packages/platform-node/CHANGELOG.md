@@ -1,5 +1,452 @@
 # @effect/platform-node
 
+## 0.101.2
+
+### Patch Changes
+
+- [#5797](https://github.com/Effect-TS/effect/pull/5797) [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5) Thanks @tim-smart! - use original status code if headers have already been sent
+
+- Updated dependencies [[`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411), [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/cluster@0.53.6
+  - @effect/platform@0.93.4
+
+## 0.101.1
+
+### Patch Changes
+
+- [#5783](https://github.com/Effect-TS/effect/pull/5783) [`8b879fb`](https://github.com/Effect-TS/effect/commit/8b879fb3b886a7262c9c8d9b2050cc128c5eb6f8) Thanks @tim-smart! - add EntityResource.makeK8sPod
+
+- Updated dependencies [[`8b879fb`](https://github.com/Effect-TS/effect/commit/8b879fb3b886a7262c9c8d9b2050cc128c5eb6f8)]:
+  - @effect/cluster@0.53.4
+
+## 0.101.0
+
+### Patch Changes
+
+- Updated dependencies [[`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea), [`62f7636`](https://github.com/Effect-TS/effect/commit/62f76361ee01ed816687774c5302e7f8c5ff6a42)]:
+  - @effect/rpc@0.72.2
+  - effect@3.19.5
+  - @effect/cluster@0.53.0
+  - @effect/platform-node-shared@0.54.0
+
+## 0.100.0
+
+### Patch Changes
+
+- Updated dependencies [[`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313), [`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452)]:
+  - @effect/cluster@0.52.0
+  - @effect/sql@0.48.0
+  - @effect/rpc@0.72.1
+  - @effect/platform-node-shared@0.53.0
+
+## 0.99.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - backport @effect/cluster from effect v4
+
+  @effect/cluster no longer requires a Shard Manager, and instead relies on the
+  `RunnerStorage` service to track runner state.
+
+  To migrate, remove any Shard Manager deployments and use the updated layers in
+  `@effect/platform-node` or `@effect/platform-bun`.
+
+  # Breaking Changes
+  - `ShardManager` module has been removed
+  - `EntityNotManagedByRunner` error has been removed
+  - Shard locks now use database advisory locks, which requires stable sessions
+    for database connections. This means load balancers or proxies that rotate
+    connections may cause issues.
+  - `@effect/platform-node/NodeClusterSocketRunner` is now
+    `@effect/cluster/NodeClusterSocket`
+  - `@effect/platform-node/NodeClusterHttpRunner` is now
+    `@effect/cluster/NodeClusterHttp`
+  - `@effect/platform-bun/BunClusterSocketRunner` is now
+    `@effect/cluster/BunClusterSocket`
+  - `@effect/platform-bun/BunClusterHttpRunner` is now
+    `@effect/cluster/BunClusterHttp`
+
+  # New Features
+  - `RunnerHealth.layerK8s` has been added, which uses the Kubernetes API to track
+    runner health and liveness. To use it, you will need a service account with
+    permissions to read pod information.
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform-node-shared@0.52.0
+  - @effect/cluster@0.51.0
+  - @effect/rpc@0.72.0
+  - @effect/platform@0.93.0
+  - @effect/sql@0.47.0
+
+## 0.98.4
+
+### Patch Changes
+
+- [#5642](https://github.com/Effect-TS/effect/pull/5642) [`b8e3c6d`](https://github.com/Effect-TS/effect/commit/b8e3c6d510aec858ac34bfe5eb2b8fc5506fd669) Thanks @tim-smart! - fix ReferenceError in NodeSocket.fromNet
+
+- Updated dependencies [[`b8e3c6d`](https://github.com/Effect-TS/effect/commit/b8e3c6d510aec858ac34bfe5eb2b8fc5506fd669)]:
+  - @effect/platform-node-shared@0.51.6
+  - @effect/cluster@0.50.6
+  - @effect/rpc@0.71.1
+
+## 0.98.3
+
+### Patch Changes
+
+- [#5602](https://github.com/Effect-TS/effect/pull/5602) [`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf) Thanks @tim-smart! - guard against race conditions in NodeSocketServer
+
+- Updated dependencies [[`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf)]:
+  - @effect/cluster@0.50.3
+  - @effect/platform-node-shared@0.51.3
+
+## 0.98.2
+
+### Patch Changes
+
+- [#5590](https://github.com/Effect-TS/effect/pull/5590) [`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646) Thanks @tim-smart! - add openTimeout options to NodeSocket.makeNet
+
+- Updated dependencies [[`f4c4702`](https://github.com/Effect-TS/effect/commit/f4c4702ab01900c42c0af4662dfb7a5973619646), [`f6987c0`](https://github.com/Effect-TS/effect/commit/f6987c04ebf1386dc37729dfea1631ce364a5a96)]:
+  - @effect/platform-node-shared@0.51.2
+  - @effect/cluster@0.50.2
+  - @effect/platform@0.92.1
+
+## 0.98.1
+
+### Patch Changes
+
+- [#5585](https://github.com/Effect-TS/effect/pull/5585) [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69) Thanks @tim-smart! - keep socket error listener attached in NodeSocket
+
+- Updated dependencies [[`07802f7`](https://github.com/Effect-TS/effect/commit/07802f78fd410d800f0231129ee0866977399152), [`cf17f2f`](https://github.com/Effect-TS/effect/commit/cf17f2f0319a57a886558b01549fea675cd78b69)]:
+  - effect@3.18.1
+  - @effect/platform-node-shared@0.51.1
+  - @effect/cluster@0.50.1
+
+## 0.98.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/cluster@0.50.0
+  - @effect/platform-node-shared@0.51.0
+  - @effect/rpc@0.71.0
+  - @effect/sql@0.46.0
+
+## 0.97.1
+
+### Patch Changes
+
+- [#5557](https://github.com/Effect-TS/effect/pull/5557) [`978b6ff`](https://github.com/Effect-TS/effect/commit/978b6ffc0b124d67d62a797211eff795f22cd1e6) Thanks @tim-smart! - allow NodeSocket.makeNet open to be interrupted
+
+- Updated dependencies [[`978b6ff`](https://github.com/Effect-TS/effect/commit/978b6ffc0b124d67d62a797211eff795f22cd1e6)]:
+  - @effect/platform-node-shared@0.50.1
+  - @effect/cluster@0.49.1
+
+## 0.97.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/rpc@0.70.0
+  - @effect/cluster@0.49.0
+  - @effect/platform-node-shared@0.50.0
+  - @effect/sql@0.45.0
+
+## 0.96.1
+
+### Patch Changes
+
+- [#5368](https://github.com/Effect-TS/effect/pull/5368) [`3b26094`](https://github.com/Effect-TS/effect/commit/3b2609409ac1e8c6939d699584f00b1b99c47e2e) Thanks @gcanti! - ## Annotation Behavior
+
+  When you call `.annotations` on a schema, any identifier annotations that were previously set will now be removed. Identifiers are now always tied to the schema's `ast` reference (this was the intended behavior).
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.URL
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "URL": {
+        "type": "string",
+        "description": "a string to be decoded into a URL"
+      }
+    },
+    "$ref": "#/$defs/URL"
+  }
+  */
+
+  const annotated = Schema.URL.annotations({ description: "description" })
+
+  console.log(JSON.stringify(JSONSchema.make(annotated), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "string",
+    "description": "description"
+  }
+  */
+  ```
+
+  ## OpenAPI 3.1 Compatibility
+
+  OpenAPI 3.1 does not allow `nullable: true`.
+  Instead, the schema will now correctly use `{ "type": "null" }` inside a union.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.NullOr(Schema.String)
+
+  console.log(
+    JSON.stringify(
+      JSONSchema.fromAST(schema.ast, {
+        definitions: {},
+        target: "openApi3.1"
+      }),
+      null,
+      2
+    )
+  )
+  /*
+  {
+    "anyOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ]
+  }
+  */
+  ```
+
+  ## Schema Description Deduplication
+
+  Previously, when a schema was reused, only the first description was kept.
+  Now, every property keeps its own description, even if the schema is reused.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schemaWithAnIdentifier = Schema.String.annotations({
+    identifier: "my-id"
+  })
+
+  const schema = Schema.Struct({
+    a: schemaWithAnIdentifier.annotations({
+      description: "a-description"
+    }),
+    b: schemaWithAnIdentifier.annotations({
+      description: "b-description"
+    })
+  })
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "a",
+      "b"
+    ],
+    "properties": {
+      "a": {
+        "type": "string",
+        "description": "a-description"
+      },
+      "b": {
+        "type": "string",
+        "description": "b-description"
+      }
+    },
+    "additionalProperties": false
+  }
+  */
+  ```
+
+  ## Fragment Detection in Non-Refinement Schemas
+
+  This patch fixes the issue where fragments (e.g. `jsonSchema.format`) were not detected on non-refinement schemas.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.UUID.pipe(
+    Schema.compose(Schema.String),
+    Schema.annotations({
+      identifier: "UUID",
+      title: "title",
+      description: "description",
+      jsonSchema: {
+        format: "uuid" // fragment
+      }
+    })
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$defs": {
+      "UUID": {
+        "type": "string",
+        "description": "description",
+        "format": "uuid",
+        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        "title": "title"
+      }
+    },
+    "$ref": "#/$defs/UUID"
+  }
+  */
+  ```
+
+  ## Nested Unions
+
+  Nested unions are no longer flattened. Instead, they remain as nested `anyOf` arrays.
+  This is fine because JSON Schema allows nested `anyOf`.
+
+  **Example**
+
+  ```ts
+  import { JSONSchema, Schema } from "effect"
+
+  const schema = Schema.Union(
+    Schema.NullOr(Schema.String),
+    Schema.Literal("a", null)
+  )
+
+  console.log(JSON.stringify(JSONSchema.make(schema), null, 2))
+  /*
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+      {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "a"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    ]
+  }
+  */
+  ```
+
+  ## Refinements without `jsonSchema` annotation
+
+  Refinements that don't provide a `jsonSchema` annotation no longer cause errors.
+  They are simply ignored, so you can still generate a JSON Schema even when refinements can't easily be expressed.
+
+- Updated dependencies [[`3b26094`](https://github.com/Effect-TS/effect/commit/3b2609409ac1e8c6939d699584f00b1b99c47e2e), [`a33e491`](https://github.com/Effect-TS/effect/commit/a33e49153d944abd183fed93267fa7e52abae68b)]:
+  - effect@3.17.10
+
+## 0.96.0
+
+### Patch Changes
+
+- Updated dependencies [[`3e163b2`](https://github.com/Effect-TS/effect/commit/3e163b24cc2b647e25566ba29ef25c3f57609042)]:
+  - @effect/rpc@0.69.0
+  - @effect/cluster@0.48.0
+  - @effect/platform-node-shared@0.49.0
+
+## 0.95.0
+
+### Patch Changes
+
+- Updated dependencies [[`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328), [`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328)]:
+  - @effect/cluster@0.47.0
+  - effect@3.17.7
+  - @effect/platform-node-shared@0.48.0
+
+## 0.94.2
+
+### Patch Changes
+
+- [#5347](https://github.com/Effect-TS/effect/pull/5347) [`20f0d69`](https://github.com/Effect-TS/effect/commit/20f0d6978e0e98464f23b6582c37c6ce12319f29) Thanks @tim-smart! - update Cluster layer conditional storage types
+
+- Updated dependencies [[`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14), [`20f0d69`](https://github.com/Effect-TS/effect/commit/20f0d6978e0e98464f23b6582c37c6ce12319f29)]:
+  - @effect/cluster@0.46.4
+  - @effect/sql@0.44.1
+  - @effect/platform-node-shared@0.47.2
+
+## 0.94.1
+
+### Patch Changes
+
+- [#5325](https://github.com/Effect-TS/effect/pull/5325) [`aed804e`](https://github.com/Effect-TS/effect/commit/aed804e396b96c00b032c3486d5e78189d4284e0) Thanks @tim-smart! - use Dispatcher.destroy() in undici finalizers
+
+- Updated dependencies [[`f187941`](https://github.com/Effect-TS/effect/commit/f187941946c675713b3539fc4d5480123037563a)]:
+  - effect@3.17.6
+
+## 0.94.0
+
+### Patch Changes
+
+- Updated dependencies [[`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87), [`e9cbd26`](https://github.com/Effect-TS/effect/commit/e9cbd2673401723aa811b0535202e4f57baf6d2c)]:
+  - effect@3.17.1
+  - @effect/rpc@0.68.0
+  - @effect/cluster@0.46.0
+  - @effect/platform-node-shared@0.47.0
+
+## 0.93.0
+
+### Patch Changes
+
+- Updated dependencies [[`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f)]:
+  - @effect/platform@0.90.0
+  - @effect/cluster@0.45.0
+  - @effect/platform-node-shared@0.46.0
+  - @effect/rpc@0.67.0
+  - @effect/sql@0.44.0
+
+## 0.92.0
+
+### Patch Changes
+
+- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
+  - effect@3.17.0
+  - @effect/cluster@0.44.0
+  - @effect/platform@0.89.0
+  - @effect/platform-node-shared@0.45.0
+  - @effect/rpc@0.66.0
+  - @effect/sql@0.43.0
+
 ## 0.91.0
 
 ### Patch Changes
@@ -1544,7 +1991,6 @@
 ### Patch Changes
 
 - [#4064](https://github.com/Effect-TS/effect/pull/4064) [`c2249ea`](https://github.com/Effect-TS/effect/commit/c2249ea13fd98ab7d9aa628787931356d8ec2860) Thanks @tim-smart! - HttpApi OpenApi adjustments
-
   - Allow using transform annotation on endpoints & groups
   - Preserve descriptions for "empty" schemas
 
@@ -3956,7 +4402,6 @@
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`a34dbdc`](https://github.com/Effect-TS/effect/commit/a34dbdc1552c73c1b612676f262a0c735ce444a7) Thanks [@github-actions](https://github.com/apps/github-actions)! - - Schema: change type parameters order from `Schema<R, I, A>` to `Schema<A, I = A, R = never>`
-
   - Serializable: change type parameters order from `Serializable<R, I, A>` to `Serializable<A, I, R>`
   - Class: change type parameters order from `Class<R, I, A, C, Self, Inherited>` to `Class<A, I, R, C, Self, Inherited>`
   - PropertySignature: change type parameters order from `PropertySignature<R, From, FromIsOptional, To, ToIsOptional>` to `PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>`

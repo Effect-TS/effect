@@ -42,11 +42,36 @@ export const layerHttpApi = <
         handlers = handlers
           .handle(
             workflow.name as any,
-            ({ payload }: { payload: any }) => workflow.execute(payload)
+            ({ payload }: { payload: any }) =>
+              workflow.execute(payload).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name
+                })
+              )
           )
           .handle(
             workflow.name + "Discard" as any,
-            ({ payload }: { payload: any }) => workflow.execute(payload, { discard: true } as any)
+            ({ payload }: { payload: any }) =>
+              workflow.execute(payload, { discard: true } as any).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name + "Discard"
+                })
+              )
+          )
+          .handle(
+            workflow.name + "Resume" as any,
+            ({ payload }: { payload: any }) =>
+              workflow.resume(payload.executionId).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name + "Resume"
+                })
+              )
           )
       }
       return handlers as HttpApiBuilder.Handlers<never, never, never>
@@ -75,8 +100,10 @@ export const layerRpcHandlers = <
       const workflow = workflow_ as Workflow.Workflow<string, any, any, any>
       const tag = `${prefix}${workflow.name}`
       const tagDiscard = `${tag}Discard`
+      const tagResume = `${tag}Resume`
       const key = `@effect/rpc/Rpc/${tag}`
       const keyDiscard = `${key}Discard`
+      const keyResume = `${key}Resume`
       handlers.set(key, {
         context,
         tag,
@@ -86,6 +113,11 @@ export const layerRpcHandlers = <
         context,
         tag: tagDiscard,
         handler: (payload: any) => workflow.execute(payload, { discard: true } as any) as any
+      } as any)
+      handlers.set(keyResume, {
+        context,
+        tag: tagResume,
+        handler: (payload: any) => workflow.resume(payload.executionId) as any
       } as any)
     }
     return Context.unsafeMake(handlers)
@@ -99,5 +131,5 @@ export type RpcHandlers<Workflows extends Workflow.Any, Prefix extends string> =
   infer _Payload,
   infer _Success,
   infer _Error
-> ? Rpc.Handler<`${Prefix}${_Name}`> | Rpc.Handler<`${Prefix}${_Name}Discard`>
+> ? Rpc.Handler<`${Prefix}${_Name}`> | Rpc.Handler<`${Prefix}${_Name}Discard`> | Rpc.Handler<`${Prefix}${_Name}Resume`>
   : never

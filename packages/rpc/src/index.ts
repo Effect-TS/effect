@@ -11,6 +11,11 @@ export * as RpcClient from "./RpcClient.js"
 /**
  * @since 1.0.0
  */
+export * as RpcClientError from "./RpcClientError.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as RpcGroup from "./RpcGroup.js"
 
 /**

@@ -407,10 +407,12 @@ export const getDescription = wrapGetDescription(
           case "NumberKeyword": {
             const c = schemaId === schemaId_.NonNaNSchemaId ?
               makeNumberConstraints({ noNaN: true }) :
+              schemaId === schemaId_.FiniteSchemaId || schemaId === schemaId_.JsonNumberSchemaId ?
+              makeNumberConstraints({ noDefaultInfinity: true, noNaN: true }) :
               makeNumberConstraints({
                 isInteger: "type" in meta && meta.type === "integer",
-                noNaN: "type" in meta && meta.type === "number" ? true : undefined,
-                noDefaultInfinity: "type" in meta && meta.type === "number" ? true : undefined,
+                noNaN: undefined,
+                noDefaultInfinity: undefined,
                 min: meta.exclusiveMinimum ?? meta.minimum,
                 minExcluded: "exclusiveMinimum" in meta ? true : undefined,
                 max: meta.exclusiveMaximum ?? meta.maximum,

@@ -3,6 +3,7 @@
  */
 import type * as Headers from "@effect/platform/Headers"
 import type * as HttpClient from "@effect/platform/HttpClient"
+import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import type * as Duration from "effect/Duration"
 import * as Layer from "effect/Layer"
 import type * as Logger from "effect/Logger"
@@ -31,11 +32,13 @@ export const layer = (options: {
   readonly metricsExportInterval?: Duration.DurationInput | undefined
   readonly tracerExportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient> =>
-  Layer.mergeAll(
+}): Layer.Layer<never, never, HttpClient.HttpClient> => {
+  const baseReq = HttpClientRequest.get(options.baseUrl)
+  const url = (path: string) => HttpClientRequest.appendUrl(baseReq, path).url
+  return Layer.mergeAll(
     OtlpLogger.layer({
       replaceLogger: options.replaceLogger,
-      url: `${options.baseUrl}/v1/logs`,
+      url: url("/v1/logs"),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.loggerExportInterval,
@@ -44,14 +47,14 @@ export const layer = (options: {
       excludeLogSpans: options.loggerExcludeLogSpans
     }),
     OtlpMetrics.layer({
-      url: `${options.baseUrl}/v1/metrics`,
+      url: url("/v1/metrics"),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.metricsExportInterval,
       shutdownTimeout: options.shutdownTimeout
     }),
     OtlpTracer.layer({
-      url: `${options.baseUrl}/v1/traces`,
+      url: url("/v1/traces"),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.tracerExportInterval,
@@ -60,3 +63,4 @@ export const layer = (options: {
       shutdownTimeout: options.shutdownTimeout
     })
   )
+}

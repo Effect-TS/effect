@@ -40,12 +40,33 @@ export const layerHttpApi = <
           .handle(
             parentRpc._tag as any,
             (({ path, payload }: { path: { entityId: string }; payload: any }) =>
-              (client(path.entityId) as any)[parentRpc._tag](payload)) as any
+              (client(path.entityId) as any as Record<string, (p: any) => Effect.Effect<any>>)[parentRpc._tag](
+                payload
+              ).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "EntityProxyServer",
+                  entity: entity.type,
+                  entityId: path.entityId,
+                  method: parentRpc._tag
+                })
+              )) as any
           )
           .handle(
             `${parentRpc._tag}Discard` as any,
             (({ path, payload }: { path: { entityId: string }; payload: any }) =>
-              (client(path.entityId) as any)[parentRpc._tag](payload, { discard: true })) as any
+              (client(path.entityId) as any as Record<string, (p: any, o: {}) => Effect.Effect<any>>)[parentRpc._tag](
+                payload,
+                { discard: true }
+              ).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "EntityProxyServer",
+                  entity: entity.type,
+                  entityId: path.entityId,
+                  method: `${parentRpc._tag}Discard`
+                })
+              )) as any
           ) as any
       }
       return handlers as HttpApiBuilder.Handlers<never, never, never>

@@ -69,7 +69,7 @@ describe.sequential("Mysql", () => {
     ), { timeout: 60000 })
 
   it.effect("remote callback", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const db = yield* Mysql.MysqlDrizzle
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`
@@ -85,7 +85,7 @@ describe.sequential("Mysql", () => {
     ), { timeout: 60000 })
 
   it.effect("remote callback multiple values", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const db = yield* Mysql.MysqlDrizzle
       yield* sql`CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT NOT NULL, snake_case TEXT NOT NULL)`

@@ -1,5 +1,32 @@
 # @effect/vitest
 
+## 0.27.0
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+
+## 0.26.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+
+## 0.25.1
+
+### Patch Changes
+
+- [#5386](https://github.com/Effect-TS/effect/pull/5386) [`fa0fa16`](https://github.com/Effect-TS/effect/commit/fa0fa16a19499b3c2cd7c13eae81ac2df7889b9b) Thanks @dmaretskyi! - Correct error message when the test was interrupted
+
+## 0.25.0
+
+### Patch Changes
+
+- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
+  - effect@3.17.0
+
 ## 0.24.1
 
 ### Patch Changes
@@ -12,7 +39,6 @@
 ### Minor Changes
 
 - [#5205](https://github.com/Effect-TS/effect/pull/5205) [`90ec865`](https://github.com/Effect-TS/effect/commit/90ec8653732ca7e9d347efdcc103a9461d4012d0) Thanks @schickling! - Modernize Vitest integration with AbortSignal support
-
   - Bump Vitest dependency from ^3.0.0 to ^3.2.0 to support latest features
   - Add support for Vitest 3.2's AbortSignal API for proper test cancellation
   - Effect-based tests now respect AbortSignal for clean cancellation when tests timeout, fail with --bail flag, or are interrupted via Ctrl+C
@@ -1150,7 +1176,6 @@
 ### Minor Changes
 
 - [#3122](https://github.com/Effect-TS/effect/pull/3122) [`489d20a`](https://github.com/Effect-TS/effect/commit/489d20a3661ce71b4ddd5037d1b190e9c0531f0d) Thanks @sukovanej! - Refactor `@effect/vitest` package.
-
   - Clear separation of the public API and internals.
   - Fix type of `scoped`, `live`, `scopedLive` and `effect` objects. Make sure `skip` and `only` are available.
   - Add `each` method to `scoped`, `live`, `scopedLive` and `effect` objects.

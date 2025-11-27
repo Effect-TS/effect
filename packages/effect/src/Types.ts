@@ -4,7 +4,9 @@
  * @since 2.0.0
  */
 
-type _TupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R : _TupleOf<T, N, [T, ...R]>
+type _TupleOf<T, N extends number, R extends Array<unknown>> = `${N}` extends `-${number}` ? never
+  : R["length"] extends N ? R
+  : _TupleOf<T, N, [T, ...R]>
 
 /**
  * Represents a tuple with a fixed number of elements of type `T`.
@@ -259,7 +261,7 @@ export type Mutable<T> = {
  */
 export type DeepMutable<T> = T extends ReadonlyMap<infer K, infer V> ? Map<DeepMutable<K>, DeepMutable<V>>
   : T extends ReadonlySet<infer V> ? Set<DeepMutable<V>>
-  : T extends string | number | boolean | bigint | symbol ? T
+  : T extends string | number | boolean | bigint | symbol | Function ? T
   : { -readonly [K in keyof T]: DeepMutable<T[K]> }
 
 /**

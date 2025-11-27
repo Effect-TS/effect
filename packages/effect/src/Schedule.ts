@@ -2201,6 +2201,7 @@ export interface CurrentIterationMetadata {
  */
 export interface IterationMetadata {
   readonly input: unknown
+  readonly output: unknown
   readonly recurrence: number
   readonly start: number
   readonly now: number

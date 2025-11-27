@@ -1,7 +1,7 @@
 {
   "name": "@effect/cluster",
   "type": "module",
-  "version": "0.43.1",
+  "version": "0.53.6",
   "description": "Unified interfaces for common cluster-specific services",
   "publishConfig": {
     "access": "public",
@@ -51,5 +51,8 @@
     "@testcontainers/mysql": "^10.25.0",
     "@testcontainers/postgresql": "^10.25.0",
     "effect": "workspace:^"
+  },
+  "dependencies": {
+    "kubernetes-types": "^1.30.0"
   }
 }

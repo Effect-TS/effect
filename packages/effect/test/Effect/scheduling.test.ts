@@ -24,7 +24,7 @@ describe("Effect", () => {
       deepStrictEqual(value, expected)
     }))
 
-  it.effect("schedule - Schedule.LastIterationInfo", () =>
+  it.effect("schedule - Schedule.CurrentIterationMetadata", () =>
     Effect.gen(function*() {
       const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       const effect = Effect.gen(function*() {
@@ -43,6 +43,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 1,
           input: undefined,
+          output: [Duration.millis(1000), 0],
           now: 0,
           start: 0
         },
@@ -51,6 +52,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.seconds(1),
           recurrence: 2,
           input: undefined,
+          output: [Duration.millis(1000), 1],
           now: 1000,
           start: 0
         },
@@ -59,6 +61,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.seconds(1),
           recurrence: 3,
           input: undefined,
+          output: [Duration.millis(2000), 2],
           now: 2000,
           start: 0
         },
@@ -67,6 +70,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.seconds(2),
           recurrence: 4,
           input: undefined,
+          output: [Duration.millis(3000), 3],
           now: 4000,
           start: 0
         }

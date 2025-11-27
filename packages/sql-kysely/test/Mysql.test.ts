@@ -20,7 +20,7 @@ const MysqlLive = Layer.effect(MysqlDB, MysqlKysely.make<Database>()).pipe(Layer
 
 describe("MysqlKysely", () => {
   it.effect("queries", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const db = yield* MysqlDB
 
       yield* db.schema

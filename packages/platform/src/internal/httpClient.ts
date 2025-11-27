@@ -1,8 +1,6 @@
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
 import { constFalse, dual } from "effect/Function"
@@ -27,6 +25,17 @@ import * as TraceContext from "../HttpTraceContext.js"
 import * as UrlParams from "../UrlParams.js"
 import * as internalRequest from "./httpClientRequest.js"
 import * as internalResponse from "./httpClientResponse.js"
+
+const ATTR_HTTP_REQUEST_HEADER = (key: string): string => `http.request.header.${key}`
+const ATTR_HTTP_REQUEST_METHOD = "http.request.method"
+const ATTR_HTTP_RESPONSE_HEADER = (key: string): string => `http.response.header.${key}`
+const ATTR_HTTP_RESPONSE_STATUS_CODE = "http.response.status_code"
+const ATTR_SERVER_ADDRESS = "server.address"
+const ATTR_SERVER_PORT = "server.port"
+const ATTR_URL_FULL = "url.full"
+const ATTR_URL_PATH = "url.path"
+const ATTR_URL_SCHEME = "url.scheme"
+const ATTR_URL_QUERY = "url.query"
 
 /** @internal */
 export const TypeId: Client.TypeId = Symbol.for(
@@ -227,22 +236,22 @@ export const make = (
           nameGenerator(request),
           { kind: "client", captureStackTrace: false },
           (span) => {
-            span.attribute(OtelSemConv.ATTR_HTTP_REQUEST_METHOD, request.method)
-            span.attribute(OtelSemConv.ATTR_SERVER_ADDRESS, url.origin)
+            span.attribute(ATTR_HTTP_REQUEST_METHOD, request.method)
+            span.attribute(ATTR_SERVER_ADDRESS, url.origin)
             if (url.port !== "") {
-              span.attribute(OtelSemConv.ATTR_SERVER_PORT, +url.port)
+              span.attribute(ATTR_SERVER_PORT, +url.port)
             }
-            span.attribute(OtelSemConv.ATTR_URL_FULL, url.toString())
-            span.attribute(OtelSemConv.ATTR_URL_PATH, url.pathname)
-            span.attribute(OtelSemConv.ATTR_URL_SCHEME, url.protocol.slice(0, -1))
+            span.attribute(ATTR_URL_FULL, url.toString())
+            span.attribute(ATTR_URL_PATH, url.pathname)
+            span.attribute(ATTR_URL_SCHEME, url.protocol.slice(0, -1))
             const query = url.search.slice(1)
             if (query !== "") {
-              span.attribute(OtelSemConv.ATTR_URL_QUERY, query)
+              span.attribute(ATTR_URL_QUERY, query)
             }
             const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
             const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
             for (const name in redactedHeaders) {
-              span.attribute(OtelSemConv.ATTR_HTTP_REQUEST_HEADER(name), String(redactedHeaders[name]))
+              span.attribute(ATTR_HTTP_REQUEST_HEADER(name), String(redactedHeaders[name]))
             }
             request = fiber.getFiberRef(currentTracerPropagation)
               ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
@@ -252,10 +261,10 @@ export const make = (
                 Effect.withParentSpan(span),
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {
-                    span.attribute(OtelSemConv.ATTR_HTTP_RESPONSE_STATUS_CODE, response.status)
+                    span.attribute(ATTR_HTTP_RESPONSE_STATUS_CODE, response.status)
                     const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
                     for (const name in redactedHeaders) {
-                      span.attribute(OtelSemConv.ATTR_HTTP_RESPONSE_HEADER(name), String(redactedHeaders[name]))
+                      span.attribute(ATTR_HTTP_RESPONSE_HEADER(name), String(redactedHeaders[name]))
                     }
                     if (scopedController) return Effect.succeed(response)
                     responseRegistry.register(response, controller)
@@ -336,12 +345,12 @@ class InterruptibleResponse implements ClientResponse.HttpClientResponse {
   get stream() {
     return Stream.suspend(() => {
       responseRegistry.unregister(this.original)
-      return Stream.ensuringWith(this.original.stream, (exit) => {
-        if (Exit.isInterrupted(exit)) {
+      return Stream.ensuring(
+        this.original.stream,
+        Effect.sync(() => {
           this.controller.abort()
-        }
-        return Effect.void
-      })
+        })
+      )
     })
   }
 

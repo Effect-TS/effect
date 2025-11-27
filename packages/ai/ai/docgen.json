@@ -18,9 +18,7 @@
       "@effect/platform-node": ["../../../../platform-node/src/index.js"],
       "@effect/platform-node/*": ["../../../../platform-node/src/*.js"],
       "@effect/ai": ["../../../ai/src/index.js"],
-      "@effect/ai/*": ["../../../ai/src/*.js"],
-      "@effect/ai-openai": ["../../../ai-openai/src/index.js"],
-      "@effect/ai-openai/*": ["../../../ai-openai/src/*.js"]
+      "@effect/ai/*": ["../../../ai/src/*.js"]
     }
   }
 }

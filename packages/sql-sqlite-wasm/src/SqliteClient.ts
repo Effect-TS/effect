@@ -9,7 +9,6 @@ import * as Statement from "@effect/sql/Statement"
 import * as WaSqlite from "@effect/wa-sqlite"
 import SQLiteESMFactory from "@effect/wa-sqlite/dist/wa-sqlite.mjs"
 import { MemoryVFS } from "@effect/wa-sqlite/src/examples/MemoryVFS.js"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -25,6 +24,8 @@ import * as Scope from "effect/Scope"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Stream from "effect/Stream"
 import type { OpfsWorkerMessage } from "./internal/opfsWorker.js"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
 /**
  * @category type ids
@@ -140,7 +141,7 @@ export const makeMemory = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = [],
+        params: ReadonlyArray<unknown> = [],
         rowMode: "object" | "array" = "object"
       ) =>
         Effect.try({
@@ -243,7 +244,7 @@ export const makeMemory = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
+          [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
       })) as SqliteClient,
@@ -335,7 +336,7 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = [],
+        params: ReadonlyArray<unknown> = [],
         rowMode: "object" | "array" = "object"
       ): Effect.Effect<Array<any>, SqlError, never> => {
         const rows = Effect.withFiberRuntime<[Array<string>, Array<any>], SqlError>((fiber) => {
@@ -402,7 +403,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
+          [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
       })) as SqliteClient,

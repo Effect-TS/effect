@@ -22,7 +22,7 @@ describe("DurationFromMillis", () => {
       -1,
       `DurationFromMillis
 └─ Encoded side transformation failure
-   └─ NonNegative
+   └─ nonNegative
       └─ Predicate refinement failure
          └─ Expected a non-negative number to be decoded into a Duration, actual -1`
     )
@@ -31,7 +31,7 @@ describe("DurationFromMillis", () => {
       NaN,
       `DurationFromMillis
 └─ Encoded side transformation failure
-   └─ NonNegative
+   └─ nonNegative
       └─ Predicate refinement failure
          └─ Expected a non-negative number to be decoded into a Duration, actual NaN`
     )

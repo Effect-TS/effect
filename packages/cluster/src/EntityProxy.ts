@@ -6,14 +6,13 @@ import * as HttpApiGroup from "@effect/platform/HttpApiGroup"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as Schema from "effect/Schema"
-import { AlreadyProcessingMessage, EntityNotManagedByRunner, MailboxFull, PersistenceError } from "./ClusterError.js"
+import { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
 import type * as Entity from "./Entity.js"
 
 const clientErrors = [
   MailboxFull,
   AlreadyProcessingMessage,
-  PersistenceError,
-  EntityNotManagedByRunner
+  PersistenceError
 ] as const
 
 /**
@@ -94,12 +93,14 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
       }>,
       _Success,
       Schema.Schema<
-        _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner,
+        | _Error["Type"]
+        | MailboxFull
+        | AlreadyProcessingMessage
+        | PersistenceError
         | _Error["Encoded"]
         | typeof MailboxFull["Encoded"]
         | typeof AlreadyProcessingMessage["Encoded"]
-        | typeof PersistenceError["Encoded"]
-        | typeof EntityNotManagedByRunner["Encoded"],
+        | typeof PersistenceError["Encoded"],
         _Error["Context"]
       >
     >
@@ -113,8 +114,7 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
       Schema.Union<[
         typeof MailboxFull,
         typeof AlreadyProcessingMessage,
-        typeof PersistenceError,
-        typeof EntityNotManagedByRunner
+        typeof PersistenceError
       ]>
     >
   : never
@@ -172,7 +172,10 @@ export const toHttpApiGroup = <const Name extends string, Type extends string, R
       .addSuccess(parentRpc.successSchema)
       .addError(Schema.Union(parentRpc.errorSchema, ...clientErrors))
       .annotateContext(parentRpc.annotations)
-    const endpointDiscard = HttpApiEndpoint.post(parentRpc._tag, `/${tagToPath(parentRpc._tag)}/:entityId/discard`)
+    const endpointDiscard = HttpApiEndpoint.post(
+      `${parentRpc._tag}Discard`,
+      `/${tagToPath(parentRpc._tag)}/:entityId/discard`
+    )
       .setPath(entityIdPath)
       .setPayload(parentRpc.payloadSchema)
       .addError(Schema.Union(...clientErrors))
@@ -207,7 +210,7 @@ export type ConvertHttpApi<Rpcs extends Rpc.Any> = Rpcs extends Rpc.Rpc<
       _Payload["Type"],
       never,
       _Success["Type"],
-      _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner,
+      _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError,
       _Payload["Context"] | _Success["Context"],
       _Error["Context"]
     >
@@ -219,6 +222,6 @@ export type ConvertHttpApi<Rpcs extends Rpc.Any> = Rpcs extends Rpc.Rpc<
       _Payload["Type"],
       never,
       void,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
+      MailboxFull | AlreadyProcessingMessage | PersistenceError
     >
   : never

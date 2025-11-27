@@ -1,5 +1,117 @@
 # @effect/experimental
 
+## 0.57.5
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
+## 0.57.4
+
+### Patch Changes
+
+- [#5773](https://github.com/Effect-TS/effect/pull/5773) [`9283499`](https://github.com/Effect-TS/effect/commit/9283499a1c1e6caa9cc9090c8419e8d49b575cd8) Thanks @tim-smart! - add RateLimiter helpers `makeWithRateLimiter` and `makeSleep`
+
+## 0.57.3
+
+### Patch Changes
+
+- [#5763](https://github.com/Effect-TS/effect/pull/5763) [`1df657e`](https://github.com/Effect-TS/effect/commit/1df657e4688f602262d854947c15634849f2ba98) Thanks @tim-smart! - fix RateLimiter fixed window alogrithim
+
+## 0.57.2
+
+### Patch Changes
+
+- [#5761](https://github.com/Effect-TS/effect/pull/5761) [`1deeb6a`](https://github.com/Effect-TS/effect/commit/1deeb6a58cde29e99f57c56d9adcdcda7ac610d0) Thanks @tim-smart! - fix partial window calulation for fixed window rate limiter
+
+- Updated dependencies [[`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f)]:
+  - @effect/platform@0.93.3
+
+## 0.57.1
+
+### Patch Changes
+
+- [#5731](https://github.com/Effect-TS/effect/pull/5731) [`796a3b5`](https://github.com/Effect-TS/effect/commit/796a3b5aa3f6e0bd85583cc59f39bc059403345a) Thanks @tim-smart! - add persisted RateLimiter to @effect/experimental
+
+## 0.57.0
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform@0.93.0
+
+## 0.56.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+
+## 0.54.6
+
+### Patch Changes
+
+- [#5385](https://github.com/Effect-TS/effect/pull/5385) [`9951993`](https://github.com/Effect-TS/effect/commit/995199396ee7031033bea1a9c890a6db066e870a) Thanks @tim-smart! - add setMany to ResultPersistence
+
+## 0.54.5
+
+### Patch Changes
+
+- [#5365](https://github.com/Effect-TS/effect/pull/5365) [`b254747`](https://github.com/Effect-TS/effect/commit/b254747d478d451f3a04dac2f9050bd89176fd19) Thanks @tim-smart! - only trigger Reactivity invalidation on successful mutation
+
+## 0.54.4
+
+### Patch Changes
+
+- [#5342](https://github.com/Effect-TS/effect/pull/5342) [`a9554ea`](https://github.com/Effect-TS/effect/commit/a9554ea53a4524b773426571338d14f1c1046d18) Thanks @tim-smart! - add Reactivity accessor apis
+
+- [#5344](https://github.com/Effect-TS/effect/pull/5344) [`1765ca8`](https://github.com/Effect-TS/effect/commit/1765ca8dddde47a7602083c46898b07a80c3cd28) Thanks @tim-smart! - add Reactivity.unsafeRegister
+
+## 0.54.3
+
+### Patch Changes
+
+- [#5307](https://github.com/Effect-TS/effect/pull/5307) [`1f028e5`](https://github.com/Effect-TS/effect/commit/1f028e5d286fdfdc12357a3da3955c9446ce7a0c) Thanks @tim-smart! - locally provide EventLog service where possible
+
+- Updated dependencies [[`7d7c55d`](https://github.com/Effect-TS/effect/commit/7d7c55dadeea2f9de16e60abff124085733e1953)]:
+  - effect@3.17.4
+
+## 0.54.2
+
+### Patch Changes
+
+- [#5299](https://github.com/Effect-TS/effect/pull/5299) [`0138aa5`](https://github.com/Effect-TS/effect/commit/0138aa5fdf1af8bc206809201cebd75a865fa020) Thanks @tim-smart! - use base64 for EventLog.Identity strings
+
+## 0.54.1
+
+### Patch Changes
+
+- [#5286](https://github.com/Effect-TS/effect/pull/5286) [`ffc17c6`](https://github.com/Effect-TS/effect/commit/ffc17c6d129adb898946d543b772af951b97e08d) Thanks @tim-smart! - add EventLog.layerIdentityKvs
+
+## 0.54.0
+
+### Patch Changes
+
+- Updated dependencies [[`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f)]:
+  - @effect/platform@0.90.0
+
+## 0.53.0
+
+### Patch Changes
+
+- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
+  - effect@3.17.0
+  - @effect/platform@0.89.0
+
 ## 0.52.2
 
 ### Patch Changes

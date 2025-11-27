@@ -1,3 +1,4 @@
+import type * as Arr from "../Array.js"
 import * as Cause from "../Cause.js"
 import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
@@ -7,7 +8,7 @@ import type * as Exit from "../Exit.js"
 import type { FiberRef } from "../FiberRef.js"
 import * as FiberRefsPatch from "../FiberRefsPatch.js"
 import type { LazyArg } from "../Function.js"
-import { dual, pipe } from "../Function.js"
+import { constTrue, dual, pipe } from "../Function.js"
 import * as HashMap from "../HashMap.js"
 import type * as Layer from "../Layer.js"
 import type * as ManagedRuntime from "../ManagedRuntime.js"
@@ -24,6 +25,7 @@ import type * as Types from "../Types.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
+import * as ExecutionStrategy from "./executionStrategy.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as circularManagedRuntime from "./managedRuntime/circular.js"
 import * as EffectOpCodes from "./opCodes/effect.js"
@@ -84,6 +86,7 @@ export type Primitive =
   | ProvideTo
   | ZipWith
   | ZipWithPar
+  | MergeAll
 
 /** @internal */
 export type Op<Tag extends string, Body = {}> = Layer.Layer<unknown, unknown, unknown> & Body & {
@@ -165,6 +168,13 @@ export interface ZipWithPar extends
     readonly first: Layer.Layer<unknown>
     readonly second: Layer.Layer<unknown>
     zipK(left: Context.Context<unknown>, right: Context.Context<unknown>): Context.Context<unknown>
+  }>
+{}
+
+/** @internal */
+export interface MergeAll extends
+  Op<OpCodes.OP_MERGE_ALL, {
+    readonly layers: Arr.NonEmptyReadonlyArray<Layer.Layer<unknown>>
   }>
 {}
 
@@ -444,15 +454,41 @@ const makeBuilder = <RIn, E, ROut>(
       )
     }
     case "ZipWith": {
-      return core.sync(() => (memoMap: Layer.MemoMap) =>
-        pipe(
-          memoMap.getOrElseMemoize(op.first, scope),
-          fiberRuntime.zipWithOptions(
-            memoMap.getOrElseMemoize(op.second, scope),
-            op.zipK,
-            { concurrent: true }
+      return core.gen(function*() {
+        const parallelScope = yield* core.scopeFork(scope, ExecutionStrategy.parallel)
+        const firstScope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
+        const secondScope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
+        return (memoMap: Layer.MemoMap) =>
+          pipe(
+            memoMap.getOrElseMemoize(op.first, firstScope),
+            fiberRuntime.zipWithOptions(
+              memoMap.getOrElseMemoize(op.second, secondScope),
+              op.zipK,
+              { concurrent: true }
+            )
           )
-        )
+      })
+    }
+    case "MergeAll": {
+      const layers = op.layers
+      return core.map(
+        core.scopeFork(scope, ExecutionStrategy.parallel),
+        (parallelScope) => (memoMap: Layer.MemoMap) => {
+          const contexts = new Array<Context.Context<any>>(layers.length)
+          return core.map(
+            fiberRuntime.forEachConcurrentDiscard(
+              layers,
+              core.fnUntraced(function*(layer, i) {
+                const scope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
+                const context = yield* memoMap.getOrElseMemoize(layer, scope)
+                contexts[i] = context
+              }),
+              false,
+              false
+            ),
+            () => Context.mergeAll(...contexts)
+          )
+        }
       )
     }
   }
@@ -639,6 +675,47 @@ export const launch = <RIn, E, ROut>(self: Layer.Layer<ROut, E, RIn>): Effect.Ef
   )
 
 /** @internal */
+export const mock: {
+  <I, S extends object>(tag: Context.Tag<I, S>): (service: Layer.PartialEffectful<S>) => Layer.Layer<I>
+  <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I>
+} = function() {
+  if (arguments.length === 1) {
+    return (service: Layer.PartialEffectful<any>) => mockImpl(arguments[0], service)
+  }
+  return mockImpl(arguments[0], arguments[1])
+} as any
+
+const mockImpl = <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.PartialEffectful<S>): Layer.Layer<I> =>
+  succeed(
+    tag,
+    new Proxy({ ...service as object } as S, {
+      get(target, prop, _receiver) {
+        if (prop in target) {
+          return target[prop as keyof S]
+        }
+        const prevLimit = Error.stackTraceLimit
+        Error.stackTraceLimit = 2
+        const error = new Error(`${tag.key}: Unimplemented method "${prop.toString()}"`)
+        Error.stackTraceLimit = prevLimit
+        error.name = "UnimplementedError"
+        return makeUnimplemented(error)
+      },
+      has: constTrue
+    })
+  )
+
+const makeUnimplemented = (error: Error) => {
+  const dead = core.die(error)
+  function unimplemented() {
+    return dead
+  }
+  // @effect-diagnostics-next-line floatingEffect:off
+  Object.assign(unimplemented, dead)
+  Object.setPrototypeOf(unimplemented, Object.getPrototypeOf(dead))
+  return unimplemented
+}
+
+/** @internal */
 export const map = dual<
   <A, B>(
     f: (context: Context.Context<A>) => Context.Context<B>
@@ -738,18 +815,19 @@ export const merge = dual<
 >(2, (self, that) => zipWith(self, that, (a, b) => Context.merge(a, b)))
 
 /** @internal */
-export const mergeAll = <Layers extends [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>]>(
+export const mergeAll = <
+  Layers extends readonly [Layer.Layer<never, any, any>, ...Array<Layer.Layer<never, any, any>>]
+>(
   ...layers: Layers
 ): Layer.Layer<
   { [k in keyof Layers]: Layer.Layer.Success<Layers[k]> }[number],
   { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
   { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
 > => {
-  let final = layers[0]
-  for (let i = 1; i < layers.length; i++) {
-    final = merge(final, layers[i])
-  }
-  return final as any
+  const mergeAll = Object.create(proto)
+  mergeAll._op_layer = OpCodes.OP_MERGE_ALL
+  mergeAll.layers = layers
+  return mergeAll as any
 }
 
 /** @internal */
@@ -1044,7 +1122,7 @@ export const provide = dual<
     ): <RIn2, E2, ROut2>(
       self: Layer.Layer<ROut2, E2, RIn2>
     ) => Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
-    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       that: Layers
     ): <A, E, R>(
       self: Layer.Layer<A, E, R>
@@ -1060,7 +1138,7 @@ export const provide = dual<
       self: Layer.Layer<ROut2, E2, RIn2>,
       that: Layer.Layer<ROut, E, RIn>
     ): Layer.Layer<ROut2, E | E2, RIn | Exclude<RIn2, ROut>>
-    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <A, E, R, const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       self: Layer.Layer<A, E, R>,
       that: Layers
     ): Layer.Layer<
@@ -1325,7 +1403,7 @@ const provideSomeRuntime = dual<
 /** @internal */
 export const effect_provide = dual<
   {
-    <const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       layers: Layers
     ): <A, E, R>(
       self: Effect.Effect<A, E, R>
@@ -1349,7 +1427,7 @@ export const effect_provide = dual<
     ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E | E2, Exclude<R, R2>>
   },
   {
-    <A, E, R, const Layers extends [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
+    <A, E, R, const Layers extends readonly [Layer.Layer.Any, ...Array<Layer.Layer.Any>]>(
       self: Effect.Effect<A, E, R>,
       layers: Layers
     ): Effect.Effect<

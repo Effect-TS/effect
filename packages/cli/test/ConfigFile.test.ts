@@ -12,13 +12,12 @@ const runEffect = <E, A>(
 
 describe("ConfigFile", () => {
   it("loads json files", () =>
-    Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      const result = yield* _(
-        Config.all([
-          Config.boolean("foo"),
-          Config.string("bar")
-        ]),
+    Effect.gen(function*() {
+      const path = yield* Path.Path
+      const result = yield* Config.all([
+        Config.boolean("foo"),
+        Config.string("bar")
+      ]).pipe(
         Effect.provide(ConfigFile.layer("config", {
           searchPaths: [path.join(__dirname, "fixtures")],
           formats: ["json"]
@@ -28,10 +27,9 @@ describe("ConfigFile", () => {
     }).pipe(runEffect))
 
   it("loads yaml", () =>
-    Effect.gen(function*(_) {
-      const path = yield* _(Path.Path)
-      const result = yield* _(
-        Config.integer("foo"),
+    Effect.gen(function*() {
+      const path = yield* Path.Path
+      const result = yield* Config.integer("foo").pipe(
         Effect.provide(ConfigFile.layer("config-file", {
           searchPaths: [path.join(__dirname, "fixtures")]
         }))

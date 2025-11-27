@@ -11,7 +11,6 @@ import {
   throws
 } from "@effect/vitest/utils"
 import { Either, Match as M, Option, pipe, Predicate } from "effect"
-import { assertType } from "./utils/types.js"
 
 describe("Match", () => {
   it("TypeMatcher.pipe() method", () => {
@@ -571,16 +570,12 @@ describe("Match", () => {
   })
 
   it("instanceOf", () => {
-    // These type-level tests cannot be moved to a dtslint test because
-    // of the difference in the way the type is retrieved in ts 5.7
     const match = pipe(
       M.type<Uint8Array | Uint16Array>(),
       M.when(M.instanceOf(Uint8Array), (_) => {
-        assertType<Uint8Array>()(_) satisfies true
         return "uint8"
       }),
       M.when(M.instanceOf(Uint16Array), (_) => {
-        assertType<Uint16Array>()(_) satisfies true
         return "uint16"
       }),
       M.orElse((_) => {

@@ -7,7 +7,6 @@ import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
 import * as Statement from "@effect/sql/Statement"
-import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cache from "effect/Cache"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -17,6 +16,8 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import type * as Scope from "effect/Scope"
+
+const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
 /**
  * @category type ids
@@ -90,7 +91,7 @@ export const make = (
 
       const runStatement = (
         statement: D1PreparedStatement,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ): Effect.Effect<ReadonlyArray<any>, SqlError, never> =>
         Effect.tryPromise({
           try: async () => {
@@ -105,22 +106,22 @@ export const make = (
 
       const runRaw = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) => runStatement(db.prepare(sql), params)
 
       const runCached = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) => Effect.flatMap(prepareCache.get(sql), (s) => runStatement(s, params))
 
       const runUncached = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) => runRaw(sql, params)
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>
+        params: ReadonlyArray<unknown>
       ) =>
         Effect.flatMap(
           prepareCache.get(sql),
@@ -129,7 +130,7 @@ export const make = (
               try: () => {
                 return statement.bind(...params).raw() as Promise<
                   ReadonlyArray<
-                    ReadonlyArray<Statement.Primitive>
+                    ReadonlyArray<unknown>
                   >
                 >
               },
@@ -171,7 +172,7 @@ export const make = (
         transactionAcquirer,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [OtelSemConv.ATTR_DB_SYSTEM_NAME, "sqlite"]
+          [ATTR_DB_SYSTEM_NAME, "sqlite"]
         ],
         transformRows
       })) as D1Client,

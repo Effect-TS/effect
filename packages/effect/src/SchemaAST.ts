@@ -7,6 +7,7 @@ import type { Effect } from "./Effect.js"
 import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
+import * as Inspectable from "./Inspectable.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Number from "./Number.js"
@@ -533,7 +534,7 @@ export class Literal implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.literal))
+    return Option.getOrElse(getExpected(this), () => Inspectable.formatUnknown(this.literal))
   }
   /**
    * @since 3.10.0
@@ -577,7 +578,7 @@ export class UniqueSymbol implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.symbol))
+    return Option.getOrElse(getExpected(this), () => Inspectable.formatUnknown(this.symbol))
   }
   /**
    * @since 3.10.0
@@ -2078,11 +2079,15 @@ export const isTypeLiteralTransformation: (ast: TransformationKind) => ast is Ty
  * Merges a set of new annotations with existing ones, potentially overwriting
  * any duplicates.
  *
+ * Any previously existing identifier annotations are deleted.
+ *
  * @since 3.10.0
  */
 export const annotations = (ast: AST, overrides: Annotations): AST => {
   const d = Object.getOwnPropertyDescriptors(ast)
-  const value = { ...ast.annotations, ...overrides }
+  const base: any = { ...ast.annotations }
+  delete base[IdentifierAnnotationId]
+  const value = { ...base, ...overrides }
   const surrogate = getSurrogateAnnotation(ast)
   if (Option.isSome(surrogate)) {
     value[SurrogateAnnotationId] = annotations(surrogate.value, overrides)
@@ -2098,7 +2103,7 @@ export const annotations = (ast: AST, overrides: Annotations): AST => {
  */
 export const keyof = (ast: AST): AST => Union.unify(_keyof(ast))
 
-const STRING_KEYWORD_PATTERN = "[\\s\\S]*" // any string, including newlines
+const STRING_KEYWORD_PATTERN = "[\\s\\S]*?" // any string, including newlines
 const NUMBER_KEYWORD_PATTERN = "[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?"
 
 const getTemplateLiteralSpanTypePattern = (type: TemplateLiteralSpanType, capture: boolean): string => {
@@ -2702,16 +2707,6 @@ export const typeAST = (ast: AST): AST => {
   return ast
 }
 
-// To generate a JSON Schema from a recursive schema, an `identifier` annotation
-// is required. So, when we calculate the encodedAST, we need to preserve the
-// annotation in the form of an internal custom annotation that acts as a
-// surrogate for the identifier, which the JSON Schema compiler can then read.
-const createJSONIdentifierAnnotation = (annotated: Annotated): Annotations | undefined =>
-  Option.match(getJSONIdentifier(annotated), {
-    onNone: () => undefined,
-    onSome: (identifier) => ({ [JSONIdentifierAnnotationId]: identifier })
-  })
-
 function changeMap<A>(
   as: Arr.NonEmptyReadonlyArray<A>,
   f: (a: A) => A
@@ -2753,7 +2748,7 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
       const typeParameters = changeMap(ast.typeParameters, (ast) => encodedAST_(ast, isBound))
       return typeParameters === ast.typeParameters ?
         ast :
-        new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown, ast.annotations)
+        new Declaration(typeParameters, ast.decodeUnknown, ast.encodeUnknown)
     }
     case "TupleType": {
       const elements = changeMap(ast.elements, (e) => {
@@ -2764,12 +2759,7 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
       const rest = changeMap(restASTs, (ast) => encodedAST_(ast, isBound))
       return elements === ast.elements && rest === restASTs ?
         ast :
-        new TupleType(
-          elements,
-          rest.map((ast) => new Type(ast)),
-          ast.isReadonly,
-          createJSONIdentifierAnnotation(ast)
-        )
+        new TupleType(elements, rest.map((ast) => new Type(ast)), ast.isReadonly)
     }
     case "TypeLiteral": {
       const propertySignatures = changeMap(ast.propertySignatures, (ps) => {
@@ -2784,31 +2774,35 @@ const encodedAST_ = (ast: AST, isBound: boolean): AST => {
       })
       return propertySignatures === ast.propertySignatures && indexSignatures === ast.indexSignatures ?
         ast :
-        new TypeLiteral(propertySignatures, indexSignatures, createJSONIdentifierAnnotation(ast))
+        new TypeLiteral(propertySignatures, indexSignatures)
     }
     case "Union": {
       const types = changeMap(ast.types, (ast) => encodedAST_(ast, isBound))
-      return types === ast.types ? ast : Union.make(types, createJSONIdentifierAnnotation(ast))
+      return types === ast.types ? ast : Union.make(types)
     }
-    case "Suspend":
-      return new Suspend(() => encodedAST_(ast.f(), isBound), createJSONIdentifierAnnotation(ast))
+    case "Suspend": {
+      let borrowedAnnotations = undefined
+      const identifier = getJSONIdentifier(ast)
+      if (Option.isSome(identifier)) {
+        const suffix = isBound ? "Bound" : ""
+        borrowedAnnotations = { [JSONIdentifierAnnotationId]: `${identifier.value}Encoded${suffix}` }
+      }
+      return new Suspend(() => encodedAST_(ast.f(), isBound), borrowedAnnotations)
+    }
     case "Refinement": {
       const from = encodedAST_(ast.from, isBound)
       if (isBound) {
-        if (from === ast.from) {
-          return ast
-        }
+        if (from === ast.from) return ast
         if (getTransformationFrom(ast.from) === undefined && hasStableFilter(ast)) {
           return new Refinement(from, ast.filter, ast.annotations)
         }
+        return from
+      } else {
+        return from
       }
-      const identifier = createJSONIdentifierAnnotation(ast)
-      return identifier ? annotations(from, identifier) : from
     }
-    case "Transformation": {
-      const identifier = createJSONIdentifierAnnotation(ast)
-      return encodedAST_(identifier ? annotations(ast.from, identifier) : ast.from, isBound)
-    }
+    case "Transformation":
+      return encodedAST_(ast.from, isBound)
   }
   return ast
 }
@@ -2926,7 +2920,7 @@ export const rename = (ast: AST, mapping: { readonly [K in PropertyKey]?: Proper
   switch (ast._tag) {
     case "TypeLiteral": {
       const propertySignatureTransformations: Array<PropertySignatureTransformation> = []
-      for (const key of util_.ownKeys(mapping)) {
+      for (const key of Reflect.ownKeys(mapping)) {
         const name = mapping[key]
         if (name !== undefined) {
           propertySignatureTransformations.push(
@@ -2975,7 +2969,7 @@ const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), (
 function getBrands(ast: Annotated): string {
   return Option.match(getBrandAnnotation(ast), {
     onNone: () => "",
-    onSome: (brands) => brands.map((brand) => ` & Brand<${util_.formatUnknown(brand)}>`).join("")
+    onSome: (brands) => brands.map((brand) => ` & Brand<${Inspectable.formatUnknown(brand)}>`).join("")
   })
 }
 

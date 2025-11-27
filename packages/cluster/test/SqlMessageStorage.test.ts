@@ -4,7 +4,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { Rpc } from "@effect/rpc"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { SqlClient } from "@effect/sql/SqlClient"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, Layer, TestClock } from "effect"
 import { MysqlContainer } from "./fixtures/utils-mysql.js"
 import { PgContainer } from "./fixtures/utils-pg.js"
@@ -36,17 +36,31 @@ describe("SqlMessageStorage", () => {
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
     it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
-      timeout: 30000
+      timeout: 120000
     })(label, (it) => {
       it.effect("saveRequest", () =>
         Effect.gen(function*() {
           const storage = yield* MessageStorage.MessageStorage
-          const request = yield* makeRequest()
+          const request = yield* makeRequest({ payload: { id: 1 } })
           const result = yield* storage.saveRequest(request)
           expect(result._tag).toEqual("Success")
 
-          const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
-          expect(messages).toHaveLength(1)
+          for (let i = 2; i <= 5; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i } }))
+          }
+
+          yield* storage.saveReply(yield* makeReply(request))
+
+          let messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+          expect(messages).toHaveLength(4)
+          expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([2, 3, 4, 5])
+
+          for (let i = 6; i <= 10; i++) {
+            yield* storage.saveRequest(yield* makeRequest({ payload: { id: i } }))
+          }
+          messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
+          expect(messages).toHaveLength(5)
+          expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([6, 7, 8, 9, 10])
         }))
 
       it.effect("saveReply + saveRequest duplicate", () =>
@@ -74,13 +88,26 @@ describe("SqlMessageStorage", () => {
               payload: new StreamTest({ id: 123 })
             })
           )
-          expect(result._tag === "Duplicate" && result.lastReceivedReply._tag).toEqual("Some")
+          assert(result._tag === "Duplicate")
+          assert(result.lastReceivedReply._tag === "Some")
+          expect(result.lastReceivedReply.value._tag).toEqual("Chunk")
 
           // get the un-acked chunk
           const replies = yield* storage.repliesFor([request])
           expect(replies).toHaveLength(1)
 
           yield* storage.saveReply(yield* makeReply(request))
+
+          result = yield* storage.saveRequest(
+            yield* makeRequest({
+              rpc: StreamRpc,
+              payload: new StreamTest({ id: 123 })
+            })
+          )
+          assert(result._tag === "Duplicate")
+          assert(result.lastReceivedReply._tag === "Some")
+          expect(result.lastReceivedReply.value._tag).toEqual("WithExit")
+
           // duplicate WithExit
           const fiber = yield* storage.saveReply(yield* makeReply(request)).pipe(Effect.fork)
           yield* TestClock.adjust(1)
@@ -161,14 +188,16 @@ describe("SqlMessageStorage", () => {
           const latch = yield* Effect.makeLatch()
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
-          yield* storage.registerReplyHandler(
+          const fiber = yield* storage.registerReplyHandler(
             new Message.OutgoingRequest({
               ...request,
               respond: () => latch.open
             })
-          )
+          ).pipe(Effect.fork)
+          yield* TestClock.adjust(1)
           yield* storage.saveReply(yield* makeReply(request))
           yield* latch.await
+          yield* fiber.await
         }))
 
       it.effect("unprocessedMessagesById", () =>

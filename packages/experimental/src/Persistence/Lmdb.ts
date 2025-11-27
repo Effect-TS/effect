@@ -57,6 +57,15 @@ export const make = (options: Lmdb.RootDatabaseOptionsWithPath) =>
                 try: () => store.put(key, [value, Persistence.unsafeTtlToExpires(clock, ttl)]),
                 catch: (error) => Persistence.PersistenceBackingError.make("set", error)
               }),
+            setMany: (entries) =>
+              Effect.tryPromise({
+                try: () =>
+                  Promise.all(entries.map(([key, value, ttl]) =>
+                    store.put(key, [value, Persistence.unsafeTtlToExpires(clock, ttl)])
+                  )),
+                catch: (error) =>
+                  Persistence.PersistenceBackingError.make("setMany", error)
+              }),
             remove: (key) =>
               Effect.tryPromise({
                 try: () => store.remove(key),

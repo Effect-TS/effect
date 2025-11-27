@@ -103,7 +103,7 @@ export const redirect = (
 ): ServerResponse.HttpServerResponse => {
   const headers = Headers.unsafeFromRecord({ location: location.toString() })
   return new ServerResponseImpl(
-    options?.status ?? 301,
+    options?.status ?? 302,
     options?.statusText,
     options?.headers ?
       Headers.merge(
@@ -511,6 +511,32 @@ export const removeCookie = dual<
       self.statusText,
       self.headers,
       Cookies.remove(self.cookies, name),
+      self.body
+    )
+)
+
+/** @internal */
+export const expireCookie = dual<
+  (
+    name: string,
+    options?: Omit<Cookies.Cookie["options"], "expires" | "maxAge">
+  ) => (self: ServerResponse.HttpServerResponse) => ServerResponse.HttpServerResponse,
+  (
+    self: ServerResponse.HttpServerResponse,
+    name: string,
+    options?: Omit<Cookies.Cookie["options"], "expires" | "maxAge">
+  ) => ServerResponse.HttpServerResponse
+>(
+  3,
+  (self, name, options) =>
+    new ServerResponseImpl(
+      self.status,
+      self.statusText,
+      self.headers,
+      Cookies.unsafeSet(self.cookies, name, "", {
+        ...(options ?? {}),
+        maxAge: 0
+      }),
       self.body
     )
 )

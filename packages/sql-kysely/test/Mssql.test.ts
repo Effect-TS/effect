@@ -20,7 +20,7 @@ const MssqlLive = Layer.effect(MssqlDB, MssqlKysely.make<Database>()).pipe(Layer
 
 describe("MssqlKysely", () => {
   it.effect("queries", () =>
-    Effect.gen(function*(_) {
+    Effect.gen(function*() {
       const db = yield* MssqlDB
       yield* db.schema
         .createTable("users")

@@ -13,42 +13,40 @@ describe("Primitive", () => {
   describe("Bool", () => {
     it("validates that truthy text representations of a boolean return true", () =>
       fc.assert(fc.asyncProperty(trueValuesArb, (str) =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           const bool = Primitive.boolean(Option.none())
-          const result = yield* _(Primitive.validate(
+          const result = yield* Primitive.validate(
             bool,
             Option.some(str),
             CliConfig.defaultConfig
-          ))
+          )
           expect(result).toBe(true)
         }).pipe(runEffect))))
 
     it("validates that falsy text representations of a boolean return false", () =>
       fc.assert(fc.asyncProperty(falseValuesArb, (str) =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           const bool = Primitive.boolean(Option.none())
-          const result = yield* _(Primitive.validate(
+          const result = yield* Primitive.validate(
             bool,
             Option.some(str),
             CliConfig.defaultConfig
-          ))
+          )
           expect(result).toBe(false)
         }).pipe(runEffect))))
 
     it("validates that invalid boolean representations are rejected", () =>
-      Effect.gen(function*(_) {
+      Effect.gen(function*() {
         const bool = Primitive.boolean(Option.none())
-        const result = yield* _(
-          Effect.flip(Primitive.validate(bool, Option.some("bad"), CliConfig.defaultConfig))
-        )
+        const result = yield* Effect.flip(Primitive.validate(bool, Option.some("bad"), CliConfig.defaultConfig))
         expect(result).toBe("Unable to recognize 'bad' as a valid boolean")
       }).pipe(runEffect))
 
     it("validates that the default value will be used if a value is not provided", () =>
       fc.assert(fc.asyncProperty(fc.boolean(), (value) =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           const bool = Primitive.boolean(Option.some(value))
-          const result = yield* _(Primitive.validate(bool, Option.none(), CliConfig.defaultConfig))
+          const result = yield* Primitive.validate(bool, Option.none(), CliConfig.defaultConfig)
           expect(result).toBe(value)
         }).pipe(runEffect))))
   })
@@ -57,35 +55,35 @@ describe("Primitive", () => {
     it("validates a choice that is one of the alternatives", () =>
       fc.assert(
         fc.asyncProperty(pairsArb, ([[selectedName, selectedValue], pairs]) =>
-          Effect.gen(function*(_) {
+          Effect.gen(function*() {
             const alternatives = Function.unsafeCoerce<
               ReadonlyArray<[string, number]>,
               Array.NonEmptyReadonlyArray<[string, number]>
             >(pairs)
             const choice = Primitive.choice(alternatives)
-            const result = yield* _(Primitive.validate(
+            const result = yield* Primitive.validate(
               choice,
               Option.some(selectedName),
               CliConfig.defaultConfig
-            ))
+            )
             expect(result).toEqual(selectedValue)
           }).pipe(runEffect))
       ))
 
     it("does not validate a choice that is not one of the alternatives", () =>
       fc.assert(fc.asyncProperty(pairsArb, ([tuple, pairs]) =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           const selectedName = tuple[0]
           const alternatives = Function.unsafeCoerce<
             ReadonlyArray<[string, number]>,
             Array.NonEmptyReadonlyArray<[string, number]>
           >(Array.filter(pairs, (pair) => !Equal.equals(tuple, pair)))
           const choice = Primitive.choice(alternatives)
-          const result = yield* _(Effect.flip(Primitive.validate(
+          const result = yield* Effect.flip(Primitive.validate(
             choice,
             Option.some(selectedName),
             CliConfig.defaultConfig
-          )))
+          ))
           expect(result).toMatch(/^Expected one of the following cases:\s.*/)
         }).pipe(runEffect))))
   })
@@ -103,12 +101,12 @@ describe("Primitive", () => {
   describe("Text", () => {
     it("validates all user-defined text", () =>
       fc.assert(fc.asyncProperty(fc.string(), (str) =>
-        Effect.gen(function*(_) {
-          const result = yield* _(Primitive.validate(
+        Effect.gen(function*() {
+          const result = yield* Primitive.validate(
             Primitive.text,
             Option.some(str),
             CliConfig.defaultConfig
-          ))
+          )
           expect(result).toEqual(str)
         }).pipe(runEffect))))
   })
@@ -122,19 +120,15 @@ const simplePrimitiveTestSuite = <A>(
   describe(`${primitiveTypeName}`, () => {
     it(`validates that valid values are accepted`, () =>
       fc.assert(fc.asyncProperty(arb, (value) =>
-        Effect.gen(function*(_) {
+        Effect.gen(function*() {
           const str = value instanceof Date ? value.toISOString() : `${value}`
-          const result = yield* _(
-            Primitive.validate(primitive, Option.some(str), CliConfig.defaultConfig)
-          )
+          const result = yield* Primitive.validate(primitive, Option.some(str), CliConfig.defaultConfig)
           expect(result).toEqual(value)
         }).pipe(runEffect))))
 
     it(`validates that invalid values are rejected`, () =>
-      Effect.gen(function*(_) {
-        const result = yield* _(
-          Effect.flip(Primitive.validate(primitive, Option.some("bad"), CliConfig.defaultConfig))
-        )
+      Effect.gen(function*() {
+        const result = yield* Effect.flip(Primitive.validate(primitive, Option.some("bad"), CliConfig.defaultConfig))
         expect(result).toBe(`'bad' is not a ${Primitive.getTypeName(primitive)}`)
       }).pipe(runEffect))
   })

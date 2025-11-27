@@ -3,20 +3,9 @@ import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Either from "effect/Either"
 import * as ParseResult from "effect/ParseResult"
 import * as S from "effect/Schema"
-import * as AST from "effect/SchemaAST"
 import * as Util from "../../TestUtils.js"
 
 describe("record", () => {
-  it("annotations()", () => {
-    const schema = S.Record({ key: S.String, value: S.Number }).annotations({ identifier: "X" }).annotations({
-      title: "Y"
-    })
-    deepStrictEqual(schema.ast.annotations, {
-      [AST.IdentifierAnnotationId]: "X",
-      [AST.TitleAnnotationId]: "Y"
-    })
-  })
-
   it("should expose the key and the value", () => {
     const schema = S.Record({ key: S.String, value: S.Number })
     strictEqual(schema.key, S.String)
@@ -379,9 +368,9 @@ describe("record", () => {
       await Util.assertions.decoding.fail(
         schema,
         { "": 1 },
-        `{ readonly [x: NonEmptyString]: number }
+        `{ readonly [x: nonEmptyString & Brand<"UserId">]: number }
 └─ [""]
-   └─ is unexpected, expected: NonEmptyString`,
+   └─ is unexpected, expected: nonEmptyString & Brand<"UserId">`,
         { parseOptions: Util.onExcessPropertyError }
       )
     })

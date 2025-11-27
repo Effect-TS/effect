@@ -34,7 +34,7 @@ export interface TupleTypeLambda extends TypeLambda {
 export const make = <A extends ReadonlyArray<any>>(...elements: A): A => elements
 
 /**
- * Return the first element of a tuple.
+ * Return the first element from a tuple with two elements.
  *
  * @example
  * ```ts
@@ -50,7 +50,7 @@ export const make = <A extends ReadonlyArray<any>>(...elements: A): A => element
 export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
 
 /**
- * Return the second element of a tuple.
+ * Return the second element from a tuple with two elements.
  *
  * @example
  * ```ts
@@ -100,7 +100,7 @@ export const map: {
 )
 
 /**
- * Transforms both elements of a tuple using the given functions.
+ * Transforms both elements of a tuple with two elements using the given functions.
  *
  * @example
  * ```ts
@@ -137,7 +137,7 @@ export const mapBoth: {
 )
 
 /**
- * Transforms the first component of a tuple using a given function.
+ * Transforms the first component of a tuple with two elements using a given function.
  *
  * @example
  * ```ts
@@ -159,7 +159,7 @@ export const mapFirst: {
 } = dual(2, <L1, R, L2>(self: readonly [L1, R], f: (left: L1) => L2): [L2, R] => [f(self[0]), self[1]])
 
 /**
- * Transforms the second component of a tuple using a given function.
+ * Transforms the second component of a tuple with two elements using a given function.
  *
  * @example
  * ```ts
@@ -181,7 +181,7 @@ export const mapSecond: {
 } = dual(2, <L, R1, R2>(self: readonly [L, R1], f: (right: R1) => R2): [L, R2] => [self[0], f(self[1])])
 
 /**
- * Swaps the two elements of a tuple.
+ * Swaps the elements of a tuple with two elements.
  *
  * @example
  * ```ts

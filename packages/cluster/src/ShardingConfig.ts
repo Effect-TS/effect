@@ -34,9 +34,15 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly runnerListenAddress: Option.Option<RunnerAddress>
   /**
-   * The version of the current runner.
+   * A number that determines how many shards this runner will be assigned
+   * relative to other runners.
+   *
+   * Defaults to `1`.
+   *
+   * A value of `2` means that this runner should be assigned twice as many
+   * shards as a runner with a weight of `1`.
    */
-  readonly serverVersion: number
+  readonly runnerShardWeight: number
   /**
    * The shard groups that are assigned to this runner.
    *
@@ -50,14 +56,23 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly shardsPerGroup: number
   /**
-   * The address of the shard manager.
+   * Shard lock refresh interval.
    */
-  readonly shardManagerAddress: RunnerAddress
+  readonly shardLockRefreshInterval: DurationInput
   /**
-   * If the shard manager is unavailable for this duration, all the shard
-   * assignments will be reset.
+   * Shard lock expiration duration.
    */
-  readonly shardManagerUnavailableTimeout: DurationInput
+  readonly shardLockExpiration: DurationInput
+  /**
+   * Disable the use of advisory locks for shard locking.
+   */
+  readonly shardLockDisableAdvisory: boolean
+  /**
+   * Start shutting down as soon as an Entity has started shutting down.
+   *
+   * Defaults to `true`.
+   */
+  readonly preemptiveShutdown: boolean
   /**
    * The default capacity of the mailbox for entities.
    */
@@ -67,6 +82,13 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    * after which an entity will be interrupted.
    */
   readonly entityMaxIdleTime: DurationInput
+  /**
+   * If an entity does not register itself within this time after a message is
+   * sent to it, the message will be marked as failed.
+   *
+   * Defaults to 1 minute.
+   */
+  readonly entityRegistrationTimeout: DurationInput
   /**
    * The maximum duration of time to wait for an entity to terminate.
    *
@@ -81,12 +103,19 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    * The interval at which to poll for client replies from storage.
    */
   readonly entityReplyPollInterval: DurationInput
+  /**
+   * The interval at which to poll for new runners and refresh shard
+   * assignments.
+   */
   readonly refreshAssignmentsInterval: DurationInput
   /**
    * The interval to retry a send if EntityNotAssignedToRunner is returned.
    */
   readonly sendRetryInterval: DurationInput
-  // readonly unhealthyRunnerReportInterval: Duration.Duration
+  /**
+   * The interval at which to check for unhealthy runners and report them
+   */
+  readonly runnerHealthCheckInterval: DurationInput
   /**
    * Simulate serialization and deserialization to remote runners for local
    * entities.
@@ -103,18 +132,22 @@ const defaultRunnerAddress = RunnerAddress.make({ host: "localhost", port: 34431
 export const defaults: ShardingConfig["Type"] = {
   runnerAddress: Option.some(defaultRunnerAddress),
   runnerListenAddress: Option.none(),
-  serverVersion: 1,
+  runnerShardWeight: 1,
   shardsPerGroup: 300,
-  shardManagerAddress: RunnerAddress.make({ host: "localhost", port: 8080 }),
-  shardManagerUnavailableTimeout: Duration.minutes(10),
   shardGroups: ["default"],
+  preemptiveShutdown: true,
+  shardLockRefreshInterval: Duration.seconds(10),
+  shardLockExpiration: Duration.seconds(35),
+  shardLockDisableAdvisory: false,
   entityMailboxCapacity: 4096,
   entityMaxIdleTime: Duration.minutes(1),
+  entityRegistrationTimeout: Duration.minutes(1),
   entityTerminationTimeout: Duration.seconds(15),
   entityMessagePollInterval: Duration.seconds(10),
   entityReplyPollInterval: Duration.millis(200),
   sendRetryInterval: Duration.millis(100),
-  refreshAssignmentsInterval: Duration.minutes(5),
+  refreshAssignmentsInterval: Duration.seconds(3),
+  runnerHealthCheckInterval: Duration.minutes(1),
   simulateRemoteSerialization: true
 }
 
@@ -155,9 +188,8 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
       Config.withDescription("The port to listen on.")
     )
   }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
-  serverVersion: Config.integer("serverVersion").pipe(
-    Config.withDefault(defaults.serverVersion),
-    Config.withDescription("The version of the current runner.")
+  runnerShardWeight: Config.integer("runnerShardWeight").pipe(
+    Config.withDefault(defaults.runnerShardWeight)
   ),
   shardGroups: Config.array(Config.string("shardGroups")).pipe(
     Config.withDefault(["default"]),
@@ -167,21 +199,21 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
     Config.withDefault(defaults.shardsPerGroup),
     Config.withDescription("The number of shards to allocate per shard group.")
   ),
-  shardManagerAddress: Config.all({
-    host: Config.string("shardManagerHost").pipe(
-      Config.withDefault(defaults.shardManagerAddress.host),
-      Config.withDescription("The host of the shard manager.")
-    ),
-    port: Config.integer("shardManagerPort").pipe(
-      Config.withDefault(defaults.shardManagerAddress.port),
-      Config.withDescription("The port of the shard manager.")
-    )
-  }).pipe(Config.map((options) => RunnerAddress.make(options))),
-  shardManagerUnavailableTimeout: Config.duration("shardManagerUnavailableTimeout").pipe(
-    Config.withDefault(defaults.shardManagerUnavailableTimeout),
-    Config.withDescription(
-      "If the shard is unavilable for this duration, all the shard assignments will be reset."
-    )
+  preemptiveShutdown: Config.boolean("preemptiveShutdown").pipe(
+    Config.withDefault(defaults.preemptiveShutdown),
+    Config.withDescription("Start shutting down as soon as an Entity has started shutting down.")
+  ),
+  shardLockRefreshInterval: Config.duration("shardLockRefreshInterval").pipe(
+    Config.withDefault(defaults.shardLockRefreshInterval),
+    Config.withDescription("Shard lock refresh interval.")
+  ),
+  shardLockExpiration: Config.duration("shardLockExpiration").pipe(
+    Config.withDefault(defaults.shardLockExpiration),
+    Config.withDescription("Shard lock expiration duration.")
+  ),
+  shardLockDisableAdvisory: Config.boolean("shardLockDisableAdvisory").pipe(
+    Config.withDefault(defaults.shardLockDisableAdvisory),
+    Config.withDescription("Disable the use of advisory locks for shard locking.")
   ),
   entityMailboxCapacity: Config.integer("entityMailboxCapacity").pipe(
     Config.withDefault(defaults.entityMailboxCapacity),
@@ -191,6 +223,12 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
     Config.withDefault(defaults.entityMaxIdleTime),
     Config.withDescription(
       "The maximum duration of inactivity (i.e. without receiving a message) after which an entity will be interrupted."
+    )
+  ),
+  entityRegistrationTimeout: Config.duration("entityRegistrationTimeout").pipe(
+    Config.withDefault(defaults.entityRegistrationTimeout),
+    Config.withDescription(
+      "If an entity does not register itself within this time after a message is sent to it, the message will be marked as failed."
     )
   ),
   entityTerminationTimeout: Config.duration("entityTerminationTimeout").pipe(
@@ -207,11 +245,15 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   ),
   sendRetryInterval: Config.duration("sendRetryInterval").pipe(
     Config.withDefault(defaults.sendRetryInterval),
-    Config.withDescription("The interval to retry a send if EntityNotManagedByRunner is returned.")
+    Config.withDescription("The interval to retry a send if EntityNotAssignedToRunner is returned.")
   ),
   refreshAssignmentsInterval: Config.duration("refreshAssignmentsInterval").pipe(
     Config.withDefault(defaults.refreshAssignmentsInterval),
     Config.withDescription("The interval at which to refresh shard assignments.")
+  ),
+  runnerHealthCheckInterval: Config.duration("runnerHealthCheckInterval").pipe(
+    Config.withDefault(defaults.runnerHealthCheckInterval),
+    Config.withDescription("The interval at which to check for unhealthy runners and report them.")
   ),
   simulateRemoteSerialization: Config.boolean("simulateRemoteSerialization").pipe(
     Config.withDefault(defaults.simulateRemoteSerialization),

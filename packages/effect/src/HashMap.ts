@@ -283,6 +283,27 @@ export const toEntries = <K, V>(self: HashMap<K, V>): Array<[K, V]> => Array.fro
 export const size: <K, V>(self: HashMap<K, V>) => number = HM.size
 
 /**
+ * Counts all the element of the given HashMap that pass the given predicate
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { HashMap } from "effect"
+ *
+ * const map = HashMap.make([1, "a"], [2, "b"], [3, "c"])
+ * const result = HashMap.countBy(map, (_v, key) => key % 2 === 1)
+ * console.log(result) // 2
+ * ```
+ *
+ * @since 3.17.0
+ * @category folding
+ */
+export const countBy: {
+  <K, V>(predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): (self: HashMap<K, V>) => number
+  <K, V>(self: HashMap<K, V>, predicate: (value: NoInfer<V>, key: NoInfer<K>) => boolean): number
+} = HM.countBy
+
+/**
  * Marks the `HashMap` as mutable.
  *
  * @since 2.0.0

@@ -1146,7 +1146,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
         const output: Record<PropertyKey, unknown> = {}
         let inputKeys: Array<PropertyKey> | undefined
         if (onExcessPropertyError || onExcessPropertyPreserve) {
-          inputKeys = util_.ownKeys(input)
+          inputKeys = Reflect.ownKeys(input)
           for (const key of inputKeys) {
             const te = expected(key, options)
             if (isEither(te) && Either.isLeft(te)) {
@@ -1311,7 +1311,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           }
           if (options?.propertyOrder === "original") {
             // preserve input keys order
-            const keys = inputKeys || util_.ownKeys(input)
+            const keys = inputKeys || Reflect.ownKeys(input)
             for (const name of expectedKeys) {
               if (keys.indexOf(name) === -1) {
                 keys.push(name)
@@ -1345,7 +1345,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
     }
     case "Union": {
       const searchTree = getSearchTree(ast.types, isDecoding)
-      const ownKeys = util_.ownKeys(searchTree.keys)
+      const ownKeys = Reflect.ownKeys(searchTree.keys)
       const ownKeysLen = ownKeys.length
       const astTypesLen = ast.types.length
       const map = new Map<any, Parser>()
@@ -1480,7 +1480,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
       }
     }
     case "Suspend": {
-      const get = util_.memoizeThunk(() => goMemo(AST.annotations(ast.f(), ast.annotations), isDecoding))
+      const get = util_.memoizeThunk(() => goMemo(ast.f(), isDecoding))
       return (a, options) => get()(a, options)
     }
   }
@@ -1873,7 +1873,7 @@ function getDefaultTypeMessage(issue: Type): string {
     return issue.message
   }
   const expected = AST.isRefinement(issue.ast) ? getRefinementExpected(issue.ast) : String(issue.ast)
-  return `Expected ${expected}, actual ${util_.formatUnknown(issue.actual)}`
+  return `Expected ${expected}, actual ${Inspectable.formatUnknown(issue.actual)}`
 }
 
 const formatTypeMessage = (issue: Type): Effect.Effect<string> =>

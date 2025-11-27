@@ -12,9 +12,7 @@
  *
  * @since 2.0.0
  */
-import * as version from "./internal/version.js"
-
-const globalStoreId = `effect/GlobalValue/globalStoreId/${version.getCurrentVersion()}`
+const globalStoreId = `effect/GlobalValue`
 
 let globalStore: Map<unknown, any>
 

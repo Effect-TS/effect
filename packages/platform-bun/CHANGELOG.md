@@ -1,5 +1,174 @@
 # @effect/platform-bun
 
+## 0.84.0
+
+### Patch Changes
+
+- Updated dependencies [[`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea), [`62f7636`](https://github.com/Effect-TS/effect/commit/62f76361ee01ed816687774c5302e7f8c5ff6a42)]:
+  - @effect/rpc@0.72.2
+  - effect@3.19.5
+  - @effect/cluster@0.53.0
+  - @effect/platform-node-shared@0.54.0
+
+## 0.83.0
+
+### Patch Changes
+
+- Updated dependencies [[`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313), [`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452)]:
+  - @effect/cluster@0.52.0
+  - @effect/sql@0.48.0
+  - @effect/rpc@0.72.1
+  - @effect/platform-node-shared@0.53.0
+
+## 0.82.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - backport @effect/cluster from effect v4
+
+  @effect/cluster no longer requires a Shard Manager, and instead relies on the
+  `RunnerStorage` service to track runner state.
+
+  To migrate, remove any Shard Manager deployments and use the updated layers in
+  `@effect/platform-node` or `@effect/platform-bun`.
+
+  # Breaking Changes
+  - `ShardManager` module has been removed
+  - `EntityNotManagedByRunner` error has been removed
+  - Shard locks now use database advisory locks, which requires stable sessions
+    for database connections. This means load balancers or proxies that rotate
+    connections may cause issues.
+  - `@effect/platform-node/NodeClusterSocketRunner` is now
+    `@effect/cluster/NodeClusterSocket`
+  - `@effect/platform-node/NodeClusterHttpRunner` is now
+    `@effect/cluster/NodeClusterHttp`
+  - `@effect/platform-bun/BunClusterSocketRunner` is now
+    `@effect/cluster/BunClusterSocket`
+  - `@effect/platform-bun/BunClusterHttpRunner` is now
+    `@effect/cluster/BunClusterHttp`
+
+  # New Features
+  - `RunnerHealth.layerK8s` has been added, which uses the Kubernetes API to track
+    runner health and liveness. To use it, you will need a service account with
+    permissions to read pod information.
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform-node-shared@0.52.0
+  - @effect/cluster@0.51.0
+  - @effect/rpc@0.72.0
+  - @effect/platform@0.93.0
+  - @effect/sql@0.47.0
+
+## 0.81.1
+
+### Patch Changes
+
+- [#5602](https://github.com/Effect-TS/effect/pull/5602) [`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf) Thanks @tim-smart! - guard against race conditions in NodeSocketServer
+
+- Updated dependencies [[`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf)]:
+  - @effect/cluster@0.50.3
+  - @effect/platform-node-shared@0.51.3
+
+## 0.81.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/cluster@0.50.0
+  - @effect/platform-node-shared@0.51.0
+  - @effect/rpc@0.71.0
+  - @effect/sql@0.46.0
+
+## 0.80.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/rpc@0.70.0
+  - @effect/cluster@0.49.0
+  - @effect/platform-node-shared@0.50.0
+  - @effect/sql@0.45.0
+
+## 0.79.1
+
+### Patch Changes
+
+- [#5517](https://github.com/Effect-TS/effect/pull/5517) [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8) Thanks @tim-smart! - add onOpen option to Socket.run
+
+- Updated dependencies [[`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8), [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8)]:
+  - @effect/platform-node-shared@0.49.2
+  - @effect/cluster@0.48.10
+  - @effect/platform@0.90.10
+  - @effect/rpc@0.69.3
+
+## 0.79.0
+
+### Patch Changes
+
+- Updated dependencies [[`3e163b2`](https://github.com/Effect-TS/effect/commit/3e163b24cc2b647e25566ba29ef25c3f57609042)]:
+  - @effect/rpc@0.69.0
+  - @effect/cluster@0.48.0
+  - @effect/platform-node-shared@0.49.0
+
+## 0.78.0
+
+### Patch Changes
+
+- Updated dependencies [[`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328), [`a949539`](https://github.com/Effect-TS/effect/commit/a94953971c2e908890dfda00f8560d317306c328)]:
+  - @effect/cluster@0.47.0
+  - effect@3.17.7
+  - @effect/platform-node-shared@0.48.0
+
+## 0.77.1
+
+### Patch Changes
+
+- [#5347](https://github.com/Effect-TS/effect/pull/5347) [`20f0d69`](https://github.com/Effect-TS/effect/commit/20f0d6978e0e98464f23b6582c37c6ce12319f29) Thanks @tim-smart! - update Cluster layer conditional storage types
+
+- Updated dependencies [[`d0b5fd1`](https://github.com/Effect-TS/effect/commit/d0b5fd1f7a292a47b9eeb058e5df57ace9a5ab14), [`20f0d69`](https://github.com/Effect-TS/effect/commit/20f0d6978e0e98464f23b6582c37c6ce12319f29)]:
+  - @effect/cluster@0.46.4
+  - @effect/sql@0.44.1
+  - @effect/platform-node-shared@0.47.2
+
+## 0.77.0
+
+### Patch Changes
+
+- Updated dependencies [[`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87), [`e9cbd26`](https://github.com/Effect-TS/effect/commit/e9cbd2673401723aa811b0535202e4f57baf6d2c)]:
+  - effect@3.17.1
+  - @effect/rpc@0.68.0
+  - @effect/cluster@0.46.0
+  - @effect/platform-node-shared@0.47.0
+
+## 0.76.0
+
+### Patch Changes
+
+- Updated dependencies [[`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f)]:
+  - @effect/platform@0.90.0
+  - @effect/cluster@0.45.0
+  - @effect/platform-node-shared@0.46.0
+  - @effect/rpc@0.67.0
+  - @effect/sql@0.44.0
+
+## 0.75.0
+
+### Patch Changes
+
+- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
+  - effect@3.17.0
+  - @effect/cluster@0.44.0
+  - @effect/platform@0.89.0
+  - @effect/platform-node-shared@0.45.0
+  - @effect/rpc@0.66.0
+  - @effect/sql@0.43.0
+
 ## 0.74.0
 
 ### Patch Changes
@@ -3747,7 +3916,6 @@
   ```
 
 - [#2006](https://github.com/Effect-TS/effect/pull/2006) [`a34dbdc`](https://github.com/Effect-TS/effect/commit/a34dbdc1552c73c1b612676f262a0c735ce444a7) Thanks [@github-actions](https://github.com/apps/github-actions)! - - Schema: change type parameters order from `Schema<R, I, A>` to `Schema<A, I = A, R = never>`
-
   - Serializable: change type parameters order from `Serializable<R, I, A>` to `Serializable<A, I, R>`
   - Class: change type parameters order from `Class<R, I, A, C, Self, Inherited>` to `Class<A, I, R, C, Self, Inherited>`
   - PropertySignature: change type parameters order from `PropertySignature<R, From, FromIsOptional, To, ToIsOptional>` to `PropertySignature<From, FromIsOptional, To, ToIsOptional, R = never>`

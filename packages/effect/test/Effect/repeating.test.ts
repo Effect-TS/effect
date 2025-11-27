@@ -121,7 +121,7 @@ describe("Effect", () => {
       strictEqual(result, 4)
     }))
 
-  it.effect("repeat/schedule - IterationMetadata", () =>
+  it.effect("repeat/schedule - CurrentIterationMetadata", () =>
     Effect.gen(function*() {
       const ref = yield* Ref.make<Array<undefined | Schedule.IterationMetadata>>([])
       yield* Effect.gen(function*() {
@@ -141,6 +141,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 0,
           input: undefined,
+          output: undefined,
           now: 0,
           start: 0
         },
@@ -149,6 +150,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.zero,
           recurrence: 1,
           input: undefined,
+          output: [0, 0],
           now: 0,
           start: 0
         },
@@ -157,6 +159,7 @@ describe("Effect", () => {
           elapsedSincePrevious: Duration.seconds(1),
           recurrence: 2,
           input: undefined,
+          output: [1, 1],
           now: 1000,
           start: 0
         }

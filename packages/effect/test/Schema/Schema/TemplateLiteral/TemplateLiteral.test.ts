@@ -58,22 +58,22 @@ schema (Union): boolean | symbol`)
     expectPattern(["a", "b"], "^ab$")
     expectPattern([S.Literal("a", "b"), "c"], "^(a|b)c$")
     expectPattern([S.Literal("a", "b"), "c", S.Literal("d", "e")], "^(a|b)c(d|e)$")
-    expectPattern([S.Literal("a", "b"), S.String, S.Literal("d", "e")], "^(a|b)[\\s\\S]*(d|e)$")
-    expectPattern(["a", S.String], "^a[\\s\\S]*$")
-    expectPattern(["a", S.String, "b"], "^a[\\s\\S]*b$")
+    expectPattern([S.Literal("a", "b"), S.String, S.Literal("d", "e")], "^(a|b)[\\s\\S]*?(d|e)$")
+    expectPattern(["a", S.String], "^a[\\s\\S]*?$")
+    expectPattern(["a", S.String, "b"], "^a[\\s\\S]*?b$")
     expectPattern(
       ["a", S.String, "b", S.Number],
-      "^a[\\s\\S]*b[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
+      "^a[\\s\\S]*?b[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$"
     )
     expectPattern(["a", S.Number], "^a[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$")
-    expectPattern([S.String, "a"], "^[\\s\\S]*a$")
+    expectPattern([S.String, "a"], "^[\\s\\S]*?a$")
     expectPattern([S.Number, "a"], "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?a$")
     expectPattern(
       [S.Union(S.String, S.Literal(1)), S.Union(S.Number, S.Literal(true))],
-      "^([\\s\\S]*|1)([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?|true)$"
+      "^([\\s\\S]*?|1)([+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?|true)$"
     )
     expectPattern([S.Union(S.Literal("a", "b"), S.Literal(1, 2))], "^(a|b|1|2)$")
-    expectPattern(["c", S.Union(S.TemplateLiteral("a", S.String, "b"), S.Literal("e")), "d"], "^c(a[\\s\\S]*b|e)d$")
+    expectPattern(["c", S.Union(S.TemplateLiteral("a", S.String, "b"), S.Literal("e")), "d"], "^c(a[\\s\\S]*?b|e)d$")
     expectPattern(["<", S.TemplateLiteral("h", S.Literal(1, 2)), ">"], "^<h(1|2)>$")
     expectPattern(
       ["-", S.Union(S.TemplateLiteral("a", S.Literal("b", "c")), S.TemplateLiteral("d", S.Literal("e", "f")))],
