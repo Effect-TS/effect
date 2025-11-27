@@ -236,7 +236,7 @@ export const make: (
   type Element = {
     readonly id: string
     readonly queue_name: string
-    element: string | object
+    element: string
     readonly attempts: number
   }
   const mailboxes = yield* RcMap.make({
@@ -321,9 +321,7 @@ export const make: (
           if (results.length > 0) {
             const toOffer = new Set(results)
             yield* Effect.forEach(toOffer, (element) => {
-              if (typeof element.element === "string") {
-                element.element = JSON.parse(element.element)
-              }
+              element.element = JSON.parse(element.element)
               return mailbox.offer(element).pipe(
                 Effect.tap(() => {
                   toOffer.delete(element)
