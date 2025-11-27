@@ -1,10 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["main.ts", "src"],
+  "include": ["main.ts"],
   "compilerOptions": {
     "types": ["node"],
     "noEmit": true,
-    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true
   }
 }

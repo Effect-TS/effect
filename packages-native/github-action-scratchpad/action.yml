@@ -11,6 +11,10 @@ inputs:
     description: 'GitHub token for API access'
     required: true
     default: ${{ github.token }}
+  verbose:
+    description: 'Enable verbose logging'
+    required: false
+    default: 'false'
 
 outputs:
   repo:
@@ -24,4 +28,4 @@ outputs:
 
 runs:
   using: node24
-  main: run.mjs
+  main: run.js

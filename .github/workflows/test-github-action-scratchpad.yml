@@ -19,6 +19,9 @@ jobs:
       - name: Install dependencies
         uses: effect-native/effect-native/.github/actions/setup@effect-native/main
 
+      - name: Build platform-github
+        run: pnpm --filter @effect-native/platform-github build
+
       - name: Run Effect GitHub Action
         uses: ./packages-native/github-action-scratchpad
         with:
