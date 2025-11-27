@@ -28,4 +28,4 @@ outputs:
 
 runs:
   using: node24
-  main: main.ts
+  main: run.js
