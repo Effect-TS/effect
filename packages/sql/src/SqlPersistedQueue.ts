@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
+import * as Option from "effect/Option"
 import * as RcMap from "effect/RcMap"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
@@ -238,10 +239,18 @@ export const make: (
     readonly queue_name: string
     element: string
     readonly attempts: number
+    updated_at?: Date
   }
   const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*({ maxAttempts, name }: QueueKey) {
-      const mailbox = yield* Mailbox.make<Element>({ capacity: 0 })
+      const mailbox = yield* Mailbox.make<Element>()
+
+      yield* Effect.addFinalizer(() =>
+        Effect.flatMap(mailbox.clear, (elements) => {
+          if (elements.length === 0) return Effect.void
+          return interrupt(Array.from(elements, (e) => e.id))
+        })
+      )
 
       const poll = sql.onDialectOrElse({
         pg: () =>
@@ -258,11 +267,15 @@ export const make: (
               FOR UPDATE SKIP LOCKED
               LIMIT ${pollBatchSizeSql}
             )
-            RETURNING id, queue_name, element, attempts
-          `,
+            RETURNING id, queue_name, element, attempts, updated_at
+        `.pipe(
+            Effect.map((rows) =>
+              (rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
+            )
+          ),
         mysql: () =>
           sql<Element>`
-            SELECT id, queue_name, element, attempts FROM ${tableNameSql}
+            SELECT id, queue_name, element, attempts, updated_at FROM ${tableNameSql}
             WHERE queue_name = ${name}
             AND completed = FALSE
             AND attempts < ${maxAttempts}
@@ -273,6 +286,7 @@ export const make: (
           `.pipe(
             Effect.tap((rows) => {
               if (rows.length === 0) return Effect.void
+              ;(rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
               return sql`
                 UPDATE ${tableNameSql}
                 SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
@@ -293,7 +307,7 @@ export const make: (
             )
             UPDATE q
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
-            OUTPUT inserted.id, inserted.queue_name, inserted.element, inserted.attempts
+            OUTPUT inserted.id, inserted.queue_name, inserted.element, inserted.attempts, inserted.updated_at
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.id = cte.id
           `,
@@ -311,26 +325,30 @@ export const make: (
               ORDER BY updated_at ASC
               LIMIT ${pollBatchSizeSql}
             )
-            RETURNING id, queue_name, element, attempts
-          `
+            RETURNING id, queue_name, element, attempts, updated_at
+          `.pipe(
+            Effect.map((rows) => {
+              if (rows.length === 0) return rows
+              else if (typeof rows[0].updated_at === "string") {
+                ;(rows as Array<any>).sort((a, b) => a.updated_at.localeCompare(b.updated_at))
+              } else {
+                ;(rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
+              }
+              return rows
+            })
+          )
       })
 
       yield* Effect.gen(function*() {
         while (true) {
-          const results = yield* poll
+          const size = Option.getOrElse(yield* mailbox.size, () => 0)
+          const results = size === 0 ? yield* poll : []
           if (results.length > 0) {
-            const toOffer = new Set(results)
-            yield* Effect.forEach(toOffer, (element) => {
+            for (let i = 0; i < results.length; i++) {
+              const element = results[i]
               element.element = JSON.parse(element.element)
-              return mailbox.offer(element).pipe(
-                Effect.tap(() => {
-                  toOffer.delete(element)
-                })
-              )
-            }).pipe(
-              Effect.onInterrupt(() => interrupt(Array.from(toOffer, (e) => e.id)))
-            )
-            yield* Effect.yieldNow()
+            }
+            yield* mailbox.offerAll(results)
           } else {
             // TODO: use listen/notify or equivalent to avoid polling
             yield* Effect.sleep(pollInterval)
@@ -368,7 +386,6 @@ export const make: (
       Effect.uninterruptibleMask((restore) =>
         RcMap.get(mailboxes, new QueueKey({ name, maxAttempts })).pipe(
           Effect.flatMap((m) => Effect.orDie(m.take)),
-          Effect.zipLeft(Effect.yieldNow()),
           Effect.scoped,
           restore,
           Effect.tap((element) =>
@@ -394,7 +411,13 @@ class QueueKey extends Data.Class<{
  * @since 1.0.0
  * @category layers
  */
-export const layerStore = (options?: {}): Layer.Layer<
+export const layerStore = (options?: {
+  readonly tableName?: string | undefined
+  readonly pollInterval?: Duration.DurationInput | undefined
+  readonly pollBatchSize?: number | undefined
+  readonly lockRefreshInterval?: Duration.DurationInput | undefined
+  readonly lockExpiration?: Duration.DurationInput | undefined
+}): Layer.Layer<
   PersistedQueue.PersistedQueueStore,
   SqlError,
   SqlClient.SqlClient
