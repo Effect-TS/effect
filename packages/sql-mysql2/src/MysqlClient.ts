@@ -189,6 +189,7 @@ export const make = (
         multipleStatements: true,
         supportBigNumbers: true,
         connectionLimit: options.maxConnections,
+        maxIdle: options.poolConfig?.maxIdle ?? 0,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(options.connectionTTL)
           : undefined
