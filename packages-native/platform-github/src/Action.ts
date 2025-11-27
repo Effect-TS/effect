@@ -156,9 +156,9 @@ export const runMain = <E, A>(
   options?: RunMainOptions
 ): void => {
   // Get token from options, action input, or environment
-  // GitHub Actions exposes inputs as INPUT_<NAME> env vars (with hyphens replaced by underscores)
+  // GitHub Actions exposes inputs as INPUT_<NAME> env vars (uppercase, hyphens become underscores)
   const githubToken = options?.token
-    ?? process.env["INPUT_GITHUB-TOKEN"]
+    ?? process.env.INPUT_GITHUB_TOKEN
     ?? process.env.GITHUB_TOKEN
     ?? ""
   const actionLayer = layer(githubToken)
