@@ -12,6 +12,7 @@ import { hasProperty } from "effect/Predicate"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Struct from "effect/Struct"
+import type * as Unify from "effect/Unify"
 import type * as FileSystem from "./FileSystem.js"
 import type * as Multipart_ from "./Multipart.js"
 
@@ -605,8 +606,29 @@ export const deunionize = (
  * @since 1.0.0
  * @category empty errors
  */
-export interface EmptyErrorClass<Self, Tag> extends Schema.Schema<Self, void> {
-  new(_: void): { readonly _tag: Tag } & Effect.Effect<never, Self>
+export interface EmptyErrorClass<Self, Tag> extends Schema.Schema<Self, void>, Effect.Effect<never, Self> {
+  readonly _tag: Tag
+  new(_: void): this
+  [Unify.typeSymbol]?: unknown
+  [Unify.unifySymbol]?: EmptyErrorClassUnify<this>
+  [Unify.ignoreSymbol]?: EmptyErrorClassUnifyIgnore
+}
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface EmptyErrorClassUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
+  EmptyErrorClass?: () => A[Unify.typeSymbol] extends EmptyErrorClass<infer Self, infer _Tag> | infer _ ? Self
+    : never
+}
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface EmptyErrorClassUnifyIgnore extends Effect.EffectUnifyIgnore {
+  Effect?: true
 }
 
 /**
