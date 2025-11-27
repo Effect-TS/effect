@@ -569,7 +569,8 @@ describe.sequential("Debug CDP connection", () => {
       )
     ).pipe(Effect.orDie))
 
-  it.effect(
+  // Skip Chrome test in CI - Chrome availability/behavior is unreliable in GitHub Actions
+  it.effect.skipIf(Boolean(process.env.CI))(
     "connects to Chrome remote debugging",
     () =>
       Effect.gen(function*() {
