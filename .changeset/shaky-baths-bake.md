@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-fix:Arr.intersectionWith,differenceWith that Iterable
+Prevent multiple iterations over the same Iterable in Array.intersectionWith and Array.differenceWith
