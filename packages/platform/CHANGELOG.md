@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.93.5
+
+### Patch Changes
+
+- [#5818](https://github.com/Effect-TS/effect/pull/5818) [`ebfbbd6`](https://github.com/Effect-TS/effect/commit/ebfbbd62e1daf235d1f25b825d80ae4880408df3) Thanks @KhraksMamtsov! - Support `HttpApiError` unification
+
 ## 0.93.4
 
 ### Patch Changes
