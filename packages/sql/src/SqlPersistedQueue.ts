@@ -160,16 +160,14 @@ export const make: (
 
   const workerIdSql = stringLiteral(workerId)
   const elementIds = new Set<string>()
-  const refreshLocks = (): Effect.Effect<void, SqlError> => {
-    if (elementIds.size === 0) {
-      return Effect.void
-    }
+  const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
+    if (elementIds.size === 0) return Effect.void
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = ${sqlNow}
       WHERE acquired_by = ${workerIdSql}
     `
-  }
+  })
   const complete = (id: string, attempts: number) => {
     elementIds.delete(id)
     return sql`
@@ -220,7 +218,7 @@ export const make: (
     )
   }
 
-  yield* Effect.suspend(refreshLocks).pipe(
+  yield* refreshLocks.pipe(
     Effect.tapErrorCause(Effect.logWarning),
     Effect.retry(Schedule.spaced(500)),
     Effect.scheduleForked(Schedule.fixed(lockRefreshInterval)),
