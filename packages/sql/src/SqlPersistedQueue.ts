@@ -236,7 +236,7 @@ export const make: (
   type Element = {
     readonly id: string
     readonly queue_name: string
-    readonly element: string
+    element: string | object
     readonly attempts: number
   }
   const mailboxes = yield* RcMap.make({
@@ -320,14 +320,18 @@ export const make: (
           const results = yield* poll
           if (results.length > 0) {
             const toOffer = new Set(results)
-            yield* Effect.forEach(toOffer, (element) =>
-              mailbox.offer(element).pipe(
+            yield* Effect.forEach(toOffer, (element) => {
+              if (typeof element.element === "string") {
+                element.element = JSON.parse(element.element)
+              }
+              return mailbox.offer(element).pipe(
                 Effect.tap(() => {
                   toOffer.delete(element)
                 })
-              )).pipe(
-                Effect.onInterrupt(() => interrupt(Array.from(toOffer, (e) => e.id)))
               )
+            }).pipe(
+              Effect.onInterrupt(() => interrupt(Array.from(toOffer, (e) => e.id)))
+            )
             yield* Effect.yieldNow()
           } else {
             // TODO: use listen/notify or equivalent to avoid polling
@@ -335,6 +339,7 @@ export const make: (
           }
         }
       }).pipe(
+        Effect.sandbox,
         Effect.retry(Schedule.spaced(500)),
         Effect.forkScoped,
         Effect.interruptible
@@ -346,15 +351,19 @@ export const make: (
 
   return PersistedQueue.PersistedQueueStore.of({
     offer: (name, id, element) =>
-      sql`
-        INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, ${sqlFalse}, 0, ${sqlNow}, ${sqlNow})
-      `.unprepared.pipe(
-        Effect.mapError((cause) =>
-          new PersistedQueue.PersistedQueueError({
-            message: "Failed to offer element to persisted queue",
-            cause
-          })
+      Effect.suspend(() =>
+        sql`
+          INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
+          VALUES (${id}, ${name}, ${JSON.stringify(element)}, ${sqlFalse}, 0, ${sqlNow}, ${sqlNow})
+        `
+      ).pipe(
+        Effect.catchAllCause((cause) =>
+          Effect.fail(
+            new PersistedQueue.PersistedQueueError({
+              message: "Failed to offer element to persisted queue",
+              cause: Cause.squash(cause)
+            })
+          )
         )
       ),
     take: ({ maxAttempts, name }) =>

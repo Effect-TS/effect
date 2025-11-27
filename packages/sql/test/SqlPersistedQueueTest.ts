@@ -15,12 +15,12 @@ export const suite = <E>(client: Layer.Layer<SqlClient.SqlClient, E>) => {
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
           name: "test-queue-a",
-          schema: Schema.BigInt
+          schema: Item
         })
 
-        yield* queue.offer(42n)
+        yield* queue.offer({ n: 42n })
         yield* queue.take(Effect.fnUntraced(function*(value) {
-          assert.strictEqual(value, 42n)
+          assert.strictEqual(value.n, 42n)
         }))
       }))
 
@@ -28,10 +28,10 @@ export const suite = <E>(client: Layer.Layer<SqlClient.SqlClient, E>) => {
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
           name: "test-queue-b",
-          schema: Schema.BigInt
+          schema: Item
         })
 
-        yield* queue.offer(42n)
+        yield* queue.offer({ n: 42n })
 
         const latch = Effect.unsafeMakeLatch()
         const fiber = yield* queue.take(Effect.fnUntraced(function*(_value) {
@@ -55,17 +55,17 @@ export const suite = <E>(client: Layer.Layer<SqlClient.SqlClient, E>) => {
 
         yield* TestClock.adjust(1000)
 
-        assert.strictEqual(yield* Fiber.join(fiber2), 42n)
+        assert.strictEqual((yield* Fiber.join(fiber2)).n, 42n)
       }))
 
     it.effect("failure", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
           name: "test-queue-c",
-          schema: Schema.BigInt
+          schema: Item
         })
 
-        yield* queue.offer(42n)
+        yield* queue.offer({ n: 42n })
 
         const error = yield* queue.take(() => Effect.fail("boom")).pipe(Effect.flip)
         assert.strictEqual(error, "boom")
@@ -74,7 +74,11 @@ export const suite = <E>(client: Layer.Layer<SqlClient.SqlClient, E>) => {
           assert.strictEqual(attempts, 1)
           return Effect.succeed(val)
         })
-        assert.strictEqual(value, 42n)
+        assert.strictEqual(value.n, 42n)
       }))
   })
 }
+
+const Item = Schema.Struct({
+  n: Schema.BigInt
+})
