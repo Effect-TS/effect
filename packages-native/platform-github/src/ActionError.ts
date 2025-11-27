@@ -176,6 +176,101 @@ export class ActionSummaryError extends Schema.TaggedError<ActionSummaryError>()
   }
 }
 
+// =============================================================================
+// Failure Types (expected failures that runMain handles gracefully)
+// =============================================================================
+
+/**
+ * Input validation failure.
+ *
+ * This is an expected failure when user-provided input doesn't match
+ * the expected schema. runMain will format this nicely for the GitHub UI.
+ *
+ * @since 1.0.0
+ * @category failures
+ */
+export class InputValidationFailure extends Schema.TaggedError<InputValidationFailure>()(
+  "InputValidationFailure",
+  {
+    input: Schema.String,
+    reason: Schema.Literal("MissingRequired", "InvalidType", "InvalidJson", "SchemaValidation"),
+    value: Schema.String,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect)
+  }
+) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [TypeId]: typeof TypeId = TypeId
+
+  /**
+   * Format for GitHub UI display.
+   *
+   * @since 1.0.0
+   */
+  get displayMessage(): string {
+    return `Input '${this.input}' is invalid: ${this.message}`
+  }
+}
+
+/**
+ * Explicit action failure.
+ *
+ * Use this when your action logic determines it should fail.
+ * runMain will use the message for setFailed().
+ *
+ * @example
+ * ```typescript
+ * if (pr.draft) {
+ *   yield* Effect.fail(new ActionFailed({
+ *     message: "Cannot merge draft PRs"
+ *   }))
+ * }
+ * ```
+ *
+ * @since 1.0.0
+ * @category failures
+ */
+export class ActionFailed extends Schema.TaggedError<ActionFailed>()(
+  "ActionFailed",
+  {
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect)
+  }
+) {
+  /**
+   * @since 1.0.0
+   */
+  readonly [TypeId]: typeof TypeId = TypeId
+
+  /**
+   * Format for GitHub UI display.
+   *
+   * @since 1.0.0
+   */
+  get displayMessage(): string {
+    return this.message
+  }
+}
+
+/**
+ * Type guard for failures that runMain knows how to format nicely.
+ *
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isActionFailure = (u: unknown): u is ActionFailure =>
+  u instanceof InputValidationFailure || u instanceof ActionFailed
+
+/**
+ * Union of failure types that runMain handles specially.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export type ActionFailure = InputValidationFailure | ActionFailed
+
 /**
  * @since 1.0.0
  * @category models
@@ -186,3 +281,4 @@ export type ActionError =
   | ActionApiError
   | ActionOIDCError
   | ActionSummaryError
+  | ActionFailure
