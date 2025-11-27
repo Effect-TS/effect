@@ -2,14 +2,25 @@
  * @since 1.0.0
  */
 import * as github from "@actions/github"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as ActionContext from "../ActionContext.js"
+import type * as Api from "../ActionContext.js"
 import { ActionContextError } from "../ActionError.js"
 
 /** @internal */
-const make: ActionContext.ActionContext = {
-  [ActionContext.TypeId]: ActionContext.TypeId,
+export const TypeId: Api.TypeId = Symbol.for(
+  "@effect-native/platform-github/ActionContext"
+) as Api.TypeId
+
+/** @internal */
+export const ActionContext = GenericTag<Api.ActionContext>(
+  "@effect-native/platform-github/ActionContext"
+)
+
+/** @internal */
+const make: Api.ActionContext = {
+  [TypeId]: TypeId,
 
   eventName: github.context.eventName,
   payload: github.context.payload as Record<string, unknown>,
@@ -48,4 +59,4 @@ const make: ActionContext.ActionContext = {
 }
 
 /** @internal */
-export const layer = Layer.succeed(ActionContext.ActionContext, make)
+export const layer = Layer.succeed(ActionContext, make)

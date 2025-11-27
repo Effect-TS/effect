@@ -8,20 +8,16 @@
  * ```typescript
  * import { ActionContext, ActionContextTest } from "@effect-native/platform-github"
  * import { Effect } from "effect"
- * import { it, expect } from "@effect/vitest"
  *
- * it.effect("my action works", () =>
- *   Effect.gen(function*() {
- *     const layer = ActionContextTest.make({ eventName: "pull_request", actor: "octocat" })
- *     const result = yield* ActionContext.eventName.pipe(Effect.provide(layer))
- *     expect(result).toBe("pull_request")
- *   }))
+ * const layer = ActionContextTest.make({ eventName: "pull_request", actor: "octocat" })
+ * const program = ActionContext.eventName.pipe(Effect.provide(layer))
+ * // Effect.runSync(program) // => "pull_request"
  * ```
  */
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { ActionContextError } from "./ActionError.js"
 import { ActionContext, TypeId } from "./ActionContext.js"
+import { ActionContextError } from "./ActionError.js"
 
 /**
  * Options for creating a test ActionContext layer.
@@ -71,24 +67,22 @@ export const make = (options: TestOptions = {}): Layer.Layer<ActionContext> => {
     apiUrl: options.apiUrl ?? "https://api.github.com",
     serverUrl: options.serverUrl ?? "https://github.com",
     graphqlUrl: options.graphqlUrl ?? "https://api.github.com/graphql",
-    repo:
-      options.repo instanceof Error
-        ? Effect.fail(
-            new ActionContextError({
-              reason: "InvalidRepo",
-              description: options.repo.message
-            })
-          )
-        : Effect.succeed(options.repo ?? { owner: "octocat", repo: "hello-world" }),
-    issue:
-      options.issue instanceof Error
-        ? Effect.fail(
-            new ActionContextError({
-              reason: "InvalidRepo",
-              description: options.issue.message
-            })
-          )
-        : Effect.succeed(options.issue ?? { owner: "octocat", repo: "hello-world", number: 1 })
+    repo: options.repo instanceof Error
+      ? Effect.fail(
+        new ActionContextError({
+          reason: "InvalidRepo",
+          description: options.repo.message
+        })
+      )
+      : Effect.succeed(options.repo ?? { owner: "octocat", repo: "hello-world" }),
+    issue: options.issue instanceof Error
+      ? Effect.fail(
+        new ActionContextError({
+          reason: "InvalidRepo",
+          description: options.issue.message
+        })
+      )
+      : Effect.succeed(options.issue ?? { owner: "octocat", repo: "hello-world", number: 1 })
   }
 
   return Layer.succeed(ActionContext, context)

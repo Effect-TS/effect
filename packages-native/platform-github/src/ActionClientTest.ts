@@ -8,24 +8,20 @@
  * ```typescript
  * import { ActionClient, ActionClientTest } from "@effect-native/platform-github"
  * import { Effect } from "effect"
- * import { it, expect } from "@effect/vitest"
  *
- * it.effect("my action works", () =>
- *   Effect.gen(function*() {
- *     const layer = ActionClientTest.make({
- *       requestResult: { data: { login: "octocat" } }
- *     })
- *     const result = yield* ActionClient.request<{ data: { login: string } }>("GET /user").pipe(
- *       Effect.provide(layer)
- *     )
- *     expect(result.data.login).toBe("octocat")
- *   }))
+ * const layer = ActionClientTest.make({
+ *   requestResult: { data: { login: "octocat" } }
+ * })
+ * const program = ActionClient.request<{ data: { login: string } }>("GET /user").pipe(
+ *   Effect.provide(layer)
+ * )
+ * // Effect.runPromise(program) // => { data: { login: "octocat" } }
  * ```
  */
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import { ActionApiError } from "./ActionError.js"
 import { ActionClient, type Octokit, TypeId } from "./ActionClient.js"
+import { ActionApiError } from "./ActionError.js"
 
 /**
  * Mock Octokit interface for testing.
@@ -36,7 +32,7 @@ import { ActionClient, type Octokit, TypeId } from "./ActionClient.js"
 interface MockOctokit {
   request: (route: string, options?: Record<string, unknown>) => Promise<unknown>
   graphql: <T>(query: string, variables?: Record<string, unknown>) => Promise<T>
-  paginate: (route: string, options?: Record<string, unknown>) => Promise<unknown[]>
+  paginate: (route: string, options?: Record<string, unknown>) => Promise<Array<unknown>>
 }
 
 /**
@@ -48,7 +44,7 @@ interface MockOctokit {
 export interface TestOptions {
   readonly requestResult?: unknown | Error
   readonly graphqlResult?: unknown | Error
-  readonly paginateResult?: unknown[] | Error
+  readonly paginateResult?: Array<unknown> | Error
 }
 
 /**

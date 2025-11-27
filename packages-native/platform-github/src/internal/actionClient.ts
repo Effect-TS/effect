@@ -2,17 +2,28 @@
  * @since 1.0.0
  */
 import * as github from "@actions/github"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as ActionClient from "../ActionClient.js"
+import type * as Api from "../ActionClient.js"
 import { ActionApiError } from "../ActionError.js"
 
 /** @internal */
-export const make = (token: string): ActionClient.ActionClient => {
+export const TypeId: Api.TypeId = Symbol.for(
+  "@effect-native/platform-github/ActionClient"
+) as Api.TypeId
+
+/** @internal */
+export const ActionClient = GenericTag<Api.ActionClient>(
+  "@effect-native/platform-github/ActionClient"
+)
+
+/** @internal */
+export const make = (token: string): Api.ActionClient => {
   const octokit = github.getOctokit(token)
 
   return {
-    [ActionClient.TypeId]: ActionClient.TypeId,
+    [TypeId]: TypeId,
 
     octokit,
 
@@ -54,4 +65,4 @@ export const make = (token: string): ActionClient.ActionClient => {
 }
 
 /** @internal */
-export const layer = (token: string) => Layer.succeed(ActionClient.ActionClient, make(token))
+export const layer = (token: string) => Layer.succeed(ActionClient, make(token))

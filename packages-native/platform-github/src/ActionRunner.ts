@@ -11,7 +11,7 @@
  *
  * @since 1.0.0
  */
-import * as Context from "effect/Context"
+import type { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { ActionInputError, ActionOIDCError } from "./ActionError.js"
@@ -21,7 +21,7 @@ import * as internal from "./internal/actionRunner.js"
  * @since 1.0.0
  * @category type id
  */
-export const TypeId: unique symbol = Symbol.for("@effect-native/platform-github/ActionRunner")
+export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 1.0.0
@@ -95,9 +95,7 @@ export interface AnnotationProperties {
  * @since 1.0.0
  * @category context
  */
-export const ActionRunner: Context.Tag<ActionRunner, ActionRunner> = Context.GenericTag<ActionRunner>(
-  "@effect-native/platform-github/ActionRunner"
-)
+export const ActionRunner: Tag<ActionRunner, ActionRunner> = internal.ActionRunner
 
 /**
  * @since 1.0.0

@@ -10,7 +10,7 @@
  * @since 1.0.0
  */
 import type { GitHub } from "@actions/github/lib/utils.js"
-import * as Context from "effect/Context"
+import type { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { ActionApiError } from "./ActionError.js"
@@ -20,7 +20,7 @@ import * as internal from "./internal/actionClient.js"
  * @since 1.0.0
  * @category type id
  */
-export const TypeId: unique symbol = Symbol.for("@effect-native/platform-github/ActionClient")
+export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 1.0.0
@@ -75,9 +75,7 @@ export interface ActionClient {
  * @since 1.0.0
  * @category context
  */
-export const ActionClient: Context.Tag<ActionClient, ActionClient> = Context.GenericTag<ActionClient>(
-  "@effect-native/platform-github/ActionClient"
-)
+export const ActionClient: Tag<ActionClient, ActionClient> = internal.ActionClient
 
 /**
  * @since 1.0.0

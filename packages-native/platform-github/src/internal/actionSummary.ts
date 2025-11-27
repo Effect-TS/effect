@@ -2,18 +2,29 @@
  * @since 1.0.0
  */
 import * as core from "@actions/core"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { ActionSummaryError } from "../ActionError.js"
-import * as ActionSummary from "../ActionSummary.js"
+import type * as Api from "../ActionSummary.js"
 
 /** @internal */
-const make = (): ActionSummary.ActionSummary => {
+export const TypeId: Api.TypeId = Symbol.for(
+  "@effect-native/platform-github/ActionSummary"
+) as Api.TypeId
+
+/** @internal */
+export const ActionSummary = GenericTag<Api.ActionSummary>(
+  "@effect-native/platform-github/ActionSummary"
+)
+
+/** @internal */
+const make = (): Api.ActionSummary => {
   // Use the core summary instance but wrap operations as Effect
   const summary = core.summary
 
-  const self: ActionSummary.ActionSummary = {
-    [ActionSummary.TypeId]: ActionSummary.TypeId,
+  const self: Api.ActionSummary = {
+    [TypeId]: TypeId,
 
     addRaw: (text, addEOL) => {
       summary.addRaw(text, addEOL)
@@ -129,4 +140,4 @@ const make = (): ActionSummary.ActionSummary => {
 }
 
 /** @internal */
-export const layer = Layer.succeed(ActionSummary.ActionSummary, make())
+export const layer = Layer.succeed(ActionSummary, make())

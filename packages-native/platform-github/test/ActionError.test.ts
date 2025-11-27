@@ -29,7 +29,7 @@ describe("ActionError", () => {
         value: "not-a-boolean"
       })
       expect(error.reason).toBe("InvalidType")
-      expect(error.message).toBe('Input "boolean-input" has invalid type')
+      expect(error.message).toBe("Input \"boolean-input\" has invalid type")
     })
 
     it("constructs with ParseError reason", () => {
@@ -38,7 +38,7 @@ describe("ActionError", () => {
         name: "json-input"
       })
       expect(error.reason).toBe("ParseError")
-      expect(error.message).toBe('Failed to parse input "json-input"')
+      expect(error.message).toBe("Failed to parse input \"json-input\"")
     })
 
     it("has TypeId", () => {

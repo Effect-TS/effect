@@ -2,14 +2,25 @@
  * @since 1.0.0
  */
 import * as core from "@actions/core"
+import { GenericTag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { ActionInputError, ActionOIDCError } from "../ActionError.js"
-import * as ActionRunner from "../ActionRunner.js"
+import type * as Api from "../ActionRunner.js"
 
 /** @internal */
-const make: ActionRunner.ActionRunner = {
-  [ActionRunner.TypeId]: ActionRunner.TypeId,
+export const TypeId: Api.TypeId = Symbol.for(
+  "@effect-native/platform-github/ActionRunner"
+) as Api.TypeId
+
+/** @internal */
+export const ActionRunner = GenericTag<Api.ActionRunner>(
+  "@effect-native/platform-github/ActionRunner"
+)
+
+/** @internal */
+const make: Api.ActionRunner = {
+  [TypeId]: TypeId,
 
   getInput: (name, options) => Effect.sync(() => core.getInput(name, options)),
 
@@ -77,4 +88,4 @@ const make: ActionRunner.ActionRunner = {
 }
 
 /** @internal */
-export const layer = Layer.succeed(ActionRunner.ActionRunner, make)
+export const layer = Layer.succeed(ActionRunner, make)

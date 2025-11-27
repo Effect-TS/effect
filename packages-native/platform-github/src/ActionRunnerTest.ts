@@ -8,14 +8,10 @@
  * ```typescript
  * import { ActionRunner, ActionRunnerTest } from "@effect-native/platform-github"
  * import { Effect } from "effect"
- * import { it, expect } from "@effect/vitest"
  *
- * it.effect("my action works", () =>
- *   Effect.gen(function*() {
- *     const test = ActionRunnerTest.make({ inputs: { name: "world" } })
- *     const result = yield* ActionRunner.getInput("name").pipe(Effect.provide(test.layer))
- *     expect(result).toBe("world")
- *   }))
+ * const test = ActionRunnerTest.make({ inputs: { name: "world" } })
+ * const program = ActionRunner.getInput("name").pipe(Effect.provide(test.layer))
+ * // Effect.runPromise(program) // => "world"
  * ```
  */
 import * as Effect from "effect/Effect"
@@ -45,11 +41,11 @@ export interface TestContext {
   readonly layer: Layer.Layer<ActionRunner>
   readonly outputs: Record<string, unknown>
   readonly logs: Array<{ level: string; message: string }>
-  readonly groups: string[]
-  readonly secrets: string[]
+  readonly groups: Array<string>
+  readonly secrets: Array<string>
   readonly state: Record<string, string>
   readonly env: Record<string, string>
-  readonly paths: string[]
+  readonly paths: Array<string>
   readonly getFailed: () => { message: string } | null
 }
 
@@ -63,11 +59,11 @@ export const make = (options: TestOptions = {}): TestContext => {
   const inputs = options.inputs ?? {}
   const outputs: Record<string, unknown> = {}
   const logs: Array<{ level: string; message: string }> = []
-  const groups: string[] = []
-  const secrets: string[] = []
+  const groups: Array<string> = []
+  const secrets: Array<string> = []
   const state: Record<string, string> = { ...(options.state ?? {}) }
   const env: Record<string, string> = {}
-  const paths: string[] = []
+  const paths: Array<string> = []
   let failed: { message: string } | null = null
 
   const runner: ActionRunner = {

@@ -45,7 +45,7 @@ describe("ActionSummary", () => {
         const test = makeTestLayer()
         const summary = yield* ActionSummary.ActionSummary.pipe(Effect.provide(test.layer))
         summary.addCodeBlock("const x = 1", "typescript")
-        expect(test.getBuffer()).toBe('<pre lang="typescript"><code>const x = 1</code></pre>\n')
+        expect(test.getBuffer()).toBe("<pre lang=\"typescript\"><code>const x = 1</code></pre>\n")
       }))
 
     it.effect("addList adds unordered list", () =>
@@ -90,7 +90,7 @@ describe("ActionSummary", () => {
         const test = makeTestLayer()
         const summary = yield* ActionSummary.ActionSummary.pipe(Effect.provide(test.layer))
         summary.addImage("https://example.com/img.png", "Example", { width: "100" })
-        expect(test.getBuffer()).toBe('<img src="https://example.com/img.png" alt="Example" width="100">\n')
+        expect(test.getBuffer()).toBe("<img src=\"https://example.com/img.png\" alt=\"Example\" width=\"100\">\n")
       }))
 
     it.effect("addLink adds anchor", () =>
@@ -98,7 +98,7 @@ describe("ActionSummary", () => {
         const test = makeTestLayer()
         const summary = yield* ActionSummary.ActionSummary.pipe(Effect.provide(test.layer))
         summary.addLink("Click here", "https://example.com")
-        expect(test.getBuffer()).toBe('<a href="https://example.com">Click here</a>\n')
+        expect(test.getBuffer()).toBe("<a href=\"https://example.com\">Click here</a>\n")
       }))
 
     it.effect("addSeparator adds hr", () =>
@@ -122,7 +122,7 @@ describe("ActionSummary", () => {
         const test = makeTestLayer()
         const summary = yield* ActionSummary.ActionSummary.pipe(Effect.provide(test.layer))
         summary.addQuote("Famous words", "https://example.com")
-        expect(test.getBuffer()).toBe('<blockquote cite="https://example.com">Famous words</blockquote>\n')
+        expect(test.getBuffer()).toBe("<blockquote cite=\"https://example.com\">Famous words</blockquote>\n")
       }))
   })
 

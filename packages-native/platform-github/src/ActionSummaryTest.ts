@@ -8,15 +8,14 @@
  * ```typescript
  * import { ActionSummary, ActionSummaryTest } from "@effect-native/platform-github"
  * import { Effect } from "effect"
- * import { it, expect } from "@effect/vitest"
  *
- * it.effect("my action works", () =>
- *   Effect.gen(function*() {
- *     const test = ActionSummaryTest.make()
- *     const summary = yield* ActionSummary.ActionSummary.pipe(Effect.provide(test.layer))
- *     summary.addHeading("Title").addRaw("Content")
- *     expect(test.getBuffer()).toContain("<h1>Title</h1>")
- *   }))
+ * const test = ActionSummaryTest.make()
+ * const program = Effect.gen(function*() {
+ *   const summary = yield* ActionSummary.ActionSummary
+ *   summary.addHeading("Title").addRaw("Content")
+ *   return test.getBuffer()
+ * }).pipe(Effect.provide(test.layer))
+ * // Effect.runSync(program) // => "<h1>Title</h1>Content"
  * ```
  */
 import * as Effect from "effect/Effect"
@@ -94,7 +93,7 @@ export const make = (options: TestOptions = {}): TestContext => {
           const cells = row
             .map((cell: SummaryTableCell) => {
               const tag = cell.header ? "th" : "td"
-              const attrs: string[] = []
+              const attrs: Array<string> = []
               if (cell.colspan) attrs.push(`colspan="${cell.colspan}"`)
               if (cell.rowspan) attrs.push(`rowspan="${cell.rowspan}"`)
               const attrStr = attrs.length > 0 ? ` ${attrs.join(" ")}` : ""
@@ -154,27 +153,27 @@ export const make = (options: TestOptions = {}): TestContext => {
     write: (_opts) =>
       options?.writeError
         ? Effect.fail(
-            new ActionSummaryError({
-              reason: "WriteFailed",
-              description: options.writeError.message,
-              cause: options.writeError
-            })
-          )
+          new ActionSummaryError({
+            reason: "WriteFailed",
+            description: options.writeError.message,
+            cause: options.writeError
+          })
+        )
         : Effect.succeed(summary),
 
     clear: () =>
       options?.clearError
         ? Effect.fail(
-            new ActionSummaryError({
-              reason: "WriteFailed",
-              description: options.clearError.message,
-              cause: options.clearError
-            })
-          )
-        : Effect.sync(() => {
-            buffer = ""
-            return summary
+          new ActionSummaryError({
+            reason: "WriteFailed",
+            description: options.clearError.message,
+            cause: options.clearError
           })
+        )
+        : Effect.sync(() => {
+          buffer = ""
+          return summary
+        })
   }
 
   return {

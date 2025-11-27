@@ -8,6 +8,7 @@
  *
  * @since 1.0.0
  */
+import * as core from "@actions/core"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import type * as Runtime from "effect/Runtime"
@@ -83,8 +84,6 @@ export const runMain = async <A>(
     return await Effect.runPromise(program)
   } catch (error) {
     // If we get here, something went wrong with the runtime itself.
-    // Await the import to ensure setFailed completes before re-throwing.
-    const core = await import("@actions/core")
     core.setFailed(error instanceof Error ? error.message : String(error))
     throw error
   }

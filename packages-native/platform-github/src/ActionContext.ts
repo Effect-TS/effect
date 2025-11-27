@@ -10,7 +10,7 @@
  *
  * @since 1.0.0
  */
-import * as Context from "effect/Context"
+import type { Tag } from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type { ActionContextError } from "./ActionError.js"
@@ -20,7 +20,7 @@ import * as internal from "./internal/actionContext.js"
  * @since 1.0.0
  * @category type id
  */
-export const TypeId: unique symbol = Symbol.for("@effect-native/platform-github/ActionContext")
+export const TypeId: unique symbol = internal.TypeId
 
 /**
  * @since 1.0.0
@@ -87,9 +87,7 @@ export interface ActionContext {
  * @since 1.0.0
  * @category context
  */
-export const ActionContext: Context.Tag<ActionContext, ActionContext> = Context.GenericTag<ActionContext>(
-  "@effect-native/platform-github/ActionContext"
-)
+export const ActionContext: Tag<ActionContext, ActionContext> = internal.ActionContext
 
 /**
  * @since 1.0.0
