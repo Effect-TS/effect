@@ -315,7 +315,7 @@ export const make: (
             FROM ${tableNameSql} AS q
             INNER JOIN cte ON q.sequence = cte.sequence
           `,
-        // sqlite + postgres
+        // sqlite
         orElse: () => (size: number) =>
           sql<Element>`
             UPDATE ${tableNameSql}
