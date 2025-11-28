@@ -34,7 +34,7 @@ export const layer = (options?: {
     Layer.provideMerge(Runners.layerNoop),
     Layer.provideMerge(SqlMessageStorage.layer),
     Layer.provide([
-      options?.runnerStorage === "sql" ? Layer.orDie(SqlRunnerStorage.layer) : RunnerStorage.layerMemory,
+      options?.runnerStorage === "memory" ? RunnerStorage.layerMemory : Layer.orDie(SqlRunnerStorage.layer),
       RunnerHealth.layerNoop
     ]),
     Layer.provide(ShardingConfig.layerFromEnv(options?.shardingConfig))
