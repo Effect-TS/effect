@@ -1,5 +1,11 @@
 # @effect/sql
 
+## 0.48.5
+
+### Patch Changes
+
+- [#5824](https://github.com/Effect-TS/effect/pull/5824) [`019bf24`](https://github.com/Effect-TS/effect/commit/019bf24f62a8e0442d5f805544b5cce96c331ef2) Thanks @tim-smart! - improve ordering guarantees for SqlPersistedQueue
+
 ## 0.48.4
 
 ### Patch Changes
