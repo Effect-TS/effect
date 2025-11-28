@@ -11,6 +11,7 @@ import { dual } from "effect/Function"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import type * as Types from "effect/Types"
 import * as DurableDeferred from "./DurableDeferred.js"
 import { makeHashDigest } from "./internal/crypto.js"
 import * as Workflow from "./Workflow.js"
@@ -148,7 +149,15 @@ const retryOnInterrupt = (
  * @since 1.0.0
  * @category Error handling
  */
-export const retry: typeof Effect.retry = dual(
+export const retry: {
+  <E, O extends Types.NoExcessProperties<Omit<Effect.Retry.Options<E>, "schedule">, O>>(
+    options: O
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Retry.Return<R, E, A, O>
+  <A, E, R, O extends Types.NoExcessProperties<Omit<Effect.Retry.Options<E>, "schedule">, O>>(
+    self: Effect.Effect<A, E, R>,
+    options: O
+  ): Effect.Retry.Return<R, E, A, O>
+} = dual(
   2,
   (effect: Effect.Effect<any, any, any>, options: {}) =>
     Effect.suspend(() => {
