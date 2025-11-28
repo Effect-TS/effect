@@ -187,8 +187,6 @@ return payloads
       const pollLatch = Effect.unsafeMakeLatch()
       const takenLatch = Effect.unsafeMakeLatch()
 
-      redis.resetQueue(queueKey, pendingKey, prefix)
-
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(
           mailbox.clear,
@@ -206,6 +204,15 @@ return payloads
                   )))
               )
         )
+      )
+
+      yield* Effect.sync(() => {
+        redis.resetQueue(queueKey, pendingKey, prefix)
+      }).pipe(
+        Effect.andThen(Effect.sleep(lockRefreshMillis)),
+        Effect.forever,
+        Effect.forkScoped,
+        Effect.interruptible
       )
 
       const poll = (size: number) =>
