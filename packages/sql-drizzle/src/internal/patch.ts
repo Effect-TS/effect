@@ -48,14 +48,6 @@ export const makeRemoteCallback = Effect.gen(function*() {
   return (sql: string, params: Array<any>, method: "all" | "execute" | "get" | "values" | "run") => {
     const runPromise = Runtime.runPromise(currentRuntime ? currentRuntime : constructionRuntime)
     const statement = client.unsafe(sql, params)
-    if (method === "execute") {
-      return runPromise(Effect.either(Effect.map(statement.raw, (header) => ({ rows: [header] })))).then((res) => {
-        if (res._tag === "Left") {
-          throw res.left.cause
-        }
-        return res.right
-      })
-    }
     let effect: Effect.Effect<any, SqlError> = method === "all" || method === "values"
       ? statement.values
       : statement.withoutTransform
