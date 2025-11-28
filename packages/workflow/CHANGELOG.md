@@ -1,5 +1,16 @@
 # @effect/workflow
 
+## 0.14.0
+
+### Minor Changes
+
+- [#5827](https://github.com/Effect-TS/effect/pull/5827) [`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b) Thanks @tim-smart! - remove schedule option from Activity.retry
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/experimental@0.57.7
+
 ## 0.13.1
 
 ### Patch Changes

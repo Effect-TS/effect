@@ -1,5 +1,19 @@
 # @effect/cluster
 
+## 0.54.0
+
+### Patch Changes
+
+- [#5827](https://github.com/Effect-TS/effect/pull/5827) [`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b) Thanks @tim-smart! - add TestRunner & SingleRunner modules
+  - `TestRunner` allows you to run a in-memory cluster for testing purposes.
+  - `SingleRunner` allows you to run a single node cluster simple deployment
+    scenarios.
+    - Message storage is backed by a SQL database
+    - Multiple nodes are not supported
+
+- Updated dependencies [[`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b)]:
+  - @effect/workflow@0.14.0
+
 ## 0.53.6
 
 ### Patch Changes
