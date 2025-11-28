@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.57.8
+
+### Patch Changes
+
+- [#5829](https://github.com/Effect-TS/effect/pull/5829) [`7b2cd37`](https://github.com/Effect-TS/effect/commit/7b2cd374cbc8b7a2e800926082febf54173c9e49) Thanks @tim-smart! - reset redis staging area on a schedule for PersistedQueue
+
 ## 0.57.7
 
 ### Patch Changes
