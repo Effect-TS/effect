@@ -1513,10 +1513,12 @@ export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePr
 const VALID_RESPONSE_PART_MAP = {
   "response-metadata": false,
   "text": true,
+  "text-accumulated": true,
   "text-start": false,
   "text-delta": true,
   "text-end": false,
   "reasoning": true,
+  "reasoning-accumulated": true,
   "reasoning-start": false,
   "reasoning-delta": true,
   "reasoning-end": false,
@@ -1527,6 +1529,7 @@ const VALID_RESPONSE_PART_MAP = {
   "tool-params-end": false,
   "tool-call": true,
   "tool-result": true,
+  "tool": true,
   "finish": false,
   "error": false
 } as const satisfies Record<Response.AnyPart["type"], boolean>
@@ -1657,6 +1660,84 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
             isFailure: part.isFailure,
             result: part.encodedResult
           }))
+          break
+        }
+        case "tool": {
+          flushDeltas()
+          if (part.value.state === "params-done") {
+            assistantParts.push(
+              makePart("tool-call", {
+                id: part.id,
+                name: part.providerName ?? part.name,
+                params: part.value.params,
+                providerExecuted: part.providerExecuted ?? false
+              })
+            )
+          } else if (part.value.state === "result-error") {
+            assistantParts.push(
+              makePart("tool-call", {
+                id: part.id,
+                name: part.providerName ?? part.name,
+                params: part.value.params,
+                providerExecuted: part.providerExecuted ?? false
+              })
+            )
+
+            toolParts.push(
+              makePart("tool-result", {
+                id: part.id,
+                name: part.providerName ?? part.name,
+                result: part.value.encodedResult,
+                isFailure: true
+              })
+            )
+          } else if (part.value.state === "result-done") {
+            assistantParts.push(
+              makePart("tool-call", {
+                id: part.id,
+                name: part.providerName ?? part.name,
+                params: part.value.params,
+                providerExecuted: part.providerExecuted ?? false
+              })
+            )
+
+            toolParts.push(
+              makePart("tool-result", {
+                id: part.id,
+                name: part.providerName ?? part.name,
+                result: part.value.encodedResult,
+                isFailure: false
+              })
+            )
+          }
+          break
+        }
+        case "text-accumulated": {
+          if (part.state === "streaming") {
+            flushReasoningDeltas()
+            textDeltas.push(part.text)
+          } else {
+            flushDeltas()
+            assistantParts.push(
+              makePart("text", {
+                text: part.text
+              })
+            )
+          }
+          break
+        }
+        case "reasoning-accumulated": {
+          if (part.state === "streaming") {
+            flushTextDeltas()
+            reasoningDeltas.push(part.text)
+          } else {
+            flushDeltas()
+            assistantParts.push(
+              makePart("reasoning", {
+                text: part.text
+              })
+            )
+          }
           break
         }
       }
