@@ -64,7 +64,8 @@ export const make: (
   yield* sql.onDialectOrElse({
     mysql: () =>
       sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-        id VARCHAR(36) PRIMARY KEY,
+        sequence BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        id VARCHAR(36) NOT NULL,
         queue_name VARCHAR(100) NOT NULL,
         element TEXT NOT NULL,
         completed BOOLEAN NOT NULL,
@@ -77,7 +78,8 @@ export const make: (
       )`,
     pg: () =>
       sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-        id UUID PRIMARY KEY,
+        sequence SERIAL PRIMARY KEY,
+        id UUID NOT NULL,
         queue_name VARCHAR(100) NOT NULL,
         element TEXT NOT NULL,
         completed BOOLEAN NOT NULL,
@@ -91,7 +93,8 @@ export const make: (
     mssql: () =>
       sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableNameSql} AND xtype='U')
       CREATE TABLE ${tableNameSql} (
-        id UNIQUEIDENTIFIER PRIMARY KEY,
+        sequence INT IDENTITY(1,1) PRIMARY KEY,
+        id UNIQUEIDENTIFIER NOT NULL,
         queue_name NVARCHAR(100) NOT NULL,
         element NVARCHAR(MAX) NOT NULL,
         completed BIT NOT NULL,
@@ -105,7 +108,8 @@ export const make: (
     // sqlite
     orElse: () =>
       sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
-        id TEXT PRIMARY KEY,
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT NOT NULL,
         queue_name TEXT NOT NULL,
         element TEXT NOT NULL,
         completed BOOLEAN NOT NULL,
@@ -136,10 +140,13 @@ export const make: (
   yield* sql.onDialectOrElse({
     mssql: () =>
       sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_update')
-        CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (id, acquired_by)`,
+        CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`,
     mysql: () =>
-      sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (id, acquired_by)`.pipe(Effect.ignore),
-    orElse: () => sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (id, acquired_by)`
+      sql`CREATE INDEX ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`.pipe(
+        Effect.ignore
+      ),
+    orElse: () =>
+      sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
   })
 
   const wrapString = sql.onDialectOrElse({
@@ -147,7 +154,6 @@ export const make: (
     orElse: () => (s: string) => `'${s}'`
   })
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
-  const stringLiteralArr = (arr: ReadonlyArray<string>) => sql.literal(`(${arr.map(wrapString).join(",")})`)
 
   const sqlTrue = sql.onDialectOrElse({
     sqlite: () => sql.literal("1"),
@@ -159,7 +165,7 @@ export const make: (
   })
 
   const workerIdSql = stringLiteral(workerId)
-  const elementIds = new Set<string>()
+  const elementIds = new Set<number>()
   const refreshLocks: Effect.Effect<void, SqlError> = Effect.suspend((): Effect.Effect<void, SqlError> => {
     if (elementIds.size === 0) return Effect.void
     return sql`
@@ -168,12 +174,12 @@ export const make: (
       WHERE acquired_by = ${workerIdSql}
     `
   })
-  const complete = (id: string, attempts: number) => {
-    elementIds.delete(id)
+  const complete = (sequence: number, attempts: number) => {
+    elementIds.delete(sequence)
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, completed = ${sqlTrue}, attempts = ${attempts}
-      WHERE id = ${id}
+      WHERE sequence = ${sequence}
       AND acquired_by = ${workerIdSql}
     `.pipe(
       Effect.retry({
@@ -183,14 +189,14 @@ export const make: (
       Effect.orDie
     )
   }
-  const retry = (id: string, attempts: number, cause: Cause.Cause<any>) => {
-    elementIds.delete(id)
+  const retry = (sequence: number, attempts: number, cause: Cause.Cause<any>) => {
+    elementIds.delete(sequence)
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = NULL, acquired_by = NULL, updated_at = ${sqlNow}, attempts = ${attempts}, last_failure = ${
       Cause.pretty(cause, { renderErrorCause: true })
     }
-      WHERE id = ${id}
+      WHERE sequence = ${sequence}
       AND acquired_by = ${workerIdSql}
     `.pipe(
       Effect.retry({
@@ -200,14 +206,14 @@ export const make: (
       Effect.orDie
     )
   }
-  const interrupt = (ids: Array<string>) => {
+  const interrupt = (ids: Array<number>) => {
     for (const id of ids) {
       elementIds.delete(id)
     }
     return sql`
       UPDATE ${tableNameSql}
       SET acquired_at = NULL, acquired_by = NULL
-      WHERE id IN ${stringLiteralArr(ids)}
+      WHERE sequence IN (${sql.literal(ids.join(","))})
       AND acquired_by = ${workerIdSql}
     `.pipe(
       Effect.retry({
@@ -232,10 +238,10 @@ export const make: (
 
   type Element = {
     readonly id: string
+    sequence: number
     readonly queue_name: string
     element: string
     readonly attempts: number
-    updated_at?: Date
   }
   const mailboxes = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*({ maxAttempts, name }: QueueKey) {
@@ -247,49 +253,48 @@ export const make: (
       yield* Effect.addFinalizer(() =>
         Effect.flatMap(mailbox.clear, (elements) => {
           if (elements.length === 0) return Effect.void
-          return interrupt(Array.from(elements, (e) => e.id))
+          return interrupt(Array.from(elements, (e) => e.sequence))
         })
       )
 
       const poll = sql.onDialectOrElse({
         pg: () => (size: number) =>
           sql<Element>`
-            UPDATE ${tableNameSql}
-            SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
-            WHERE id IN (
-              SELECT id FROM ${tableNameSql}
-              WHERE queue_name = ${name}
-              AND completed = FALSE
-              AND attempts < ${maxAttempts}
-              AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-              ORDER BY updated_at ASC
-              FOR UPDATE SKIP LOCKED
-              LIMIT ${sql.literal(size.toString())}
+            WITH cte AS (
+              UPDATE ${tableNameSql}
+              SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
+              WHERE sequence IN (
+                SELECT sequence FROM ${tableNameSql}
+                WHERE queue_name = ${name}
+                AND completed = FALSE
+                AND attempts < ${maxAttempts}
+                AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
+                ORDER BY updated_at ASC, sequence ASC
+                FOR UPDATE SKIP LOCKED
+                LIMIT ${sql.literal(size.toString())}
+              )
+              RETURNING sequence, id, queue_name, element, attempts, updated_at
             )
-            RETURNING id, queue_name, element, attempts, updated_at
-        `.pipe(
-            Effect.map((rows) =>
-              (rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
-            )
-          ),
+            SELECT sequence, id, queue_name, element, attempts FROM cte
+            ORDER BY updated_at ASC, sequence ASC
+          `,
         mysql: () => (size: number) =>
           sql<Element>`
-            SELECT id, queue_name, element, attempts, updated_at FROM ${tableNameSql}
+            SELECT sequence, id, queue_name, element, attempts FROM ${tableNameSql} q
             WHERE queue_name = ${name}
             AND completed = FALSE
             AND attempts < ${maxAttempts}
             AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-            ORDER BY updated_at ASC
+            ORDER BY updated_at ASC, sequence ASC
             LIMIT ${sql.literal(size.toString())}
             FOR UPDATE SKIP LOCKED
           `.pipe(
             Effect.tap((rows) => {
               if (rows.length === 0) return Effect.void
-              ;(rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
               return sql`
                 UPDATE ${tableNameSql}
                 SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
-                WHERE id IN ${stringLiteralArr(rows.map((r) => r.id))}
+                WHERE sequence IN (${sql.literal(rows.map((r) => r.sequence).join(","))})
               `.unprepared
             }),
             sql.withTransaction
@@ -297,45 +302,32 @@ export const make: (
         mssql: () => (size: number) =>
           sql<Element>`
             WITH cte AS (
-              SELECT TOP ${sql.literal(size.toString())} id FROM ${tableNameSql}
+              SELECT TOP ${sql.literal(size.toString())} sequence FROM ${tableNameSql}
               WHERE queue_name = ${name}
               AND completed = 0
               AND attempts < ${maxAttempts}
               AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-              ORDER BY updated_at ASC
+              ORDER BY updated_at ASC, sequence ASC
             )
             UPDATE q
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
-            OUTPUT inserted.id, inserted.queue_name, inserted.element, inserted.attempts, inserted.updated_at
+            OUTPUT inserted.sequence, inserted.id, inserted.queue_name, inserted.element, inserted.attempts
             FROM ${tableNameSql} AS q
-            INNER JOIN cte ON q.id = cte.id
+            INNER JOIN cte ON q.sequence = cte.sequence
           `,
-        // sqlite
+        // sqlite + postgres
         orElse: () => (size: number) =>
           sql<Element>`
             UPDATE ${tableNameSql}
             SET acquired_at = ${sqlNow}, acquired_by = ${workerIdSql}
-            WHERE id IN (
-              SELECT id FROM ${tableNameSql}
-              WHERE queue_name = ${name}
-              AND completed = 0
-              AND attempts < ${maxAttempts}
-              AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
-              ORDER BY updated_at ASC
-              LIMIT ${sql.literal(size.toString())}
-            )
-            RETURNING id, queue_name, element, attempts, updated_at
-          `.pipe(
-            Effect.map((rows) => {
-              if (rows.length === 0) return rows
-              else if (typeof rows[0].updated_at === "string") {
-                ;(rows as Array<any>).sort((a, b) => a.updated_at.localeCompare(b.updated_at))
-              } else {
-                ;(rows as Array<Element>).sort((a, b) => a.updated_at!.getTime() - b.updated_at!.getTime())
-              }
-              return rows
-            })
-          )
+            WHERE queue_name = ${name}
+            AND completed = FALSE
+            AND attempts < ${maxAttempts}
+            AND (acquired_at IS NULL OR acquired_at < ${expiresAt})
+            RETURNING sequence, id, queue_name, element, attempts
+            ORDER BY updated_at ASC, sequence ASC
+            LIMIT ${sql.literal(size.toString())}
+          `
       })
 
       yield* Effect.gen(function*() {
@@ -409,9 +401,9 @@ export const make: (
             Effect.addFinalizer(Exit.match({
               onFailure: (cause) =>
                 Cause.isInterruptedOnly(cause)
-                  ? interrupt([element.id])
-                  : retry(element.id, element.attempts + 1, cause),
-              onSuccess: () => complete(element.id, element.attempts + 1)
+                  ? interrupt([element.sequence])
+                  : retry(element.sequence, element.attempts + 1, cause),
+              onSuccess: () => complete(element.sequence, element.attempts + 1)
             }))
           )
         )
