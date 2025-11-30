@@ -32,10 +32,14 @@ export const causeResponse = <E>(
     cause,
     [Effect.succeed(internalServerError), Cause.empty as Cause.Cause<E>] as const,
     (acc, cause) => {
+      const withoutInterrupt = Cause.isInterruptType(acc[1]) ? Cause.empty : acc[1]
       switch (cause._tag) {
         case "Fail": {
           return Option.some(
-            [Respondable.toResponseOrElse(cause.error, internalServerError), combineCauses(acc[1], cause)] as const
+            [
+              Respondable.toResponseOrElse(cause.error, internalServerError),
+              combineCauses(withoutInterrupt, cause)
+            ] as const
           )
         }
         case "Die": {
@@ -43,7 +47,7 @@ export const causeResponse = <E>(
           return Option.some(
             [
               Respondable.toResponseOrElseDefect(cause.defect, internalServerError),
-              isResponse ? acc[1] : combineCauses(acc[1], cause)
+              isResponse ? withoutInterrupt : combineCauses(withoutInterrupt, cause)
             ] as const
           )
         }
@@ -62,7 +66,7 @@ export const causeResponse = <E>(
   )
   return Effect.map(effect, (response) => {
     if (Cause.isEmptyType(stripped)) {
-      return [response, Cause.die(response)] as const
+      return [response, Cause.empty] as const
     }
     return [response, Cause.sequential(stripped, Cause.die(response))] as const
   })
