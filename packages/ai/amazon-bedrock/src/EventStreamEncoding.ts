@@ -23,7 +23,7 @@ export const makeChannel: <A, I, R, IE, Done>(schema: Schema.Schema<A, I, R>, op
   readonly bufferSize?: number
 }) => Channel.Channel<
   Chunk.Chunk<A>,
-  Chunk.Chunk<Uint8Array<ArrayBufferLike>>,
+  Chunk.Chunk<Uint8Array>,
   IE | ParseError,
   IE,
   void,
