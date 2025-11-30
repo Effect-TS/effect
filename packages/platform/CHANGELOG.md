@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.93.6
+
+### Patch Changes
+
+- [#5835](https://github.com/Effect-TS/effect/pull/5835) [`25d1cb6`](https://github.com/Effect-TS/effect/commit/25d1cb60aadf8f8fdf9a4aad3dbaa31e1ca3b70d) Thanks @tim-smart! - consider clean http interrupts as successful responses
+
 ## 0.93.5
 
 ### Patch Changes
