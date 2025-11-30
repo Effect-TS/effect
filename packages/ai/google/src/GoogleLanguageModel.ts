@@ -945,7 +945,7 @@ const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Serv
     toolConfig = {
       functionCallingConfig: {
         mode: options.toolChoice.mode === "auto" ? "AUTO" : "ANY",
-        allowedFunctionNames: Array.from(allowedTools)
+        allowedFunctionNames: options.toolChoice.mode === "auto" ? undefined : Array.from(allowedTools)
       }
     }
   }
