@@ -255,14 +255,20 @@ const makeProto = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.A
  *
  * The endpoints can be implemented later using the `HttpApiBuilder.make` api.
  *
+ * Allows a base error schema to be provided for transcoding HttpApiDecodeErrors.
+ * Defaults to `HttpApiDecodeError`.
+ *
  * @since 1.0.0
  * @category constructors
  */
-export const make = <const Id extends string>(identifier: Id): HttpApi<Id, never, HttpApiDecodeError> =>
+export const make = <const Id extends string>(
+  identifier: Id,
+  errorSchema: Schema.Schema<HttpApiDecodeError, any> = HttpApiDecodeError
+): HttpApi<Id, never, HttpApiDecodeError> =>
   makeProto({
     identifier,
     groups: new Map() as any,
-    errorSchema: HttpApiDecodeError,
+    errorSchema,
     annotations: Context.empty(),
     middlewares: new Set()
   })
