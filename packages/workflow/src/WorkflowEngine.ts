@@ -11,7 +11,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import type * as Activity from "./Activity.js"
 import type { DurableClock } from "./DurableClock.js"
 import type * as DurableDeferred from "./DurableDeferred.js"
@@ -200,6 +200,11 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
     readonly workflow: Workflow.Any
 
     /**
+     * The workflow scope, that represents the lifetime of the workflow.
+     */
+    readonly scope: Scope.CloseableScope
+
+    /**
      * Whether the workflow has requested to be suspended.
      */
     suspended: boolean
@@ -228,6 +233,7 @@ export class WorkflowInstance extends Context.Tag("@effect/workflow/WorkflowEngi
     return WorkflowInstance.of({
       executionId,
       workflow,
+      scope: Effect.runSync(Scope.make()),
       suspended: false,
       interrupted: false,
       cause: undefined,
