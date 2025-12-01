@@ -1,5 +1,14 @@
 # @effect/sql-clickhouse
 
+## 0.45.0
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/experimental@0.57.9
+  - @effect/sql@0.48.6
+  - @effect/platform-node@0.103.0
+
 ## 0.44.0
 
 ### Patch Changes

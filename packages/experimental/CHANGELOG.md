@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.57.9
+
+### Patch Changes
+
+- [#5837](https://github.com/Effect-TS/effect/pull/5837) [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9) Thanks @tim-smart! - support idempotent offers to PersistedQueue
+
 ## 0.57.8
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @effect/workflow
 
+## 0.15.0
+
+### Minor Changes
+
+- [#5837](https://github.com/Effect-TS/effect/pull/5837) [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9) Thanks @tim-smart! - add Activity.idempotencyKey
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/experimental@0.57.9
+
 ## 0.14.0
 
 ### Minor Changes
