@@ -1,5 +1,11 @@
 # @effect/experimental
 
+## 0.57.10
+
+### Patch Changes
+
+- [#5847](https://github.com/Effect-TS/effect/pull/5847) [`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1) Thanks @tim-smart! - ensure PersistedQueue memory driver removes items
+
 ## 0.57.9
 
 ### Patch Changes
