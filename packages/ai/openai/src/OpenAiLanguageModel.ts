@@ -107,7 +107,7 @@ declare module "@effect/ai/Prompt" {
       /**
        * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
        */
-      readonly imageDetail?: typeof Generated.InputImageContentDetail.Encoded | undefined
+      readonly imageDetail?: typeof Generated.ImageDetail.Encoded | undefined
     } | undefined
   }
 
