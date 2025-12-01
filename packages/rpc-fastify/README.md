@@ -1,6 +1,6 @@
 # @effect/rpc-fastify
 
-Fastify integration for @effect/rpc
+Fastify integration for Effect's HttpApp and @effect/rpc
 
 ## Installation
 
@@ -427,6 +427,115 @@ const program = Effect.gen(function* () {
 const MainLive = Layer.mergeAll(UsersLive, RpcSerialization.layerNdjson)
 
 program.pipe(Effect.provide(MainLive), Effect.scoped, Effect.runPromise)
+```
+
+---
+
+## FastifyHttpAppServer
+
+The package also exports `FastifyHttpAppServer` for attaching any `HttpApp` to Fastify routes,
+not just RPC handlers. This is the lower-level API that `FastifyRpcServer` is built on.
+
+### `FastifyHttpAppServer.toHandlerEffect`
+
+Create a Fastify handler from an `HttpApp` as an Effect, allowing the context to be provided externally.
+
+**Signature:**
+
+```typescript
+declare const toHandlerEffect: <E, R>(
+  httpApp: HttpApp.Default<E, R>
+) => Effect<
+  (request: FastifyRequest, reply: FastifyReply) => Promise<void>,
+  never,
+  Exclude<R, HttpServerRequest> | Scope
+>
+```
+
+**Example:**
+
+```typescript
+import { FastifyHttpAppServer } from "@effect/rpc-fastify"
+import { HttpServerResponse } from "@effect/platform"
+import { Effect } from "effect"
+import Fastify from "fastify"
+
+const httpApp = Effect.succeed(HttpServerResponse.text("Hello, World!"))
+
+const program = Effect.gen(function* () {
+  const handler = yield* FastifyHttpAppServer.toHandlerEffect(httpApp)
+
+  const fastify = Fastify()
+  fastify.get("/hello", handler)
+
+  yield* Effect.acquireRelease(
+    Effect.promise(() => fastify.listen({ port: 3000 })),
+    () => Effect.promise(() => fastify.close())
+  )
+})
+
+program.pipe(Effect.scoped, Effect.runPromise)
+```
+
+---
+
+### `FastifyHttpAppServer.toHandler`
+
+Create a Fastify handler from an `HttpApp` with a layer that provides the required context.
+
+**Signature:**
+
+```typescript
+declare const toHandler: <E, R, LE>(
+  httpApp: HttpApp.Default<E, R>,
+  layer: Layer<Exclude<R, HttpServerRequest | Scope>, LE>,
+  options?: {
+    readonly memoMap?: Layer.MemoMap
+  }
+) => {
+  readonly handler: (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) => Promise<void>
+  readonly dispose: () => Promise<void>
+}
+```
+
+**Example:**
+
+```typescript
+import { FastifyHttpAppServer } from "@effect/rpc-fastify"
+import { HttpServerResponse } from "@effect/platform"
+import { Effect, Layer, Context } from "effect"
+import Fastify from "fastify"
+
+class Greeter extends Context.Tag("Greeter")<
+  Greeter,
+  { greet: (name: string) => string }
+>() {}
+
+const httpApp = Effect.gen(function* () {
+  const greeter = yield* Greeter
+  return HttpServerResponse.text(greeter.greet("World"))
+})
+
+const GreeterLive = Layer.succeed(Greeter, {
+  greet: (name) => `Hello, ${name}!`
+})
+
+const { handler, dispose } = FastifyHttpAppServer.toHandler(
+  httpApp,
+  GreeterLive
+)
+
+const fastify = Fastify()
+fastify.get("/hello", handler)
+
+await fastify.listen({ port: 3000 })
+
+// Cleanup
+await dispose()
+await fastify.close()
 ```
 
 ---
