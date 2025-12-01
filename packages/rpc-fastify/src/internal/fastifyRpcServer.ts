@@ -164,9 +164,11 @@ export const toFastifyHandler = <Rpcs extends Rpc.Any, LE>(
           : Layer.toRuntime(fullLayer))
         return yield* Effect.provide(toFastifyHandlerEffect(group, options), runtime)
       }).pipe(
-        Effect.tap((h) => Effect.sync(() => {
-          handlerCache = h
-        })),
+        Effect.tap((h) =>
+          Effect.sync(() => {
+            handlerCache = h
+          })
+        ),
         Scope.extend(scope)
       )
       handlerPromise = Effect.runPromise(buildEffect)

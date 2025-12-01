@@ -111,9 +111,11 @@ export const toHandler = <E, R, LE>(
           Effect.provide(runtime)
         )
       }).pipe(
-        Effect.tap((h) => Effect.sync(() => {
-          handlerCache = h
-        })),
+        Effect.tap((h) =>
+          Effect.sync(() => {
+            handlerCache = h
+          })
+        ),
         Scope.extend(scope)
       )
       handlerPromise = Effect.runPromise(buildEffect)
