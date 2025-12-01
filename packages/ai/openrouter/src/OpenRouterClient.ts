@@ -337,6 +337,10 @@ export class ChatStreamingMessageChunk extends Schema.Class<ChatStreamingMessage
   annotations: Schema.optionalWith(Schema.Array(Generated.AnnotationDetail), { nullable: true })
 }) {}
 
+/**
+ * @since 1.0.0
+ * @category Schemas
+ */
 export class ChatStreamingChoice extends Schema.Class<ChatStreamingChoice>(
   "@effect/ai-openrouter/ChatStreamingChoice"
 )({
