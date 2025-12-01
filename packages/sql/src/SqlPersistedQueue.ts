@@ -79,7 +79,7 @@ export const make: (
     pg: () =>
       sql`CREATE TABLE IF NOT EXISTS ${tableNameSql} (
         sequence SERIAL PRIMARY KEY,
-        id UUID NOT NULL,
+        id VARCHAR(36) NOT NULL,
         queue_name VARCHAR(100) NOT NULL,
         element TEXT NOT NULL,
         completed BOOLEAN NOT NULL,
@@ -94,7 +94,7 @@ export const make: (
       sql`IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableNameSql} AND xtype='U')
       CREATE TABLE ${tableNameSql} (
         sequence INT IDENTITY(1,1) PRIMARY KEY,
-        id UNIQUEIDENTIFIER NOT NULL,
+        id NVARCHAR(36) NOT NULL,
         queue_name NVARCHAR(100) NOT NULL,
         element NVARCHAR(MAX) NOT NULL,
         completed BIT NOT NULL,
@@ -124,6 +124,14 @@ export const make: (
 
   yield* sql.onDialectOrElse({
     mssql: () =>
+      sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_id')
+        CREATE UNIQUE INDEX idx_${tableNameSql}_id ON ${tableNameSql} (id)`,
+    mysql: () => sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id)`.pipe(Effect.ignore),
+    orElse: () => sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id)`
+  })
+
+  yield* sql.onDialectOrElse({
+    mssql: () =>
       sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_take')
         CREATE INDEX idx_${tableNameSql}_take ON ${tableNameSql} (queue_name, completed, attempts, acquired_at)`,
     mysql: () =>
@@ -149,6 +157,34 @@ export const make: (
       sql`CREATE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_update`)} ON ${tableNameSql} (sequence, acquired_by)`
   })
 
+  const offer = sql.onDialectOrElse({
+    pg: () => (id: string, name: string, element: string) =>
+      sql`
+        INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
+        ON CONFLICT (id) DO NOTHING
+      `,
+    mysql: () => (id: string, name: string, element: string) =>
+      sql`
+        INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
+      `,
+    mssql: () => (id: string, name: string, element: string) =>
+      sql`
+        IF NOT EXISTS (SELECT 1 FROM ${tableNameSql} WHERE id = ${id})
+        BEGIN
+          INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
+          VALUES (${id}, ${name}, ${element}, 0, 0, ${sqlNow}, ${sqlNow})
+        END
+      `,
+    // sqlite
+    orElse: () => (id: string, name: string, element: string) =>
+      sql`
+        INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
+        VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
+      `
+  })
+
   const wrapString = sql.onDialectOrElse({
     mssql: () => (s: string) => `N'${s}'`,
     orElse: () => (s: string) => `'${s}'`
@@ -158,10 +194,6 @@ export const make: (
   const sqlTrue = sql.onDialectOrElse({
     sqlite: () => sql.literal("1"),
     orElse: () => sql.literal("TRUE")
-  })
-  const sqlFalse = sql.onDialectOrElse({
-    sqlite: () => sql.literal("0"),
-    orElse: () => sql.literal("FALSE")
   })
 
   const workerIdSql = stringLiteral(workerId)
@@ -361,22 +393,14 @@ export const make: (
   })
 
   return PersistedQueue.PersistedQueueStore.of({
-    offer: (name, id, element) =>
-      Effect.suspend(() =>
-        sql`
-          INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
-          VALUES (${id}, ${name}, ${JSON.stringify(element)}, ${sqlFalse}, 0, ${sqlNow}, ${sqlNow})
-        `
-      ).pipe(
-        Effect.catchAllCause((cause) =>
-          Effect.fail(
-            new PersistedQueue.PersistedQueueError({
-              message: "Failed to offer element to persisted queue",
-              cause: Cause.squash(cause)
-            })
-          )
-        )
-      ),
+    offer: ({ element, id, name }) =>
+      Effect.catchAllCause(Effect.suspend(() => offer(id, name, JSON.stringify(element))), (cause) =>
+        Effect.fail(
+          new PersistedQueue.PersistedQueueError({
+            message: "Failed to offer element to persisted queue",
+            cause: Cause.squash(cause)
+          })
+        )),
     take: ({ maxAttempts, name }) =>
       Effect.uninterruptibleMask((restore) =>
         RcMap.get(mailboxes, new QueueKey({ name, maxAttempts })).pipe(

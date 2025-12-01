@@ -31,8 +31,13 @@ export interface PersistedQueue<in out A, out R = never> {
 
   /**
    * Adds an element to the queue. Returns the id of the enqueued element.
+   *
+   * If an element with the same id already exists in the queue, it will not be
+   * added again.
    */
-  readonly offer: (value: A) => Effect.Effect<string, PersistedQueueError | ParseResult.ParseError, R>
+  readonly offer: (value: A, options?: {
+    readonly id: string | undefined
+  }) => Effect.Effect<string, PersistedQueueError | ParseResult.ParseError, R>
 
   /**
    * Takes an element from the queue.
@@ -98,12 +103,20 @@ export const makeFactory = Effect.gen(function*() {
 
       return Effect.succeed<PersistedQueue<A, R>>({
         [TypeId]: TypeId,
-        offer: (value) =>
+        offer: (value, opts) =>
           Effect.flatMap(
             encodeUnknown(value),
             (element) => {
-              const id = crypto.randomUUID()
-              return Effect.as(store.offer(options.name, id, element), id)
+              const id = opts?.id ?? crypto.randomUUID()
+              return Effect.as(
+                store.offer({
+                  name: options.name,
+                  id,
+                  element,
+                  isCustomId: opts?.id !== undefined
+                }),
+                id
+              )
             }
           ),
         take: (f, opts) =>
@@ -174,7 +187,14 @@ export class PersistedQueueError extends Schema.TaggedError<PersistedQueueError>
 export class PersistedQueueStore extends Context.Tag("@effect/experimental/PersistedQueue/PersistedQueueStore")<
   PersistedQueueStore,
   {
-    readonly offer: (name: string, id: string, element: unknown) => Effect.Effect<void, PersistedQueueError>
+    readonly offer: (
+      options: {
+        readonly name: string
+        readonly id: string
+        readonly element: unknown
+        readonly isCustomId: boolean
+      }
+    ) => Effect.Effect<void, PersistedQueueError>
 
     readonly take: (options: {
       readonly name: string
@@ -203,6 +223,7 @@ export const layerStoreMemory: Layer.Layer<
     attempts: number
     readonly element: unknown
   }
+  const ids = new Set<string>()
   const queues = new Map<string, {
     latch: Effect.Latch
     items: Set<Entry>
@@ -220,10 +241,12 @@ export const layerStoreMemory: Layer.Layer<
   }
 
   return PersistedQueueStore.of({
-    offer: (name, id, element) =>
+    offer: (options) =>
       Effect.sync(() => {
-        const queue = getOrCreateQueue(name)
-        queue.items.add({ id, attempts: 0, element })
+        if (ids.has(options.id)) return
+        ids.add(options.id)
+        const queue = getOrCreateQueue(options.name)
+        queue.items.add({ id: options.id, attempts: 0, element: options.element })
         queue.latch.unsafeOpen()
       }),
     take: Effect.fnUntraced(function*(options) {

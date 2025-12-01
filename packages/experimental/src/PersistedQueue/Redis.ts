@@ -17,6 +17,12 @@ import { Redis } from "ioredis"
 import * as PersistedQueue from "../PersistedQueue.js"
 
 interface RedisWithQueue extends Redis {
+  offer(
+    keyQueue: string,
+    keyIds: string,
+    id: string,
+    payload: string
+  ): Promise<void>
   resetQueue(
     keyQueue: string,
     keyPending: string,
@@ -69,6 +75,22 @@ export const make = Effect.fnUntraced(function*(
     Effect.sync(() => new Redis(options) as RedisWithQueue),
     (redis) => Effect.promise(() => redis.quit())
   )
+
+  redis.defineCommand("offer", {
+    lua: `
+local key_queue = KEYS[1]
+local key_ids = KEYS[2]
+local id = ARGV[1]
+local payload = ARGV[2]
+
+local result = redis.call("SADD", key_ids, id)
+if result == 1 then
+  redis.call("RPUSH", key_queue, payload)
+end
+`,
+    numberOfKeys: 2,
+    readOnly: false
+  })
 
   redis.defineCommand("resetQueue", {
     lua: `
@@ -273,9 +295,17 @@ return payloads
   )
 
   return PersistedQueue.PersistedQueueStore.of({
-    offer: (name, id, element) =>
+    offer: ({ element, id, isCustomId, name }) =>
       Effect.tryPromise({
-        try: () => redis.lpush(`${prefix}${name}`, JSON.stringify({ id, element, attempts: 0 })),
+        try: (): Promise<any> =>
+          isCustomId
+            ? redis.offer(
+              `${prefix}${name}`,
+              `${prefix}${name}:ids`,
+              id,
+              JSON.stringify({ id, element, attempts: 0 })
+            )
+            : redis.lpush(`${prefix}${name}`, JSON.stringify({ id, element, attempts: 0 })),
         catch: (cause) =>
           new PersistedQueue.PersistedQueueError({
             message: "Failed to offer element to persisted queue",

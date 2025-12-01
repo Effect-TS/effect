@@ -76,6 +76,30 @@ export const suite = <E>(client: Layer.Layer<SqlClient.SqlClient, E>) => {
         })
         assert.strictEqual(value.n, 42n)
       }))
+
+    it.effect("idempotent offer", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "idempotent-offer",
+          schema: Item
+        })
+
+        yield* queue.offer({ n: 42n }, { id: "custom-id" })
+        yield* queue.offer({ n: 42n }, { id: "custom-id" })
+        yield* queue.take(Effect.fnUntraced(function*(value) {
+          assert.strictEqual(value.n, 42n)
+        }))
+        const fiber = yield* queue.take(Effect.fnUntraced(function*(value) {
+          assert.strictEqual(value.n, 42n)
+        })).pipe(Effect.fork)
+
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(1000).pipe(
+          TestServices.provideLive
+        )
+
+        assert.isNull(fiber.unsafePoll())
+      }))
   })
 }
 

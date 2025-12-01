@@ -178,16 +178,24 @@ export class CurrentAttempt extends Context.Reference<CurrentAttempt>()("@effect
 
 /**
  * @since 1.0.0
- * @category Execution ID
+ * @category Idempotency
  */
-export const executionIdWithAttempt: Effect.Effect<
-  string,
-  never,
-  WorkflowInstance
-> = Effect.gen(function*() {
+export const idempotencyKey: (
+  name: string,
+  options?: {
+    readonly includeAttempt?: boolean | undefined
+  } | undefined
+) => Effect.Effect<string, never, WorkflowInstance> = Effect.fnUntraced(function*(name: string, options?: {
+  readonly includeAttempt?: boolean | undefined
+}) {
   const instance = yield* InstanceTag
-  const attempt = yield* CurrentAttempt
-  return yield* makeHashDigest(`${instance.executionId}-${attempt}`)
+  let key = `${instance.executionId}`
+  if (options?.includeAttempt) {
+    const attempt = yield* CurrentAttempt
+    key += `-${attempt}`
+  }
+  key += `-${name}`
+  return yield* makeHashDigest(key)
 })
 
 /**
