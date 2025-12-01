@@ -45,7 +45,7 @@ export interface PersistedQueue<in out A, out R = never> {
    *
    * If the returned effect succeeds, the element is marked as processed,
    * otherwise it will be retried according to the provided options.
-   * ake
+   *
    * By default, max attempts is set to 10.
    */
   readonly take: <XA, XE, XR>(
