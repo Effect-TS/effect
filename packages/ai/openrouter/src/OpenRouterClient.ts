@@ -8,6 +8,7 @@ import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
+import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -51,12 +52,12 @@ export interface Service {
   readonly client: Generated.Client
 
   readonly createChatCompletion: (
-    options: typeof Generated.ChatCompletionCreateParams.Encoded
-  ) => Effect.Effect<Generated.ChatCompletion, AiError.AiError>
+    options: typeof Generated.ChatGenerationParams.Encoded
+  ) => Effect.Effect<Generated.ChatResponse, AiError.AiError>
 
   readonly createChatCompletionStream: (
-    options: Omit<typeof Generated.ChatCompletionCreateParams.Encoded, "stream">
-  ) => Stream.Stream<ChatCompletionStreamEvent, AiError.AiError>
+    options: Omit<typeof Generated.ChatGenerationParams.Encoded, "stream">
+  ) => Stream.Stream<ChatStreamingResponseChunk, AiError.AiError>
 }
 
 /**
@@ -131,6 +132,7 @@ export const make: (options: {
       Stream.pipeThroughChannel(Sse.makeChannel()),
       Stream.takeWhile((event) => event.data !== "[DONE]"),
       Stream.mapEffect((event) => decodeEvent(event.data)),
+      Stream.tap((event) => Console.dir(event, { depth: null, colors: true })),
       Stream.catchTags({
         RequestError: (error) =>
           AiError.HttpRequestError.fromRequestError({
@@ -155,32 +157,27 @@ export const make: (options: {
   }
 
   const createChatCompletion: (
-    options: typeof Generated.ChatCompletionCreateParams.Encoded
-  ) => Effect.Effect<Generated.ChatCompletion, AiError.AiError> = Effect.fnUntraced(
+    options: typeof Generated.ChatGenerationParams.Encoded
+  ) => Effect.Effect<Generated.ChatResponse, AiError.AiError> = Effect.fnUntraced(
     function*(options) {
-      return yield* client.createChatCompletion(options).pipe(
-        Effect.catchTag(
-          "OpenRouterUnauthorizedError",
-          "OpenRouterRateLimitError",
-          "OpenRouterServerError",
-          (error) =>
-            new AiError.HttpResponseError({
-              module: "OpenRouterClient",
-              method: "createChatCompletion",
-              reason: "StatusCode",
-              request: {
-                hash: error.request.hash,
-                headers: error.request.headers,
-                method: error.request.method,
-                url: error.request.url,
-                urlParams: error.request.urlParams
-              },
-              response: {
-                headers: error.response.headers,
-                status: error.response.status
-              }
-            })
-        ),
+      return yield* client.sendChatCompletionRequest(options).pipe(
+        Effect.catchTag("ChatError", (error) =>
+          new AiError.HttpResponseError({
+            module: "OpenRouterClient",
+            method: "createChatCompletion",
+            reason: "StatusCode",
+            request: {
+              hash: error.request.hash,
+              headers: error.request.headers,
+              method: error.request.method,
+              url: error.request.url,
+              urlParams: error.request.urlParams
+            },
+            response: {
+              headers: error.response.headers,
+              status: error.response.status
+            }
+          })),
         Effect.catchTags({
           RequestError: (error) =>
             AiError.HttpRequestError.fromRequestError({
@@ -199,20 +196,6 @@ export const make: (options: {
               module: "OpenRouterClient",
               method: "createChatCompletion",
               error
-            }),
-          OpenRouterInvalidRequestError: (error) =>
-            new AiError.HttpRequestError({
-              module: "OpenRouterClient",
-              method: "createChatCompletion",
-              cause: error.cause,
-              reason: "Transport",
-              request: {
-                hash: error.request.hash,
-                headers: error.request.headers,
-                method: error.request.method,
-                url: error.request.url,
-                urlParams: error.request.urlParams
-              }
             })
         })
       )
@@ -220,8 +203,8 @@ export const make: (options: {
   )
 
   const createChatCompletionStream = (
-    options: Omit<typeof Generated.ChatCompletionCreateParams.Encoded, "stream">
-  ): Stream.Stream<ChatCompletionStreamEvent, AiError.AiError> => {
+    options: Omit<typeof Generated.ChatGenerationParams.Encoded, "stream">
+  ): Stream.Stream<ChatStreamingResponseChunk, AiError.AiError> => {
     const request = HttpClientRequest.post("/chat/completions", {
       body: HttpBody.unsafeJson({
         ...options,
@@ -229,7 +212,7 @@ export const make: (options: {
         stream_options: { include_usage: true }
       })
     })
-    return streamRequest(request, ChatCompletionStreamEvent)
+    return streamRequest(request, ChatStreamingResponseChunk)
   }
 
   return OpenRouterClient.of({
@@ -327,79 +310,64 @@ export const layerConfig = (options: {
  * @since 1.0.0
  * @category Schemas
  */
-export class ChatCompletionToolCallDelta extends Schema.Class<ChatCompletionToolCallDelta>(
-  "@effect/ai-openrouter/ChatCompletionToolCallDelta"
+export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMessageToolCall>(
+  "@effect/ai-openrouter/ChatStreamingMessageToolCall"
 )({
   index: Schema.Number,
   id: Schema.optionalWith(Schema.String, { nullable: true }),
-  type: Schema.Literal("function"),
-  function: Schema.Struct({
-    name: Schema.optionalWith(Schema.String, { nullable: true }),
-    arguments: Schema.String
-  })
+  type: Schema.optionalWith(Schema.Literal("function"), { nullable: true }),
+  function: Schema.optionalWith(
+    Schema.Struct({
+      name: Schema.String,
+      arguments: Schema.String
+    }),
+    { nullable: true }
+  )
 }) {}
 
 /**
  * @since 1.0.0
  * @category Schemas
  */
-export class ChatCompletionStreamDelta extends Schema.Class<ChatCompletionStreamDelta>(
-  "@effect/ai-openrouter/ChatCompletionStreamDelta"
+export class ChatStreamingMessageChunk extends Schema.Class<ChatStreamingMessageChunk>(
+  "@effect/ai-openrouter/ChatStreamingMessageChunk"
 )({
-  role: Schema.optional(Generated.ChatCompletionMessageRole),
-  content: Schema.NullOr(Schema.String),
+  role: Schema.optionalWith(Schema.Literal("assistant"), { nullable: true }),
+  content: Schema.optionalWith(Schema.String, { nullable: true }),
   reasoning: Schema.optionalWith(Schema.String, { nullable: true }),
   reasoning_details: Schema.optionalWith(Schema.Array(Generated.ReasoningDetail), { nullable: true }),
-  tool_calls: Schema.optionalWith(Schema.Array(ChatCompletionToolCallDelta), { nullable: true }),
-  images: Schema.optionalWith(Schema.Array(Generated.ChatCompletionContentPartImage), { nullable: true }),
-  annotations: Schema.optionalWith(Schema.Array(Generated.AnnotationDetail), { nullable: true })
+  images: Schema.optionalWith(Schema.Array(Generated.ChatMessageContentItemImage), { nullable: true }),
+  refusal: Schema.optionalWith(Schema.String, { nullable: true }),
+  tool_calls: Schema.optionalWith(Schema.Array(ChatStreamingMessageToolCall), { nullable: true }),
+  annotations: Schema.optionalWith(Schema.Array(Generated.OpenAIResponsesAnnotation), { nullable: true })
+}) {}
+
+export class ChatStreamingChoice extends Schema.Class<ChatStreamingChoice>(
+  "@effect/ai-openrouter/ChatStreamingChoice"
+)({
+  index: Schema.Number,
+  delta: Schema.optionalWith(ChatStreamingMessageChunk, { nullable: true }),
+  finish_reason: Schema.optionalWith(Generated.ChatCompletionFinishReason, { nullable: true }),
+  native_finish_reason: Schema.optionalWith(Schema.String, { nullable: true }),
+  logprobs: Schema.optionalWith(Generated.ChatMessageTokenLogprobs, { nullable: true })
 }) {}
 
 /**
  * @since 1.0.0
  * @category Schemas
  */
-export class ChatCompletionStreamDeltaEvent extends Schema.Class<ChatCompletionStreamDeltaEvent>(
-  "@effect/ai-openrouter/ChatCompletionStreamDeltaEvent"
+export class ChatStreamingResponseChunk extends Schema.Class<ChatStreamingResponseChunk>(
+  "@effect/ai-openrouter/ChatStreamingResponseChunk"
 )({
   id: Schema.optionalWith(Schema.String, { nullable: true }),
-  model: Schema.optionalWith(Schema.String, { nullable: true }),
+  model: Schema.optionalWith(
+    Schema.TemplateLiteral(Schema.String, Schema.Literal("/"), Schema.String),
+    { nullable: true }
+  ),
   provider: Schema.optionalWith(Schema.String, { nullable: true }),
-  usage: Schema.optionalWith(Generated.CompletionUsage, { nullable: true }),
-  choices: Schema.Array(Schema.Struct({
-    index: Schema.optionalWith(Schema.Number, { nullable: true }),
-    finish_reason: Schema.NullOr(Generated.ChatCompletionChoiceFinishReason),
-    delta: ChatCompletionStreamDelta,
-    logprobs: Schema.optionalWith(Generated.ChatCompletionTokenLogprobs, { nullable: true })
-  }))
-}) {
-  readonly type = "event"
-}
-
-/**
- * @since 1.0.0
- * @category Schemas
- */
-export class ChatCompletionStreamErrorEvent extends Schema.Class<ChatCompletionStreamErrorEvent>(
-  "@effect/ai-openrouter/ChatCompletionStreamErrorEvent"
-)({ error: Generated.OpenRouterServerError.fields.error }) {
-  readonly type = "error"
-}
-
-/**
- * @since 1.0.0
- * @category Schemas
- */
-export const ChatCompletionStreamEvent: Schema.Union<[
-  typeof ChatCompletionStreamDeltaEvent,
-  typeof ChatCompletionStreamErrorEvent
-]> = Schema.Union(
-  ChatCompletionStreamDeltaEvent,
-  ChatCompletionStreamErrorEvent
-)
-
-/**
- * @since 1.0.0
- * @category Models
- */
-export type ChatCompletionStreamEvent = typeof ChatCompletionStreamEvent.Type
+  created: Schema.DateTimeUtcFromNumber,
+  choices: Schema.Array(ChatStreamingChoice),
+  error: Schema.optionalWith(Generated.ChatError.fields.error, { nullable: true }),
+  system_fingerprint: Schema.optionalWith(Schema.String, { nullable: true }),
+  usage: Schema.optionalWith(Generated.ChatGenerationTokenUsage, { nullable: true })
+}) {}
