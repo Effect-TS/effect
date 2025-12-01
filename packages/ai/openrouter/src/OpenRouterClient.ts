@@ -132,7 +132,6 @@ export const make: (options: {
       Stream.pipeThroughChannel(Sse.makeChannel()),
       Stream.takeWhile((event) => event.data !== "[DONE]"),
       Stream.mapEffect((event) => decodeEvent(event.data)),
-      Stream.tap((event) => Console.dir(event, { depth: null, colors: true })),
       Stream.catchTags({
         RequestError: (error) =>
           AiError.HttpRequestError.fromRequestError({
