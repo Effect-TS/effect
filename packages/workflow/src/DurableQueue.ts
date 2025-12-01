@@ -9,7 +9,6 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Activity from "./Activity.js"
 import * as DurableDeferred from "./DurableDeferred.js"
-import { makeHashDigest } from "./internal/crypto.js"
 import type * as WorkflowEngine from "./WorkflowEngine.js"
 
 /**
