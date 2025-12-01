@@ -559,6 +559,25 @@ importers:
         version: link:../effect
     publishDirectory: dist
 
+  packages/platform-fastify:
+    devDependencies:
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../platform
+      '@effect/rpc':
+        specifier: workspace:^
+        version: link:../rpc
+      '@types/node':
+        specifier: ^22.16.4
+        version: 22.16.4
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+      fastify:
+        specifier: ^5.6.2
+        version: 5.6.2
+    publishDirectory: dist
+
   packages/platform-node:
     dependencies:
       '@effect/platform-node-shared':
@@ -674,25 +693,6 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect
-    publishDirectory: dist
-
-  packages/rpc-fastify:
-    devDependencies:
-      '@effect/platform':
-        specifier: workspace:^
-        version: link:../platform
-      '@effect/rpc':
-        specifier: workspace:^
-        version: link:../rpc
-      '@types/node':
-        specifier: ^22.16.4
-        version: 22.16.4
-      effect:
-        specifier: workspace:^
-        version: link:../effect
-      fastify:
-        specifier: ^5.6.2
-        version: 5.6.2
     publishDirectory: dist
 
   packages/sql:
