@@ -382,7 +382,7 @@ export class AssistantSupportedModels extends S.Literal(
  * reasoning effort can result in faster responses and fewer tokens used
  * on reasoning in a response.
  */
-export class ReasoningEffort extends S.Literal("minimal", "low", "medium", "high") {}
+export class ReasoningEffort extends S.Literal("minimal", "low", "medium", "high", "none") {}
 
 export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
   /**
