@@ -10,6 +10,10 @@ import * as Effect from "effect/Effect"
 import type { ParseError } from "effect/ParseResult"
 import * as S from "effect/Schema"
 
+export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("CacheControlEphemeral")({
+  "type": S.Literal("ephemeral")
+}) {}
+
 export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
 
 export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
@@ -71,6 +75,52 @@ export class ReasoningDetailText extends S.Class<ReasoningDetailText>("Reasoning
  * Reasoning detail information
  */
 export class ReasoningDetail extends S.Union(ReasoningDetailSummary, ReasoningDetailEncrypted, ReasoningDetailText) {}
+
+export class FileAnnotationDetailType extends S.Literal("file") {}
+
+/**
+ * File annotation with content
+ */
+export class FileAnnotationDetail extends S.Class<FileAnnotationDetail>("FileAnnotationDetail")({
+  "type": FileAnnotationDetailType,
+  "file": S.Struct({
+    "hash": S.String,
+    "name": S.optionalWith(S.String, { nullable: true }),
+    "content": S.Array(S.Union(
+      S.Struct({
+        "type": S.Literal("text"),
+        "text": S.String
+      }),
+      S.Struct({
+        "type": S.Literal("image_url"),
+        "image_url": S.Struct({
+          "url": S.String
+        })
+      })
+    ))
+  })
+}) {}
+
+export class URLCitationAnnotationDetailType extends S.Literal("url_citation") {}
+
+/**
+ * URL citation annotation
+ */
+export class URLCitationAnnotationDetail extends S.Class<URLCitationAnnotationDetail>("URLCitationAnnotationDetail")({
+  "type": URLCitationAnnotationDetailType,
+  "url_citation": S.Struct({
+    "end_index": S.Number,
+    "start_index": S.Number,
+    "title": S.String,
+    "url": S.String,
+    "content": S.optionalWith(S.String, { nullable: true })
+  })
+}) {}
+
+/**
+ * Annotation information
+ */
+export class AnnotationDetail extends S.Union(FileAnnotationDetail, URLCitationAnnotationDetail) {}
 
 export class OpenResponsesReasoningFormat
   extends S.Literal("unknown", "openai-responses-v1", "xai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
@@ -2857,7 +2907,10 @@ export class AssistantMessage extends S.Class<AssistantMessage>("AssistantMessag
   "name": S.optionalWith(S.String, { nullable: true }),
   "tool_calls": S.optionalWith(S.Array(ChatMessageToolCall), { nullable: true }),
   "refusal": S.optionalWith(S.String, { nullable: true }),
-  "reasoning": S.optionalWith(S.String, { nullable: true })
+  "reasoning": S.optionalWith(S.String, { nullable: true }),
+  "reasoning_details": S.optionalWith(S.Array(ReasoningDetail), { nullable: true }),
+  "images": S.optionalWith(S.Array(ChatMessageContentItemImage), { nullable: true }),
+  "annotations": S.optionalWith(S.Array(AnnotationDetail), { nullable: true })
 }) {}
 
 export class ToolResponseMessage extends S.Class<ToolResponseMessage>("ToolResponseMessage")({
@@ -2990,6 +3043,13 @@ export class ChatGenerationTokenUsage extends S.Class<ChatGenerationTokenUsage>(
   "completion_tokens": S.Number,
   "prompt_tokens": S.Number,
   "total_tokens": S.Number,
+  "cost": S.optionalWith(S.Number, { nullable: true }),
+  "cost_details": S.optionalWith(
+    S.Struct({
+      upstream_inference_cost: S.optionalWith(S.Number, { nullable: true })
+    }),
+    { nullable: true }
+  ),
   "completion_tokens_details": S.optionalWith(
     S.Struct({
       "reasoning_tokens": S.optionalWith(S.Number, { nullable: true }),
@@ -3011,6 +3071,7 @@ export class ChatGenerationTokenUsage extends S.Class<ChatGenerationTokenUsage>(
 
 export class ChatResponse extends S.Class<ChatResponse>("ChatResponse")({
   "id": S.String,
+  "provider": S.optionalWith(S.String, { nullable: true }),
   "choices": S.Array(ChatResponseChoice),
   "created": S.Number,
   "model": S.String,

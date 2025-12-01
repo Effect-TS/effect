@@ -8,7 +8,6 @@ import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
-import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
@@ -314,14 +313,11 @@ export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMess
 )({
   index: Schema.Number,
   id: Schema.optionalWith(Schema.String, { nullable: true }),
-  type: Schema.optionalWith(Schema.Literal("function"), { nullable: true }),
-  function: Schema.optionalWith(
-    Schema.Struct({
-      name: Schema.String,
-      arguments: Schema.String
-    }),
-    { nullable: true }
-  )
+  type: Schema.Literal("function"),
+  function: Schema.Struct({
+    name: Schema.String,
+    arguments: Schema.String
+  })
 }) {}
 
 /**
@@ -338,7 +334,7 @@ export class ChatStreamingMessageChunk extends Schema.Class<ChatStreamingMessage
   images: Schema.optionalWith(Schema.Array(Generated.ChatMessageContentItemImage), { nullable: true }),
   refusal: Schema.optionalWith(Schema.String, { nullable: true }),
   tool_calls: Schema.optionalWith(Schema.Array(ChatStreamingMessageToolCall), { nullable: true }),
-  annotations: Schema.optionalWith(Schema.Array(Generated.OpenAIResponsesAnnotation), { nullable: true })
+  annotations: Schema.optionalWith(Schema.Array(Generated.AnnotationDetail), { nullable: true })
 }) {}
 
 export class ChatStreamingChoice extends Schema.Class<ChatStreamingChoice>(
