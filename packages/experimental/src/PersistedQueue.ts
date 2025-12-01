@@ -254,6 +254,7 @@ export const layerStoreMemory: Layer.Layer<
       while (true) {
         yield* queue.latch.await
         const item = Iterable.unsafeHead(queue.items)
+        queue.items.delete(item)
         if (queue.items.size === 0) {
           queue.latch.unsafeClose()
         }
