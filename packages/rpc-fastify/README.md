@@ -16,8 +16,9 @@ yarn add @effect/rpc-fastify fastify
 
 - **Native Fastify Support**: Direct integration with Fastify's request/reply system
 - **Type-Safe**: Full TypeScript support with end-to-end type safety
-- **Streaming**: Support for streaming RPC responses
+- **Streaming**: Support for streaming RPC responses with backpressure handling
 - **Serialization**: Built-in support for ndjson serialization (recommended for streaming)
+- **Client Disconnect Detection**: Automatic fiber interruption when clients disconnect
 
 ## Quick Start
 
@@ -78,60 +79,234 @@ process.on("SIGTERM", async () => {
 })
 ```
 
-## API
+## API Reference
 
-### `register` (Recommended)
+### `register`
 
 Registers an RPC handler as a Fastify plugin with automatic content type parser configuration.
-The content type parser is scoped to only the RPC route, so other routes on the same
-Fastify instance work normally.
+This is the **recommended** way to add RPC routes to a Fastify server as it properly
+encapsulates the content type parser configuration to avoid affecting other routes.
+
+**Signature:**
 
 ```typescript
-FastifyRpcServer.register<Rpcs, LE>(
+declare const register: <Rpcs extends Rpc.Any, LE>(
   fastify: FastifyInstance,
   group: RpcGroup<Rpcs>,
   options: {
-    path: string
-    layer: Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs> | RpcSerialization>
-    disableTracing?: boolean
-    spanPrefix?: string
-    spanAttributes?: Record<string, unknown>
-    disableFatalDefects?: boolean
-    middleware?: (httpApp) => httpApp
-    memoMap?: Layer.MemoMap
+    readonly path: string
+    readonly layer: Layer<
+      Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs> | RpcSerialization,
+      LE
+    >
+    readonly disableTracing?: boolean
+    readonly spanPrefix?: string
+    readonly spanAttributes?: Record<string, unknown>
+    readonly disableFatalDefects?: boolean
+    readonly middleware?: (
+      httpApp: HttpApp.Default<never, Scope>
+    ) => HttpApp.Default<never, Scope>
+    readonly memoMap?: Layer.MemoMap
   }
-): {
-  dispose: () => Promise<void>
+) => {
+  readonly dispose: () => Promise<void>
 }
 ```
 
 **Parameters:**
 
-- `fastify`: The Fastify instance to register the handler on
-- `group`: The RPC group containing your RPC definitions
-- `options`:
-  - `path`: The URL path for the RPC endpoint (e.g., "/rpc")
-  - `layer`: Effect layer providing RPC handlers and serialization
-  - `disableTracing`: Disable tracing for RPC calls
-  - `spanPrefix`: Prefix for tracing spans
-  - `spanAttributes`: Additional attributes for tracing spans
-  - `disableFatalDefects`: Don't treat defects as fatal
-  - `middleware`: HTTP middleware function
-  - `memoMap`: Layer memoization map to share layers across multiple instantiations
+| Parameter                     | Description                                                          |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `fastify`                     | The Fastify instance to register the handler on                      |
+| `group`                       | The RPC group containing your RPC definitions                        |
+| `options.path`                | The URL path for the RPC endpoint (e.g., `"/rpc"`)                   |
+| `options.layer`               | Effect layer providing RPC handlers and serialization                |
+| `options.disableTracing`      | Disable tracing for RPC calls                                        |
+| `options.spanPrefix`          | Prefix for tracing spans                                             |
+| `options.spanAttributes`      | Additional attributes for tracing spans                              |
+| `options.disableFatalDefects` | Don't treat defects as fatal                                         |
+| `options.middleware`          | HTTP middleware function to transform the HTTP app                   |
+| `options.memoMap`             | Layer memoization map to share layers across multiple instantiations |
 
 **Returns:**
 
-- `dispose`: Cleanup function to release resources
+| Property  | Description                                                                       |
+| --------- | --------------------------------------------------------------------------------- |
+| `dispose` | Cleanup function to release resources. Call this before shutting down the server. |
+
+**Example:**
+
+```typescript
+import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { RpcSerialization } from "@effect/rpc"
+import { Layer } from "effect"
+import Fastify from "fastify"
+
+const fastify = Fastify({ logger: true })
+
+const { dispose } = FastifyRpcServer.register(fastify, UserRpcs, {
+  path: "/rpc",
+  layer: Layer.mergeAll(UsersLive, RpcSerialization.layerNdjson)
+})
+
+await fastify.listen({ port: 3000 })
+
+// Cleanup
+await dispose()
+await fastify.close()
+```
+
+---
+
+### `registerEffect`
+
+Registers an RPC handler as a Fastify plugin, returning an Effect that extracts context
+from the environment. This is useful when you want to integrate the RPC handler into an
+existing Effect application and manage the context yourself, while still benefiting from
+automatic content type parser configuration.
+
+**Signature:**
+
+```typescript
+declare const registerEffect: <Rpcs extends Rpc.Any>(
+  fastify: FastifyInstance,
+  group: RpcGroup<Rpcs>,
+  options: {
+    readonly path: string
+    readonly disableTracing?: boolean
+    readonly spanPrefix?: string
+    readonly spanAttributes?: Record<string, unknown>
+    readonly disableFatalDefects?: boolean
+    readonly middleware?: (
+      httpApp: HttpApp.Default<never, Scope>
+    ) => HttpApp.Default<never, Scope>
+  }
+) => Effect<
+  void,
+  never,
+  | Scope
+  | RpcSerialization
+  | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
+  | Rpc.Middleware<Rpcs>
+>
+```
+
+**Parameters:**
+
+| Parameter                     | Description                                        |
+| ----------------------------- | -------------------------------------------------- |
+| `fastify`                     | The Fastify instance to register the handler on    |
+| `group`                       | The RPC group containing your RPC definitions      |
+| `options.path`                | The URL path for the RPC endpoint (e.g., `"/rpc"`) |
+| `options.disableTracing`      | Disable tracing for RPC calls                      |
+| `options.spanPrefix`          | Prefix for tracing spans                           |
+| `options.spanAttributes`      | Additional attributes for tracing spans            |
+| `options.disableFatalDefects` | Don't treat defects as fatal                       |
+| `options.middleware`          | HTTP middleware function to transform the HTTP app |
+
+**Returns:**
+
+An `Effect` that registers the RPC handler. The Effect requires:
+
+- `Scope` - For resource management
+- `RpcSerialization` - Serialization format (e.g., `RpcSerialization.layerNdjson`)
+- `Rpc.ToHandler<Rpcs>` - The RPC handler implementations
+- `Rpc.Context<Rpcs>` - Any additional context required by the RPCs
+- `Rpc.Middleware<Rpcs>` - Any RPC middleware
+
+**Example:**
+
+```typescript
+import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { RpcSerialization } from "@effect/rpc"
+import { Effect, Layer } from "effect"
+import Fastify from "fastify"
+
+const program = Effect.gen(function* () {
+  const fastify = Fastify()
+
+  yield* FastifyRpcServer.registerEffect(fastify, UserRpcs, {
+    path: "/rpc"
+  })
+
+  yield* Effect.acquireRelease(
+    Effect.promise(() => fastify.listen({ port: 3000 })),
+    () => Effect.promise(() => fastify.close())
+  )
+})
+
+const MainLive = Layer.mergeAll(UsersLive, RpcSerialization.layerNdjson)
+
+program.pipe(Effect.provide(MainLive), Effect.scoped, Effect.runPromise)
+```
+
+---
 
 ### `toFastifyHandler`
 
-Creates a Fastify handler function. Use this when you need more control over route
-registration or when integrating with existing Fastify plugins.
+Creates a Fastify handler function from an RPC group. Use this when you need more control
+over route registration or when integrating with existing Fastify plugins.
 
 **Important:** When using `toFastifyHandler` directly, you must configure Fastify to not
-parse request bodies for the RPC route:
+parse request bodies for the RPC route.
+
+**Signature:**
 
 ```typescript
+declare const toFastifyHandler: <Rpcs extends Rpc.Any, LE>(
+  group: RpcGroup<Rpcs>,
+  options: {
+    readonly layer: Layer<
+      Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs> | RpcSerialization,
+      LE
+    >
+    readonly disableTracing?: boolean
+    readonly spanPrefix?: string
+    readonly spanAttributes?: Record<string, unknown>
+    readonly disableFatalDefects?: boolean
+    readonly middleware?: (
+      httpApp: HttpApp.Default<never, Scope>
+    ) => HttpApp.Default<never, Scope>
+    readonly memoMap?: Layer.MemoMap
+  }
+) => {
+  readonly handler: (
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) => Promise<void>
+  readonly dispose: () => Promise<void>
+}
+```
+
+**Parameters:**
+
+| Parameter                     | Description                                                          |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `group`                       | The RPC group containing your RPC definitions                        |
+| `options.layer`               | Effect layer providing RPC handlers and serialization                |
+| `options.disableTracing`      | Disable tracing for RPC calls                                        |
+| `options.spanPrefix`          | Prefix for tracing spans                                             |
+| `options.spanAttributes`      | Additional attributes for tracing spans                              |
+| `options.disableFatalDefects` | Don't treat defects as fatal                                         |
+| `options.middleware`          | HTTP middleware function to transform the HTTP app                   |
+| `options.memoMap`             | Layer memoization map to share layers across multiple instantiations |
+
+**Returns:**
+
+| Property  | Description                           |
+| --------- | ------------------------------------- |
+| `handler` | The Fastify route handler function    |
+| `dispose` | Cleanup function to release resources |
+
+**Example:**
+
+```typescript
+import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { RpcSerialization } from "@effect/rpc"
+import { Layer } from "effect"
+import Fastify from "fastify"
+
 const { handler, dispose } = FastifyRpcServer.toFastifyHandler(UserRpcs, {
   layer: Layer.mergeAll(UsersLive, RpcSerialization.layerNdjson)
 })
@@ -143,10 +318,11 @@ fastify.removeAllContentTypeParsers()
 fastify.addContentTypeParser("*", (_req, _payload, done) => done(null))
 
 fastify.post("/rpc", handler)
+
+await fastify.listen({ port: 3000 })
 ```
 
-If you have other routes that need normal body parsing, use `fastify.register` to
-scope the content type parser configuration:
+**Scoping content type parser (when you have other routes):**
 
 ```typescript
 const { handler, dispose } = FastifyRpcServer.toFastifyHandler(UserRpcs, {
@@ -155,7 +331,7 @@ const { handler, dispose } = FastifyRpcServer.toFastifyHandler(UserRpcs, {
 
 const fastify = Fastify()
 
-// RPC route with custom body parsing
+// RPC route with custom body parsing (scoped to this plugin)
 fastify.register((instance, _opts, done) => {
   instance.removeAllContentTypeParsers()
   instance.addContentTypeParser("*", (_req, _payload, done) => done(null))
@@ -168,6 +344,92 @@ fastify.post("/api/users", async (req) => {
   // req.body is parsed normally
 })
 ```
+
+---
+
+### `toFastifyHandlerEffect`
+
+Creates a Fastify handler as an Effect, allowing the context to be provided externally.
+This is useful when you want to integrate the RPC handler into an existing Effect application
+and manage the context yourself.
+
+**Important:** When using this function, you must configure Fastify to not parse request bodies
+for the RPC route.
+
+**Signature:**
+
+```typescript
+declare const toFastifyHandlerEffect: <Rpcs extends Rpc.Any>(
+  group: RpcGroup<Rpcs>,
+  options?: {
+    readonly disableTracing?: boolean
+    readonly spanPrefix?: string
+    readonly spanAttributes?: Record<string, unknown>
+    readonly disableFatalDefects?: boolean
+    readonly middleware?: (
+      httpApp: HttpApp.Default<never, Scope>
+    ) => HttpApp.Default<never, Scope>
+  }
+) => Effect<
+  (request: FastifyRequest, reply: FastifyReply) => Promise<void>,
+  never,
+  | Scope
+  | RpcSerialization
+  | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
+  | Rpc.Middleware<Rpcs>
+>
+```
+
+**Parameters:**
+
+| Parameter                     | Description                                        |
+| ----------------------------- | -------------------------------------------------- |
+| `group`                       | The RPC group containing your RPC definitions      |
+| `options.disableTracing`      | Disable tracing for RPC calls                      |
+| `options.spanPrefix`          | Prefix for tracing spans                           |
+| `options.spanAttributes`      | Additional attributes for tracing spans            |
+| `options.disableFatalDefects` | Don't treat defects as fatal                       |
+| `options.middleware`          | HTTP middleware function to transform the HTTP app |
+
+**Returns:**
+
+An `Effect` that produces the Fastify handler function. The Effect requires:
+
+- `Scope` - For resource management
+- `RpcSerialization` - Serialization format (e.g., `RpcSerialization.layerNdjson`)
+- `Rpc.ToHandler<Rpcs>` - The RPC handler implementations
+- `Rpc.Context<Rpcs>` - Any additional context required by the RPCs
+- `Rpc.Middleware<Rpcs>` - Any RPC middleware
+
+**Example:**
+
+```typescript
+import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { RpcSerialization } from "@effect/rpc"
+import { Effect, Layer } from "effect"
+import Fastify from "fastify"
+
+const program = Effect.gen(function* () {
+  const handler = yield* FastifyRpcServer.toFastifyHandlerEffect(UserRpcs)
+
+  const fastify = Fastify()
+  fastify.removeAllContentTypeParsers()
+  fastify.addContentTypeParser("*", (_req, _payload, done) => done(null))
+  fastify.post("/rpc", handler)
+
+  yield* Effect.acquireRelease(
+    Effect.promise(() => fastify.listen({ port: 3000 })),
+    () => Effect.promise(() => fastify.close())
+  )
+})
+
+const MainLive = Layer.mergeAll(UsersLive, RpcSerialization.layerNdjson)
+
+program.pipe(Effect.provide(MainLive), Effect.scoped, Effect.runPromise)
+```
+
+---
 
 ## Serialization
 
