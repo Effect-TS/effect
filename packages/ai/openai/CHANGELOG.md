@@ -1,5 +1,16 @@
 # @effect/ai-openai
 
+## 0.36.0
+
+### Minor Changes
+
+- [#5850](https://github.com/Effect-TS/effect/pull/5850) [`1ddd4e4`](https://github.com/Effect-TS/effect/commit/1ddd4e477a9677fb3820f80450a378d3550d31a7) Thanks @IMax153! - Update the generated OpenAI schema definitions
+
+### Patch Changes
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
 ## 0.35.0
 
 ### Patch Changes

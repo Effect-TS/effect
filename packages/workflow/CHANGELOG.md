@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.15.1
+
+### Patch Changes
+
+- [#5846](https://github.com/Effect-TS/effect/pull/5846) [`7c7d2e0`](https://github.com/Effect-TS/effect/commit/7c7d2e04913663ad98563dfc9ebffdf09c11c7db) Thanks @tim-smart! - add Workflow.scope, a seperate Scope that only closes on completion
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
 ## 0.15.0
 
 ### Minor Changes
