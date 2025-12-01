@@ -1,5 +1,5 @@
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { Rpc, RpcGroup, RpcSerialization } from "@effect/rpc"
-import { FastifyRpcServer } from "@effect/rpc-fastify"
 import { Effect, Layer, Schema } from "effect"
 import Fastify from "fastify"
 

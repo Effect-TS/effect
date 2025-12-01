@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
-  "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/rpc-fastify/src/",
+  "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/platform-fastify/src/",
   "exclude": ["src/internal/**/*.ts"],
   "examplesCompilerOptions": {
     "noEmit": true,
@@ -17,8 +17,8 @@
       "@effect/platform/*": ["../../../platform/src/*.js"],
       "@effect/rpc": ["../../../rpc/src/index.js"],
       "@effect/rpc/*": ["../../../rpc/src/*.js"],
-      "@effect/rpc-fastify": ["../../../rpc-fastify/src/index.js"],
-      "@effect/rpc-fastify/*": ["../../../rpc-fastify/src/*.js"]
+      "@effect/platform-fastify": ["../../../platform-fastify/src/index.js"],
+      "@effect/platform-fastify/*": ["../../../platform-fastify/src/*.js"]
     }
   }
 }

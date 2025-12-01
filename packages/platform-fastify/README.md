@@ -1,15 +1,15 @@
-# @effect/rpc-fastify
+# @effect/platform-fastify
 
 Fastify integration for Effect's HttpApp and @effect/rpc
 
 ## Installation
 
 ```bash
-npm install @effect/rpc-fastify fastify
+npm install @effect/platform-fastify fastify
 # or
-pnpm add @effect/rpc-fastify fastify
+pnpm add @effect/platform-fastify fastify
 # or
-yarn add @effect/rpc-fastify fastify
+yarn add @effect/platform-fastify fastify
 ```
 
 ## Features
@@ -23,7 +23,7 @@ yarn add @effect/rpc-fastify fastify
 ## Quick Start
 
 ```typescript
-import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { Rpc, RpcGroup, RpcSerialization } from "@effect/rpc"
 import { Effect, Layer, Schema } from "effect"
 import Fastify from "fastify"
@@ -137,7 +137,7 @@ declare const register: <Rpcs extends Rpc.Any, LE>(
 **Example:**
 
 ```typescript
-import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { RpcSerialization } from "@effect/rpc"
 import { Layer } from "effect"
 import Fastify from "fastify"
@@ -218,7 +218,7 @@ An `Effect` that registers the RPC handler. The Effect requires:
 **Example:**
 
 ```typescript
-import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { RpcSerialization } from "@effect/rpc"
 import { Effect, Layer } from "effect"
 import Fastify from "fastify"
@@ -302,7 +302,7 @@ declare const toFastifyHandler: <Rpcs extends Rpc.Any, LE>(
 **Example:**
 
 ```typescript
-import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { RpcSerialization } from "@effect/rpc"
 import { Layer } from "effect"
 import Fastify from "fastify"
@@ -405,7 +405,7 @@ An `Effect` that produces the Fastify handler function. The Effect requires:
 **Example:**
 
 ```typescript
-import { FastifyRpcServer } from "@effect/rpc-fastify"
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { RpcSerialization } from "@effect/rpc"
 import { Effect, Layer } from "effect"
 import Fastify from "fastify"
@@ -455,7 +455,7 @@ declare const toHandlerEffect: <E, R>(
 **Example:**
 
 ```typescript
-import { FastifyHttpAppServer } from "@effect/rpc-fastify"
+import { FastifyHttpAppServer } from "@effect/platform-fastify"
 import { HttpServerResponse } from "@effect/platform"
 import { Effect } from "effect"
 import Fastify from "fastify"
@@ -504,7 +504,7 @@ declare const toHandler: <E, R, LE>(
 **Example:**
 
 ```typescript
-import { FastifyHttpAppServer } from "@effect/rpc-fastify"
+import { FastifyHttpAppServer } from "@effect/platform-fastify"
 import { HttpServerResponse } from "@effect/platform"
 import { Effect, Layer, Context } from "effect"
 import Fastify from "fastify"

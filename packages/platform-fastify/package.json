@@ -1,14 +1,14 @@
 {
-  "name": "@effect/rpc-fastify",
+  "name": "@effect/platform-fastify",
   "type": "module",
   "version": "0.1.0",
   "license": "MIT",
-  "description": "Fastify integration for @effect/rpc",
+  "description": "Fastify integration for Effect's HttpApp and @effect/rpc",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/rpc-fastify"
+    "directory": "packages/platform-fastify"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
@@ -16,12 +16,14 @@
   "tags": [
     "typescript",
     "fastify",
+    "platform",
     "rpc",
     "effect"
   ],
   "keywords": [
     "typescript",
     "fastify",
+    "platform",
     "rpc",
     "effect"
   ],

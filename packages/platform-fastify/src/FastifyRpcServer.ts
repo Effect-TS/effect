@@ -20,7 +20,7 @@ import * as internal from "./internal/fastifyRpcServer.js"
  * @since 1.0.0
  * @category constructors
  * @example
- * import { FastifyRpcServer } from "@effect/rpc-fastify"
+ * import { FastifyRpcServer } from "@effect/platform-fastify"
  * import { RpcSerialization } from "@effect/rpc"
  * import { Layer } from "effect"
  * import Fastify from "fastify"
@@ -69,7 +69,7 @@ export const register: <Rpcs extends Rpc.Any, LE>(
  * @since 1.0.0
  * @category constructors
  * @example
- * import { FastifyRpcServer } from "@effect/rpc-fastify"
+ * import { FastifyRpcServer } from "@effect/platform-fastify"
  * import { RpcSerialization } from "@effect/rpc"
  * import { Effect, Layer } from "effect"
  * import Fastify from "fastify"
@@ -123,7 +123,7 @@ export const registerEffect: <Rpcs extends Rpc.Any>(
  * @since 1.0.0
  * @category constructors
  * @example
- * import { FastifyRpcServer } from "@effect/rpc-fastify"
+ * import { FastifyRpcServer } from "@effect/platform-fastify"
  * import { RpcSerialization } from "@effect/rpc"
  * import { Layer } from "effect"
  * import Fastify from "fastify"
@@ -177,7 +177,7 @@ export const toFastifyHandler: <Rpcs extends Rpc.Any, LE>(
  * @since 1.0.0
  * @category constructors
  * @example
- * import { FastifyRpcServer } from "@effect/rpc-fastify"
+ * import { FastifyRpcServer } from "@effect/platform-fastify"
  * import { RpcSerialization } from "@effect/rpc"
  * import { Effect, Layer } from "effect"
  * import Fastify from "fastify"

@@ -1,6 +1,6 @@
 import { FetchHttpClient } from "@effect/platform"
+import { FastifyRpcServer } from "@effect/platform-fastify"
 import { Rpc, RpcClient, RpcGroup, RpcSchema, RpcSerialization } from "@effect/rpc"
-import { FastifyRpcServer } from "@effect/rpc-fastify"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Chunk, Effect, Layer, Schema, Stream } from "effect"
 import Fastify from "fastify"

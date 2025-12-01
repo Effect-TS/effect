@@ -22,7 +22,7 @@ import type * as Http from "node:http"
 import { Readable } from "node:stream"
 import { pipeline } from "node:stream/promises"
 
-const resolveSymbol = Symbol.for("@effect/rpc-fastify/resolve")
+const resolveSymbol = Symbol.for("@effect/platform-fastify/resolve")
 
 /** @internal */
 export const toHandlerEffect = <E, R>(
@@ -455,7 +455,7 @@ export class FastifyServerRequest extends Inspectable.Class implements ServerReq
     return Effect.fail(
       new Multipart.MultipartError({
         reason: "InternalError",
-        cause: "Multipart not implemented in @effect/rpc-fastify"
+        cause: "Multipart not implemented in @effect/platform-fastify"
       })
     )
   }
@@ -464,7 +464,7 @@ export class FastifyServerRequest extends Inspectable.Class implements ServerReq
     return Stream.fail(
       new Multipart.MultipartError({
         reason: "InternalError",
-        cause: "Multipart stream not implemented in @effect/rpc-fastify"
+        cause: "Multipart stream not implemented in @effect/platform-fastify"
       })
     )
   }
@@ -474,7 +474,7 @@ export class FastifyServerRequest extends Inspectable.Class implements ServerReq
       new Error.RequestError({
         request: this,
         reason: "Decode",
-        description: "Upgrade not implemented in @effect/rpc-fastify"
+        description: "Upgrade not implemented in @effect/platform-fastify"
       })
     )
   }
@@ -495,7 +495,7 @@ export class FastifyServerRequest extends Inspectable.Class implements ServerReq
 
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
-      _id: "@effect/rpc-fastify/FastifyServerRequest",
+      _id: "@effect/platform-fastify/FastifyServerRequest",
       method: this.method,
       url: this.originalUrl
     })

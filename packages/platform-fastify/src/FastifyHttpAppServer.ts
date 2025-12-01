@@ -22,7 +22,7 @@ import * as internal from "./internal/fastifyHttpAppServer.js"
  * @since 1.0.0
  * @category constructors
  * @example
- * import { FastifyHttpAppServer } from "@effect/rpc-fastify"
+ * import { FastifyHttpAppServer } from "@effect/platform-fastify"
  * import { HttpServerResponse } from "@effect/platform"
  * import { Effect } from "effect"
  * import Fastify from "fastify"
@@ -64,7 +64,7 @@ export const toHandlerEffect: <E, R>(
  * @since 1.0.0
  * @category constructors
  * @example
- * import { FastifyHttpAppServer } from "@effect/rpc-fastify"
+ * import { FastifyHttpAppServer } from "@effect/platform-fastify"
  * import { HttpServerResponse } from "@effect/platform"
  * import { Effect, Layer, Context } from "effect"
  * import Fastify from "fastify"
