@@ -9,7 +9,6 @@ import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Activity from "./Activity.js"
 import * as DurableDeferred from "./DurableDeferred.js"
-import { makeHashDigest } from "./internal/crypto.js"
 import type * as WorkflowEngine from "./WorkflowEngine.js"
 
 /**
@@ -179,42 +178,41 @@ export const process: <
 >(self: DurableQueue<Payload, Success, Error>, payload: Payload["Type"], options?: {
   readonly retrySchedule?: Schedule.Schedule<any, PersistedQueue.PersistedQueueError> | undefined
 }) {
-  const key = yield* makeHashDigest(self.idempotencyKey(payload))
+  const queueName = `DurableQueue/${self.name}`
+  const queue = yield* PersistedQueue.make({
+    name: queueName,
+    schema: getQueueSchema(self.payloadSchema)
+  })
+  const id = yield* Activity.idempotencyKey(`${queueName}/${self.idempotencyKey(payload)}`)
 
-  const deferred = DurableDeferred.make(`${self.deferred.name}/${key}`, {
+  const deferred = DurableDeferred.make(`${self.deferred.name}/${id}`, {
     success: self.deferred.successSchema,
     error: self.deferred.errorSchema
   })
+  const token = yield* DurableDeferred.token(deferred)
 
-  yield* Activity.make({
-    name: `DurableQueue/${self.name}/${key}`,
-    execute: Effect.gen(function*() {
-      const span = yield* Effect.orDie(Effect.currentSpan)
-      const queue = yield* PersistedQueue.make({
-        name: `DurableQueue/${self.name}`,
-        schema: getQueueSchema(self.payloadSchema)
+  yield* Effect.useSpan(`DurableQueue/${self.name}/process`, {
+    captureStackTrace: false,
+    attributes: { id }
+  }, (span) =>
+    queue.offer({
+      token,
+      payload,
+      traceId: span.traceId,
+      spanId: span.spanId,
+      sampled: span.sampled
+    } as any, { id }).pipe(
+      Effect.tapErrorCause(Effect.logWarning),
+      Effect.catchTag("ParseError", Effect.die),
+      Effect.retry(options?.retrySchedule ?? defaultRetrySchedule),
+      Effect.orDie,
+      Effect.annotateLogs({
+        package: "@effect/workflow",
+        module: "DurableQueue",
+        fiber: "process",
+        queueName: self.name
       })
-      const token = yield* DurableDeferred.token(deferred)
-      yield* queue.offer({
-        token,
-        payload,
-        traceId: span.traceId,
-        spanId: span.spanId,
-        sampled: span.sampled
-      } as any).pipe(
-        Effect.tapErrorCause(Effect.logWarning),
-        Effect.catchTag("ParseError", Effect.die),
-        Effect.retry(options?.retrySchedule ?? defaultRetrySchedule),
-        Effect.orDie,
-        Effect.annotateLogs({
-          package: "@effect/workflow",
-          module: "DurableQueue",
-          fiber: "process",
-          queueName: self.name
-        })
-      )
-    })
-  })
+    ))
 
   return yield* DurableDeferred.await(deferred)
 })
