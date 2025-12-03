@@ -56,6 +56,7 @@ export declare namespace RcMap {
  *
  * - `capacity`: The maximum number of resources that can be held in the map.
  * - `idleTimeToLive`: When the reference count reaches zero, the resource will be released after this duration.
+ *   Can be a static duration or a function that returns a duration based on the key.
  *
  * @since 3.5.0
  * @category models
@@ -85,14 +86,14 @@ export const make: {
   <K, A, E, R>(
     options: {
       readonly lookup: (key: K) => Effect.Effect<A, E, R>
-      readonly idleTimeToLive?: Duration.DurationInput | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | ((key: K) => Duration.DurationInput) | undefined
       readonly capacity?: undefined
     }
   ): Effect.Effect<RcMap<K, A, E>, never, Scope.Scope | R>
   <K, A, E, R>(
     options: {
       readonly lookup: (key: K) => Effect.Effect<A, E, R>
-      readonly idleTimeToLive?: Duration.DurationInput | undefined
+      readonly idleTimeToLive?: Duration.DurationInput | ((key: K) => Duration.DurationInput) | undefined
       readonly capacity: number
     }
   ): Effect.Effect<RcMap<K, A, E | Cause.ExceededCapacityException>, never, Scope.Scope | R>
