@@ -884,6 +884,11 @@ const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Serv
           break
         }
 
+        case "google.googleMaps": {
+          googleTools.googleMaps = { enableWidget: tool.args }
+          break
+        }
+
         case "google.url_context": {
           if (isGemini2) {
             googleTools.urlContext = {}
