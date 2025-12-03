@@ -232,10 +232,10 @@ describe("RedBlackTree", () => {
   it("greaterThan", () => {
     const tree = pipe(
       RedBlackTree.empty<number, string>(Num.Order),
-      RedBlackTree.insert(1, "a"),
-      RedBlackTree.insert(0, "b"),
-      RedBlackTree.insert(-1, "c"),
       RedBlackTree.insert(-2, "d"),
+      RedBlackTree.insert(-1, "c"),
+      RedBlackTree.insert(0, "b"),
+      RedBlackTree.insert(1, "a"),
       RedBlackTree.insert(3, "e")
     )
 

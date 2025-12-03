@@ -457,7 +457,12 @@ const keys = <K, V>(
   self: RBT.RedBlackTree<K, V>,
   direction: RBT.RedBlackTree.Direction
 ): IterableIterator<K> => {
-  const begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
+  let begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
+
+  if (direction === Direction.Backward) {
+    while (begin.hasNext) begin.moveNext()
+    begin = begin.reversed()
+  }
   let count = 0
   return {
     [Symbol.iterator]: () => keys(self, direction),
@@ -919,7 +924,12 @@ const values = <K, V>(
   self: RBT.RedBlackTree<K, V>,
   direction: RBT.RedBlackTree.Direction
 ): IterableIterator<V> => {
-  const begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
+  let begin: RedBlackTreeIterator<K, V> = self[Symbol.iterator]() as RedBlackTreeIterator<K, V>
+
+  if (direction === Direction.Backward) {
+    while (begin.hasNext) begin.moveNext()
+    begin = begin.reversed()
+  }
   let count = 0
   return {
     [Symbol.iterator]: () => values(self, direction),
