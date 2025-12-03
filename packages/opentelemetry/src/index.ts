@@ -21,6 +21,11 @@ export * as Otlp from "./Otlp.js"
 /**
  * @since 1.0.0
  */
+export * as OtlpExporter from "./OtlpExporter.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as OtlpLogger from "./OtlpLogger.js"
 
 /**
