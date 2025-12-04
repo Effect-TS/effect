@@ -13,6 +13,7 @@ import * as RcMap from "./RcMap.js"
 import * as Runtime from "./Runtime.js"
 import * as Scope from "./Scope.js"
 import type { Mutable, NoExcessProperties } from "./Types.js"
+import { canWriteStackTraceLimit } from "./internal/stackTraceLimit.js"
 
 /**
  * @since 3.14.0
@@ -357,10 +358,15 @@ export const Service = <Self>() =>
   Options extends { readonly dependencies: ReadonlyArray<any> } ? Options["dependencies"][number] : never
 > => {
   const Err = globalThis.Error as any
-  const limit = Err.stackTraceLimit
-  Err.stackTraceLimit = 2
-  const creationError = new Err()
-  Err.stackTraceLimit = limit
+  let creationError: Error
+  if (!canWriteStackTraceLimit) {
+    creationError = new Err()
+  } else {
+    const limit = Err.stackTraceLimit
+    Err.stackTraceLimit = 2
+    creationError = new Err()
+    Err.stackTraceLimit = limit
+  }
 
   function TagClass() {}
   const TagClass_ = TagClass as any as Mutable<TagClass<Self, Id, string, any, any, any, any, any>>

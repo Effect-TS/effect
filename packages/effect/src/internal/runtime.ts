@@ -24,6 +24,7 @@ import * as FiberRuntime from "./fiberRuntime.js"
 import * as fiberScope from "./fiberScope.js"
 import * as OpCodes from "./opCodes/effect.js"
 import * as runtimeFlags from "./runtimeFlags.js"
+import { canWriteStackTraceLimit } from "./stackTraceLimit.js"
 import * as supervisor_ from "./supervisor.js"
 
 const makeDual = <Args extends Array<any>, Return>(
@@ -179,10 +180,13 @@ class AsyncFiberExceptionImpl<A, E = never> extends Error implements Runtime.Asy
 }
 
 const asyncFiberException = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.AsyncFiberException<A, E> => {
-  const limit = Error.stackTraceLimit
+  if (!canWriteStackTraceLimit) {
+    return new AsyncFiberExceptionImpl(fiber)
+  }
+  const prevLimit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
   const error = new AsyncFiberExceptionImpl(fiber)
-  Error.stackTraceLimit = limit
+  Error.stackTraceLimit = prevLimit
   return error
 }
 
@@ -230,10 +234,13 @@ class FiberFailureImpl extends Error implements Runtime.FiberFailure {
 
 /** @internal */
 export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => {
-  const limit = Error.stackTraceLimit
+  if (!canWriteStackTraceLimit) {
+    return new FiberFailureImpl(cause)
+  }
+  const prevLimit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
   const error = new FiberFailureImpl(cause)
-  Error.stackTraceLimit = limit
+  Error.stackTraceLimit = prevLimit
   return error
 }
 
