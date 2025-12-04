@@ -1,10 +1,54 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
 
 describe("Effect", () => {
+  describe("fromOption", () => {
+    it.effect("succeeds with value when Option is Some", () =>
+      Effect.gen(function*() {
+        const value = yield* Effect.fromOption(Option.some(1))
+        assert.strictEqual(value, 1)
+      }))
+
+    it.effect("fails with NoSuchElementException when Option is None", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.fromOption(Option.none()).pipe(Effect.flip)
+        assert.ok(Cause.isNoSuchElementException(result))
+      }))
+  })
+
+  describe("fromOptionOrElse", () => {
+    it.effect("succeeds with value when Option is Some", () =>
+      Effect.gen(function*() {
+        class CustomError {
+          readonly _tag = "CustomError"
+        }
+        const value = yield* Effect.fromOptionOrElse(Option.some(1), () => new CustomError())
+        assert.strictEqual(value, 1)
+      }))
+
+    it.effect("fails with custom error when Option is None", () =>
+      Effect.gen(function*() {
+        class CustomError {
+          readonly _tag = "CustomError"
+        }
+        const result = yield* Effect.fromOptionOrElse(Option.none(), () => new CustomError()).pipe(Effect.flip)
+        assert.strictEqual(result._tag, "CustomError")
+      }))
+
+    it.effect("supports data-last variant", () =>
+      Effect.gen(function*() {
+        class CustomError {
+          readonly _tag = "CustomError"
+        }
+        const value = yield* pipe(Option.some(2), Effect.fromOptionOrElse(() => new CustomError()))
+        assert.strictEqual(value, 2)
+      }))
+  })
+
   describe("transposeOption", () => {
     it.effect("None", () =>
       Effect.gen(function*() {

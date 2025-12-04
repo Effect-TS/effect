@@ -8,7 +8,7 @@ import {
   strictEqual,
   throws
 } from "@effect/vitest/utils"
-import { Cause, Chunk, Effect, Either, Equal, Hash, Number as N, Option, pipe, String as S } from "effect"
+import { Chunk, Either, Equal, Hash, Number as N, Option, pipe, String as S } from "effect"
 
 const gt2 = (n: number): boolean => n > 2
 
@@ -190,32 +190,6 @@ describe("Option", () => {
       new Error("Unexpected None")
     )
   })
-
-  it("fromOption", () =>
-    Effect.gen(function*() {
-      const value = yield* Effect.fromOption(Option.some(1))
-      strictEqual(value, 1)
-
-      const result = yield* Effect.fromOption(Option.none()).pipe(Effect.flip)
-      assertTrue(Cause.isNoSuchElementException(result))
-    }).pipe(Effect.runPromise))
-
-  it("fromOptionOrElse", () =>
-    Effect.gen(function*() {
-      class CustomError {
-        readonly _tag = "CustomError"
-      }
-
-      const value = yield* Effect.fromOptionOrElse(Option.some(1), () => new CustomError())
-      strictEqual(value, 1)
-
-      const result = yield* Effect.fromOptionOrElse(Option.none(), () => new CustomError()).pipe(Effect.flip)
-      strictEqual(result._tag, "CustomError")
-
-      // data-last variant
-      const value2 = yield* pipe(Option.some(2), Effect.fromOptionOrElse(() => new CustomError()))
-      strictEqual(value2, 2)
-    }).pipe(Effect.runPromise))
 
   it("unit", () => {
     assertSome(Option.void, undefined)
