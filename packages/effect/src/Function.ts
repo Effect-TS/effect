@@ -1301,13 +1301,13 @@ const fnRoots = new WeakMap<Function, ArgNode<unknown>>()
  *   return x + y;
  * });
  *
- * add(2, 3); // logs "running expensiveFunction", returns 5
+ * add(2, 3); // logs "running add", returns 5
  * add(2, 3); // no log, returns cached 5
- * add(2, 4); // logs "running expensiveFunction", returns 6
+ * add(2, 4); // logs "running add", returns 6
  *
  * // Expected console output:
- * // running expensiveFunction
- * // running expensiveFunction
+ * // running add
+ * // running add
  * ```
  *
  * @since 3.20.0
