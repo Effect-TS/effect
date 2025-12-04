@@ -13300,6 +13300,91 @@ export const optionFromOptional: <A, E, R>(
 ) => Effect<Option.Option<A>, Exclude<E, Cause.NoSuchElementException>, R> = effect.optionFromOptional
 
 /**
+ * Converts an `Option` into an `Effect`, failing with `NoSuchElementException`
+ * if the `Option` is `None`.
+ *
+ * **Details**
+ *
+ * This function converts an `Option` into an `Effect`. If the `Option` is
+ * `Some`, the effect succeeds with the contained value. If the `Option` is
+ * `None`, the effect fails with a `NoSuchElementException`.
+ *
+ * This is useful when you want to integrate `Option` values into `Effect`
+ * workflows, allowing you to handle missing values as typed failures rather
+ * than thrown exceptions.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { Effect, Option } from "effect"
+ *
+ * //      ┌─── Effect<number, NoSuchElementException, never>
+ * //      ▼
+ * const value = Effect.fromOption(Option.some(1))
+ *
+ * Effect.runPromise(value).then(console.log)
+ * // Output: 1
+ *
+ * const none = Effect.fromOption(Option.none())
+ *
+ * Effect.runPromiseExit(none).then(console.log)
+ * // Output: { _id: 'Exit', _tag: 'Failure', cause: { _tag: 'Fail', failure: { _tag: 'NoSuchElementException' } } }
+ * ```
+ *
+ * @see {@link fromOptionOrElse} for a version that allows you to provide a custom error.
+ *
+ * @since 3.13.0
+ * @category Optional Wrapping & Unwrapping
+ */
+export const fromOption: <A>(self: Option.Option<A>) => Effect<A, Cause.NoSuchElementException> = effect.fromOption
+
+/**
+ * Converts an `Option` into an `Effect`, failing with a custom error if the
+ * `Option` is `None`.
+ *
+ * **Details**
+ *
+ * This function converts an `Option` into an `Effect`. If the `Option` is
+ * `Some`, the effect succeeds with the contained value. If the `Option` is
+ * `None`, the effect fails with the error provided by the `onNone` function.
+ *
+ * This is useful when you want to integrate `Option` values into `Effect`
+ * workflows, allowing you to handle missing values as typed failures rather
+ * than thrown exceptions.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { Effect, Option } from "effect"
+ *
+ * class MissingValue {
+ *   readonly _tag = "MissingValue"
+ * }
+ *
+ * //      ┌─── Effect<number, MissingValue, never>
+ * //      ▼
+ * const value = Effect.fromOptionOrElse(Option.some(1), () => new MissingValue())
+ *
+ * Effect.runPromise(value).then(console.log)
+ * // Output: 1
+ *
+ * const none = Effect.fromOptionOrElse(Option.none(), () => new MissingValue())
+ *
+ * Effect.runPromiseExit(none).then(console.log)
+ * // Output: { _id: 'Exit', _tag: 'Failure', cause: { _tag: 'Fail', failure: { _tag: 'MissingValue' } } }
+ * ```
+ *
+ * @see {@link fromOption} for a version that uses `NoSuchElementException`.
+ *
+ * @since 3.13.0
+ * @category Optional Wrapping & Unwrapping
+ */
+export const fromOptionOrElse: {
+  <E>(onNone: LazyArg<E>): <A>(self: Option.Option<A>) => Effect<A, E>
+  <A, E>(self: Option.Option<A>, onNone: LazyArg<E>): Effect<A, E>
+} = effect.fromOptionOrElse
+
+/**
  * Converts an `Option` of an `Effect` into an `Effect` of an `Option`.
  *
  * **Details**

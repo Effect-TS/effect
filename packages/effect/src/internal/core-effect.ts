@@ -2291,3 +2291,17 @@ export const optionFromOptional = <A, E, R>(
         succeedNone :
         core.fail(error as Exclude<E, Cause.NoSuchElementException>)
   )
+
+/* @internal */
+export const fromOptionOrElse: {
+  <E>(onNone: () => E): <A>(self: Option.Option<A>) => Effect.Effect<A, E>
+  <A, E>(self: Option.Option<A>, onNone: () => E): Effect.Effect<A, E>
+} = dual(
+  2,
+  <A, E>(self: Option.Option<A>, onNone: () => E): Effect.Effect<A, E> =>
+    Option.isNone(self) ? core.fail(onNone()) : core.succeed(self.value)
+)
+
+/* @internal */
+export const fromOption = <A>(self: Option.Option<A>): Effect.Effect<A, Cause.NoSuchElementException> =>
+  Option.isNone(self) ? core.fail(new core.NoSuchElementException()) : core.succeed(self.value)
