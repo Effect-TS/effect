@@ -1220,3 +1220,124 @@ export const hole: <T>() => T = unsafeCoerce(absurd)
  * @since 2.0.0
  */
 export const SK = <A, B>(_: A, b: B): B => b
+
+/**
+ * Empty ArgNode result sentinel.
+ *
+ * @internal
+ */
+const EMPTY = Symbol.for("effect/Function.memo")
+
+/**
+ * Memo helper class.
+ *
+ * @internal
+ */
+class ArgNode<A> {
+  /** The cached result of the args that led to this node, or `EMPTY`. */
+  r: A | typeof EMPTY = EMPTY
+
+  /** The primitive arg branch. */
+  private p: Map<unknown, ArgNode<A>> | null = null
+
+  /** The object arg branch. */
+  private o: WeakMap<object, ArgNode<A>> | null = null
+
+  /** Get the next node for an arg. If uninitialized, one will be created, set, and returned. */
+  get(arg: unknown): ArgNode<A> {
+    let next: ArgNode<A> | undefined
+    let isObject: boolean
+    switch (typeof arg) {
+      case "object":
+      // Fallthrough intended for primitive null case
+      case "function":
+        if (arg !== null) {
+          if (!this.o) this.o = new WeakMap()
+          next = this.o.get(arg)
+          isObject = true
+          break
+        }
+      default:
+        if (!this.p) this.p = new Map()
+        next = this.p.get(arg)
+        isObject = false
+    }
+
+    if (next) return next
+
+    const fresh = new ArgNode<A>()
+
+    if (isObject) {
+      this.o!.set(arg as object, fresh)
+    } else {
+      this.p!.set(arg, fresh)
+    }
+
+    return fresh
+  }
+}
+
+/**
+ * A global WeakMap for memoized functions and their `ArgNode`s, used so that functions wrapped multiple times will share results.
+ *
+ * @internal
+ */
+const fnRoots = new WeakMap<Function, ArgNode<unknown>>()
+
+/**
+ * Memoize a function, method, or getter, with any number of arguments. Repeated calls to the returned function with the same arguments will return cached values.
+ *
+ * Usage notes:
+ * - Memoized functions should be totally pure, and should return immutable values.
+ * - The cache size is unbounded, but internally a `WeakMap` is used when possible. To make the most of this, memoized functions should have object-type args at the start and primitive args at the end.
+ * - Works as a class method decorator.
+ *
+ * @example
+ * ```ts
+ * import { memo } from "effect/Function"
+ *
+ * const add = memo((x: number, y: number) => {
+ *   console.log("running add");
+ *   return x + y;
+ * });
+ *
+ * add(2, 3); // logs "running expensiveFunction", returns 5
+ * add(2, 3); // no log, returns cached 5
+ * add(2, 4); // logs "running expensiveFunction", returns 6
+ *
+ * // Expected console output:
+ * // running expensiveFunction
+ * // running expensiveFunction
+ * ```
+ *
+ * @since 3.20.0
+ */
+export const memo = <Args extends Array<unknown>, Return>(
+  fn: (...args: Args) => Return
+): (...args: Args) => Return => {
+  let root = fnRoots.get(fn) as ArgNode<Return> | undefined
+  if (!root) {
+    root = new ArgNode()
+    fnRoots.set(fn, root)
+  }
+
+  return function(this: unknown) {
+    let node = root.get(this)
+    for (let i = 0; i < arguments.length; i += 1) {
+      node = node.get(arguments[i])
+    }
+
+    if (node.r !== EMPTY) return node.r
+    node.r = fn.apply(this, arguments as unknown as Args)
+    return node.r
+  }
+}
+
+/**
+ * See {@link memo}. This is an alias that infers `This` and uses it in the returned function signature.
+ *
+ * @since 3.20.0
+ */
+export const memoThis: <This, Args extends Array<unknown>, Return>(
+  fn: (this: This, ...args: Args) => Return
+) => (this: This, ...args: Args) => Return = memo
