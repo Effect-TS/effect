@@ -12,6 +12,7 @@ import type * as STM from "../STM.js"
 import type { NoInfer } from "../Types.js"
 import { EffectPrototype, effectVariance } from "./effectable.js"
 import * as option from "./option.js"
+import * as StackTraceLimit from "./stackTraceLimit.js"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
@@ -67,10 +68,7 @@ export const ReferenceProto: any = {
 
 /** @internal */
 export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C.Tag<Identifier, Service> => {
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 2
-  const creationError = new Error()
-  Error.stackTraceLimit = limit
+  const creationError = StackTraceLimit.withStackTraceLimit(2, () => new Error())
   const tag = Object.create(TagProto)
   Object.defineProperty(tag, "stack", {
     get() {
@@ -83,10 +81,7 @@ export const makeGenericTag = <Identifier, Service = Identifier>(key: string): C
 
 /** @internal */
 export const Tag = <const Id extends string>(id: Id) => <Self, Shape>(): C.TagClass<Self, Id, Shape> => {
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 2
-  const creationError = new Error()
-  Error.stackTraceLimit = limit
+  const creationError = StackTraceLimit.withStackTraceLimit(2, () => new Error())
 
   function TagClass() {}
   Object.setPrototypeOf(TagClass, TagProto)
@@ -104,10 +99,7 @@ export const Reference = <Self>() =>
 <const Id extends string, Service>(id: Id, options: {
   readonly defaultValue: () => Service
 }): C.ReferenceClass<Self, Id, Service> => {
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 2
-  const creationError = new Error()
-  Error.stackTraceLimit = limit
+  const creationError = StackTraceLimit.withStackTraceLimit(2, () => new Error())
 
   function ReferenceClass() {}
   Object.setPrototypeOf(ReferenceClass, ReferenceProto)
