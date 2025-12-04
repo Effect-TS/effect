@@ -13333,7 +13333,7 @@ export const optionFromOptional: <A, E, R>(
  *
  * @see {@link fromOptionOrElse} for a version that allows you to provide a custom error.
  *
- * @since 3.13.0
+ * @since 3.20.0
  * @category Optional Wrapping & Unwrapping
  */
 export const fromOption: <A>(self: Option.Option<A>) => Effect<A, Cause.NoSuchElementException> = effect.fromOption
@@ -13376,7 +13376,7 @@ export const fromOption: <A>(self: Option.Option<A>) => Effect<A, Cause.NoSuchEl
  *
  * @see {@link fromOption} for a version that uses `NoSuchElementException`.
  *
- * @since 3.13.0
+ * @since 3.20.0
  * @category Optional Wrapping & Unwrapping
  */
 export const fromOptionOrElse: {
