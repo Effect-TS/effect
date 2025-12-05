@@ -1,5 +1,14 @@
 # @effect/experimental
 
+## 0.57.11
+
+### Patch Changes
+
+- [#5864](https://github.com/Effect-TS/effect/pull/5864) [`ebe2e52`](https://github.com/Effect-TS/effect/commit/ebe2e5278420d4b2bf30113a3b0a5ed68382d870) Thanks @mattiamanzati! - Ensure Devtools Tracer does not cut off span options
+
+- Updated dependencies [[`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249)]:
+  - effect@3.19.9
+
 ## 0.57.10
 
 ### Patch Changes

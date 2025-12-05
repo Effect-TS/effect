@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.9
+
+### Patch Changes
+
+- [#5875](https://github.com/Effect-TS/effect/pull/5875) [`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249) Thanks @gcanti! - Fix the arbitrary generator for BigDecimal to allow negative scales.
+
 ## 3.19.8
 
 ### Patch Changes

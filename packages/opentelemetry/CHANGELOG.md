@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.59.2
+
+### Patch Changes
+
+- [#5863](https://github.com/Effect-TS/effect/pull/5863) [`5be3b6a`](https://github.com/Effect-TS/effect/commit/5be3b6add400dcf281475dbefbfede5b69c63940) Thanks @mikearnaldi! - Widen @opentelemetry/sdk-logs peer dependency range
+
+- Updated dependencies [[`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249)]:
+  - effect@3.19.9
+
 ## 0.59.1
 
 ### Patch Changes
