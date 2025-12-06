@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { describe, expect, it, vi } from "@effect/vitest"
 import { deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { Function, String } from "effect"
 
@@ -193,6 +193,91 @@ describe("Function", () => {
       deepStrictEqual(Function.pipe("_", f("a", "b", "c", "d", "e")), "_abcde")
       // should ignore excess arguments
       deepStrictEqual(f.apply(null, ["_", "a", "b", "c", "d", "e", "f"] as any), "_abcde")
+    })
+  })
+
+  describe("memo", () => {
+    it("memoizes by primitive argument list", () => {
+      const fn = vi.fn((a: number, b: number) => a + b)
+      const memoFn = Function.memo(fn)
+
+      strictEqual(memoFn(1, 2), 3)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Cache hit (same args)
+      strictEqual(memoFn(1, 2), 3)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Different args -> cache miss
+      strictEqual(memoFn(2, 1), 3)
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it("memoizes zero-argument functions and shares cache per fn", () => {
+      const fn = vi.fn(() => 42)
+      const memoFnA = Function.memo(fn)
+      const memoFnB = Function.memo(fn) // wrappers share same per-fn cache
+
+      expect(memoFnA()).toBe(42)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Cache hit via same wrapper
+      expect(memoFnA()).toBe(42)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Cache hit via different wrapper for same original function
+      expect(memoFnB()).toBe(42)
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
+
+    it("memoizes undefined results distinctly", () => {
+      const fn = vi.fn((_: number): void => undefined)
+      const memoFn = Function.memo(fn)
+
+      expect(memoFn(123)).toBeUndefined()
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Cache hit despite undefined result
+      expect(memoFn(123)).toBeUndefined()
+      expect(fn).toHaveBeenCalledTimes(1)
+    })
+
+    it("uses object identity for object args", () => {
+      const a = { x: 1 }
+      const b = { x: 1 }
+
+      const fn = vi.fn((o: { x: number }) => o.x)
+      const memoFn = Function.memo(fn)
+
+      expect(memoFn(a)).toBe(1)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Cache hit for same object instance
+      expect(memoFn(a)).toBe(1)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      // Different object instance with same shape -> cache miss
+      expect(memoFn(b)).toBe(1)
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it("includes receiver (this) in the cache key", () => {
+      function plusOffset(this: { offset: number }, x: number) {
+        return x + this.offset
+      }
+      const fnThis = vi.fn(plusOffset)
+      // Casts only needed to appease TS 'this' typing for test invocations
+      const memoFn = Function.memo(fnThis)
+
+      const a = { offset: 1 }
+      const b = { offset: 100 }
+
+      expect(memoFn.call(a, 1)).toBe(2)
+      expect(fnThis).toHaveBeenCalledTimes(1)
+
+      // Different receiver with same args should not reuse prior result
+      expect(memoFn.call(b, 1)).toBe(101)
+      expect(fnThis).toHaveBeenCalledTimes(2)
     })
   })
 })
