@@ -16,7 +16,9 @@ export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("Cache
 
 export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
 
-export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
+export class ReasoningDetailSummaryFormat
+  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
+{}
 
 /**
  * Reasoning summary detail
@@ -35,7 +37,7 @@ export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("Rea
 export class ReasoningDetailEncryptedType extends S.Literal("reasoning.encrypted") {}
 
 export class ReasoningDetailEncryptedFormat
-  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1")
+  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
 {}
 
 /**
@@ -54,7 +56,9 @@ export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>(
 
 export class ReasoningDetailTextType extends S.Literal("reasoning.text") {}
 
-export class ReasoningDetailTextFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
+export class ReasoningDetailTextFormat
+  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
+{}
 
 /**
  * Text reasoning detail
