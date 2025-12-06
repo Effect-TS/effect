@@ -4,6 +4,7 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 const sum = (n: number): number => {
   if (n < 0) {
@@ -22,6 +23,10 @@ describe("Effect", () => {
     } else {
       expect(exit._tag).toBe("Failure")
     }
+  })
+  it("sync - effect subtype fastPath with NoSuchElementException", () => {
+    const exit = Effect.runSyncExit(Option.none())
+    deepStrictEqual(exit, Exit.fail(new Cause.NoSuchElementException()))
   })
   it.effect("sync - effect", () =>
     Effect.gen(function*() {
