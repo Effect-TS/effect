@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.10
+
+### Patch Changes
+
+- [#5874](https://github.com/Effect-TS/effect/pull/5874) [`bd08028`](https://github.com/Effect-TS/effect/commit/bd080284febb620e7e71f661bf9d850c402bb87f) Thanks @mattiamanzati! - Fix NoSuchElementException instantiation in fastPath and add corresponding test case
+
 ## 3.19.9
 
 ### Patch Changes
