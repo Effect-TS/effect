@@ -1,23 +1,16 @@
 diff --git a/packages/ai/openai/src/Generated.ts b/packages/ai/openai/src/Generated.ts
-index bff596c3d..938a26f44 100644
+index 1f2580576..a24c4f359 100644
 --- a/packages/ai/openai/src/Generated.ts
 +++ b/packages/ai/openai/src/Generated.ts
-@@ -897,7 +897,7 @@ export class CreateTranscriptionResponseVerboseJson
+@@ -915,9 +915,9 @@ export class CreateTranscriptionResponseVerboseJson
  {}
  
- export class CreateTranscription200
--  extends S.Union(CreateTranscriptionResponseJson, CreateTranscriptionResponseVerboseJson)
-+  extends S.Union(CreateTranscriptionResponseVerboseJson, CreateTranscriptionResponseJson)
- {}
- 
- export class CreateTranslationRequestModelEnum extends S.Literal("whisper-1") {}
-@@ -4844,7 +4844,8 @@ export class Includable extends S.Literal(
-   "file_search_call.results",
-   "message.input_image.image_url",
-   "message.output_text.logprobs",
--  "reasoning.encrypted_content"
-+  "reasoning.encrypted_content",
-+  "web_search_call.action.sources"
+ export class CreateTranscription200 extends S.Union(
+-  CreateTranscriptionResponseJson,
++  CreateTranscriptionResponseVerboseJson,
+   CreateTranscriptionResponseDiarizedJson,
+-  CreateTranscriptionResponseVerboseJson
++  CreateTranscriptionResponseJson
  ) {}
  
- export class ListConversationItemsParams extends S.Struct({
+ export class CreateTranslationRequestModelEnum extends S.Literal("whisper-1") {}

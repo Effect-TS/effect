@@ -16,8 +16,21 @@ describe("SqlRunnerStorage", () => {
     ["mysql", Layer.orDie(MysqlContainer.ClientLive)],
     ["vitess", Layer.orDie(MysqlContainer.ClientLiveVitess)],
     ["sqlite", Layer.orDie(SqliteLayer)]
-  ] as const).forEach(([label, layer]) => {
-    it.layer(StorageLive.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer())), {
+  ] as const).flatMap(([label, layer]) =>
+    [
+      [label, StorageLive.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer()))],
+      [
+        label + " (no advisory)",
+        StorageLive.pipe(
+          Layer.provideMerge(layer),
+          Layer.provide(ShardingConfig.layer({
+            shardLockDisableAdvisory: true
+          }))
+        )
+      ]
+    ] as const
+  ).forEach(([label, layer]) => {
+    it.layer(layer, {
       timeout: 60000
     })(label, (it) => {
       it.effect("getRunners", () =>

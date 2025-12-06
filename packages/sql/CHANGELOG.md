@@ -1,5 +1,57 @@
 # @effect/sql
 
+## 0.48.6
+
+### Patch Changes
+
+- [#5837](https://github.com/Effect-TS/effect/pull/5837) [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9) Thanks @tim-smart! - support idempotent offers to PersistedQueue
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/experimental@0.57.9
+
+## 0.48.5
+
+### Patch Changes
+
+- [#5824](https://github.com/Effect-TS/effect/pull/5824) [`019bf24`](https://github.com/Effect-TS/effect/commit/019bf24f62a8e0442d5f805544b5cce96c331ef2) Thanks @tim-smart! - improve ordering guarantees for SqlPersistedQueue
+
+## 0.48.4
+
+### Patch Changes
+
+- [#5820](https://github.com/Effect-TS/effect/pull/5820) [`c379c45`](https://github.com/Effect-TS/effect/commit/c379c45777cea3ec8c985d55f597902813bd3ae2) Thanks @tim-smart! - ensure redis PersistedQueue removes stale pending items on reset
+
+- Updated dependencies [[`f03b8e5`](https://github.com/Effect-TS/effect/commit/f03b8e55f12019cc855a1306e9cbfc7611a9e281), [`c379c45`](https://github.com/Effect-TS/effect/commit/c379c45777cea3ec8c985d55f597902813bd3ae2)]:
+  - effect@3.19.8
+  - @effect/experimental@0.57.7
+
+## 0.48.3
+
+### Patch Changes
+
+- [#5816](https://github.com/Effect-TS/effect/pull/5816) [`a9206ce`](https://github.com/Effect-TS/effect/commit/a9206ceee64daf3b12a778b60ee2bfdede748c57) Thanks @tim-smart! - add dynamic batch size to PersistedQueue based on pending takers
+
+- Updated dependencies [[`a9206ce`](https://github.com/Effect-TS/effect/commit/a9206ceee64daf3b12a778b60ee2bfdede748c57)]:
+  - @effect/experimental@0.57.6
+
+## 0.48.2
+
+### Patch Changes
+
+- [#5813](https://github.com/Effect-TS/effect/pull/5813) [`7ef13d3`](https://github.com/Effect-TS/effect/commit/7ef13d30147dd50eae1cdbb67a1978141751cad5) Thanks @tim-smart! - fix SqlPersistedQueue batch size
+
+- Updated dependencies [[`7ef13d3`](https://github.com/Effect-TS/effect/commit/7ef13d30147dd50eae1cdbb67a1978141751cad5)]:
+  - effect@3.19.7
+
+## 0.48.1
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
+- Updated dependencies [[`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b)]:
+  - @effect/experimental@0.57.5
+
 ## 0.48.0
 
 ### Minor Changes

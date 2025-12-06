@@ -51,6 +51,11 @@ export * as PersistedCache from "./PersistedCache.js"
 /**
  * @since 1.0.0
  */
+export * as PersistedQueue from "./PersistedQueue.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Persistence from "./Persistence.js"
 
 /**

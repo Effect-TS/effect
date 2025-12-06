@@ -107,7 +107,7 @@ declare module "@effect/ai/Prompt" {
       /**
        * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
        */
-      readonly imageDetail?: typeof Generated.InputImageContentDetail.Encoded | undefined
+      readonly imageDetail?: typeof Generated.ImageDetail.Encoded | undefined
     } | undefined
   }
 
@@ -1374,14 +1374,14 @@ const getItemId = (
     | Prompt.ToolCallPart
 ): string | undefined => part.options.openai?.itemId
 
-const getImageDetail = (part: Prompt.FilePart): typeof Generated.InputImageContentDetail.Encoded =>
+const getImageDetail = (part: Prompt.FilePart): typeof Generated.ImageDetail.Encoded =>
   part.options.openai?.imageDetail ?? "auto"
 
 const prepareInclude = (
   options: LanguageModel.ProviderOptions,
   config: Config.Service
-): ReadonlyArray<typeof Generated.Includable.Encoded> => {
-  const include: Set<typeof Generated.Includable.Encoded> = new Set(config.include ?? [])
+): ReadonlyArray<typeof Generated.IncludeEnum.Encoded> => {
+  const include: Set<typeof Generated.IncludeEnum.Encoded> = new Set(config.include ?? [])
 
   const codeInterpreterTool = options.tools.find((tool) =>
     Tool.isProviderDefined(tool) &&

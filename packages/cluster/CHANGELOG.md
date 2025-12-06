@@ -1,5 +1,36 @@
 # @effect/cluster
 
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9), [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/sql@0.48.6
+  - @effect/workflow@0.15.0
+
+## 0.54.0
+
+### Patch Changes
+
+- [#5827](https://github.com/Effect-TS/effect/pull/5827) [`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b) Thanks @tim-smart! - add TestRunner & SingleRunner modules
+  - `TestRunner` allows you to run a in-memory cluster for testing purposes.
+  - `SingleRunner` allows you to run a single node cluster simple deployment
+    scenarios.
+    - Message storage is backed by a SQL database
+    - Multiple nodes are not supported
+
+- Updated dependencies [[`7bd4e82`](https://github.com/Effect-TS/effect/commit/7bd4e827bc246a39d71b48a105e0853352efdc3b)]:
+  - @effect/workflow@0.14.0
+
+## 0.53.6
+
+### Patch Changes
+
+- [#5793](https://github.com/Effect-TS/effect/pull/5793) [`a2d965d`](https://github.com/Effect-TS/effect/commit/a2d965d2a22dcc018f81dbbcd55bfe33088d9411) Thanks @tim-smart! - allow advisory locks to be disabled
+
+- Updated dependencies [[`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5)]:
+  - @effect/platform@0.93.4
+
 ## 0.53.5
 
 ### Patch Changes

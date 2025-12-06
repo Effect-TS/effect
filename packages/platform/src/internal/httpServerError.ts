@@ -32,15 +32,24 @@ export const causeResponse = <E>(
     cause,
     [Effect.succeed(internalServerError), Cause.empty as Cause.Cause<E>] as const,
     (acc, cause) => {
+      const withoutInterrupt = Cause.isInterruptType(acc[1]) ? Cause.empty : acc[1]
       switch (cause._tag) {
-        case "Empty": {
-          return Option.some(acc)
-        }
         case "Fail": {
-          return Option.some([Respondable.toResponseOrElse(cause.error, internalServerError), cause] as const)
+          return Option.some(
+            [
+              Respondable.toResponseOrElse(cause.error, internalServerError),
+              combineCauses(withoutInterrupt, cause)
+            ] as const
+          )
         }
         case "Die": {
-          return Option.some([Respondable.toResponseOrElseDefect(cause.defect, internalServerError), cause] as const)
+          const isResponse = internalServerResponse.isServerResponse(cause.defect)
+          return Option.some(
+            [
+              Respondable.toResponseOrElseDefect(cause.defect, internalServerError),
+              isResponse ? withoutInterrupt : combineCauses(withoutInterrupt, cause)
+            ] as const
+          )
         }
         case "Interrupt": {
           if (acc[1]._tag !== "Empty") {
@@ -57,10 +66,19 @@ export const causeResponse = <E>(
   )
   return Effect.map(effect, (response) => {
     if (Cause.isEmptyType(stripped)) {
-      return [response, Cause.die(response)] as const
+      return [response, Cause.empty] as const
     }
     return [response, Cause.sequential(stripped, Cause.die(response))] as const
   })
+}
+
+const combineCauses = <A = never, B = never>(left: Cause.Cause<A>, right: Cause.Cause<B>): Cause.Cause<A | B> => {
+  if (Cause.isEmptyType(left)) {
+    return right
+  } else if (Cause.isEmptyType(right)) {
+    return left
+  }
+  return Cause.sequential(left, right)
 }
 
 /** @internal */

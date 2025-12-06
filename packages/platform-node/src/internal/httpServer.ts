@@ -14,7 +14,7 @@ import type * as ServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Multipart from "@effect/platform/Multipart"
 import type * as Path from "@effect/platform/Path"
 import * as Socket from "@effect/platform/Socket"
-import type * as Cause from "effect/Cause"
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
@@ -410,7 +410,7 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               })
           }).pipe(
             Effect.interruptible,
-            Effect.tapErrorCause(handleCause(nodeResponse))
+            Effect.tapErrorCause(handleCause(nodeResponse, response))
           )
         }
         return Effect.async<void>((resume) => {
@@ -448,47 +448,61 @@ const handleResponse = (request: ServerRequest.HttpServerRequest, response: Serv
               })
           }).pipe(
             Effect.interruptible,
-            Effect.tapErrorCause(handleCause(nodeResponse))
+            Effect.tapErrorCause(handleCause(nodeResponse, response))
           )
         })
       }
       case "Stream": {
         nodeResponse.writeHead(response.status, headers)
+        const drainLatch = Effect.unsafeMakeLatch()
+        nodeResponse.on("drain", () => drainLatch.unsafeOpen())
         return body.stream.pipe(
           Stream.orDie,
-          Stream.runForEachChunk((chunk) =>
-            Effect.async<void>((resume) => {
-              const array = Chunk.toReadonlyArray(chunk)
-              if (array.length === 0) {
-                resume(Effect.void)
-                return
+          Stream.runForEachChunk((chunk) => {
+            const array = Chunk.toReadonlyArray(chunk)
+            if (array.length === 0) return Effect.void
+            let needDrain = false
+            for (let i = 0; i < array.length; i++) {
+              const written = nodeResponse.write(array[i])
+              if (!written && !needDrain) {
+                needDrain = true
+                drainLatch.unsafeClose()
+              } else if (written && needDrain) {
+                needDrain = false
               }
-              for (let i = 0; i < array.length - 1; i++) {
-                nodeResponse.write(array[i])
-              }
-              nodeResponse.write(array[array.length - 1], () => resume(Effect.void))
-            })
-          ),
+            }
+            if (!needDrain) return Effect.void
+            return drainLatch.await
+          }),
           Effect.interruptible,
           Effect.matchCauseEffect({
             onSuccess: () => Effect.sync(() => nodeResponse.end()),
-            onFailure: handleCause(nodeResponse)
+            onFailure: handleCause(nodeResponse, response)
           })
         )
       }
     }
   })
 
-const handleCause = (nodeResponse: Http.ServerResponse) => <E>(cause: Cause.Cause<E>) =>
-  Error.causeResponse(cause).pipe(
+const handleCause = (
+  nodeResponse: Http.ServerResponse,
+  original: ServerResponse.HttpServerResponse
+) =>
+<E>(originalCause: Cause.Cause<E>) =>
+  Error.causeResponse(originalCause).pipe(
     Effect.flatMap(([response, cause]) => {
-      if (!nodeResponse.headersSent) {
+      const headersSent = nodeResponse.headersSent
+      if (!headersSent) {
         nodeResponse.writeHead(response.status)
       }
       if (!nodeResponse.writableEnded) {
         nodeResponse.end()
       }
-      return Effect.failCause(cause)
+      return Effect.failCause(
+        headersSent
+          ? Cause.sequential(originalCause, Cause.die(original))
+          : cause
+      )
     })
   )
 

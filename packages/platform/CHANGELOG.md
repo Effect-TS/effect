@@ -1,5 +1,23 @@
 # @effect/platform
 
+## 0.93.6
+
+### Patch Changes
+
+- [#5835](https://github.com/Effect-TS/effect/pull/5835) [`25d1cb6`](https://github.com/Effect-TS/effect/commit/25d1cb60aadf8f8fdf9a4aad3dbaa31e1ca3b70d) Thanks @tim-smart! - consider clean http interrupts as successful responses
+
+## 0.93.5
+
+### Patch Changes
+
+- [#5818](https://github.com/Effect-TS/effect/pull/5818) [`ebfbbd6`](https://github.com/Effect-TS/effect/commit/ebfbbd62e1daf235d1f25b825d80ae4880408df3) Thanks @KhraksMamtsov! - Support `HttpApiError` unification
+
+## 0.93.4
+
+### Patch Changes
+
+- [#5797](https://github.com/Effect-TS/effect/pull/5797) [`8ebd29e`](https://github.com/Effect-TS/effect/commit/8ebd29ec10976222c200901d9b72779af743e6d5) Thanks @tim-smart! - use original status code if headers have already been sent
+
 ## 0.93.3
 
 ### Patch Changes

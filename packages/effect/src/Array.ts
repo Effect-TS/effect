@@ -2352,7 +2352,10 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
   const has = containsWith(isEquivalent)
   return dual(
     2,
-    (self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).filter((a) => has(that, a))
+    (self: Iterable<A>, that: Iterable<A>): Array<A> => {
+      const bs = fromIterable(that)
+      return fromIterable(self).filter((a) => has(bs, a))
+    }
   )
 }
 
@@ -2400,7 +2403,10 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
   const has = containsWith(isEquivalent)
   return dual(
     2,
-    (self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).filter((a) => !has(that, a))
+    (self: Iterable<A>, that: Iterable<A>): Array<A> => {
+      const bs = fromIterable(that)
+      return fromIterable(self).filter((a) => !has(bs, a))
+    }
   )
 }
 

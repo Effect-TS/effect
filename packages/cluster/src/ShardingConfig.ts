@@ -64,6 +64,10 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly shardLockExpiration: DurationInput
   /**
+   * Disable the use of advisory locks for shard locking.
+   */
+  readonly shardLockDisableAdvisory: boolean
+  /**
    * Start shutting down as soon as an Entity has started shutting down.
    *
    * Defaults to `true`.
@@ -134,6 +138,7 @@ export const defaults: ShardingConfig["Type"] = {
   preemptiveShutdown: true,
   shardLockRefreshInterval: Duration.seconds(10),
   shardLockExpiration: Duration.seconds(35),
+  shardLockDisableAdvisory: false,
   entityMailboxCapacity: 4096,
   entityMaxIdleTime: Duration.minutes(1),
   entityRegistrationTimeout: Duration.minutes(1),
@@ -205,6 +210,10 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   shardLockExpiration: Config.duration("shardLockExpiration").pipe(
     Config.withDefault(defaults.shardLockExpiration),
     Config.withDescription("Shard lock expiration duration.")
+  ),
+  shardLockDisableAdvisory: Config.boolean("shardLockDisableAdvisory").pipe(
+    Config.withDefault(defaults.shardLockDisableAdvisory),
+    Config.withDescription("Disable the use of advisory locks for shard locking.")
   ),
   entityMailboxCapacity: Config.integer("entityMailboxCapacity").pipe(
     Config.withDefault(defaults.entityMailboxCapacity),

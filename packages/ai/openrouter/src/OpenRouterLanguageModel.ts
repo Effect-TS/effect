@@ -21,7 +21,7 @@ import type { Span } from "effect/Tracer"
 import type { Simplify } from "effect/Types"
 import type * as Generated from "./Generated.js"
 import * as InternalUtilities from "./internal/utilities.js"
-import type { ChatCompletionStreamEvent } from "./OpenRouterClient.js"
+import type { ChatStreamingResponseChunk } from "./OpenRouterClient.js"
 import { OpenRouterClient } from "./OpenRouterClient.js"
 
 // =============================================================================
@@ -56,7 +56,7 @@ export declare namespace Config {
     Simplify<
       Partial<
         Omit<
-          typeof Generated.ChatCompletionCreateParams.Encoded,
+          typeof Generated.ChatGenerationParams.Encoded,
           "messages" | "response_format" | "tools" | "tool_choice" | "stream"
         >
       >
@@ -259,7 +259,7 @@ export const make = Effect.fnUntraced(function*(options: {
       const messages = yield* prepareMessages(providerOptions)
       const { toolChoice, tools } = yield* prepareTools(providerOptions)
       const responseFormat = providerOptions.responseFormat
-      const request: typeof Generated.ChatCompletionCreateParams.Encoded = {
+      const request: typeof Generated.ChatGenerationParams.Encoded = {
         ...config,
         messages,
         tools,
@@ -338,10 +338,10 @@ export const withConfigOverride: {
 // =============================================================================
 
 const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect<
-  ReadonlyArray<typeof Generated.ChatCompletionMessageParam.Encoded>,
+  ReadonlyArray<typeof Generated.Message.Encoded>,
   AiError.AiError
 > = Effect.fnUntraced(function*(options) {
-  const messages: Array<typeof Generated.ChatCompletionMessageParam.Encoded> = []
+  const messages: Array<typeof Generated.Message.Encoded> = []
 
   for (const message of options.prompt.content) {
     switch (message.role) {
@@ -365,7 +365,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
               : part.text
           })
         } else {
-          const content: Array<typeof Generated.ChatCompletionContentPart.Encoded> = []
+          const content: Array<typeof Generated.ChatMessageContentItem.Encoded> = []
           const messageCacheControl = getCacheControl(message)
           for (const part of message.content) {
             const partCacheControl = getCacheControl(part)
@@ -425,7 +425,7 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
         let text = ""
         let reasoning = ""
         const reasoningDetails: Array<typeof Generated.ReasoningDetail.Encoded> = []
-        const toolCalls: Array<typeof Generated.ChatCompletionMessageToolCall.Encoded> = []
+        const toolCalls: Array<typeof Generated.ChatMessageToolCall.Encoded> = []
         const cacheControl = getCacheControl(message)
         for (const part of message.content) {
           switch (part.type) {
@@ -488,8 +488,8 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
 // =============================================================================
 
 const prepareTools: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
-  readonly tools: ReadonlyArray<typeof Generated.ChatCompletionTool.Encoded> | undefined
-  readonly toolChoice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined
+  readonly tools: ReadonlyArray<typeof Generated.ToolDefinitionJson.Encoded> | undefined
+  readonly toolChoice: typeof Generated.ToolChoiceOption.Encoded | undefined
 }, AiError.AiError> = Effect.fnUntraced(
   function*(options: LanguageModel.ProviderOptions) {
     if (options.tools.length === 0) {
@@ -506,8 +506,8 @@ const prepareTools: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
       })
     }
 
-    let tools: Array<typeof Generated.ChatCompletionTool.Encoded> = []
-    let toolChoice: typeof Generated.ChatCompletionToolChoiceOption.Encoded | undefined = undefined
+    let tools: Array<typeof Generated.ToolDefinitionJson.Encoded> = []
+    let toolChoice: typeof Generated.ToolChoiceOption.Encoded | undefined = undefined
 
     for (const tool of options.tools) {
       tools.push({
@@ -515,7 +515,7 @@ const prepareTools: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
         function: {
           name: tool.name,
           description: Tool.getDescription(tool as any),
-          parameters: Tool.getJsonSchema(tool as any),
+          parameters: Tool.getJsonSchema(tool as any) as any,
           strict: true
         }
       })
@@ -543,7 +543,7 @@ const prepareTools: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
 // Response Conversion
 // =============================================================================
 
-const makeResponse: (response: Generated.ChatCompletion) => Effect.Effect<
+const makeResponse: (response: Generated.ChatResponse) => Effect.Effect<
   Array<Response.PartEncoded>,
   AiError.AiError
 > = Effect.fnUntraced(
@@ -626,7 +626,7 @@ const makeResponse: (response: Generated.ChatCompletion) => Effect.Effect<
     if (Predicate.isNotNullable(message.content) && message.content.length > 0) {
       parts.push({
         type: "text",
-        text: message.content
+        text: message.content as string
       })
     }
 
@@ -710,7 +710,7 @@ const makeResponse: (response: Generated.ChatCompletion) => Effect.Effect<
   }
 )
 
-const makeStreamResponse: (stream: Stream.Stream<ChatCompletionStreamEvent, AiError.AiError>) => Effect.Effect<
+const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiError.AiError>) => Effect.Effect<
   Stream.Stream<Response.StreamPartEncoded, AiError.AiError>
 > = Effect.fnUntraced(
   function*(stream) {
@@ -731,7 +731,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatCompletionStreamEvent, AiEr
       Stream.mapEffect(Effect.fnUntraced(function*(event) {
         const parts: Array<Response.StreamPartEncoded> = []
 
-        if (event.type === "error") {
+        if ("error" in event) {
           parts.push({
             type: "error",
             error: event.error
@@ -762,6 +762,10 @@ const makeStreamResponse: (stream: Stream.Stream<ChatCompletionStreamEvent, AiEr
         }
 
         const delta = choice.delta
+
+        if (Predicate.isUndefined(delta)) {
+          return parts
+        }
 
         // Reasoning Parts
 
@@ -1039,7 +1043,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatCompletionStreamEvent, AiEr
 
 const annotateRequest = (
   span: Span,
-  request: typeof Generated.ChatCompletionCreateParams.Encoded
+  request: typeof Generated.ChatGenerationParams.Encoded
 ): void => {
   addGenAIAnnotations(span, {
     system: "openrouter",
@@ -1056,7 +1060,7 @@ const annotateRequest = (
   })
 }
 
-const annotateResponse = (span: Span, response: Generated.ChatCompletion): void => {
+const annotateResponse = (span: Span, response: Generated.ChatResponse): void => {
   addGenAIAnnotations(span, {
     response: {
       id: response.id,

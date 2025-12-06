@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -84,14 +85,17 @@ export const toHandled = <E, R, _, EH, RH>(
           const handler = fiber.getFiberRef(currentPreResponseHandlers)
           if (handler._tag === "None") {
             ;(request as any)[handledSymbol] = true
-            return Effect.zipRight(handleResponse(request, response), Effect.failCause(cause))
+            return Effect.zipRight(
+              handleResponse(request, response),
+              Cause.isEmptyType(cause) ? Effect.succeed(response) : Effect.failCause(cause)
+            )
           }
           return Effect.zipRight(
             Effect.tap(handler.value(request, response), (response) => {
               ;(request as any)[handledSymbol] = true
               return handleResponse(request, response)
             }),
-            Effect.failCause(cause)
+            Cause.isEmptyType(cause) ? Effect.succeed(response) : Effect.failCause(cause)
           )
         })
       )

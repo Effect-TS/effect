@@ -8,7 +8,6 @@ import * as Effectable from "../Effectable.js"
 import type { Exit } from "../Exit.js"
 import { dual } from "../Function.js"
 import * as Inspectable from "../Inspectable.js"
-import * as Iterable from "../Iterable.js"
 import type * as Api from "../Mailbox.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -421,9 +420,13 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
     } else if (this.state.takers.size === 0) {
       return
     }
-    const taker = Iterable.unsafeHead(this.state.takers)
-    this.state.takers.delete(taker)
-    taker(core.exitVoid)
+    for (const taker of this.state.takers) {
+      this.state.takers.delete(taker)
+      taker(core.exitVoid)
+      if (this.messages.length + this.messagesChunk.length === 0) {
+        break
+      }
+    }
   }
 
   private unsafeTakeAll() {

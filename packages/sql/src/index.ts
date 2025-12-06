@@ -36,6 +36,11 @@ export * as SqlEventLogServer from "./SqlEventLogServer.js"
 /**
  * @since 1.0.0
  */
+export * as SqlPersistedQueue from "./SqlPersistedQueue.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as SqlResolver from "./SqlResolver.js"
 
 /**

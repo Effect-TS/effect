@@ -1788,6 +1788,7 @@ export const setSystem: {
  *   prompt,
  *   "You are a helpful assistant. "
  * )
+ * // result content: "You are a helpful assistant. You are an expert in programming."
  * ```
  *
  * @since 1.0.0
@@ -1797,18 +1798,19 @@ export const prependSystem: {
   (content: string): (self: Prompt) => Prompt
   (self: Prompt, content: string): Prompt
 } = dual(2, (self: Prompt, content: string): Prompt => {
-  const messages: Array<Message> = []
+  let system: SystemMessage | undefined = undefined
   for (const message of self.content) {
     if (message.role === "system") {
-      const system = makeMessage("system", {
+      system = makeMessage("system", {
         content: content + message.content
       })
-      messages.push(system)
-    } else {
-      messages.push(message)
+      break
     }
   }
-  return makePrompt(messages)
+  if (Predicate.isUndefined(system)) {
+    system = makeMessage("system", { content })
+  }
+  return makePrompt([system, ...self.content])
 })
 
 /**
@@ -1824,7 +1826,7 @@ export const prependSystem: {
  *
  * const systemPrompt = Prompt.make([{
  *   role: "system",
- *   content: "You are a helpful assistant."
+ *   content: "You are an expert in programming."
  * }])
  *
  * const userPrompt = Prompt.make("Hello, world!")
@@ -1833,8 +1835,9 @@ export const prependSystem: {
  *
  * const replaced = Prompt.appendSystem(
  *   prompt,
- *   " You are an expert in programming."
+ *   " You are a helpful assistant."
  * )
+ * // result content: "You are an expert in programming. You are a helpful assistant."
  * ```
  *
  * @since 1.0.0
@@ -1844,16 +1847,17 @@ export const appendSystem: {
   (content: string): (self: Prompt) => Prompt
   (self: Prompt, content: string): Prompt
 } = dual(2, (self: Prompt, content: string): Prompt => {
-  const messages: Array<Message> = []
+  let system: SystemMessage | undefined = undefined
   for (const message of self.content) {
     if (message.role === "system") {
-      const system = makeMessage("system", {
+      system = makeMessage("system", {
         content: message.content + content
       })
-      messages.push(system)
-    } else {
-      messages.push(message)
+      break
     }
   }
-  return makePrompt(messages)
+  if (Predicate.isUndefined(system)) {
+    system = makeMessage("system", { content })
+  }
+  return makePrompt([system, ...self.content])
 })

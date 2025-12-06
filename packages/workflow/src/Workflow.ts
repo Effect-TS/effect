@@ -16,7 +16,7 @@ import * as PrimaryKey from "effect/PrimaryKey"
 import type * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type * as AST from "effect/SchemaAST"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import { makeHashDigest } from "./internal/crypto.js"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.js"
 
@@ -537,6 +537,14 @@ export const intoResult = <A, E, R>(
             ? Effect.failCause(cause as Cause.Cause<never>)
             : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
       }),
+      Effect.onExit((exit) => {
+        if (Exit.isFailure(exit)) {
+          return Scope.close(instance.scope, exit)
+        } else if (exit.value._tag === "Complete") {
+          return Scope.close(instance.scope, exit.value.exit)
+        }
+        return Effect.void
+      }),
       Effect.uninterruptible
     )
   })
@@ -573,6 +581,53 @@ export const wrapActivityResult = <A, E, R>(
   })
 
 /**
+ * Accesses the workflow scope.
+ *
+ * The workflow scope is only closed when the workflow execution fully
+ * completes.
+ *
+ * @since 1.0.0
+ * @category Scope
+ */
+export const scope: Effect.Effect<
+  Scope.Scope,
+  never,
+  WorkflowInstance
+> = Effect.map(InstanceTag, (instance) => instance.scope as Scope.Scope)
+
+/**
+ * Provides the workflow scope to the given effect.
+ *
+ * The workflow scope is only closed when the workflow execution fully
+ * completes.
+ *
+ * @since 1.0.0
+ * @category Scope
+ */
+export const provideScope = <A, E, R>(
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, Exclude<R, Scope.Scope> | WorkflowInstance> =>
+  Effect.flatMap(scope, (scope) => Scope.extend(effect, scope))
+
+/**
+ * @since 1.0.0
+ * @category Scope
+ */
+export const addFinalizer: <R>(
+  f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
+) => Effect.Effect<
+  void,
+  never,
+  WorkflowInstance | R
+> = Effect.fnUntraced(function*<R>(
+  f: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void, never, R>
+) {
+  const scope = (yield* InstanceTag).scope
+  const runtime = yield* Effect.runtime<R>()
+  yield* Scope.addFinalizerExit(scope, (exit) => Effect.provide(f(exit), runtime))
+})
+
+/**
  * Add compensation logic to an effect inside a Workflow. The compensation finalizer will be
  * called if the entire workflow fails, allowing you to perform cleanup or
  * other actions based on the success value and the cause of the workflow failure.
@@ -600,14 +655,7 @@ export const withCompensation: {
   Effect.uninterruptibleMask((restore) =>
     Effect.tap(
       restore(effect),
-      (value) =>
-        Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) =>
-          Effect.addFinalizer((exit) =>
-            Exit.isSuccess(exit) || Context.get(context, InstanceTag).suspended
-              ? Effect.void
-              : compensation(value, exit.cause)
-          )
-        )
+      (value) => addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause))
     )
   ))
 

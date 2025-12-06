@@ -7888,7 +7888,7 @@ const bigDecimalPretty = (): pretty_.Pretty<bigDecimal_.BigDecimal> => (val) =>
   `BigDecimal(${bigDecimal_.format(bigDecimal_.normalize(val))})`
 
 const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
-  fc.tuple(fc.bigInt(), fc.integer({ min: 0, max: 18 }))
+  fc.tuple(fc.bigInt(), fc.integer({ min: -18, max: 18 }))
     .map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**

@@ -1,5 +1,16 @@
 # @effect/ai-openrouter
 
+## 0.7.0
+
+### Minor Changes
+
+- [#5849](https://github.com/Effect-TS/effect/pull/5849) [`2dcbf98`](https://github.com/Effect-TS/effect/commit/2dcbf98b0b426536f71dfb33cbe6f310d7ad4e77) Thanks @IMax153! - Update generated schema definitions and apply patch fixes
+
+### Patch Changes
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
 ## 0.6.0
 
 ### Patch Changes
