@@ -517,8 +517,10 @@ export const handler = <
   Groups extends HttpApiGroup.HttpApiGroup.Any,
   ApiError,
   ApiR,
-  const GroupName extends Groups["identifier"],
-  const Name extends HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, GroupName>["name"],
+  const GroupName extends HttpApiGroup.HttpApiGroup.Name<Groups>,
+  const Name extends HttpApiEndpoint.HttpApiEndpoint.Name<
+    HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups, GroupName>
+  >,
   R
 >(
   _api: HttpApi.HttpApi<ApiId, Groups, ApiError, ApiR>,
