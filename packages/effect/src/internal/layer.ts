@@ -33,6 +33,7 @@ import * as OpCodes from "./opCodes/layer.js"
 import * as ref from "./ref.js"
 import * as runtime from "./runtime.js"
 import * as runtimeFlags from "./runtimeFlags.js"
+import * as StackTraceLimit from "./stackTraceLimit.js"
 import * as synchronized from "./synchronizedRef.js"
 import * as tracer from "./tracer.js"
 
@@ -693,10 +694,10 @@ const mockImpl = <I, S extends object>(tag: Context.Tag<I, S>, service: Layer.Pa
         if (prop in target) {
           return target[prop as keyof S]
         }
-        const prevLimit = Error.stackTraceLimit
-        Error.stackTraceLimit = 2
-        const error = new Error(`${tag.key}: Unimplemented method "${prop.toString()}"`)
-        Error.stackTraceLimit = prevLimit
+        const error = StackTraceLimit.withStackTraceLimit(
+          2,
+          () => new Error(`${tag.key}: Unimplemented method "${prop.toString()}"`)
+        )
         error.name = "UnimplementedError"
         return makeUnimplemented(error)
       },

@@ -40,6 +40,7 @@ import * as option_ from "./internal/option.js"
 import * as query from "./internal/query.js"
 import * as runtime_ from "./internal/runtime.js"
 import * as schedule_ from "./internal/schedule.js"
+import * as StackTraceLimit from "./internal/stackTraceLimit.js"
 import * as internalTracer from "./internal/tracer.js"
 import type * as Layer from "./Layer.js"
 import type * as LogLevel from "./LogLevel.js"
@@ -13509,10 +13510,7 @@ export const Tag: <const Id extends string>(id: Id) => <
       : [X] extends [PromiseLike<infer A>] ? Effect<A, Cause.UnknownException, Self>
       : Effect<X, never, Self>
   } = (id) => () => {
-    const limit = Error.stackTraceLimit
-    Error.stackTraceLimit = 2
-    const creationError = new Error()
-    Error.stackTraceLimit = limit
+    const creationError = StackTraceLimit.withStackTraceLimit(2, () => new Error())
     function TagClass() {}
     Object.setPrototypeOf(TagClass, TagProto)
     TagClass.key = id
@@ -13668,10 +13666,7 @@ export const Service: <Self = never>() => [Self] extends [never] ? MissingSelfGe
   return function() {
     const [id, maker] = arguments
     const proxy = "accessors" in maker ? maker["accessors"] : false
-    const limit = Error.stackTraceLimit
-    Error.stackTraceLimit = 2
-    const creationError = new Error()
-    Error.stackTraceLimit = limit
+    const creationError = StackTraceLimit.withStackTraceLimit(2, () => new Error())
 
     let patchState: "unchecked" | "plain" | "patched" = "unchecked"
     const TagClass: any = function(this: any, service: any) {
@@ -14628,16 +14623,10 @@ export const fn:
     name: string,
     options?: Tracer.SpanOptions
   ) => fn.Gen & fn.NonGen) = function(nameOrBody: Function | string, ...pipeables: Array<any>) {
-    const limit = Error.stackTraceLimit
-    Error.stackTraceLimit = 2
-    const errorDef = new Error()
-    Error.stackTraceLimit = limit
+    const errorDef = StackTraceLimit.withStackTraceLimit(2, () => new Error())
     if (typeof nameOrBody !== "string") {
       return defineLength(nameOrBody.length, function(this: any, ...args: Array<any>) {
-        const limit = Error.stackTraceLimit
-        Error.stackTraceLimit = 2
-        const errorCall = new Error()
-        Error.stackTraceLimit = limit
+        const errorCall = StackTraceLimit.withStackTraceLimit(2, () => new Error())
         return fnApply({
           self: this,
           body: nameOrBody,
@@ -14659,10 +14648,7 @@ export const fn:
         body.length,
         ({
           [name](this: any, ...args: Array<any>) {
-            const limit = Error.stackTraceLimit
-            Error.stackTraceLimit = 2
-            const errorCall = new Error()
-            Error.stackTraceLimit = limit
+            const errorCall = StackTraceLimit.withStackTraceLimit(2, () => new Error())
             return fnApply({
               self: this,
               body,
