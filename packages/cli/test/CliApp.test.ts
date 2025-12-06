@@ -1,3 +1,4 @@
+import * as Args from "@effect/cli/Args"
 import type * as CliApp from "@effect/cli/CliApp"
 import * as CliConfig from "@effect/cli/CliConfig"
 import * as Command from "@effect/cli/Command"
@@ -112,6 +113,22 @@ describe("CliApp", () => {
         })
         yield* cli(["node", "logging.js", "--log-level=debug"])
         expect(logLevel).toEqual(LogLevel.Debug)
+      }).pipe(runEffect))
+
+    it("should handle paths with spaces when using --log-level", () =>
+      Effect.gen(function*() {
+        let executedValue: string | undefined = undefined
+        const cmd = Command.make("test", { value: Args.text() }, ({ value }) =>
+          Effect.sync(() => {
+            executedValue = value
+          }))
+        const cli = Command.run(cmd, {
+          name: "Test",
+          version: "1.0.0"
+        })
+        // Simulate Windows path with spaces (e.g., "C:\Program Files\nodejs\node.exe")
+        yield* cli(["C:\\Program Files\\node.exe", "C:\\My Scripts\\test.js", "--log-level", "info", "hello"])
+        expect(executedValue).toEqual("hello")
       }).pipe(runEffect))
   })
 })
