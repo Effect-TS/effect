@@ -38,20 +38,22 @@ describe("Http/App", () => {
     })
 
     test("stream scope", async () => {
+      let order = 0
       let streamFinalized = 0
       let handlerFinalized = 0
       const handler = HttpApp.toWebHandler(Effect.gen(function*() {
         yield* Effect.addFinalizer(() =>
           Effect.sync(() => {
-            handlerFinalized = Date.now()
+            handlerFinalized = order
+            order += 1
           })
         )
         const stream = Stream.make("foo", "bar").pipe(
           Stream.encodeText,
           Stream.ensuring(Effect.sync(() => {
-            streamFinalized = Date.now()
-          })),
-          Stream.tap(() => Effect.sleep(50))
+            streamFinalized = order
+            order += 1
+          }))
         )
         return HttpServerResponse.stream(stream)
       }))
