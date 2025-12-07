@@ -236,10 +236,10 @@ export interface FileSystem {
    * Set the `recursive` option to `true` to watch for changes in subdirectories as well.
    *
    * Note: The `recursive` option behavior depends on the backend implementation:
-   * - When using `@parcel/watcher` (default in `@effect/platform-node`):
+   * - When using the default Node.js `fs.watch()` backend: The `recursive`
+   *   option is supported on all platforms (Node.js v20+).
+   * - When using `@parcel/watcher` (via `NodeFileSystem/ParcelWatcher` layer):
    *   Watching is always recursive on all platforms. This option is ignored.
-   * - When using Node.js `fs.watch()` fallback: The `recursive` option is
-   *   supported on all platforms (Node.js v20+).
    */
   readonly watch: (path: string, options?: WatchOptions) => Stream<WatchEvent, PlatformError>
   /**
