@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.59.1",
+  "version": "0.59.2",
   "type": "module",
   "license": "MIT",
   "description": "OpenTelemetry integration for Effect",
@@ -57,11 +57,11 @@
     "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9",
     "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/sdk-logs": ">=0.203.0 <0.300.0",
     "@opentelemetry/sdk-metrics": "^2.0.0",
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-node": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/sdk-logs": "^0.203.0",
     "@opentelemetry/semantic-conventions": "^1.33.0",
     "effect": "workspace:^"
   },
@@ -91,17 +91,17 @@
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/context-async-hooks": "^2.0.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",
-    "@opentelemetry/exporter-prometheus": "^0.203.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
-    "@opentelemetry/otlp-exporter-base": "^0.203.0",
-    "@opentelemetry/resources": "^2.0.0",
-    "@opentelemetry/sdk-logs": "^0.203.0",
-    "@opentelemetry/sdk-metrics": "^2.0.0",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
-    "@opentelemetry/sdk-trace-node": "^2.0.0",
-    "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/semantic-conventions": "^1.33.0"
+    "@opentelemetry/context-async-hooks": "^2.2.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.208.0",
+    "@opentelemetry/exporter-prometheus": "^0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
+    "@opentelemetry/otlp-exporter-base": "^0.208.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/sdk-logs": "^0.208.0",
+    "@opentelemetry/sdk-metrics": "^2.2.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "@opentelemetry/semantic-conventions": "^1.38.0"
   }
 }

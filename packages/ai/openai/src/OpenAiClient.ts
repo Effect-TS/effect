@@ -479,7 +479,11 @@ export class ResponseContentPartAddedEvent extends Schema.Class<ResponseContentP
   /**
    * The content part that was added.
    */
-  part: Generated.OutputContent
+  part: Schema.Union(
+    Generated.OutputTextContent,
+    Generated.RefusalContent,
+    Generated.ReasoningTextContent
+  )
 }) {}
 
 /**
@@ -514,7 +518,11 @@ export class ResponseContentPartDoneEvent extends Schema.Class<ResponseContentPa
   /**
    * The content part that was added.
    */
-  part: Generated.OutputContent
+  part: Schema.Union(
+    Generated.OutputTextContent,
+    Generated.RefusalContent,
+    Generated.ReasoningTextContent
+  )
 }) {}
 
 /**

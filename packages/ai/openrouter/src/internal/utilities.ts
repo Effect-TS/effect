@@ -13,7 +13,7 @@ const finishReasonMap: Record<string, Response.FinishReason> = {
 
 /** @internal */
 export const resolveFinishReason = (
-  finishReason: typeof Generated.ChatCompletionChoiceFinishReason.Type | null
+  finishReason: typeof Generated.ChatCompletionFinishReason.Type | null
 ): Response.FinishReason => {
   if (Predicate.isNull(finishReason)) {
     return "unknown"

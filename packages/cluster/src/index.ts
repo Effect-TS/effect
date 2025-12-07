@@ -151,6 +151,11 @@ export * as ShardingRegistrationEvent from "./ShardingRegistrationEvent.js"
 /**
  * @since 1.0.0
  */
+export * as SingleRunner from "./SingleRunner.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Singleton from "./Singleton.js"
 
 /**
@@ -177,3 +182,8 @@ export * as SqlMessageStorage from "./SqlMessageStorage.js"
  * @since 1.0.0
  */
 export * as SqlRunnerStorage from "./SqlRunnerStorage.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as TestRunner from "./TestRunner.js"

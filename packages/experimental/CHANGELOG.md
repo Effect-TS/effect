@@ -1,5 +1,53 @@
 # @effect/experimental
 
+## 0.57.11
+
+### Patch Changes
+
+- [#5864](https://github.com/Effect-TS/effect/pull/5864) [`ebe2e52`](https://github.com/Effect-TS/effect/commit/ebe2e5278420d4b2bf30113a3b0a5ed68382d870) Thanks @mattiamanzati! - Ensure Devtools Tracer does not cut off span options
+
+- Updated dependencies [[`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249)]:
+  - effect@3.19.9
+
+## 0.57.10
+
+### Patch Changes
+
+- [#5847](https://github.com/Effect-TS/effect/pull/5847) [`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1) Thanks @tim-smart! - ensure PersistedQueue memory driver removes items
+
+## 0.57.9
+
+### Patch Changes
+
+- [#5837](https://github.com/Effect-TS/effect/pull/5837) [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9) Thanks @tim-smart! - support idempotent offers to PersistedQueue
+
+## 0.57.8
+
+### Patch Changes
+
+- [#5829](https://github.com/Effect-TS/effect/pull/5829) [`7b2cd37`](https://github.com/Effect-TS/effect/commit/7b2cd374cbc8b7a2e800926082febf54173c9e49) Thanks @tim-smart! - reset redis staging area on a schedule for PersistedQueue
+
+## 0.57.7
+
+### Patch Changes
+
+- [#5820](https://github.com/Effect-TS/effect/pull/5820) [`c379c45`](https://github.com/Effect-TS/effect/commit/c379c45777cea3ec8c985d55f597902813bd3ae2) Thanks @tim-smart! - ensure redis PersistedQueue removes stale pending items on reset
+
+- Updated dependencies [[`f03b8e5`](https://github.com/Effect-TS/effect/commit/f03b8e55f12019cc855a1306e9cbfc7611a9e281)]:
+  - effect@3.19.8
+
+## 0.57.6
+
+### Patch Changes
+
+- [#5816](https://github.com/Effect-TS/effect/pull/5816) [`a9206ce`](https://github.com/Effect-TS/effect/commit/a9206ceee64daf3b12a778b60ee2bfdede748c57) Thanks @tim-smart! - add dynamic batch size to PersistedQueue based on pending takers
+
+## 0.57.5
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
 ## 0.57.4
 
 ### Patch Changes

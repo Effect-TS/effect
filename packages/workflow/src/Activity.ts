@@ -11,6 +11,7 @@ import { dual } from "effect/Function"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import type { Scope } from "effect/Scope"
+import type * as Types from "effect/Types"
 import * as DurableDeferred from "./DurableDeferred.js"
 import { makeHashDigest } from "./internal/crypto.js"
 import * as Workflow from "./Workflow.js"
@@ -148,7 +149,15 @@ const retryOnInterrupt = (
  * @since 1.0.0
  * @category Error handling
  */
-export const retry: typeof Effect.retry = dual(
+export const retry: {
+  <E, O extends Types.NoExcessProperties<Omit<Effect.Retry.Options<E>, "schedule">, O>>(
+    options: O
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Retry.Return<R, E, A, O>
+  <A, E, R, O extends Types.NoExcessProperties<Omit<Effect.Retry.Options<E>, "schedule">, O>>(
+    self: Effect.Effect<A, E, R>,
+    options: O
+  ): Effect.Retry.Return<R, E, A, O>
+} = dual(
   2,
   (effect: Effect.Effect<any, any, any>, options: {}) =>
     Effect.suspend(() => {
@@ -169,16 +178,24 @@ export class CurrentAttempt extends Context.Reference<CurrentAttempt>()("@effect
 
 /**
  * @since 1.0.0
- * @category Execution ID
+ * @category Idempotency
  */
-export const executionIdWithAttempt: Effect.Effect<
-  string,
-  never,
-  WorkflowInstance
-> = Effect.gen(function*() {
+export const idempotencyKey: (
+  name: string,
+  options?: {
+    readonly includeAttempt?: boolean | undefined
+  } | undefined
+) => Effect.Effect<string, never, WorkflowInstance> = Effect.fnUntraced(function*(name: string, options?: {
+  readonly includeAttempt?: boolean | undefined
+}) {
   const instance = yield* InstanceTag
-  const attempt = yield* CurrentAttempt
-  return yield* makeHashDigest(`${instance.executionId}-${attempt}`)
+  let key = `${instance.executionId}`
+  if (options?.includeAttempt) {
+    const attempt = yield* CurrentAttempt
+    key += `-${attempt}`
+  }
+  key += `-${name}`
+  return yield* makeHashDigest(key)
 })
 
 /**

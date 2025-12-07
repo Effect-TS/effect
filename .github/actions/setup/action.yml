@@ -5,6 +5,8 @@ inputs:
     description: The version of Node.js to install
     required: true
     default: 23.7.0
+  registry-url:
+    description: Optional registry to set up for auth.
 
 runs:
   using: composite
@@ -16,6 +18,7 @@ runs:
       with:
         cache: pnpm
         node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
     - name: Install dependencies
       shell: bash
       run: pnpm install
