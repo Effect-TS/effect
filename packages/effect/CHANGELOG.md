@@ -1,5 +1,13 @@
 # effect
 
+## 3.19.10
+
+### Patch Changes
+
+- [#5874](https://github.com/Effect-TS/effect/pull/5874) [`bd08028`](https://github.com/Effect-TS/effect/commit/bd080284febb620e7e71f661bf9d850c402bb87f) Thanks @mattiamanzati! - Fix NoSuchElementException instantiation in fastPath and add corresponding test case
+
+- [#5878](https://github.com/Effect-TS/effect/pull/5878) [`6c5c2ba`](https://github.com/Effect-TS/effect/commit/6c5c2ba50ce49386e8d1e657230492ee900a6ec7) Thanks @Hoishin! - prevent crash from Hash and Equal with invalid Date object
+
 ## 3.19.9
 
 ### Patch Changes
