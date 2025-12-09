@@ -5,6 +5,7 @@ import {
   Context,
   Effect,
   Either,
+  Equal,
   FastCheck,
   ParseResult,
   Predicate,
@@ -256,7 +257,12 @@ export const assertions = Effect.gen(function*() {
         effect: Effect.Effect<A, E>,
         a: A
       ) {
-        deepStrictEqual(await Effect.runPromise(Effect.either(effect)), Either.right(a))
+        const actual = await Effect.runPromise(Effect.either(effect))
+        const expected = Either.right(a)
+        if (Equal.equals(actual, expected)) {
+          return
+        }
+        deepStrictEqual(actual, expected)
       },
 
       /**
