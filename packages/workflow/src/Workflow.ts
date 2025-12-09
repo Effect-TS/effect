@@ -561,12 +561,9 @@ export const wrapActivityResult = <A, E, R>(
     const instance = Context.get(context, InstanceTag)
     const state = instance.activityState
     if (instance.suspended) {
-      return state.count > 0 ?
-        state.latch.await.pipe(
-          Effect.andThen(Effect.yieldNow()),
-          Effect.andThen(suspend(instance))
-        ) :
-        suspend(instance)
+      return waitForZero(instance).pipe(
+        Effect.andThen(suspend(instance))
+      )
     }
     if (state.count === 0) state.latch.unsafeClose()
     state.count++
@@ -576,9 +573,22 @@ export const wrapActivityResult = <A, E, R>(
       if (Exit.isSuccess(exit) && isResult(exit.value) && exit.value._tag === "Suspended" && exit.value.cause) {
         instance.cause = instance.cause ? Cause.sequential(instance.cause, exit.value.cause) : exit.value.cause
       }
-      return state.count === 0 ? state.latch.open : isSuspended ? state.latch.await : Effect.void
+      return state.count === 0 ? state.latch.open : isSuspended ? waitForZero(instance) : Effect.void
     })
   })
+
+const waitForZero = Effect.fnUntraced(function*(instance: WorkflowInstance["Type"]) {
+  const state = instance.activityState
+  while (true) {
+    if (state.count > 0) {
+      yield* state.latch.await
+      yield* Effect.yieldNow()
+      continue
+    }
+    yield* Effect.yieldNow()
+    if (state.count === 0) return
+  }
+})
 
 /**
  * Accesses the workflow scope.
