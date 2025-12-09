@@ -1,5 +1,5 @@
 ---
-"@effect/vitest": major
+"@effect/vitest": minor
 ---
 
 Support vitest v4
