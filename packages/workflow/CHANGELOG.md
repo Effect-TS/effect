@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.15.2
+
+### Patch Changes
+
+- [#5880](https://github.com/Effect-TS/effect/pull/5880) [`cc4d2c3`](https://github.com/Effect-TS/effect/commit/cc4d2c3821fa060986d16ea04fca50a14f8ac6ff) Thanks @tim-smart! - ensure no more Activites are attempted before suspending
+
+- Updated dependencies [[`bd08028`](https://github.com/Effect-TS/effect/commit/bd080284febb620e7e71f661bf9d850c402bb87f), [`6c5c2ba`](https://github.com/Effect-TS/effect/commit/6c5c2ba50ce49386e8d1e657230492ee900a6ec7)]:
+  - effect@3.19.10
+
 ## 0.15.1
 
 ### Patch Changes
