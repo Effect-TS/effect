@@ -52,7 +52,9 @@ function compareBoth(self: unknown, that: unknown): boolean {
             : false
         }
       } else if (self instanceof Date && that instanceof Date) {
-        return self.toISOString() === that.toISOString()
+        const t1 = self.getTime()
+        const t2 = that.getTime()
+        return t1 === t2 || (Number.isNaN(t1) && Number.isNaN(t2))
       } else if (self instanceof URL && that instanceof URL) {
         return self.href === that.href
       }

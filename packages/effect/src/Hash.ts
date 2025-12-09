@@ -53,6 +53,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       if (self === null) {
         return string("null")
       } else if (self instanceof Date) {
+        if (Number.isNaN(self.getTime())) {
+          return string("Invalid Date")
+        }
         return hash(self.toISOString())
       } else if (self instanceof URL) {
         return hash(self.href)
