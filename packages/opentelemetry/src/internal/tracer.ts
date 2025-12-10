@@ -289,12 +289,9 @@ const makeOtelSpan = (span: EffectTracer.Span, clock: Clock.Clock): OtelApi.Span
       return self
     },
     setStatus(status) {
-      if (span.status._tag === "Started" || status.code === OtelApi.SpanStatusCode.UNSET) {
-        return self
-      }
-      exit = OtelApi.SpanStatusCode.OK
-        ? Exit.void
-        : Exit.die(status.message ?? "Unknown error")
+      exit = OtelApi.SpanStatusCode.ERROR
+        ? Exit.die(status.message ?? "Unknown error")
+        : Exit.void
       return self
     },
     updateName: () => self,
@@ -342,7 +339,6 @@ export const currentOtelSpan: Effect.Effect<OtelApi.Span, Cause.NoSuchElementExc
     return makeOtelSpan(span, clock)
   })
 )
-
 
 /** @internal */
 export const layerGlobalProvider = Layer.sync(
