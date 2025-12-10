@@ -1,10 +1,11 @@
 import * as OtelApi from "@opentelemetry/api"
 import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cause from "effect/Cause"
+import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type { Exit } from "effect/Exit"
-import { dual } from "effect/Function"
+import * as Exit from "effect/Exit"
+import { constTrue, dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
@@ -109,7 +110,7 @@ export class OtelSpan implements EffectTracer.Span {
     })))
   }
 
-  end(endTime: bigint, exit: Exit<unknown, unknown>) {
+  end(endTime: bigint, exit: Exit.Exit<unknown, unknown>) {
     const hrTime = nanosToHrTime(endTime)
     this.status = {
       _tag: "Ended",
@@ -237,38 +238,109 @@ export const makeExternalSpan = (options: {
   }
 }
 
-const makeReadOnlyOtelSpan = (span: EffectTracer.Span): OtelApi.Span => {
+const makeOtelSpan = (span: EffectTracer.Span, clock: Clock.Clock): OtelApi.Span => {
   const spanContext: OtelApi.SpanContext = {
     traceId: span.traceId,
     spanId: span.spanId,
     traceFlags: span.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
     isRemote: false
   }
+
+  let exit = Exit.void
+
   const self: OtelApi.Span = {
     spanContext: () => spanContext,
-    setAttribute: () => self,
-    setAttributes: () => self,
-    addEvent: () => self,
-    addLink: () => self,
-    addLinks: () => self,
-    setStatus: () => self,
+    setAttribute(key, value) {
+      span.attribute(key, value)
+      return self
+    },
+    setAttributes(attributes) {
+      for (const [key, value] of Object.entries(attributes)) {
+        span.attribute(key, value)
+      }
+      return self
+    },
+    addEvent(name) {
+      let attributes: OtelApi.Attributes | undefined = undefined
+      let startTime: OtelApi.TimeInput | undefined = undefined
+      if (arguments.length === 3) {
+        attributes = arguments[1]
+        startTime = arguments[2]
+      } else {
+        startTime = arguments[1]
+      }
+      span.event(name, convertOtelTimeInput(startTime, clock), attributes)
+      return self
+    },
+    addLink(link) {
+      span.addLinks([{
+        _tag: "SpanLink",
+        span: makeExternalSpan(link.context),
+        attributes: link.attributes ?? {}
+      }])
+      return self
+    },
+    addLinks(links) {
+      span.addLinks(links.map((link) => ({
+        _tag: "SpanLink",
+        span: makeExternalSpan(link.context),
+        attributes: link.attributes ?? {}
+      })))
+      return self
+    },
+    setStatus(status) {
+      if (span.status._tag === "Started" || status.code === OtelApi.SpanStatusCode.UNSET) {
+        return self
+      }
+      exit = OtelApi.SpanStatusCode.OK
+        ? Exit.void
+        : Exit.die(status.message ?? "Unknown error")
+      return self
+    },
     updateName: () => self,
-    end: () => {},
-    isRecording: () => false,
-    recordException: () => {}
+    end(endTime) {
+      const time = convertOtelTimeInput(endTime, clock)
+      span.end(time, exit)
+      return self
+    },
+    isRecording: constTrue,
+    recordException(exception, timeInput) {
+      const time = convertOtelTimeInput(timeInput, clock)
+      const cause = Cause.fail(exception)
+      const error = Cause.prettyErrors(cause)[0]
+      span.event(error.message, time, {
+        "exception.type": error.name,
+        "exception.message": error.message,
+        "exception.stacktrace": error.stack ?? ""
+      })
+    }
   }
   return self
 }
 
+const bigint1e6 = 1_000_000n
+const bigint1e9 = 1_000_000_000n
+
+const convertOtelTimeInput = (input: OtelApi.TimeInput | undefined, clock: Clock.Clock): bigint => {
+  if (input === undefined) {
+    return clock.unsafeCurrentTimeNanos()
+  } else if (typeof input === "number") {
+    return BigInt(Math.round(input * 1_000_000))
+  } else if (input instanceof Date) {
+    return BigInt(input.getTime()) * bigint1e6
+  }
+  const [seconds, nanos] = input
+  return BigInt(seconds) * bigint1e9 + BigInt(nanos)
+}
+
 /** @internal */
-export const currentOtelSpan: Effect.Effect<OtelApi.Span, Cause.NoSuchElementException> = Effect.map(
-  Effect.currentSpan,
-  (span): OtelApi.Span => {
+export const currentOtelSpan: Effect.Effect<OtelApi.Span, Cause.NoSuchElementException> = Effect.clockWith((clock) =>
+  Effect.map(Effect.currentSpan, (span): OtelApi.Span => {
     if (OtelSpanTypeId in span) {
       return (span as OtelSpan).span
     }
-    return makeReadOnlyOtelSpan(span)
-  }
+    return makeOtelSpan(span, clock)
+  })
 )
 
 

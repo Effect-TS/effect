@@ -150,8 +150,11 @@ describe("Tracer", () => {
             expect(spanContext.spanId).toBe(span.spanId)
             expect(spanContext.traceFlags).toBe(OtelApi.TraceFlags.SAMPLED)
             expect(spanContext.isRemote).toBe(false)
-            // OTLP spans return a read-only wrapper
-            expect(otelSpan.isRecording()).toBe(false)
+            expect(otelSpan.isRecording()).toBe(true)
+
+            // it should proxy attribute changes
+            otelSpan.setAttribute("key", "value")
+            expect(span.attributes.get("key")).toEqual("value")
           })
         ),
         OtlpTracingLive
