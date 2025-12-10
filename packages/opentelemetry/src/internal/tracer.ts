@@ -315,8 +315,8 @@ const makeOtelSpan = (span: EffectTracer.Span, clock: Clock.Clock): OtelApi.Span
   return self
 }
 
-const bigint1e6 = 1_000_000n
-const bigint1e9 = 1_000_000_000n
+const bigint1e6 = BigInt(1_000_000)
+const bigint1e9 = BigInt(1_000_000_000)
 
 const convertOtelTimeInput = (input: OtelApi.TimeInput | undefined, clock: Clock.Clock): bigint => {
   if (input === undefined) {
