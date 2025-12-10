@@ -1,5 +1,17 @@
 # effect
 
+## 3.19.11
+
+### Patch Changes
+
+- [#5888](https://github.com/Effect-TS/effect/pull/5888) [`38abd67`](https://github.com/Effect-TS/effect/commit/38abd67998f676893866a72cb41bbd5edd07b169) Thanks @gcanti! - filter non-JSON values from schema examples and defaults, closes #5884
+
+  Introduce JsonValue type and update JsonSchemaAnnotations to use it for
+  type safety. Add validation to filter invalid values (BigInt, cyclic refs)
+  from examples and defaults, preventing infinite recursion on cycles.
+
+- [#5885](https://github.com/Effect-TS/effect/pull/5885) [`44e0b04`](https://github.com/Effect-TS/effect/commit/44e0b044480c5d8ab17fbdaf1c528f06796fa681) Thanks @gcanti! - feat(JSONSchema): add missing options for target JSON Schema version in make function, closes #5883
+
 ## 3.19.10
 
 ### Patch Changes
