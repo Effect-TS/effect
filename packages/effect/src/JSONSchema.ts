@@ -246,20 +246,34 @@ export type JsonSchema7Root = JsonSchema7 & {
 }
 
 /**
+ * Generates a JSON Schema from a schema.
+ *
+ * **Options**
+ *
+ * - `target`: The target JSON Schema version. Possible values are:
+ *   - `"jsonSchema7"`: JSON Schema draft-07 (default behavior).
+ *   - `"jsonSchema2019-09"`: JSON Schema draft-2019-09.
+ *   - `"jsonSchema2020-12"`: JSON Schema draft-2020-12.
+ *   - `"openApi3.1"`: OpenAPI 3.1.
+ *
  * @category encoding
  * @since 3.10.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: {
+  readonly target?: Target | undefined
+}): JsonSchema7Root => {
   const definitions: Record<string, any> = {}
+  const target = options?.target ?? "jsonSchema7"
   const ast = AST.isTransformation(schema.ast) && isParseJsonTransformation(schema.ast.from)
     // Special case top level `parseJson` transformations
     ? schema.ast.to
     : schema.ast
   const jsonSchema = fromAST(ast, {
-    definitions
+    definitions,
+    target
   })
   const out: JsonSchema7Root = {
-    $schema: getMetaSchemaUri("jsonSchema7"),
+    $schema: getMetaSchemaUri(target),
     $defs: {},
     ...jsonSchema
   }
