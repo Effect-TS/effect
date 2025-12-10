@@ -237,16 +237,40 @@ export const makeExternalSpan = (options: {
   }
 }
 
+const makeReadOnlyOtelSpan = (span: EffectTracer.Span): OtelApi.Span => {
+  const spanContext: OtelApi.SpanContext = {
+    traceId: span.traceId,
+    spanId: span.spanId,
+    traceFlags: span.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
+    isRemote: false
+  }
+  const self: OtelApi.Span = {
+    spanContext: () => spanContext,
+    setAttribute: () => self,
+    setAttributes: () => self,
+    addEvent: () => self,
+    addLink: () => self,
+    addLinks: () => self,
+    setStatus: () => self,
+    updateName: () => self,
+    end: () => {},
+    isRecording: () => false,
+    recordException: () => {}
+  }
+  return self
+}
+
 /** @internal */
-export const currentOtelSpan = Effect.flatMap(
+export const currentOtelSpan: Effect.Effect<OtelApi.Span, Cause.NoSuchElementException> = Effect.map(
   Effect.currentSpan,
-  (span) => {
+  (span): OtelApi.Span => {
     if (OtelSpanTypeId in span) {
-      return Effect.succeed((span as OtelSpan).span)
+      return (span as OtelSpan).span
     }
-    return Effect.fail(new Cause.NoSuchElementException())
+    return makeReadOnlyOtelSpan(span)
   }
 )
+
 
 /** @internal */
 export const layerGlobalProvider = Layer.sync(
