@@ -85,6 +85,9 @@ export const make: (options: {
       metricDataByName.set(data.name, data)
     }
 
+    // Track keys seen in this collection for cleanup
+    const seenKeys = new Set<string>()
+
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const { metricKey, metricState } = snapshot[i]
       let unit = "1"
@@ -102,6 +105,7 @@ export const make: (options: {
         let effectiveStartTime = startTime
 
         if (temporality === "delta") {
+          seenKeys.add(key)
           const prev = previousValues.get(key)?.counter?.count ?? 0
           value = Number(metricState.count) - prev
           previousValues.set(key, {
@@ -187,6 +191,7 @@ export const make: (options: {
         let effectiveStartTime = startTime
 
         if (temporality === "delta") {
+          seenKeys.add(key)
           const prevState = previousValues.get(key)?.histogram
           if (prevState) {
             count = metricState.count - prevState.count
@@ -245,6 +250,7 @@ export const make: (options: {
         let effectiveStartTime = startTime
 
         if (temporality === "delta") {
+          seenKeys.add(key)
           effectiveStartTime = lastCollectionTime ?? nowTime
         }
 
@@ -297,6 +303,7 @@ export const make: (options: {
         let sumValue = metricState.sum
 
         if (temporality === "delta") {
+          seenKeys.add(key)
           const prevState = previousValues.get(key)?.summary
           if (prevState) {
             countValue = metricState.count - prevState.count
@@ -386,6 +393,13 @@ export const make: (options: {
 
     // Track collection time for delta temporality
     lastCollectionTime = nowTime
+
+    // Cleanup: remove stale entries not seen in this collection
+    for (const key of previousValues.keys()) {
+      if (!seenKeys.has(key)) {
+        previousValues.delete(key)
+      }
+    }
 
     return {
       resourceMetrics: [{

@@ -99,6 +99,9 @@ export class MetricProducerImpl implements MetricProducer {
       metricDataByName.set(data.descriptor.name, data)
     }
 
+    // Track keys seen in this collection for cleanup
+    const seenKeys = new Set<string>()
+
     for (let i = 0, len = snapshot.length; i < len; i++) {
       const { metricKey, metricState } = snapshot[i]
       const attributes = Arr.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
@@ -116,6 +119,7 @@ export class MetricProducerImpl implements MetricProducer {
 
         if (temporality === AggregationTemporality.DELTA) {
           const key = `counter:${descriptor.name}:${JSON.stringify(attributes)}`
+          seenKeys.add(key)
           const prev = this.previousValues.get(key)?.counter?.count ?? 0
           value = Number(metricState.count) - prev
           this.previousValues.set(key, {
@@ -189,6 +193,7 @@ export class MetricProducerImpl implements MetricProducer {
 
         if (temporality === AggregationTemporality.DELTA) {
           const key = `histogram:${descriptor.name}:${JSON.stringify(attributes)}`
+          seenKeys.add(key)
           const prevState = this.previousValues.get(key)?.histogram
           if (prevState) {
             count = metricState.count - prevState.count
@@ -241,6 +246,9 @@ export class MetricProducerImpl implements MetricProducer {
       } else if (MetricState.isFrequencyState(metricState)) {
         const temporality = this.getTemporality(descriptor.type)
         const key = `frequency:${descriptor.name}:${JSON.stringify(attributes)}`
+        if (temporality === AggregationTemporality.DELTA) {
+          seenKeys.add(key)
+        }
 
         const dataPoints: Array<DataPoint<number>> = []
         const currentOccurrences = new Map<string, number>()
@@ -294,6 +302,9 @@ export class MetricProducerImpl implements MetricProducer {
         // For summary, count and sum support delta, but quantiles are point-in-time (gauge-like)
         const temporality = this.getTemporality(InstrumentType.COUNTER)
         const key = `summary:${descriptor.name}:${JSON.stringify(attributes)}`
+        if (temporality === AggregationTemporality.DELTA) {
+          seenKeys.add(key)
+        }
 
         let effectiveStartTime = startTime
         let countValue = metricState.count
@@ -389,6 +400,13 @@ export class MetricProducerImpl implements MetricProducer {
 
     // Track collection time for delta temporality
     this.lastCollectionTime = hrTimeNow
+
+    // Cleanup: remove stale entries not seen in this collection
+    for (const key of this.previousValues.keys()) {
+      if (!seenKeys.has(key)) {
+        this.previousValues.delete(key)
+      }
+    }
 
     return Promise.resolve({
       resourceMetrics: {
