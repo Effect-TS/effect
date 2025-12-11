@@ -1,6 +1,6 @@
 import { PgliteClient } from "@effect/sql-pglite"
 import * as Statement from "@effect/sql/Statement"
-import { assert, describe, expect, it, test } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, String } from "effect"
 
 const compilerTransform = PgliteClient.makeCompiler(String.camelToSnake)
@@ -14,7 +14,6 @@ const ClientTransformLive = PgliteClient.layer({
   dataDir: "memory://"
 })
 
-test("should work", () => expect(true))
 describe("PgliteClient", () => {
   it.layer(ClientLive, { timeout: "30 seconds" })("PgliteClient", (it) => {
     it.effect("insert helper", () =>

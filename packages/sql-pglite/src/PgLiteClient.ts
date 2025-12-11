@@ -121,17 +121,9 @@ export const make = <TExtensions extends Extensions = Extensions>(
       constructor(private readonly pg: PGlite) {}
 
       private run(query: Promise<any>) {
-        return Effect.async<ReadonlyArray<any>, SqlError>((resume) => {
-          query.then(
-            (result) => {
-              resume(Effect.succeed(result.rows))
-            },
-            (cause) => {
-              resume(new SqlError({ cause, message: "Failed to execute statement" }))
-            }
-          )
-          // PGlite doesn't have a cancel method like postgres.js
-          return Effect.succeed(void 0)
+        return Effect.tryPromise<ReadonlyArray<any>, SqlError>({
+          try: async () => (await query).rows,
+          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
         })
       }
 
@@ -159,9 +151,7 @@ export const make = <TExtensions extends Extensions = Extensions>(
         return this.run(this.pg.query(sql, params as any))
       }
       executeValues(sql: string, params: ReadonlyArray<Primitive>) {
-        // PGlite doesn't have a values() method like postgres.js
-        // We'll just return the regular query results
-        return this.execute(sql, params, (r) => Object.values(r))
+        return this.execute(sql, params, (r) => r.map((v) => Object.values(v) as any))
       }
       executeUnprepared(
         sql: string,
@@ -177,12 +167,12 @@ export const make = <TExtensions extends Extensions = Extensions>(
       ) {
         // PGlite doesn't have a cursor method like postgres.js
         // We'll fetch all results at once and convert to a stream
-        return Stream.fromEffect(
+        return Stream.fromIterableEffect(
           Effect.map(this.run(this.pg.query(sql, params as any)), (rows) => {
             const result = transformRows ? transformRows(rows) : rows
             return result
           })
-        ).pipe(Stream.flatMap(Stream.fromIterable))
+        )
       }
     }
 
@@ -208,26 +198,26 @@ export const make = <TExtensions extends Extensions = Extensions>(
         extensions: options.extensions ? (client as any) : ({} as any),
         listen: (channel: string) =>
           Stream.asyncPush<string, SqlError>((emit) =>
-            Effect.tryPromise({
-              try: async () => {
-                const unsub = await client.listen(channel, (payload) => emit.single(payload))
-                return { unsub }
-              },
-              catch: (cause) => new SqlError({ cause, message: "Failed to listen" })
-            }).pipe(
-              Effect.map(({ unsub }) =>
+            Effect.acquireRelease(
+              Effect.tryPromise({
+                try: async () => {
+                  return await client.listen(channel, (payload) => emit.single(payload))
+                },
+                catch: (cause) => new SqlError({ cause, message: `Failed to listen on channel "${channel}"` })
+              }),
+              (unsub) =>
                 Effect.tryPromise({
                   try: () => unsub(),
-                  catch: (cause) => new SqlError({ cause, message: "Failed to unlisten" })
-                })
-              )
+                  catch: (cause) => new SqlError({ cause, message: `Failed to unlisten on channel "${channel}"` })
+                }).pipe(Effect.catchTag("SqlError", Effect.logError))
             )
           ),
+
         notify: (channel: string, payload: string) =>
           Effect.tryPromise({
             try: () => client.query(`NOTIFY ${channel}, '${payload}'`),
-            catch: (cause) => new SqlError({ cause, message: "Failed to notify" })
-          }).pipe(Effect.map(() => void 0))
+            catch: (cause) => new SqlError({ cause, message: `Failed to notify on channel "${channel}"` })
+          }).pipe(Effect.asVoid)
       }
     )
   })
