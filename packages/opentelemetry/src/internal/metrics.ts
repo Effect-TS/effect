@@ -31,10 +31,48 @@ type MetricDataWithInstrumentDescriptor = MetricData & {
 }
 
 /** @internal */
+export type PreviousCounterState = {
+  readonly count: number
+}
+
+/** @internal */
+export type PreviousHistogramState = {
+  readonly count: number
+  readonly sum: number
+  readonly buckets: ReadonlyArray<number>
+}
+
+/** @internal */
+export type PreviousFrequencyState = {
+  readonly occurrences: ReadonlyMap<string, number>
+}
+
+/** @internal */
+export type PreviousSummaryState = {
+  readonly count: number
+  readonly sum: number
+}
+
+/** @internal */
+export type PreviousMetricState = {
+  readonly counter?: PreviousCounterState
+  readonly histogram?: PreviousHistogramState
+  readonly frequency?: PreviousFrequencyState
+  readonly summary?: PreviousSummaryState
+}
+
+/** @internal */
 export class MetricProducerImpl implements MetricProducer {
   constructor(readonly resource: Resources.Resource) {}
 
+  readers: Array<MetricReader> = []
   startTimes = new Map<string, HrTime>()
+  previousValues = new Map<string, PreviousMetricState>()
+  lastCollectionTime: HrTime | null = null
+
+  setReaders(readers: Array<MetricReader>) {
+    this.readers = readers
+  }
 
   startTimeFor(name: string, hrTime: HrTime) {
     if (this.startTimes.has(name)) {
@@ -42,6 +80,13 @@ export class MetricProducerImpl implements MetricProducer {
     }
     this.startTimes.set(name, hrTime)
     return hrTime
+  }
+
+  getTemporality(instrumentType: InstrumentType): AggregationTemporality {
+    if (this.readers.length > 0) {
+      return this.readers[0].selectAggregationTemporality(instrumentType)
+    }
+    return AggregationTemporality.CUMULATIVE
   }
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
@@ -64,11 +109,27 @@ export class MetricProducerImpl implements MetricProducer {
       const startTime = this.startTimeFor(descriptor.name, hrTimeNow)
 
       if (MetricState.isCounterState(metricState)) {
+        const temporality = this.getTemporality(descriptor.type)
+
+        let value = Number(metricState.count)
+        let effectiveStartTime = startTime
+
+        if (temporality === AggregationTemporality.DELTA) {
+          const key = `counter:${descriptor.name}:${JSON.stringify(attributes)}`
+          const prev = this.previousValues.get(key)?.counter?.count ?? 0
+          value = Number(metricState.count) - prev
+          this.previousValues.set(key, {
+            ...this.previousValues.get(key),
+            counter: { count: Number(metricState.count) }
+          })
+          effectiveStartTime = this.lastCollectionTime ?? hrTimeNow
+        }
+
         const dataPoint: DataPoint<number> = {
-          startTime,
+          startTime: effectiveStartTime,
           endTime: hrTimeNow,
           attributes,
-          value: Number(metricState.count)
+          value
         }
         if (metricDataByName.has(descriptor.name)) {
           metricDataByName.get(descriptor.name)!.dataPoints.push(dataPoint as any)
@@ -77,7 +138,7 @@ export class MetricProducerImpl implements MetricProducer {
             dataPointType: DataPointType.SUM,
             descriptor,
             isMonotonic: descriptor.type === InstrumentType.COUNTER,
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             dataPoints: [dataPoint]
           })
         }
@@ -99,31 +160,71 @@ export class MetricProducerImpl implements MetricProducer {
           })
         }
       } else if (MetricState.isHistogramState(metricState)) {
+        const temporality = this.getTemporality(descriptor.type)
+
         const size = metricState.buckets.length
         const buckets = {
           boundaries: Arr.allocate(size - 1) as Array<number>,
           counts: Arr.allocate(size) as Array<number>
         }
-        let i = 0
+
+        // Build cumulative bucket counts (converting from Effect's cumulative format to per-bucket)
+        const cumulativeBucketCounts: Array<number> = []
+        let idx = 0
         let prev = 0
         for (const [boundary, value] of metricState.buckets) {
-          if (i < size - 1) {
-            buckets.boundaries[i] = boundary
+          if (idx < size - 1) {
+            buckets.boundaries[idx] = boundary
           }
-          buckets.counts[i] = value - prev
+          const perBucketCount = value - prev
+          cumulativeBucketCounts.push(value)
+          buckets.counts[idx] = perBucketCount
           prev = value
-          i++
+          idx++
         }
+
+        let count = metricState.count
+        let sum = metricState.sum
+        let effectiveStartTime = startTime
+
+        if (temporality === AggregationTemporality.DELTA) {
+          const key = `histogram:${descriptor.name}:${JSON.stringify(attributes)}`
+          const prevState = this.previousValues.get(key)?.histogram
+          if (prevState) {
+            count = metricState.count - prevState.count
+            sum = metricState.sum - prevState.sum
+            // Compute delta for each bucket
+            for (let j = 0; j < buckets.counts.length; j++) {
+              const prevBucketCumulative = prevState.buckets[j] ?? 0
+              const currentBucketCumulative = cumulativeBucketCounts[j] ?? 0
+              const prevPrevBucketCumulative = j > 0 ? (prevState.buckets[j - 1] ?? 0) : 0
+              const currentPrevBucketCumulative = j > 0 ? (cumulativeBucketCounts[j - 1] ?? 0) : 0
+              const prevPerBucket = prevBucketCumulative - prevPrevBucketCumulative
+              const currentPerBucket = currentBucketCumulative - currentPrevBucketCumulative
+              buckets.counts[j] = currentPerBucket - prevPerBucket
+            }
+          }
+          this.previousValues.set(key, {
+            ...this.previousValues.get(key),
+            histogram: {
+              count: metricState.count,
+              sum: metricState.sum,
+              buckets: cumulativeBucketCounts
+            }
+          })
+          effectiveStartTime = this.lastCollectionTime ?? hrTimeNow
+        }
+
         const dataPoint: DataPoint<Histogram> = {
-          startTime,
+          startTime: effectiveStartTime,
           endTime: hrTimeNow,
           attributes,
           value: {
             buckets,
-            count: metricState.count,
+            count,
             min: metricState.min,
             max: metricState.max,
-            sum: metricState.sum
+            sum
           }
         }
 
@@ -133,23 +234,50 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.HISTOGRAM,
             descriptor,
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             dataPoints: [dataPoint]
           })
         }
       } else if (MetricState.isFrequencyState(metricState)) {
+        const temporality = this.getTemporality(descriptor.type)
+        const key = `frequency:${descriptor.name}:${JSON.stringify(attributes)}`
+
         const dataPoints: Array<DataPoint<number>> = []
+        const currentOccurrences = new Map<string, number>()
+        let effectiveStartTime = startTime
+
+        if (temporality === AggregationTemporality.DELTA) {
+          effectiveStartTime = this.lastCollectionTime ?? hrTimeNow
+        }
+
         for (const [freqKey, value] of metricState.occurrences) {
+          currentOccurrences.set(freqKey, value)
+          let deltaValue = value
+
+          if (temporality === AggregationTemporality.DELTA) {
+            const prevOccurrences = this.previousValues.get(key)?.frequency?.occurrences
+            const prevValue = prevOccurrences?.get(freqKey) ?? 0
+            deltaValue = value - prevValue
+          }
+
           dataPoints.push({
-            startTime,
+            startTime: effectiveStartTime,
             endTime: hrTimeNow,
             attributes: {
               ...attributes,
               key: freqKey
             },
-            value
+            value: deltaValue
           })
         }
+
+        if (temporality === AggregationTemporality.DELTA) {
+          this.previousValues.set(key, {
+            ...this.previousValues.get(key),
+            frequency: { occurrences: currentOccurrences }
+          })
+        }
+
         if (metricDataByName.has(descriptor.name)) {
           // eslint-disable-next-line no-restricted-syntax
           metricDataByName.get(descriptor.name)!.dataPoints.push(...dataPoints as any)
@@ -157,12 +285,34 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.SUM,
             descriptor: descriptorFromKey(metricKey, attributes),
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: true,
             dataPoints
           })
         }
       } else if (MetricState.isSummaryState(metricState)) {
+        // For summary, count and sum support delta, but quantiles are point-in-time (gauge-like)
+        const temporality = this.getTemporality(InstrumentType.COUNTER)
+        const key = `summary:${descriptor.name}:${JSON.stringify(attributes)}`
+
+        let effectiveStartTime = startTime
+        let countValue = metricState.count
+        let sumValue = metricState.sum
+
+        if (temporality === AggregationTemporality.DELTA) {
+          const prevState = this.previousValues.get(key)?.summary
+          if (prevState) {
+            countValue = metricState.count - prevState.count
+            sumValue = metricState.sum - prevState.sum
+          }
+          this.previousValues.set(key, {
+            ...this.previousValues.get(key),
+            summary: { count: metricState.count, sum: metricState.sum }
+          })
+          effectiveStartTime = this.lastCollectionTime ?? hrTimeNow
+        }
+
+        // Quantiles remain point-in-time (cumulative)
         const dataPoints: Array<DataPoint<number>> = [{
           startTime,
           endTime: hrTimeNow,
@@ -184,16 +334,16 @@ export class MetricProducerImpl implements MetricProducer {
           value: metricState.max
         })
         const countDataPoint: DataPoint<number> = {
-          startTime,
+          startTime: effectiveStartTime,
           endTime: hrTimeNow,
           attributes,
-          value: metricState.count
+          value: countValue
         }
         const sumDataPoint: DataPoint<number> = {
-          startTime,
+          startTime: effectiveStartTime,
           endTime: hrTimeNow,
           attributes,
-          value: metricState.sum
+          value: sumValue
         }
 
         if (metricDataByName.has(`${descriptor.name}_quantiles`)) {
@@ -217,7 +367,7 @@ export class MetricProducerImpl implements MetricProducer {
               type: InstrumentType.COUNTER,
               valueType: ValueType.INT
             },
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: true,
             dataPoints: [countDataPoint]
           })
@@ -229,13 +379,16 @@ export class MetricProducerImpl implements MetricProducer {
               type: InstrumentType.COUNTER,
               valueType: ValueType.DOUBLE
             },
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: true,
             dataPoints: [sumDataPoint]
           })
         }
       }
     }
+
+    // Track collection time for delta temporality
+    this.lastCollectionTime = hrTimeNow
 
     return Promise.resolve({
       resourceMetrics: {
@@ -308,6 +461,10 @@ export const registerProducer = (
       const reader = metricReader()
       const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
       readers.forEach((reader) => reader.setMetricProducer(self))
+      // Pass readers back to producer for temporality queries
+      if (self instanceof MetricProducerImpl) {
+        self.setReaders(readers)
+      }
       return readers
     }),
     (readers) =>

@@ -18,6 +18,28 @@ import * as OtlpResource from "./OtlpResource.js"
 
 /**
  * @since 1.0.0
+ * @category Models
+ */
+export type Temporality = "cumulative" | "delta"
+
+// Previous state tracking for delta temporality
+type PreviousCounterState = { readonly count: number }
+type PreviousHistogramState = {
+  readonly count: number
+  readonly sum: number
+  readonly buckets: ReadonlyArray<number>
+}
+type PreviousFrequencyState = { readonly occurrences: ReadonlyMap<string, number> }
+type PreviousSummaryState = { readonly count: number; readonly sum: number }
+type PreviousMetricState = {
+  readonly counter?: PreviousCounterState
+  readonly histogram?: PreviousHistogramState
+  readonly frequency?: PreviousFrequencyState
+  readonly summary?: PreviousSummaryState
+}
+
+/**
+ * @since 1.0.0
  * @category Constructors
  */
 export const make: (options: {
@@ -30,6 +52,7 @@ export const make: (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
+  readonly temporality?: Temporality | undefined
 }) => Effect.Effect<
   void,
   never,
@@ -37,6 +60,14 @@ export const make: (options: {
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const startTime = String(clock.unsafeCurrentTimeNanos())
+  const temporality = options.temporality ?? "cumulative"
+  const aggregationTemporality = temporality === "delta"
+    ? EAggregationTemporality.AGGREGATION_TEMPORALITY_DELTA
+    : EAggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE
+
+  // State for delta temporality
+  const previousValues = new Map<string, PreviousMetricState>()
+  let lastCollectionTime: string | null = null
 
   const resource = yield* OtlpResource.fromConfig(options.resource)
   const metricsScope: IInstrumentationScope = {
@@ -66,27 +97,41 @@ export const make: (options: {
       })
 
       if (MetricState.isCounterState(metricState)) {
+        const key = `counter:${metricKey.name}:${JSON.stringify(attributes)}`
+        let value = Number(metricState.count)
+        let effectiveStartTime = startTime
+
+        if (temporality === "delta") {
+          const prev = previousValues.get(key)?.counter?.count ?? 0
+          value = Number(metricState.count) - prev
+          previousValues.set(key, {
+            ...previousValues.get(key),
+            counter: { count: Number(metricState.count) }
+          })
+          effectiveStartTime = lastCollectionTime ?? nowTime
+        }
+
         const dataPoint: INumberDataPoint = {
           attributes,
-          startTimeUnixNano: startTime,
+          startTimeUnixNano: effectiveStartTime,
           timeUnixNano: nowTime
         }
         if (typeof metricState.count === "bigint") {
-          dataPoint.asInt = Number(metricState.count)
+          dataPoint.asInt = value
         } else {
-          dataPoint.asDouble = metricState.count
+          dataPoint.asDouble = value
         }
         if (metricDataByName.has(metricKey.name)) {
           metricDataByName.get(metricKey.name)!.sum!.dataPoints.push(dataPoint)
         } else {
-          const key = metricKey as MetricKey.MetricKey.Counter<any>
+          const metricKeyTyped = metricKey as MetricKey.MetricKey.Counter<any>
           addMetricData({
             name: metricKey.name,
-            description: getOrEmpty(key.description),
+            description: getOrEmpty(metricKeyTyped.description),
             unit,
             sum: {
-              aggregationTemporality: EAggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE,
-              isMonotonic: key.keyType.incremental,
+              aggregationTemporality,
+              isMonotonic: metricKeyTyped.keyType.incremental,
               dataPoints: [dataPoint]
             }
           })
@@ -115,29 +160,67 @@ export const make: (options: {
           })
         }
       } else if (MetricState.isHistogramState(metricState)) {
+        const key = `histogram:${metricKey.name}:${JSON.stringify(attributes)}`
         const size = metricState.buckets.length
         const buckets = {
           boundaries: Arr.allocate(size - 1) as Array<number>,
           counts: Arr.allocate(size) as Array<number>
         }
-        let i = 0
+
+        // Build cumulative bucket counts
+        const cumulativeBucketCounts: Array<number> = []
+        let idx = 0
         let prev = 0
         for (const [boundary, value] of metricState.buckets) {
-          if (i < size - 1) {
-            buckets.boundaries[i] = boundary
+          if (idx < size - 1) {
+            buckets.boundaries[idx] = boundary
           }
-          buckets.counts[i] = value - prev
+          const perBucketCount = value - prev
+          cumulativeBucketCounts.push(value)
+          buckets.counts[idx] = perBucketCount
           prev = value
-          i++
+          idx++
         }
+
+        let count = metricState.count
+        let sum = metricState.sum
+        let effectiveStartTime = startTime
+
+        if (temporality === "delta") {
+          const prevState = previousValues.get(key)?.histogram
+          if (prevState) {
+            count = metricState.count - prevState.count
+            sum = metricState.sum - prevState.sum
+            // Compute delta for each bucket
+            for (let j = 0; j < buckets.counts.length; j++) {
+              const prevBucketCumulative = prevState.buckets[j] ?? 0
+              const currentBucketCumulative = cumulativeBucketCounts[j] ?? 0
+              const prevPrevBucketCumulative = j > 0 ? (prevState.buckets[j - 1] ?? 0) : 0
+              const currentPrevBucketCumulative = j > 0 ? (cumulativeBucketCounts[j - 1] ?? 0) : 0
+              const prevPerBucket = prevBucketCumulative - prevPrevBucketCumulative
+              const currentPerBucket = currentBucketCumulative - currentPrevBucketCumulative
+              buckets.counts[j] = currentPerBucket - prevPerBucket
+            }
+          }
+          previousValues.set(key, {
+            ...previousValues.get(key),
+            histogram: {
+              count: metricState.count,
+              sum: metricState.sum,
+              buckets: cumulativeBucketCounts
+            }
+          })
+          effectiveStartTime = lastCollectionTime ?? nowTime
+        }
+
         const dataPoint: IHistogramDataPoint = {
           attributes,
-          startTimeUnixNano: startTime,
+          startTimeUnixNano: effectiveStartTime,
           timeUnixNano: nowTime,
-          count: metricState.count,
+          count,
           min: metricState.min,
           max: metricState.max,
-          sum: metricState.sum,
+          sum,
           bucketCounts: buckets.counts,
           explicitBounds: buckets.boundaries
         }
@@ -150,21 +233,46 @@ export const make: (options: {
             description: getOrEmpty(metricKey.description),
             unit,
             histogram: {
-              aggregationTemporality: EAggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE,
+              aggregationTemporality,
               dataPoints: [dataPoint]
             }
           })
         }
       } else if (MetricState.isFrequencyState(metricState)) {
+        const key = `frequency:${metricKey.name}:${JSON.stringify(attributes)}`
         const dataPoints: Array<INumberDataPoint> = []
+        const currentOccurrences = new Map<string, number>()
+        let effectiveStartTime = startTime
+
+        if (temporality === "delta") {
+          effectiveStartTime = lastCollectionTime ?? nowTime
+        }
+
         for (const [freqKey, value] of metricState.occurrences) {
+          currentOccurrences.set(freqKey, value)
+          let deltaValue = value
+
+          if (temporality === "delta") {
+            const prevOccurrences = previousValues.get(key)?.frequency?.occurrences
+            const prevValue = prevOccurrences?.get(freqKey) ?? 0
+            deltaValue = value - prevValue
+          }
+
           dataPoints.push({
             attributes: [...attributes, { key: "key", value: { stringValue: freqKey } }],
-            startTimeUnixNano: startTime,
+            startTimeUnixNano: effectiveStartTime,
             timeUnixNano: nowTime,
-            asInt: value
+            asInt: deltaValue
           })
         }
+
+        if (temporality === "delta") {
+          previousValues.set(key, {
+            ...previousValues.get(key),
+            frequency: { occurrences: currentOccurrences }
+          })
+        }
+
         if (metricDataByName.has(metricKey.name)) {
           // eslint-disable-next-line no-restricted-syntax
           metricDataByName.get(metricKey.name)!.sum!.dataPoints.push(...dataPoints)
@@ -174,13 +282,34 @@ export const make: (options: {
             description: getOrEmpty(metricKey.description),
             unit,
             sum: {
-              aggregationTemporality: EAggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE,
+              aggregationTemporality,
               isMonotonic: true,
               dataPoints
             }
           })
         }
       } else if (MetricState.isSummaryState(metricState)) {
+        // For summary, count and sum support delta, but quantiles are point-in-time (gauge-like)
+        const key = `summary:${metricKey.name}:${JSON.stringify(attributes)}`
+
+        let effectiveStartTime = startTime
+        let countValue = metricState.count
+        let sumValue = metricState.sum
+
+        if (temporality === "delta") {
+          const prevState = previousValues.get(key)?.summary
+          if (prevState) {
+            countValue = metricState.count - prevState.count
+            sumValue = metricState.sum - prevState.sum
+          }
+          previousValues.set(key, {
+            ...previousValues.get(key),
+            summary: { count: metricState.count, sum: metricState.sum }
+          })
+          effectiveStartTime = lastCollectionTime ?? nowTime
+        }
+
+        // Quantiles remain point-in-time (cumulative)
         const dataPoints: Array<INumberDataPoint> = [{
           attributes: [...attributes, { key: "quantile", value: { stringValue: "min" } }],
           startTimeUnixNano: startTime,
@@ -203,15 +332,15 @@ export const make: (options: {
         })
         const countDataPoint: INumberDataPoint = {
           attributes,
-          startTimeUnixNano: startTime,
+          startTimeUnixNano: effectiveStartTime,
           timeUnixNano: nowTime,
-          asInt: metricState.count
+          asInt: countValue
         }
         const sumDataPoint: INumberDataPoint = {
           attributes,
-          startTimeUnixNano: startTime,
+          startTimeUnixNano: effectiveStartTime,
           timeUnixNano: nowTime,
-          asDouble: metricState.sum
+          asDouble: sumValue
         }
 
         if (metricDataByName.has(`${metricKey.name}_quantiles`)) {
@@ -220,6 +349,7 @@ export const make: (options: {
           metricDataByName.get(`${metricKey.name}_count`)!.sum!.dataPoints.push(countDataPoint)
           metricDataByName.get(`${metricKey.name}_sum`)!.sum!.dataPoints.push(sumDataPoint)
         } else {
+          // Quantiles are gauge-like, always cumulative
           addMetricData({
             name: `${metricKey.name}_quantiles`,
             description: getOrEmpty(metricKey.description),
@@ -235,7 +365,7 @@ export const make: (options: {
             description: getOrEmpty(metricKey.description),
             unit: "1",
             sum: {
-              aggregationTemporality: EAggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE,
+              aggregationTemporality,
               isMonotonic: true,
               dataPoints: [countDataPoint]
             }
@@ -245,7 +375,7 @@ export const make: (options: {
             description: getOrEmpty(metricKey.description),
             unit: "1",
             sum: {
-              aggregationTemporality: EAggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE,
+              aggregationTemporality,
               isMonotonic: true,
               dataPoints: [sumDataPoint]
             }
@@ -253,6 +383,9 @@ export const make: (options: {
         }
       }
     }
+
+    // Track collection time for delta temporality
+    lastCollectionTime = nowTime
 
     return {
       resourceMetrics: [{
@@ -290,6 +423,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
+  readonly temporality?: Temporality | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.scopedDiscard(make(options))
 
 // internal
