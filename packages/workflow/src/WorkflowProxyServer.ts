@@ -73,6 +73,17 @@ export const layerHttpApi = <
                 })
               )
           )
+          .handle(
+            workflow.name + "Interrupt" as any,
+            ({ payload }: { payload: any }) =>
+              workflow.interrupt(payload.executionId).pipe(
+                Effect.tapDefect(Effect.logError),
+                Effect.annotateLogs({
+                  module: "WorkflowProxyServer",
+                  method: workflow.name + "Interrupt"
+                })
+              )
+          )
       }
       return handlers as HttpApiBuilder.Handlers<never, never, never>
     })
@@ -101,9 +112,11 @@ export const layerRpcHandlers = <
       const tag = `${prefix}${workflow.name}`
       const tagDiscard = `${tag}Discard`
       const tagResume = `${tag}Resume`
+      const tagInterrupt = `${tag}Interrupt`
       const key = `@effect/rpc/Rpc/${tag}`
       const keyDiscard = `${key}Discard`
       const keyResume = `${key}Resume`
+      const keyInterrupt = `${key}Interrupt`
       handlers.set(key, {
         context,
         tag,
@@ -119,6 +132,11 @@ export const layerRpcHandlers = <
         tag: tagResume,
         handler: (payload: any) => workflow.resume(payload.executionId) as any
       } as any)
+      handlers.set(keyInterrupt, {
+        context,
+        tag: tagInterrupt,
+        handler: (payload: any) => workflow.interrupt(payload.executionId) as any
+      } as any)
     }
     return Context.unsafeMake(handlers)
   }))
@@ -131,5 +149,9 @@ export type RpcHandlers<Workflows extends Workflow.Any, Prefix extends string> =
   infer _Payload,
   infer _Success,
   infer _Error
-> ? Rpc.Handler<`${Prefix}${_Name}`> | Rpc.Handler<`${Prefix}${_Name}Discard`> | Rpc.Handler<`${Prefix}${_Name}Resume`>
+> ?
+    | Rpc.Handler<`${Prefix}${_Name}`>
+    | Rpc.Handler<`${Prefix}${_Name}Discard`>
+    | Rpc.Handler<`${Prefix}${_Name}Resume`>
+    | Rpc.Handler<`${Prefix}${_Name}Interrupt`>
   : never
