@@ -1,5 +1,14 @@
 # @effect/ai-amazon-bedrock
 
+## 0.12.1
+
+### Patch Changes
+
+- [#5891](https://github.com/Effect-TS/effect/pull/5891) [`b1ffd22`](https://github.com/Effect-TS/effect/commit/b1ffd223ab4abc0be3f56bf4d16d99d0f5b4c4b8) Thanks @sbking! - fix cache point support for user and tool messages
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
 ## 0.12.0
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @effect/ai-openrouter
 
+## 0.7.1
+
+### Patch Changes
+
+- [#5799](https://github.com/Effect-TS/effect/pull/5799) [`5d7c9d8`](https://github.com/Effect-TS/effect/commit/5d7c9d8bb89b955b79303e7445c713ce56b06977) Thanks @subtleGradient! - Add support for google-gemini-v1 reasoning format
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
 ## 0.7.0
 
 ### Minor Changes

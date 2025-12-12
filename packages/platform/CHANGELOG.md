@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.93.7
+
+### Patch Changes
+
+- [#5896](https://github.com/Effect-TS/effect/pull/5896) [`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6) Thanks @tim-smart! - add basic apis for converting to web Request/Response
+
 ## 0.93.6
 
 ### Patch Changes
