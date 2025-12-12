@@ -5,17 +5,17 @@ import type { Channel } from "effect/Channel"
 import type { Chunk } from "effect/Chunk"
 import type * as Context from "effect/Context"
 import type * as Effect from "effect/Effect"
-import type { Option } from "effect/Option"
+import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import type { ReadonlyRecord } from "effect/Record"
 import type * as Schema from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
-import type * as Stream from "effect/Stream"
+import * as Stream from "effect/Stream"
 import type * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
 import type * as IncomingMessage from "./HttpIncomingMessage.js"
-import type { HttpMethod } from "./HttpMethod.js"
+import { hasBody, type HttpMethod } from "./HttpMethod.js"
 import type * as Error from "./HttpServerError.js"
 import * as internal from "./internal/httpServerRequest.js"
 import type * as Multipart from "./Multipart.js"
@@ -235,4 +235,21 @@ export const fromWeb: (request: Request) => HttpServerRequest = internal.fromWeb
  * @since 1.0.0
  * @category conversions
  */
-export const toURL: (self: HttpServerRequest) => Option<URL> = internal.toURL
+export const toWeb = (self: HttpServerRequest): Request | undefined => {
+  if (self.source instanceof Request) {
+    return self.source
+  }
+  const ourl = toURL(self)
+  if (Option.isNone(ourl)) return undefined
+  return new Request(ourl.value, {
+    method: self.method,
+    body: hasBody(self.method) ? Stream.toReadableStream(self.stream) : undefined,
+    headers: self.headers
+  })
+}
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toURL: (self: HttpServerRequest) => Option.Option<URL> = internal.toURL

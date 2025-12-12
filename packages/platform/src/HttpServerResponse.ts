@@ -6,12 +6,13 @@ import type { Inspectable } from "effect/Inspectable"
 import type * as Runtime from "effect/Runtime"
 import type * as Schema from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
-import type * as Stream from "effect/Stream"
-import type { Cookie, Cookies, CookiesError } from "./Cookies.js"
+import * as Stream from "effect/Stream"
+import type { Cookie, CookiesError } from "./Cookies.js"
+import * as Cookies from "./Cookies.js"
 import type * as PlatformError from "./Error.js"
 import type * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
-import type * as Body from "./HttpBody.js"
+import * as Body from "./HttpBody.js"
 import type * as Platform from "./HttpPlatform.js"
 import type { Respondable } from "./HttpServerRespondable.js"
 import * as internal from "./internal/httpServerResponse.js"
@@ -39,7 +40,7 @@ export interface HttpServerResponse extends Effect.Effect<HttpServerResponse>, I
   readonly status: number
   readonly statusText?: string | undefined
   readonly headers: Headers.Headers
-  readonly cookies: Cookies
+  readonly cookies: Cookies.Cookies
   readonly body: Body.HttpBody
 }
 
@@ -51,7 +52,7 @@ export interface Options {
   readonly status?: number | undefined
   readonly statusText?: string | undefined
   readonly headers?: Headers.Input | undefined
-  readonly cookies?: Cookies | undefined
+  readonly cookies?: Cookies.Cookies | undefined
   readonly contentType?: string | undefined
   readonly contentLength?: number | undefined
 }
@@ -246,8 +247,8 @@ export const expireCookie: {
  * @category combinators
  */
 export const replaceCookies: {
-  (cookies: Cookies): (self: HttpServerResponse) => HttpServerResponse
-  (self: HttpServerResponse, cookies: Cookies): HttpServerResponse
+  (cookies: Cookies.Cookies): (self: HttpServerResponse) => HttpServerResponse
+  (self: HttpServerResponse, cookies: Cookies.Cookies): HttpServerResponse
 } = internal.replaceCookies
 
 /**
@@ -299,8 +300,8 @@ export const unsafeSetCookie: {
  * @category combinators
  */
 export const updateCookies: {
-  (f: (cookies: Cookies) => Cookies): (self: HttpServerResponse) => HttpServerResponse
-  (self: HttpServerResponse, f: (cookies: Cookies) => Cookies): HttpServerResponse
+  (f: (cookies: Cookies.Cookies) => Cookies.Cookies): (self: HttpServerResponse) => HttpServerResponse
+  (self: HttpServerResponse, f: (cookies: Cookies.Cookies) => Cookies.Cookies): HttpServerResponse
 } = internal.updateCookies
 
 /**
@@ -308,8 +309,8 @@ export const updateCookies: {
  * @category combinators
  */
 export const mergeCookies: {
-  (cookies: Cookies): (self: HttpServerResponse) => HttpServerResponse
-  (self: HttpServerResponse, cookies: Cookies): HttpServerResponse
+  (cookies: Cookies.Cookies): (self: HttpServerResponse) => HttpServerResponse
+  (self: HttpServerResponse, cookies: Cookies.Cookies): HttpServerResponse
 } = internal.mergeCookies
 
 /**
@@ -393,3 +394,29 @@ export const toWeb: (
     readonly runtime?: Runtime.Runtime<never> | undefined
   }
 ) => Response = internal.toWeb
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const fromWeb = (response: Response): HttpServerResponse => {
+  const headers = response.headers
+  const setCookieHeaders = headers.getSetCookie()
+  headers.delete("set-cookie")
+  let self = empty({
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+    cookies: Cookies.fromSetCookie(setCookieHeaders)
+  })
+  if (response.body) {
+    self = setBody(
+      self,
+      Body.stream(Stream.fromReadableStream({
+        evaluate: () => response.body!,
+        onError: (e) => e
+      }))
+    )
+  }
+  return self
+}
