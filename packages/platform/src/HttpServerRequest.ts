@@ -241,10 +241,13 @@ export const toWeb = (self: HttpServerRequest): Request | undefined => {
   }
   const ourl = toURL(self)
   if (Option.isNone(ourl)) return undefined
+  const body = hasBody(self.method) ? Stream.toReadableStream(self.stream) : undefined
   return new Request(ourl.value, {
     method: self.method,
-    body: hasBody(self.method) ? Stream.toReadableStream(self.stream) : undefined,
-    headers: self.headers
+    body,
+    headers: self.headers,
+    // @ts-expect-error - duplex is required for streaming bodies in Node 18+
+    duplex: body !== undefined ? "half" : undefined
   })
 }
 

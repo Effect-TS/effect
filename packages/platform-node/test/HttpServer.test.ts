@@ -755,4 +755,30 @@ describe("HttpServer", () => {
       )
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  describe("HttpServerRequest.toWeb", () => {
+    it.scoped("converts POST request with body", () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.post(
+            "/echo",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              const webRequest = HttpServerRequest.toWeb(request)
+              assert(webRequest !== undefined, "toWeb returned undefined")
+              const body = yield* Effect.promise(() => webRequest.json())
+              return HttpServerResponse.unsafeJson({ received: body })
+            })
+          ),
+          HttpServer.serveEffect()
+        )
+        const client = yield* HttpClient.HttpClient
+        const res = yield* client.post("/echo", {
+          body: HttpBody.unsafeJson({ message: "hello" })
+        })
+        assert.strictEqual(res.status, 200)
+        const json = yield* res.json
+        assert.deepStrictEqual(json, { received: { message: "hello" } })
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  })
 })
