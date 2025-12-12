@@ -1,5 +1,14 @@
 # @effect/ai-google
 
+## 0.11.1
+
+### Patch Changes
+
+- [#5834](https://github.com/Effect-TS/effect/pull/5834) [`59760c1`](https://github.com/Effect-TS/effect/commit/59760c1d10b72a539ba174a3ca78d29821b01818) Thanks @timurrakhimzhan! - Fixed "oneOf" toolChoice for google language model
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
 ## 0.11.0
 
 ### Patch Changes
