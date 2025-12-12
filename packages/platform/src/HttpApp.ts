@@ -318,3 +318,42 @@ export const toWebHandlerLayer = <E, R, RE>(
     ...options,
     toHandler: () => Effect.succeed(self)
   })
+
+/**
+ * Converts a web handler function into an Effect `HttpApp`.
+ *
+ * This is the inverse of `toWebHandler` - it wraps a standard web handler
+ * `(Request) => Promise<Response>` so it can be used within an Effect HTTP application.
+ *
+ * @example
+ * ```ts
+ * import { HttpApp } from "@effect/platform"
+ *
+ * // Wrap any web handler (e.g., BetterAuth, Hono)
+ * const WebApp = HttpApp.fromWebHandler(async (request) => {
+ *   return new Response("Hello from web handler!")
+ * })
+ * ```
+ *
+ * @since 1.0.0
+ * @category conversions
+ */
+export const fromWebHandler = (
+  handler: (request: Request) => Promise<Response>
+): Default =>
+  Effect.flatMap(ServerRequest.HttpServerRequest, (request) => {
+    const webRequest = ServerRequest.toWeb(request)
+    if (webRequest === undefined) {
+      return Effect.die(
+        new Error(
+          "HttpApp.fromWebHandler: Unable to convert request to web Request. " +
+            "This typically means the request came from a Node.js server with a malformed URL. " +
+            "fromWebHandler is designed for web-to-web request conversion."
+        )
+      )
+    }
+    return Effect.map(
+      Effect.promise(() => handler(webRequest)),
+      ServerResponse.fromWeb
+    )
+  })
