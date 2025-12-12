@@ -40,7 +40,7 @@ export const globalClockScheduler: Clock.ClockScheduler = {
 
 const performanceNowNanos = (function() {
   const bigint1e6 = BigInt(1_000_000)
-  if (typeof performance === "undefined") {
+  if (typeof performance === "undefined" || typeof performance.now !== "function") {
     return () => BigInt(Date.now()) * bigint1e6
   }
   let origin: bigint
