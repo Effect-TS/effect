@@ -406,7 +406,7 @@ export const fromWeb = (response: Response): HttpServerResponse => {
   let self = empty({
     status: response.status,
     statusText: response.statusText,
-    headers,
+    headers: headers as any,
     cookies: Cookies.fromSetCookie(setCookieHeaders)
   })
   if (response.body) {
