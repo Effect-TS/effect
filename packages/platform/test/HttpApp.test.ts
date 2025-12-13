@@ -99,4 +99,92 @@ describe("Http/App", () => {
       foo: "baz"
     })
   })
+
+  describe("fromWebHandler", () => {
+    test("basic GET request", async () => {
+      const webHandler = async (request: Request) => {
+        return new Response(`Hello from ${request.url}`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" }
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/hello"))
+      strictEqual(response.status, 200)
+      strictEqual(await response.text(), "Hello from http://localhost:3000/hello")
+    })
+
+    test("POST with JSON body", async () => {
+      const webHandler = async (request: Request) => {
+        const body = await request.json()
+        return Response.json({ received: body })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(
+        new Request("http://localhost:3000/", {
+          method: "POST",
+          body: JSON.stringify({ message: "hello" }),
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      deepStrictEqual(await response.json(), {
+        received: { message: "hello" }
+      })
+    })
+
+    test("preserves request headers", async () => {
+      const webHandler = async (request: Request) => {
+        return Response.json({
+          authorization: request.headers.get("Authorization"),
+          custom: request.headers.get("X-Custom-Header")
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(
+        new Request("http://localhost:3000/", {
+          headers: {
+            "Authorization": "Bearer token123",
+            "X-Custom-Header": "custom-value"
+          }
+        })
+      )
+      deepStrictEqual(await response.json(), {
+        authorization: "Bearer token123",
+        custom: "custom-value"
+      })
+    })
+
+    test("preserves response status and headers", async () => {
+      const webHandler = async (_request: Request) => {
+        return new Response("Not Found", {
+          status: 404,
+          statusText: "Not Found",
+          headers: {
+            "X-Error-Code": "RESOURCE_NOT_FOUND",
+            "Content-Type": "text/plain"
+          }
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/missing"))
+      strictEqual(response.status, 404)
+      strictEqual(response.headers.get("X-Error-Code"), "RESOURCE_NOT_FOUND")
+      strictEqual(await response.text(), "Not Found")
+    })
+
+    test("round-trip with toWebHandler", async () => {
+      // Create an Effect app, convert to web handler, then back to Effect app
+      const originalApp = HttpServerResponse.json({ source: "effect" })
+      const webHandler = HttpApp.toWebHandler(originalApp)
+      const wrappedApp = HttpApp.fromWebHandler(webHandler)
+      const finalHandler = HttpApp.toWebHandler(wrappedApp)
+
+      const response = await finalHandler(new Request("http://localhost:3000/"))
+      deepStrictEqual(await response.json(), { source: "effect" })
+    })
+  })
 })
