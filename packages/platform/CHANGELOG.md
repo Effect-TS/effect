@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.93.8
+
+### Patch Changes
+
+- [#5902](https://github.com/Effect-TS/effect/pull/5902) [`a0a84d8`](https://github.com/Effect-TS/effect/commit/a0a84d8df05d18023ffcb1f60af91d14c2b8db57) Thanks @tim-smart! - add HttpApp.fromWebHandler
+
+- Updated dependencies [[`a6dfca9`](https://github.com/Effect-TS/effect/commit/a6dfca93b676eeffe4db64945b01e2004b395cb8)]:
+  - effect@3.19.12
+
 ## 0.93.7
 
 ### Patch Changes
