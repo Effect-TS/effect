@@ -400,7 +400,7 @@ export const toWeb: (
  * @category conversions
  */
 export const fromWeb = (response: Response): HttpServerResponse => {
-  const headers = response.headers
+  const headers = new globalThis.Headers(response.headers)
   const setCookieHeaders = headers.getSetCookie()
   headers.delete("set-cookie")
   let self = empty({
