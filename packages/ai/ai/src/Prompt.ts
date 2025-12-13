@@ -1664,7 +1664,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         }
         case "tool": {
           flushDeltas()
-          if (part.value.state === "params-done") {
+          if (part.value.status === "params-done") {
             assistantParts.push(
               makePart("tool-call", {
                 id: part.id,
@@ -1673,7 +1673,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
                 providerExecuted: part.providerExecuted ?? false
               })
             )
-          } else if (part.value.state === "result-error") {
+          } else if (part.value.status === "result-error") {
             assistantParts.push(
               makePart("tool-call", {
                 id: part.id,
@@ -1691,7 +1691,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
                 isFailure: true
               })
             )
-          } else if (part.value.state === "result-done") {
+          } else if (part.value.status === "result-done") {
             assistantParts.push(
               makePart("tool-call", {
                 id: part.id,
@@ -1713,7 +1713,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           break
         }
         case "text-accumulated": {
-          if (part.state === "streaming") {
+          if (part.status === "streaming") {
             flushReasoningDeltas()
             textDeltas.push(part.text)
           } else {
@@ -1727,7 +1727,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           break
         }
         case "reasoning-accumulated": {
-          if (part.state === "streaming") {
+          if (part.status === "streaming") {
             flushTextDeltas()
             reasoningDeltas.push(part.text)
           } else {
