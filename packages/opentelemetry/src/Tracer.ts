@@ -30,6 +30,14 @@ export const makeExternalSpan: (
 ) => ExternalSpan = internal.makeExternalSpan
 
 /**
+ * Get the current OpenTelemetry span.
+ *
+ * Works with both the official OpenTelemetry API (via `Tracer.layer`, `NodeSdk.layer`, etc.)
+ * and the lightweight OTLP module (`OtlpTracer.layer`).
+ *
+ * When using OTLP, the returned span is a wrapper that conforms to the
+ * OpenTelemetry `Span` interface.
+ *
  * @since 1.0.0
  * @category accessors
  */
