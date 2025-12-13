@@ -1,5 +1,19 @@
 # @effect/opentelemetry
 
+## 0.59.3
+
+### Patch Changes
+
+- [#5890](https://github.com/Effect-TS/effect/pull/5890) [`03355c1`](https://github.com/Effect-TS/effect/commit/03355c1470705168e79ca62f57a30f236cc8033d) Thanks @schickling! - Fix `Tracer.currentOtelSpan` to work with OTLP module
+
+  `currentOtelSpan` now works with both the official OpenTelemetry SDK and the lightweight OTLP module. When using OTLP, it returns a wrapper that conforms to the OpenTelemetry Span interface.
+
+  Closes #5889
+
+- Updated dependencies [[`a6dfca9`](https://github.com/Effect-TS/effect/commit/a6dfca93b676eeffe4db64945b01e2004b395cb8), [`a0a84d8`](https://github.com/Effect-TS/effect/commit/a0a84d8df05d18023ffcb1f60af91d14c2b8db57)]:
+  - effect@3.19.12
+  - @effect/platform@0.93.8
+
 ## 0.59.2
 
 ### Patch Changes

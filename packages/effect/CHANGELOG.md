@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.12
+
+### Patch Changes
+
+- [#5897](https://github.com/Effect-TS/effect/pull/5897) [`a6dfca9`](https://github.com/Effect-TS/effect/commit/a6dfca93b676eeffe4db64945b01e2004b395cb8) Thanks @fubhy! - Ensure `performance.now` is only used if it's available
+
 ## 3.19.11
 
 ### Patch Changes
