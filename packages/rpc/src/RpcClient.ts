@@ -352,12 +352,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         headers: Headers.merge(parentFiber.getFiberRef(currentHeaders), headers)
       })
       if (discard) {
-        return Effect.flatMap(send, (message) =>
-          options.onFromClient({
-            message,
-            context,
-            discard
-          }))
+        return Effect.matchEffect(send, {
+          onFailure: () => Effect.void,
+          onSuccess: (message) =>
+            options.onFromClient({
+              message,
+              context,
+              discard
+            })
+        })
       }
       const runtime = Runtime.make({
         context: parentFiber.currentContext,
@@ -384,13 +387,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           }
           entries.set(id, entry)
           fiber = send.pipe(
-            Effect.flatMap((request) =>
-              options.onFromClient({
-                message: request,
-                context,
-                discard
-              })
-            ),
+            Effect.matchCauseEffect({
+              onFailure: (cause) => Effect.sync(() => entry.resume(Exit.failCause(cause))),
+              onSuccess: (request) =>
+                options.onFromClient({
+                  message: request,
+                  context,
+                  discard
+                })
+            }),
             span ? Effect.withParentSpan(span) : identity,
             Runtime.runFork(runtime)
           )
