@@ -62,11 +62,11 @@ export interface SuccessValue {
  * @since 1.0.0
  * @category models
  */
-export interface RpcMiddlewareClient<R = never> {
+export interface RpcMiddlewareClient<R = never, EX = never> {
   (options: {
     readonly rpc: Rpc.AnyWithProps
     readonly request: Request<Rpc.Any>
-  }): Effect.Effect<Request<Rpc.Any>, never, R>
+  }): Effect.Effect<Request<Rpc.Any>, EX, R>
 }
 
 /**
@@ -283,10 +283,12 @@ export const Tag = <Self>(): <
  * @since 1.0.0
  * @category client
  */
-export const layerClient = <Id, S, R, EX = never, RX = never>(
-  tag: Context.Tag<Id, S>,
-  service: RpcMiddlewareClient<R> | Effect.Effect<RpcMiddlewareClient<R>, EX, RX>
-): Layer.Layer<ForClient<Id>, EX, R | Exclude<RX, Scope>> =>
+export const layerClient = <T extends Context.Tag<any, any>, R, EX = never, RX = never>(
+  tag: T,
+  service:
+    | RpcMiddlewareClient<R, TagClass.Failure<T>>
+    | Effect.Effect<RpcMiddlewareClient<R, TagClass.Failure<T>>, EX, RX>
+): Layer.Layer<ForClient<Context.Tag.Identifier<T>>, EX, R | Exclude<RX, Scope>> =>
   Layer.scopedContext(Effect.gen(function*() {
     const context = (yield* Effect.context<R | Scope>()).pipe(
       Context.omit(Scope)
