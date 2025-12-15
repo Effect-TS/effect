@@ -58,7 +58,7 @@ export type AST =
  */
 export type TypeConstructorAnnotation = {
   readonly _tag: string
-  [key: PropertyKey]: any
+  [key: PropertyKey]: unknown
 }
 
 /**
