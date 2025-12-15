@@ -27,15 +27,18 @@ class StreamUsers extends Schema.TaggedRequest<StreamUsers>()("StreamUsers", {
 
 class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
-export class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {
-  failedOn: Schema.Union(Schema.Literal("Client"), Schema.Literal("Server"))
-}) {}
+export class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {}) {}
+export class InvalidClientCredentials
+  extends Schema.TaggedError<InvalidClientCredentials>("InvalidClientCredentials")("InvalidClientCredentials", {})
+{}
 
-class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
-  provides: CurrentUser,
-  failure: Unauthorized,
-  requiredForClient: true
-}) {}
+class AuthMiddleware
+  extends RpcMiddleware.Tag<AuthMiddleware, { clientError: InvalidClientCredentials }>()("AuthMiddleware", {
+    provides: CurrentUser,
+    failure: Unauthorized,
+    requiredForClient: true
+  })
+{}
 
 class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware", {
   wrap: true
@@ -156,7 +159,7 @@ export const RpcLive = RpcServer.layer(UserRpcs).pipe(
 
 const AuthClient = RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
   request.headers.userid === "-1" ?
-    new Unauthorized({ failedOn: "Client" }) :
+    new InvalidClientCredentials() :
     Effect.succeed({
       ...request,
       headers: Headers.set(request.headers, "name", "Logged in user")
