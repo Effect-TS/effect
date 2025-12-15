@@ -387,15 +387,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           }
           entries.set(id, entry)
           fiber = send.pipe(
-            Effect.matchCauseEffect({
-              onFailure: (cause) => Effect.sync(() => entry.resume(Exit.failCause(cause))),
-              onSuccess: (request) =>
-                options.onFromClient({
-                  message: request,
-                  context,
-                  discard
-                })
-            }),
+            Effect.flatMap((request) =>
+              options.onFromClient({
+                message: request,
+                context,
+                discard
+              })
+            ),
             span ? Effect.withParentSpan(span) : identity,
             Runtime.runFork(runtime)
           )
