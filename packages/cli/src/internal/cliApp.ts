@@ -102,7 +102,8 @@ export const run = dual<
                             InternalCommand.getHelp(e.command, config)
                           ),
                           execute,
-                          config
+                          config,
+                          args
                         )
                       )
                       : Option.none()
@@ -115,7 +116,7 @@ export const run = dual<
             })
           }
           case "BuiltIn": {
-            return handleBuiltInOption(self, executable, filteredArgs, directive.option, execute, config).pipe(
+            return handleBuiltInOption(self, executable, filteredArgs, directive.option, execute, config, args).pipe(
               Effect.catchSome((e) =>
                 InternalValidationError.isValidationError(e)
                   ? Option.some(Effect.zipRight(printDocs(e.error), Effect.fail(e)))
@@ -151,7 +152,8 @@ const handleBuiltInOption = <R, E, A>(
   args: ReadonlyArray<string>,
   builtIn: BuiltInOptions.BuiltInOptions,
   execute: (a: A) => Effect.Effect<void, E, R>,
-  config: CliConfig.CliConfig
+  config: CliConfig.CliConfig,
+  originalArgs: ReadonlyArray<string>
 ): Effect.Effect<
   void,
   E | ValidationError.ValidationError,
@@ -159,14 +161,17 @@ const handleBuiltInOption = <R, E, A>(
 > => {
   switch (builtIn._tag) {
     case "SetLogLevel": {
-      const nextArgs = executable.split(/\s+/)
-      // Filter out the log level option before re-executing the command
+      // Use first 2 elements from originalArgs (runtime + script) to preserve paths with spaces
+      // Filter out --log-level from args before re-executing
+      const baseArgs = Arr.take(originalArgs, 2)
+      const filteredArgs: Array<string> = []
       for (let i = 0; i < args.length; i++) {
         if (isLogLevelArg(args[i]) || isLogLevelArg(args[i - 1])) {
           continue
         }
-        nextArgs.push(args[i])
+        filteredArgs.push(args[i])
       }
+      const nextArgs = Arr.appendAll(baseArgs, filteredArgs)
       return run(self, nextArgs, execute).pipe(
         Logger.withMinimumLogLevel(builtIn.level)
       )
@@ -269,10 +274,11 @@ const handleBuiltInOption = <R, E, A>(
             active: "yes",
             inactive: "no"
           }).pipe(Effect.flatMap((shouldRunCommand) => {
-            const finalArgs = pipe(
-              Arr.drop(args, 1),
-              Arr.prependAll(executable.split(/\s+/))
-            )
+            // Use first 2 elements from originalArgs (runtime + script) to preserve paths with spaces
+            // This mimics executable.split() behavior but without breaking Windows paths
+            const baseArgs = Arr.take(originalArgs, 2)
+            const wizardArgs = Arr.drop(args, 1)
+            const finalArgs = Arr.appendAll(baseArgs, wizardArgs)
             return shouldRunCommand
               ? Console.log().pipe(Effect.zipRight(run(self, finalArgs, execute)))
               : Effect.void
