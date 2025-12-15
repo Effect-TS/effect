@@ -163,7 +163,7 @@ const handleBuiltInOption = <R, E, A>(
     case "SetLogLevel": {
       // Use first 2 elements from originalArgs (runtime + script) to preserve paths with spaces
       // Filter out --log-level from args before re-executing
-      const baseArgs = getExecutableArgs(originalArgs)
+      const baseArgs = Arr.take(originalArgs, 2)
       const filteredArgs: Array<string> = []
       for (let i = 0; i < args.length; i++) {
         if (isLogLevelArg(args[i]) || isLogLevelArg(args[i - 1])) {
@@ -276,7 +276,7 @@ const handleBuiltInOption = <R, E, A>(
           }).pipe(Effect.flatMap((shouldRunCommand) => {
             // Use first 2 elements from originalArgs (runtime + script) to preserve paths with spaces
             // This mimics executable.split() behavior but without breaking Windows paths
-            const baseArgs = getExecutableArgs(originalArgs)
+            const baseArgs = Arr.take(originalArgs, 2)
             const wizardArgs = Arr.drop(args, 1)
             const finalArgs = Arr.appendAll(baseArgs, wizardArgs)
             return shouldRunCommand
@@ -344,9 +344,6 @@ const getWizardPrefix = (
   })
   return Arr.appendAll(rootCommand.split(/\s+/), args)
 }
-
-const getExecutableArgs = (args: ReadonlyArray<string>): ReadonlyArray<string> =>
-  Arr.take(args, 2) as ReadonlyArray<string>
 
 const renderWizardArgs = (args: ReadonlyArray<string>) => {
   const params = pipe(
