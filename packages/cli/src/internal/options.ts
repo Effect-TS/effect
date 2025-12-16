@@ -573,6 +573,53 @@ export const processCommandLine = dual<
     )
 )
 
+/**
+ * Like `processCommandLine`, but continues scanning for known options even after
+ * encountering unknown `-...` / `--...` tokens (treating them as command
+ * arguments). This is useful at the command level where we want to relax POSIX
+ * guideline 9 without breaking built-in option parsing (e.g. `-a --help` where
+ * `--help` is a value).
+ *
+ * @internal
+ */
+export const processCommandLinePermissive = dual<
+  (
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ) => <A>(
+    self: Options.Options<A>
+  ) => Effect.Effect<
+    [Option.Option<ValidationError.ValidationError>, Array<string>, A],
+    ValidationError.ValidationError,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
+  >,
+  <A>(
+    self: Options.Options<A>,
+    args: ReadonlyArray<string>,
+    config: CliConfig.CliConfig
+  ) => Effect.Effect<
+    [Option.Option<ValidationError.ValidationError>, Array<string>, A],
+    ValidationError.ValidationError,
+    FileSystem.FileSystem | Path.Path | Terminal.Terminal
+  >
+>(
+  3,
+  (self, args, config) =>
+    matchOptionsPermissive(args, toParseableInstruction(self as Instruction), config).pipe(
+      Effect.flatMap(([error, commandArgs, matchedOptions]) =>
+        parseInternal(self as Instruction, matchedOptions, config).pipe(
+          Effect.catchAll((e) =>
+            Option.match(error, {
+              onNone: () => Effect.fail(e),
+              onSome: (err) => Effect.fail(err)
+            })
+          ),
+          Effect.map((a) => [error, commandArgs as Array<string>, a as any])
+        )
+      )
+    )
+)
+
 /** @internal */
 export const repeated = <A>(self: Options.Options<A>): Options.Options<Array<A>> =>
   makeVariadic(self, Option.none(), Option.none())
@@ -1539,57 +1586,93 @@ const wizardInternal = (self: Instruction, config: CliConfig.CliConfig): Effect.
  * Returns a possible `ValidationError` when parsing the commands, leftover
  * arguments from `input` and a mapping between each flag and its values.
  */
+type MatchOptionsResult = readonly [
+  Option.Option<ValidationError.ValidationError>,
+  ReadonlyArray<string>,
+  HashMap.HashMap<string, ReadonlyArray<string>>
+]
+
 const matchOptions = (
   input: ReadonlyArray<string>,
   options: ReadonlyArray<ParseableInstruction>,
   config: CliConfig.CliConfig
-): Effect.Effect<
-  [
-    Option.Option<ValidationError.ValidationError>,
-    ReadonlyArray<string>,
-    HashMap.HashMap<string, ReadonlyArray<string>>
-  ]
-> => {
-  if (Arr.isNonEmptyReadonlyArray(options)) {
-    return findOptions(input, options, config).pipe(
-      Effect.flatMap(([otherArgs, otherOptions, map1]) => {
-        if (HashMap.isEmpty(map1)) {
-          return Effect.succeed([Option.none(), input, map1] as [
-            Option.Option<ValidationError.ValidationError>,
-            ReadonlyArray<string>,
-            HashMap.HashMap<string, ReadonlyArray<string>>
-          ])
-        }
-        return matchOptions(otherArgs, otherOptions, config).pipe(
-          Effect.map(([error, otherArgs, map2]) =>
-            [error, otherArgs, merge(map1, Arr.fromIterable(map2))] as [
-              Option.Option<ValidationError.ValidationError>,
-              ReadonlyArray<string>,
-              HashMap.HashMap<string, ReadonlyArray<string>>
-            ]
-          )
-        )
-      }),
-      Effect.catchAll((e) =>
-        Effect.succeed([Option.some(e), input, HashMap.empty()] as [
-          Option.Option<ValidationError.ValidationError>,
-          ReadonlyArray<string>,
-          HashMap.HashMap<string, ReadonlyArray<string>>
-        ])
-      )
-    )
+): Effect.Effect<MatchOptionsResult> => {
+  const succeed = (
+    error: Option.Option<ValidationError.ValidationError>,
+    commandArgs: ReadonlyArray<string>,
+    matchedOptions: HashMap.HashMap<string, ReadonlyArray<string>>
+  ): Effect.Effect<MatchOptionsResult> => Effect.succeed([error, commandArgs, matchedOptions] as const)
+
+  if (Arr.isEmptyReadonlyArray(input)) {
+    return succeed(Option.none(), Arr.empty(), HashMap.empty())
   }
-  return Arr.isEmptyReadonlyArray(input)
-    ? Effect.succeed([Option.none(), Arr.empty(), HashMap.empty()] as [
-      Option.Option<ValidationError.ValidationError>,
-      ReadonlyArray<string>,
-      HashMap.HashMap<string, ReadonlyArray<string>>
-    ])
-    : Effect.succeed([Option.none(), input, HashMap.empty()] as [
-      Option.Option<ValidationError.ValidationError>,
-      ReadonlyArray<string>,
-      HashMap.HashMap<string, ReadonlyArray<string>>
-    ])
+  if (Arr.isEmptyReadonlyArray(options)) {
+    return succeed(Option.none(), input, HashMap.empty())
+  }
+
+  return findOptions(input, options, config).pipe(
+    Effect.flatMap(([otherArgs, otherOptions, map1]) => {
+      if (HashMap.isEmpty(map1)) {
+        const head = Arr.headNonEmpty(input)
+        if (head.startsWith("-")) {
+          return succeed(Option.none(), input, map1)
+        }
+        const tail = Arr.tailNonEmpty(input)
+        return matchOptions(tail, options, config).pipe(
+          Effect.map(([error, commandArgs, map2]) => succeed(error, Arr.prepend(commandArgs, head), map2)),
+          Effect.flatten
+        )
+      }
+      return matchOptions(otherArgs, otherOptions, config).pipe(
+        Effect.map(([error, otherArgs, map2]) => succeed(error, otherArgs, merge(map1, Arr.fromIterable(map2)))),
+        Effect.flatten
+      )
+    }),
+    Effect.catchAll((e) => succeed(Option.some(e), input, HashMap.empty()))
+  )
+}
+
+/**
+ * A permissive variant of `matchOptions` that always treats the head token as a
+ * command argument when it does not match any known option (even if it begins
+ * with `-`), and continues scanning the remaining tokens for options.
+ */
+const matchOptionsPermissive = (
+  input: ReadonlyArray<string>,
+  options: ReadonlyArray<ParseableInstruction>,
+  config: CliConfig.CliConfig
+): Effect.Effect<MatchOptionsResult> => {
+  const succeed = (
+    error: Option.Option<ValidationError.ValidationError>,
+    commandArgs: ReadonlyArray<string>,
+    matchedOptions: HashMap.HashMap<string, ReadonlyArray<string>>
+  ): Effect.Effect<MatchOptionsResult> => Effect.succeed([error, commandArgs, matchedOptions] as const)
+
+  if (Arr.isEmptyReadonlyArray(input)) {
+    return succeed(Option.none(), Arr.empty(), HashMap.empty())
+  }
+  if (Arr.isEmptyReadonlyArray(options)) {
+    return succeed(Option.none(), input, HashMap.empty())
+  }
+
+  return findOptions(input, options, config).pipe(
+    Effect.catchTag("UnclusteredFlag", () => Effect.succeed([input, options, HashMap.empty()] as const)),
+    Effect.flatMap(([otherArgs, otherOptions, map1]) => {
+      if (HashMap.isEmpty(map1)) {
+        const head = Arr.headNonEmpty(input)
+        const tail = Arr.tailNonEmpty(input)
+        return matchOptionsPermissive(tail, options, config).pipe(
+          Effect.map(([error, commandArgs, map2]) => succeed(error, Arr.prepend(commandArgs, head), map2)),
+          Effect.flatten
+        )
+      }
+      return matchOptionsPermissive(otherArgs, otherOptions, config).pipe(
+        Effect.map(([error, otherArgs, map2]) => succeed(error, otherArgs, merge(map1, Arr.fromIterable(map2)))),
+        Effect.flatten
+      )
+    }),
+    Effect.catchAll((e) => succeed(Option.some(e), input, HashMap.empty()))
+  )
 }
 
 /**

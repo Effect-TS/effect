@@ -35,6 +35,18 @@ describe("Command", () => {
         expect(result2).toEqual(CommandDirective.userDefined(Array.empty(), expected2))
       }).pipe(runEffect))
 
+    it("should validate a command with arguments followed by options", () =>
+      Effect.gen(function*() {
+        const args1 = Array.make("tail", "foo.log", "-n", "100")
+        const args2 = Array.make("grep", "fooBar", "--after", "2", "--before", "3")
+        const result1 = yield* Descriptor.parse(Tail.command, args1, CliConfig.defaultConfig)
+        const result2 = yield* Descriptor.parse(Grep.command, args2, CliConfig.defaultConfig)
+        const expected1 = { name: "tail", options: 100, args: "foo.log" }
+        const expected2 = { name: "grep", options: [2, 3], args: "fooBar" }
+        expect(result1).toEqual(CommandDirective.userDefined(Array.empty(), expected1))
+        expect(result2).toEqual(CommandDirective.userDefined(Array.empty(), expected2))
+      }).pipe(runEffect))
+
     it("should provide auto-correct suggestions for misspelled options", () =>
       Effect.gen(function*() {
         const args1 = Array.make("grep", "--afte", "2", "--before", "3", "fooBar")
@@ -54,13 +66,20 @@ describe("Command", () => {
         )))
       }).pipe(runEffect))
 
+    it("should treat unknown options as arguments but still parse later options", () =>
+      Effect.gen(function*() {
+        const args = Array.make("grep", "fooBar", "--wat", "1", "--after", "2", "--before", "3")
+        const result = yield* Descriptor.parse(Grep.command, args, CliConfig.defaultConfig)
+        const expected = { name: "grep", options: [2, 3], args: "fooBar" }
+        expect(result).toEqual(CommandDirective.userDefined(Array.make("--wat", "1"), expected))
+      }).pipe(runEffect))
+
     it("should return an error if an option is missing", () =>
       Effect.gen(function*() {
         const args = Array.make("grep", "--a", "2", "--before", "3", "fooBar")
         const result = yield* Effect.flip(Descriptor.parse(Grep.command, args, CliConfig.defaultConfig))
-        expect(result).toEqual(ValidationError.missingValue(HelpDoc.sequence(
-          HelpDoc.p("Expected to find option: '--after'"),
-          HelpDoc.p("Expected to find option: '--before'")
+        expect(result).toEqual(ValidationError.missingValue(HelpDoc.p(
+          "Expected to find option: '--after'"
         )))
       }).pipe(runEffect))
   })
