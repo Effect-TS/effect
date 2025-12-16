@@ -5,7 +5,7 @@ import * as Reactivity from "@effect/experimental/Reactivity"
 import * as Client from "@effect/sql/SqlClient"
 import type { Connection } from "@effect/sql/SqlConnection"
 import { SqlError } from "@effect/sql/SqlError"
-import type { Custom, Fragment, Primitive } from "@effect/sql/Statement"
+import type { Custom, Fragment } from "@effect/sql/Statement"
 import * as Statement from "@effect/sql/Statement"
 import type { Extensions, InitializedExtensions, PGliteOptions } from "@electric-sql/pglite"
 import { PGlite } from "@electric-sql/pglite"
@@ -39,7 +39,7 @@ export interface PgliteClient<TExtensions extends Extensions = Extensions> exten
   readonly config: PgliteClientConfig<TExtensions>
   readonly client: PGlite
   readonly json: (_: unknown) => Fragment
-  readonly array: (_: ReadonlyArray<Primitive>) => Fragment
+  readonly array: (_: ReadonlyArray<unknown>) => Fragment
   readonly listen: (channel: string) => Stream.Stream<string, SqlError>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
   readonly extensions: InitializedExtensions<TExtensions>
@@ -129,7 +129,7 @@ export const make = <TExtensions extends Extensions = Extensions>(
 
       execute(
         sql: string,
-        params: ReadonlyArray<Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows?: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
         unprepared?: boolean
       ) {
@@ -144,25 +144,25 @@ export const make = <TExtensions extends Extensions = Extensions>(
           ? this.run(this.pg.exec(sql, params as any))
           : this.run(this.pg.query(sql, params as any))
       }
-      executeRaw(sql: string, params: ReadonlyArray<Primitive>) {
+      executeRaw(sql: string, params: ReadonlyArray<unknown>) {
         return this.run(this.pg.exec(sql, params as any))
       }
-      executeWithoutTransform(sql: string, params: ReadonlyArray<Primitive>) {
+      executeWithoutTransform(sql: string, params: ReadonlyArray<unknown>) {
         return this.run(this.pg.query(sql, params as any))
       }
-      executeValues(sql: string, params: ReadonlyArray<Primitive>) {
+      executeValues(sql: string, params: ReadonlyArray<unknown>) {
         return this.execute(sql, params, (r) => r.map((v) => Object.values(v) as any))
       }
       executeUnprepared(
         sql: string,
-        params: ReadonlyArray<Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         return this.execute(sql, params, transformRows, true)
       }
       executeStream(
         sql: string,
-        params: ReadonlyArray<Primitive>,
+        params: ReadonlyArray<unknown>,
         transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
       ) {
         // PGlite doesn't have a cursor method like postgres.js
@@ -194,7 +194,7 @@ export const make = <TExtensions extends Extensions = Extensions>(
         },
         client,
         json: (_: unknown) => PgliteJson([_]),
-        array: (_: ReadonlyArray<Primitive>) => PgliteArray([_]),
+        array: (_: ReadonlyArray<unknown>) => PgliteArray([_]),
         extensions: options.extensions ? (client as any) : ({} as any),
         listen: (channel: string) =>
           Stream.asyncPush<string, SqlError>((emit) =>
@@ -324,7 +324,7 @@ export const PgliteJson = Statement.custom<PgliteJson>("PgliteJson")
  * @category custom types
  * @since 1.0.0
  */
-export interface PgliteArray extends Custom<"PgliteArray", [ReadonlyArray<Primitive>]> {}
+export interface PgliteArray extends Custom<"PgliteArray", [ReadonlyArray<unknown>]> {}
 
 /**
  * @category custom types
