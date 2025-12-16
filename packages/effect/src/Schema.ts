@@ -4919,6 +4919,7 @@ export class ULID extends String$.pipe(
  * @since 3.11.0
  */
 export class URLFromSelf extends instanceOf(URL, {
+  typeConstructor: { _tag: "URL" },
   identifier: "URLFromSelf",
   arbitrary: (): LazyArbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s)),
   pretty: () => (url) => url.toString()
@@ -6956,7 +6957,7 @@ const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (
 export class TimeZoneOffsetFromSelf extends declare(
   dateTime.isTimeZoneOffset,
   {
-    typeConstructor: { _tag: "effect/TimeZone.Offset" },
+    typeConstructor: { _tag: "effect/DateTime.TimeZone.Offset" },
     identifier: "TimeZoneOffsetFromSelf",
     description: "a TimeZone.Offset instance",
     pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => zone.toString(),
@@ -6992,7 +6993,7 @@ const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc
 export class TimeZoneNamedFromSelf extends declare(
   dateTime.isTimeZoneNamed,
   {
-    typeConstructor: { _tag: "effect/TimeZone.Named" },
+    typeConstructor: { _tag: "effect/DateTime.TimeZone.Named" },
     identifier: "TimeZoneNamedFromSelf",
     description: "a TimeZone.Named instance",
     pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => zone.toString(),
@@ -8353,7 +8354,7 @@ export const NonEmptyChunkFromSelf = <Value extends Schema.Any>(value: Value): N
       encode: (item) => nonEmptyChunkParse(ParseResult.encodeUnknown(NonEmptyArray(item)))
     },
     {
-      typeConstructor: { _tag: "effect/NonEmptyChunk" },
+      typeConstructor: { _tag: "effect/Chunk.NonEmptyChunk" },
       description: `NonEmptyChunk<${format(value)}>`,
       pretty: nonEmptyChunkPretty,
       arbitrary: nonEmptyChunkArbitrary,
