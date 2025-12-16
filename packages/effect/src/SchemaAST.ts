@@ -54,7 +54,8 @@ export type AST =
 
 /**
  * @category annotations
- * @since 3.20.0
+ * @since 3.19.0
+ * @experimental
  */
 export type TypeConstructorAnnotation = {
   readonly _tag: string
@@ -63,7 +64,8 @@ export type TypeConstructorAnnotation = {
 
 /**
  * @category annotations
- * @since 3.20.0
+ * @since 3.19.0
+ * @experimental
  */
 export const TypeConstructorAnnotationId: unique symbol = Symbol.for("effect/annotation/TypeConstructor")
 
@@ -343,7 +345,8 @@ export const getAnnotation: {
 
 /**
  * @category annotations
- * @since 3.20.0
+ * @since 3.19.0
+ * @experimental
  */
 export const getTypeConstructorAnnotation = getAnnotation<TypeConstructorAnnotation>(TypeConstructorAnnotationId)
 
