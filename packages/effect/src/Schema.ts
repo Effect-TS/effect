@@ -231,6 +231,7 @@ interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
 {}
 
 const builtInAnnotations = {
+  typeConstructor: AST.TypeConstructorAnnotationId,
   schemaId: AST.SchemaIdAnnotationId,
   message: AST.MessageAnnotationId,
   missingMessage: AST.MissingMessageAnnotationId,
