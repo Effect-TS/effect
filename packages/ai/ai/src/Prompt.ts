@@ -1333,6 +1333,7 @@ export interface PromptEncoded {
 export class PromptFromSelf extends Schema.declare(
   (u) => isPrompt(u),
   {
+    typeConstructor: { _tag: "effect/ai/Prompt" },
     identifier: "PromptFromSelf",
     description: "a Prompt instance",
     arbitrary: (): Arbitrary.LazyArbitrary<Prompt> => (fc) =>

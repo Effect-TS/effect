@@ -424,7 +424,9 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
     readonly success: Success
     readonly error: Error
   }): Schema.Schema<Complete<Success["Type"], Error["Type"]>> {
-    return Schema.declare((u): u is Complete<Success["Type"], Error["Type"]> => isResult(u) && u._tag === "Complete")
+    return Schema.declare((u): u is Complete<Success["Type"], Error["Type"]> => isResult(u) && u._tag === "Complete", {
+      typeConstructor: { _tag: "effect/workflow/Workflow.Complete" }
+    })
   }
 
   /**
