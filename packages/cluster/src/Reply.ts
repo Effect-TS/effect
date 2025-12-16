@@ -192,8 +192,11 @@ export class Chunk<R extends Rpc.Any> extends Data.TaggedClass("Chunk")<{
   /**
    * @since 1.0.0
    */
-  static readonly schemaFromSelf: Schema.Schema<Chunk<never>> = Schema.declare((u): u is Chunk<never> =>
-    isReply(u) && u._tag === "Chunk"
+  static readonly schemaFromSelf: Schema.Schema<Chunk<never>> = Schema.declare(
+    (u): u is Chunk<never> => isReply(u) && u._tag === "Chunk",
+    {
+      typeConstructor: { _tag: "effect/cluster/Reply.Chunk" }
+    }
   )
 
   /**

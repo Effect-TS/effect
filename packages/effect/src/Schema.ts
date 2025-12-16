@@ -4148,6 +4148,7 @@ export declare namespace Annotations {
    * @since 3.10.0
    */
   export interface Schema<A, TypeParameters extends ReadonlyArray<any> = readonly []> extends Doc<A> {
+    readonly typeConstructor?: AST.TypeConstructorAnnotation
     readonly identifier?: AST.IdentifierAnnotation
     readonly message?: AST.MessageAnnotation
     readonly schemaId?: AST.SchemaIdAnnotation
@@ -4918,6 +4919,7 @@ export class ULID extends String$.pipe(
  * @since 3.11.0
  */
 export class URLFromSelf extends instanceOf(URL, {
+  typeConstructor: { _tag: "URL" },
   identifier: "URLFromSelf",
   arbitrary: (): LazyArbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s)),
   pretty: () => (url) => url.toString()
@@ -5850,6 +5852,7 @@ export const RedactedFromSelf = <Value extends Schema.Any>(value: Value): Redact
       encode: (value) => redactedParse(ParseResult.encodeUnknown(value))
     },
     {
+      typeConstructor: { _tag: "effect/Redacted" },
       description: "Redacted(<redacted>)",
       pretty: () => () => "Redacted(<redacted>)",
       arbitrary: redactedArbitrary,
@@ -5891,6 +5894,7 @@ export function Redacted<Value extends Schema.Any>(value: Value): Redacted<Value
 export class DurationFromSelf extends declare(
   duration_.isDuration,
   {
+    typeConstructor: { _tag: "effect/Duration" },
     identifier: "DurationFromSelf",
     pretty: (): pretty_.Pretty<duration_.Duration> => String,
     arbitrary: (): LazyArbitrary<duration_.Duration> => (fc) =>
@@ -6194,6 +6198,7 @@ export const betweenDuration = <S extends Schema.Any>(
 export class Uint8ArrayFromSelf extends declare(
   Predicate.isUint8Array,
   {
+    typeConstructor: { _tag: "Uint8Array" },
     identifier: "Uint8ArrayFromSelf",
     pretty: (): pretty_.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
     arbitrary: (): LazyArbitrary<Uint8Array> => (fc) => fc.uint8Array(),
@@ -6781,6 +6786,7 @@ export type DateFromSelfSchemaId = typeof DateFromSelfSchemaId
 export class DateFromSelf extends declare(
   Predicate.isDate,
   {
+    typeConstructor: { _tag: "Date" },
     identifier: "DateFromSelf",
     schemaId: DateFromSelfSchemaId,
     [DateFromSelfSchemaId]: { noInvalidDate: false },
@@ -6874,6 +6880,7 @@ export class DateFromNumber extends transform(
 export class DateTimeUtcFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
   {
+    typeConstructor: { _tag: "effect/DateTime.Utc" },
     identifier: "DateTimeUtcFromSelf",
     description: "a DateTime.Utc instance",
     pretty: (): pretty_.Pretty<dateTime.Utc> => (dateTime) => dateTime.toString(),
@@ -6950,6 +6957,7 @@ const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (
 export class TimeZoneOffsetFromSelf extends declare(
   dateTime.isTimeZoneOffset,
   {
+    typeConstructor: { _tag: "effect/DateTime.TimeZone.Offset" },
     identifier: "TimeZoneOffsetFromSelf",
     description: "a TimeZone.Offset instance",
     pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => zone.toString(),
@@ -6985,6 +6993,7 @@ const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc
 export class TimeZoneNamedFromSelf extends declare(
   dateTime.isTimeZoneNamed,
   {
+    typeConstructor: { _tag: "effect/DateTime.TimeZone.Named" },
     identifier: "TimeZoneNamedFromSelf",
     description: "a TimeZone.Named instance",
     pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => zone.toString(),
@@ -7054,6 +7063,7 @@ const timeZoneArbitrary: LazyArbitrary<dateTime.TimeZone> = (fc) =>
 export class DateTimeZonedFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isZoned(u),
   {
+    typeConstructor: { _tag: "effect/DateTime.Zoned" },
     identifier: "DateTimeZonedFromSelf",
     description: "a DateTime.Zoned instance",
     pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
@@ -7169,6 +7179,7 @@ const OptionFromSelf_ = <Value extends Schema.Any>(value: Value): OptionFromSelf
       encode: (value) => optionParse(ParseResult.encodeUnknown(value))
     },
     {
+      typeConstructor: { _tag: "effect/Option" },
       pretty: optionPretty,
       arbitrary: optionArbitrary,
       equivalence: option_.getEquivalence
@@ -7427,6 +7438,7 @@ export const EitherFromSelf = <R extends Schema.All, L extends Schema.All>({ lef
       encode: (right, left) => eitherParse(ParseResult.encodeUnknown(right), ParseResult.encodeUnknown(left))
     },
     {
+      typeConstructor: { _tag: "effect/Either" },
       description: `Either<${format(right)}, ${format(left)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
@@ -7615,6 +7627,7 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
       encode: (Key, Value) => readonlyMapParse(ParseResult.encodeUnknown(Array$(Tuple(Key, Value))))
     },
     {
+      typeConstructor: { _tag: "ReadonlyMap" },
       description,
       pretty: readonlyMapPretty,
       arbitrary: mapArbitrary,
@@ -7797,6 +7810,7 @@ const setFromSelf_ = <Value extends Schema.Any>(value: Value, description: strin
       encode: (item) => readonlySetParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "ReadonlySet" },
       description,
       pretty: readonlySetPretty,
       arbitrary: setArbitrary,
@@ -7898,6 +7912,7 @@ const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
 export class BigDecimalFromSelf extends declare(
   bigDecimal_.isBigDecimal,
   {
+    typeConstructor: { _tag: "effect/BigDecimal" },
     identifier: "BigDecimalFromSelf",
     pretty: bigDecimalPretty,
     arbitrary: bigDecimalArbitrary,
@@ -8267,6 +8282,7 @@ export const ChunkFromSelf = <Value extends Schema.Any>(value: Value): ChunkFrom
       encode: (item) => chunkParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "effect/Chunk" },
       description: `Chunk<${format(value)}>`,
       pretty: chunkPretty,
       arbitrary: chunkArbitrary,
@@ -8338,6 +8354,7 @@ export const NonEmptyChunkFromSelf = <Value extends Schema.Any>(value: Value): N
       encode: (item) => nonEmptyChunkParse(ParseResult.encodeUnknown(NonEmptyArray(item)))
     },
     {
+      typeConstructor: { _tag: "effect/Chunk.NonEmptyChunk" },
       description: `NonEmptyChunk<${format(value)}>`,
       pretty: nonEmptyChunkPretty,
       arbitrary: nonEmptyChunkArbitrary,
@@ -9194,6 +9211,7 @@ const fiberIdPretty: pretty_.Pretty<fiberId_.FiberId> = (fiberId) => {
 export class FiberIdFromSelf extends declare(
   fiberId_.isFiberId,
   {
+    typeConstructor: { _tag: "effect/FiberId" },
     identifier: "FiberIdFromSelf",
     pretty: () => fiberIdPretty,
     arbitrary: () => fiberIdArbitrary
@@ -9409,6 +9427,7 @@ export const CauseFromSelf = <E extends Schema.All, D extends Schema.All>({ defe
       encode: (error, defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(error, defect)))
     },
     {
+      typeConstructor: { _tag: "effect/Cause" },
       title: `Cause<${error.ast}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary
@@ -9659,6 +9678,7 @@ export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, D exten
         )
     },
     {
+      typeConstructor: { _tag: "effect/Exit" },
       title: `Exit<${success.ast}, ${failure.ast}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
@@ -9771,6 +9791,7 @@ export const HashSetFromSelf = <Value extends Schema.Any>(
       encode: (item) => hashSetParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "effect/HashSet" },
       description: `HashSet<${format(value)}>`,
       pretty: hashSetPretty,
       arbitrary: hashSetArbitrary,
@@ -9870,6 +9891,7 @@ export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ ke
       encode: (key, value) => hashMapParse(ParseResult.encodeUnknown(Array$(Tuple(key, value))))
     },
     {
+      typeConstructor: { _tag: "effect/HashMap" },
       description: `HashMap<${format(key)}, ${format(value)}>`,
       pretty: hashMapPretty,
       arbitrary: hashMapArbitrary,
@@ -9956,6 +9978,7 @@ export const ListFromSelf = <Value extends Schema.Any>(
       encode: (item) => listParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "effect/List" },
       description: `List<${format(value)}>`,
       pretty: listPretty,
       arbitrary: listArbitrary,
@@ -10046,6 +10069,7 @@ export const SortedSetFromSelf = <Value extends Schema.Any>(
       encode: (item) => sortedSetParse(ParseResult.encodeUnknown(Array$(item)), ordI)
     },
     {
+      typeConstructor: { _tag: "effect/SortedSet" },
       description: `SortedSet<${format(value)}>`,
       pretty: sortedSetPretty,
       arbitrary: (arb, ctx) => sortedSetArbitrary(arb, ordA, ctx),

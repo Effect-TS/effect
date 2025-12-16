@@ -59,6 +59,7 @@ const make = (input: Record.ReadonlyRecord<string, string>): Mutable<Headers> =>
  * @category schemas
  */
 export const schemaFromSelf: Schema.Schema<Headers> = Schema.declare(isHeaders, {
+  typeConstructor: { _tag: "effect/platform/Headers" },
   identifier: "Headers",
   equivalence: () => Record.getEquivalence(String.Equivalence)
 })
