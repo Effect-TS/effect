@@ -18,14 +18,47 @@ export const make = Effect.fnUntraced(function*(
   const stdin = process.stdin
   const stdout = process.stdout
 
-  // Acquire readline interface with TTY setup/cleanup inside the scope
+  const makeUserInput = (char: string | undefined, key: readline.Key): Terminal.UserInput => ({
+    input: Option.fromNullable(char),
+    key: {
+      name: key.name ?? "",
+      ctrl: !!key.ctrl,
+      meta: !!key.meta,
+      shift: !!key.shift
+    }
+  })
+
+  // Acquire readline interface with raw mode for readInput
   const rlRef = yield* RcRef.make({
     acquire: Effect.acquireRelease(
       Effect.sync(() => {
         const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
         readline.emitKeypressEvents(stdin, rl)
+        if (stdin.isTTY) {
+          stdin.setRawMode(true)
+        }
         return rl
       }),
+      (rl) =>
+        Effect.sync(() => {
+          if (stdin.isTTY) {
+            stdin.setRawMode(false)
+          }
+          rl.close()
+        })
+    )
+  })
+
+  // Acquire readline interface with echo for readLine
+  const rlRefWithEcho = yield* RcRef.make({
+    acquire: Effect.acquireRelease(
+      Effect.sync(() =>
+        readline.createInterface({
+          input: stdin,
+          output: stdout,
+          escapeCodeTimeout: 50
+        })
+      ),
       (rl) => Effect.sync(() => rl.close())
     )
   })
@@ -35,37 +68,36 @@ export const make = Effect.fnUntraced(function*(
   const readInput = Effect.gen(function*() {
     yield* RcRef.get(rlRef)
     const mailbox = yield* Mailbox.make<Terminal.UserInput>()
-    const handleKeypress = (s: string | undefined, k: readline.Key) => {
-      const userInput = {
-        input: Option.fromNullable(s),
-        key: { name: k.name ?? "", ctrl: !!k.ctrl, meta: !!k.meta, shift: !!k.shift }
-      }
+    const handleKeypress = (char: string | undefined, key: readline.Key) => {
+      const userInput = makeUserInput(char, key)
       mailbox.unsafeOffer(userInput)
       if (shouldQuit(userInput)) {
         mailbox.unsafeDone(Exit.void)
       }
     }
-    if (stdin.isTTY) {
-      stdin.setRawMode(true)
-    }
+    yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("keypress", handleKeypress)))
     stdin.on("keypress", handleKeypress)
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => {
-        stdin.off("keypress", handleKeypress)
-        if (stdin.isTTY) {
-          stdin.setRawMode(false)
-        }
-      })
-    )
     return mailbox as Mailbox.ReadonlyMailbox<Terminal.UserInput>
   })
 
-  const readLine = RcRef.get(rlRef).pipe(
+  const readLine = RcRef.get(rlRefWithEcho).pipe(
     Effect.flatMap((readlineInterface) =>
       Effect.async<string, Terminal.QuitException>((resume) => {
-        const onLine = (line: string) => resume(Effect.succeed(line))
+        const onLine = (line: string) => {
+          resume(Effect.succeed(line))
+        }
+        const onKeypress = (char: string | undefined, key: readline.Key) => {
+          const userInput = makeUserInput(char, key)
+          if (shouldQuit(userInput)) {
+            resume(Effect.fail(new Terminal.QuitException()))
+          }
+        }
         readlineInterface.once("line", onLine)
-        return Effect.sync(() => readlineInterface.off("line", onLine))
+        stdin.on("keypress", onKeypress)
+        return Effect.sync(() => {
+          readlineInterface.off("line", onLine)
+          stdin.off("keypress", onKeypress)
+        })
       })
     ),
     Effect.scoped
