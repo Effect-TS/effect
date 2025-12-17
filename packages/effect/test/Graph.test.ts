@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Equal, Graph, Hash, Option } from "effect"
+import { Equal, Graph, Hash, Option, Order } from "effect"
 
 describe("Graph", () => {
   describe("constructors", () => {
@@ -2931,6 +2931,303 @@ describe("Graph", () => {
 
         // Should complete without crashing
         expect(results.length).toBeGreaterThanOrEqual(0)
+      })
+    })
+
+    describe("DFS with order option", () => {
+      it("should traverse nodes in order when order is provided", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          const n0 = Graph.addNode(mutable, 0)
+          const n1 = Graph.addNode(mutable, 1)
+          const n2 = Graph.addNode(mutable, 2)
+          const n3 = Graph.addNode(mutable, 3)
+          const n4 = Graph.addNode(mutable, 4)
+
+          // Create a graph where node 0 connects to 4, 3, 2, 1
+          Graph.addEdge(mutable, n0, n4, undefined)
+          Graph.addEdge(mutable, n0, n3, undefined)
+          Graph.addEdge(mutable, n0, n2, undefined)
+          Graph.addEdge(mutable, n0, n1, undefined)
+        })
+
+        // Without order, neighbors are visited in the reverse order they were added (due to stack)
+        const withoutOrder = Array.from(Graph.indices(Graph.dfs(graph, { start: [0] })))
+        expect(withoutOrder).toEqual([0, 4, 3, 2, 1])
+
+        // With ascending order
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.dfs(graph, { start: [0], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([0, 1, 2, 3, 4])
+
+        // With descending order
+        const withDescOrder = Array.from(
+          Graph.indices(Graph.dfs(graph, { start: [0], order: Order.reverse(Order.number) }))
+        )
+        expect(withDescOrder).toEqual([0, 4, 3, 2, 1])
+      })
+
+      it("should sort start nodes when order is provided", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 10)
+          Graph.addNode(mutable, 20)
+          Graph.addNode(mutable, 30)
+          // No edges, just isolated nodes
+        })
+
+        // Without order, start nodes [2, 0, 1] are pushed to stack and popped in LIFO order: 1, 0, 2
+        const withoutOrder = Array.from(Graph.indices(Graph.dfs(graph, { start: [2, 0, 1] })))
+        expect(withoutOrder).toEqual([1, 0, 2])
+
+        // With ascending order: [0, 1, 2] sorted, pushed to stack, popped in LIFO: 2, 1, 0
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.dfs(graph, { start: [2, 0, 1], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([2, 1, 0])
+
+        // With descending order: [2, 1, 0] sorted, pushed to stack, popped in LIFO: 0, 1, 2
+        const withDescOrder = Array.from(
+          Graph.indices(Graph.dfs(graph, { start: [2, 0, 1], order: Order.reverse(Order.number) }))
+        )
+        expect(withDescOrder).toEqual([0, 1, 2])
+      })
+
+      it("should traverse tree in deterministic order with custom order", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          const n0 = Graph.addNode(mutable, 0) // root
+          const n1 = Graph.addNode(mutable, 1) // left
+          const n2 = Graph.addNode(mutable, 2) // right
+          const n3 = Graph.addNode(mutable, 3) // left-left
+          const n4 = Graph.addNode(mutable, 4) // left-right
+          const n5 = Graph.addNode(mutable, 5) // right-left
+          const n6 = Graph.addNode(mutable, 6) // right-right
+
+          // Build a binary tree
+          Graph.addEdge(mutable, n0, n2, undefined) // root -> right
+          Graph.addEdge(mutable, n0, n1, undefined) // root -> left
+          Graph.addEdge(mutable, n1, n4, undefined) // left -> left-right
+          Graph.addEdge(mutable, n1, n3, undefined) // left -> left-left
+          Graph.addEdge(mutable, n2, n6, undefined) // right -> right-right
+          Graph.addEdge(mutable, n2, n5, undefined) // right -> right-left
+        })
+
+        // With ascending order: should visit in-order (left subtree first)
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.dfs(graph, { start: [0], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([0, 1, 3, 4, 2, 5, 6])
+      })
+
+      it("should work without order parameter (backward compatibility)", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+          Graph.addNode(mutable, 2)
+          Graph.addEdge(mutable, 0, 1, undefined)
+          Graph.addEdge(mutable, 0, 2, undefined)
+        })
+
+        const result = Array.from(Graph.indices(Graph.dfs(graph, { start: [0] })))
+        // Without order, edges are visited in reverse order of addition (due to stack LIFO)
+        expect(result).toEqual([0, 1, 2])
+      })
+    })
+
+    describe("BFS with order option", () => {
+      it("should traverse nodes in breadth-first order when order is provided", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          const n0 = Graph.addNode(mutable, 0)
+          const n1 = Graph.addNode(mutable, 1)
+          const n2 = Graph.addNode(mutable, 2)
+          const n3 = Graph.addNode(mutable, 3)
+          const n4 = Graph.addNode(mutable, 4)
+
+          // Create a graph where node 0 connects to 4, 3, 2, 1
+          Graph.addEdge(mutable, n0, n4, undefined)
+          Graph.addEdge(mutable, n0, n3, undefined)
+          Graph.addEdge(mutable, n0, n2, undefined)
+          Graph.addEdge(mutable, n0, n1, undefined)
+        })
+
+        // Without order, neighbors are visited in the order they were added
+        const withoutOrder = Array.from(Graph.indices(Graph.bfs(graph, { start: [0] })))
+        expect(withoutOrder).toEqual([0, 4, 3, 2, 1])
+
+        // With ascending order (BFS visits level by level in sorted order)
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.bfs(graph, { start: [0], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([0, 1, 2, 3, 4])
+
+        // With descending order
+        const withDescOrder = Array.from(
+          Graph.indices(Graph.bfs(graph, { start: [0], order: Order.reverse(Order.number) }))
+        )
+        expect(withDescOrder).toEqual([0, 4, 3, 2, 1])
+      })
+
+      it("should sort start nodes when order is provided", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 10)
+          Graph.addNode(mutable, 20)
+          Graph.addNode(mutable, 30)
+          // No edges, just isolated nodes
+        })
+
+        // Without order, start nodes are processed in the order provided (FIFO for BFS)
+        const withoutOrder = Array.from(Graph.indices(Graph.bfs(graph, { start: [2, 0, 1] })))
+        expect(withoutOrder).toEqual([2, 0, 1])
+
+        // With ascending order
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.bfs(graph, { start: [2, 0, 1], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([0, 1, 2])
+
+        // With descending order
+        const withDescOrder = Array.from(
+          Graph.indices(Graph.bfs(graph, { start: [2, 0, 1], order: Order.reverse(Order.number) }))
+        )
+        expect(withDescOrder).toEqual([2, 1, 0])
+      })
+
+      it("should traverse tree in deterministic breadth-first order with custom order", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 0) // root
+          Graph.addNode(mutable, 1) // left
+          Graph.addNode(mutable, 2) // right
+          Graph.addNode(mutable, 3) // left-left
+          Graph.addNode(mutable, 4) // left-right
+          Graph.addNode(mutable, 5) // right-left
+          Graph.addNode(mutable, 6) // right-right
+
+          // Build a binary tree
+          Graph.addEdge(mutable, 0, 2, undefined) // root -> right
+          Graph.addEdge(mutable, 0, 1, undefined) // root -> left
+          Graph.addEdge(mutable, 1, 4, undefined) // left -> left-right
+          Graph.addEdge(mutable, 1, 3, undefined) // left -> left-left
+          Graph.addEdge(mutable, 2, 6, undefined) // right -> right-right
+          Graph.addEdge(mutable, 2, 5, undefined) // right -> right-left
+        })
+
+        // With ascending order: should visit level by level in ascending order
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.bfs(graph, { start: [0], order: Order.number }))
+        )
+        // Level 0: 0, Level 1: 1, 2, Level 2: 3, 4, 5, 6
+        expect(withAscOrder).toEqual([0, 1, 2, 3, 4, 5, 6])
+      })
+
+      it("should work without order parameter (backward compatibility)", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+          Graph.addNode(mutable, 2)
+          Graph.addEdge(mutable, 0, 1, undefined)
+          Graph.addEdge(mutable, 0, 2, undefined)
+        })
+
+        const result = Array.from(Graph.indices(Graph.bfs(graph, { start: [0] })))
+        // BFS queue is FIFO, edges added in order 1, 2
+        expect(result).toEqual([0, 1, 2])
+      })
+    })
+
+    describe("DfsPostOrder with order option", () => {
+      it("should traverse nodes in postorder with order", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          const n0 = Graph.addNode(mutable, 0)
+          const n1 = Graph.addNode(mutable, 1)
+          const n2 = Graph.addNode(mutable, 2)
+          const n3 = Graph.addNode(mutable, 3)
+          const n4 = Graph.addNode(mutable, 4)
+
+          // Create a graph where node 0 connects to 4, 3, 2, 1
+          Graph.addEdge(mutable, n0, n4, undefined)
+          Graph.addEdge(mutable, n0, n3, undefined)
+          Graph.addEdge(mutable, n0, n2, undefined)
+          Graph.addEdge(mutable, n0, n1, undefined)
+        })
+
+        // Without order (children first in reverse order of addition, then parent)
+        const withoutOrder = Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [0] })))
+        expect(withoutOrder).toEqual([4, 3, 2, 1, 0])
+
+        // With ascending order (children in ascending order, then parent)
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.dfsPostOrder(graph, { start: [0], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([1, 2, 3, 4, 0])
+
+        // With descending order (children in descending order, then parent)
+        const withDescOrder = Array.from(
+          Graph.indices(Graph.dfsPostOrder(graph, { start: [0], order: Order.reverse(Order.number) }))
+        )
+        expect(withDescOrder).toEqual([4, 3, 2, 1, 0])
+      })
+
+      it("should sort start nodes in postorder when order is provided", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 10)
+          Graph.addNode(mutable, 20)
+          Graph.addNode(mutable, 30)
+          // No edges, just isolated nodes
+        })
+
+        // Without order
+        const withoutOrder = Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [2, 0, 1] })))
+        expect(withoutOrder).toEqual([2, 0, 1])
+
+        // With ascending order
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.dfsPostOrder(graph, { start: [2, 0, 1], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([0, 1, 2])
+
+        // With descending order
+        const withDescOrder = Array.from(
+          Graph.indices(Graph.dfsPostOrder(graph, { start: [2, 0, 1], order: Order.reverse(Order.number) }))
+        )
+        expect(withDescOrder).toEqual([2, 1, 0])
+      })
+
+      it("should traverse tree in deterministic postorder with custom order", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 0) // root
+          Graph.addNode(mutable, 1) // left
+          Graph.addNode(mutable, 2) // right
+          Graph.addNode(mutable, 3) // left-left
+          Graph.addNode(mutable, 4) // left-right
+          Graph.addNode(mutable, 5) // right-left
+          Graph.addNode(mutable, 6) // right-right
+
+          // Build a binary tree
+          Graph.addEdge(mutable, 0, 2, undefined) // root -> right
+          Graph.addEdge(mutable, 0, 1, undefined) // root -> left
+          Graph.addEdge(mutable, 1, 4, undefined) // left -> left-right
+          Graph.addEdge(mutable, 1, 3, undefined) // left -> left-left
+          Graph.addEdge(mutable, 2, 6, undefined) // right -> right-right
+          Graph.addEdge(mutable, 2, 5, undefined) // right -> right-left
+        })
+
+        // With ascending order: postorder (children before parent)
+        const withAscOrder = Array.from(
+          Graph.indices(Graph.dfsPostOrder(graph, { start: [0], order: Order.number }))
+        )
+        expect(withAscOrder).toEqual([3, 4, 1, 5, 6, 2, 0])
+      })
+
+      it("should work without order parameter (backward compatibility)", () => {
+        const graph = Graph.directed<number, void>((mutable) => {
+          Graph.addNode(mutable, 0)
+          Graph.addNode(mutable, 1)
+          Graph.addNode(mutable, 2)
+          Graph.addEdge(mutable, 0, 1, undefined)
+          Graph.addEdge(mutable, 0, 2, undefined)
+        })
+
+        const result = Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [0] })))
+        expect(result).toEqual([1, 2, 0])
       })
     })
 
