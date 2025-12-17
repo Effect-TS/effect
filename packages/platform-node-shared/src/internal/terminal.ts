@@ -24,19 +24,9 @@ export const make = Effect.fnUntraced(function*(
       Effect.sync(() => {
         const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
         readline.emitKeypressEvents(stdin, rl)
-
-        if (stdin.isTTY) {
-          stdin.setRawMode(true)
-        }
         return rl
       }),
-      (rl) =>
-        Effect.sync(() => {
-          if (stdin.isTTY) {
-            stdin.setRawMode(false)
-          }
-          rl.close()
-        })
+      (rl) => Effect.sync(() => rl.close())
     )
   })
 
@@ -55,8 +45,18 @@ export const make = Effect.fnUntraced(function*(
         mailbox.unsafeDone(Exit.void)
       }
     }
-    yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("keypress", handleKeypress)))
+    if (stdin.isTTY) {
+      stdin.setRawMode(true)
+    }
     stdin.on("keypress", handleKeypress)
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        stdin.off("keypress", handleKeypress)
+        if (stdin.isTTY) {
+          stdin.setRawMode(false)
+        }
+      })
+    )
     return mailbox as Mailbox.ReadonlyMailbox<Terminal.UserInput>
   })
 
