@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.94.0
+
+### Minor Changes
+
+- [#5917](https://github.com/Effect-TS/effect/pull/5917) [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53) Thanks @tim-smart! - support non-errors in HttpClient.retryTransient
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+
 ## 0.93.8
 
 ### Patch Changes
