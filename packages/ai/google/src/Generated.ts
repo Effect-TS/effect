@@ -4370,7 +4370,7 @@ export const make = (
   return {
     httpClient,
     "ListOperations": (tunedModel, options) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/operations`).pipe(
+      HttpClientRequest.get(`/models/${tunedModel}/operations`).pipe(
         HttpClientRequest.setUrlParams({
           "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
@@ -4382,7 +4382,7 @@ export const make = (
         }))
       ),
     "ListOperationsBy": (options) =>
-      HttpClientRequest.get(`/v1beta/batches`).pipe(
+      HttpClientRequest.get(`/batches`).pipe(
         HttpClientRequest.setUrlParams({
           "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
@@ -4394,7 +4394,7 @@ export const make = (
         }))
       ),
     "ListOperationsByModel": (model, options) =>
-      HttpClientRequest.get(`/v1beta/models/${model}/operations`).pipe(
+      HttpClientRequest.get(`/models/${model}/operations`).pipe(
         HttpClientRequest.setUrlParams({
           "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
@@ -4406,70 +4406,70 @@ export const make = (
         }))
       ),
     "GetOperation": (tunedModel, operation) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/operations/${operation}`).pipe(
+      HttpClientRequest.get(`/tunedModels/${tunedModel}/operations/${operation}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "GetOperationByGeneratedFileAndOperation": (generatedFile, operation) =>
-      HttpClientRequest.get(`/v1beta/generatedFiles/${generatedFile}/operations/${operation}`).pipe(
+      HttpClientRequest.get(`/generatedFiles/${generatedFile}/operations/${operation}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "GetOperationByGenerateContentBatch": (generateContentBatch) =>
-      HttpClientRequest.get(`/v1beta/batches/${generateContentBatch}`).pipe(
+      HttpClientRequest.get(`/batches/${generateContentBatch}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteOperation": (generateContentBatch) =>
-      HttpClientRequest.del(`/v1beta/batches/${generateContentBatch}`).pipe(
+      HttpClientRequest.del(`/batches/${generateContentBatch}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "GetOperationByModelAndOperation": (model, operation) =>
-      HttpClientRequest.get(`/v1beta/models/${model}/operations/${operation}`).pipe(
+      HttpClientRequest.get(`/models/${model}/operations/${operation}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "GetOperationByCorpusAndOperation": (corpus, operation) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/operations/${operation}`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/operations/${operation}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "GetOperationByRagStoreAndOperation": (ragStore, operation) =>
-      HttpClientRequest.get(`/v1beta/ragStores/${ragStore}/operations/${operation}`).pipe(
+      HttpClientRequest.get(`/ragStores/${ragStore}/operations/${operation}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "GetOperationByRagStoresIdAndOperationsId": (ragStoresId, operationsId) =>
-      HttpClientRequest.get(`/v1beta/ragStores/${ragStoresId}/upload/operations/${operationsId}`).pipe(
+      HttpClientRequest.get(`/ragStores/${ragStoresId}/upload/operations/${operationsId}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
         }))
       ),
     "CancelOperation": (generateContentBatch) =>
-      HttpClientRequest.post(`/v1beta/batches/${generateContentBatch}:cancel`).pipe(
+      HttpClientRequest.post(`/batches/${generateContentBatch}:cancel`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "GenerateContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateContent`).pipe(
+      HttpClientRequest.post(`/models/${model}:generateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateContentResponse),
@@ -4477,7 +4477,7 @@ export const make = (
         }))
       ),
     "GenerateContentByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:generateContent`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}:generateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateContentResponse),
@@ -4485,7 +4485,7 @@ export const make = (
         }))
       ),
     "GenerateContentByDynamicId": (dynamicId, options) =>
-      HttpClientRequest.post(`/v1beta/dynamic/${dynamicId}:generateContent`).pipe(
+      HttpClientRequest.post(`/dynamic/${dynamicId}:generateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateContentResponse),
@@ -4493,7 +4493,7 @@ export const make = (
         }))
       ),
     "GenerateAnswer": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateAnswer`).pipe(
+      HttpClientRequest.post(`/models/${model}:generateAnswer`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateAnswerResponse),
@@ -4501,7 +4501,7 @@ export const make = (
         }))
       ),
     "StreamGenerateContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:streamGenerateContent`).pipe(
+      HttpClientRequest.post(`/models/${model}:streamGenerateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateContentResponse),
@@ -4509,7 +4509,7 @@ export const make = (
         }))
       ),
     "StreamGenerateContentByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:streamGenerateContent`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}:streamGenerateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateContentResponse),
@@ -4517,7 +4517,7 @@ export const make = (
         }))
       ),
     "StreamGenerateContentByDynamicId": (dynamicId, options) =>
-      HttpClientRequest.post(`/v1beta/dynamic/${dynamicId}:streamGenerateContent`).pipe(
+      HttpClientRequest.post(`/dynamic/${dynamicId}:streamGenerateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateContentResponse),
@@ -4525,7 +4525,7 @@ export const make = (
         }))
       ),
     "EmbedContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:embedContent`).pipe(
+      HttpClientRequest.post(`/models/${model}:embedContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(EmbedContentResponse),
@@ -4533,7 +4533,7 @@ export const make = (
         }))
       ),
     "BatchEmbedContents": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:batchEmbedContents`).pipe(
+      HttpClientRequest.post(`/models/${model}:batchEmbedContents`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BatchEmbedContentsResponse),
@@ -4541,7 +4541,7 @@ export const make = (
         }))
       ),
     "CountTokens": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:countTokens`).pipe(
+      HttpClientRequest.post(`/models/${model}:countTokens`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CountTokensResponse),
@@ -4549,7 +4549,7 @@ export const make = (
         }))
       ),
     "BatchGenerateContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:batchGenerateContent`).pipe(
+      HttpClientRequest.post(`/models/${model}:batchGenerateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BatchGenerateContentOperation),
@@ -4557,7 +4557,7 @@ export const make = (
         }))
       ),
     "BatchGenerateContentByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:batchGenerateContent`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}:batchGenerateContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BatchGenerateContentOperation),
@@ -4565,7 +4565,7 @@ export const make = (
         }))
       ),
     "AsyncBatchEmbedContent": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:asyncBatchEmbedContent`).pipe(
+      HttpClientRequest.post(`/models/${model}:asyncBatchEmbedContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(AsyncBatchEmbedContentOperation),
@@ -4573,7 +4573,7 @@ export const make = (
         }))
       ),
     "AsyncBatchEmbedContentByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:asyncBatchEmbedContent`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}:asyncBatchEmbedContent`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(AsyncBatchEmbedContentOperation),
@@ -4581,7 +4581,7 @@ export const make = (
         }))
       ),
     "ListCachedContents": (options) =>
-      HttpClientRequest.get(`/v1beta/cachedContents`).pipe(
+      HttpClientRequest.get(`/cachedContents`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4592,7 +4592,7 @@ export const make = (
         }))
       ),
     "CreateCachedContent": (options) =>
-      HttpClientRequest.post(`/v1beta/cachedContents`).pipe(
+      HttpClientRequest.post(`/cachedContents`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CachedContent),
@@ -4600,21 +4600,21 @@ export const make = (
         }))
       ),
     "GetCachedContent": (id) =>
-      HttpClientRequest.get(`/v1beta/cachedContents/${id}`).pipe(
+      HttpClientRequest.get(`/cachedContents/${id}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CachedContent),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteCachedContent": (id) =>
-      HttpClientRequest.del(`/v1beta/cachedContents/${id}`).pipe(
+      HttpClientRequest.del(`/cachedContents/${id}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "UpdateCachedContent": (id, options) =>
-      HttpClientRequest.patch(`/v1beta/cachedContents/${id}`).pipe(
+      HttpClientRequest.patch(`/cachedContents/${id}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4623,7 +4623,7 @@ export const make = (
         }))
       ),
     "GenerateMessage": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateMessage`).pipe(
+      HttpClientRequest.post(`/models/${model}:generateMessage`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateMessageResponse),
@@ -4631,7 +4631,7 @@ export const make = (
         }))
       ),
     "CountMessageTokens": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:countMessageTokens`).pipe(
+      HttpClientRequest.post(`/models/${model}:countMessageTokens`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CountMessageTokensResponse),
@@ -4639,7 +4639,7 @@ export const make = (
         }))
       ),
     "ListFiles": (options) =>
-      HttpClientRequest.get(`/v1beta/files`).pipe(
+      HttpClientRequest.get(`/files`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4650,7 +4650,7 @@ export const make = (
         }))
       ),
     "CreateFile": (options) =>
-      HttpClientRequest.post(`/v1beta/files`).pipe(
+      HttpClientRequest.post(`/files`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CreateFileResponse),
@@ -4658,35 +4658,35 @@ export const make = (
         }))
       ),
     "GetFile": (file) =>
-      HttpClientRequest.get(`/v1beta/files/${file}`).pipe(
+      HttpClientRequest.get(`/files/${file}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(File),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteFile": (file) =>
-      HttpClientRequest.del(`/v1beta/files/${file}`).pipe(
+      HttpClientRequest.del(`/files/${file}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "DownloadFile": (file) =>
-      HttpClientRequest.get(`/v1beta/files/${file}:download`).pipe(
+      HttpClientRequest.get(`/files/${file}:download`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(DownloadFileResponse),
           orElse: unexpectedStatus
         }))
       ),
     "GetGeneratedFile": (generatedFile) =>
-      HttpClientRequest.get(`/v1beta/generatedFiles/${generatedFile}`).pipe(
+      HttpClientRequest.get(`/generatedFiles/${generatedFile}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GeneratedFile),
           orElse: unexpectedStatus
         }))
       ),
     "ListGeneratedFiles": (options) =>
-      HttpClientRequest.get(`/v1beta/generatedFiles`).pipe(
+      HttpClientRequest.get(`/generatedFiles`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4697,14 +4697,14 @@ export const make = (
         }))
       ),
     "GetModel": (model) =>
-      HttpClientRequest.get(`/v1beta/models/${model}`).pipe(
+      HttpClientRequest.get(`/models/${model}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Model),
           orElse: unexpectedStatus
         }))
       ),
     "ListModels": (options) =>
-      HttpClientRequest.get(`/v1beta/models`).pipe(
+      HttpClientRequest.get(`/models`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4715,21 +4715,21 @@ export const make = (
         }))
       ),
     "GetTunedModel": (tunedModel) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}`).pipe(
+      HttpClientRequest.get(`/tunedModels/${tunedModel}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(TunedModel),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteTunedModel": (tunedModel) =>
-      HttpClientRequest.del(`/v1beta/tunedModels/${tunedModel}`).pipe(
+      HttpClientRequest.del(`/tunedModels/${tunedModel}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "UpdateTunedModel": (tunedModel, options) =>
-      HttpClientRequest.patch(`/v1beta/tunedModels/${tunedModel}`).pipe(
+      HttpClientRequest.patch(`/tunedModels/${tunedModel}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4738,7 +4738,7 @@ export const make = (
         }))
       ),
     "ListTunedModels": (options) =>
-      HttpClientRequest.get(`/v1beta/tunedModels`).pipe(
+      HttpClientRequest.get(`/tunedModels`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any,
@@ -4750,7 +4750,7 @@ export const make = (
         }))
       ),
     "CreateTunedModel": (options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels`).pipe(
+      HttpClientRequest.post(`/tunedModels`).pipe(
         HttpClientRequest.setUrlParams({ "tunedModelId": options.params?.["tunedModelId"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4759,7 +4759,7 @@ export const make = (
         }))
       ),
     "ListPermissions": (tunedModel, options) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/permissions`).pipe(
+      HttpClientRequest.get(`/tunedModels/${tunedModel}/permissions`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4770,7 +4770,7 @@ export const make = (
         }))
       ),
     "CreatePermission": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}/permissions`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}/permissions`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Permission),
@@ -4778,7 +4778,7 @@ export const make = (
         }))
       ),
     "ListPermissionsByCorpus": (corpus, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/permissions`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/permissions`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4789,7 +4789,7 @@ export const make = (
         }))
       ),
     "CreatePermissionByCorpus": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/permissions`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/permissions`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Permission),
@@ -4797,21 +4797,21 @@ export const make = (
         }))
       ),
     "GetPermission": (tunedModel, permission) =>
-      HttpClientRequest.get(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
+      HttpClientRequest.get(`/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Permission),
           orElse: unexpectedStatus
         }))
       ),
     "DeletePermission": (tunedModel, permission) =>
-      HttpClientRequest.del(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
+      HttpClientRequest.del(`/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "UpdatePermission": (tunedModel, permission, options) =>
-      HttpClientRequest.patch(`/v1beta/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
+      HttpClientRequest.patch(`/tunedModels/${tunedModel}/permissions/${permission}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4820,21 +4820,21 @@ export const make = (
         }))
       ),
     "GetPermissionByCorpusAndPermission": (corpus, permission) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/permissions/${permission}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Permission),
           orElse: unexpectedStatus
         }))
       ),
     "DeletePermissionByCorpusAndPermission": (corpus, permission) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
+      HttpClientRequest.del(`/corpora/${corpus}/permissions/${permission}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "UpdatePermissionByCorpusAndPermission": (corpus, permission, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/permissions/${permission}`).pipe(
+      HttpClientRequest.patch(`/corpora/${corpus}/permissions/${permission}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4843,7 +4843,7 @@ export const make = (
         }))
       ),
     "TransferOwnership": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:transferOwnership`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}:transferOwnership`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(TransferOwnershipResponse),
@@ -4851,7 +4851,7 @@ export const make = (
         }))
       ),
     "Predict": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:predict`).pipe(
+      HttpClientRequest.post(`/models/${model}:predict`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(PredictResponse),
@@ -4859,7 +4859,7 @@ export const make = (
         }))
       ),
     "PredictLongRunning": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:predictLongRunning`).pipe(
+      HttpClientRequest.post(`/models/${model}:predictLongRunning`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(PredictLongRunningOperation),
@@ -4867,7 +4867,7 @@ export const make = (
         }))
       ),
     "ListCorpora": (options) =>
-      HttpClientRequest.get(`/v1beta/corpora`).pipe(
+      HttpClientRequest.get(`/corpora`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4878,7 +4878,7 @@ export const make = (
         }))
       ),
     "CreateCorpus": (options) =>
-      HttpClientRequest.post(`/v1beta/corpora`).pipe(
+      HttpClientRequest.post(`/corpora`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Corpus),
@@ -4886,14 +4886,14 @@ export const make = (
         }))
       ),
     "GetCorpus": (corpus) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Corpus),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteCorpus": (corpus, options) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}`).pipe(
+      HttpClientRequest.del(`/corpora/${corpus}`).pipe(
         HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
@@ -4901,7 +4901,7 @@ export const make = (
         }))
       ),
     "UpdateCorpus": (corpus, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}`).pipe(
+      HttpClientRequest.patch(`/corpora/${corpus}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4910,7 +4910,7 @@ export const make = (
         }))
       ),
     "QueryCorpus": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}:query`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}:query`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(QueryCorpusResponse),
@@ -4918,7 +4918,7 @@ export const make = (
         }))
       ),
     "ListDocuments": (corpus, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/documents`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4929,7 +4929,7 @@ export const make = (
         }))
       ),
     "CreateDocument": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/documents`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Document),
@@ -4937,14 +4937,14 @@ export const make = (
         }))
       ),
     "GetDocument": (corpus, document) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/documents/${document}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Document),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteDocument": (corpus, document, options) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
+      HttpClientRequest.del(`/corpora/${corpus}/documents/${document}`).pipe(
         HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
@@ -4952,7 +4952,7 @@ export const make = (
         }))
       ),
     "UpdateDocument": (corpus, document, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
+      HttpClientRequest.patch(`/corpora/${corpus}/documents/${document}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -4961,7 +4961,7 @@ export const make = (
         }))
       ),
     "QueryDocument": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}:query`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/documents/${document}:query`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(QueryDocumentResponse),
@@ -4969,7 +4969,7 @@ export const make = (
         }))
       ),
     "ListChunks": (corpus, document, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/documents/${document}/chunks`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4980,7 +4980,7 @@ export const make = (
         }))
       ),
     "CreateChunk": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/documents/${document}/chunks`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Chunk),
@@ -4988,7 +4988,7 @@ export const make = (
         }))
       ),
     "BatchCreateChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchCreate`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/documents/${document}/chunks:batchCreate`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BatchCreateChunksResponse),
@@ -4996,21 +4996,21 @@ export const make = (
         }))
       ),
     "GetChunk": (corpus, document, chunk) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
+      HttpClientRequest.get(`/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Chunk),
           orElse: unexpectedStatus
         }))
       ),
     "DeleteChunk": (corpus, document, chunk) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
+      HttpClientRequest.del(`/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
     "UpdateChunk": (corpus, document, chunk, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
+      HttpClientRequest.patch(`/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
         HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
         withResponse(HttpClientResponse.matchStatus({
@@ -5019,7 +5019,7 @@ export const make = (
         }))
       ),
     "BatchUpdateChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchUpdate`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/documents/${document}/chunks:batchUpdate`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BatchUpdateChunksResponse),
@@ -5027,7 +5027,7 @@ export const make = (
         }))
       ),
     "BatchDeleteChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchDelete`).pipe(
+      HttpClientRequest.post(`/corpora/${corpus}/documents/${document}/chunks:batchDelete`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Empty),
@@ -5035,7 +5035,7 @@ export const make = (
         }))
       ),
     "GenerateText": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:generateText`).pipe(
+      HttpClientRequest.post(`/models/${model}:generateText`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateTextResponse),
@@ -5043,7 +5043,7 @@ export const make = (
         }))
       ),
     "GenerateTextByTunedModel": (tunedModel, options) =>
-      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:generateText`).pipe(
+      HttpClientRequest.post(`/tunedModels/${tunedModel}:generateText`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(GenerateTextResponse),
@@ -5051,7 +5051,7 @@ export const make = (
         }))
       ),
     "EmbedText": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:embedText`).pipe(
+      HttpClientRequest.post(`/models/${model}:embedText`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(EmbedTextResponse),
@@ -5059,7 +5059,7 @@ export const make = (
         }))
       ),
     "BatchEmbedText": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:batchEmbedText`).pipe(
+      HttpClientRequest.post(`/models/${model}:batchEmbedText`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(BatchEmbedTextResponse),
@@ -5067,7 +5067,7 @@ export const make = (
         }))
       ),
     "CountTextTokens": (model, options) =>
-      HttpClientRequest.post(`/v1beta/models/${model}:countTextTokens`).pipe(
+      HttpClientRequest.post(`/models/${model}:countTextTokens`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CountTextTokensResponse),
