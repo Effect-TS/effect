@@ -1,4 +1,4 @@
-import { Layer, Schedule } from "effect"
+import { Context, Layer, Schedule } from "effect"
 import { describe, expect, it } from "tstyche"
 
 interface In1 {}
@@ -18,6 +18,8 @@ interface Err3 {}
 interface Out3 {}
 
 declare const layer3: Layer.Layer<Out3, Err3, In3>
+
+class TestService1 extends Context.Tag("TestService1")<TestService1, {}>() {}
 
 describe("Layer", () => {
   it("merge", () => {
@@ -39,5 +41,29 @@ describe("Layer", () => {
   it("retry", () => {
     expect(Layer.retry(layer1, Schedule.recurs(1))).type.toBe<Layer.Layer<Out1, Err1, In1>>()
     expect(layer1.pipe(Layer.retry(Schedule.recurs(1)))).type.toBe<Layer.Layer<Out1, Err1, In1>>()
+  })
+
+  it("ensureSuccessType", () => {
+    expect(layer1.pipe(Layer.ensureSuccessType<Out1>())).type.toBe<Layer.Layer<Out1, Err1, In1>>()
+  })
+
+  it("ensureErrorType", () => {
+    const withoutError = Layer.succeed(TestService1, {})
+    expect(withoutError.pipe(Layer.ensureErrorType<never>())).type.toBe<Layer.Layer<TestService1, never, never>>()
+
+    const withError = layer1
+    expect(withError.pipe(Layer.ensureErrorType<Err1>())).type.toBe<Layer.Layer<Out1, Err1, In1>>()
+  })
+
+  it("ensureRequirementsType", () => {
+    const withoutRequirements = Layer.succeed(TestService1, {})
+    expect(withoutRequirements.pipe(Layer.ensureRequirementsType<never>())).type.toBe<
+      Layer.Layer<TestService1, never, never>
+    >()
+
+    const withRequirement = layer1
+    expect(withRequirement.pipe(Layer.ensureRequirementsType<In1>())).type.toBe<
+      Layer.Layer<Out1, Err1, In1>
+    >()
   })
 })
