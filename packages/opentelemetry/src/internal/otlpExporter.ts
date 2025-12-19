@@ -1,4 +1,5 @@
 import * as Headers from "@effect/platform/Headers"
+import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
@@ -9,6 +10,12 @@ import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+
+/**
+ * OTLP protocol type for encoding
+ * @internal
+ */
+export type OtlpProtocol = "json" | "protobuf"
 
 const policy = Schedule.forever.pipe(
   Schedule.passthrough,
@@ -37,6 +44,8 @@ export const make: (
     readonly exportInterval: Duration.DurationInput
     readonly maxBatchSize: number | "disabled"
     readonly body: (data: Array<any>) => unknown
+    readonly bodyProtobuf?: ((data: Array<any>) => Uint8Array) | undefined
+    readonly protocol?: OtlpProtocol | undefined
     readonly shutdownTimeout: Duration.DurationInput
   }
 ) => Effect.Effect<
@@ -53,8 +62,14 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
+  const protocol = options.protocol ?? "json"
+  const contentType = protocol === "protobuf"
+    ? "application/x-protobuf"
+    : "application/json"
+
   let headers = Headers.unsafeFromRecord({
-    "user-agent": `effect-opentelemetry-${options.label}/0.0.0`
+    "user-agent": `effect-opentelemetry-${options.label}/0.0.0`,
+    "content-type": contentType
   })
   if (options.headers) {
     headers = Headers.merge(Headers.fromInput(options.headers), headers)
@@ -75,9 +90,14 @@ export const make: (
       }
       buffer = []
     }
-    return client.execute(
-      HttpClientRequest.bodyUnsafeJson(request, options.body(items))
-    ).pipe(
+    const requestWithBody = protocol === "protobuf" && options.bodyProtobuf
+      ? HttpClientRequest.setBody(
+        request,
+        HttpBody.uint8Array(options.bodyProtobuf(items), contentType)
+      )
+      : HttpClientRequest.bodyUnsafeJson(request, options.body(items))
+
+    return client.execute(requestWithBody).pipe(
       Effect.asVoid,
       Effect.withTracerEnabled(false)
     )

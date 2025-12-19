@@ -8,9 +8,21 @@ import type * as Duration from "effect/Duration"
 import * as Layer from "effect/Layer"
 import type * as Logger from "effect/Logger"
 import type * as Tracer from "effect/Tracer"
+import type { OtlpProtocol as _OtlpProtocol } from "./internal/otlpExporter.js"
 import * as OtlpLogger from "./OtlpLogger.js"
 import * as OtlpMetrics from "./OtlpMetrics.js"
 import * as OtlpTracer from "./OtlpTracer.js"
+
+/**
+ * OTLP protocol type for encoding telemetry data.
+ *
+ * - `"json"`: JSON encoding (default) - uses `application/json` content type
+ * - `"protobuf"`: Protocol Buffers binary encoding - uses `application/x-protobuf` content type
+ *
+ * @since 1.0.0
+ * @category Models
+ */
+export type OtlpProtocol = _OtlpProtocol
 
 /**
  * @since 1.0.0
@@ -32,6 +44,7 @@ export const layer = (options: {
   readonly metricsExportInterval?: Duration.DurationInput | undefined
   readonly tracerExportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
+  readonly protocol?: OtlpProtocol | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => {
   const baseReq = HttpClientRequest.get(options.baseUrl)
   const url = (path: string) => HttpClientRequest.appendUrl(baseReq, path).url
@@ -44,14 +57,16 @@ export const layer = (options: {
       exportInterval: options.loggerExportInterval,
       maxBatchSize: options.maxBatchSize,
       shutdownTimeout: options.shutdownTimeout,
-      excludeLogSpans: options.loggerExcludeLogSpans
+      excludeLogSpans: options.loggerExcludeLogSpans,
+      protocol: options.protocol
     }),
     OtlpMetrics.layer({
       url: url("/v1/metrics"),
       resource: options.resource,
       headers: options.headers,
       exportInterval: options.metricsExportInterval,
-      shutdownTimeout: options.shutdownTimeout
+      shutdownTimeout: options.shutdownTimeout,
+      protocol: options.protocol
     }),
     OtlpTracer.layer({
       url: url("/v1/traces"),
@@ -60,7 +75,8 @@ export const layer = (options: {
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
       context: options.tracerContext,
-      shutdownTimeout: options.shutdownTimeout
+      shutdownTimeout: options.shutdownTimeout,
+      protocol: options.protocol
     })
   )
 }
