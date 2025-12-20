@@ -16,9 +16,7 @@ export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("Cache
 
 export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
 
-export class ReasoningDetailSummaryFormat
-  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
-{}
+export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
 
 /**
  * Reasoning summary detail
@@ -37,7 +35,7 @@ export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("Rea
 export class ReasoningDetailEncryptedType extends S.Literal("reasoning.encrypted") {}
 
 export class ReasoningDetailEncryptedFormat
-  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
+  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1")
 {}
 
 /**
@@ -56,9 +54,7 @@ export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>(
 
 export class ReasoningDetailTextType extends S.Literal("reasoning.text") {}
 
-export class ReasoningDetailTextFormat
-  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
-{}
+export class ReasoningDetailTextFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
 
 /**
  * Text reasoning detail
@@ -616,7 +612,7 @@ export class OpenResponsesResponseText extends S.Class<OpenResponsesResponseText
   "verbosity": S.optionalWith(OpenResponsesResponseTextVerbosity, { nullable: true })
 }) {}
 
-export class OpenAIResponsesReasoningEffort extends S.Literal("high", "medium", "low", "minimal", "none") {}
+export class OpenAIResponsesReasoningEffort extends S.Literal("xhigh", "high", "medium", "low", "minimal", "none") {}
 
 export class ReasoningSummaryVerbosity extends S.Literal("auto", "concise", "detailed") {}
 
@@ -642,9 +638,7 @@ export class OpenAIResponsesIncludable extends S.Literal(
   "code_interpreter_call.outputs"
 ) {}
 
-export class OpenResponsesRequestServiceTierEnum extends S.Literal("auto", "default", "flex", "scale", "priority") {}
-
-export class OpenResponsesRequestServiceTier extends OpenResponsesRequestServiceTierEnum {}
+export class OpenResponsesRequestServiceTier extends S.Literal("auto") {}
 
 export class OpenResponsesRequestTruncationEnum extends S.Literal("auto", "disabled") {}
 
@@ -663,12 +657,14 @@ export class ProviderName extends S.Literal(
   "AionLabs",
   "Alibaba",
   "Amazon Bedrock",
+  "Amazon Nova",
   "Anthropic",
-  "Arcee",
+  "Arcee AI",
   "AtlasCloud",
   "Avian",
   "Azure",
   "BaseTen",
+  "BytePlus",
   "Black Forest Labs",
   "Cerebras",
   "Chutes",
@@ -683,6 +679,7 @@ export class ProviderName extends S.Literal(
   "Fireworks",
   "Friendli",
   "GMICloud",
+  "GoPomelo",
   "Google",
   "Google AI Studio",
   "Groq",
@@ -692,6 +689,7 @@ export class ProviderName extends S.Literal(
   "Infermatic",
   "Inflection",
   "Liquid",
+  "Mara",
   "Mancer 2",
   "Minimax",
   "ModelRun",
@@ -712,12 +710,15 @@ export class ProviderName extends S.Literal(
   "Relace",
   "SambaNova",
   "SiliconFlow",
+  "Sourceful",
   "Stealth",
+  "StreamLake",
   "Switchpoint",
   "Targon",
   "Together",
   "Venice",
   "WandB",
+  "Xiaomi",
   "xAI",
   "Z.AI",
   "FakeProvider"
@@ -725,15 +726,41 @@ export class ProviderName extends S.Literal(
 
 export class Quantization extends S.Literal("int4", "int8", "fp4", "fp6", "fp8", "fp16", "bf16", "fp32", "unknown") {}
 
-/**
- * The sorting strategy to use for this request, if "order" is not specified. When set, no load balancing is performed.
- */
 export class ProviderSort extends S.Literal("price", "throughput", "latency") {}
 
+export class ProviderSortConfigPartitionEnum extends S.Literal("model", "none") {}
+
+export class ProviderSortConfig extends S.Class<ProviderSortConfig>("ProviderSortConfig")({
+  "by": S.optionalWith(ProviderSort, { nullable: true }),
+  "partition": S.optionalWith(ProviderSortConfigPartitionEnum, { nullable: true })
+}) {}
+
 /**
- * A value in string or number format that is a large number
+ * A value in string format that is a large number
  */
-export class BigNumberUnion extends S.Union(S.Number, S.String, S.Number) {}
+export class BigNumberUnion extends S.String {}
+
+/**
+ * The search engine to use for web search.
+ */
+export class WebSearchEngine extends S.Literal("native", "exa") {}
+
+/**
+ * The engine to use for parsing PDF files.
+ */
+export class PDFParserEngine extends S.Literal("mistral-ocr", "pdf-text", "native") {}
+
+/**
+ * Options for PDF parsing.
+ */
+export class PDFParserOptions extends S.Class<PDFParserOptions>("PDFParserOptions")({
+  "engine": S.optionalWith(PDFParserEngine, { nullable: true })
+}) {}
+
+/**
+ * **DEPRECATED** Use providers.sort.partition instead. Backwards-compatible alias for providers.sort.partition. Accepts legacy values: "fallback" (maps to "model"), "sort" (maps to "none").
+ */
+export class OpenResponsesRequestRoute extends S.Literal("fallback", "sort") {}
 
 /**
  * Request schema for Responses endpoint
@@ -771,8 +798,8 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
   "include": S.optionalWith(S.Array(OpenAIResponsesIncludable), { nullable: true }),
   "background": S.optionalWith(S.Boolean, { nullable: true }),
   "safety_identifier": S.optionalWith(S.String, { nullable: true }),
-  "store": S.optionalWith(S.Boolean, { nullable: true }),
-  "service_tier": S.optionalWith(OpenResponsesRequestServiceTier, { nullable: true }),
+  "store": S.optionalWith(S.Literal(false), { nullable: true, default: () => false as const }),
+  "service_tier": S.optionalWith(OpenResponsesRequestServiceTier, { nullable: true, default: () => "auto" as const }),
   "truncation": S.optionalWith(OpenResponsesRequestTruncation, { nullable: true }),
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   /**
@@ -815,7 +842,10 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
        * A list of quantization levels to filter the provider by.
        */
       "quantizations": S.optionalWith(S.Array(Quantization), { nullable: true }),
-      "sort": S.optionalWith(ProviderSort, { nullable: true }),
+      /**
+       * The sorting strategy to use for this request, if "order" is not specified. When set, no load balancing is performed.
+       */
+      "sort": S.optionalWith(S.Union(ProviderSort, ProviderSortConfig), { nullable: true }),
       /**
        * The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
        */
@@ -828,7 +858,23 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
           "request": S.optionalWith(BigNumberUnion, { nullable: true })
         }),
         { nullable: true }
-      )
+      ),
+      /**
+       * Preferred minimum throughput (in tokens per second). Endpoints below this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+       */
+      "preferred_min_throughput": S.optionalWith(S.Number, { nullable: true }),
+      /**
+       * Preferred maximum latency (in seconds). Endpoints above this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+       */
+      "preferred_max_latency": S.optionalWith(S.Number, { nullable: true }),
+      /**
+       * **DEPRECATED** Use preferred_min_throughput instead. Backwards-compatible alias for preferred_min_throughput.
+       */
+      "min_throughput": S.optionalWith(S.Number, { nullable: true }),
+      /**
+       * **DEPRECATED** Use preferred_max_latency instead. Backwards-compatible alias for preferred_max_latency.
+       */
+      "max_latency": S.optionalWith(S.Number, { nullable: true })
     }),
     { nullable: true }
   ),
@@ -842,27 +888,44 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
       }),
       S.Struct({
         "id": S.Literal("web"),
+        /**
+         * Set to false to disable the web-search plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true }),
         "max_results": S.optionalWith(S.Number, { nullable: true }),
         "search_prompt": S.optionalWith(S.String, { nullable: true }),
-        "engine": S.optionalWith(S.Literal("native", "exa"), { nullable: true })
+        "engine": S.optionalWith(WebSearchEngine, { nullable: true })
       }),
       S.Struct({
         "id": S.Literal("file-parser"),
-        "max_files": S.optionalWith(S.Number, { nullable: true }),
-        "pdf": S.optionalWith(
-          S.Struct({
-            "engine": S.optionalWith(S.Literal("mistral-ocr", "pdf-text", "native"), { nullable: true })
-          }),
-          { nullable: true }
-        )
+        /**
+         * Set to false to disable the file-parser plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+        "pdf": S.optionalWith(PDFParserOptions, { nullable: true })
+      }),
+      S.Struct({
+        "id": S.Literal("response-healing"),
+        /**
+         * Set to false to disable the response-healing plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true })
       })
     )),
     { nullable: true }
   ),
   /**
+   * **DEPRECATED** Use providers.sort.partition instead. Backwards-compatible alias for providers.sort.partition. Accepts legacy values: "fallback" (maps to "model"), "sort" (maps to "none").
+   */
+  "route": S.optionalWith(OpenResponsesRequestRoute, { nullable: true }),
+  /**
    * A unique identifier representing your end-user, which helps distinguish between different users of your app. This allows your app to identify specific users in case of abuse reports, preventing your entire app from being affected by the actions of individual users. Maximum of 128 characters.
    */
-  "user": S.optionalWith(S.String.pipe(S.maxLength(128)), { nullable: true })
+  "user": S.optionalWith(S.String.pipe(S.maxLength(128)), { nullable: true }),
+  /**
+   * A unique identifier for grouping related requests (e.g., a conversation or agent workflow) for observability. If provided in both the request body and the x-session-id header, the body value takes precedence. Maximum of 128 characters.
+   */
+  "session_id": S.optionalWith(S.String.pipe(S.maxLength(128)), { nullable: true })
 }) {}
 
 export class OutputMessageRole extends S.Literal("assistant") {}
@@ -1430,7 +1493,18 @@ export class ForbiddenResponse extends S.Class<ForbiddenResponse>("ForbiddenResp
 /**
  * Total credits purchased and used
  */
-export class GetCredits200 extends S.Record({ key: S.String, value: S.Unknown }) {}
+export class GetCredits200 extends S.Struct({
+  "data": S.Struct({
+    /**
+     * Total credits purchased
+     */
+    "total_credits": S.Number,
+    /**
+     * Total credits used
+     */
+    "total_usage": S.Number
+  })
+}) {}
 
 export class CreateChargeRequestChainId extends S.Literal(1, 137, 8453) {}
 
@@ -1474,6 +1548,82 @@ export class CreateCoinbaseCharge200 extends S.Struct({
 
 export class CreateEmbeddingsRequestEncodingFormat extends S.Literal("float", "base64") {}
 
+/**
+ * The sorting strategy to use for this request, if "order" is not specified. When set, no load balancing is performed.
+ */
+export class ProviderPreferencesSort extends S.Literal("price", "throughput", "latency") {}
+
+/**
+ * Provider routing preferences for the request.
+ */
+export class ProviderPreferences extends S.Class<ProviderPreferences>("ProviderPreferences")({
+  /**
+   * Whether to allow backup providers to serve requests
+   * - true: (default) when the primary provider (or your custom providers in "order") is unavailable, use the next best provider.
+   * - false: use only the primary/custom provider, and return the upstream error if it's unavailable.
+   */
+  "allow_fallbacks": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Whether to filter providers to only those that support the parameters you've provided. If this setting is omitted or set to false, then providers will receive only the parameters they support, and ignore the rest.
+   */
+  "require_parameters": S.optionalWith(S.Boolean, { nullable: true }),
+  "data_collection": S.optionalWith(DataCollection, { nullable: true }),
+  /**
+   * Whether to restrict routing to only ZDR (Zero Data Retention) endpoints. When true, only endpoints that do not retain prompts will be used.
+   */
+  "zdr": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Whether to restrict routing to only models that allow text distillation. When true, only models where the author has allowed distillation will be used.
+   */
+  "enforce_distillable_text": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * An ordered list of provider slugs. The router will attempt to use the first provider in the subset of this list that supports your requested model, and fall back to the next if it is unavailable. If no providers are available, the request will fail with an error message.
+   */
+  "order": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
+  /**
+   * List of provider slugs to allow. If provided, this list is merged with your account-wide allowed provider settings for this request.
+   */
+  "only": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
+  /**
+   * List of provider slugs to ignore. If provided, this list is merged with your account-wide ignored provider settings for this request.
+   */
+  "ignore": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
+  /**
+   * A list of quantization levels to filter the provider by.
+   */
+  "quantizations": S.optionalWith(S.Array(Quantization), { nullable: true }),
+  "sort": S.optionalWith(ProviderPreferencesSort, { nullable: true }),
+  /**
+   * The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
+   */
+  "max_price": S.optionalWith(
+    S.Struct({
+      "prompt": S.optionalWith(BigNumberUnion, { nullable: true }),
+      "completion": S.optionalWith(BigNumberUnion, { nullable: true }),
+      "image": S.optionalWith(BigNumberUnion, { nullable: true }),
+      "audio": S.optionalWith(BigNumberUnion, { nullable: true }),
+      "request": S.optionalWith(BigNumberUnion, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * Preferred minimum throughput (in tokens per second). Endpoints below this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+   */
+  "preferred_min_throughput": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Preferred maximum latency (in seconds). Endpoints above this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+   */
+  "preferred_max_latency": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * **DEPRECATED** Use preferred_min_throughput instead. Backwards-compatible alias for preferred_min_throughput.
+   */
+  "min_throughput": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * **DEPRECATED** Use preferred_max_latency instead. Backwards-compatible alias for preferred_max_latency.
+   */
+  "max_latency": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
 export class CreateEmbeddingsRequest extends S.Class<CreateEmbeddingsRequest>("CreateEmbeddingsRequest")({
   "input": S.Union(
     S.String,
@@ -1499,60 +1649,7 @@ export class CreateEmbeddingsRequest extends S.Class<CreateEmbeddingsRequest>("C
   "encoding_format": S.optionalWith(CreateEmbeddingsRequestEncodingFormat, { nullable: true }),
   "dimensions": S.optionalWith(S.Int.pipe(S.greaterThan(0)), { nullable: true }),
   "user": S.optionalWith(S.String, { nullable: true }),
-  "provider": S.optionalWith(
-    S.Struct({
-      /**
-       * Whether to allow backup providers to serve requests
-       * - true: (default) when the primary provider (or your custom providers in "order") is unavailable, use the next best provider.
-       * - false: use only the primary/custom provider, and return the upstream error if it's unavailable.
-       */
-      "allow_fallbacks": S.optionalWith(S.Boolean, { nullable: true }),
-      /**
-       * Whether to filter providers to only those that support the parameters you've provided. If this setting is omitted or set to false, then providers will receive only the parameters they support, and ignore the rest.
-       */
-      "require_parameters": S.optionalWith(S.Boolean, { nullable: true }),
-      "data_collection": S.optionalWith(DataCollection, { nullable: true }),
-      /**
-       * Whether to restrict routing to only ZDR (Zero Data Retention) endpoints. When true, only endpoints that do not retain prompts will be used.
-       */
-      "zdr": S.optionalWith(S.Boolean, { nullable: true }),
-      /**
-       * Whether to restrict routing to only models that allow text distillation. When true, only models where the author has allowed distillation will be used.
-       */
-      "enforce_distillable_text": S.optionalWith(S.Boolean, { nullable: true }),
-      /**
-       * An ordered list of provider slugs. The router will attempt to use the first provider in the subset of this list that supports your requested model, and fall back to the next if it is unavailable. If no providers are available, the request will fail with an error message.
-       */
-      "order": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
-      /**
-       * List of provider slugs to allow. If provided, this list is merged with your account-wide allowed provider settings for this request.
-       */
-      "only": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
-      /**
-       * List of provider slugs to ignore. If provided, this list is merged with your account-wide ignored provider settings for this request.
-       */
-      "ignore": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
-      /**
-       * A list of quantization levels to filter the provider by.
-       */
-      "quantizations": S.optionalWith(S.Array(Quantization), { nullable: true }),
-      "sort": S.optionalWith(ProviderSort, { nullable: true }),
-      /**
-       * The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
-       */
-      "max_price": S.optionalWith(
-        S.Struct({
-          "prompt": S.optionalWith(BigNumberUnion, { nullable: true }),
-          "completion": S.optionalWith(BigNumberUnion, { nullable: true }),
-          "image": S.optionalWith(BigNumberUnion, { nullable: true }),
-          "audio": S.optionalWith(BigNumberUnion, { nullable: true }),
-          "request": S.optionalWith(BigNumberUnion, { nullable: true })
-        }),
-        { nullable: true }
-      )
-    }),
-    { nullable: true }
-  ),
+  "provider": S.optionalWith(ProviderPreferences, { nullable: true }),
   "input_type": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -1730,6 +1827,7 @@ export class Parameter extends S.Literal(
   "parallel_tool_calls",
   "include_reasoning",
   "reasoning",
+  "reasoning_effort",
   "web_search_options",
   "verbosity"
 ) {}
@@ -2120,73 +2218,8 @@ export class ListEndpointsZdr200 extends S.Struct({
   "data": S.Array(PublicEndpoint)
 }) {}
 
-export class GetParametersParamsProvider extends S.Literal(
-  "AI21",
-  "AionLabs",
-  "Alibaba",
-  "Amazon Bedrock",
-  "Anthropic",
-  "Arcee",
-  "AtlasCloud",
-  "Avian",
-  "Azure",
-  "BaseTen",
-  "Black Forest Labs",
-  "Cerebras",
-  "Chutes",
-  "Cirrascale",
-  "Clarifai",
-  "Cloudflare",
-  "Cohere",
-  "Crusoe",
-  "DeepInfra",
-  "DeepSeek",
-  "Featherless",
-  "Fireworks",
-  "Friendli",
-  "GMICloud",
-  "Google",
-  "Google AI Studio",
-  "Groq",
-  "Hyperbolic",
-  "Inception",
-  "InferenceNet",
-  "Infermatic",
-  "Inflection",
-  "Liquid",
-  "Mancer 2",
-  "Minimax",
-  "ModelRun",
-  "Mistral",
-  "Modular",
-  "Moonshot AI",
-  "Morph",
-  "NCompass",
-  "Nebius",
-  "NextBit",
-  "Novita",
-  "Nvidia",
-  "OpenAI",
-  "OpenInference",
-  "Parasail",
-  "Perplexity",
-  "Phala",
-  "Relace",
-  "SambaNova",
-  "SiliconFlow",
-  "Stealth",
-  "Switchpoint",
-  "Targon",
-  "Together",
-  "Venice",
-  "WandB",
-  "xAI",
-  "Z.AI",
-  "FakeProvider"
-) {}
-
 export class GetParametersParams extends S.Struct({
-  "provider": S.optionalWith(GetParametersParamsProvider, { nullable: true })
+  "provider": S.optionalWith(ProviderName, { nullable: true })
 }) {}
 
 export class GetParameters200 extends S.Struct({
@@ -2224,6 +2257,7 @@ export class GetParameters200 extends S.Struct({
         "parallel_tool_calls",
         "include_reasoning",
         "reasoning",
+        "reasoning_effort",
         "web_search_options",
         "verbosity"
       )
@@ -2840,9 +2874,104 @@ export class CreateAuthKeysCode200 extends S.Struct({
   })
 }) {}
 
+export class ChatGenerationParamsProviderEnumDataCollectionEnum extends S.Literal("deny", "allow") {}
+
+export class Schema0 extends S.Array(
+  S.Union(
+    S.Literal(
+      "AI21",
+      "AionLabs",
+      "Alibaba",
+      "Amazon Bedrock",
+      "Amazon Nova",
+      "Anthropic",
+      "Arcee AI",
+      "AtlasCloud",
+      "Avian",
+      "Azure",
+      "BaseTen",
+      "BytePlus",
+      "Black Forest Labs",
+      "Cerebras",
+      "Chutes",
+      "Cirrascale",
+      "Clarifai",
+      "Cloudflare",
+      "Cohere",
+      "Crusoe",
+      "DeepInfra",
+      "DeepSeek",
+      "Featherless",
+      "Fireworks",
+      "Friendli",
+      "GMICloud",
+      "GoPomelo",
+      "Google",
+      "Google AI Studio",
+      "Groq",
+      "Hyperbolic",
+      "Inception",
+      "InferenceNet",
+      "Infermatic",
+      "Inflection",
+      "Liquid",
+      "Mara",
+      "Mancer 2",
+      "Minimax",
+      "ModelRun",
+      "Mistral",
+      "Modular",
+      "Moonshot AI",
+      "Morph",
+      "NCompass",
+      "Nebius",
+      "NextBit",
+      "Novita",
+      "Nvidia",
+      "OpenAI",
+      "OpenInference",
+      "Parasail",
+      "Perplexity",
+      "Phala",
+      "Relace",
+      "SambaNova",
+      "SiliconFlow",
+      "Sourceful",
+      "Stealth",
+      "StreamLake",
+      "Switchpoint",
+      "Targon",
+      "Together",
+      "Venice",
+      "WandB",
+      "Xiaomi",
+      "xAI",
+      "Z.AI",
+      "FakeProvider"
+    ),
+    S.String
+  )
+) {}
+
+export class ProviderSortUnion extends S.Union(ProviderSort, ProviderSortConfig) {}
+
+export class Schema1 extends S.Union(S.Number, S.String, S.Number) {}
+
+export class ChatGenerationParamsRouteEnum extends S.Literal("fallback", "sort") {}
+
+export class ChatMessageContentItemCacheControlTtl extends S.Literal("5m", "1h") {}
+
+export class ChatMessageContentItemCacheControl
+  extends S.Class<ChatMessageContentItemCacheControl>("ChatMessageContentItemCacheControl")({
+    "type": S.Literal("ephemeral"),
+    "ttl": S.optionalWith(ChatMessageContentItemCacheControlTtl, { nullable: true })
+  })
+{}
+
 export class ChatMessageContentItemText extends S.Class<ChatMessageContentItemText>("ChatMessageContentItemText")({
   "type": S.Literal("text"),
-  "text": S.String
+  "text": S.String,
+  "cache_control": S.optionalWith(ChatMessageContentItemCacheControl, { nullable: true })
 }) {}
 
 export class SystemMessage extends S.Class<SystemMessage>("SystemMessage")({
@@ -2861,32 +2990,15 @@ export class ChatMessageContentItemImage extends S.Class<ChatMessageContentItemI
   })
 }) {}
 
-export class ChatMessageContentItemAudioInputAudioFormat
-  extends S.Literal("wav", "mp3", "flac", "m4a", "ogg", "pcm16", "pcm24")
-{}
-
 export class ChatMessageContentItemAudio extends S.Class<ChatMessageContentItemAudio>("ChatMessageContentItemAudio")({
   "type": S.Literal("input_audio"),
   "input_audio": S.Struct({
     "data": S.String,
-    "format": ChatMessageContentItemAudioInputAudioFormat
+    "format": S.String
   })
-}) {}
-
-export class VideoURL extends S.Class<VideoURL>("VideoURL")({
-  "url": S.String
 }) {}
 
 export class ChatMessageContentItemVideo extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-export class ChatMessageContentItemFile extends S.Class<ChatMessageContentItemFile>("ChatMessageContentItemFile")({
-  "type": S.Literal("file"),
-  "file": S.Struct({
-    "file_data": S.String,
-    "file_id": S.optionalWith(S.String, { nullable: true }),
-    "filename": S.optionalWith(S.String, { nullable: true })
-  })
-}) {}
 
 export class ChatMessageContentItem extends S.Record({ key: S.String, value: S.Unknown }) {}
 
@@ -2927,7 +3039,9 @@ export class Message extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 export class ModelName extends S.String {}
 
-export class ChatGenerationParamsReasoningEffortEnum extends S.Literal("none", "minimal", "low", "medium", "high") {}
+export class ChatGenerationParamsReasoningEffortEnum
+  extends S.Literal("xhigh", "high", "medium", "low", "minimal", "none")
+{}
 
 export class JSONSchemaConfig extends S.Class<JSONSchemaConfig>("JSONSchemaConfig")({
   "name": S.String.pipe(S.maxLength(64)),
@@ -2972,6 +3086,83 @@ export class ToolDefinitionJson extends S.Class<ToolDefinitionJson>("ToolDefinit
 }) {}
 
 export class ChatGenerationParams extends S.Class<ChatGenerationParams>("ChatGenerationParams")({
+  /**
+   * When multiple model providers are available, optionally indicate your routing preference.
+   */
+  "provider": S.optionalWith(
+    S.Struct({
+      /**
+       * Whether to allow backup providers to serve requests
+       * - true: (default) when the primary provider (or your custom providers in "order") is unavailable, use the next best provider.
+       * - false: use only the primary/custom provider, and return the upstream error if it's unavailable.
+       */
+      "allow_fallbacks": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * Whether to filter providers to only those that support the parameters you've provided. If this setting is omitted or set to false, then providers will receive only the parameters they support, and ignore the rest.
+       */
+      "require_parameters": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * Data collection setting. If no available model provider meets the requirement, your request will return an error.
+       * - allow: (default) allow providers which store user data non-transiently and may train on it
+       *
+       * - deny: use only providers which do not collect user data.
+       */
+      "data_collection": S.optionalWith(S.Literal("deny", "allow"), { nullable: true }),
+      "zdr": S.optionalWith(S.Boolean, { nullable: true }),
+      "enforce_distillable_text": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * An ordered list of provider slugs. The router will attempt to use the first provider in the subset of this list that supports your requested model, and fall back to the next if it is unavailable. If no providers are available, the request will fail with an error message.
+       */
+      "order": S.optionalWith(Schema0, { nullable: true }),
+      /**
+       * List of provider slugs to allow. If provided, this list is merged with your account-wide allowed provider settings for this request.
+       */
+      "only": S.optionalWith(Schema0, { nullable: true }),
+      /**
+       * List of provider slugs to ignore. If provided, this list is merged with your account-wide ignored provider settings for this request.
+       */
+      "ignore": S.optionalWith(Schema0, { nullable: true }),
+      /**
+       * A list of quantization levels to filter the provider by.
+       */
+      "quantizations": S.optionalWith(
+        S.Array(S.Literal("int4", "int8", "fp4", "fp6", "fp8", "fp16", "bf16", "fp32", "unknown")),
+        { nullable: true }
+      ),
+      /**
+       * The sorting strategy to use for this request, if "order" is not specified. When set, no load balancing is performed.
+       */
+      "sort": S.optionalWith(ProviderSortUnion, { nullable: true }),
+      /**
+       * The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
+       */
+      "max_price": S.optionalWith(
+        S.Struct({
+          "prompt": S.optionalWith(Schema1, { nullable: true }),
+          "completion": S.optionalWith(Schema1, { nullable: true }),
+          "image": S.optionalWith(Schema1, { nullable: true }),
+          "audio": S.optionalWith(Schema1, { nullable: true }),
+          "request": S.optionalWith(Schema1, { nullable: true })
+        }),
+        { nullable: true }
+      ),
+      "preferred_min_throughput": S.optionalWith(S.Number, { nullable: true }),
+      "preferred_max_latency": S.optionalWith(S.Number, { nullable: true }),
+      "min_throughput": S.optionalWith(S.Number, { nullable: true }),
+      "max_latency": S.optionalWith(S.Number, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * Plugins you want to enable for this request, including their settings.
+   */
+  "plugins": S.optionalWith(S.Array(S.Record({ key: S.String, value: S.Unknown })), { nullable: true }),
+  "route": S.optionalWith(ChatGenerationParamsRouteEnum, { nullable: true }),
+  "user": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * A unique identifier for grouping related requests (e.g., a conversation or agent workflow) for observability. If provided in both the request body and the x-session-id header, the body value takes precedence. Maximum of 128 characters.
+   */
+  "session_id": S.optionalWith(S.String.pipe(S.maxLength(128)), { nullable: true }),
   "messages": S.NonEmptyArray(Message).pipe(S.minItems(1)),
   "model": S.optionalWith(ModelName, { nullable: true }),
   "models": S.optionalWith(S.Array(ModelName), { nullable: true }),
@@ -3011,14 +3202,29 @@ export class ChatGenerationParams extends S.Class<ChatGenerationParams>("ChatGen
     nullable: true,
     default: () => 1 as const
   }),
-  "user": S.optionalWith(S.String, { nullable: true })
+  "debug": S.optionalWith(
+    S.Struct({
+      "echo_upstream_body": S.optionalWith(S.Boolean, { nullable: true })
+    }),
+    { nullable: true }
+  )
 }) {}
 
-export class ChatCompletionFinishReasonEnum
-  extends S.Literal("tool_calls", "stop", "length", "content_filter", "error")
+export class ChatCompletionFinishReason extends S.Literal("tool_calls", "stop", "length", "content_filter", "error") {}
+
+export class Schema2 extends S.Union(ChatCompletionFinishReason, S.Null) {}
+
+export class Schema4 extends S.Union(S.String, S.Null) {}
+
+export class Schema5Enum
+  extends S.Literal("unknown", "openai-responses-v1", "xai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
 {}
 
-export class ChatCompletionFinishReason extends S.Union(ChatCompletionFinishReasonEnum, S.Null) {}
+export class Schema5 extends S.Union(Schema5Enum, S.Null) {}
+
+export class Schema6 extends S.Number {}
+
+export class Schema3 extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 export class ChatMessageTokenLogprob extends S.Class<ChatMessageTokenLogprob>("ChatMessageTokenLogprob")({
   "token": S.String,
@@ -3037,9 +3243,10 @@ export class ChatMessageTokenLogprobs extends S.Class<ChatMessageTokenLogprobs>(
 }) {}
 
 export class ChatResponseChoice extends S.Class<ChatResponseChoice>("ChatResponseChoice")({
-  "finish_reason": S.NullOr(S.Literal("tool_calls", "stop", "length", "content_filter", "error")),
+  "finish_reason": S.NullOr(ChatCompletionFinishReason),
   "index": S.Number,
   "message": AssistantMessage,
+  "reasoning_details": S.optionalWith(S.Array(Schema3), { nullable: true }),
   "logprobs": S.optionalWith(ChatMessageTokenLogprobs, { nullable: true })
 }) {}
 
@@ -3145,7 +3352,9 @@ export class CompletionChoice extends S.Class<CompletionChoice>("CompletionChoic
   "text": S.String,
   "index": S.Number,
   "logprobs": S.NullOr(CompletionLogprobs),
-  "finish_reason": S.NullOr(S.Literal("stop", "length", "content_filter"))
+  "finish_reason": S.NullOr(S.Literal("stop", "length", "content_filter")),
+  "native_finish_reason": S.optionalWith(S.String, { nullable: true }),
+  "reasoning": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class CompletionUsage extends S.Class<CompletionUsage>("CompletionUsage")({
@@ -3159,6 +3368,7 @@ export class CompletionResponse extends S.Class<CompletionResponse>("CompletionR
   "object": S.Literal("text_completion"),
   "created": S.Number,
   "model": S.String,
+  "provider": S.optionalWith(S.String, { nullable: true }),
   "system_fingerprint": S.optionalWith(S.String, { nullable: true }),
   "choices": S.Array(CompletionChoice),
   "usage": S.optionalWith(CompletionUsage, { nullable: true })
