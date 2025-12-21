@@ -266,8 +266,13 @@ const makeOtelSpan = (span: EffectTracer.Span, clock: Clock.Clock): OtelApi.Span
       if (arguments.length === 3) {
         attributes = arguments[1]
         startTime = arguments[2]
-      } else {
-        startTime = arguments[1]
+      } else if (arguments.length === 2) {
+        const arg1 = arguments[1]
+        if (isTimeInput(arg1)) {
+          startTime = arg1
+        } else {
+          attributes = arg1
+        }
       }
       span.event(name, convertOtelTimeInput(startTime, clock), attributes)
       return self
@@ -317,6 +322,12 @@ const makeOtelSpan = (span: EffectTracer.Span, clock: Clock.Clock): OtelApi.Span
 
 const bigint1e6 = BigInt(1_000_000)
 const bigint1e9 = BigInt(1_000_000_000)
+
+/** Distinguishes TimeInput (number | Date | [number, number]) from Attributes (plain object) */
+const isTimeInput = (u: unknown): u is OtelApi.TimeInput =>
+  typeof u === "number" ||
+  u instanceof Date ||
+  (Array.isArray(u) && u.length === 2 && typeof u[0] === "number" && typeof u[1] === "number")
 
 const convertOtelTimeInput = (input: OtelApi.TimeInput | undefined, clock: Clock.Clock): bigint => {
   if (input === undefined) {
