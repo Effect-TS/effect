@@ -38,6 +38,7 @@ import * as fiberRefsPatch from "./fiberRefs/patch.js"
 import type { FiberRuntime } from "./fiberRuntime.js"
 import * as metricLabel from "./metric/label.js"
 import * as runtimeFlags from "./runtimeFlags.js"
+import { canWriteStackTraceLimit } from "./stackTraceLimit.js"
 import * as internalTracer from "./tracer.js"
 
 /* @internal */
@@ -2241,10 +2242,15 @@ export const functionWithSpan = <Args extends Array<any>, Ret extends Effect.Eff
   (function(this: any) {
     let captureStackTrace: LazyArg<string | undefined> | boolean = options.captureStackTrace ?? false
     if (options.captureStackTrace !== false) {
-      const limit = Error.stackTraceLimit
-      Error.stackTraceLimit = 2
-      const error = new Error()
-      Error.stackTraceLimit = limit
+      let error: Error
+      if (!canWriteStackTraceLimit) {
+        error = new Error()
+      } else {
+        const prevLimit = Error.stackTraceLimit
+        Error.stackTraceLimit = 2
+        error = new Error()
+        Error.stackTraceLimit = prevLimit
+      }
       let cache: false | string = false
       captureStackTrace = () => {
         if (cache !== false) {
