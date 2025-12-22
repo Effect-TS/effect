@@ -1505,7 +1505,7 @@ describe("Effect", () => {
 
   it("fn", () => {
     const fn = Effect.fn((a?: string) => Effect.succeed(a), Effect.asVoid)
-    expect(fn).type.toBe<(this: unknown, a?: string | undefined) => Effect.Effect<void, never, never>>()
+    expect(fn).type.toBe<(a?: string | undefined) => Effect.Effect<void, never, never>>()
   })
 
   it("fn returns Effect subtype", () => {
@@ -1515,11 +1515,11 @@ describe("Effect", () => {
     }, () => Option.some("test"))
 
     expect(fnNonGen).type.toBe<
-      (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
+      (a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
     >()
 
     expect(fnGen).type.toBe<
-      (this: unknown, a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
+      (a?: string | undefined) => Effect.Effect<string, NoSuchElementException, never>
     >()
   })
 

@@ -766,7 +766,7 @@ describe("Schema", () => {
       expect(schema).type.toBe<
         S.TypeLiteral<
           { a: typeof S.NumberFromString },
-          [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
+          readonly [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
         >
       >()
       expect(schema.annotations({
@@ -777,7 +777,7 @@ describe("Schema", () => {
       })).type.toBe<
         S.TypeLiteral<
           { a: typeof S.NumberFromString },
-          [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
+          readonly [{ readonly key: typeof S.String; readonly value: typeof S.NumberFromString }]
         >
       >()
 
@@ -819,7 +819,7 @@ describe("Schema", () => {
       expect(schema).type.toBe<
         S.TypeLiteral<
           { a: typeof S.NumberFromString },
-          [
+          readonly [
             { readonly key: typeof S.String; readonly value: typeof S.NumberFromString },
             { readonly key: typeof S.Symbol; readonly value: typeof S.NumberFromString }
           ]
@@ -833,7 +833,7 @@ describe("Schema", () => {
       })).type.toBe<
         S.TypeLiteral<
           { a: typeof S.NumberFromString },
-          [
+          readonly [
             { readonly key: typeof S.String; readonly value: typeof S.NumberFromString },
             { readonly key: typeof S.Symbol; readonly value: typeof S.NumberFromString }
           ]

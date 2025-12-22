@@ -42,7 +42,6 @@ describe("List", () => {
       expect(numberOrString).type.toBe<List.Cons<string | number>>()
     }
     if (pipe(numberOrString, List.some(Predicate.isString))) {
-      // @tstyche fixme -- This doesn't work but it should
       expect(numberOrString).type.toBe<List.Cons<string | number>>()
     }
     if (List.some(Predicate.isString)(numberOrString)) {
