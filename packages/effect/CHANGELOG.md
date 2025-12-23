@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.14
+
+### Patch Changes
+
+- [#5924](https://github.com/Effect-TS/effect/pull/5924) [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3) Thanks @mikearnaldi! - Fix `Effect.retry` to respect `times: 0` option by using explicit undefined check instead of truthy check.
+
 ## 3.19.13
 
 ### Patch Changes
