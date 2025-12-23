@@ -9,12 +9,44 @@ import type { Either } from "./Either.js"
 import * as E from "./Either.js"
 import * as Equal from "./Equal.js"
 import { dual, identity } from "./Function.js"
+import type { NonEmptyIterable } from "./NonEmptyIterable.js"
 import type { Option } from "./Option.js"
 import * as O from "./Option.js"
 import { isBoolean } from "./Predicate.js"
 import type * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
 import type { NoInfer } from "./Types.js"
+
+
+export declare namespace Iterable {
+
+  type Infer<S extends Iterable<any>> = S extends Iterable<infer A> ? A
+      : never
+
+  type With<S extends Iterable<any>, A> = S extends NonEmptyIterable<any> ? NonEmptyIterable<A>
+      : Iterable<A>
+
+  type OrNonEmpty<
+    S extends Iterable<any>,
+    T extends Iterable<any>,
+    A
+  > = S extends NonEmptyIterable<any> ? NonEmptyIterable<A>
+    : T extends NonEmptyIterable<any> ? NonEmptyIterable<A>
+    : Iterable<A>
+
+  type AndNonEmpty<
+    S extends Iterable<any>,
+    T extends Iterable<any>,
+    A
+  > = S extends NonEmptyIterable<any> ? T extends NonEmptyIterable<any> ? NonEmptyIterable<A>
+    : Iterable<A>
+    : Iterable<A>
+
+  export type Flatten<T extends Iterable<Iterable<any>>> = T extends
+    NonEmptyIterable<NonEmptyIterable<infer A>> ? NonEmptyIterable<A>
+    : T extends Iterable<Iterable<infer A>> ? Iterable<A>
+    : never
+}
 
 /**
  * Return a `Iterable` with element `i` initialized with `f(i)`.
@@ -36,7 +68,7 @@ import type { NoInfer } from "./Types.js"
  */
 export const makeBy = <A>(f: (i: number) => A, options?: {
   readonly length?: number
-}): Iterable<A> => {
+}): NonEmptyIterable<A> => {
   const max = options?.length !== undefined ? Math.max(1, Math.floor(options.length)) : Infinity
   return {
     [Symbol.iterator]() {
@@ -50,7 +82,7 @@ export const makeBy = <A>(f: (i: number) => A, options?: {
         }
       }
     }
-  }
+  } as NonEmptyIterable<A>
 }
 
 /**
@@ -69,7 +101,7 @@ export const makeBy = <A>(f: (i: number) => A, options?: {
  * @category constructors
  * @since 2.0.0
  */
-export const range = (start: number, end?: number): Iterable<number> => {
+export const range = (start: number, end?: number): NonEmptyIterable<number> => {
   if (end === undefined) {
     return makeBy((i) => start + i)
   }
@@ -95,8 +127,8 @@ export const range = (start: number, end?: number): Iterable<number> => {
  * @since 2.0.0
  */
 export const replicate: {
-  (n: number): <A>(a: A) => Iterable<A>
-  <A>(a: A, n: number): Iterable<A>
+  (n: number): <A>(a: A) => NonEmptyIterable<A>
+  <A>(a: A, n: number): NonEmptyIterable<A>
 } = dual(2, <A>(a: A, n: number): Iterable<A> => makeBy(() => a, { length: n }))
 
 /**
@@ -131,8 +163,8 @@ export const fromRecord = <K extends string, A>(self: Readonly<Record<K, A>>): I
  * @since 2.0.0
  */
 export const prepend: {
-  <B>(head: B): <A>(self: Iterable<A>) => Iterable<A | B>
-  <A, B>(self: Iterable<A>, head: B): Iterable<A | B>
+  <B>(head: B): <A>(self: Iterable<A>) => NonEmptyIterable<A | B>
+  <A, B>(self: Iterable<A>, head: B): NonEmptyIterable<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, head: B): Iterable<A | B> => prependAll(self, [head]))
 
 /**
@@ -153,7 +185,11 @@ export const prepend: {
  * @since 2.0.0
  */
 export const prependAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<A | B>
+  <S extends Iterable<any>, T extends Iterable<any>>(
+    that: T
+  ): (self: S) => Iterable.OrNonEmpty<S, T, Iterable.Infer<S> | Iterable.Infer<T>>
+  <A, B>(self: NonEmptyIterable<A>, that: Iterable<B>): NonEmptyIterable<A | B>
+  <A, B>(self: Iterable<A>, that: NonEmptyIterable<B>): NonEmptyIterable<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B>
 } = dual(
   2,
@@ -167,8 +203,8 @@ export const prependAll: {
  * @since 2.0.0
  */
 export const append: {
-  <B>(last: B): <A>(self: Iterable<A>) => Iterable<A | B>
-  <A, B>(self: Iterable<A>, last: B): Iterable<A | B>
+  <B>(last: B): <A>(self: Iterable<A>) => NonEmptyIterable<A | B>
+  <A, B>(self: Iterable<A>, last: B): NonEmptyIterable<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, last: B): Iterable<A | B> => appendAll(self, [last]))
 
 /**
@@ -178,7 +214,11 @@ export const append: {
  * @since 2.0.0
  */
 export const appendAll: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<A | B>
+  <S extends Iterable<any>, T extends Iterable<any>>(
+    that: T
+  ): (self: S) => Iterable.OrNonEmpty<S, T, Iterable.Infer<S> | Iterable.Infer<T>>
+  <A, B>(self: NonEmptyIterable<A>, that: Iterable<B>): NonEmptyIterable<A | B>
+  <A, B>(self: Iterable<A>, that: NonEmptyIterable<B>): NonEmptyIterable<A | B>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<A | B>
 } = dual(
   2,
@@ -212,9 +252,9 @@ export const appendAll: {
  * @since 2.0.0
  */
 export const scan: {
-  <B, A>(b: B, f: (b: B, a: A) => B): (self: Iterable<A>) => Iterable<B>
-  <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A) => B): Iterable<B>
-} = dual(3, <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A) => B): Iterable<B> => ({
+  <B, A>(b: B, f: (b: B, a: A) => B): (self: Iterable<A>) => NonEmptyIterable<B>
+  <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A) => B): NonEmptyIterable<B>
+} = dual(3, <A, B>(self: Iterable<A>, b: B, f: (b: B, a: A) => B): NonEmptyIterable<B> => ({
   [Symbol.iterator]() {
     let acc = b
     let iterator: Iterator<A> | undefined
@@ -232,7 +272,7 @@ export const scan: {
     }
     return { next }
   }
-}))
+}) as NonEmptyIterable<B>)
 
 /**
  * Determine if an `Iterable` is empty
@@ -455,7 +495,9 @@ export const findLast: {
  * @since 2.0.0
  */
 export const zip: {
+  <B>(that: NonEmptyIterable<B>): <A>(self: NonEmptyIterable<A>) => NonEmptyIterable<[A, B]>
   <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<[A, B]>
+  <A, B>(self: NonEmptyIterable<A>, that: NonEmptyIterable<B>): NonEmptyIterable<[A, B]>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<[A, B]>
 } = dual(
   2,
@@ -470,7 +512,9 @@ export const zip: {
  * @since 2.0.0
  */
 export const zipWith: {
+  <B, A, C>(that: NonEmptyIterable<B>, f: (a: A, b: B) => C): (self: NonEmptyIterable<A>) => NonEmptyIterable<C>
   <B, A, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => Iterable<C>
+  <A, B, C>(self: NonEmptyIterable<A>, that: NonEmptyIterable<B>, f: (a: A, b: B) => C): NonEmptyIterable<C>
   <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C>
 } = dual(3, <B, A, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C> => ({
   [Symbol.iterator]() {
@@ -496,7 +540,10 @@ export const zipWith: {
  * @since 2.0.0
  */
 export const intersperse: {
-  <B>(middle: B): <A>(self: Iterable<A>) => Iterable<A | B>
+  <B>(
+    middle: B
+  ): <S extends Iterable<any>>(self: S) => Iterable.With<S, Iterable.Infer<S> | B>
+  <A, B>(self: NonEmptyIterable<A>, middle: B): NonEmptyIterable<A | B>
   <A, B>(self: Iterable<A>, middle: B): Iterable<A | B>
 } = dual(2, <A, B>(self: Iterable<A>, middle: B): Iterable<A | B> => ({
   [Symbol.iterator]() {
@@ -560,9 +607,10 @@ export const contains: {
  * @since 2.0.0
  */
 export const chunksOf: {
-  (n: number): <A>(self: Iterable<A>) => Iterable<Array<A>>
-  <A>(self: Iterable<A>, n: number): Iterable<Array<A>>
-} = dual(2, <A>(self: Iterable<A>, n: number): Iterable<Array<A>> => {
+  (n: number): <S extends Iterable<any>>(self: S) => Iterable.With<S, NonEmptyArray<Iterable.Infer<S>>>
+  <A>(self: NonEmptyIterable<A>, n: number): NonEmptyIterable<NonEmptyArray<A>>
+  <A>(self: Iterable<A>, n: number): Iterable<NonEmptyArray<A>>
+} = dual(2, <A>(self: Iterable<A>, n: number): Iterable<NonEmptyArray<A>> => {
   const safeN = Math.max(1, Math.floor(n))
   return ({
     [Symbol.iterator]() {
@@ -578,12 +626,12 @@ export const chunksOf: {
             const result = iterator.next()
             if (result.done) {
               iterator = undefined
-              return chunk.length === 0 ? { done: true, value: undefined } : { done: false, value: chunk }
+              return chunk.length === 0 ? { done: true, value: undefined } : { done: false, value: chunk as NonEmptyArray<A> }
             }
             chunk.push(result.value)
           }
 
-          return { done: false, value: chunk }
+          return { done: false, value: chunk as NonEmptyArray<A> }
         }
       }
     }
@@ -597,7 +645,10 @@ export const chunksOf: {
  * @since 2.0.0
  */
 export const groupWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => Iterable<NonEmptyArray<A>>
+  <S extends Iterable<any>>(
+    isEquivalent: (self: Iterable.Infer<S>, that: Iterable.Infer<S>) => boolean
+  ): (self: S) => Iterable.With<S, NonEmptyArray<Iterable.Infer<S>>>
+  <A>(self: NonEmptyIterable<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyIterable<NonEmptyArray<A>>
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Iterable<NonEmptyArray<A>>
 } = dual(
   2,
@@ -642,9 +693,12 @@ export const groupWith: {
  * @category grouping
  * @since 2.0.0
  */
-export const group: <A>(self: Iterable<A>) => Iterable<NonEmptyArray<A>> = groupWith(
+export const group: {
+  <A>(self: NonEmptyIterable<A>): NonEmptyIterable<NonEmptyArray<A>>
+  <A>(self: Iterable<A>): Iterable<NonEmptyArray<A>>
+} = groupWith(
   Equal.equivalence()
-)
+) as any
 
 /**
  * Splits an `Iterable` into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
@@ -700,16 +754,17 @@ export const empty = <A = never>(): Iterable<A> => constEmpty
  * @category constructors
  * @since 2.0.0
  */
-export const of = <A>(a: A): Iterable<A> => [a]
+export const of = <A>(a: A): NonEmptyIterable<A> => [a] as any
 
 /**
  * @category mapping
  * @since 2.0.0
  */
 export const map: {
-  <A, B>(
-    f: (a: NoInfer<A>, i: number) => B
-  ): (self: Iterable<A>) => Iterable<B>
+  <S extends Iterable<any>, B>(
+    f: (a: Iterable.Infer<S>, i: number) => B
+  ): (self: S) => Iterable.With<S, B>
+  <A, B>(self: NonEmptyIterable<A>, f: (a: NoInfer<A>, i: number) => B): NonEmptyIterable<B>
   <A, B>(self: Iterable<A>, f: (a: NoInfer<A>, i: number) => B): Iterable<B>
 } = dual(2, <A, B>(self: Iterable<A>, f: (a: A, i: number) => B): Iterable<B> => ({
   [Symbol.iterator]() {
@@ -734,9 +789,10 @@ export const map: {
  * @since 2.0.0
  */
 export const flatMap: {
-  <A, B>(
-    f: (a: NoInfer<A>, i: number) => Iterable<B>
-  ): (self: Iterable<A>) => Iterable<B>
+  <S extends Iterable<any>, T extends Iterable<any>>(
+    f: (a: Iterable.Infer<S>, i: number) => T
+  ): (self: S) => Iterable.AndNonEmpty<S, T, Iterable.Infer<T>>
+  <A, B>(self: NonEmptyIterable<A>, f: (a: NoInfer<A>, i: number) => NonEmptyIterable<B>): NonEmptyIterable<B>
   <A, B>(self: Iterable<A>, f: (a: NoInfer<A>, i: number) => Iterable<B>): Iterable<B>
 } = dual(
   2,
@@ -749,10 +805,10 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
+export const flatten = <S extends Iterable<Iterable<any>>>(self: S): Iterable.Flatten<S> => ({
   [Symbol.iterator]() {
     const outerIterator = self[Symbol.iterator]()
-    let innerIterator: Iterator<A> | undefined
+    let innerIterator: Iterator<Iterable.Infer<Iterable.Infer<S>>> | undefined
     function next() {
       if (innerIterator === undefined) {
         const next = outerIterator.next()
@@ -770,7 +826,7 @@ export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
     }
     return { next }
   }
-})
+}) as any
 
 /**
  * @category filtering
@@ -1018,7 +1074,10 @@ export const reduce: {
  * @since 2.0.0
  */
 export const dedupeAdjacentWith: {
-  <A>(isEquivalent: (self: A, that: A) => boolean): (self: Iterable<A>) => Iterable<A>
+  <S extends Iterable<any>>(
+    isEquivalent: (self: Iterable.Infer<S>, that: Iterable.Infer<S>) => boolean
+  ): (self: S) => Iterable.With<S, Iterable.Infer<S>>
+  <A>(self: NonEmptyIterable<A>, isEquivalent: (self: A, that: A) => boolean): NonEmptyIterable<A>
   <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Iterable<A>
 } = dual(2, <A>(self: Iterable<A>, isEquivalent: (self: A, that: A) => boolean): Iterable<A> => ({
   [Symbol.iterator]() {
@@ -1051,7 +1110,10 @@ export const dedupeAdjacentWith: {
  *
  * @since 2.0.0
  */
-export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjacentWith(Equal.equivalence())
+export const dedupe = <S extends Iterable<any>>(
+  self: S
+): S extends NonEmptyIterable<infer A> ? NonEmptyIterable<A> : S extends Iterable<infer A> ? Iterable<A> : never =>
+  dedupeAdjacentWith(self, Equal.equivalence()) as any
 
 /**
  * Zips this Iterable crosswise with the specified Iterable using the specified combiner.
@@ -1060,7 +1122,10 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjac
  * @category elements
  */
 export const cartesianWith: {
-  <A, B, C>(that: Iterable<B>, f: (a: A, b: B) => C): (self: Iterable<A>) => Iterable<C>
+  <S extends Iterable<any>, T extends Iterable<any>, C>(
+    that: T, f: (a: Iterable.Infer<S>, b: Iterable.Infer<T>) => C
+  ): (self: S) => Iterable.AndNonEmpty<S, T, C>
+  <A, B, C>(self: NonEmptyIterable<A>, that: NonEmptyIterable<B>, f: (a: A, b: B) => C): NonEmptyIterable<C>
   <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C>
 } = dual(
   3,
@@ -1075,7 +1140,10 @@ export const cartesianWith: {
  * @category elements
  */
 export const cartesian: {
-  <B>(that: Iterable<B>): <A>(self: Iterable<A>) => Iterable<[A, B]>
+  <S extends Iterable<any>, T extends Iterable<any>, C>(
+    that: T
+  ): (self: S) => Iterable.AndNonEmpty<S, T, [Iterable.Infer<S>, Iterable.Infer<T>]>
+  <A, B>(self: NonEmptyIterable<A>, that: NonEmptyIterable<B>): NonEmptyIterable<[A, B]>
   <A, B>(self: Iterable<A>, that: Iterable<B>): Iterable<[A, B]>
 } = dual(
   2,
