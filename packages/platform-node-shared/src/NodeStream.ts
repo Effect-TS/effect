@@ -35,7 +35,7 @@ export interface FromWritableOptions {
  * @category constructors
  * @since 1.0.0
  */
-export const fromReadable: <E, A = Uint8Array<ArrayBufferLike>>(
+export const fromReadable: <E, A = Uint8Array>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   options?: FromReadableOptions
@@ -45,7 +45,7 @@ export const fromReadable: <E, A = Uint8Array<ArrayBufferLike>>(
  * @category constructors
  * @since 1.0.0
  */
-export const fromReadableChannel: <E, A = Uint8Array<ArrayBufferLike>>(
+export const fromReadableChannel: <E, A = Uint8Array>(
   evaluate: LazyArg<Readable | NodeJS.ReadableStream>,
   onError: (error: unknown) => E,
   options?: FromReadableOptions | undefined
