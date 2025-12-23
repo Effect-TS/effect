@@ -35,11 +35,13 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
+    "@vitest/runner": "^4.0.0",
     "effect": "workspace:^",
-    "vitest": "^3.2.0"
+    "vitest": "^4.0.0"
   },
   "devDependencies": {
+    "@vitest/runner": "^4.0.12",
     "effect": "workspace:^",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.12"
   }
 }
