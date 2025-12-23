@@ -380,7 +380,7 @@ export const empty: Effect.Effect<Service> = Effect.gen(function*() {
     ),
     streamText: Effect.fnUntraced(
       function*(options) {
-        let parts = Chunk.empty<Response.StreamPart<any>>()
+        let parts = Chunk.empty<Response.AnyPart>()
         return Stream.fromChannel(Channel.acquireUseRelease(
           semaphore.take(1).pipe(
             Effect.zipRight(Ref.get(history)),
@@ -389,7 +389,7 @@ export const empty: Effect.Effect<Service> = Effect.gen(function*() {
           (prompt) =>
             LanguageModel.streamText({ ...options, prompt }).pipe(
               Stream.mapChunks((chunk) => {
-                parts = Chunk.appendAll(parts, chunk) as Chunk.Chunk<Response.StreamPart<any>>
+                parts = Chunk.appendAll(parts, chunk)
                 return chunk
               }),
               Stream.toChannel
