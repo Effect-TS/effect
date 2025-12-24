@@ -575,7 +575,7 @@ const parseInternal = (
       > =>
         parseCommandLine(self, args).pipe(Effect.flatMap((commandOptionsAndArgs) => {
           const [optionsAndArgs, forcedCommandArgs] = splitForcedArgs(commandOptionsAndArgs)
-          return InternalOptions.processCommandLine(self.options, optionsAndArgs, config).pipe(
+          return InternalOptions.processCommandLinePermissive(self.options, optionsAndArgs, config).pipe(
             Effect.flatMap(([error, commandArgs, optionsType]) =>
               InternalArgs.validate(
                 self.args,
