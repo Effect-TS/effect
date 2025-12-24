@@ -17,9 +17,12 @@ import {
   OpenApi
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
+import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import { assert, describe, it } from "@effect/vitest"
-import { Chunk, Context, DateTime, Effect, Layer, Redacted, Ref, Schema, Stream, Struct } from "effect"
+import { Chunk, Context, DateTime, Effect, Layer, pipe, Redacted, Ref, Schema, Stream, Struct } from "effect"
+import * as Logger from "effect/Logger"
+import * as LogLevel from "effect/LogLevel"
 import OpenApiFixture from "./fixtures/openapi.json" with { type: "json" }
 
 describe("HttpApi", () => {
@@ -91,6 +94,34 @@ describe("HttpApi", () => {
           length: 5
         })
       }).pipe(Effect.provide(HttpLive)))
+
+    it.live("multipart stream handles incorrect content-type gracefully", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.make(Api, {
+          transformClient: (client) =>
+            HttpClient.mapRequestInput(client, (request) =>
+              pipe(
+                HttpClientRequest.setBody(request, HttpBody.empty),
+                // Intentionally set incorrect content-type (should be multipart/form-data)
+                HttpClientRequest.setHeader("content-type", "application/json")
+              ))
+        })
+        const data = new FormData()
+        data.append("file", new Blob(["hello"], { type: "text/plain" }), "hello.txt")
+        const result = yield* client.users.uploadStream({ payload: data }).pipe(
+          Effect.flip
+        )
+        assert.deepStrictEqual(
+          result,
+          new Multipart.MultipartError({ reason: "Parse", cause: "{\"_tag\": \"InvalidBoundary\"}" })
+        )
+      }).pipe(
+        Effect.provide(HttpLive),
+        // FIXME: remove this
+        Effect.provide(
+          Logger.minimumLogLevel(LogLevel.All)
+        )
+      ))
   })
 
   describe("headers", () => {
@@ -480,9 +511,12 @@ class UsersApi extends HttpApiGroup.make("users")
   )
   .add(
     HttpApiEndpoint.post("uploadStream")`/uploadstream`
-      .setPayload(HttpApiSchema.MultipartStream(Schema.Struct({
-        file: Multipart.SingleFileSchema
-      })))
+      .setPayload(HttpApiSchema.MultipartStream(
+        Schema.Struct({
+          file: Multipart.SingleFileSchema
+        })
+      ))
+      .addError(Multipart.MultipartError)
       .addSuccess(Schema.Struct({
         contentType: Schema.String,
         length: Schema.Int
