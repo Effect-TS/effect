@@ -66,7 +66,7 @@ export const make = (options: {
   /**
    * The URL to use to communicate with the Google Generative AI API.
    *
-   * Defaults to `"https://generativelanguage.googleapis.com"`.
+   * Defaults to `"https://generativelanguage.googleapis.com/v1beta"`.
    */
   readonly apiUrl?: string | undefined
 
@@ -84,7 +84,7 @@ export const make = (options: {
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
-          HttpClientRequest.prependUrl(options.apiUrl ?? "https://generativelanguage.googleapis.com"),
+          HttpClientRequest.prependUrl(options.apiUrl ?? "https://generativelanguage.googleapis.com/v1beta"),
           options.apiKey ? HttpClientRequest.setHeader(apiKeyHeader, Redacted.value(options.apiKey)) : identity,
           HttpClientRequest.acceptJson
         )
@@ -167,7 +167,7 @@ export const make = (options: {
     const generateContentStream = (
       request: typeof Generated.GenerateContentRequest.Encoded
     ): Stream.Stream<Generated.GenerateContentResponse, AiError.AiError> => {
-      const url = `/v1beta/models/${request.model}:streamGenerateContent`
+      const url = `/models/${request.model}:streamGenerateContent`
       const httpRequest = HttpClientRequest.post(url, {
         urlParams: UrlParams.fromInput({ "alt": "sse" }),
         body: HttpBody.unsafeJson(request)
