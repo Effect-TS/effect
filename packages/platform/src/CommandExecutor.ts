@@ -99,7 +99,7 @@ export interface Process extends Inspectable {
   /**
    * Returns `true` if the process is still running, otherwise returns `false`.
    */
-  readonly isRunning: Effect<boolean, PlatformError>
+  readonly isRunning: Effect<boolean>
   /**
    * Kills the running process with the provided signal.
    *
