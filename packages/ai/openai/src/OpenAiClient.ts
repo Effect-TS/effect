@@ -393,6 +393,17 @@ export class ResponseFailedEvent extends Schema.Class<ResponseFailedEvent>(
   response: Generated.Response
 }) {}
 
+const WebSearchToolCallForAddEvent = Schema.asSchema(
+  Generated.WebSearchToolCall.pipe(
+    Schema.omit("action")
+  )
+)
+
+const AddEventOutputItem = Schema.Union(
+  Generated.OutputItem,
+  WebSearchToolCallForAddEvent
+)
+
 /**
  * Emitted when a new output item is added.
  *
@@ -417,7 +428,7 @@ export class ResponseOutputItemAddedEvent extends Schema.Class<ResponseOutputIte
   /**
    * The output item that was added.
    */
-  item: Generated.OutputItem
+  item: AddEventOutputItem
 }) {}
 
 /**
