@@ -14,6 +14,12 @@ describe("Http/App", () => {
       })
     })
 
+    test("json preserves content-type", async () => {
+      const handler = HttpApp.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/json")
+    })
+
     test("cookies", async () => {
       const handler = HttpApp.toWebHandler(
         HttpServerResponse.unsafeJson({ foo: "bar" }).pipe(
@@ -185,6 +191,29 @@ describe("Http/App", () => {
 
       const response = await finalHandler(new Request("http://localhost:3000/"))
       deepStrictEqual(await response.json(), { source: "effect" })
+    })
+
+    test("preserves response content-type header", async () => {
+      const webHandler = async (_request: Request) => {
+        return Response.json({ message: "hello" })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/json")
+      deepStrictEqual(await response.json(), { message: "hello" })
+    })
+
+    test("preserves custom content-type header", async () => {
+      const webHandler = async (_request: Request) => {
+        return new Response("<html></html>", {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "text/html; charset=utf-8")
     })
   })
 })
