@@ -1,5 +1,16 @@
 # @effect/ai-openrouter
 
+## 0.8.1
+
+### Patch Changes
+
+- [#5928](https://github.com/Effect-TS/effect/pull/5928) [`34fbbb1`](https://github.com/Effect-TS/effect/commit/34fbbb18e34cbad6ee5f0f396b3e27ba590925b8) Thanks @harrysolovay! - Regenerate OpenRouter schemas to fix schema validation.
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+  - @effect/ai@0.33.1
+
 ## 0.8.0
 
 ### Patch Changes
