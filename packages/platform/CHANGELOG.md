@@ -1,5 +1,18 @@
 # @effect/platform
 
+## 0.94.1
+
+### Patch Changes
+
+- [#5936](https://github.com/Effect-TS/effect/pull/5936) [`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0) Thanks @schickling! - Document subtle CORS middleware `allowedHeaders` behavior: when empty array (default), it reflects back the client's `Access-Control-Request-Headers` (permissive), and when non-empty array, it only allows specified headers (restrictive). Added comprehensive JSDoc with examples.
+
+- [#5940](https://github.com/Effect-TS/effect/pull/5940) [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e) Thanks @kitlangton! - HttpServerResponse: fix `fromWeb` to preserve Content-Type header when response has a body
+
+  Previously, when converting a web `Response` to an `HttpServerResponse` via `fromWeb`, the `Content-Type` header was not passed to `Body.stream()`, causing it to default to `application/octet-stream`. This affected any code using `HttpApp.fromWebHandler` to wrap web handlers, as JSON responses would incorrectly have their Content-Type set to `application/octet-stream` instead of `application/json`.
+
+- Updated dependencies [[`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3)]:
+  - effect@3.19.14
+
 ## 0.94.0
 
 ### Minor Changes
