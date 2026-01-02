@@ -611,7 +611,8 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
  *     temperature: 22,
  *     condition: "sunny",
  *     humidity: 65
- *   }
+ *   },
+ *   providerExecuted: false
  * })
  * ```
  *
@@ -1045,7 +1046,8 @@ export const userMessage = (params: MessageConstructorParams<UserMessage>): User
  *       result: {
  *         temperature: 72,
  *         condition: "sunny"
- *       }
+ *       },
+ *       providerExecuted: false
  *     }),
  *     Prompt.makePart("text", {
  *       text: "The weather in San Francisco is currently 72°F and sunny."
@@ -1159,7 +1161,8 @@ export const assistantMessage = (params: MessageConstructorParams<AssistantMessa
  *           { title: "TypeScript Handbook", url: "https://..." },
  *           { title: "Effective TypeScript", url: "https://..." }
  *         ]
- *       }
+ *       },
+ *       providerExecuted: false
  *     })
  *   ]
  * })
