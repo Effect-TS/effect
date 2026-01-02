@@ -140,8 +140,8 @@ importers:
         specifier: ^6.0.1
         version: 6.0.1
       tstyche:
-        specifier: ^6.0.0-beta.4
-        version: 6.0.0-beta.4(typescript@5.8.3)
+        specifier: ^6.0.0-beta.5
+        version: 6.0.0-beta.5(typescript@5.8.3)
       tsx:
         specifier: ^4.19.4
         version: 4.20.3
@@ -6456,8 +6456,8 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  tstyche@6.0.0-beta.4:
-    resolution: {integrity: sha512-LNh0yfaZVbhFAMhHGNtK7Qs7jF4bma1iaKB6WKHGVPb6YhHWcsORB0quEKzK7MD7Hzxhm+hEnhw4Wg07vCSAbg==}
+  tstyche@6.0.0-beta.5:
+    resolution: {integrity: sha512-B8/vuI31imsp6hzjxOpk/UANBPN6+2RFxmYn5KDSQzHHTGmIvx9x50zX4PPy2mOJO3RjJWizr6sSaGR5xydwcA==}
     engines: {node: '>=22.12'}
     hasBin: true
     peerDependencies:
@@ -12933,7 +12933,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tstyche@6.0.0-beta.4(typescript@5.8.3):
+  tstyche@6.0.0-beta.5(typescript@5.8.3):
     optionalDependencies:
       typescript: 5.8.3
 
