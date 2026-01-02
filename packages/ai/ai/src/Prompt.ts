@@ -635,6 +635,10 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    * The result returned by the tool execution.
    */
   readonly result: unknown
+  /**
+   * Whether the tool was executed by the provider (true) or framework (false).
+   */
+  readonly providerExecuted: boolean
 }
 
 /**
@@ -660,6 +664,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    * The result returned by the tool execution.
    */
   readonly result: unknown
+  /**
+   * Whether the tool was executed by the provider (true) or framework (false).
+   */
+  readonly providerExecuted: boolean
 }
 
 /**
@@ -683,6 +691,7 @@ export const ToolResultPart: Schema.Schema<ToolResultPart, ToolResultPartEncoded
   name: Schema.String,
   isFailure: Schema.Boolean,
   result: Schema.Unknown,
+  providerExecuted: Schema.Boolean,
   options: Schema.optionalWith(ProviderOptions, { default: constEmptyObject })
 }).pipe(
   Schema.attachPropertySignature(PartTypeId, PartTypeId),
@@ -1624,12 +1633,18 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
       // Tool Result Parts
       case "tool-result": {
-        toolParts.push(makePart("tool-result", {
+        const toolPart = makePart("tool-result", {
           id: part.id,
           name: part.providerName ?? part.name,
           isFailure: part.isFailure,
-          result: part.encodedResult
-        }))
+          result: part.encodedResult,
+          providerExecuted: part.providerExecuted ?? false
+        })
+        if (part.providerExecuted) {
+          assistantParts.push(toolPart)
+        } else {
+          toolParts.push(toolPart)
+        }
       }
     }
   }
