@@ -23,6 +23,8 @@ import type { RunnerStorage } from "./RunnerStorage.js"
 import * as Sharding from "./Sharding.js"
 import type * as ShardingConfig from "./ShardingConfig.js"
 
+const normalizePath = (path: string): string => path.startsWith("/") ? path : `/${path}`
+
 /**
  * @since 1.0.0
  * @category Layers
@@ -43,7 +45,9 @@ export const layerClientProtocolHttp = (options: {
       return (address) => {
         const clientWithUrl = HttpClient.mapRequest(
           client,
-          HttpClientRequest.prependUrl(`http${https ? "s" : ""}://${address.host}:${address.port}/${options.path}`)
+          HttpClientRequest.prependUrl(
+            `http${https ? "s" : ""}://${address.host}:${address.port}${normalizePath(options.path)}`
+          )
         )
         return RpcClient.makeProtocolHttp(clientWithUrl).pipe(
           Effect.provideService(RpcSerialization.RpcSerialization, serialization)
@@ -81,7 +85,7 @@ export const layerClientProtocolWebsocket = (options: {
       const constructor = yield* Socket.WebSocketConstructor
       return Effect.fnUntraced(function*(address) {
         const socket = yield* Socket.makeWebSocket(
-          `ws${https ? "s" : ""}://${address.host}:${address.port}/${options.path}`
+          `ws${https ? "s" : ""}://${address.host}:${address.port}${normalizePath(options.path)}`
         ).pipe(
           Effect.provideService(Socket.WebSocketConstructor, constructor)
         )
