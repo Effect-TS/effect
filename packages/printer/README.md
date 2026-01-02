@@ -38,7 +38,7 @@ bun add @effect/printer
 
 ## Overview
 
-This module defines a pretty printer to format text in a flexible and convenient way. The idea is to combine a `Doc`ument out of many small components, then using a layouter to convert it to an easily renderable `DocStream`, which can then be rendered to a variety of formats.
+This module defines a pretty printer to format text in a flexible and convenient way. The idea is to combine a `Document` out of many small components, then using a layout to convert it to an easily renderable `DocStream`, which can then be rendered to a variety of formats.
 
 The document consists of several parts:
  1. Just below is some general information about the library
@@ -170,7 +170,7 @@ There are two key concepts to laying a document out: the available width, and gr
 
 ### Available Width
 
-The layout algorithm will try to avoid exceeding the maximum width of the `Doc`ument by inserting line breaks where possible. The available layout combinators make it fairly straightforward to specify where, and under what circumstances, such a line break may be inserted by the layout algorithm (for example via the `seps` function).
+The layout algorithm will try to avoid exceeding the maximum width of the `Document` by inserting line breaks where possible. The available layout combinators make it fairly straightforward to specify where, and under what circumstances, such a line break may be inserted by the layout algorithm (for example via the `seps` function).
 
 There is also the concept of ribbon width. The ribbon is the part of a line that is printed (i.e. the line length without the leading indentation). The layout algorithms take a ribbon fraction argument, which specifies how much of a line should be filled before trying to break it up. A ribbon width of 0.5 in a document of width 80 will result in the layout algorithm trying to avoid exceeding `0.5 * 80 = 40` (ignoring current indentation depth).
 
