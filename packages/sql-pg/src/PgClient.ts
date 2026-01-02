@@ -315,25 +315,25 @@ export const make = (
       const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
       const scope = Context.unsafeGet(fiber.currentContext, Scope.Scope)
       let cause: Error | undefined = undefined
+      function onError(cause_: Error) {
+        cause = cause_
+      }
       pool.connect((err, client, release) => {
         if (err) {
           resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection for transaction" })))
-        } else {
-          resume(Effect.as(
-            Scope.addFinalizer(
-              scope,
-              Effect.sync(() => {
-                client!.off("error", onError)
-                release(cause)
-              })
-            ),
-            client!
-          ))
+          return
         }
-        function onError(cause_: Error) {
-          cause = cause_
-        }
-        client!.on("error", onError)
+        client.on("error", onError)
+        resume(Effect.as(
+          Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              client.off("error", onError)
+              release(cause)
+            })
+          ),
+          client
+        ))
       })
     })
     const reserve = Effect.map(reserveRaw, (client) => new ConnectionImpl(client))
