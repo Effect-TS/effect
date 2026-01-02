@@ -322,7 +322,16 @@ export const make = (
         if (err) {
           resume(Effect.fail(new SqlError({ cause: err, message: "Failed to acquire connection for transaction" })))
           return
+        } else if (!client) {
+          resume(
+            Effect.fail(
+              new SqlError({ message: "Failed to acquire connection for transaction", cause: new Error("No client returned") })
+            )
+          )
+          return
         }
+
+        // Else we know we have client defined, so we can proceed with the connection
         client.on("error", onError)
         resume(Effect.as(
           Scope.addFinalizer(
