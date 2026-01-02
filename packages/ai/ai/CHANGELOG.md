@@ -1,5 +1,11 @@
 # @effect/ai
 
+## 0.33.2
+
+### Patch Changes
+
+- [#5944](https://github.com/Effect-TS/effect/pull/5944) [`f21f034`](https://github.com/Effect-TS/effect/commit/f21f03477ea9b6fd4662a93097290cb940ce9c2b) Thanks @IMax153! - Fix Prompt.fromResponseParts when input contains a provider executed tool
+
 ## 0.33.1
 
 ### Patch Changes
