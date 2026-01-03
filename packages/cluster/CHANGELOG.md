@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.56.1
+
+### Patch Changes
+
+- [#5946](https://github.com/Effect-TS/effect/pull/5946) [`e88f289`](https://github.com/Effect-TS/effect/commit/e88f289c1d9fd4ec584ee793c264597aa84c9352) Thanks @vic-mo! - Fix HttpRunner double-slash routing
+
 ## 0.56.0
 
 ### Patch Changes
