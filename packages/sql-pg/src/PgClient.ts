@@ -325,7 +325,10 @@ export const make = (
         } else if (!client) {
           resume(
             Effect.fail(
-              new SqlError({ message: "Failed to acquire connection for transaction", cause: new Error("No client returned") })
+              new SqlError({
+                message: "Failed to acquire connection for transaction",
+                cause: new Error("No client returned")
+              })
             )
           )
           return
