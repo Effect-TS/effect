@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.50.1
+
+### Patch Changes
+
+- [#5943](https://github.com/Effect-TS/effect/pull/5943) [`c5a1e33`](https://github.com/Effect-TS/effect/commit/c5a1e332e004acc9374ced41d69c557c1e392bf2) Thanks @sidpremkumar! - Fix crash when pool.connect fails by ensuring client exists before attaching error handler
+
 ## 0.50.0
 
 ### Patch Changes
