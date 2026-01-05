@@ -3,9 +3,11 @@
  */
 import * as AiError from "@effect/ai/AiError"
 import * as Sse from "@effect/experimental/Sse"
+import * as Headers from "@effect/platform/Headers"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
+import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
@@ -14,6 +16,7 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
@@ -85,18 +88,23 @@ export const make = (options: {
    * will be used to communicate with the OpenAi API.
    */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Effect.Effect<Service, never, HttpClient.HttpClient> =>
+}): Effect.Effect<Service, never, HttpClient.HttpClient | Scope.Scope> =>
   Effect.gen(function*() {
+    const organizationHeader = "OpenAI-Organization"
+    const projectHeader = "OpenAI-Project"
+
+    yield* Effect.locallyScopedWith(Headers.currentRedactedNames, Arr.appendAll([organizationHeader, projectHeader]))
+
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(
           HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.openai.com/v1"),
           options.apiKey ? HttpClientRequest.bearerToken(options.apiKey) : identity,
           options.organizationId !== undefined
-            ? HttpClientRequest.setHeader("OpenAI-Organization", Redacted.value(options.organizationId))
+            ? HttpClientRequest.setHeader(organizationHeader, Redacted.value(options.organizationId))
             : identity,
           options.projectId !== undefined
-            ? HttpClientRequest.setHeader("OpenAI-Project", Redacted.value(options.projectId))
+            ? HttpClientRequest.setHeader(projectHeader, Redacted.value(options.projectId))
             : identity,
           HttpClientRequest.acceptJson
         )
@@ -229,7 +237,7 @@ export const layer = (options: {
   readonly organizationId?: Redacted.Redacted | undefined
   readonly projectId?: Redacted.Redacted | undefined
   readonly transformClient?: (client: HttpClient.HttpClient) => HttpClient.HttpClient
-}): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient> => Layer.effect(OpenAiClient, make(options))
+}): Layer.Layer<OpenAiClient, never, HttpClient.HttpClient> => Layer.scoped(OpenAiClient, make(options))
 
 /**
  * @since 1.0.0
@@ -247,7 +255,7 @@ export const layerConfig = (
   const { transformClient, ...configs } = options
   return Config.all(configs).pipe(
     Effect.flatMap((configs) => make({ ...configs, transformClient })),
-    Layer.effect(OpenAiClient)
+    Layer.scoped(OpenAiClient)
   )
 }
 
