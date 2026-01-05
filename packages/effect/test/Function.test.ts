@@ -230,6 +230,49 @@ describe("Function", () => {
       expect(fn).toHaveBeenCalledTimes(1)
     })
 
+    it("trims trailing undefined optional args by default", () => {
+      const fn = vi.fn(function(a?: number, b?: number) {
+        return { a, b, length: arguments.length }
+      })
+      const m = Function.memo(fn)
+
+      expect(m(1)).toEqual({ a: 1, b: undefined, length: 1 })
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      expect(m(1, undefined)).toEqual({ a: 1, b: undefined, length: 1 })
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      expect(m(1, 2)).toEqual({ a: 1, b: 2, length: 2 })
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it("preserves trailing undefined when trimUndefined is disabled", () => {
+      const fn = vi.fn(function(a?: number, b?: number) {
+        return { a, b, length: arguments.length }
+      })
+      const m = Function.memo(fn, { trimUndefined: false })
+
+      expect(m(1)).toEqual({ a: 1, b: undefined, length: 1 })
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      expect(m(1, undefined)).toEqual({ a: 1, b: undefined, length: 2 })
+      expect(fn).toHaveBeenCalledTimes(2)
+
+      expect(m(1)).toEqual({ a: 1, b: undefined, length: 1 })
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
+    it("only trims trailing undefined values", () => {
+      const fn = vi.fn((a?: number, b?: number, c?: number) => [a, b, c])
+      const m = Function.memo(fn)
+
+      expect(m(1, undefined, 3)).toEqual([1, undefined, 3])
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      expect(m(1, 3)).toEqual([1, 3, undefined])
+      expect(fn).toHaveBeenCalledTimes(2)
+    })
+
     it("memoizes undefined results distinctly", () => {
       const fn = vi.fn((_: number): void => undefined)
       const memoFn = Function.memo(fn)
