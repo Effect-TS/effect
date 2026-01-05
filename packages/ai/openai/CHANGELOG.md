@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.37.2
+
+### Patch Changes
+
+- [#5949](https://github.com/Effect-TS/effect/pull/5949) [`577f839`](https://github.com/Effect-TS/effect/commit/577f839e00bc74bccb96444e53b9d710310b50e3) Thanks @thewilkybarkid! - Ensure OpenAI headers are redacted
+
 ## 0.37.1
 
 ### Patch Changes
