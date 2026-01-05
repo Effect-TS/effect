@@ -237,23 +237,23 @@ describe("Match", () => {
       const match = pipe(
         Match.type<Uint8Array | Uint16Array>(),
         Match.when(Match.instanceOf(Uint8Array), (v) => {
-          // @tstyche if { target: [">=5.7"] } -- Before TypeScript 5.7, 'Uint8Array' was not generic
+          // @tstyche if { target: ">=5.7" } -- Before TypeScript 5.7, 'Uint8Array' was not generic
           expect(v).type.toBe<Uint8Array<ArrayBuffer>>()
-          // @tstyche if { target: ["<5.7"] }
+          // @tstyche if { target: "<5.7" }
           expect(v).type.toBe<Uint8Array>()
           return "uint8"
         }),
         Match.when(Match.instanceOf(Uint16Array), (v) => {
-          // @tstyche if { target: [">=5.7"] } -- Before TypeScript 5.7, 'Uint16Array' was not generic
+          // @tstyche if { target: ">=5.7" } -- Before TypeScript 5.7, 'Uint16Array' was not generic
           expect(v).type.toBe<Uint16Array<ArrayBuffer>>()
-          // @tstyche if { target: ["<5.7"] }
+          // @tstyche if { target: "<5.7" }
           expect(v).type.toBe<Uint16Array>()
           return "uint16"
         }),
         Match.orElse((v) => {
-          // @tstyche if { target: [">=5.7"] } -- Before TypeScript 5.7, 'Uint8Array' and 'Uint16Array' were not generic
+          // @tstyche if { target: ">=5.7" } -- Before TypeScript 5.7, 'Uint8Array' and 'Uint16Array' were not generic
           expect(v).type.toBe<Uint8Array<ArrayBufferLike> | Uint16Array<ArrayBufferLike>>()
-          // @tstyche if { target: ["<5.7"] }
+          // @tstyche if { target: "<5.7" }
           expect(v).type.toBe<Uint8Array | Uint16Array>()
           return "a"
         })
