@@ -7,7 +7,6 @@ import * as Headers from "@effect/platform/Headers"
 import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import type { Scope } from "effect"
 import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
@@ -17,6 +16,7 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Generated from "./Generated.js"
 import { OpenAiConfig } from "./OpenAiConfig.js"
@@ -255,7 +255,7 @@ export const layerConfig = (
   const { transformClient, ...configs } = options
   return Config.all(configs).pipe(
     Effect.flatMap((configs) => make({ ...configs, transformClient })),
-    Layer.effect(OpenAiClient)
+    Layer.scoped(OpenAiClient)
   )
 }
 
