@@ -1629,7 +1629,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           id: part.id,
           name: part.providerName ?? part.name,
           params: part.params,
-          providerExecuted: part.providerExecuted ?? false
+          providerExecuted: part.providerExecuted ?? false,
+          options: part.metadata
         }))
         break
       }
@@ -1641,7 +1642,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
           name: part.providerName ?? part.name,
           isFailure: part.isFailure,
           result: part.encodedResult,
-          providerExecuted: part.providerExecuted ?? false
+          providerExecuted: part.providerExecuted ?? false,
+          options: part.metadata
         })
         if (part.providerExecuted) {
           assistantParts.push(toolPart)
