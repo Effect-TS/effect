@@ -1,5 +1,5 @@
 ---
-"@effect/ai-google": minor
+"@effect/ai-google": patch
 ---
 
 - `thinkingLevel` field on `ThinkingConfig` with values: `THINKING_LEVEL_UNSPECIFIED`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`
