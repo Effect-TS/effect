@@ -14,6 +14,8 @@ import type * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type { ExtractTag } from "effect/Types"
 import * as Exporter from "./internal/otlpExporter.js"
+import type { OtlpProtocol } from "./internal/otlpExporter.js"
+import * as OtlpProtobuf from "./internal/otlpProtobuf.js"
 import type { KeyValue, Resource } from "./OtlpResource.js"
 import { entriesToAttributes } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
@@ -39,6 +41,7 @@ export const make: (
     readonly maxBatchSize?: number | undefined
     readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
     readonly shutdownTimeout?: Duration.DurationInput | undefined
+    readonly protocol?: OtlpProtocol | undefined
   }
 ) => Effect.Effect<
   Tracer.Tracer,
@@ -56,6 +59,7 @@ export const make: (
     headers: options.headers,
     exportInterval: options.exportInterval ?? Duration.seconds(5),
     maxBatchSize: options.maxBatchSize ?? 1000,
+    protocol: options.protocol,
     body(spans) {
       const data: TraceData = {
         resourceSpans: [{
@@ -67,6 +71,17 @@ export const make: (
         }]
       }
       return data
+    },
+    bodyProtobuf(spans) {
+      return OtlpProtobuf.encodeTracesData({
+        resourceSpans: [{
+          resource: otelResource,
+          scopeSpans: [{
+            scope,
+            spans
+          }]
+        }]
+      })
     },
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
@@ -119,6 +134,7 @@ export const layer = (options: {
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
+  readonly protocol?: OtlpProtocol | undefined
 }): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
 
 // internal
