@@ -1,5 +1,13 @@
 # @effect/ai-google
 
+## 0.12.1
+
+### Patch Changes
+
+- [#5958](https://github.com/Effect-TS/effect/pull/5958) [`c0a43bd`](https://github.com/Effect-TS/effect/commit/c0a43bd1456b2141a5383782091260e1c801c068) Thanks @izakfilmalter! - - `thinkingLevel` field on `ThinkingConfig` with values: `THINKING_LEVEL_UNSPECIFIED`, `MINIMAL`, `LOW`, `MEDIUM`, `HIGH`
+  - New `CandidateFinishReason` enum values: `IMAGE_PROHIBITED_CONTENT`, `IMAGE_OTHER`, `NO_IMAGE`, `IMAGE_RECITATION`, `MISSING_THOUGHT_SIGNATURE`
+  - Updated `finishReasonMap` in utilities to handle the new finish reason values
+
 ## 0.12.0
 
 ### Patch Changes
