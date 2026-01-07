@@ -478,24 +478,26 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
   const zoned = dateTime.unsafeMakeZoned(startFrom ?? new Date(), {
     timeZone: tz
   })
-  const tick = direction === "next" ? 1 : -1
+
+  const prev = direction === "prev"
+  const tick = prev ? -1 : 1
   const table = cron[direction]
-  const boundary = direction === "next" ? cron.first : cron.last
+  const boundary = prev ? cron.last : cron.first
+
+  const needsStep = prev
+    ? (next: number, current: number) => next < current
+    : (next: number, current: number) => next > current
 
   const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
   const adjustDst = utc ? constVoid : (current: Date) => {
     const adjusted = dateTime.unsafeMakeZoned(current, {
       timeZone: zoned.zone,
       adjustForTimeZone: true,
-      disambiguation: direction === "prev" ? "later" : undefined
+      disambiguation: prev ? "later" : undefined
     }).pipe(dateTime.toDate)
 
     const drift = current.getTime() - adjusted.getTime()
-    if (direction === "prev") {
-      if (drift !== 0) {
-        current.setTime(adjusted.getTime())
-      }
-    } else if (drift > 0) {
+    if (prev ? drift !== 0 : drift > 0) {
       current.setTime(adjusted.getTime())
     }
   }
@@ -512,11 +514,7 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
           adjustDst(current)
           continue
         }
-        if (
-          direction === "next" ?
-            nextSecond > currentSecond :
-            nextSecond < currentSecond
-        ) {
+        if (needsStep(nextSecond, currentSecond)) {
           current.setUTCSeconds(nextSecond)
           adjustDst(current)
           continue
@@ -535,11 +533,7 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
           adjustDst(current)
           continue
         }
-        if (
-          direction === "next" ?
-            nextMinute > currentMinute :
-            nextMinute < currentMinute
-        ) {
+        if (needsStep(nextMinute, currentMinute)) {
           current.setUTCMinutes(nextMinute, boundary.second)
           adjustDst(current)
           continue
@@ -555,11 +549,7 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
           adjustDst(current)
           continue
         }
-        if (
-          direction === "next" ?
-            nextHour > currentHour :
-            nextHour < currentHour
-        ) {
+        if (needsStep(nextHour, currentHour)) {
           current.setUTCHours(nextHour, boundary.minute, boundary.second)
           adjustDst(current)
           continue
@@ -567,44 +557,43 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
       }
 
       if (cron.weekdays.size !== 0 || cron.days.size !== 0) {
-        let a: number = direction === "next" ? Infinity : -Infinity
-        let b: number = direction === "next" ? Infinity : -Infinity
-        const wrapWeekday = direction === "next" ? cron.first.weekday : cron.last.weekday
-        const wrapDay = direction === "next" ? cron.first.day : cron.last.day
+        let a: number = prev ? -Infinity : Infinity
+        let b: number = prev ? -Infinity : Infinity
 
         if (cron.weekdays.size !== 0) {
           const currentWeekday = current.getUTCDay()
           const nextWeekday = table.weekday[currentWeekday]
-          a = nextWeekday === undefined ?
-            (direction === "next" ?
-              7 - currentWeekday + wrapWeekday :
-              currentWeekday - 7 + wrapWeekday) :
-            nextWeekday - currentWeekday
+          if (nextWeekday === undefined) {
+            a = prev
+              ? currentWeekday - 7 + boundary.weekday
+              : 7 - currentWeekday + boundary.weekday
+          } else {
+            a = nextWeekday - currentWeekday
+          }
         }
 
         // Only check day-of-month if weekday constraint not already satisfied (they're OR'd)
         if (cron.days.size !== 0 && a !== 0) {
           const currentDay = current.getUTCDate()
           const nextDay = table.day[currentDay]
-          b = nextDay === undefined ?
-            (
-              direction === "next" ?
-                daysInMonth(current) - currentDay + wrapDay :
-                // When wrapping to previous month, calculate days back:
-                // Current day offset + gap from end of prev month to target day
-                // Example: June 3 → May 20 with wrapDay=20: -(3 + (31 - 20)) = -14
-                -(currentDay + (daysInMonth(
-                  new Date(Date.UTC(
-                    current.getUTCFullYear(),
-                    current.getUTCMonth(),
-                    0
-                  ))
-                ) - wrapDay))
-            ) :
-            nextDay - currentDay
+          if (nextDay === undefined) {
+            if (prev) {
+              // When wrapping to previous month, calculate days back:
+              // Current day offset + gap from end of prev month to target day
+              // Example: June 3 → May 20 with boundary.day=20: -(3 + (31 - 20)) = -14
+              const prevMonthDays = daysInMonth(
+                new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 0))
+              )
+              b = -(currentDay + (prevMonthDays - boundary.day))
+            } else {
+              b = daysInMonth(current) - currentDay + boundary.day
+            }
+          } else {
+            b = nextDay - currentDay
+          }
         }
 
-        const addDays = direction === "next" ? Math.min(a, b) : Math.max(a, b)
+        const addDays = prev ? Math.max(a, b) : Math.min(a, b)
         if (addDays !== 0) {
           current.setUTCDate(current.getUTCDate() + addDays)
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
@@ -632,11 +621,7 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
           adjustDst(current)
           continue
         }
-        if (
-          direction === "next" ?
-            nextMonth > currentMonth :
-            nextMonth < currentMonth
-        ) {
+        if (needsStep(nextMonth, currentMonth)) {
           const targetMonthIndex = nextMonth - 1
           current.setUTCMonth(targetMonthIndex, clampBoundaryDay(targetMonthIndex))
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
