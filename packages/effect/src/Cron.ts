@@ -525,11 +525,7 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
         const currentMinute = current.getUTCMinutes()
         const nextMinute = table.minute[currentMinute]
         if (nextMinute === undefined) {
-          current.setUTCHours(
-            current.getUTCHours() + tick,
-            boundary.minute,
-            boundary.second
-          )
+          current.setUTCHours(current.getUTCHours() + tick, boundary.minute, boundary.second)
           adjustDst(current)
           continue
         }
@@ -609,9 +605,7 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
           if (cron.days.size !== 0) {
             return boundary.day
           }
-          const maxDayInMonth = daysInMonth(
-            new Date(Date.UTC(current.getUTCFullYear(), targetMonthIndex, 1))
-          )
+          const maxDayInMonth = daysInMonth(new Date(Date.UTC(current.getUTCFullYear(), targetMonthIndex, 1)))
           return Math.min(boundary.day, maxDayInMonth)
         }
         if (nextMonth === undefined) {
