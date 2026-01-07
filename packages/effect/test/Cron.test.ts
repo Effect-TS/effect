@@ -139,19 +139,12 @@ describe("Cron", () => {
     deepStrictEqual(prev(Cron.unsafeParse("5 4 * DEC SUN", utc), before), new Date("2023-12-31T04:05:00.000Z"))
     deepStrictEqual(prev(Cron.unsafeParse("30 5 0 8 2 *", utc), before), new Date("2023-02-08T00:05:30.000Z"))
 
-    const wednesday = new Date("2025-10-22 1:00:00")
-    deepStrictEqual(prev("0 1 * * MON", wednesday), new Date("2025-10-20 1:00:00"))
-    deepStrictEqual(next("0 1 * * MON", wednesday), new Date("2025-10-27 1:00:00"))
-    deepStrictEqual(prev("0 1 * * TUE", wednesday), new Date("2025-10-21 1:00:00"))
-    deepStrictEqual(next("0 1 * * TUE", wednesday), new Date("2025-10-28 1:00:00"))
+    const wednesday = new Date("2025-10-22T01:00:00.000Z")
+    deepStrictEqual(prev(Cron.unsafeParse("0 1 * * MON", utc), wednesday), new Date("2025-10-20T01:00:00.000Z"))
+    deepStrictEqual(next(Cron.unsafeParse("0 1 * * MON", utc), wednesday), new Date("2025-10-27T01:00:00.000Z"))
+    deepStrictEqual(prev(Cron.unsafeParse("0 1 * * TUE", utc), wednesday), new Date("2025-10-21T01:00:00.000Z"))
+    deepStrictEqual(next(Cron.unsafeParse("0 1 * * TUE", utc), wednesday), new Date("2025-10-28T01:00:00.000Z"))
   })
-
-  // it.only('test', () => {
-  //   const start = new Date("2020-12-28T07:05:00.000Z")
-  //   const c = Cron.prev(Cron.unsafeParse("5 2 * * 1"), start)
-
-  //   console.log(c);
-  // })
 
   it("returns the latest second when rolling back a minute", () => {
     const utc = DateTime.zoneUnsafeMakeNamed("UTC")
