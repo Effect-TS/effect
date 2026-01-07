@@ -427,7 +427,7 @@ const daysInMonth = (date: Date): number =>
 /**
  * Returns the next run `Date` for the given `Cron` instance.
  *
- * Uses the current time as a starting point if no value is provided for `now`.
+ * Uses the current time as a starting point if no value is provided for `startFrom`.
  *
  * @example
  * ```ts
@@ -442,7 +442,7 @@ const daysInMonth = (date: Date): number =>
  * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
  * @throws `Error` if the next run date cannot be found within 10,000 iterations.
  *
- * @since 3.20.0
+ * @since 2.0.0
  */
 export const next = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
   return stepCron(cron, startFrom, "next")
@@ -452,6 +452,16 @@ export const next = (cron: Cron, startFrom?: DateTime.DateTime.Input): Date => {
  * Returns the previous run `Date` for the given `Cron` instance.
  *
  * Uses the current time as a starting point if no value is provided for `startFrom`.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Cron, Either } from "effect"
+ *
+ * const before = new Date("2021-01-15 00:00:00")
+ * const cron = Either.getOrThrow(Cron.parse("0 4 8-14 * *"))
+ * assert.deepStrictEqual(Cron.prev(cron, before), new Date("2021-01-14 04:00:00"))
+ * ```
  *
  * @throws `IllegalArgumentException` if the given `DateTime.Input` is invalid.
  * @throws `Error` if the previous run date cannot be found within 10,000 iterations.
