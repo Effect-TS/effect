@@ -35,6 +35,7 @@ import * as HttpMethod from "./HttpMethod.js"
 import * as HttpMiddleware from "./HttpMiddleware.js"
 import * as HttpRouter from "./HttpRouter.js"
 import * as HttpServer from "./HttpServer.js"
+import type * as Error from "./HttpServerError.js"
 import * as HttpServerRequest from "./HttpServerRequest.js"
 import * as HttpServerResponse from "./HttpServerResponse.js"
 import * as Multipart from "./Multipart.js"
@@ -101,7 +102,7 @@ export const serve = <R = never>(
  * @category constructors
  */
 export const httpApp: Effect.Effect<
-  HttpApp.Default<never, HttpRouter.HttpRouter.DefaultServices>,
+  HttpApp.Default<Error.RouteNotFound, HttpRouter.HttpRouter.DefaultServices>,
   never,
   Router | HttpApi.Api | Middleware
 > = Effect.gen(function*() {
