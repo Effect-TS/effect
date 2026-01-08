@@ -110,7 +110,8 @@ export const run = dual<
                   )
                 ),
               onNonEmpty: (head) => {
-                const error = InternalHelpDoc.p(`Received unknown argument: '${head}'`)
+                const kind = head !== "-" && head.startsWith("-") ? "option" : "argument"
+                const error = InternalHelpDoc.p(`Received unknown ${kind}: '${head}'`)
                 return Effect.zipRight(printDocs(error), Effect.fail(InternalValidationError.invalidValue(error)))
               }
             })
