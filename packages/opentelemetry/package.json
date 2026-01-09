@@ -78,12 +78,6 @@
     "@opentelemetry/sdk-trace-base": {
       "optional": true
     },
-    "@opentelemetry/sdk-trace-node": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-web": {
-      "optional": true
-    },
     "@opentelemetry/sdk-logs": {
       "optional": true
     }
