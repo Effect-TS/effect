@@ -16,7 +16,7 @@ export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("Cache
 
 export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
 
-export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
+export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "xai-responses-v1", "anthropic-claude-v1", "google-gemini-v1") {}
 
 /**
  * Reasoning summary detail
