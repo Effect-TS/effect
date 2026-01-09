@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect"
 import type * as Exit from "effect/Exit"
 import * as FiberId from "effect/FiberId"
 import { globalValue } from "effect/GlobalValue"
+import * as HashSet from "effect/HashSet"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import type * as Error from "../HttpServerError.js"
@@ -28,6 +29,7 @@ export const clientAbortFiberId = globalValue(
 export const causeResponse = <E>(
   cause: Cause.Cause<E>
 ): Effect.Effect<readonly [HttpServerResponse, Cause.Cause<E>]> => {
+  const isClientAbort = HashSet.has(Cause.interruptors(cause), clientAbortFiberId)
   const [effect, stripped] = Cause.reduce(
     cause,
     [Effect.succeed(internalServerError), Cause.empty as Cause.Cause<E>] as const,
@@ -55,7 +57,7 @@ export const causeResponse = <E>(
           if (acc[1]._tag !== "Empty") {
             return Option.none()
           }
-          const response = cause.fiberId === clientAbortFiberId ? clientAbortError : serverAbortError
+          const response = isClientAbort ? clientAbortError : serverAbortError
           return Option.some([Effect.succeed(response), cause] as const)
         }
         default: {
