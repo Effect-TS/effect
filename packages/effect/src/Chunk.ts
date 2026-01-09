@@ -1493,3 +1493,10 @@ export const difference: {
   2,
   <A>(self: Chunk<A>, that: Chunk<A>): Chunk<A> => unsafeFromArray(RA.difference(that, self))
 )
+
+/**
+ * @category filtering
+ * @since 3.20.0
+ */
+export const getSomes: <A>(self: Chunk<Option<A>>) => Chunk<A> = (self) =>
+  unsafeFromArray(RA.getSomes(toReadonlyArray(self)))
