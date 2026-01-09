@@ -4432,7 +4432,7 @@ export const runIntoQueue: {
 } = internal.runIntoQueue
 
 /**
- * Like `Stream.runIntoQueue`, but provides the result as a scoped [Effect]
+ * Like `Stream.runIntoQueue`, but provides the result as a scoped Effect
  * to allow for scope composition.
  *
  * @since 2.0.0
