@@ -52,6 +52,13 @@ describe("Config", () => {
     expect(pipe([string, number] as const, Config.all)).type.toBe<Config.Config<[string, number]>>()
   })
 
+  it("orElseIf", () => {
+    expect(Config.orElseIf(number, {
+      if: hole(),
+      orElse: () => string
+    })).type.toBe<Config.Config<number | string>>()
+  })
+
   it("Config.Success helper type", () => {
     expect(hole<Config.Config.Success<typeof string>>()).type.toBe<string>()
     expect(hole<Config.Config.Success<typeof number>>()).type.toBe<number>()
