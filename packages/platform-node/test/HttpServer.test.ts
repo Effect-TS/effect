@@ -18,7 +18,7 @@ import {
 } from "@effect/platform"
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Deferred, Duration, Fiber, Stream } from "effect"
+import { Deferred, Duration, Fiber, Stream, Cause } from "effect"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -478,6 +478,16 @@ describe("HttpServer", () => {
       const [response] = HttpServerError.causeResponseStripped(cause)
       expect(response.status).toEqual(499)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.scoped("client abort with nested fiber returns 499", () =>
+    Effect.gen(function*() {
+      const parentFiberId = yield* Effect.fiberId
+      const childInterrupt = Cause.interrupt(parentFiberId)
+      const clientAbortInterrupt = Cause.interrupt(HttpServerError.clientAbortFiberId)
+      const cause = Cause.sequential(childInterrupt, clientAbortInterrupt)
+      const [response] = yield* HttpServerError.causeResponse(cause)
+      expect(response.status).toEqual(499)
+    }))
 
   it.scoped("multiplex", () =>
     Effect.gen(function*() {
