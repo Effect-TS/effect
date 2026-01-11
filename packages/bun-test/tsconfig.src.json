@@ -6,6 +6,7 @@
     { "path": "../test/tsconfig.src.json" }
   ],
   "compilerOptions": {
+    "types": ["bun"],
     "outDir": "build/src",
     "tsBuildInfoFile": ".tsbuildinfo/src.tsbuildinfo",
     "rootDir": "src"

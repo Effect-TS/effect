@@ -1,18 +1,30 @@
 {
-  "name": "@effect/vitest",
-  "version": "0.27.0",
+  "name": "@effect/bun-test",
+  "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "description": "A set of helpers for testing Effects with vitest",
+  "description": "Effect integration for Bun's test runner",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/vitest"
+    "directory": "packages/bun-test"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
   },
+  "tags": [
+    "bun",
+    "testing",
+    "typescript",
+    "effect"
+  ],
+  "keywords": [
+    "bun",
+    "testing",
+    "typescript",
+    "effect"
+  ],
   "publishConfig": {
     "access": "public",
     "provenance": true,
@@ -31,18 +43,17 @@
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "check": "tsc -b tsconfig.json",
-    "test": "vitest",
-    "coverage": "vitest --coverage"
+    "test": "bun test",
+    "coverage": "bun test --coverage"
   },
   "peerDependencies": {
-    "effect": "workspace:^",
-    "vitest": "^3.2.0"
+    "effect": "workspace:^"
   },
   "dependencies": {
     "@effect/test": "workspace:^"
   },
   "devDependencies": {
-    "effect": "workspace:^",
-    "vitest": "^3.2.4"
+    "@types/bun": "^1.2.2",
+    "effect": "workspace:^"
   }
 }

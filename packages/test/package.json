@@ -1,14 +1,14 @@
 {
-  "name": "@effect/vitest",
-  "version": "0.27.0",
+  "name": "@effect/test",
+  "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "description": "A set of helpers for testing Effects with vitest",
+  "description": "Shared test utilities for Effect test runner integrations",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/vitest"
+    "directory": "packages/test"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
@@ -35,14 +35,9 @@
     "coverage": "vitest --coverage"
   },
   "peerDependencies": {
-    "effect": "workspace:^",
-    "vitest": "^3.2.0"
-  },
-  "dependencies": {
-    "@effect/test": "workspace:^"
+    "effect": "workspace:^"
   },
   "devDependencies": {
-    "effect": "workspace:^",
-    "vitest": "^3.2.4"
+    "effect": "workspace:^"
   }
 }
