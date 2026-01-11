@@ -1,0 +1,72 @@
+{
+  "name": "@effect/sql-drizzle-v1",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Drizzle v1 integration for @effect/sql",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/sql-drizzle-v1"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "tags": [
+    "typescript",
+    "sql",
+    "database",
+    "drizzle"
+  ],
+  "keywords": [
+    "typescript",
+    "sql",
+    "database",
+    "drizzle"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "directory": "dist",
+    "linkDirectory": false
+  },
+  "sideEffects": [
+    "./src/Mysql.ts",
+    "./src/Pg.ts",
+    "./src/Sqlite.ts"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "scripts": {
+    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "devDependencies": {
+    "@effect/experimental": "workspace:^",
+    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
+    "@effect/sql": "workspace:^",
+    "@effect/sql-mysql2": "workspace:^",
+    "@effect/sql-pg": "workspace:^",
+    "@effect/sql-sqlite-node": "workspace:^",
+    "@testcontainers/mysql": "^10.25.0",
+    "@testcontainers/postgresql": "^10.25.0",
+    "drizzle-orm": "^1.0.0-beta.1",
+    "effect": "workspace:^"
+  },
+  "peerDependencies": {
+    "@effect/sql": "workspace:^",
+    "drizzle-orm": ">=1.0.0-beta.1",
+    "effect": "workspace:^"
+  }
+}
