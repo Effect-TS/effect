@@ -289,7 +289,7 @@ export const layer = <TContext, TRunnerContext>(
   )
 
   const makeIt = (itApi: API<TContext>): MethodsNonLive<R, TContext, ExcludeTestServices> =>
-    ({
+    Object.assign(itApi, {
       effect: makeTester<TestServices.TestServices | R, TContext, TRunnerContext>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
         adapter,
