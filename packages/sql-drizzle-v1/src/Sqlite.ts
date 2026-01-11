@@ -3,8 +3,7 @@
  */
 import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
-import type { AnyRelations, EmptyRelations } from "drizzle-orm"
-import type { DrizzleConfig } from "drizzle-orm"
+import type { AnyRelations, DrizzleConfig, EmptyRelations } from "drizzle-orm"
 import { QueryPromise } from "drizzle-orm/query-promise"
 import { SQLiteSelectBase } from "drizzle-orm/sqlite-core"
 import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy"
@@ -65,9 +64,10 @@ export const layer: Layer.Layer<SqliteDrizzle, never, Client.SqlClient> = Layer.
  * @since 1.0.0
  * @category layers
  */
-export const layerWithConfig: (config: DrizzleConfig<Record<string, never>>) => Layer.Layer<SqliteDrizzle, never, Client.SqlClient> = (
-  config
-) => Layer.effect(SqliteDrizzle, makeWithConfig(config))
+export const layerWithConfig: (
+  config: DrizzleConfig<Record<string, never>>
+) => Layer.Layer<SqliteDrizzle, never, Client.SqlClient> = (config) =>
+  Layer.effect(SqliteDrizzle, makeWithConfig(config))
 
 // patch
 

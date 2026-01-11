@@ -3,8 +3,7 @@
  */
 import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
-import type { AnyRelations, EmptyRelations } from "drizzle-orm"
-import type { DrizzleConfig } from "drizzle-orm"
+import type { AnyRelations, DrizzleConfig, EmptyRelations } from "drizzle-orm"
 import { MySqlSelectBase } from "drizzle-orm/mysql-core"
 import type { MySqlRemoteDatabase } from "drizzle-orm/mysql-proxy"
 import { drizzle } from "drizzle-orm/mysql-proxy"
@@ -65,9 +64,9 @@ export const layer: Layer.Layer<MysqlDrizzle, never, Client.SqlClient> = Layer.e
  * @since 1.0.0
  * @category layers
  */
-export const layerWithConfig: (config: DrizzleConfig<Record<string, never>>) => Layer.Layer<MysqlDrizzle, never, Client.SqlClient> = (
-  config
-) => Layer.effect(MysqlDrizzle, makeWithConfig(config))
+export const layerWithConfig: (
+  config: DrizzleConfig<Record<string, never>>
+) => Layer.Layer<MysqlDrizzle, never, Client.SqlClient> = (config) => Layer.effect(MysqlDrizzle, makeWithConfig(config))
 
 // patch
 

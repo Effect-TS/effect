@@ -3,14 +3,8 @@
  */
 import type * as Client from "@effect/sql/SqlClient"
 import type { SqlError } from "@effect/sql/SqlError"
-import type { AnyRelations, EmptyRelations } from "drizzle-orm"
-import type { DrizzleConfig } from "drizzle-orm"
-import {
-  PgAsyncDeleteBase,
-  PgAsyncInsertBase,
-  PgAsyncSelectBase,
-  PgAsyncUpdateBase
-} from "drizzle-orm/pg-core"
+import type { AnyRelations, DrizzleConfig, EmptyRelations } from "drizzle-orm"
+import { PgAsyncDeleteBase, PgAsyncInsertBase, PgAsyncSelectBase, PgAsyncUpdateBase } from "drizzle-orm/pg-core"
 import type { PgRemoteDatabase } from "drizzle-orm/pg-proxy"
 import { drizzle } from "drizzle-orm/pg-proxy"
 import { QueryPromise } from "drizzle-orm/query-promise"
@@ -70,9 +64,9 @@ export const layer: Layer.Layer<PgDrizzle, never, Client.SqlClient> = Layer.effe
  * @since 1.0.0
  * @category layers
  */
-export const layerWithConfig: (config: DrizzleConfig<Record<string, never>>) => Layer.Layer<PgDrizzle, never, Client.SqlClient> = (
-  config
-) => Layer.effect(PgDrizzle, makeWithConfig(config))
+export const layerWithConfig: (
+  config: DrizzleConfig<Record<string, never>>
+) => Layer.Layer<PgDrizzle, never, Client.SqlClient> = (config) => Layer.effect(PgDrizzle, makeWithConfig(config))
 
 // patch
 
