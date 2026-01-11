@@ -23,26 +23,49 @@ const toVitestOptions = (options?: TestOptions): V.TestOptions | undefined => {
 }
 
 /** Vitest implementation of TestRunnerAdapter */
-export const vitestAdapter: TestRunnerAdapter = {
+export const vitestAdapter: TestRunnerAdapter<V.TestContext> = {
   test: Object.assign(
-    (name: string, fn: (ctx: TestContext) => Promise<void>, options?: TestOptions) => {
-      V.it(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx)))
+    (
+      name: string,
+      fn: (internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+      options?: TestOptions
+    ) => {
+      V.it(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx), ctx))
     },
     {
-      skip: (name: string, fn: (ctx: TestContext) => Promise<void>, options?: TestOptions) =>
-        V.it.skip(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx))),
-      only: (name: string, fn: (ctx: TestContext) => Promise<void>, options?: TestOptions) =>
-        V.it.only(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx))),
-      skipIf: (condition: unknown) => (name: string, fn: (ctx: TestContext) => Promise<void>, options?: TestOptions) =>
-        V.it.skipIf(condition)(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx))),
-      runIf: (condition: unknown) => (name: string, fn: (ctx: TestContext) => Promise<void>, options?: TestOptions) =>
-        V.it.runIf(condition)(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx))),
-      fails: (name: string, fn: (ctx: TestContext) => Promise<void>, options?: TestOptions) =>
-        V.it.fails(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx))),
-      each:
-        <T>(cases: ReadonlyArray<T>) =>
-        (name: string, fn: (args: T, ctx: TestContext) => Promise<void>, options?: TestOptions) =>
-          V.it.for(cases)(name, toVitestOptions(options) ?? {}, (args, ctx) => fn(args, toTestContext(ctx)))
+      skip: (
+        name: string,
+        fn: (internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+        options?: TestOptions
+      ) => V.it.skip(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx), ctx)),
+      only: (
+        name: string,
+        fn: (internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+        options?: TestOptions
+      ) => V.it.only(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx), ctx)),
+      skipIf: (condition: unknown) =>
+      (
+        name: string,
+        fn: (internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+        options?: TestOptions
+      ) => V.it.skipIf(condition)(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx), ctx)),
+      runIf: (condition: unknown) =>
+      (
+        name: string,
+        fn: (internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+        options?: TestOptions
+      ) => V.it.runIf(condition)(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx), ctx)),
+      fails: (
+        name: string,
+        fn: (internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+        options?: TestOptions
+      ) => V.it.fails(name, toVitestOptions(options) ?? {}, (ctx) => fn(toTestContext(ctx), ctx)),
+      each: <T>(cases: ReadonlyArray<T>) =>
+      (
+        name: string,
+        fn: (args: T, internalCtx: TestContext, runnerCtx: V.TestContext) => Promise<void>,
+        options?: TestOptions
+      ) => V.it.for(cases)(name, toVitestOptions(options) ?? {}, (args, ctx) => fn(args, toTestContext(ctx), ctx))
     }
   ),
 

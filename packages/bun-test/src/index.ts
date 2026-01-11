@@ -148,7 +148,7 @@ const bunApi: Core.API<TestContext> = Object.assign(
   }
 )
 
-const methods = Core.makeMethods<TestContext>(bunAdapter, bunApi)
+const methods = Core.makeMethods<TestContext, Record<string, never>>(bunAdapter, bunApi)
 
 /**
  * @since 1.0.0
@@ -226,7 +226,7 @@ export const layer: <R, E, const ExcludeTestServices extends boolean = false>(
 ) => {
   (f: (it: BunTest.MethodsNonLive<R, ExcludeTestServices>) => void): void
   (name: string, f: (it: BunTest.MethodsNonLive<R, ExcludeTestServices>) => void): void
-} = Core.layer<TestContext>(bunAdapter, bunApi) as any
+} = Core.layer<TestContext, Record<string, never>>(bunAdapter, bunApi) as any
 
 /**
  * @since 1.0.0

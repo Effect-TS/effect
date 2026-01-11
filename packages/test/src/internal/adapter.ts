@@ -10,7 +10,7 @@ import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 
 /**
- * Context passed to test functions - runner-specific
+ * Internal context used by the test runner for cleanup and cancellation.
  * @since 1.0.0
  */
 export interface TestContext {
@@ -34,29 +34,30 @@ export interface TestOptions {
 }
 
 /**
- * Function signature for a test implementation
+ * Function signature for a test implementation.
+ * Receives both internal context (for cleanup) and runner context (passed to test function).
  * @since 1.0.0
  */
-export interface TestFn {
-  (ctx: TestContext): Promise<void>
+export interface TestFn<TRunnerContext> {
+  (internalCtx: TestContext, runnerCtx: TRunnerContext): Promise<void>
 }
 
 /**
  * Core test registration function
  * @since 1.0.0
  */
-export interface TestRegister {
-  (name: string, fn: TestFn, options?: TestOptions): void
+export interface TestRegister<TRunnerContext> {
+  (name: string, fn: TestFn<TRunnerContext>, options?: TestOptions): void
 }
 
 /**
  * Parameterized test helper
  * @since 1.0.0
  */
-export interface TestEach {
+export interface TestEach<TRunnerContext> {
   <T>(cases: ReadonlyArray<T>): (
     name: string,
-    fn: (args: T, ctx: TestContext) => Promise<void>,
+    fn: (args: T, internalCtx: TestContext, runnerCtx: TRunnerContext) => Promise<void>,
     options?: TestOptions
   ) => void
 }
@@ -65,14 +66,14 @@ export interface TestEach {
  * Adapter interface that test runners must implement
  * @since 1.0.0
  */
-export interface TestRunnerAdapter {
-  readonly test: TestRegister & {
-    readonly skip: TestRegister
-    readonly only: TestRegister
-    readonly skipIf: (condition: unknown) => TestRegister
-    readonly runIf: (condition: unknown) => TestRegister
-    readonly fails: TestRegister
-    readonly each: TestEach
+export interface TestRunnerAdapter<TRunnerContext> {
+  readonly test: TestRegister<TRunnerContext> & {
+    readonly skip: TestRegister<TRunnerContext>
+    readonly only: TestRegister<TRunnerContext>
+    readonly skipIf: (condition: unknown) => TestRegister<TRunnerContext>
+    readonly runIf: (condition: unknown) => TestRegister<TRunnerContext>
+    readonly fails: TestRegister<TRunnerContext>
+    readonly each: TestEach<TRunnerContext>
   }
 
   readonly describe: (name: string, fn: () => void) => void

@@ -19,7 +19,7 @@ export const addEqualityTesters = () => {
 export const flakyTest = Core.flakyTest
 
 /** @internal */
-export const prop: Vitest.Vitest.Methods["prop"] = Core.prop<V.TestContext>(vitestAdapter)
+export const prop: Vitest.Vitest.Methods["prop"] = Core.prop<V.TestContext, V.TestContext>(vitestAdapter)
 
 /** @internal */
 export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
@@ -35,11 +35,11 @@ export const layer = <R, E, const ExcludeTestServices extends boolean = false>(
     name: string,
     f: (it: Vitest.Vitest.MethodsNonLive<R, ExcludeTestServices>) => void
   ): void
-} => Core.layer<V.TestContext>(vitestAdapter, defaultApi)(layer_, options) as any
+} => Core.layer<V.TestContext, V.TestContext>(vitestAdapter, defaultApi)(layer_, options) as any
 
 /** @internal */
 export const makeMethods = (it: Vitest.API): Vitest.Vitest.Methods => {
-  const methods = Core.makeMethods<V.TestContext>(vitestAdapter, it)
+  const methods = Core.makeMethods<V.TestContext, V.TestContext>(vitestAdapter, it)
   return Object.assign(it, {
     effect: methods.effect as Vitest.Vitest.Methods["effect"],
     scoped: methods.scoped as Vitest.Vitest.Methods["scoped"],

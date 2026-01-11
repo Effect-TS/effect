@@ -82,7 +82,7 @@ function customTester(this: TesterContext, a: unknown, b: unknown, customTesters
 }
 
 /** @internal */
-export const addEqualityTesters = (adapter: TestRunnerAdapter) => {
+export const addEqualityTesters = <TRunnerContext>(adapter: TestRunnerAdapter<TRunnerContext>) => {
   adapter.addEqualityTesters?.([customTester])
 }
 
@@ -91,54 +91,74 @@ const testOptions = (timeout?: number | TestOptions): TestOptions =>
   typeof timeout === "number" ? { timeout } : timeout ?? {}
 
 /** @internal */
-export const makeTester = <R, TContext>(
+export const makeTester = <R, TContext, TRunnerContext>(
   mapEffect: <A, E>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, never>,
-  adapter: TestRunnerAdapter,
+  adapter: TestRunnerAdapter<TRunnerContext>,
   _api: API<TContext>
 ): TesterInterface<R, TContext> => {
   const run = <A, E, TestArgs extends Array<unknown>>(
-    ctx: TestContext,
+    internalCtx: TestContext,
     args: TestArgs,
     self: TestFunction<A, E, R, TestArgs>
-  ): Promise<void> => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(ctx)).then(() => {})
+  ): Promise<void> => pipe(Effect.suspend(() => self(...args)), mapEffect, runTest(internalCtx)).then(() => {})
 
   const f: TesterInterface<R, TContext>["skip"] = (name, self, timeout) => {
     const options = testOptions(timeout)
-    adapter.test(name, (ctx) => run(ctx, [ctx as TContext], self), options)
+    adapter.test(name, (internalCtx, runnerCtx) => run(internalCtx, [runnerCtx as unknown as TContext], self), options)
   }
 
   const skip: TesterInterface<R, TContext>["skip"] = (name, self, timeout) => {
     const options = testOptions(timeout)
-    adapter.test.skip(name, (ctx) => run(ctx, [ctx as TContext], self), options)
+    adapter.test.skip(
+      name,
+      (internalCtx, runnerCtx) => run(internalCtx, [runnerCtx as unknown as TContext], self),
+      options
+    )
   }
 
   const skipIf: TesterInterface<R, TContext>["skipIf"] = (condition) => (name, self, timeout) => {
     const options = testOptions(timeout)
-    adapter.test.skipIf(condition)(name, (ctx) => run(ctx, [ctx as TContext], self), options)
+    adapter.test.skipIf(condition)(
+      name,
+      (internalCtx, runnerCtx) => run(internalCtx, [runnerCtx as unknown as TContext], self),
+      options
+    )
   }
 
   const runIf: TesterInterface<R, TContext>["runIf"] = (condition) => (name, self, timeout) => {
     const options = testOptions(timeout)
-    adapter.test.runIf(condition)(name, (ctx) => run(ctx, [ctx as TContext], self), options)
+    adapter.test.runIf(condition)(
+      name,
+      (internalCtx, runnerCtx) => run(internalCtx, [runnerCtx as unknown as TContext], self),
+      options
+    )
   }
 
   const only: TesterInterface<R, TContext>["only"] = (name, self, timeout) => {
     const options = testOptions(timeout)
-    adapter.test.only(name, (ctx) => run(ctx, [ctx as TContext], self), options)
+    adapter.test.only(
+      name,
+      (internalCtx, runnerCtx) => run(internalCtx, [runnerCtx as unknown as TContext], self),
+      options
+    )
   }
 
   const each: TesterInterface<R, TContext>["each"] = (cases) => (name, self, timeout) => {
     const options = testOptions(timeout)
     adapter.test.each(cases)(
       name,
-      (args, ctx) => run(ctx, [args], self) as Promise<void>,
+      (args, internalCtx) => run(internalCtx, [args], self) as Promise<void>,
       options
     )
   }
 
   const fails: TesterInterface<R, TContext>["fails"] = (name, self, timeout) => {
     const options = testOptions(timeout)
-    adapter.test.fails(name, (ctx) => run(ctx, [ctx as TContext], self), options)
+    adapter.test.fails(
+      name,
+      (internalCtx, runnerCtx) => run(internalCtx, [runnerCtx as unknown as TContext], self),
+      options
+    )
   }
 
   const prop: TesterInterface<R, TContext>["prop"] = (name, arbitraries, self, timeout) => {
@@ -147,11 +167,11 @@ export const makeTester = <R, TContext>(
       const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
       return adapter.test(
         name,
-        (ctx) =>
+        (internalCtx, runnerCtx) =>
           // @ts-ignore
           fc.assert(
             // @ts-ignore
-            fc.asyncProperty(...arbs, (...as) => run(ctx, [as as any, ctx as TContext], self)),
+            fc.asyncProperty(...arbs, (...as) => run(internalCtx, [as as any, runnerCtx as unknown as TContext], self)),
             isObject(timeout) ? timeout?.fastCheck : {}
           ),
         options
@@ -167,12 +187,12 @@ export const makeTester = <R, TContext>(
 
     return adapter.test(
       name,
-      (ctx) =>
+      (internalCtx, runnerCtx) =>
         // @ts-ignore
         fc.assert(
           fc.asyncProperty(arbs, (...as) =>
             // @ts-ignore
-            run(ctx, [as[0] as any, ctx as TContext], self)),
+            run(internalCtx, [as[0] as any, runnerCtx as unknown as TContext], self)),
           isObject(timeout) ? timeout?.fastCheck : {}
         ),
       options
@@ -183,17 +203,26 @@ export const makeTester = <R, TContext>(
 }
 
 /** @internal */
-export const prop = <TContext>(
-  adapter: TestRunnerAdapter
+export const prop = <TContext, TRunnerContext>(
+  adapter: TestRunnerAdapter<TRunnerContext>
 ): MethodsNonLive<never, TContext>["prop"] =>
 (name, arbitraries, self, timeout) => {
   const options = testOptions(timeout)
   if (Array.isArray(arbitraries)) {
-    const arbs = arbitraries.map((arbitrary) => Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary)
+    const arbs = arbitraries.map((arbitrary) =>
+      Schema.isSchema(arbitrary) ? Arbitrary.make(arbitrary) : arbitrary
+    ) as Array<fc.Arbitrary<unknown>>
     return adapter.test(
       name,
-      // @ts-ignore
-      (ctx) => fc.assert(fc.property(...arbs, (...as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {}),
+      async (_internalCtx, runnerCtx) => {
+        fc.assert(
+          fc.property(
+            ...(arbs as [fc.Arbitrary<unknown>, ...Array<fc.Arbitrary<unknown>>]),
+            (...as: Array<unknown>) => self(as as any, runnerCtx as any)
+          ),
+          isObject(timeout) ? timeout?.fastCheck : {}
+        )
+      },
       options
     )
   }
@@ -207,15 +236,19 @@ export const prop = <TContext>(
 
   return adapter.test(
     name,
-    // @ts-ignore
-    (ctx) => fc.assert(fc.property(arbs, (as) => self(as, ctx)), isObject(timeout) ? timeout?.fastCheck : {}),
+    async (_internalCtx, runnerCtx) => {
+      fc.assert(
+        fc.property(arbs, (as) => self(as as any, runnerCtx as any)),
+        isObject(timeout) ? timeout?.fastCheck : {}
+      )
+    },
     options
   )
 }
 
 /** @internal */
-export const layer = <TContext>(
-  adapter: TestRunnerAdapter,
+export const layer = <TContext, TRunnerContext>(
+  adapter: TestRunnerAdapter<TRunnerContext>,
   api: API<TContext>
 ) =>
 <R, E, const ExcludeTestServices extends boolean = false>(
@@ -257,15 +290,15 @@ export const layer = <TContext>(
 
   const makeIt = (itApi: API<TContext>): MethodsNonLive<R, TContext, ExcludeTestServices> =>
     ({
-      effect: makeTester<TestServices.TestServices | R, TContext>(
+      effect: makeTester<TestServices.TestServices | R, TContext, TRunnerContext>(
         (effect) => Effect.flatMap(runtimeEffect, (runtime) => effect.pipe(Effect.provide(runtime))),
         adapter,
         itApi
       ),
 
-      prop: prop<TContext>(adapter),
+      prop: prop<TContext, TRunnerContext>(adapter),
 
-      scoped: makeTester<TestServices.TestServices | Scope.Scope | R, TContext>(
+      scoped: makeTester<TestServices.TestServices | Scope.Scope | R, TContext, TRunnerContext>(
         (effect) =>
           Effect.flatMap(runtimeEffect, (runtime) =>
             effect.pipe(
@@ -279,7 +312,7 @@ export const layer = <TContext>(
       layer<R2, E2>(nestedLayer: Layer.Layer<R2, E2, R>, nestedOptions?: {
         readonly timeout?: Duration.DurationInput
       }) {
-        return layer<TContext>(adapter, itApi)(
+        return layer<TContext, TRunnerContext>(adapter, itApi)(
           Layer.provideMerge(nestedLayer, withTestEnv),
           { ...nestedOptions, memoMap, excludeTestServices }
         )
@@ -329,20 +362,20 @@ export const flakyTest = <A, E, R>(
   )
 
 /** @internal */
-export const makeMethods = <TContext>(
-  adapter: TestRunnerAdapter,
+export const makeMethods = <TContext, TRunnerContext>(
+  adapter: TestRunnerAdapter<TRunnerContext>,
   api: API<TContext>
 ): Methods<never, TContext> =>
   ({
-    effect: makeTester<TestServices.TestServices, TContext>(Effect.provide(TestEnv), adapter, api),
-    scoped: makeTester<TestServices.TestServices | Scope.Scope, TContext>(
+    effect: makeTester<TestServices.TestServices, TContext, TRunnerContext>(Effect.provide(TestEnv), adapter, api),
+    scoped: makeTester<TestServices.TestServices | Scope.Scope, TContext, TRunnerContext>(
       flow(Effect.scoped, Effect.provide(TestEnv)),
       adapter,
       api
     ),
-    live: makeTester<never, TContext>(identity, adapter, api),
-    scopedLive: makeTester<Scope.Scope, TContext>(Effect.scoped, adapter, api),
+    live: makeTester<never, TContext, TRunnerContext>(identity, adapter, api),
+    scopedLive: makeTester<Scope.Scope, TContext, TRunnerContext>(Effect.scoped, adapter, api),
     flakyTest,
     layer: layer(adapter, api),
-    prop: prop<TContext>(adapter)
+    prop: prop<TContext, TRunnerContext>(adapter)
   }) as Methods<never, TContext>
