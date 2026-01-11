@@ -131,8 +131,10 @@ export namespace BunTest {
 }
 
 // Create a minimal API object for Bun
+// Note: We wrap bunTest in a new function because Bun's test export is readonly/frozen
 const bunApi: Core.API<TestContext> = Object.assign(
-  bunTest as unknown as Core.API<TestContext>,
+  ((name: string, fn?: () => void | Promise<void>, options?: { timeout?: number }) =>
+    bunTest(name, fn ?? (() => {}), options)) as Core.API<TestContext>,
   {
     skip: (name: string, fn?: () => void | Promise<void>) => bunTest.skip(name, fn ?? (() => {})),
     only: (name: string, fn?: () => void | Promise<void>) => bunTest.only(name, fn ?? (() => {})),
@@ -247,7 +249,13 @@ const testMethods = { effect, live, flakyTest, scoped, scopedLive, layer, prop }
 /**
  * @since 1.0.0
  */
-export const it: BunTest.Methods = Object.assign(bunTest, testMethods) as BunTest.Methods
+export const it: BunTest.Methods = Object.assign(
+  ((name: string, fn?: () => void | Promise<void>, options?: { timeout?: number }) =>
+    // Cast through unknown because the wrapper function signature doesn't match BunTest.Methods,
+    // but Object.assign will add all the required methods from testMethods
+    bunTest(name, fn ?? (() => {}), options)) as unknown as BunTest.Methods,
+  testMethods
+)
 
 /**
  * @since 1.0.0
