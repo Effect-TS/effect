@@ -735,7 +735,7 @@ export const scoped: {
 } = internal.scoped
 
 /**
- * Constructs a layer from the specified scoped effect.
+ * Constructs a layer from the specified scoped effect, discarding its output.
  *
  * @since 2.0.0
  * @category constructors
