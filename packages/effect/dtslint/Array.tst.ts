@@ -34,6 +34,21 @@ declare const ABs: ReadonlyArray<AB>
 declare const nonEmptyABs: Array.NonEmptyReadonlyArray<AB>
 declare const orderA: Order.Order<A>
 
+interface Eff<R> {
+  readonly _R: (_: R) => void
+}
+interface R1 {
+  readonly _r1: unique symbol
+}
+interface R2 {
+  readonly _r2: unique symbol
+}
+interface R3 {
+  readonly _r3: unique symbol
+}
+declare const arg1: Eff<R1 | R2>
+declare const arg2: Eff<R1 | R2 | R3>
+
 describe("Array", () => {
   it("isArray", () => {
     if (Array.isArray(unknownValue)) {
@@ -619,6 +634,9 @@ describe("Array", () => {
         return Array.flatten(x)
       }))
     ).type.toBe<Effect.Effect<[number, ...Array<number>], never, never>>()
+
+    expect(Array.flatten([[arg1], [arg2]])).type.toBe<Array.NonEmptyArray<Eff<R1 | R2> | Eff<R1 | R2 | R3>>>()
+    expect(Array.flatten([[arg2], [arg1]])).type.toBe<Array.NonEmptyArray<Eff<R1 | R2> | Eff<R1 | R2 | R3>>>()
   })
 
   it("prependAll", () => {
