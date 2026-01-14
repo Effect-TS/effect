@@ -34,7 +34,7 @@ describe("CliApp", () => {
       const args = Array.make("node", "test.js", "--bar")
       const result = yield* Effect.flip(cli(args))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(
-        "Received unknown argument: '--bar'"
+        "Received unknown option: '--bar'"
       )))
     }).pipe(runEffect))
 
