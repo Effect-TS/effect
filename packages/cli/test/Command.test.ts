@@ -129,6 +129,28 @@ describe("Command", () => {
         Effect.provide(EnvLive),
         Effect.runPromise
       ))
+
+    it("options after positional args", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        // --verbose after the positional arg "repo"
+        yield* run(["node", "git.js", "clone", "repo", "--verbose"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Cloning repo"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("options after positional args with alias", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        // -v after the positional arg "repo"
+        yield* run(["node", "git.js", "clone", "repo", "-v"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Cloning repo"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
   })
 })
 
