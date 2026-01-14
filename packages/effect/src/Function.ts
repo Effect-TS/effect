@@ -1245,35 +1245,25 @@ class ArgNode<A> {
 
   /** Get the next node for an arg. If uninitialized, one will be created, set, and returned. */
   at(arg: unknown): ArgNode<A> {
-    let next: ArgNode<A> | undefined
-    let isObject: boolean
-    switch (typeof arg) {
-      case "object":
-      // @ts-expect-error Fallthrough intended for primitive null case
-      case "function":
-        if (arg !== null) {
-          if (!this.o) this.o = new WeakMap()
-          next = this.o.get(arg)
-          isObject = true
-          break
-        }
+    if (
+      (typeof arg === "object" && arg !== null) ||
+      typeof arg === "function"
+    ) {
+      if (!this.o) this.o = new WeakMap()
+      const next = this.o.get(arg)
+      if (next) return next
 
-      default:
-        if (!this.p) this.p = new Map()
-        next = this.p.get(arg)
-        isObject = false
+      const fresh = new ArgNode<A>()
+      this.o.set(arg, fresh)
+      return fresh
     }
 
+    if (!this.p) this.p = new Map()
+    const next = this.p.get(arg)
     if (next) return next
 
     const fresh = new ArgNode<A>()
-
-    if (isObject) {
-      this.o!.set(arg as object, fresh)
-    } else {
-      this.p!.set(arg, fresh)
-    }
-
+    this.p.set(arg, fresh)
     return fresh
   }
 }
@@ -1311,12 +1301,24 @@ export declare namespace memo {
 }
 
 /**
- * Memoize a function, method, or getter, with any number of arguments. Repeated calls to the returned function with the same arguments will return cached values.
+ * Memoize a function, method, or getter, with any number of arguments.
+ * Repeated calls to the returned function with the same arguments will return
+ * cached values.
  *
  * Usage notes:
- * - Memoized functions should be totally pure, and should return immutable values.
- * - The cache size is unbounded, but internally a `WeakMap` is used when possible. To make the most of this, memoized functions should have object-type args at the start and primitive args at the end.
- * - Works as a class method decorator under modern settings (`experimentalDecorators: false`), though you will have to use the curried form (`@Function.memo()`).
+ * - Memoized functions should be totally pure, and should return immutable
+ *   values.
+ * - The cache size is unbounded, but internally a `WeakMap` is used when
+ *   possible. To make the most of this, memoized functions should have
+ *   object-type args at the start and primitive args at the end.
+ * - Works as a class method decorator under modern settings
+ *   (`experimentalDecorators: false`), though you will have to use the curried
+ *   form (`@Function.memo()`).
+ *
+ * Cache hazard under point-free usage: if you pass a memoized function to a
+ * callback like `Array.prototype.map`, the extra args it passes will be
+ * included in the cache path, causing misses. To prevent this, use a small
+ * closure to ensure no extra args are passed in.
  *
  * @example
  * ```ts
