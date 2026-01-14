@@ -23,6 +23,14 @@ export interface Terminal {
    */
   readonly columns: Effect<number>
   /**
+   * The number of rows available on the platform's terminal interface.
+   */
+  readonly rows: Effect<number>
+  /**
+   * Determines if the current terminal interface is interactive.
+   */
+  readonly isTTY: Effect<boolean>
+  /**
    * Reads input events from the default standard input.
    */
   readonly readInput: Effect<ReadonlyMailbox<UserInput>, never, Scope.Scope>
