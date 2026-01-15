@@ -12946,6 +12946,36 @@ export const withTracerTiming: {
 } = core.withTracerTiming
 
 /**
+ * Controls whether source location capture is enabled for forked fibers.
+ *
+ * **Details**
+ *
+ * When enabled, `Effect.fork` and similar operations will capture the call
+ * site (file, line, column) and store it in a FiberRef that can be read by
+ * Supervisors. This enables automatic tracing with meaningful span names
+ * like `"sendEmail (user-handlers.ts:42)"` instead of `"anonymous"`.
+ *
+ * Source capture is disabled by default for performance reasons. Use this
+ * API or `Layer.enableSourceCapture` to enable it for specific scopes.
+ *
+ * @example
+ * ```ts
+ * import { Effect } from "effect"
+ *
+ * Effect.gen(function* () {
+ *   yield* Effect.fork(myTask)  // Call site is captured
+ * }).pipe(Effect.withCaptureStackTraces(true))
+ * ```
+ *
+ * @since 3.15.0
+ * @category Tracing
+ */
+export const withCaptureStackTraces: {
+  (enabled: boolean): <A, E, R>(effect: Effect<A, E, R>) => Effect<A, E, R>
+  <A, E, R>(effect: Effect<A, E, R>, enabled: boolean): Effect<A, E, R>
+} = core.withCaptureStackTraces
+
+/**
  * Adds annotations to each span in the effect for enhanced traceability.
  *
  * **Details**

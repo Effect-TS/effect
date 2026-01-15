@@ -964,6 +964,10 @@ export const scopedContext = <A, E, R>(
 }
 
 /** @internal */
+export const enableSourceCapture: Layer.Layer<never> =
+  fiberRefLocallyScoped(core.currentCaptureStackTraces, true)
+
+/** @internal */
 export const scope: Layer.Layer<Scope.Scope> = scopedContext(
   core.map(
     fiberRuntime.acquireRelease(

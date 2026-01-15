@@ -2397,8 +2397,21 @@ export const forEachParN = <A, B, E, R>(
   })
 
 /* @internal */
-export const fork = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> =>
-  core.withFiberRuntime((state, status) => core.succeed(unsafeFork(self, state, status.runtimeFlags)))
+export const fork = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> => {
+  // Capture stack trace immediately while user code is on stack
+  // Creating Error object is cheap; parsing is delayed until we know capture is enabled
+  const rawStack = new Error().stack
+
+  return core.withFiberRuntime((state, status) => {
+    // Check if capture is enabled, then parse the pre-captured stack if needed
+    const capturedLocation = state.getFiberRef(core.currentCaptureStackTraces) && rawStack
+      ? tracer.parseSourceLocationFromStack(rawStack)
+      : undefined
+
+    const fiber = unsafeForkWithLocation(self, state, status.runtimeFlags, null, capturedLocation)
+    return core.succeed(fiber)
+  })
+}
 
 /* @internal */
 export const forkDaemon = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Fiber.RuntimeFiber<A, E>, never, R> =>
@@ -2437,6 +2450,19 @@ export const unsafeFork = <A, E, R, E2, B>(
 }
 
 /** @internal */
+export const unsafeForkWithLocation = <A, E, R, E2, B>(
+  effect: Effect.Effect<A, E, R>,
+  parentFiber: FiberRuntime<B, E2>,
+  parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
+  overrideScope: fiberScope.FiberScope | null = null,
+  capturedLocation: tracer.SourceLocation | undefined = undefined
+): FiberRuntime<A, E> => {
+  const childFiber = unsafeMakeChildFiberWithLocation(effect, parentFiber, parentRuntimeFlags, overrideScope, capturedLocation)
+  childFiber.resume(effect)
+  return childFiber
+}
+
+/** @internal */
 export const unsafeForkUnstarted = <A, E, R, E2, B>(
   effect: Effect.Effect<A, E, R>,
   parentFiber: FiberRuntime<B, E2>,
@@ -2454,10 +2480,27 @@ export const unsafeMakeChildFiber = <A, E, R, E2, B>(
   parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
   overrideScope: fiberScope.FiberScope | null = null
 ): FiberRuntime<A, E> => {
+  return unsafeMakeChildFiberWithLocation(effect, parentFiber, parentRuntimeFlags, overrideScope, undefined)
+}
+
+/** @internal */
+export const unsafeMakeChildFiberWithLocation = <A, E, R, E2, B>(
+  effect: Effect.Effect<A, E, R>,
+  parentFiber: FiberRuntime<B, E2>,
+  parentRuntimeFlags: RuntimeFlags.RuntimeFlags,
+  overrideScope: fiberScope.FiberScope | null = null,
+  capturedLocation: tracer.SourceLocation | undefined = undefined
+): FiberRuntime<A, E> => {
   const childId = FiberId.unsafeMake()
   const parentFiberRefs = parentFiber.getFiberRefs()
   const childFiberRefs = fiberRefs.forkAs(parentFiberRefs, childId)
   const childFiber = new FiberRuntime<A, E>(childId, childFiberRefs, parentRuntimeFlags)
+
+  // Set pre-captured source location if enabled
+  if (capturedLocation && parentFiber.getFiberRef(core.currentCaptureStackTraces)) {
+    childFiber.setFiberRef(core.currentSourceLocation, capturedLocation)
+  }
+
   const childContext = fiberRefs.getOrDefault(
     childFiberRefs,
     core.currentContext as unknown as FiberRef.FiberRef<Context.Context<R>>

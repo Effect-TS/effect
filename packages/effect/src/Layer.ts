@@ -1108,6 +1108,29 @@ export const setTracerTiming: (enabled: boolean) => Layer<never> = (enabled: boo
   )
 
 /**
+ * A layer that enables source location capture for forked fibers.
+ *
+ * When enabled, `Effect.fork` and similar operations will capture the call
+ * site (file, line, column) and store it in a FiberRef that can be read by
+ * Supervisors. This enables automatic tracing with meaningful span names
+ * like `"sendEmail (user-handlers.ts:42)"` instead of `"anonymous"`.
+ *
+ * @example
+ * ```ts
+ * import { Effect, Layer } from "effect"
+ *
+ * // Enable source capture for entire program
+ * Effect.runPromise(
+ *   program.pipe(Effect.provide(Layer.enableSourceCapture))
+ * )
+ * ```
+ *
+ * @since 3.15.0
+ * @category tracing
+ */
+export const enableSourceCapture: Layer<never> = internal.enableSourceCapture
+
+/**
  * @since 2.0.0
  * @category logging
  */

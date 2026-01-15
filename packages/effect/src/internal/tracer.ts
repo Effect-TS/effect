@@ -148,3 +148,122 @@ export const addSpanStackTrace = (options: Tracer.SpanOptions | undefined): Trac
 export const DisablePropagation = Context.Reference<Tracer.DisablePropagation>()("effect/Tracer/DisablePropagation", {
   defaultValue: constFalse
 })
+
+// -----------------------------------------------------------------------------
+// Source Location Capture
+// -----------------------------------------------------------------------------
+
+/**
+ * Represents a source code location captured from a stack trace.
+ * @internal
+ */
+export interface SourceLocation {
+  readonly file: string
+  readonly line: number
+  readonly column: number
+  readonly functionName?: string
+}
+
+// Cache for source locations: raw frame string -> SourceLocation
+// Maximum cache size to prevent unbounded memory growth in long-running services
+const MAX_SOURCE_LOCATION_CACHE_SIZE = 1000
+const sourceLocationCache = new Map<string, SourceLocation>()
+
+/**
+ * Evicts the oldest cache entry if at capacity (FIFO eviction).
+ * Maps maintain insertion order, so the first key is the oldest.
+ * @internal
+ */
+const evictOldestCacheEntry = (): void => {
+  if (sourceLocationCache.size >= MAX_SOURCE_LOCATION_CACHE_SIZE) {
+    const firstKey = sourceLocationCache.keys().next().value
+    if (firstKey !== undefined) {
+      sourceLocationCache.delete(firstKey)
+    }
+  }
+}
+
+/**
+ * Parses source location from a pre-captured stack trace string with caching.
+ * This is used when the stack was captured earlier (while user code was on stack)
+ * but parsing is delayed until we know capture is enabled.
+ *
+ * @internal
+ */
+export const parseSourceLocationFromStack = (stack: string): SourceLocation | undefined => {
+  const lines = stack.split("\n")
+  // Find first non-internal frame (skip Error, fork, unsafeMakeChildFiber, etc.)
+  const userFrame = findUserFrame(lines)
+  if (!userFrame) return undefined
+
+  const cacheKey = userFrame.raw // Use raw frame string as key
+
+  const cached = sourceLocationCache.get(cacheKey)
+  if (cached) return cached
+
+  const parsed = parseStackFrame(userFrame.raw)
+  if (parsed) {
+    evictOldestCacheEntry() // Ensure cache doesn't grow unbounded
+    sourceLocationCache.set(cacheKey, parsed)
+  }
+  return parsed
+}
+
+/**
+ * Captures the source location from the current stack trace with caching.
+ * Uses the raw stack frame string as the cache key for fast lookups.
+ *
+ * Note: Uses the current Error.stackTraceLimit value (typically 10-15).
+ * If capturing deeply nested call sites, configure Error.stackTraceLimit
+ * globally before importing Effect (e.g., Error.stackTraceLimit = 25).
+ *
+ * @internal
+ */
+export const captureSourceLocationCached = (): SourceLocation | undefined => {
+  const traceError = new Error()
+  if (!traceError.stack) return undefined
+  return parseSourceLocationFromStack(traceError.stack)
+}
+
+const findUserFrame = (stack: Array<string>): { raw: string; index: number } | undefined => {
+  // Skip frames from Effect internals
+  for (let i = 1; i < stack.length; i++) {
+    const frame = stack[i]
+    if (
+      frame &&
+      !isInternalFrame(frame)
+    ) {
+      return { raw: frame.trim(), index: i }
+    }
+  }
+  return undefined
+}
+
+const isInternalFrame = (frame: string): boolean => {
+  // Skip internal directories
+  if (frame.includes("/internal/")) return true
+  // Skip Effect core source files
+  if (frame.includes("/packages/effect/src/")) return true
+  if (frame.includes("/effect/dist/")) return true
+  // Skip node_modules (for published effect packages)
+  if (frame.includes("node_modules/effect/")) return true
+  if (frame.includes("node_modules/@effect/")) return true
+  // Skip specific internal functions
+  if (frame.includes("fiberRuntime")) return true
+  if (frame.includes("captureSourceLocation")) return true
+  if (frame.includes("effect_internal_function")) return true
+  return false
+}
+
+const parseStackFrame = (frame: string): SourceLocation | undefined => {
+  // Parse "at functionName (file:line:col)" or "at file:line:col"
+  const match = frame.match(/at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?/)
+  if (!match) return undefined
+
+  return {
+    functionName: match[1],
+    file: match[2],
+    line: parseInt(match[3], 10),
+    column: parseInt(match[4], 10)
+  }
+}
