@@ -1794,12 +1794,23 @@ const parseCommandLine = (
 
             // Head is a positional arg - scan for the option in remaining args
             let optionIndex = -1
+            let equalsValue: string | undefined = undefined
             for (let i = 0; i < tail.length; i++) {
               const arg = tail[i]
               const normalizedArg = normalize(arg)
               if (Arr.contains(normalizedNames, normalizedArg)) {
                 optionIndex = i
                 break
+              }
+              // Check for --option=value syntax
+              const flagMatch = FLAG_REGEX.exec(arg)
+              if (flagMatch !== null) {
+                const normalizedFlag = normalize(flagMatch[1])
+                if (Arr.contains(normalizedNames, normalizedFlag)) {
+                  optionIndex = i
+                  equalsValue = flagMatch[2]
+                  break
+                }
               }
             }
 
@@ -1809,13 +1820,29 @@ const parseCommandLine = (
               return Effect.fail(InternalValidationError.missingFlag(error))
             }
 
-            const optionName = tail[optionIndex]
+            const rawArg = tail[optionIndex]
+            // Extract the option name (handle --option=value case)
+            const optionName = equalsValue !== undefined
+              ? FLAG_REGEX.exec(rawArg)![1]
+              : rawArg
             // beforeOption includes head plus any args before the option in tail
             const beforeOption = Arr.prepend(tail.slice(0, optionIndex), head)
             const afterOption = tail.slice(optionIndex + 1)
 
             if (InternalPrimitive.isBool(self.primitiveType)) {
-              // Boolean option - check if next arg is a true/false value
+              // Boolean option - check if there's an equals value or next arg is a true/false value
+              if (equalsValue !== undefined) {
+                if (InternalPrimitive.isTrueValue(equalsValue)) {
+                  const parsed = Option.some({ name: optionName, values: Arr.of("true") })
+                  const leftover = Arr.appendAll(beforeOption, afterOption)
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+                if (InternalPrimitive.isFalseValue(equalsValue)) {
+                  const parsed = Option.some({ name: optionName, values: Arr.of("false") })
+                  const leftover = Arr.appendAll(beforeOption, afterOption)
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+              }
               if (afterOption.length > 0) {
                 const nextValue = afterOption[0]
                 if (InternalPrimitive.isTrueValue(nextValue)) {
@@ -1836,6 +1863,13 @@ const parseCommandLine = (
             }
 
             // Non-boolean option - requires a value
+            // If we found --option=value syntax, use that value
+            if (equalsValue !== undefined) {
+              const parsed = Option.some({ name: optionName, values: Arr.of(equalsValue) })
+              const leftover = Arr.appendAll(beforeOption, afterOption)
+              return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+            }
+
             if (afterOption.length === 0) {
               const error = InternalHelpDoc.p(
                 `Expected a value following option: '${self.fullName}'`

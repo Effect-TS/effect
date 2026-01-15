@@ -673,24 +673,26 @@ const parseInternal = (
         args,
         (arg) => !Arr.some(subcommands, ([name]) => name === arg)
       )
-      const parseChildren = Effect.suspend(() => {
-        const iterator = self.children[Symbol.iterator]()
-        const loop = (
-          next: Instruction
-        ): Effect.Effect<
-          Directive.CommandDirective<any>,
-          ValidationError.ValidationError,
-          FileSystem.FileSystem | Path.Path | Terminal.Terminal
-        > => {
-          return parseInternal(next, childArgs, config).pipe(
-            Effect.catchIf(InternalValidationError.isCommandMismatch, (e) => {
-              const next = iterator.next()
-              return next.done ? Effect.fail(e) : loop(next.value)
-            })
-          )
-        }
-        return loop(iterator.next().value!)
-      })
+      const parseChildrenWith = (argsForChildren: ReadonlyArray<string>) =>
+        Effect.suspend(() => {
+          const iterator = self.children[Symbol.iterator]()
+          const loop = (
+            next: Instruction
+          ): Effect.Effect<
+            Directive.CommandDirective<any>,
+            ValidationError.ValidationError,
+            FileSystem.FileSystem | Path.Path | Terminal.Terminal
+          > => {
+            return parseInternal(next, argsForChildren, config).pipe(
+              Effect.catchIf(InternalValidationError.isCommandMismatch, (e) => {
+                const next = iterator.next()
+                return next.done ? Effect.fail(e) : loop(next.value)
+              })
+            )
+          }
+          return loop(iterator.next().value!)
+        })
+      const parseChildren = parseChildrenWith(childArgs)
       const helpDirectiveForParent = Effect.sync(() => {
         return InternalCommandDirective.builtIn(InternalBuiltInOptions.showHelp(
           getUsageInternal(self),
@@ -750,8 +752,47 @@ const parseInternal = (
               case "UserDefined": {
                 const args = Arr.appendAll(directive.leftover, childArgs)
                 if (Arr.isNonEmptyReadonlyArray(args)) {
-                  return parseChildren.pipe(Effect.mapBoth({
-                    onFailure: (err) => {
+                  return parseChildrenWith(args).pipe(
+                    Effect.flatMap((childDirective) => {
+                      if (!InternalCommandDirective.isUserDefined(childDirective)) {
+                        return Effect.succeed(childDirective)
+                      }
+                      // Check if child has leftover args that might be parent options
+                      const childLeftover = childDirective.leftover
+                      if (Arr.isEmptyReadonlyArray(childLeftover)) {
+                        return Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
+                          ...directive.value as any,
+                          subcommand: Option.some(childDirective.value)
+                        }))
+                      }
+                      // Try to parse leftover args as parent options
+                      const parentCommand = self.parent as Standard | GetUserInput
+                      if (parentCommand._tag !== "Standard") {
+                        return Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
+                          ...directive.value as any,
+                          subcommand: Option.some(childDirective.value)
+                        }))
+                      }
+                      return InternalOptions.processCommandLine(parentCommand.options, childLeftover, config).pipe(
+                        Effect.map(([_error, finalLeftover, additionalOptions]) => {
+                          // Merge additional options with original parent options
+                          const mergedOptions = { ...directive.value.options, ...additionalOptions }
+                          return InternalCommandDirective.userDefined(finalLeftover as Array<string>, {
+                            ...directive.value as any,
+                            options: mergedOptions,
+                            subcommand: Option.some(childDirective.value)
+                          })
+                        }),
+                        Effect.catchAll(() =>
+                          // If parsing as parent options fails, keep original leftover
+                          Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
+                            ...directive.value as any,
+                            subcommand: Option.some(childDirective.value)
+                          }))
+                        )
+                      )
+                    }),
+                    Effect.catchAll((err) => {
                       if (InternalValidationError.isCommandMismatch(err)) {
                         const parentName = Option.getOrElse(Arr.head(names), () => "")
                         const childNames = Arr.map(subcommands, ([name]) => `'${name}'`)
@@ -759,15 +800,11 @@ const parseInternal = (
                         const error = InternalHelpDoc.p(
                           `Invalid subcommand for ${parentName} - use${oneOf} ${Arr.join(childNames, ", ")}`
                         )
-                        return InternalValidationError.commandMismatch(error)
+                        return Effect.fail(InternalValidationError.commandMismatch(error))
                       }
-                      return err
-                    },
-                    onSuccess: InternalCommandDirective.map((subcommand) => ({
-                      ...directive.value as any,
-                      subcommand: Option.some(subcommand)
-                    }))
-                  }))
+                      return Effect.fail(err)
+                    })
+                  )
                 }
                 return Effect.succeed(InternalCommandDirective.userDefined(directive.leftover, {
                   ...directive.value as any,
