@@ -765,26 +765,28 @@ const parseInternal = (
                           subcommand: Option.some(childDirective.value)
                         }))
                       }
-                      // Try to parse leftover args as parent options
-                      const parentCommand = self.parent as Standard | GetUserInput
-                      if (parentCommand._tag !== "Standard") {
-                        return Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
-                          ...directive.value as any,
-                          subcommand: Option.some(childDirective.value)
-                        }))
-                      }
-                      return InternalOptions.processCommandLine(parentCommand.options, childLeftover, config).pipe(
-                        Effect.map(([_error, finalLeftover, additionalOptions]) => {
-                          // Merge additional options with original parent options
-                          const mergedOptions = { ...directive.value.options, ...additionalOptions }
-                          return InternalCommandDirective.userDefined(finalLeftover as Array<string>, {
-                            ...directive.value as any,
-                            options: mergedOptions,
-                            subcommand: Option.some(childDirective.value)
-                          })
+                      // Try to re-parse parent command with leftover args to pick up any options
+                      // that appeared after child positional args
+                      const parentArgsWithLeftover = Arr.appendAll(parentArgs, childLeftover)
+                      return parseInternal(self.parent, parentArgsWithLeftover, config).pipe(
+                        Effect.flatMap((reParsedParentDirective) => {
+                          if (!InternalCommandDirective.isUserDefined(reParsedParentDirective)) {
+                            return Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
+                              ...directive.value as any,
+                              subcommand: Option.some(childDirective.value)
+                            }))
+                          }
+                          // Use the re-parsed parent options which now include options from leftover
+                          return Effect.succeed(InternalCommandDirective.userDefined(
+                            reParsedParentDirective.leftover as Array<string>,
+                            {
+                              ...reParsedParentDirective.value as any,
+                              subcommand: Option.some(childDirective.value)
+                            }
+                          ))
                         }),
                         Effect.catchAll(() =>
-                          // If parsing as parent options fails, keep original leftover
+                          // If re-parsing fails, keep original leftover
                           Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
                             ...directive.value as any,
                             subcommand: Option.some(childDirective.value)
