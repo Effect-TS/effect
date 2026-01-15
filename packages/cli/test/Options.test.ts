@@ -768,5 +768,21 @@ describe("Options", () => {
         const result = yield* process(verbose, args, CliConfig.defaultConfig)
         expect(result).toEqual([["positional"], false])
       }).pipe(runEffect))
+
+    it("parses keyValueMap option that appears after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --defs key=value
+        const args = Array.make("positional", "--defs", "key=value")
+        const result = yield* process(defs, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], HashMap.make(["key", "value"])])
+      }).pipe(runEffect))
+
+    it("parses keyValueMap option with multiple values after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --defs key1=value1 key2=value2
+        const args = Array.make("positional", "-d", "key1=value1", "key2=value2")
+        const result = yield* process(defs, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], HashMap.make(["key1", "value1"], ["key2", "value2"])])
+      }).pipe(runEffect))
   })
 })
