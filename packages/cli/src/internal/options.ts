@@ -1738,7 +1738,6 @@ const parseCommandLine = (
             const normalizedHead = normalize(head)
             const normalizedNames = Arr.map(getNames(self), (name) => normalize(name))
 
-            // Check if head matches the option (original behavior)
             if (Arr.contains(normalizedNames, normalizedHead)) {
               if (InternalPrimitive.isBool(self.primitiveType)) {
                 return Arr.matchLeft(tail, {
@@ -1774,9 +1773,6 @@ const parseCommandLine = (
               })
             }
 
-            // Head doesn't match - check if it looks like an option (starts with -)
-            // If so, fail with MissingFlag (original behavior for ambiguous cases)
-            // Otherwise, scan through remaining args to find the option after positional args
             if (head.startsWith("-")) {
               if (
                 self.name.length > config.autoCorrectLimit + 1 &&
@@ -1792,7 +1788,6 @@ const parseCommandLine = (
               return Effect.fail(InternalValidationError.missingFlag(error))
             }
 
-            // Head is a positional arg - scan for the option in remaining args
             let optionIndex = -1
             let equalsValue: string | undefined = undefined
             for (let i = 0; i < tail.length; i++) {
@@ -1802,7 +1797,6 @@ const parseCommandLine = (
                 optionIndex = i
                 break
               }
-              // Check for --option=value syntax
               const flagMatch = FLAG_REGEX.exec(arg)
               if (flagMatch !== null) {
                 const normalizedFlag = normalize(flagMatch[1])
@@ -1814,23 +1808,17 @@ const parseCommandLine = (
               }
             }
 
-            // Option not found after positional args
             if (optionIndex === -1) {
               const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
               return Effect.fail(InternalValidationError.missingFlag(error))
             }
 
             const rawArg = tail[optionIndex]
-            // Extract the option name (handle --option=value case)
-            const optionName = equalsValue !== undefined
-              ? FLAG_REGEX.exec(rawArg)![1]
-              : rawArg
-            // beforeOption includes head plus any args before the option in tail
+            const optionName = equalsValue !== undefined ? FLAG_REGEX.exec(rawArg)![1] : rawArg
             const beforeOption = Arr.prepend(tail.slice(0, optionIndex), head)
             const afterOption = tail.slice(optionIndex + 1)
 
             if (InternalPrimitive.isBool(self.primitiveType)) {
-              // Boolean option - check if there's an equals value or next arg is a true/false value
               if (equalsValue !== undefined) {
                 if (InternalPrimitive.isTrueValue(equalsValue)) {
                   const parsed = Option.some({ name: optionName, values: Arr.of("true") })
@@ -1856,14 +1844,11 @@ const parseCommandLine = (
                   return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
                 }
               }
-              // No explicit value, treat as true
               const parsed = Option.some({ name: optionName, values: Arr.empty() })
               const leftover = Arr.appendAll(beforeOption, afterOption)
               return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
             }
 
-            // Non-boolean option - requires a value
-            // If we found --option=value syntax, use that value
             if (equalsValue !== undefined) {
               const parsed = Option.some({ name: optionName, values: Arr.of(equalsValue) })
               const leftover = Arr.appendAll(beforeOption, afterOption)
@@ -1930,13 +1915,10 @@ const parseCommandLine = (
             return Effect.succeed({ parsed: Option.some({ name: head, values }), leftover })
           }
 
-          // Head doesn't match - if head looks like an option, return no match
-          // Otherwise, scan for the key-value map option after positional args
           if (head.startsWith("-")) {
             return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
           }
 
-          // Scan for the option in remaining args
           let optionIndex = -1
           for (let i = 0; i < tail.length; i++) {
             const arg = tail[i]

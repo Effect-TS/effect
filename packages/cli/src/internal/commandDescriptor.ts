@@ -757,7 +757,6 @@ const parseInternal = (
                       if (!InternalCommandDirective.isUserDefined(childDirective)) {
                         return Effect.succeed(childDirective)
                       }
-                      // Check if child has leftover args that might be parent options
                       const childLeftover = childDirective.leftover
                       if (Arr.isEmptyReadonlyArray(childLeftover)) {
                         return Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
@@ -765,8 +764,6 @@ const parseInternal = (
                           subcommand: Option.some(childDirective.value)
                         }))
                       }
-                      // Try to re-parse parent command with leftover args to pick up any options
-                      // that appeared after child positional args
                       const parentArgsWithLeftover = Arr.appendAll(parentArgs, childLeftover)
                       return parseInternal(self.parent, parentArgsWithLeftover, config).pipe(
                         Effect.flatMap((reParsedParentDirective) => {
@@ -776,7 +773,6 @@ const parseInternal = (
                               subcommand: Option.some(childDirective.value)
                             }))
                           }
-                          // Use the re-parsed parent options which now include options from leftover
                           return Effect.succeed(InternalCommandDirective.userDefined(
                             reParsedParentDirective.leftover as Array<string>,
                             {
@@ -786,7 +782,6 @@ const parseInternal = (
                           ))
                         }),
                         Effect.catchAll(() =>
-                          // If re-parsing fails, keep original leftover
                           Effect.succeed(InternalCommandDirective.userDefined(childLeftover, {
                             ...directive.value as any,
                             subcommand: Option.some(childDirective.value)
