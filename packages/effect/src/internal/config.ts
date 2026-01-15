@@ -415,14 +415,14 @@ export const orElseIf = dual<
       readonly if: Predicate<ConfigError.ConfigError>
       readonly orElse: LazyArg<Config.Config<A2>>
     }
-  ) => <A>(self: Config.Config<A>) => Config.Config<A>,
+  ) => <A>(self: Config.Config<A>) => Config.Config<A | A2>,
   <A, A2>(
     self: Config.Config<A>,
     options: {
       readonly if: Predicate<ConfigError.ConfigError>
       readonly orElse: LazyArg<Config.Config<A2>>
     }
-  ) => Config.Config<A>
+  ) => Config.Config<A | A2>
 >(2, (self, options) => {
   const fallback = Object.create(proto)
   fallback._tag = OpCodes.OP_FALLBACK
