@@ -4,7 +4,7 @@ import type * as Deferred from "../Deferred.js"
 import * as Duration from "../Duration.js"
 import type { Effect } from "../Effect.js"
 import type { RuntimeFiber } from "../Fiber.js"
-import { dual, identity } from "../Function.js"
+import { constant, dual, flow, identity } from "../Function.js"
 import * as MutableHashMap from "../MutableHashMap.js"
 import { pipeArguments } from "../Pipeable.js"
 import type * as RcMap from "../RcMap.js"
@@ -33,6 +33,7 @@ declare namespace State {
     readonly deferred: Deferred.Deferred<A, E>
     readonly scope: Scope.CloseableScope
     readonly finalizer: Effect<void>
+    readonly idleTimeToLive: Duration.Duration
     fiber: RuntimeFiber<void, never> | undefined
     expiresAt: number
     refCount: number
@@ -58,7 +59,7 @@ class RcMapImpl<K, A, E> implements RcMap.RcMap<K, A, E> {
     readonly lookup: (key: K) => Effect<A, E, Scope.Scope>,
     readonly context: Context.Context<never>,
     readonly scope: Scope.Scope,
-    readonly idleTimeToLive: Duration.Duration | undefined,
+    readonly idleTimeToLive: ((key: K) => Duration.Duration) | undefined,
     readonly capacity: number
   ) {
     this[TypeId] = variance
@@ -73,27 +74,32 @@ class RcMapImpl<K, A, E> implements RcMap.RcMap<K, A, E> {
 export const make: {
   <K, A, E, R>(options: {
     readonly lookup: (key: K) => Effect<A, E, R>
-    readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly idleTimeToLive?: Duration.DurationInput | ((key: K) => Duration.DurationInput) | undefined
     readonly capacity?: undefined
   }): Effect<RcMap.RcMap<K, A, E>, never, Scope.Scope | R>
   <K, A, E, R>(options: {
     readonly lookup: (key: K) => Effect<A, E, R>
-    readonly idleTimeToLive?: Duration.DurationInput | undefined
+    readonly idleTimeToLive?: Duration.DurationInput | ((key: K) => Duration.DurationInput) | undefined
     readonly capacity: number
   }): Effect<RcMap.RcMap<K, A, E | Cause.ExceededCapacityException>, never, Scope.Scope | R>
 } = <K, A, E, R>(options: {
   readonly lookup: (key: K) => Effect<A, E, R>
-  readonly idleTimeToLive?: Duration.DurationInput | undefined
+  readonly idleTimeToLive?: Duration.DurationInput | ((key: K) => Duration.DurationInput) | undefined
   readonly capacity?: number | undefined
 }) =>
   core.withFiberRuntime<RcMap.RcMap<K, A, E>, never, R | Scope.Scope>((fiber) => {
     const context = fiber.getFiberRef(core.currentContext) as Context.Context<R | Scope.Scope>
     const scope = Context.get(context, fiberRuntime.scopeTag)
+    const idleTimeToLive = options.idleTimeToLive === undefined
+      ? undefined
+      : typeof options.idleTimeToLive === "function"
+      ? flow(options.idleTimeToLive, Duration.decode)
+      : constant(Duration.decode(options.idleTimeToLive))
     const self = new RcMapImpl<K, A, E>(
       options.lookup as any,
       context,
       scope,
-      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : undefined,
+      idleTimeToLive,
       Math.max(options.capacity ?? Number.POSITIVE_INFINITY, 0)
     )
     return core.as(
@@ -169,10 +175,12 @@ const acquire = core.fnUntraced(function*<K, A, E>(self: RcMapImpl<K, A, E>, key
     core.flatMap((exit) => core.deferredDone(deferred, exit)),
     circular.forkIn(scope)
   )
+  const idleTimeToLive = self.idleTimeToLive ? self.idleTimeToLive(key) : Duration.zero
   const entry: State.Entry<A, E> = {
     deferred,
     scope,
     finalizer: undefined as any,
+    idleTimeToLive,
     fiber: undefined,
     expiresAt: 0,
     refCount: 1
@@ -192,7 +200,7 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
     } else if (
       self.state._tag === "Closed"
       || !MutableHashMap.has(self.state.map, key)
-      || self.idleTimeToLive === undefined
+      || Duration.isZero(entry.idleTimeToLive)
     ) {
       if (self.state._tag === "Open") {
         MutableHashMap.remove(self.state.map, key)
@@ -200,11 +208,11 @@ const release = <K, A, E>(self: RcMapImpl<K, A, E>, key: K, entry: State.Entry<A
       return core.scopeClose(entry.scope, core.exitVoid)
     }
 
-    if (!Duration.isFinite(self.idleTimeToLive)) {
+    if (!Duration.isFinite(entry.idleTimeToLive)) {
       return core.void
     }
 
-    entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)
+    entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(entry.idleTimeToLive)
     if (entry.fiber) return core.void
 
     return core.interruptibleMask(function loop(restore): Effect<void> {
@@ -276,10 +284,12 @@ export const touch: {
   <K, A, E>(self_: RcMap.RcMap<K, A, E>, key: K) =>
     coreEffect.clockWith((clock) => {
       const self = self_ as RcMapImpl<K, A, E>
-      if (!self.idleTimeToLive || self.state._tag === "Closed") return core.void
+      if (self.state._tag === "Closed") return core.void
       const o = MutableHashMap.get(self.state.map, key)
       if (o._tag === "None") return core.void
-      o.value.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(self.idleTimeToLive)
+      const entry = o.value
+      if (Duration.isZero(entry.idleTimeToLive)) return core.void
+      entry.expiresAt = clock.unsafeCurrentTimeMillis() + Duration.toMillis(entry.idleTimeToLive)
       return core.void
     })
 )
