@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["examples"],
+  "references": [
+    { "path": "tsconfig.build.json" },
+    { "path": "../effect/tsconfig.build.json" },
+    { "path": "../sql/tsconfig.build.json" },
+    { "path": "../sql-sqlite-node/tsconfig.build.json" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/examples.tsbuildinfo",
+    "rootDir": "examples",
+    "noEmit": true
+  }
+}

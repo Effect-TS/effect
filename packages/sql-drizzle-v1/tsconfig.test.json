@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["test"],
+  "references": [
+    { "path": "tsconfig.src.json" },
+    { "path": "../platform-node/tsconfig.src.json" },
+    { "path": "../sql-pg/tsconfig.src.json" },
+    { "path": "../sql-mysql2/tsconfig.src.json" },
+    { "path": "../sql-sqlite-node/tsconfig.src.json" },
+    { "path": "../vitest/tsconfig.src.json" }
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/test.tsbuildinfo",
+    "rootDir": "test",
+    "noEmit": true
+  }
+}
