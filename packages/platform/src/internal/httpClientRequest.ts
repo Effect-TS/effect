@@ -264,19 +264,22 @@ export const appendUrl = dual<
 
 /** @internal */
 export const prependUrl = dual<
-  (path: string) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
-  (self: ClientRequest.HttpClientRequest, path: string) => ClientRequest.HttpClientRequest
->(2, (self, url) =>
-  makeInternal(
+  (path: string | URL) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (self: ClientRequest.HttpClientRequest, path: string | URL) => ClientRequest.HttpClientRequest
+>(2, (self, url) => {
+  const clone = typeof url === "string" ? url : url.toString()
+
+  return makeInternal(
     self.method,
-    url.endsWith("/") && self.url.startsWith("/") ?
+    clone.endsWith("/") && self.url.startsWith("/") ?
       url + self.url.slice(1) :
       url + self.url,
     self.urlParams,
     self.hash,
     self.headers,
     self.body
-  ))
+  )
+})
 
 /** @internal */
 export const updateUrl = dual<
