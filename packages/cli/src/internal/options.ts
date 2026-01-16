@@ -1737,6 +1737,7 @@ const parseCommandLine = (
             const normalize = (value: string) => InternalCliConfig.normalizeCase(config, value)
             const normalizedHead = normalize(head)
             const normalizedNames = Arr.map(getNames(self), (name) => normalize(name))
+
             if (Arr.contains(normalizedNames, normalizedHead)) {
               if (InternalPrimitive.isBool(self.primitiveType)) {
                 return Arr.matchLeft(tail, {
@@ -1771,18 +1772,100 @@ const parseCommandLine = (
                 }
               })
             }
-            if (
-              self.name.length > config.autoCorrectLimit + 1 &&
-              InternalAutoCorrect.levensteinDistance(head, self.fullName, config) <=
-                config.autoCorrectLimit
-            ) {
-              const error = InternalHelpDoc.p(
-                `The flag '${head}' is not recognized. Did you mean '${self.fullName}'?`
-              )
-              return Effect.fail(InternalValidationError.correctedFlag(error))
+
+            if (head.startsWith("-")) {
+              if (
+                self.name.length > config.autoCorrectLimit + 1 &&
+                InternalAutoCorrect.levensteinDistance(head, self.fullName, config) <=
+                  config.autoCorrectLimit
+              ) {
+                const error = InternalHelpDoc.p(
+                  `The flag '${head}' is not recognized. Did you mean '${self.fullName}'?`
+                )
+                return Effect.fail(InternalValidationError.correctedFlag(error))
+              }
+              const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
+              return Effect.fail(InternalValidationError.missingFlag(error))
             }
-            const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
-            return Effect.fail(InternalValidationError.missingFlag(error))
+
+            let optionIndex = -1
+            let equalsValue: string | undefined = undefined
+            for (let i = 0; i < tail.length; i++) {
+              const arg = tail[i]
+              const normalizedArg = normalize(arg)
+              if (Arr.contains(normalizedNames, normalizedArg)) {
+                optionIndex = i
+                break
+              }
+              const flagMatch = FLAG_REGEX.exec(arg)
+              if (flagMatch !== null) {
+                const normalizedFlag = normalize(flagMatch[1])
+                if (Arr.contains(normalizedNames, normalizedFlag)) {
+                  optionIndex = i
+                  equalsValue = flagMatch[2]
+                  break
+                }
+              }
+            }
+
+            if (optionIndex === -1) {
+              const error = InternalHelpDoc.p(`Expected to find option: '${self.fullName}'`)
+              return Effect.fail(InternalValidationError.missingFlag(error))
+            }
+
+            const rawArg = tail[optionIndex]
+            const optionName = equalsValue !== undefined ? FLAG_REGEX.exec(rawArg)![1] : rawArg
+            const beforeOption = Arr.prepend(tail.slice(0, optionIndex), head)
+            const afterOption = tail.slice(optionIndex + 1)
+
+            if (InternalPrimitive.isBool(self.primitiveType)) {
+              if (equalsValue !== undefined) {
+                if (InternalPrimitive.isTrueValue(equalsValue)) {
+                  const parsed = Option.some({ name: optionName, values: Arr.of("true") })
+                  const leftover = Arr.appendAll(beforeOption, afterOption)
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+                if (InternalPrimitive.isFalseValue(equalsValue)) {
+                  const parsed = Option.some({ name: optionName, values: Arr.of("false") })
+                  const leftover = Arr.appendAll(beforeOption, afterOption)
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+              }
+              if (afterOption.length > 0) {
+                const nextValue = afterOption[0]
+                if (InternalPrimitive.isTrueValue(nextValue)) {
+                  const parsed = Option.some({ name: optionName, values: Arr.of("true") })
+                  const leftover = Arr.appendAll(beforeOption, afterOption.slice(1))
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+                if (InternalPrimitive.isFalseValue(nextValue)) {
+                  const parsed = Option.some({ name: optionName, values: Arr.of("false") })
+                  const leftover = Arr.appendAll(beforeOption, afterOption.slice(1))
+                  return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+                }
+              }
+              const parsed = Option.some({ name: optionName, values: Arr.empty() })
+              const leftover = Arr.appendAll(beforeOption, afterOption)
+              return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+            }
+
+            if (equalsValue !== undefined) {
+              const parsed = Option.some({ name: optionName, values: Arr.of(equalsValue) })
+              const leftover = Arr.appendAll(beforeOption, afterOption)
+              return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+            }
+
+            if (afterOption.length === 0) {
+              const error = InternalHelpDoc.p(
+                `Expected a value following option: '${self.fullName}'`
+              )
+              return Effect.fail(InternalValidationError.missingValue(error))
+            }
+
+            const optionValue = afterOption[0]
+            const parsed = Option.some({ name: optionName, values: Arr.of(optionValue) })
+            const leftover = Arr.appendAll(beforeOption, afterOption.slice(1))
+            return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
           }
         })
       ))
@@ -1831,7 +1914,31 @@ const parseCommandLine = (
             const [values, leftover] = loop(tail)
             return Effect.succeed({ parsed: Option.some({ name: head, values }), leftover })
           }
-          return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
+
+          if (head.startsWith("-")) {
+            return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
+          }
+
+          let optionIndex = -1
+          for (let i = 0; i < tail.length; i++) {
+            const arg = tail[i]
+            const normalizedArg = InternalCliConfig.normalizeCase(config, arg)
+            if (Arr.contains(normalizedNames, normalizedArg)) {
+              optionIndex = i
+              break
+            }
+          }
+
+          if (optionIndex === -1) {
+            return Effect.succeed<ParsedCommandLine>({ parsed: Option.none(), leftover: args })
+          }
+
+          const optionName = tail[optionIndex]
+          const beforeOption = Arr.prepend(tail.slice(0, optionIndex), head)
+          const afterOption = tail.slice(optionIndex + 1)
+          const [values, remaining] = loop(afterOption)
+          const leftover = Arr.appendAll(beforeOption, remaining)
+          return Effect.succeed({ parsed: Option.some({ name: optionName, values }), leftover })
         }
       })
     }

@@ -123,17 +123,18 @@ describe("Command", () => {
         expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
-    it("matches the first subcommand with a surplus option", () =>
+    it("matches the first subcommand with parent option after subcommand", () =>
       Effect.gen(function*() {
         const args = Array.make("git", "remote", "-v")
         const result = yield* Descriptor.parse(git, args, CliConfig.defaultConfig)
+        // -v is recognized as git's verbose option, even after the subcommand
         const expected = {
           name: "git",
-          options: false,
+          options: true,
           args: void 0,
           subcommand: Option.some(["remote", { name: "remote", options: void 0, args: void 0 }])
         }
-        expect(result).toEqual(CommandDirective.userDefined(Array.of("-v"), expected))
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), expected))
       }).pipe(runEffect))
 
     it("matches the second subcommand without any surplus arguments", () =>
