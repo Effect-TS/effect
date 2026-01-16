@@ -64,6 +64,8 @@ export const make = Effect.gen(function*() {
 
   return MockTerminal.of({
     columns: Effect.succeed(80),
+    rows: Effect.succeed(24),
+    isTTY: Effect.succeed(true),
     display,
     readInput,
     readLine: Effect.succeed(""),

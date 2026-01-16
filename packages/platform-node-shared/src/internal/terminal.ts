@@ -41,6 +41,8 @@ export const make = Effect.fnUntraced(function*(
   })
 
   const columns = Effect.sync(() => stdout.columns ?? 0)
+  const rows = Effect.sync(() => stdout.rows ?? 0)
+  const isTTY = Effect.sync(() => Boolean(stdout.isTTY))
 
   const readInput = Effect.gen(function*() {
     yield* RcRef.get(rlRef)
@@ -90,6 +92,8 @@ export const make = Effect.fnUntraced(function*(
 
   return Terminal.Terminal.of({
     columns,
+    rows,
+    isTTY,
     readInput,
     readLine,
     display
