@@ -172,7 +172,7 @@ export const layerHttpOptions = (options: {
   | HttpRouter.HttpRouter
 > =>
   RunnerServer.layerWithClients.pipe(
-    Layer.provide(RpcServer.layerProtocolHttp(options))
+    Layer.provide(RpcServer.layerProtocolHttpRouter(options))
   )
 
 /**
@@ -193,7 +193,7 @@ export const layerWebsocketOptions = (options: {
   | HttpRouter.HttpRouter
 > =>
   RunnerServer.layerWithClients.pipe(
-    Layer.provide(RpcServer.layerProtocolWebsocket(options))
+    Layer.provide(RpcServer.layerProtocolWebsocketRouter(options))
   )
 
 /**
