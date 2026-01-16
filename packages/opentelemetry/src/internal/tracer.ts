@@ -64,6 +64,7 @@ export class OtelSpan implements EffectTracer.Span {
     options?: EffectTracer.SpanOptions
   ) {
     this[OtelSpanTypeId] = OtelSpanTypeId
+    console.log({ options })
     const active = contextApi.active()
     this.parent = effectParent._tag === "Some"
       ? effectParent
