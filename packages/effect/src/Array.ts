@@ -2548,7 +2548,9 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten: <const S extends ReadonlyArray<ReadonlyArray<any>>>(self: S) => ReadonlyArray.Flatten<S> = flatMap(
+export const flatten: <const S extends ReadonlyArray<ReadonlyArray<any>>>(
+  self: S
+) => ReadonlyArray.Flatten<S> = flatMap(
   identity
 ) as any
 
