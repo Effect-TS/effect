@@ -310,14 +310,14 @@ export const orElseIf: {
       readonly if: Predicate<ConfigError.ConfigError>
       readonly orElse: LazyArg<Config<A2>>
     }
-  ): <A>(self: Config<A>) => Config<A>
+  ): <A>(self: Config<A>) => Config<A | A2>
   <A, A2>(
     self: Config<A>,
     options: {
       readonly if: Predicate<ConfigError.ConfigError>
       readonly orElse: LazyArg<Config<A2>>
     }
-  ): Config<A>
+  ): Config<A | A2>
 } = internal.orElseIf
 
 /**
