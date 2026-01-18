@@ -1,5 +1,6 @@
 import { Entity, RunnerAddress, Singleton } from "@effect/cluster"
-import { NodeClusterSocket, NodeRuntime } from "@effect/platform-node"
+import * as NodeClusterSocket from "@effect/platform-node/NodeClusterSocket"
+import { NodeRuntime } from "@effect/platform-node"
 import { Rpc } from "@effect/rpc"
 import { Effect, Layer, Logger, LogLevel, Option, Schema } from "effect"
 
