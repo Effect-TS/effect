@@ -25,6 +25,6 @@ import { type EffectPluginOptions, unplugin } from "./index.js"
  *
  * @since 0.1.0
  */
-export default unplugin.esbuild as (options?: EffectPluginOptions) => any
+export default unplugin.esbuild
 
 export type { EffectPluginOptions }

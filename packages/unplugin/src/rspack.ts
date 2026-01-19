@@ -24,6 +24,6 @@ import { type EffectPluginOptions, unplugin } from "./index.js"
  *
  * @since 0.1.0
  */
-export default unplugin.rspack as (options?: EffectPluginOptions) => any
+export default unplugin.rspack
 
 export type { EffectPluginOptions }

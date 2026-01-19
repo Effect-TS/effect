@@ -37,14 +37,20 @@ export function isEffectGenCall(node: t.Node): node is t.CallExpression {
 }
 
 /**
+ * Minimal path-like interface for AST traversal.
+ * This mirrors the essential properties of Babel's NodePath without importing the full type.
+ */
+interface PathLike {
+  parent?: t.Node | null
+  parentPath?: PathLike | null
+}
+
+/**
  * Checks if a node is inside an Effect.gen generator function.
  * This walks up the AST to find if there's an enclosing generator function
  * that is an argument to Effect.gen.
  */
-export function isInsideEffectGen(path: {
-  parent?: t.Node | null
-  parentPath?: { parent?: t.Node | null; parentPath?: any } | null
-}): boolean {
+export function isInsideEffectGen(path: PathLike): boolean {
   let current = path.parentPath
   while (current) {
     const node = current.parent as t.Node | undefined

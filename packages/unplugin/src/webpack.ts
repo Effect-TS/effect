@@ -24,6 +24,6 @@ import { type EffectPluginOptions, unplugin } from "./index.js"
  *
  * @since 0.1.0
  */
-export default unplugin.webpack as (options?: EffectPluginOptions) => any
+export default unplugin.webpack
 
 export type { EffectPluginOptions }

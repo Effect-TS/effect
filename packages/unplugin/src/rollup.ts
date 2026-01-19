@@ -24,6 +24,6 @@ import { type EffectPluginOptions, unplugin } from "./index.js"
  *
  * @since 0.1.0
  */
-export default unplugin.rollup as (options?: EffectPluginOptions) => any
+export default unplugin.rollup
 
 export type { EffectPluginOptions }

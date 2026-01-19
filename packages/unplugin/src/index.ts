@@ -21,15 +21,46 @@
  *
  * @since 0.1.0
  */
+import type { GeneratorResult } from "@babel/generator"
 import _generate from "@babel/generator"
 import { parse } from "@babel/parser"
-import _traverse, { type Visitor } from "@babel/traverse"
+import type { Scope, TraverseOptions, Visitor } from "@babel/traverse"
+import _traverse from "@babel/traverse"
+import type { Node } from "@babel/types"
 import { createUnplugin, type UnpluginFactory, type UnpluginInstance } from "unplugin"
 import { createSourceTraceVisitor } from "./transformers/sourceTrace.js"
+import type { HoistingState } from "./utils/hoisting.js"
 
-// Handle both ESM and CJS module exports
-const traverse = typeof _traverse === "function" ? _traverse : (_traverse as any).default
-const generate = typeof _generate === "function" ? _generate : (_generate as any).default
+// Define function types for Babel packages (they export differently in ESM vs CJS)
+type TraverseFn = <S>(
+  parent: Node,
+  opts: TraverseOptions<S>,
+  scope: Scope | undefined,
+  state: S
+) => void
+
+type GenerateFn = (
+  ast: Node,
+  opts?: { sourceMaps?: boolean; sourceFileName?: string },
+  code?: string
+) => GeneratorResult
+
+// Handle both ESM and CJS module exports for Babel packages
+const traverse: TraverseFn = typeof _traverse === "function"
+  ? _traverse as TraverseFn
+  : (_traverse as unknown as { default: TraverseFn }).default
+
+const generate: GenerateFn = typeof _generate === "function"
+  ? _generate as GenerateFn
+  : (_generate as unknown as { default: GenerateFn }).default
+
+/**
+ * Internal state used by transformers during AST traversal.
+ */
+interface TransformState {
+  filename: string
+  hoisting: HoistingState
+}
 
 /**
  * Configuration options for the Effect plugin.
@@ -132,7 +163,7 @@ const unpluginFactory: UnpluginFactory<EffectPluginOptions | undefined> = (optio
       })
 
       // Collect visitors
-      const visitors: Array<Visitor<any>> = []
+      const visitors: Array<Visitor<TransformState>> = []
 
       if (sourceTrace) {
         visitors.push(createSourceTraceVisitor(id))
