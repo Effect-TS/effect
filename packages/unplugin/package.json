@@ -1,0 +1,55 @@
+{
+  "name": "@effect/unplugin",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Universal bundler plugin for Effect transformations",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/unplugin"
+  },
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "directory": "dist",
+    "linkDirectory": false
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./vite": "./src/vite.ts",
+    "./rollup": "./src/rollup.ts",
+    "./webpack": "./src/webpack.ts",
+    "./esbuild": "./src/esbuild.ts",
+    "./rspack": "./src/rspack.ts"
+  },
+  "scripts": {
+    "build": "pnpm build-esm && pnpm build-cjs && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "unplugin": "^2.3.2",
+    "@babel/types": "^7.26.0",
+    "@babel/parser": "^7.26.0",
+    "@babel/traverse": "^7.26.0",
+    "@babel/generator": "^7.26.0"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.6",
+    "effect": "workspace:^",
+    "vitest": "^3.2.4"
+  }
+}

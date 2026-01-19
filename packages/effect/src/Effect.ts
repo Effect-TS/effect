@@ -60,6 +60,7 @@ import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch.js"
 import type * as Schedule from "./Schedule.js"
 import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
+import type * as SourceLocation from "./SourceLocation.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type {
@@ -2781,6 +2782,13 @@ export const gen: {
  */
 export interface Adapter {
   <A, E, R>(self: Effect<A, E, R>): Effect<A, E, R>
+  /**
+   * Overload for source trace injection.
+   * Used by @effect/unplugin to inject source location metadata.
+   *
+   * @since 3.20.0
+   */
+  <A, E, R>(self: Effect<A, E, R>, trace: SourceLocation.SourceLocation): Effect<A, E, R>
   <A, _A, _E, _R>(a: A, ab: (a: A) => Effect<_A, _E, _R>): Effect<_A, _E, _R>
   <A, B, _A, _E, _R>(a: A, ab: (a: A) => B, bc: (b: B) => Effect<_A, _E, _R>): Effect<_A, _E, _R>
   <A, B, C, _A, _E, _R>(a: A, ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => Effect<_A, _E, _R>): Effect<_A, _E, _R>

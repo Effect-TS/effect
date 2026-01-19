@@ -11,7 +11,9 @@ import type * as Logger from "../Logger.js"
 import type * as LogLevel from "../LogLevel.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
+import * as SourceLocation from "../SourceLocation.js"
 import * as Cause from "./cause.js"
+import * as core from "./core.js"
 import * as defaultServices from "./defaultServices.js"
 import { consoleTag } from "./defaultServices/console.js"
 import * as fiberId_ from "./fiberId.js"
@@ -178,7 +180,7 @@ const textOnly = /^[^\s"=]*$/
  */
 const format = (quoteValue: (s: string) => string, whitespace?: number | string | undefined) =>
 (
-  { annotations, cause, date, fiberId, logLevel, message, spans }: Logger.Logger.Options<unknown>
+  { annotations, cause, context, date, fiberId, logLevel, message, spans }: Logger.Logger.Options<unknown>
 ): string => {
   const formatValue = (value: string): string => value.match(textOnly) ? value : quoteValue(value)
   const format = (label: string, value: string): string => `${logSpan_.formatLabel(label)}=${formatValue(value)}`
@@ -187,6 +189,12 @@ const format = (quoteValue: (s: string) => string, whitespace?: number | string 
   let out = format("timestamp", date.toISOString())
   out += append("level", logLevel.label)
   out += append("fiber", fiberId_.threadName(fiberId))
+
+  // Include source trace if available
+  const sourceTrace = FiberRefs.getOrDefault(context, core.currentSourceTrace)
+  if (sourceTrace !== undefined) {
+    out += append("source", SourceLocation.format(sourceTrace))
+  }
 
   const messages = Arr.ensure(message)
   for (let i = 0; i < messages.length; i++) {
@@ -226,8 +234,11 @@ export const structuredLogger = makeLogger<unknown, {
   readonly cause: string | undefined
   readonly annotations: Record<string, unknown>
   readonly spans: Record<string, number>
+  readonly source:
+    | { readonly path: string; readonly line: number; readonly column: number; readonly label?: string }
+    | undefined
 }>(
-  ({ annotations, cause, date, fiberId, logLevel, message, spans }) => {
+  ({ annotations, cause, context, date, fiberId, logLevel, message, spans }) => {
     const now = date.getTime()
     const annotationsObj: Record<string, unknown> = {}
     const spansObj: Record<string, number> = {}
@@ -245,15 +256,41 @@ export const structuredLogger = makeLogger<unknown, {
     }
 
     const messageArr = Arr.ensure(message)
-    return {
+    const sourceTrace = FiberRefs.getOrDefault(context, core.currentSourceTrace)
+
+    const result: {
+      message: unknown
+      logLevel: string
+      timestamp: string
+      cause: string | undefined
+      annotations: Record<string, unknown>
+      spans: Record<string, number>
+      fiberId: string
+      source: { path: string; line: number; column: number; label?: string } | undefined
+    } = {
       message: messageArr.length === 1 ? structuredMessage(messageArr[0]) : messageArr.map(structuredMessage),
       logLevel: logLevel.label,
       timestamp: date.toISOString(),
       cause: Cause.isEmpty(cause) ? undefined : Cause.pretty(cause, { renderErrorCause: true }),
       annotations: annotationsObj,
       spans: spansObj,
-      fiberId: fiberId_.threadName(fiberId)
+      fiberId: fiberId_.threadName(fiberId),
+      source: undefined
     }
+
+    if (sourceTrace !== undefined) {
+      const sourceObj: { path: string; line: number; column: number; label?: string } = {
+        path: sourceTrace.path,
+        line: sourceTrace.line,
+        column: sourceTrace.column
+      }
+      if (sourceTrace.label !== undefined) {
+        sourceObj.label = sourceTrace.label
+      }
+      result.source = sourceObj
+    }
+
+    return result
   }
 )
 

@@ -1303,6 +1303,13 @@ export * as ScopedCache from "./ScopedCache.js"
 export * as ScopedRef from "./ScopedRef.js"
 
 /**
+ * Source location metadata for build-time instrumentation.
+ *
+ * @since 3.20.0
+ */
+export * as SourceLocation from "./SourceLocation.js"
+
+/**
  * @since 2.0.0
  * @deprecated
  */

@@ -35,6 +35,7 @@ import type * as RequestResolver from "../RequestResolver.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as RuntimeFlagsPatch from "../RuntimeFlagsPatch.js"
 import type * as Scope from "../Scope.js"
+import type * as SourceLocation from "../SourceLocation.js"
 import type * as Tracer from "../Tracer.js"
 import type { NoInfer, NotFunction } from "../Types.js"
 import { internalCall, YieldWrap } from "../Utils.js"
@@ -1415,10 +1416,26 @@ export const fromIterator = <Eff extends YieldWrap<Effect.Effect<any, any, any>>
     return effect
   })
 
+/**
+ * The adapter function injected into Effect.gen generators.
+ * Accepts an effect and an optional source location trace.
+ * When a trace is provided, it wraps the effect with `fiberRefLocally`
+ * to set the currentSourceTrace FiberRef during execution.
+ *
+ * @internal
+ */
+export const genAdapter = <A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+  trace?: SourceLocation.SourceLocation
+): Effect.Effect<A, E, R> =>
+  trace !== undefined
+    ? fiberRefLocally(effect, currentSourceTrace, trace)
+    : effect
+
 /* @internal */
 export const gen: typeof Effect.gen = function() {
   const f = arguments.length === 1 ? arguments[0] : arguments[1].bind(arguments[0])
-  return fromIterator(() => f(pipe))
+  return fromIterator(() => f(genAdapter))
 }
 
 /** @internal */
@@ -2147,6 +2164,12 @@ export const currentTracerSpanAnnotations: FiberRef.FiberRef<HashMap.HashMap<str
 export const currentTracerSpanLinks: FiberRef.FiberRef<Chunk.Chunk<Tracer.SpanLink>> = globalValue(
   Symbol.for("effect/FiberRef/currentTracerSpanLinks"),
   () => fiberRefUnsafeMake(Chunk.empty())
+)
+
+/** @internal */
+export const currentSourceTrace: FiberRef.FiberRef<SourceLocation.SourceLocation | undefined> = globalValue(
+  Symbol.for("effect/FiberRef/currentSourceTrace"),
+  () => fiberRefUnsafeMake<SourceLocation.SourceLocation | undefined>(undefined)
 )
 
 // -----------------------------------------------------------------------------

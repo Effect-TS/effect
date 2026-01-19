@@ -22,6 +22,7 @@ import type * as Request from "./Request.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
 import * as Scheduler from "./Scheduler.js"
 import type * as Scope from "./Scope.js"
+import type * as SourceLocation from "./SourceLocation.js"
 import type * as Supervisor from "./Supervisor.js"
 import type * as Tracer from "./Tracer.js"
 import type * as Types from "./Types.js"
@@ -386,6 +387,18 @@ export const currentRuntimeFlags: FiberRef<RuntimeFlags.RuntimeFlags> = fiberRun
  * @category fiberRefs
  */
 export const currentScheduler: FiberRef<Scheduler.Scheduler> = Scheduler.currentScheduler
+
+/**
+ * The current source location trace, used for build-time instrumentation.
+ *
+ * This FiberRef contains the source location of the currently executing effect
+ * step within an `Effect.gen` block. It is automatically set by the
+ * `@effect/unplugin` build-time transformer.
+ *
+ * @since 3.20.0
+ * @category fiberRefs
+ */
+export const currentSourceTrace: FiberRef<SourceLocation.SourceLocation | undefined> = core.currentSourceTrace
 
 /**
  * @since 2.0.0
