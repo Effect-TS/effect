@@ -29,6 +29,7 @@ import _traverse from "@babel/traverse"
 import type { Node } from "@babel/types"
 import { createUnplugin, type UnpluginFactory, type UnpluginInstance } from "unplugin"
 import { createSourceTraceVisitor } from "./transformers/sourceTrace.js"
+import { createWithSpanTraceVisitor } from "./transformers/withSpanTrace.js"
 import type { HoistingState } from "./utils/hoisting.js"
 
 // Define function types for Babel packages (they export differently in ESM vs CJS)
@@ -75,6 +76,14 @@ export interface EffectPluginOptions {
    * @default true
    */
   readonly sourceTrace?: boolean
+
+  /**
+   * Enable source location attributes injection into Effect.withSpan() calls.
+   * When enabled, spans will include code.filepath, code.lineno, and code.column attributes.
+   *
+   * @default true
+   */
+  readonly spanTrace?: boolean
 
   /**
    * Enable @__PURE__ annotations for tree-shaking.
@@ -145,7 +154,8 @@ const unpluginFactory: UnpluginFactory<EffectPluginOptions | undefined> = (optio
     annotateEffects: _annotateEffects = false,
     exclude = DEFAULT_EXCLUDE,
     include = DEFAULT_INCLUDE,
-    sourceTrace = true
+    sourceTrace = true,
+    spanTrace = true
   } = options
 
   return {
@@ -167,6 +177,10 @@ const unpluginFactory: UnpluginFactory<EffectPluginOptions | undefined> = (optio
 
       if (sourceTrace) {
         visitors.push(createSourceTraceVisitor(id))
+      }
+
+      if (spanTrace) {
+        visitors.push(createWithSpanTraceVisitor(id))
       }
 
       // Combine visitors

@@ -3,6 +3,7 @@ import { parse } from "@babel/parser"
 import _traverse from "@babel/traverse"
 import { describe, expect, it } from "vitest"
 import { createSourceTraceVisitor } from "../src/transformers/sourceTrace.js"
+import { createWithSpanTraceVisitor } from "../src/transformers/withSpanTrace.js"
 import { createHoistingState } from "../src/utils/hoisting.js"
 
 // Handle both ESM and CJS module exports
@@ -21,6 +22,22 @@ function transform(code: string, filename: string): string {
   }
 
   traverse(ast, createSourceTraceVisitor(filename), undefined, state)
+
+  return generate(ast).code
+}
+
+function transformWithSpan(code: string, filename: string): string {
+  const ast = parse(code, {
+    sourceType: "module",
+    plugins: ["typescript"]
+  })
+
+  const state = {
+    filename,
+    hoisting: createHoistingState()
+  }
+
+  traverse(ast, createWithSpanTraceVisitor(filename), undefined, state)
 
   return generate(ast).code
 }
@@ -139,5 +156,83 @@ Effect.gen(function* (_) {
     expect(output).toContain("\"src/services/UserRepo.ts\"")
     // Line 2 (1-indexed)
     expect(output).toContain("line: 2")
+  })
+})
+
+describe("withSpanTraceTransformer", () => {
+  it("injects source attributes into withSpan (data-last)", () => {
+    const input = `Effect.withSpan("myOperation")`
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Should have attributes with source location
+    expect(output).toContain("code.filepath")
+    expect(output).toContain("\"test.ts\"")
+    expect(output).toContain("code.lineno")
+    expect(output).toContain("code.column")
+  })
+
+  it("injects source attributes into withSpan (data-first)", () => {
+    const input = `Effect.withSpan(effect, "myOperation")`
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Should have attributes with source location
+    expect(output).toContain("code.filepath")
+    expect(output).toContain("\"test.ts\"")
+  })
+
+  it("merges with existing options object", () => {
+    const input = `Effect.withSpan("myOperation", { root: true })`
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Should preserve existing option
+    expect(output).toContain("root: true")
+    // Should have source attributes
+    expect(output).toContain("code.filepath")
+  })
+
+  it("merges with existing attributes", () => {
+    const input = `Effect.withSpan("myOperation", { attributes: { custom: "value" } })`
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Should preserve existing attribute via spread
+    expect(output).toContain("custom")
+    // Should have source attributes
+    expect(output).toContain("code.filepath")
+  })
+
+  it("handles member expression withSpan calls", () => {
+    const input = `effect.pipe(Effect.withSpan("myOperation"))`
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Should inject attributes
+    expect(output).toContain("code.filepath")
+  })
+
+  it("does not transform non-withSpan calls", () => {
+    const input = `Effect.succeed(42)`
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Should not add attributes
+    expect(output).not.toContain("code.filepath")
+    // Original code should be preserved
+    expect(output).toContain("Effect.succeed(42)")
+  })
+
+  it("preserves line numbers in attributes", () => {
+    const input = `
+const x = 1
+Effect.withSpan("myOperation")
+`.trim()
+
+    const output = transformWithSpan(input, "test.ts")
+
+    // Line 2 for the withSpan call
+    expect(output).toContain("\"code.lineno\": 2")
   })
 })

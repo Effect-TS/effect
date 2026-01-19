@@ -1,6 +1,6 @@
 {
-  "name": "@effect/unplugin",
-  "version": "0.1.0",
+  "name": "@clayroach/unplugin",
+  "version": "0.1.0-source-trace.3",
   "type": "module",
   "license": "MIT",
   "description": "Universal bundler plugin for Effect transformations",
@@ -44,12 +44,12 @@
     "@babel/generator": "^7.26.0"
   },
   "peerDependencies": {
-    "effect": "workspace:^"
+    "@clayroach/effect": "^3.19.14-source-trace.3"
   },
   "devDependencies": {
     "@types/babel__generator": "^7.6.8",
     "@types/babel__traverse": "^7.20.6",
-    "effect": "workspace:^",
+    "@clayroach/effect": "workspace:^",
     "vitest": "^3.2.4"
   }
 }
