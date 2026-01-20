@@ -3,7 +3,7 @@
  *
  * @since 0.1.0
  */
-import type * as t from "@babel/types"
+import * as t from "@babel/types"
 
 /**
  * Checks if a CallExpression is `Effect.gen(...)`.
@@ -78,4 +78,52 @@ export function isYieldAdapterCall(node: t.YieldExpression): boolean {
   if (!node.argument) return false
   if (node.argument.type !== "CallExpression") return false
   return isAdapterCall(node.argument)
+}
+
+/**
+ * Checks if a YieldExpression is a `yield* _(effect)` pattern with a specific adapter name.
+ */
+export function isYieldAdapterCallWithName(node: t.YieldExpression, adapterName: string): boolean {
+  if (!node.delegate) return false // Must be yield*, not yield
+  if (!node.argument) return false
+  if (node.argument.type !== "CallExpression") return false
+  const callee = node.argument.callee
+  return callee.type === "Identifier" && callee.name === adapterName
+}
+
+/**
+ * Checks if a YieldExpression is a modern `yield* effect` pattern (without adapter).
+ * This is the pattern used when Effect.gen is called without the adapter parameter.
+ */
+export function isModernYield(node: t.YieldExpression): boolean {
+  if (!node.delegate) return false // Must be yield*, not yield
+  if (!node.argument) return false
+  // Modern yields are NOT adapter calls - they yield the effect directly
+  if (node.argument.type === "CallExpression" && isAdapterCall(node.argument)) {
+    return false
+  }
+  return true
+}
+
+/**
+ * Gets the generator function from an Effect.gen call.
+ * Returns the FunctionExpression/ArrowFunctionExpression if found.
+ */
+export function getEffectGenGenerator(node: t.CallExpression): t.FunctionExpression | t.ArrowFunctionExpression | null {
+  // Effect.gen can be called with 1 or 2 arguments:
+  // Effect.gen(function*() { ... }) - 1 arg
+  // Effect.gen(context, function*() { ... }) - 2 args
+  const args = node.arguments
+
+  for (let i = args.length - 1; i >= 0; i--) {
+    const arg = args[i]
+    if (t.isFunctionExpression(arg) && arg.generator) {
+      return arg
+    }
+    if (t.isArrowFunctionExpression(arg) && arg.generator) {
+      return arg
+    }
+  }
+
+  return null
 }

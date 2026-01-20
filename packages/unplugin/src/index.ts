@@ -28,6 +28,7 @@ import type { Scope, TraverseOptions, Visitor } from "@babel/traverse"
 import _traverse from "@babel/traverse"
 import type { Node } from "@babel/types"
 import { createUnplugin, type UnpluginFactory, type UnpluginInstance } from "unplugin"
+import { createAnnotateEffectsVisitor } from "./transformers/annotateEffects.js"
 import { createSourceTraceVisitor } from "./transformers/sourceTrace.js"
 import { createWithSpanTraceVisitor } from "./transformers/withSpanTrace.js"
 import type { HoistingState } from "./utils/hoisting.js"
@@ -61,6 +62,11 @@ const generate: GenerateFn = typeof _generate === "function"
 interface TransformState {
   filename: string
   hoisting: HoistingState
+  /**
+   * Map from generator function to its adapter parameter name.
+   * Used by source trace transformer to track Effect.gen generators.
+   */
+  generatorAdapters: Map<unknown, string>
 }
 
 /**
@@ -151,7 +157,7 @@ function shouldTransform(
  */
 const unpluginFactory: UnpluginFactory<EffectPluginOptions | undefined> = (options = {}) => {
   const {
-    annotateEffects: _annotateEffects = false,
+    annotateEffects = false,
     exclude = DEFAULT_EXCLUDE,
     include = DEFAULT_INCLUDE,
     sourceTrace = true,
@@ -183,8 +189,14 @@ const unpluginFactory: UnpluginFactory<EffectPluginOptions | undefined> = (optio
         visitors.push(createWithSpanTraceVisitor(id))
       }
 
+      // Run annotateEffects separately (it has a simpler state)
+      if (annotateEffects) {
+        const annotateState = { filename: id }
+        traverse(ast, createAnnotateEffectsVisitor(id), undefined, annotateState)
+      }
+
       // Combine visitors
-      if (visitors.length === 0) {
+      if (visitors.length === 0 && !annotateEffects) {
         return null
       }
 
@@ -195,7 +207,8 @@ const unpluginFactory: UnpluginFactory<EffectPluginOptions | undefined> = (optio
           hoistedTraces: new Map(),
           counter: 0,
           statements: []
-        }
+        },
+        generatorAdapters: new Map()
       }))
 
       // Run each visitor
