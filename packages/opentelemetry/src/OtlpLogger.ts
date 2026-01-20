@@ -18,10 +18,9 @@ import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import * as Exporter from "./internal/otlpExporter.js"
-import type { OtlpProtocol } from "./internal/otlpExporter.js"
-import * as OtlpProtobuf from "./internal/otlpProtobuf.js"
 import type { AnyValue, Fixed64, KeyValue, Resource } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
+import type { OtlpSerializer } from "./OtlpSerializer.js"
 
 /**
  * @since 1.0.0
@@ -40,12 +39,11 @@ export const make: (
     readonly maxBatchSize?: number | undefined
     readonly shutdownTimeout?: Duration.DurationInput | undefined
     readonly excludeLogSpans?: boolean | undefined
-    readonly protocol?: OtlpProtocol | undefined
   }
 ) => Effect.Effect<
   Logger.Logger<unknown, void>,
   never,
-  HttpClient.HttpClient | Scope.Scope
+  HttpClient.HttpClient | OtlpSerializer | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: IInstrumentationScope = {
@@ -58,7 +56,7 @@ export const make: (
     headers: options.headers,
     maxBatchSize: options.maxBatchSize ?? 1000,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
-    protocol: options.protocol,
+    kind: "logs",
     body: (data): IExportLogsServiceRequest => ({
       resourceLogs: [{
         resource: otelResource,
@@ -68,29 +66,6 @@ export const make: (
         }]
       }]
     }),
-    bodyProtobuf: (data: Array<ILogRecord>): Uint8Array =>
-      OtlpProtobuf.encodeLogsData({
-        resourceLogs: [{
-          resource: otelResource,
-          scopeLogs: [{
-            scope,
-            logRecords: data.map((record) => ({
-              timeUnixNano: String(record.timeUnixNano),
-              observedTimeUnixNano: record.observedTimeUnixNano !== undefined
-                ? String(record.observedTimeUnixNano)
-                : undefined,
-              severityNumber: record.severityNumber,
-              severityText: record.severityText,
-              body: record.body,
-              attributes: record.attributes,
-              droppedAttributesCount: record.droppedAttributesCount,
-              flags: record.flags,
-              traceId: typeof record.traceId === "string" ? record.traceId : undefined,
-              spanId: typeof record.spanId === "string" ? record.spanId : undefined
-            }))
-          }]
-        }]
-      }),
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 
@@ -119,8 +94,7 @@ export const layer = (options: {
   readonly maxBatchSize?: number | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
   readonly excludeLogSpans?: boolean | undefined
-  readonly protocol?: OtlpProtocol | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient> =>
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerializer> =>
   options.replaceLogger ? Logger.replaceScoped(options.replaceLogger, make(options)) : Logger.addScoped(make(options))
 
 // internal

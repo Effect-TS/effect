@@ -354,8 +354,7 @@ export const encodeResourceSpans = (resourceSpans: {
  */
 export const encodeTracesData = (tracesData: {
   readonly resourceSpans: ReadonlyArray<Parameters<typeof encodeResourceSpans>[0]>
-}): Uint8Array =>
-  Proto.repeatedField(1, tracesData.resourceSpans, encodeResourceSpans)
+}): Uint8Array => Proto.repeatedField(1, tracesData.resourceSpans, encodeResourceSpans)
 
 // Metrics types (opentelemetry.proto.metrics.v1)
 
@@ -434,15 +433,11 @@ export const encodeHistogramDataPoint = (point: {
 }): Uint8Array => {
   // Pack bucket counts as repeated fixed64
   const bucketCountsEncoded = Proto.concat(
-    ...point.bucketCounts.map((count) =>
-      Proto.fixed64Field(6, BigInt(count))
-    )
+    ...point.bucketCounts.map((count) => Proto.fixed64Field(6, BigInt(count)))
   )
   // Pack explicit bounds as repeated double
   const explicitBoundsEncoded = Proto.concat(
-    ...point.explicitBounds.map((bound) =>
-      Proto.doubleField(7, bound)
-    )
+    ...point.explicitBounds.map((bound) => Proto.doubleField(7, bound))
   )
   return Proto.concat(
     Proto.fixed64Field(2, BigInt(point.startTimeUnixNano)),
@@ -467,8 +462,7 @@ export const encodeHistogramDataPoint = (point: {
  */
 export const encodeGauge = (gauge: {
   readonly dataPoints: ReadonlyArray<Parameters<typeof encodeNumberDataPoint>[0]>
-}): Uint8Array =>
-  Proto.repeatedField(1, gauge.dataPoints, encodeNumberDataPoint)
+}): Uint8Array => Proto.repeatedField(1, gauge.dataPoints, encodeNumberDataPoint)
 
 /**
  * Encodes a Sum message.
@@ -595,8 +589,7 @@ export const encodeResourceMetrics = (resourceMetrics: {
  */
 export const encodeMetricsData = (metricsData: {
   readonly resourceMetrics: ReadonlyArray<Parameters<typeof encodeResourceMetrics>[0]>
-}): Uint8Array =>
-  Proto.repeatedField(1, metricsData.resourceMetrics, encodeResourceMetrics)
+}): Uint8Array => Proto.repeatedField(1, metricsData.resourceMetrics, encodeResourceMetrics)
 
 // Logs types (opentelemetry.proto.logs.v1)
 
@@ -733,5 +726,4 @@ export const encodeResourceLogs = (resourceLogs: {
  */
 export const encodeLogsData = (logsData: {
   readonly resourceLogs: ReadonlyArray<Parameters<typeof encodeResourceLogs>[0]>
-}): Uint8Array =>
-  Proto.repeatedField(1, logsData.resourceLogs, encodeResourceLogs)
+}): Uint8Array => Proto.repeatedField(1, logsData.resourceLogs, encodeResourceLogs)

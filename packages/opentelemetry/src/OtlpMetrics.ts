@@ -13,10 +13,9 @@ import * as MetricState from "effect/MetricState"
 import * as Option from "effect/Option"
 import type * as Scope from "effect/Scope"
 import * as Exporter from "./internal/otlpExporter.js"
-import type { OtlpProtocol } from "./internal/otlpExporter.js"
-import * as OtlpProtobuf from "./internal/otlpProtobuf.js"
 import type { Fixed64, KeyValue } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
+import type { OtlpSerializer } from "./OtlpSerializer.js"
 
 /**
  * @since 1.0.0
@@ -32,11 +31,10 @@ export const make: (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-  readonly protocol?: OtlpProtocol | undefined
 }) => Effect.Effect<
   void,
   never,
-  HttpClient.HttpClient | Scope.Scope
+  HttpClient.HttpClient | OtlpSerializer | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const startTime = String(clock.unsafeCurrentTimeNanos())
@@ -268,72 +266,14 @@ export const make: (options: {
     }
   }
 
-  const snapshotProtobuf = (): Uint8Array => {
-    const data = snapshot()
-    return OtlpProtobuf.encodeMetricsData({
-      resourceMetrics: data.resourceMetrics.map((rm) => ({
-        resource: rm.resource!,
-        scopeMetrics: rm.scopeMetrics.map((sm) => ({
-          scope: sm.scope!,
-          metrics: sm.metrics.map((m) => ({
-            name: m.name,
-            description: m.description,
-            unit: m.unit,
-            gauge: m.gauge
-              ? {
-                dataPoints: m.gauge.dataPoints.map((dp) => ({
-                  attributes: dp.attributes,
-                  startTimeUnixNano: String(dp.startTimeUnixNano ?? "0"),
-                  timeUnixNano: String(dp.timeUnixNano ?? "0"),
-                  asDouble: dp.asDouble !== null ? dp.asDouble : undefined,
-                  asInt: dp.asInt !== undefined ? String(dp.asInt) : undefined
-                }))
-              }
-              : undefined,
-            sum: m.sum
-              ? {
-                dataPoints: m.sum.dataPoints.map((dp) => ({
-                  attributes: dp.attributes,
-                  startTimeUnixNano: String(dp.startTimeUnixNano ?? "0"),
-                  timeUnixNano: String(dp.timeUnixNano ?? "0"),
-                  asDouble: dp.asDouble !== null ? dp.asDouble : undefined,
-                  asInt: dp.asInt !== undefined ? String(dp.asInt) : undefined
-                })),
-                aggregationTemporality: m.sum.aggregationTemporality,
-                isMonotonic: m.sum.isMonotonic
-              }
-              : undefined,
-            histogram: m.histogram
-              ? {
-                dataPoints: m.histogram.dataPoints.map((dp) => ({
-                  attributes: dp.attributes ?? [],
-                  startTimeUnixNano: String(dp.startTimeUnixNano ?? "0"),
-                  timeUnixNano: String(dp.timeUnixNano ?? "0"),
-                  count: dp.count ?? 0,
-                  sum: dp.sum,
-                  bucketCounts: dp.bucketCounts ?? [],
-                  explicitBounds: dp.explicitBounds ?? [],
-                  min: dp.min,
-                  max: dp.max
-                })),
-                aggregationTemporality: m.histogram.aggregationTemporality ?? OtlpProtobuf.AggregationTemporality.Cumulative
-              }
-              : undefined
-          }))
-        }))
-      }))
-    })
-  }
-
   yield* Exporter.make({
     label: "OtlpMetrics",
     url: options.url,
     headers: options.headers,
     maxBatchSize: "disabled",
     exportInterval: options.exportInterval ?? Duration.seconds(10),
-    protocol: options.protocol,
+    kind: "metrics",
     body: snapshot,
-    bodyProtobuf: snapshotProtobuf,
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 })
@@ -352,8 +292,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-  readonly protocol?: OtlpProtocol | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.scopedDiscard(make(options))
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerializer> => Layer.scopedDiscard(make(options))
 
 // internal
 

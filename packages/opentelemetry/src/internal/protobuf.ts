@@ -20,8 +20,7 @@ const enum WireType {
 /**
  * Encodes a field tag (field number + wire type)
  */
-const encodeTag = (fieldNumber: number, wireType: WireType): number =>
-  (fieldNumber << 3) | wireType
+const encodeTag = (fieldNumber: number, wireType: WireType): number => (fieldNumber << 3) | wireType
 
 /**
  * Encodes a varint (variable-length integer)
@@ -79,8 +78,7 @@ export const encodeDouble = (value: number): Uint8Array => {
 /**
  * Encodes a string to UTF-8 bytes
  */
-export const encodeString = (value: string): Uint8Array =>
-  new TextEncoder().encode(value)
+export const encodeString = (value: string): Uint8Array => new TextEncoder().encode(value)
 
 /**
  * Encodes bytes as a hex string to Uint8Array
@@ -130,8 +128,7 @@ export const sintField = (fieldNumber: number, value: number | bigint): Uint8Arr
 /**
  * Encodes a bool field
  */
-export const boolField = (fieldNumber: number, value: boolean): Uint8Array =>
-  varintField(fieldNumber, value ? 1 : 0)
+export const boolField = (fieldNumber: number, value: boolean): Uint8Array => varintField(fieldNumber, value ? 1 : 0)
 
 /**
  * Encodes a fixed64 field
@@ -195,8 +192,7 @@ export const repeatedField = <T>(
   fieldNumber: number,
   values: ReadonlyArray<T>,
   encode: (value: T) => Uint8Array
-): Uint8Array =>
-  concat(...values.map((v) => messageField(fieldNumber, encode(v))))
+): Uint8Array => concat(...values.map((v) => messageField(fieldNumber, encode(v))))
 
 /**
  * Encodes repeated varint fields (not packed)
@@ -204,8 +200,7 @@ export const repeatedField = <T>(
 export const repeatedVarintField = (
   fieldNumber: number,
   values: ReadonlyArray<number | bigint>
-): Uint8Array =>
-  concat(...values.map((v) => varintField(fieldNumber, v)))
+): Uint8Array => concat(...values.map((v) => varintField(fieldNumber, v)))
 
 /**
  * Helper to conditionally encode an optional field
@@ -213,8 +208,7 @@ export const repeatedVarintField = (
 export const optionalField = <T>(
   value: T | undefined,
   encode: (v: T) => Uint8Array
-): Uint8Array =>
-  value !== undefined ? encode(value) : new Uint8Array(0)
+): Uint8Array => value !== undefined ? encode(value) : new Uint8Array(0)
 
 /**
  * Helper to conditionally encode a string field if non-empty
@@ -222,5 +216,4 @@ export const optionalField = <T>(
 export const optionalStringField = (
   fieldNumber: number,
   value: string | undefined
-): Uint8Array =>
-  value !== undefined && value !== "" ? stringField(fieldNumber, value) : new Uint8Array(0)
+): Uint8Array => value !== undefined && value !== "" ? stringField(fieldNumber, value) : new Uint8Array(0)

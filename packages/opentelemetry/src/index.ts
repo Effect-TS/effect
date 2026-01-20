@@ -36,6 +36,16 @@ export * as OtlpResource from "./OtlpResource.js"
 /**
  * @since 1.0.0
  */
+export * as OtlpSerializer from "./OtlpSerializer.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as OtlpSerializerProtobuf from "./OtlpSerializerProtobuf.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as OtlpTracer from "./OtlpTracer.js"
 
 /**

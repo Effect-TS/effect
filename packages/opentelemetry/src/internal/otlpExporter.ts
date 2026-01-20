@@ -10,12 +10,13 @@ import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
+import { OtlpSerializer } from "../OtlpSerializer.js"
 
 /**
- * OTLP protocol type for encoding
+ * OTLP telemetry kind for encoding
  * @internal
  */
-export type OtlpProtocol = "json" | "protobuf"
+export type OtlpKind = "traces" | "metrics" | "logs"
 
 const policy = Schedule.forever.pipe(
   Schedule.passthrough,
@@ -44,14 +45,13 @@ export const make: (
     readonly exportInterval: Duration.DurationInput
     readonly maxBatchSize: number | "disabled"
     readonly body: (data: Array<any>) => unknown
-    readonly bodyProtobuf?: ((data: Array<any>) => Uint8Array) | undefined
-    readonly protocol?: OtlpProtocol | undefined
+    readonly kind: OtlpKind
     readonly shutdownTimeout: Duration.DurationInput
   }
 ) => Effect.Effect<
   { readonly push: (data: unknown) => void },
   never,
-  HttpClient.HttpClient | Scope.Scope
+  HttpClient.HttpClient | OtlpSerializer | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const scope = yield* Effect.scope
@@ -62,14 +62,16 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  const protocol = options.protocol ?? "json"
-  const contentType = protocol === "protobuf"
-    ? "application/x-protobuf"
-    : "application/json"
+  const serializer = yield* OtlpSerializer
+  const encode = options.kind === "traces"
+    ? serializer.encodeTraces
+    : options.kind === "metrics"
+    ? serializer.encodeMetrics
+    : serializer.encodeLogs
 
   let headers = Headers.unsafeFromRecord({
     "user-agent": `effect-opentelemetry-${options.label}/0.0.0`,
-    "content-type": contentType
+    "content-type": serializer.contentType
   })
   if (options.headers) {
     headers = Headers.merge(Headers.fromInput(options.headers), headers)
@@ -90,12 +92,14 @@ export const make: (
       }
       buffer = []
     }
-    const requestWithBody = protocol === "protobuf" && options.bodyProtobuf
-      ? HttpClientRequest.setBody(
+    const data = options.body(items)
+    const encoded = encode(data)
+    const requestWithBody = typeof encoded === "string"
+      ? HttpClientRequest.bodyUnsafeJson(request, data)
+      : HttpClientRequest.setBody(
         request,
-        HttpBody.uint8Array(options.bodyProtobuf(items), contentType)
+        HttpBody.uint8Array(encoded, serializer.contentType)
       )
-      : HttpClientRequest.bodyUnsafeJson(request, options.body(items))
 
     return client.execute(requestWithBody).pipe(
       Effect.asVoid,

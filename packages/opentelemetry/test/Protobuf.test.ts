@@ -1,6 +1,9 @@
 import { describe, expect, it } from "@effect/vitest"
+import * as Effect from "effect/Effect"
 import * as Proto from "../src/internal/protobuf.js"
 import * as OtlpProtobuf from "../src/internal/otlpProtobuf.js"
+import * as OtlpSerializer from "../src/OtlpSerializer.js"
+import * as OtlpSerializerProtobuf from "../src/OtlpSerializerProtobuf.js"
 
 describe("Protobuf encoding", () => {
   describe("primitives", () => {
@@ -334,5 +337,52 @@ describe("Protobuf encoding", () => {
       const result = Proto.encodeVarint(BigInt("9223372036854775807"))
       expect(result.length).toBe(9) // Max varint size for 64-bit
     })
+  })
+
+  describe("OtlpSerializer", () => {
+    const sampleTracesData = {
+      resourceSpans: [{
+        resource: {
+          attributes: [{ key: "service.name", value: { stringValue: "test" } }],
+          droppedAttributesCount: 0
+        },
+        scopeSpans: [{
+          scope: { name: "test-scope" },
+          spans: [{
+            traceId: "0123456789abcdef0123456789abcdef",
+            spanId: "0123456789abcdef",
+            name: "test-span",
+            kind: 1,
+            startTimeUnixNano: "1000000000000000000",
+            endTimeUnixNano: "2000000000000000000",
+            attributes: [],
+            droppedAttributesCount: 0,
+            events: [],
+            droppedEventsCount: 0,
+            links: [],
+            droppedLinksCount: 0,
+            status: { code: 1 }
+          }]
+        }]
+      }]
+    }
+
+    it.effect("json serializer returns string", () =>
+      Effect.gen(function*() {
+        const serializer = yield* OtlpSerializer.OtlpSerializer
+        expect(serializer.contentType).toBe("application/json")
+        const result = serializer.encodeTraces(sampleTracesData)
+        expect(typeof result).toBe("string")
+        expect(JSON.parse(result as string)).toEqual(sampleTracesData)
+      }).pipe(Effect.provide(OtlpSerializer.json)))
+
+    it.effect("protobuf serializer returns Uint8Array", () =>
+      Effect.gen(function*() {
+        const serializer = yield* OtlpSerializer.OtlpSerializer
+        expect(serializer.contentType).toBe("application/x-protobuf")
+        const result = serializer.encodeTraces(sampleTracesData)
+        expect(result).toBeInstanceOf(Uint8Array)
+        expect((result as Uint8Array).length).toBeGreaterThan(0)
+      }).pipe(Effect.provide(OtlpSerializerProtobuf.protobuf)))
   })
 })
