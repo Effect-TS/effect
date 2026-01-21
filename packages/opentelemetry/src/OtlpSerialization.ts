@@ -29,7 +29,7 @@ import * as OtlpProtobuf from "./internal/otlpProtobuf.js"
  * @since 1.0.0
  * @category Models
  */
-export interface OtlpSerialization {
+export interface Service {
   /**
    * Encodes trace data for transmission.
    */
@@ -50,9 +50,10 @@ export interface OtlpSerialization {
  * @since 1.0.0
  * @category Tags
  */
-export const OtlpSerialization: Context.Tag<OtlpSerialization, OtlpSerialization> = Context.GenericTag<
-  OtlpSerialization
->("@effect/opentelemetry/OtlpSerialization")
+export class OtlpSerialization extends Context.Tag("@effect/opentelemetry/OtlpSerialization")<
+  OtlpSerialization,
+  Service
+>() {}
 
 /**
  * JSON serializer layer for OTLP telemetry data.

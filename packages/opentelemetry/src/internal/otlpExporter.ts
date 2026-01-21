@@ -10,13 +10,6 @@ import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
-import { OtlpSerialization } from "../OtlpSerialization.js"
-
-/**
- * OTLP telemetry kind for encoding
- * @internal
- */
-export type OtlpKind = "traces" | "metrics" | "logs"
 
 const policy = Schedule.forever.pipe(
   Schedule.passthrough,
@@ -45,13 +38,13 @@ export const make: (
     readonly exportInterval: Duration.DurationInput
     readonly maxBatchSize: number | "disabled"
     readonly body: (data: Array<any>) => unknown
-    readonly kind: OtlpKind
+    readonly encode: (data: unknown) => HttpBody.HttpBody
     readonly shutdownTimeout: Duration.DurationInput
   }
 ) => Effect.Effect<
   { readonly push: (data: unknown) => void },
   never,
-  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
+  HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const scope = yield* Effect.scope
@@ -61,13 +54,6 @@ export const make: (
   const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient).pipe(
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
-
-  const serialization = yield* OtlpSerialization
-  const encode: (data: unknown) => HttpBody.HttpBody = options.kind === "traces"
-    ? serialization.traces
-    : options.kind === "metrics"
-    ? serialization.metrics
-    : serialization.logs
 
   let headers = Headers.unsafeFromRecord({
     "user-agent": `effect-opentelemetry-${options.label}/0.0.0`
@@ -92,7 +78,7 @@ export const make: (
       buffer = []
     }
     const data = options.body(items)
-    const body = encode(data)
+    const body = options.encode(data)
     const requestWithBody = HttpClientRequest.setBody(request, body)
 
     return client.execute(requestWithBody).pipe(

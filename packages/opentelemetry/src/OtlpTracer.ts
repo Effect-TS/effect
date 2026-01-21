@@ -17,7 +17,7 @@ import * as Exporter from "./internal/otlpExporter.js"
 import type { KeyValue, Resource } from "./OtlpResource.js"
 import { entriesToAttributes } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
-import type { OtlpSerialization } from "./OtlpSerialization.js"
+import { OtlpSerialization } from "./OtlpSerialization.js"
 
 const ATTR_EXCEPTION_TYPE = "exception.type"
 const ATTR_EXCEPTION_MESSAGE = "exception.message"
@@ -50,6 +50,7 @@ export const make: (
   const scope: Scope = {
     name: OtlpResource.unsafeServiceName(otelResource)
   }
+  const serialization = yield* OtlpSerialization
 
   const exporter = yield* Exporter.make({
     label: "OtlpTracer",
@@ -57,7 +58,7 @@ export const make: (
     headers: options.headers,
     exportInterval: options.exportInterval ?? Duration.seconds(5),
     maxBatchSize: options.maxBatchSize ?? 1000,
-    kind: "traces",
+    encode: serialization.traces,
     body(spans) {
       const data: TraceData = {
         resourceSpans: [{

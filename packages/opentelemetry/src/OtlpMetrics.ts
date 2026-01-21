@@ -15,7 +15,7 @@ import type * as Scope from "effect/Scope"
 import * as Exporter from "./internal/otlpExporter.js"
 import type { Fixed64, KeyValue } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
-import type { OtlpSerialization } from "./OtlpSerialization.js"
+import { OtlpSerialization } from "./OtlpSerialization.js"
 
 /**
  * @since 1.0.0
@@ -43,6 +43,7 @@ export const make: (options: {
   const metricsScope: IInstrumentationScope = {
     name: OtlpResource.unsafeServiceName(resource)
   }
+  const serialization = yield* OtlpSerialization
 
   const snapshot = (): IExportMetricsServiceRequest => {
     const snapshot = Metric.unsafeSnapshot()
@@ -272,7 +273,7 @@ export const make: (options: {
     headers: options.headers,
     maxBatchSize: "disabled",
     exportInterval: options.exportInterval ?? Duration.seconds(10),
-    kind: "metrics",
+    encode: serialization.metrics,
     body: snapshot,
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })

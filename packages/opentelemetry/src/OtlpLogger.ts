@@ -20,7 +20,7 @@ import * as Tracer from "effect/Tracer"
 import * as Exporter from "./internal/otlpExporter.js"
 import type { AnyValue, Fixed64, KeyValue, Resource } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
-import type { OtlpSerialization } from "./OtlpSerialization.js"
+import { OtlpSerialization } from "./OtlpSerialization.js"
 
 /**
  * @since 1.0.0
@@ -49,6 +49,7 @@ export const make: (
   const scope: IInstrumentationScope = {
     name: OtlpResource.unsafeServiceName(otelResource)
   }
+  const serialization = yield* OtlpSerialization
 
   const exporter = yield* Exporter.make({
     label: "OtlpLogger",
@@ -56,7 +57,7 @@ export const make: (
     headers: options.headers,
     maxBatchSize: options.maxBatchSize ?? 1000,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
-    kind: "logs",
+    encode: serialization.logs,
     body: (data): IExportLogsServiceRequest => ({
       resourceLogs: [{
         resource: otelResource,
