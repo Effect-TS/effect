@@ -2,52 +2,49 @@ import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as OtlpSerializer from "../src/OtlpSerializer.js"
-import * as OtlpSerializerProtobuf from "../src/OtlpSerializerProtobuf.js"
+import * as OtlpSerialization from "../src/OtlpSerialization.js"
 
-describe("OtlpSerializer override behavior", () => {
-  it.effect("json layer provides json contentType", () =>
+describe("OtlpSerialization override behavior", () => {
+  it.effect("json layer provides json HttpBody", () =>
     Effect.gen(function*() {
-      const serializer = yield* OtlpSerializer.OtlpSerializer
-      expect(serializer.contentType).toBe("application/json")
-    }).pipe(Effect.provide(OtlpSerializer.json)))
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const body = serialization.traces({ test: "data" })
+      expect(body.contentType).toBe("application/json")
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 
-  it.effect("protobuf layer provides protobuf contentType", () =>
+  it.effect("protobuf layer provides protobuf HttpBody", () =>
     Effect.gen(function*() {
-      const serializer = yield* OtlpSerializer.OtlpSerializer
-      expect(serializer.contentType).toBe("application/x-protobuf")
-    }).pipe(Effect.provide(OtlpSerializerProtobuf.protobuf)))
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const body = serialization.traces({ resourceSpans: [] })
+      expect(body.contentType).toBe("application/x-protobuf")
+    }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
 
-  it.effect("layerWithSerializer pattern allows protobuf override", () =>
+  it.effect("custom layer can be provided", () =>
     Effect.gen(function*() {
-      // This simulates: Otlp.layerWithSerializer(...).pipe(Layer.provide(protobuf))
-      // The layerWithSerializer does NOT provide json internally, so protobuf can be provided
+      // This simulates: makeLayer(...).pipe(Layer.provide(customSerialization))
+      // The makeLayer does NOT provide json internally, so custom can be provided
 
-      // Layer that requires OtlpSerializer (like layerWithSerializer)
+      // Layer that requires OtlpSerialization (like makeLayer)
       const innerLayer = Layer.scopedDiscard(
         Effect.gen(function*() {
-          const serializer = yield* OtlpSerializer.OtlpSerializer
+          const serialization = yield* OtlpSerialization.OtlpSerialization
           // Protobuf should be used since we provide it externally
-          expect(serializer.contentType).toBe("application/x-protobuf")
+          const body = serialization.traces({ resourceSpans: [] })
+          expect(body.contentType).toBe("application/x-protobuf")
         })
       )
 
       // Provide protobuf externally
-      const finalLayer = innerLayer.pipe(Layer.provide(OtlpSerializerProtobuf.protobuf))
+      const finalLayer = innerLayer.pipe(Layer.provide(OtlpSerialization.layerProtobuf))
 
       yield* Layer.build(finalLayer).pipe(Scope.extend(yield* Effect.scope))
     }).pipe(Effect.scoped))
 
-  it.effect("layer pattern uses json by default", () =>
+  it.effect("json layer produces valid HttpBody", () =>
     Effect.gen(function*() {
-      // This simulates: Otlp.layer(...) which provides json internally
-      const innerLayer = Layer.scopedDiscard(
-        Effect.gen(function*() {
-          const serializer = yield* OtlpSerializer.OtlpSerializer
-          expect(serializer.contentType).toBe("application/json")
-        })
-      ).pipe(Layer.provide(OtlpSerializer.json))
-
-      yield* Layer.build(innerLayer).pipe(Scope.extend(yield* Effect.scope))
-    }).pipe(Effect.scoped))
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const body = serialization.traces({ test: "data" })
+      expect(body._tag).toBe("Uint8Array")
+      expect(body.contentType).toBe("application/json")
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 })

@@ -1,5 +1,5 @@
 import * as Headers from "@effect/platform/Headers"
-import * as HttpBody from "@effect/platform/HttpBody"
+import type * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
@@ -10,7 +10,7 @@ import * as Num from "effect/Number"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
-import { OtlpSerializer } from "../OtlpSerializer.js"
+import { OtlpSerialization } from "../OtlpSerialization.js"
 
 /**
  * OTLP telemetry kind for encoding
@@ -51,7 +51,7 @@ export const make: (
 ) => Effect.Effect<
   { readonly push: (data: unknown) => void },
   never,
-  HttpClient.HttpClient | OtlpSerializer | Scope.Scope
+  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const scope = yield* Effect.scope
@@ -62,16 +62,15 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  const serializer = yield* OtlpSerializer
-  const encode = options.kind === "traces"
-    ? serializer.encodeTraces
+  const serialization = yield* OtlpSerialization
+  const encode: (data: unknown) => HttpBody.HttpBody = options.kind === "traces"
+    ? serialization.traces
     : options.kind === "metrics"
-    ? serializer.encodeMetrics
-    : serializer.encodeLogs
+    ? serialization.metrics
+    : serialization.logs
 
   let headers = Headers.unsafeFromRecord({
-    "user-agent": `effect-opentelemetry-${options.label}/0.0.0`,
-    "content-type": serializer.contentType
+    "user-agent": `effect-opentelemetry-${options.label}/0.0.0`
   })
   if (options.headers) {
     headers = Headers.merge(Headers.fromInput(options.headers), headers)
@@ -93,13 +92,8 @@ export const make: (
       buffer = []
     }
     const data = options.body(items)
-    const encoded = encode(data)
-    const requestWithBody = typeof encoded === "string"
-      ? HttpClientRequest.bodyUnsafeJson(request, data)
-      : HttpClientRequest.setBody(
-        request,
-        HttpBody.uint8Array(encoded, serializer.contentType)
-      )
+    const body = encode(data)
+    const requestWithBody = HttpClientRequest.setBody(request, body)
 
     return client.execute(requestWithBody).pipe(
       Effect.asVoid,

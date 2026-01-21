@@ -1,5 +1,5 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
-import * as OtlpSerializer from "@effect/opentelemetry/OtlpSerializer"
+import * as OtlpSerialization from "@effect/opentelemetry/OtlpSerialization"
 import * as OtlpTracer from "@effect/opentelemetry/OtlpTracer"
 import * as Tracer from "@effect/opentelemetry/Tracer"
 import { HttpClient } from "@effect/platform"
@@ -138,7 +138,7 @@ describe("Tracer", () => {
       resource: {
         serviceName: "test-otlp"
       }
-    }).pipe(Layer.provide(MockHttpClient), Layer.provide(OtlpSerializer.json))
+    }).pipe(Layer.provide(MockHttpClient), Layer.provide(OtlpSerialization.layerJson))
 
     it.effect("currentOtelSpan works with OTLP tracer", () =>
       Effect.provide(

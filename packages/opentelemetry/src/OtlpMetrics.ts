@@ -15,7 +15,7 @@ import type * as Scope from "effect/Scope"
 import * as Exporter from "./internal/otlpExporter.js"
 import type { Fixed64, KeyValue } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
-import type { OtlpSerializer } from "./OtlpSerializer.js"
+import type { OtlpSerialization } from "./OtlpSerialization.js"
 
 /**
  * @since 1.0.0
@@ -34,7 +34,7 @@ export const make: (options: {
 }) => Effect.Effect<
   void,
   never,
-  HttpClient.HttpClient | OtlpSerializer | Scope.Scope
+  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const startTime = String(clock.unsafeCurrentTimeNanos())
@@ -292,7 +292,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerializer> => Layer.scopedDiscard(make(options))
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> => Layer.scopedDiscard(make(options))
 
 // internal
 

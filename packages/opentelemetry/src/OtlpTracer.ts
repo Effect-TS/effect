@@ -17,7 +17,7 @@ import * as Exporter from "./internal/otlpExporter.js"
 import type { KeyValue, Resource } from "./OtlpResource.js"
 import { entriesToAttributes } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
-import type { OtlpSerializer } from "./OtlpSerializer.js"
+import type { OtlpSerialization } from "./OtlpSerialization.js"
 
 const ATTR_EXCEPTION_TYPE = "exception.type"
 const ATTR_EXCEPTION_MESSAGE = "exception.message"
@@ -44,7 +44,7 @@ export const make: (
 ) => Effect.Effect<
   Tracer.Tracer,
   never,
-  HttpClient.HttpClient | OtlpSerializer | Scope.Scope
+  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: Scope = {
@@ -121,7 +121,7 @@ export const layer = (options: {
   readonly maxBatchSize?: number | undefined
   readonly context?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerializer> =>
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> =>
   Layer.unwrapScoped(Effect.map(make(options), Layer.setTracer))
 
 // internal

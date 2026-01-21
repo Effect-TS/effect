@@ -2,8 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Proto from "../src/internal/protobuf.js"
 import * as OtlpProtobuf from "../src/internal/otlpProtobuf.js"
-import * as OtlpSerializer from "../src/OtlpSerializer.js"
-import * as OtlpSerializerProtobuf from "../src/OtlpSerializerProtobuf.js"
+import * as OtlpSerialization from "../src/OtlpSerialization.js"
 
 describe("Protobuf encoding", () => {
   describe("primitives", () => {
@@ -339,7 +338,7 @@ describe("Protobuf encoding", () => {
     })
   })
 
-  describe("OtlpSerializer", () => {
+  describe("OtlpSerialization", () => {
     const sampleTracesData = {
       resourceSpans: [{
         resource: {
@@ -367,22 +366,18 @@ describe("Protobuf encoding", () => {
       }]
     }
 
-    it.effect("json serializer returns string", () =>
+    it.effect("json serializer returns HttpBody with json content type", () =>
       Effect.gen(function*() {
-        const serializer = yield* OtlpSerializer.OtlpSerializer
-        expect(serializer.contentType).toBe("application/json")
-        const result = serializer.encodeTraces(sampleTracesData)
-        expect(typeof result).toBe("string")
-        expect(JSON.parse(result as string)).toEqual(sampleTracesData)
-      }).pipe(Effect.provide(OtlpSerializer.json)))
+        const serialization = yield* OtlpSerialization.OtlpSerialization
+        const body = serialization.traces(sampleTracesData)
+        expect(body.contentType).toBe("application/json")
+      }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 
-    it.effect("protobuf serializer returns Uint8Array", () =>
+    it.effect("protobuf serializer returns HttpBody with protobuf content type", () =>
       Effect.gen(function*() {
-        const serializer = yield* OtlpSerializer.OtlpSerializer
-        expect(serializer.contentType).toBe("application/x-protobuf")
-        const result = serializer.encodeTraces(sampleTracesData)
-        expect(result).toBeInstanceOf(Uint8Array)
-        expect((result as Uint8Array).length).toBeGreaterThan(0)
-      }).pipe(Effect.provide(OtlpSerializerProtobuf.protobuf)))
+        const serialization = yield* OtlpSerialization.OtlpSerialization
+        const body = serialization.traces(sampleTracesData)
+        expect(body.contentType).toBe("application/x-protobuf")
+      }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
   })
 })

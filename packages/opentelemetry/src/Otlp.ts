@@ -10,7 +10,7 @@ import type * as Logger from "effect/Logger"
 import type * as Tracer from "effect/Tracer"
 import * as OtlpLogger from "./OtlpLogger.js"
 import * as OtlpMetrics from "./OtlpMetrics.js"
-import * as OtlpSerializer from "./OtlpSerializer.js"
+import * as OtlpSerialization from "./OtlpSerialization.js"
 import * as OtlpTracer from "./OtlpTracer.js"
 
 /**
@@ -37,21 +37,9 @@ export interface OtlpLayerOptions {
   readonly shutdownTimeout?: Duration.DurationInput | undefined
 }
 
-/**
- * Creates an OTLP layer that requires an `OtlpSerializer` to be provided.
- *
- * Use this when you want to explicitly control the serialization format:
- * - For JSON: `Otlp.layerWithSerializer(options).pipe(Layer.provide(OtlpSerializer.json))`
- * - For Protobuf: `Otlp.layerWithSerializer(options).pipe(Layer.provide(OtlpSerializerProtobuf.protobuf))`
- *
- * For convenience, use `Otlp.layer` which provides JSON serialization by default.
- *
- * @since 1.0.0
- * @category Layers
- */
-export const layerWithSerializer = (
+const makeLayer = (
   options: OtlpLayerOptions
-): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerializer.OtlpSerializer> => {
+): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
   const baseReq = HttpClientRequest.get(options.baseUrl)
   const url = (path: string) => HttpClientRequest.appendUrl(baseReq, path).url
   return Layer.mergeAll(
@@ -85,10 +73,41 @@ export const layerWithSerializer = (
 }
 
 /**
+ * Creates an OTLP layer with JSON serialization.
+ *
+ * @example
+ * ```typescript
+ * import { Otlp } from "@effect/opentelemetry"
+ *
+ * const layer = Otlp.layerJson({ baseUrl: "http://localhost:4318" })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerJson = (options: OtlpLayerOptions): Layer.Layer<never, never, HttpClient.HttpClient> =>
+  makeLayer(options).pipe(Layer.provide(OtlpSerialization.layerJson))
+
+/**
+ * Creates an OTLP layer with Protobuf serialization.
+ *
+ * @example
+ * ```typescript
+ * import { Otlp } from "@effect/opentelemetry"
+ *
+ * const layer = Otlp.layerProtobuf({ baseUrl: "http://localhost:4318" })
+ * ```
+ *
+ * @since 1.0.0
+ * @category Layers
+ */
+export const layerProtobuf = (options: OtlpLayerOptions): Layer.Layer<never, never, HttpClient.HttpClient> =>
+  makeLayer(options).pipe(Layer.provide(OtlpSerialization.layerProtobuf))
+
+/**
  * Creates an OTLP layer with JSON serialization (default).
  *
- * This is the recommended way to create an OTLP layer for most use cases.
- * For protobuf encoding, use `layerWithSerializer` with `OtlpSerializerProtobuf.protobuf`.
+ * This is an alias for `layerJson` for backwards compatibility.
  *
  * @example
  * ```typescript
@@ -100,5 +119,4 @@ export const layerWithSerializer = (
  * @since 1.0.0
  * @category Layers
  */
-export const layer = (options: OtlpLayerOptions): Layer.Layer<never, never, HttpClient.HttpClient> =>
-  layerWithSerializer(options).pipe(Layer.provide(OtlpSerializer.json))
+export const layer = layerJson
