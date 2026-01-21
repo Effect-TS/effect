@@ -65,29 +65,6 @@
     "@opentelemetry/semantic-conventions": "^1.33.0",
     "effect": "workspace:^"
   },
-  "peerDependenciesMeta": {
-    "@opentelemetry/api": {
-      "optional": true
-    },
-    "@opentelemetry/resources": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-metrics": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-base": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-node": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-web": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-logs": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9.0",
