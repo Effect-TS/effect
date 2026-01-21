@@ -37,8 +37,7 @@ export const make: (
     readonly label: string
     readonly exportInterval: Duration.DurationInput
     readonly maxBatchSize: number | "disabled"
-    readonly body: (data: Array<any>) => unknown
-    readonly encode: (data: unknown) => HttpBody.HttpBody
+    readonly body: (data: Array<any>) => HttpBody.HttpBody
     readonly shutdownTimeout: Duration.DurationInput
   }
 ) => Effect.Effect<
@@ -77,8 +76,7 @@ export const make: (
       }
       buffer = []
     }
-    const data = options.body(items)
-    const body = options.encode(data)
+    const body = options.body(items)
     const requestWithBody = HttpClientRequest.setBody(request, body)
 
     return client.execute(requestWithBody).pipe(

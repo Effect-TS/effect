@@ -57,16 +57,18 @@ export const make: (
     headers: options.headers,
     maxBatchSize: options.maxBatchSize ?? 1000,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
-    encode: serialization.logs,
-    body: (data): IExportLogsServiceRequest => ({
-      resourceLogs: [{
-        resource: otelResource,
-        scopeLogs: [{
-          scope,
-          logRecords: data
+    body(data) {
+      const body: IExportLogsServiceRequest = {
+        resourceLogs: [{
+          resource: otelResource,
+          scopeLogs: [{
+            scope,
+            logRecords: data
+          }]
         }]
-      }]
-    }),
+      }
+      return serialization.logs(body)
+    },
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 

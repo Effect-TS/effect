@@ -45,7 +45,7 @@ export const make: (options: {
   }
   const serialization = yield* OtlpSerialization
 
-  const snapshot = (): IExportMetricsServiceRequest => {
+  const snapshot = () => {
     const snapshot = Metric.unsafeSnapshot()
     const nowNanos = clock.unsafeCurrentTimeNanos()
     const nowTime = String(nowNanos)
@@ -256,7 +256,7 @@ export const make: (options: {
       }
     }
 
-    return {
+    const body: IExportMetricsServiceRequest = {
       resourceMetrics: [{
         resource,
         scopeMetrics: [{
@@ -265,6 +265,8 @@ export const make: (options: {
         }]
       }]
     }
+
+    return serialization.metrics(body)
   }
 
   yield* Exporter.make({
@@ -273,7 +275,6 @@ export const make: (options: {
     headers: options.headers,
     maxBatchSize: "disabled",
     exportInterval: options.exportInterval ?? Duration.seconds(10),
-    encode: serialization.metrics,
     body: snapshot,
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })

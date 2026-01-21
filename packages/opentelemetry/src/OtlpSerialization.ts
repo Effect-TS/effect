@@ -2,19 +2,7 @@
  * OtlpSerialization service for tree-shakable protobuf support.
  *
  * This module provides the `OtlpSerialization` service that abstracts the
- * encoding of OTLP telemetry data to HttpBody. By default, the JSON serializer is used.
- * To use protobuf encoding, use `Otlp.layerProtobuf` or provide the `layerProtobuf` layer.
- *
- * @example
- * ```typescript
- * import { Otlp } from "@effect/opentelemetry"
- *
- * // JSON encoding (default)
- * const jsonLayer = Otlp.layerJson({ baseUrl: "http://localhost:4318" })
- *
- * // Protobuf encoding
- * const protobufLayer = Otlp.layerProtobuf({ baseUrl: "http://localhost:4318" })
- * ```
+ * encoding of OTLP telemetry data to HttpBody.
  *
  * @since 1.0.0
  */
@@ -24,27 +12,6 @@ import * as Layer from "effect/Layer"
 import * as OtlpProtobuf from "./internal/otlpProtobuf.js"
 
 /**
- * Service interface for serializing OTLP telemetry data to HttpBody.
- *
- * @since 1.0.0
- * @category Models
- */
-export interface Service {
-  /**
-   * Encodes trace data for transmission.
-   */
-  readonly traces: (data: unknown) => HttpBody.HttpBody
-  /**
-   * Encodes metrics data for transmission.
-   */
-  readonly metrics: (data: unknown) => HttpBody.HttpBody
-  /**
-   * Encodes logs data for transmission.
-   */
-  readonly logs: (data: unknown) => HttpBody.HttpBody
-}
-
-/**
  * Tag for the OtlpSerialization service.
  *
  * @since 1.0.0
@@ -52,7 +19,20 @@ export interface Service {
  */
 export class OtlpSerialization extends Context.Tag("@effect/opentelemetry/OtlpSerialization")<
   OtlpSerialization,
-  Service
+  {
+    /**
+     * Encodes trace data for transmission.
+     */
+    readonly traces: (data: unknown) => HttpBody.HttpBody
+    /**
+     * Encodes metrics data for transmission.
+     */
+    readonly metrics: (data: unknown) => HttpBody.HttpBody
+    /**
+     * Encodes logs data for transmission.
+     */
+    readonly logs: (data: unknown) => HttpBody.HttpBody
+  }
 >() {}
 
 /**

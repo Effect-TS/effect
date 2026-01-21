@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import * as Proto from "../src/internal/protobuf.js"
 import * as OtlpProtobuf from "../src/internal/otlpProtobuf.js"
+import * as Proto from "../src/internal/protobuf.js"
 import * as OtlpSerialization from "../src/OtlpSerialization.js"
 
 describe("Protobuf encoding", () => {

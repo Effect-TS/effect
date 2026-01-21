@@ -58,7 +58,6 @@ export const make: (
     headers: options.headers,
     exportInterval: options.exportInterval ?? Duration.seconds(5),
     maxBatchSize: options.maxBatchSize ?? 1000,
-    encode: serialization.traces,
     body(spans) {
       const data: TraceData = {
         resourceSpans: [{
@@ -69,7 +68,7 @@ export const make: (
           }]
         }]
       }
-      return data
+      return serialization.traces(data)
     },
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
