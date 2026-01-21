@@ -12,8 +12,6 @@ import * as Layer from "effect/Layer"
 import * as OtlpProtobuf from "./internal/otlpProtobuf.js"
 
 /**
- * Tag for the OtlpSerialization service.
- *
  * @since 1.0.0
  * @category Tags
  */
@@ -38,8 +36,7 @@ export class OtlpSerialization extends Context.Tag("@effect/opentelemetry/OtlpSe
 /**
  * JSON serializer layer for OTLP telemetry data.
  *
- * This is the default serializer used by OTLP exporters. It encodes
- * telemetry data as JSON with `application/json` content type.
+ * It encodes telemetry data as JSON with `application/json` content type.
  *
  * @since 1.0.0
  * @category Layers
