@@ -34,6 +34,11 @@ export * as OtlpMetrics from "./OtlpMetrics.js"
 export * as OtlpResource from "./OtlpResource.js"
 
 /**
+ * OtlpSerialization service for tree-shakable protobuf support.
+ *
+ * This module provides the `OtlpSerialization` service that abstracts the
+ * encoding of OTLP telemetry data to HttpBody.
+ *
  * @since 1.0.0
  */
 export * as OtlpSerialization from "./OtlpSerialization.js"
