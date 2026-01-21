@@ -2,13 +2,20 @@
 "@effect/opentelemetry": minor
 ---
 
-Add tree-shakable protobuf protocol support for OTLP exporters with simplified API.
+Add protobuf protocol support for OTLP exporters
 
-This introduces an `OtlpSerialization` service and simplified layer functions for choosing between JSON and Protocol Buffers encoding when exporting telemetry data.
+This introduces an `OtlpSerialization` service for choosing between JSON and Protobuf encoding.
 
-**JSON encoding (default):**
+**Breaking changes:**
+
+- `Otlp.layer` now requires an `OtlpSerialization` layer to be provided for
+  the desired encoding format.
+
+**JSON encoding:**
+
 ```typescript
-import { Otlp } from "@effect/opentelemetry"
+import { Layer } from "effect"
+import { Otlp, OtlpSerialization } from "@effect/opentelemetry"
 
 // Option 1: Explicit JSON layer
 const layer = Otlp.layerJson({
@@ -16,14 +23,15 @@ const layer = Otlp.layerJson({
   resource: { serviceName: "my-service" }
 })
 
-// Option 2: Use `layer` alias (backwards compatible)
+// Option 2: Use `layer` and provide OtlpSerialization JSON layer
 const layer = Otlp.layer({
   baseUrl: "http://localhost:4318",
   resource: { serviceName: "my-service" }
-})
+}).pipe(Layer.provide(OtlpSerialization.layerJson))
 ```
 
 **Protobuf encoding:**
+
 ```typescript
 import { Otlp } from "@effect/opentelemetry"
 
@@ -33,20 +41,3 @@ const layer = Otlp.layerProtobuf({
   resource: { serviceName: "my-service" }
 })
 ```
-
-**New exports:**
-- `Otlp.layerJson` - OTLP layer with JSON serialization
-- `Otlp.layerProtobuf` - OTLP layer with Protobuf serialization
-- `Otlp.layer` - Alias for `layerJson` (backwards compatible)
-- `OtlpSerialization` - Service definition and layers (`layerJson`, `layerProtobuf`)
-
-**Breaking changes:**
-- Removed `Otlp.layerWithSerializer` - use `Otlp.layerJson` or `Otlp.layerProtobuf` instead
-- Removed `OtlpSerializer` module - use `OtlpSerialization` instead
-- Removed `OtlpSerializerProtobuf` module - use `Otlp.layerProtobuf` or `OtlpSerialization.layerProtobuf` instead
-
-**Features:**
-- No new dependencies - protobuf encoding implemented from scratch
-- Tree-shakable - protobuf code not in bundle unless `layerProtobuf` is used
-- Sets appropriate Content-Type header (`application/x-protobuf` vs `application/json`)
-- Follows opentelemetry-proto specifications
