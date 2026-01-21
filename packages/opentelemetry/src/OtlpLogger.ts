@@ -20,6 +20,7 @@ import * as Tracer from "effect/Tracer"
 import * as Exporter from "./internal/otlpExporter.js"
 import type { AnyValue, Fixed64, KeyValue, Resource } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
+import { OtlpSerialization } from "./OtlpSerialization.js"
 
 /**
  * @since 1.0.0
@@ -42,12 +43,13 @@ export const make: (
 ) => Effect.Effect<
   Logger.Logger<unknown, void>,
   never,
-  HttpClient.HttpClient | Scope.Scope
+  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const otelResource = yield* OtlpResource.fromConfig(options.resource)
   const scope: IInstrumentationScope = {
     name: OtlpResource.unsafeServiceName(otelResource)
   }
+  const serialization = yield* OtlpSerialization
 
   const exporter = yield* Exporter.make({
     label: "OtlpLogger",
@@ -55,15 +57,18 @@ export const make: (
     headers: options.headers,
     maxBatchSize: options.maxBatchSize ?? 1000,
     exportInterval: options.exportInterval ?? Duration.seconds(1),
-    body: (data): IExportLogsServiceRequest => ({
-      resourceLogs: [{
-        resource: otelResource,
-        scopeLogs: [{
-          scope,
-          logRecords: data
+    body(data) {
+      const body: IExportLogsServiceRequest = {
+        resourceLogs: [{
+          resource: otelResource,
+          scopeLogs: [{
+            scope,
+            logRecords: data
+          }]
         }]
-      }]
-    }),
+      }
+      return serialization.logs(body)
+    },
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })
 
@@ -92,7 +97,7 @@ export const layer = (options: {
   readonly maxBatchSize?: number | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
   readonly excludeLogSpans?: boolean | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient> =>
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> =>
   options.replaceLogger ? Logger.replaceScoped(options.replaceLogger, make(options)) : Logger.addScoped(make(options))
 
 // internal

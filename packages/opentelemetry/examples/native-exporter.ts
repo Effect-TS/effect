@@ -4,7 +4,7 @@ import { Effect, Layer, Schedule } from "effect"
 import * as Logger from "effect/Logger"
 import * as LogLevel from "effect/LogLevel"
 
-const Observability = Otlp.layer({
+const Observability = Otlp.layerJson({
   baseUrl: "http://localhost:4318",
   resource: {
     serviceName: "my-service"

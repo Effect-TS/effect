@@ -15,6 +15,7 @@ import type * as Scope from "effect/Scope"
 import * as Exporter from "./internal/otlpExporter.js"
 import type { Fixed64, KeyValue } from "./OtlpResource.js"
 import * as OtlpResource from "./OtlpResource.js"
+import { OtlpSerialization } from "./OtlpSerialization.js"
 
 /**
  * @since 1.0.0
@@ -33,7 +34,7 @@ export const make: (options: {
 }) => Effect.Effect<
   void,
   never,
-  HttpClient.HttpClient | Scope.Scope
+  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Effect.clock
   const startTime = String(clock.unsafeCurrentTimeNanos())
@@ -42,8 +43,9 @@ export const make: (options: {
   const metricsScope: IInstrumentationScope = {
     name: OtlpResource.unsafeServiceName(resource)
   }
+  const serialization = yield* OtlpSerialization
 
-  const snapshot = (): IExportMetricsServiceRequest => {
+  const snapshot = () => {
     const snapshot = Metric.unsafeSnapshot()
     const nowNanos = clock.unsafeCurrentTimeNanos()
     const nowTime = String(nowNanos)
@@ -254,7 +256,7 @@ export const make: (options: {
       }
     }
 
-    return {
+    const body: IExportMetricsServiceRequest = {
       resourceMetrics: [{
         resource,
         scopeMetrics: [{
@@ -263,6 +265,8 @@ export const make: (options: {
         }]
       }]
     }
+
+    return serialization.metrics(body)
   }
 
   yield* Exporter.make({
@@ -290,7 +294,7 @@ export const layer = (options: {
   readonly headers?: Headers.Input | undefined
   readonly exportInterval?: Duration.DurationInput | undefined
   readonly shutdownTimeout?: Duration.DurationInput | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient> => Layer.scopedDiscard(make(options))
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> => Layer.scopedDiscard(make(options))
 
 // internal
 
