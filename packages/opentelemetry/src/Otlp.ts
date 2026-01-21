@@ -20,25 +20,23 @@ import * as OtlpTracer from "./OtlpTracer.js"
  * @since 1.0.0
  * @category Layers
  */
-export const layer = (
-  options: {
-    readonly baseUrl: string
-    readonly resource?: {
-      readonly serviceName?: string | undefined
-      readonly serviceVersion?: string | undefined
-      readonly attributes?: Record<string, unknown>
-    }
-    readonly headers?: Headers.Input | undefined
-    readonly maxBatchSize?: number | undefined
-    readonly replaceLogger?: Logger.Logger<any, any> | undefined
-    readonly tracerContext?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
-    readonly loggerExportInterval?: Duration.DurationInput | undefined
-    readonly loggerExcludeLogSpans?: boolean | undefined
-    readonly metricsExportInterval?: Duration.DurationInput | undefined
-    readonly tracerExportInterval?: Duration.DurationInput | undefined
-    readonly shutdownTimeout?: Duration.DurationInput | undefined
+export const layer = (options: {
+  readonly baseUrl: string
+  readonly resource?: {
+    readonly serviceName?: string | undefined
+    readonly serviceVersion?: string | undefined
+    readonly attributes?: Record<string, unknown>
   }
-): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
+  readonly headers?: Headers.Input | undefined
+  readonly maxBatchSize?: number | undefined
+  readonly replaceLogger?: Logger.Logger<any, any> | undefined
+  readonly tracerContext?: (<X>(f: () => X, span: Tracer.AnySpan) => X) | undefined
+  readonly loggerExportInterval?: Duration.DurationInput | undefined
+  readonly loggerExcludeLogSpans?: boolean | undefined
+  readonly metricsExportInterval?: Duration.DurationInput | undefined
+  readonly tracerExportInterval?: Duration.DurationInput | undefined
+  readonly shutdownTimeout?: Duration.DurationInput | undefined
+}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization.OtlpSerialization> => {
   const baseReq = HttpClientRequest.get(options.baseUrl)
   const url = (path: string) => HttpClientRequest.appendUrl(baseReq, path).url
   return Layer.mergeAll(
