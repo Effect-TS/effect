@@ -63,7 +63,7 @@ function compareBoth(self: unknown, that: unknown): boolean {
       if (Array.isArray(self) && Array.isArray(that)) {
         return self.length === that.length && self.every((v, i) => compareBoth(v, that[i]))
       }
-      if (Object.getPrototypeOf(self) === Object.prototype && Object.getPrototypeOf(self) === Object.prototype) {
+      if (Object.getPrototypeOf(self) === Object.prototype && Object.getPrototypeOf(that) === Object.prototype) {
         const keysSelf = Object.keys(self as any)
         const keysThat = Object.keys(that as any)
         if (keysSelf.length === keysThat.length) {
