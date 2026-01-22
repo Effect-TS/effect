@@ -1,5 +1,60 @@
 # @effect/opentelemetry
 
+## 0.61.0
+
+### Minor Changes
+
+- [#5927](https://github.com/Effect-TS/effect/pull/5927) [`f4972ed`](https://github.com/Effect-TS/effect/commit/f4972eda6c3179070d0167a30985b760afa0a9f9) Thanks @davidgoli! - Add protobuf protocol support for OTLP exporters
+
+  This introduces an `OtlpSerialization` service for choosing between JSON and Protobuf encoding.
+
+  **Breaking changes:**
+  - `Otlp.layer` now requires an `OtlpSerialization` layer to be provided for
+    the desired encoding format.
+
+  **JSON encoding:**
+
+  ```typescript
+  import { Layer } from "effect"
+  import { Otlp, OtlpSerialization } from "@effect/opentelemetry"
+
+  // Option 1: Explicit JSON layer
+  const layer = Otlp.layerJson({
+    baseUrl: "http://localhost:4318",
+    resource: { serviceName: "my-service" }
+  })
+
+  // Option 2: Use `layer` and provide OtlpSerialization JSON layer
+  const layer = Otlp.layer({
+    baseUrl: "http://localhost:4318",
+    resource: { serviceName: "my-service" }
+  }).pipe(Layer.provide(OtlpSerialization.layerJson))
+  ```
+
+  **Protobuf encoding:**
+
+  ```typescript
+  import { Otlp } from "@effect/opentelemetry"
+
+  // Simply use layerProtobuf for protobuf encoding
+  const layer = Otlp.layerProtobuf({
+    baseUrl: "http://localhost:4318",
+    resource: { serviceName: "my-service" }
+  })
+  ```
+
+- [#5952](https://github.com/Effect-TS/effect/pull/5952) [`4725a7e`](https://github.com/Effect-TS/effect/commit/4725a7eceac8b8b66ee55bbd975e1adab67df271) Thanks @clayroach! - Make @opentelemetry/sdk-trace-node and @opentelemetry/sdk-trace-web required peer dependencies instead of optional. This fixes module resolution errors when importing from the main entry point.
+
+### Patch Changes
+
+- [#5929](https://github.com/Effect-TS/effect/pull/5929) [`abdab5c`](https://github.com/Effect-TS/effect/commit/abdab5cc4ede8272799f86caa6557a8a9674ab37) Thanks @schickling! - Fix `Span.addEvent` to correctly handle the 2-argument overload with attributes.
+
+  Previously, calling `span.addEvent("name", { foo: "bar" })` would throw `TypeError: {} is not iterable` because the implementation incorrectly treated the attributes object as a `TimeInput`. The fix adds proper runtime type discrimination to distinguish between `TimeInput` (number, Date, or HrTime tuple) and `Attributes` (plain object).
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform@0.94.2
+
 ## 0.60.0
 
 ### Patch Changes

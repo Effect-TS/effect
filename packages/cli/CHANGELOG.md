@@ -1,5 +1,33 @@
 # @effect/cli
 
+## 0.73.1
+
+### Patch Changes
+
+- [#5983](https://github.com/Effect-TS/effect/pull/5983) [`0d1a44f`](https://github.com/Effect-TS/effect/commit/0d1a44fa142c0da25fe36a1ac35675f666944803) Thanks @cevr! - Allow options to appear after positional arguments
+
+  Previously, `@effect/cli` required all options to appear before positional arguments. For example, `cmd --force staging` worked but `cmd staging --force` failed with "Received unknown argument".
+
+  This change updates the option parsing logic to scan through all arguments to find options, regardless of their position relative to positional arguments. This aligns with the behavior of most CLI tools (git, npm, docker, etc.) which allow options anywhere in the command.
+
+  **Before:**
+
+  ```bash
+  myapp deploy --force staging  # worked
+  myapp deploy staging --force  # failed: "Received unknown argument: '--force'"
+  ```
+
+  **After:**
+
+  ```bash
+  myapp deploy --force staging  # works
+  myapp deploy staging --force  # works
+  ```
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform@0.94.2
+
 ## 0.73.0
 
 ### Patch Changes

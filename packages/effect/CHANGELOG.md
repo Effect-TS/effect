@@ -1,5 +1,15 @@
 # effect
 
+## 3.19.15
+
+### Patch Changes
+
+- [#5981](https://github.com/Effect-TS/effect/pull/5981) [`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b) Thanks @bxff! - Fix type inference loss in `Array.flatten` for complex nested structures like unions of Effects with contravariant requirements. Uses distributive indexed access (`T[number][number]`) in the `Flatten` type utility and adds `const` to the `flatten` generic parameter.
+
+- [#5970](https://github.com/Effect-TS/effect/pull/5970) [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f) Thanks @KhraksMamtsov! - fix Config.orElseIf signature
+
+- [#5996](https://github.com/Effect-TS/effect/pull/5996) [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc) Thanks @parischap! - fix Equal.equals plain object comparisons in structural mode
+
 ## 3.19.14
 
 ### Patch Changes
