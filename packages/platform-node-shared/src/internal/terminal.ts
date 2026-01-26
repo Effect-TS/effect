@@ -17,6 +17,7 @@ export const make = Effect.fnUntraced(function*(
 ) {
   const stdin = process.stdin
   const stdout = process.stdout
+  const stderr = process.stderr
 
   // Acquire readline interface with TTY setup/cleanup inside the scope
   const rlRef = yield* RcRef.make({
@@ -90,13 +91,31 @@ export const make = Effect.fnUntraced(function*(
       })
     )
 
+  const displayError = (prompt: string) =>
+    Effect.uninterruptible(
+      Effect.async<void, Error.PlatformError>((resume) => {
+        stderr.write(prompt, (err) =>
+          err
+            ? resume(Effect.fail(
+              new Error.BadArgument({
+                module: "Terminal",
+                method: "displayError",
+                description: "Failed to write prompt to stderr",
+                cause: err
+              })
+            ))
+            : resume(Effect.void))
+      })
+    )
+
   return Terminal.Terminal.of({
     columns,
     rows,
     isTTY,
     readInput,
     readLine,
-    display
+    display,
+    displayError
   })
 })
 

@@ -42,6 +42,10 @@ export interface Terminal {
    * Displays text to the the default standard output.
    */
   readonly display: (text: string) => Effect<void, PlatformError>
+  /**
+   * Displays text to the the default standard error.
+   */
+  readonly displayError: (text: string) => Effect<void, PlatformError>
 }
 
 /**

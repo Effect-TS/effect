@@ -60,6 +60,8 @@ export const make = Effect.gen(function*() {
 
   const display: MockTerminal["display"] = (input) => Console.log(input)
 
+  const displayError: MockTerminal["displayError"] = (input) => Console.error(input)
+
   const readInput: MockTerminal["readInput"] = Effect.succeed(queue)
 
   return MockTerminal.of({
@@ -67,6 +69,7 @@ export const make = Effect.gen(function*() {
     rows: Effect.succeed(24),
     isTTY: Effect.succeed(true),
     display,
+    displayError,
     readInput,
     readLine: Effect.succeed(""),
     inputKey,
