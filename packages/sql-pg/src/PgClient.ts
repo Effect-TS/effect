@@ -78,7 +78,7 @@ export interface PgClientConfig {
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
 
-  readonly stream?: () => Duplex | undefined
+  readonly stream?: (() => Duplex) | undefined
 
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
