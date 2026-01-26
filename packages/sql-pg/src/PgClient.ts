@@ -22,6 +22,7 @@ import * as RcRef from "effect/RcRef"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import type { Duplex } from "node:stream"
 import type { ConnectionOptions } from "node:tls"
 import * as Pg from "pg"
 import * as PgConnString from "pg-connection-string"
@@ -77,6 +78,8 @@ export interface PgClientConfig {
   readonly username?: string | undefined
   readonly password?: Redacted.Redacted | undefined
 
+  readonly stream?: (() => Duplex) | undefined
+
   readonly idleTimeout?: Duration.DurationInput | undefined
   readonly connectTimeout?: Duration.DurationInput | undefined
 
@@ -120,6 +123,7 @@ export const make = (
       password: options.password ? Redacted.value(options.password) : undefined,
       ssl: options.ssl,
       port: options.port,
+      stream: options.stream!,
       connectionTimeoutMillis: options.connectTimeout
         ? Duration.toMillis(options.connectTimeout)
         : undefined,
