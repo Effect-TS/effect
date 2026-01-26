@@ -123,7 +123,7 @@ export const make = (
       password: options.password ? Redacted.value(options.password) : undefined,
       ssl: options.ssl,
       port: options.port,
-      stream: options.stream ? options.stream : () => undefined,
+      stream: options.stream!,
       connectionTimeoutMillis: options.connectTimeout
         ? Duration.toMillis(options.connectTimeout)
         : undefined,
