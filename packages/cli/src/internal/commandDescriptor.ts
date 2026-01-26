@@ -669,10 +669,19 @@ const parseInternal = (
     case "Subcommands": {
       const names = getNamesInternal(self)
       const subcommands = getSubcommandsInternal(self)
-      const [parentArgs, childArgs] = Arr.span(
+      const subcommandNames = new Set(Arr.map(subcommands, ([name]) => name))
+      const parentOptionNames = getParentOptionNames(self.parent)
+      const { parentArgs: extractedParentArgs, remainingArgs } = extractParentOptionsFromArgs(
         args,
-        (arg) => !Arr.some(subcommands, ([name]) => name === arg)
+        parentOptionNames,
+        subcommandNames
       )
+      const [preSubcommandArgs, childArgs] = Arr.span(
+        remainingArgs,
+        (arg) => !subcommandNames.has(arg)
+      )
+      const parentArgs = Arr.appendAll(preSubcommandArgs, extractedParentArgs)
+
       const parseChildrenWith = (argsForChildren: ReadonlyArray<string>) =>
         Effect.suspend(() => {
           const iterator = self.children[Symbol.iterator]()
@@ -826,6 +835,86 @@ const splitForcedArgs = (
 ): [Array<string>, Array<string>] => {
   const [remainingArgs, forcedArgs] = Arr.span(args, (str) => str !== "--")
   return [remainingArgs, Arr.drop(forcedArgs, 1)]
+}
+
+const getParentOptionNames = (self: Instruction): Set<string> => {
+  const names = new Set<string>()
+  const loop = (cmd: Instruction): void => {
+    switch (cmd._tag) {
+      case "Standard": {
+        for (const name of InternalOptions.getNames(cmd.options as InternalOptions.Instruction)) {
+          names.add(name)
+        }
+        break
+      }
+      case "Map": {
+        loop(cmd.command)
+        break
+      }
+      case "Subcommands": {
+        loop(cmd.parent)
+        break
+      }
+      case "GetUserInput": {
+        break
+      }
+    }
+  }
+  loop(self)
+  return names
+}
+
+const extractParentOptionsFromArgs = (
+  args: ReadonlyArray<string>,
+  parentOptionNames: Set<string>,
+  subcommandNames: Set<string>
+): { parentArgs: Array<string>; remainingArgs: Array<string> } => {
+  const parentArgs: Array<string> = []
+  const remainingArgs: Array<string> = []
+  let i = 0
+  let foundSubcommand = false
+
+  while (i < args.length) {
+    const arg = args[i]
+
+    if (!foundSubcommand && subcommandNames.has(arg)) {
+      foundSubcommand = true
+      remainingArgs.push(arg)
+      i++
+      continue
+    }
+
+    if (!foundSubcommand) {
+      remainingArgs.push(arg)
+      i++
+      continue
+    }
+
+    if (arg.startsWith("-")) {
+      const equalsIndex = arg.indexOf("=")
+      const optionName = equalsIndex !== -1 ? arg.substring(0, equalsIndex) : arg
+
+      if (parentOptionNames.has(optionName)) {
+        if (equalsIndex !== -1) {
+          parentArgs.push(arg)
+          i++
+        } else {
+          parentArgs.push(arg)
+          i++
+          if (i < args.length && !args[i].startsWith("-") && !subcommandNames.has(args[i])) {
+            parentArgs.push(args[i])
+            i++
+          }
+        }
+        continue
+      }
+    }
+
+    remainingArgs.push(arg)
+    i++
+  }
+
+  return { parentArgs, remainingArgs }
 }
 
 const withDescriptionInternal = (

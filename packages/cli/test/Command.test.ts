@@ -151,6 +151,40 @@ describe("Command", () => {
           "Cloning repo"
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("parent options after subcommand and its args", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        // --verbose (parent option) appears after "clone repo" (subcommand + args)
+        yield* run(["node", "git.js", "clone", "repo", "--verbose"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Cloning repo"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("parent options with alias after subcommand and its args", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        // -v (parent option alias) appears after "add file" (subcommand + args)
+        yield* run(["node", "git.js", "add", "file", "-v"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Adding file"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("parent options both before and after subcommand", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        // Mix: some parent options before subcommand, parent option after subcommand
+        // Using --verbose before and testing it still works
+        yield* run(["node", "git.js", "--verbose", "clone", "repo"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Cloning repo"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
   })
 })
 
