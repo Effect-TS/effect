@@ -309,59 +309,63 @@ export const make = Effect.fnUntraced(function*(options?: {
 
   const getUnprocessedMessages = sql.onDialectOrElse({
     pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
-      sql<MessageJoinRow>`
-        WITH messages AS (
-          UPDATE ${messagesTableSql} m
-          SET last_read = ${sqlNow}
-          FROM (
-            SELECT m.*
-            FROM ${messagesTableSql} m
-            WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-            AND NOT EXISTS (
-              SELECT 1 FROM ${repliesTableSql}
-              WHERE request_id = m.request_id
-              AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
-            )
-            AND m.processed = ${sqlFalse}
-            AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
-            AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-            FOR UPDATE
-          ) AS ids
-          LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
-          WHERE m.id = ids.id
-          RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        )
-        SELECT * FROM messages ORDER BY rowid ASC
-      `,
-    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
-      sql<MessageJoinRow>`
-        SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-        AND NOT EXISTS (
-          SELECT 1 FROM ${repliesTableSql}
-          WHERE request_id = m.request_id
-          AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
-        )
-        AND processed = ${sqlFalse}
-        AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
-        AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-        ORDER BY m.rowid ASC
-        ${forUpdate}
-      `.unprepared.pipe(
-        Effect.tap((rows) => {
-          if (rows.length === 0) {
-            return Effect.void
-          }
-          return sql`
-            UPDATE ${messagesTableSql}
+      shardIds.length === 0
+        ? Effect.succeed([])
+        : sql<MessageJoinRow>`
+          WITH messages AS (
+            UPDATE ${messagesTableSql} m
             SET last_read = ${sqlNow}
-            WHERE id IN (${sql.literal(rows.map((row) => row.id).join(","))})
-          `.unprepared
-        }),
-        sql.withTransaction
-      )
+            FROM (
+              SELECT m.*
+              FROM ${messagesTableSql} m
+              WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+              AND NOT EXISTS (
+                SELECT 1 FROM ${repliesTableSql}
+                WHERE request_id = m.request_id
+                AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
+              )
+              AND m.processed = ${sqlFalse}
+              AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
+              AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
+              FOR UPDATE
+            ) AS ids
+            LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
+            WHERE m.id = ids.id
+            RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+          )
+          SELECT * FROM messages ORDER BY rowid ASC
+        `,
+    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
+      shardIds.length === 0
+        ? Effect.succeed([])
+        : sql<MessageJoinRow>`
+          SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+          FROM ${messagesTableSql} m
+          LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+          WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+          AND NOT EXISTS (
+            SELECT 1 FROM ${repliesTableSql}
+            WHERE request_id = m.request_id
+            AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
+          )
+          AND processed = ${sqlFalse}
+          AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
+          AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
+          ORDER BY m.rowid ASC
+          ${forUpdate}
+        `.unprepared.pipe(
+          Effect.tap((rows) => {
+            if (rows.length === 0) {
+              return Effect.void
+            }
+            return sql`
+              UPDATE ${messagesTableSql}
+              SET last_read = ${sqlNow}
+              WHERE id IN (${sql.literal(rows.map((row) => row.id).join(","))})
+            `.unprepared
+          }),
+          sql.withTransaction
+        )
   })
 
   return yield* MessageStorage.makeEncoded({
@@ -573,16 +577,18 @@ export const make = Effect.fnUntraced(function*(options?: {
       ),
 
     resetShards: (shardIds) =>
-      sql`
-        UPDATE ${messagesTableSql}
-        SET last_read = NULL
-        WHERE processed = ${sqlFalse}
-        AND shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-      `.pipe(
-        Effect.asVoid,
-        PersistenceError.refail,
-        withTracerDisabled
-      )
+      shardIds.length === 0
+        ? Effect.void
+        : sql`
+          UPDATE ${messagesTableSql}
+          SET last_read = NULL
+          WHERE processed = ${sqlFalse}
+          AND shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+        `.pipe(
+          Effect.asVoid,
+          PersistenceError.refail,
+          withTracerDisabled
+        )
   })
 }, withTracerDisabled)
 

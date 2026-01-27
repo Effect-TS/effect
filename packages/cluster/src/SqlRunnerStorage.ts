@@ -440,14 +440,16 @@ export const make = Effect.fnUntraced(function*(options: {
   ).join(", ")
 
   const acquiredLocks = (address: string, shardIds: ReadonlyArray<string>) =>
-    sql<{ shard_id: string }>`
-      SELECT shard_id FROM ${sql(locksTable)}
-      WHERE address = ${address}
-      AND acquired_at >= ${lockExpiresAt}
-      AND shard_id IN ${stringLiteralArr(shardIds)}
-    `.values.pipe(
-      Effect.map((rows) => rows.map((row) => row[0] as string))
-    )
+    shardIds.length === 0
+      ? Effect.succeed([])
+      : sql<{ shard_id: string }>`
+        SELECT shard_id FROM ${sql(locksTable)}
+        WHERE address = ${address}
+        AND acquired_at >= ${lockExpiresAt}
+        AND shard_id IN ${stringLiteralArr(shardIds)}
+      `.values.pipe(
+        Effect.map((rows) => rows.map((row) => row[0] as string))
+      )
 
   const wrapString = sql.onDialectOrElse({
     mssql: () => (s: string) => `N'${s}'`,
