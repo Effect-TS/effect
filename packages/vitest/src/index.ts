@@ -25,18 +25,10 @@ export type API =
   & TestCollectorCallable
 
 interface TestCollectorCallable<C = object> {
-  /**
-   * @deprecated Use options as the second argument instead
-   */
-  <ExtraContext extends C>(
-    name: string | Function,
-    fn: V.TestFunction<ExtraContext>,
-    options: TestCollectorOptions
-  ): void
   <ExtraContext extends C>(
     name: string | Function,
     fn?: V.TestFunction<ExtraContext>,
-    options?: number | TestCollectorOptions
+    options?: number
   ): void
   <ExtraContext extends C>(
     name: string | Function,
