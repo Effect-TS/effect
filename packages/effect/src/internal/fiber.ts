@@ -7,6 +7,7 @@ import type * as Fiber from "../Fiber.js"
 import * as FiberId from "../FiberId.js"
 import * as FiberStatus from "../FiberStatus.js"
 import { dual, pipe } from "../Function.js"
+import * as Graph from "../Graph.js"
 import * as HashSet from "../HashSet.js"
 import * as number from "../Number.js"
 import * as Option from "../Option.js"
@@ -103,6 +104,395 @@ export const dump = <A, E>(self: Fiber.RuntimeFiber<A, E>): Effect.Effect<Fiber.
 export const dumpAll = (
   fibers: Iterable<Fiber.RuntimeFiber<unknown, unknown>>
 ): Effect.Effect<Array<Fiber.Fiber.Dump>> => core.forEachSequential(fibers, dump)
+
+type DumpGraphInclude = {
+  readonly children?: boolean
+  readonly blockingOn?: boolean
+  readonly roots?: boolean
+  readonly threadName?: boolean
+}
+
+type DumpGraphSettle = {
+  readonly iterations?: number
+}
+
+type DumpGraphOptions = {
+  readonly output?: "nodes" | "graph" | "dot"
+  readonly include?: DumpGraphInclude
+  readonly maxDepth?: number
+  readonly settle?: DumpGraphSettle
+}
+
+type DumpGraphNodeBase = {
+  readonly id: number
+}
+
+const fiberIdNumber = (fiberId: FiberId.FiberId): number => {
+  const ids = Array.from(FiberId.ids(fiberId))
+  return ids.length === 0 ? -1 : Math.min(...ids)
+}
+
+const settleStatus = <A, E>(
+  fiber: Fiber.RuntimeFiber<A, E>,
+  iterations: number
+): Effect.Effect<FiberStatus.FiberStatus> => {
+  if (iterations <= 0) {
+    return fiber.status
+  }
+  return core.gen(function*() {
+    let i = 0
+    while (true) {
+      const status = yield* fiber.status
+      if (FiberStatus.isSuspended(status) || FiberStatus.isDone(status)) {
+        return status
+      }
+      if (i >= iterations) {
+        return status
+      }
+      i++
+      yield* core.yieldNow()
+    }
+  })
+}
+
+const settleBlockingOnIds = <A, E>(
+  fiber: Fiber.RuntimeFiber<A, E>,
+  iterations: number
+): Effect.Effect<Array<number>> => {
+  if (iterations <= 0) {
+    return core.gen(function*() {
+      const status = yield* fiber.status
+      return FiberStatus.isSuspended(status) ? sortUniqueNumbers(FiberId.ids(status.blockingOn)) : []
+    })
+  }
+  return core.gen(function*() {
+    let i = 0
+    const acc = new Set<number>()
+    while (true) {
+      const status = yield* fiber.status
+      if (FiberStatus.isSuspended(status)) {
+        for (const id of FiberId.ids(status.blockingOn)) {
+          acc.add(id)
+        }
+      }
+      if (FiberStatus.isDone(status) || i >= iterations) {
+        return Array.from(acc).sort((a, b) => a - b)
+      }
+      i++
+      yield* core.yieldNow()
+    }
+  })
+}
+
+const sortUniqueNumbers = (values: Iterable<number>): Array<number> => {
+  const set = new Set<number>()
+  for (const v of values) {
+    set.add(v)
+  }
+  return Array.from(set).sort((a, b) => a - b)
+}
+
+const lookupFiberByNumericId = core.fnUntraced(function*(
+  numericId: number,
+  known: Map<number, Fiber.RuntimeFiber<any, any>>
+) {
+  const existing = known.get(numericId)
+  if (existing !== undefined) {
+    return existing
+  }
+
+  const roots = Array.from(fiberScope.globalScope.roots)
+  const visited = new Set<number>()
+  const stack: Array<Fiber.RuntimeFiber<any, any>> = [...roots]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    const idNum = fiberIdNumber(current.id())
+    if (visited.has(idNum)) {
+      continue
+    }
+    visited.add(idNum)
+    known.set(idNum, current)
+    if (idNum === numericId) {
+      return current
+    }
+    const children = yield* current.children
+    for (const child of children) {
+      stack.push(child)
+    }
+  }
+
+  return undefined
+})
+
+const makeDot = (
+  nodes: ReadonlyArray<{ readonly id: number }>,
+  edges: ReadonlyArray<readonly [number, number, string]>
+): string => {
+  const lines: Array<string> = []
+  lines.push("digraph {")
+
+  for (const node of nodes) {
+    const id = String(node.id)
+    lines.push(`  \"${id}\" [label=\"${id}\"];`)
+  }
+
+  const orderedEdges = [...edges].sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0))
+  for (const [from, to, kind] of orderedEdges) {
+    lines.push(`  \"${from}\" -> \"${to}\" [type=\"${kind}\"];`)
+  }
+
+  lines.push("}")
+  return lines.join("\n")
+}
+
+/** @internal */
+export const dumpGraph = (
+  roots: Iterable<Fiber.RuntimeFiber<unknown, unknown>>,
+  options: DumpGraphOptions = {}
+): Effect.Effect<unknown> => {
+  const output = options.output ?? "nodes"
+  const include: DumpGraphInclude = options.include ?? {}
+  const maxDepth = options.maxDepth ?? Infinity
+  const settleIterations = options.settle?.iterations ?? 0
+
+  const rootArray = Array.from(roots)
+  const rootIds = new Set<number>(rootArray.map((f) => fiberIdNumber(f.id())))
+
+  return core.gen(function*() {
+    const knownById = new Map<number, Fiber.RuntimeFiber<any, any>>()
+    const discovered = new Map<number, { fiber: Fiber.RuntimeFiber<any, any> | undefined; depth: number }>()
+    const queue: Array<{ fiber: Fiber.RuntimeFiber<any, any>; depth: number }> = []
+
+    for (const fiber of rootArray) {
+      const idNum = fiberIdNumber(fiber.id())
+      knownById.set(idNum, fiber)
+      const existing = discovered.get(idNum)
+      if (existing === undefined) {
+        discovered.set(idNum, { fiber, depth: 0 })
+        queue.push({ fiber, depth: 0 })
+        continue
+      }
+
+      const previousDepth = existing.depth
+      const previousFiber = existing.fiber
+      if (previousFiber === undefined || previousDepth > 0) {
+        existing.fiber = fiber
+        existing.depth = 0
+        queue.push({ fiber, depth: 0 })
+      }
+    }
+
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      const currentDepth = current.depth
+      const currentId = fiberIdNumber(current.fiber.id())
+      const currentState = discovered.get(currentId)
+      if (currentState === undefined || currentState.depth !== currentDepth) {
+        continue
+      }
+      if (currentDepth >= maxDepth) {
+        continue
+      }
+
+      if (include.children === true) {
+        const children = yield* current.fiber.children
+        for (const child of children) {
+          const childId = fiberIdNumber(child.id())
+          knownById.set(childId, child)
+          const nextDepth = currentDepth + 1
+          const existing = discovered.get(childId)
+          if (existing === undefined) {
+            discovered.set(childId, { fiber: child, depth: nextDepth })
+            queue.push({ fiber: child, depth: nextDepth })
+            continue
+          }
+
+          const previousDepth = existing.depth
+          const previousFiber = existing.fiber
+          let changed = false
+
+          if (previousFiber === undefined) {
+            existing.fiber = child
+            changed = true
+          }
+          if (previousDepth > nextDepth) {
+            existing.depth = nextDepth
+            changed = true
+          }
+
+          if (changed) {
+            queue.push({ fiber: child, depth: existing.depth })
+          }
+        }
+      }
+
+      if (include.blockingOn === true) {
+        const ids = yield* settleBlockingOnIds(current.fiber, settleIterations)
+        if (ids.length > 0) {
+          for (const targetId of ids) {
+            const targetFiber = yield* lookupFiberByNumericId(targetId, knownById)
+            const nextDepth = currentDepth + 1
+            const existing = discovered.get(targetId)
+            if (existing === undefined) {
+              discovered.set(targetId, { fiber: targetFiber, depth: nextDepth })
+              if (targetFiber !== undefined) {
+                queue.push({ fiber: targetFiber, depth: nextDepth })
+              }
+              continue
+            }
+
+            const previousDepth = existing.depth
+            const previousFiber = existing.fiber
+            let changed = false
+
+            if (previousFiber === undefined && targetFiber !== undefined) {
+              existing.fiber = targetFiber
+              changed = true
+            }
+            if (previousDepth > nextDepth) {
+              existing.depth = nextDepth
+              changed = true
+            }
+
+            if (changed && targetFiber !== undefined) {
+              queue.push({ fiber: targetFiber, depth: existing.depth })
+            }
+          }
+        }
+      }
+    }
+
+    const ordered = Array.from(discovered.entries())
+      .map(([id, { fiber, depth }]) => ({ id, fiber, depth }))
+      .sort((a, b) => a.id - b.id)
+
+    const nodeById = new Map<number, any>()
+    for (const item of ordered) {
+      const fiber = item.fiber
+      const idNum = item.id
+      const base: any = { id: idNum }
+      if (include.roots === true) {
+        base.isRoot = rootIds.has(idNum)
+      }
+      if (include.threadName === true) {
+        base.threadName = FiberId.threadName(fiber !== undefined ? fiber.id() : FiberId.runtime(idNum, -1))
+      }
+
+      if (include.children === true) {
+        if (item.depth >= maxDepth) {
+          base.children = []
+        } else if (fiber === undefined) {
+          base.children = []
+        } else {
+          const children = yield* fiber.children
+          const childIds = children.map((c) => fiberIdNumber(c.id()))
+          const filtered = childIds.filter((cid) => discovered.has(cid) && (discovered.get(cid)!.depth <= maxDepth))
+          base.children = sortUniqueNumbers(filtered)
+        }
+      }
+
+      if (include.blockingOn === true) {
+        if (item.depth >= maxDepth) {
+          base.blockingOn = []
+        } else if (fiber === undefined) {
+          base.blockingOn = []
+        } else {
+          const blockers = yield* settleBlockingOnIds(fiber, settleIterations)
+          const filtered = blockers.filter((bid) => discovered.has(bid) && (discovered.get(bid)!.depth <= maxDepth))
+          base.blockingOn = sortUniqueNumbers(filtered)
+        }
+      }
+
+      nodeById.set(idNum, base)
+    }
+
+    if (output === "nodes") {
+      return { nodes: Array.from(nodeById.values()) as Array<DumpGraphNodeBase> }
+    }
+
+    if (output === "dot") {
+      const nodes = Array.from(nodeById.values()) as ReadonlyArray<{ readonly id: number }>
+      const edges: Array<readonly [number, number, string]> = []
+
+      if (include.children === true) {
+        for (const node of nodes as any) {
+          const children = (node as any).children as ReadonlyArray<number>
+          if (Array.isArray(children)) {
+            for (const childId of children) {
+              edges.push([node.id, childId, "children"] as const)
+            }
+          }
+        }
+      }
+
+      if (include.blockingOn === true) {
+        for (const node of nodes as any) {
+          const blockingOn = (node as any).blockingOn as ReadonlyArray<number>
+          if (Array.isArray(blockingOn)) {
+            for (const blockerId of blockingOn) {
+              edges.push([node.id, blockerId, "blockingOn"] as const)
+            }
+          }
+        }
+      }
+
+      return makeDot(nodes, edges)
+    }
+
+    const graph = Graph.mutate(Graph.directed<any, string>(), (mutable) => {
+      const indexById = new Map<number, Graph.NodeIndex>()
+      for (const item of ordered) {
+        const idNum = item.id
+        const fiber = item.fiber
+        const node = nodeById.get(idNum)
+        const value: any = { ...node, id: fiber !== undefined ? fiber.id() : FiberId.runtime(idNum, -1) }
+        const index = Graph.addNode(mutable, value)
+        indexById.set(idNum, index)
+      }
+
+      const addEdges = (pairs: Array<readonly [number, number]>, kind: string) => {
+        const sorted = pairs.sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+        for (const [fromId, toId] of sorted) {
+          const fromIndex = indexById.get(fromId)
+          const toIndex = indexById.get(toId)
+          if (fromIndex !== undefined && toIndex !== undefined) {
+            Graph.addEdge(mutable, fromIndex, toIndex, kind)
+          }
+        }
+      }
+
+      if (include.children === true) {
+        const pairs: Array<readonly [number, number]> = []
+        for (const n of nodeById.values() as any) {
+          const fromId = (n as any).id
+          const children = (n as any).children
+          if (Array.isArray(children)) {
+            for (const toId of children) {
+              pairs.push([fromId, toId] as const)
+            }
+          }
+        }
+        addEdges(pairs, "children")
+      }
+
+      if (include.blockingOn === true) {
+        const pairs: Array<readonly [number, number]> = []
+        for (const n of nodeById.values() as any) {
+          const fromId = (n as any).id
+          const blockers = (n as any).blockingOn
+          if (Array.isArray(blockers)) {
+            for (const toId of blockers) {
+              pairs.push([fromId, toId] as const)
+            }
+          }
+        }
+        addEdges(pairs, "blockingOn")
+      }
+    })
+
+    return graph
+  })
+}
 
 /** @internal */
 export const fail = <E>(error: E): Fiber.Fiber<never, E> => done(Exit.fail(error))

@@ -1,0 +1,13 @@
+.git
+**/.git
+**/.DS_Store
+**/node_modules
+**/.pnpm-store
+**/dist
+**/build
+**/coverage
+**/.turbo
+**/.next
+**/.cache
+**/.eslintcache
+**/*.log

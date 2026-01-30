@@ -52,9 +52,6 @@ importers:
       '@effect/build-utils':
         specifier: ^0.8.3
         version: 0.8.8
-      '@effect/docgen':
-        specifier: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738
-        version: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.20.3)(typescript@5.8.3)
       '@effect/eslint-plugin':
         specifier: ^0.3.2
         version: 0.3.2
@@ -1703,15 +1700,6 @@ packages:
     resolution: {integrity: sha512-OWyGEMsInZaA1seUIqa16qJX9zgo0f85Vll304hnxo4KhjWZTByzUartJ/GG7BZJ+m8eRj0xOkr9Kv9PBnV+ng==}
     engines: {node: '>=16.17.1'}
     hasBin: true
-
-  '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738':
-    resolution: {tarball: https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738}
-    version: 0.5.2
-    engines: {node: '>=18.0.0'}
-    hasBin: true
-    peerDependencies:
-      tsx: ^4.19.3
-      typescript: ^5.8.2
 
   '@effect/eslint-plugin@0.3.2':
     resolution: {integrity: sha512-c4Vs9t3r54A4Zpl+wo8+PGzZz3JWYsip41H+UrebRLjQ2Hk/ap63IeCgN/HWcYtxtyhRopjp7gW9nOQ2Snbl+g==}
@@ -7926,16 +7914,6 @@ snapshots:
     dependencies:
       micromatch: 4.0.8
       pkg-entry-points: 1.1.1
-
-  '@effect/docgen@https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738(tsx@4.20.3)(typescript@5.8.3)':
-    dependencies:
-      '@babel/code-frame': 7.27.1
-      '@effect/markdown-toc': 0.1.0
-      doctrine: 3.0.0
-      glob: 11.0.3
-      prettier: 3.6.2
-      tsx: 4.20.3
-      typescript: 5.8.3
 
   '@effect/eslint-plugin@0.3.2':
     dependencies:

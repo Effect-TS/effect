@@ -399,6 +399,21 @@ export const dumpAll: (
   fibers: Iterable<RuntimeFiber<unknown, unknown>>
 ) => Effect.Effect<Array<Fiber.Dump>> = internal.dumpAll
 
+export const dumpGraph: (
+  roots: Iterable<RuntimeFiber<unknown, unknown>>,
+  options?: {
+    readonly output?: "nodes" | "graph" | "dot"
+    readonly include?: {
+      readonly children?: boolean
+      readonly blockingOn?: boolean
+      readonly roots?: boolean
+      readonly threadName?: boolean
+    }
+    readonly maxDepth?: number
+    readonly settle?: { readonly iterations?: number }
+  }
+) => Effect.Effect<unknown> = internal.dumpGraph
+
 /**
  * A fiber that has already failed with the specified value.
  *
