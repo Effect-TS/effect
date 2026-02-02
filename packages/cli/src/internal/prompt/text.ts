@@ -49,7 +49,10 @@ function renderClearScreen(state: State, options: Options) {
         )
     })
     // Ensure that the prior prompt output is cleaned up
-    const clearOutput = InternalAnsiUtils.eraseText(options.message, columns)
+    // Calculate full rendered line: "? " + message + " › " + input
+    const inputValue = state.value.length > 0 ? state.value : options.default
+    const fullLine = `? ${options.message} \u203a ${inputValue}`
+    const clearOutput = InternalAnsiUtils.eraseText(fullLine, columns)
     // Concatenate and render all documents
     return clearError.pipe(
       Doc.cat(clearOutput),
