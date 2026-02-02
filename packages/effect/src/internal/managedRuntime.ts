@@ -87,6 +87,9 @@ export const make = <R, ER>(
     dispose(): Promise<void> {
       return internalRuntime.unsafeRunPromiseEffect(self.disposeEffect)
     },
+    [Symbol.asyncDispose](): Promise<void> {
+      return self.dispose()
+    },
     disposeEffect: core.suspend(() => {
       ;(self as Mutable<ManagedRuntimeImpl<R, ER>>).runtimeEffect = core.die("ManagedRuntime disposed")
       self.cachedRuntime = undefined

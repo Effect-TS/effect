@@ -127,6 +127,23 @@ export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runt
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
 
+  /**
+   * Allows using `await using` syntax for automatic resource disposal.
+   *
+   * @example
+   * ```ts
+   * import { Effect, Layer, ManagedRuntime } from "effect"
+   *
+   * const program = async () => {
+   *   await using runtime = ManagedRuntime.make(Layer.empty)
+   *   // runtime is automatically disposed when leaving scope
+   * }
+   * ```
+   *
+   * @since 3.15.0
+   */
+  readonly [Symbol.asyncDispose]: () => Promise<void>
+
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: ManagedRuntimeUnify<this>
   readonly [Unify.ignoreSymbol]?: ManagedRuntimeUnifyIgnore

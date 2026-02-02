@@ -76,4 +76,27 @@ describe("ManagedRuntime", () => {
     const result = Context.get(runtime.context, tag)
     strictEqual(result, "test")
   })
+
+  test("has Symbol.asyncDispose", async () => {
+    const runtime = ManagedRuntime.make(Layer.empty)
+    strictEqual(Symbol.asyncDispose in runtime, true)
+    strictEqual(typeof runtime[Symbol.asyncDispose], "function")
+    await runtime.dispose()
+  })
+
+  test("Symbol.asyncDispose disposes the runtime", async () => {
+    let disposed = false
+    const layer = Layer.scopedDiscard(
+      Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          disposed = true
+        })
+      )
+    )
+    const runtime = ManagedRuntime.make(layer)
+    await runtime.runPromise(Effect.void)
+    strictEqual(disposed, false)
+    await runtime[Symbol.asyncDispose]()
+    strictEqual(disposed, true)
+  })
 })
