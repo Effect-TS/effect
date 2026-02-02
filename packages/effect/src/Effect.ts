@@ -72,7 +72,7 @@ import type {
   NotFunction
 } from "./Types.js"
 import type * as Unify from "./Unify.js"
-import { isGeneratorFunction, type YieldWrap } from "./Utils.js"
+import { type YieldWrap } from "./Utils.js"
 
 /**
  * @since 2.0.0
@@ -14697,15 +14697,19 @@ function fnApply(options: {
 }) {
   let effect: Effect<any, any, any>
   let fnError: any = undefined
-  if (isGeneratorFunction(options.body)) {
-    effect = core.fromIterator(() => options.body.apply(options.self, options.args))
-  } else {
-    try {
-      effect = options.body.apply(options.self, options.args)
-    } catch (error) {
-      fnError = error
-      effect = die(error)
-    }
+  try {
+    let effectOrIter = options.body.apply(options.self, options.args)
+    effect = isEffect(effectOrIter) ? effectOrIter : core.fromIterator(() => {
+      if (effectOrIter) {
+        const iter = effectOrIter
+        effectOrIter = undefined
+        return iter
+      }
+      return options.body.apply(options.self, options.args)
+    })
+  } catch (error) {
+    fnError = error
+    effect = die(error)
   }
   if (options.pipeables.length > 0) {
     try {
