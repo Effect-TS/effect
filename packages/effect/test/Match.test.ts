@@ -207,6 +207,36 @@ describe("Match", () => {
     doesNotThrow(() => match(undefined))
   })
 
+  it("Match.tag with nullable union", () => {
+    const match = M.type<{ _tag: "A" } | undefined>().pipe(
+      M.tag("A", () => "matched A"),
+      M.when(undefined, () => "matched undefined"),
+      M.exhaustive
+    )
+    strictEqual(match({ _tag: "A" }), "matched A")
+    strictEqual(match(undefined), "matched undefined")
+  })
+
+  it("Match.tag with null union", () => {
+    const match = M.type<{ _tag: "A" } | null>().pipe(
+      M.tag("A", () => "matched A"),
+      M.when(null, () => "matched null"),
+      M.exhaustive
+    )
+    strictEqual(match({ _tag: "A" }), "matched A")
+    strictEqual(match(null), "matched null")
+  })
+
+  it("Match.tagStartsWith with nullable union", () => {
+    const match = M.type<{ _tag: "A.B" } | undefined>().pipe(
+      M.tagStartsWith("A", () => "matched A prefix"),
+      M.when(undefined, () => "matched undefined"),
+      M.exhaustive
+    )
+    strictEqual(match({ _tag: "A.B" }), "matched A prefix")
+    strictEqual(match(undefined), "matched undefined")
+  })
+
   it("discriminator multiple", () => {
     const result = pipe(
       M.value(Either.right(0)),

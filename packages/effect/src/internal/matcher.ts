@@ -351,8 +351,8 @@ export const discriminator = <D extends string>(field: D) =>
   const f = pattern[pattern.length - 1]
   const values: Array<P> = pattern.slice(0, -1) as any
   const pred = values.length === 1
-    ? (_: any) => _[field] === values[0]
-    : (_: any) => values.includes(_[field])
+    ? (_: any) => _ != null && _[field] === values[0]
+    : (_: any) => _ != null && values.includes(_[field])
 
   return <I, F, A, Pr>(
     self: Matcher<I, F, R, A, Pr, Ret>
@@ -377,7 +377,7 @@ export const discriminatorStartsWith = <D extends string>(field: D) =>
   pattern: P,
   f: Fn
 ) => {
-  const pred = (_: any) => typeof _[field] === "string" && _[field].startsWith(pattern)
+  const pred = (_: any) => _ != null && typeof _[field] === "string" && _[field].startsWith(pattern)
 
   return <I, F, A, Pr>(
     self: Matcher<I, F, R, A, Pr, Ret>
