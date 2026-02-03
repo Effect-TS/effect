@@ -175,12 +175,25 @@ function handleRender<A>(options: SelectOptions<A>) {
   }
 }
 
-export function handleClear<A>(options: SelectOptions<A>) {
+export function handleClear<A>(options: SelectOptions<A>, state: State) {
   return Effect.gen(function*() {
     const terminal = yield* Terminal.Terminal
     const columns = yield* terminal.columns
     const clearPrompt = Doc.cat(Doc.eraseLine, Doc.cursorLeft)
-    const text = "\n".repeat(Math.min(options.choices.length, options.maxPerPage)) + options.message
+    // Calculate actual content length per displayed choice to account for line wrapping
+    const toDisplay = entriesToDisplay(state, options.choices.length, options.maxPerPage)
+    const choiceLines: Array<string> = []
+    for (let i = toDisplay.startIndex; i < toDisplay.endIndex; i++) {
+      const choice = options.choices[i]
+      const isSelected = state === i
+      // Approximate rendered line: prefix (2 chars) + title + description (only shown when selected)
+      let line = "  " + choice.title
+      if (isSelected && choice.description) {
+        line += " - " + choice.description
+      }
+      choiceLines.push(line)
+    }
+    const text = choiceLines.join("\n") + "\n" + options.message
     const clearOutput = InternalAnsiUtils.eraseText(text, columns)
     return clearOutput.pipe(
       Doc.cat(clearPrompt),
@@ -243,6 +256,6 @@ export const select = <const A>(options: Prompt.Prompt.SelectOptions<A>): Prompt
   return InternalPrompt.custom(initialIndex, {
     render: handleRender(opts),
     process: handleProcess(opts),
-    clear: () => handleClear(opts)
+    clear: (state) => handleClear(opts, state)
   })
 }
