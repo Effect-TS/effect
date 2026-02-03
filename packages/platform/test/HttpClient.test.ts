@@ -202,6 +202,50 @@ describe("HttpClient", () => {
     )
   })
 
+  describe("appendUrl", () => {
+    it("joins path without trailing slash on base", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins path with trailing slash on base", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1/").pipe(
+        HttpClientRequest.appendUrl("users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins path with leading slash", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("/users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins path with both trailing and leading slashes", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1/").pipe(
+        HttpClientRequest.appendUrl("/users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins nested paths", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("users/123/posts")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users/123/posts")
+    })
+
+    it("handles empty path", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("")
+      )
+      strictEqual(request.url, "https://api.example.com/v1")
+    })
+  })
+
   it.effect("matchStatus", () =>
     Effect.gen(function*() {
       const jp = yield* JsonPlaceholder
