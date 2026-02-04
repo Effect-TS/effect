@@ -1,5 +1,15 @@
 # @effect/ai-openrouter
 
+## 0.8.2
+
+### Patch Changes
+
+- [#6026](https://github.com/Effect-TS/effect/pull/6026) [`38241de`](https://github.com/Effect-TS/effect/commit/38241dee2319d051f3ab15781f73f838d626ac24) Thanks @IMax153! - Fix the OpenRouter AI provider schemas
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
 ## 0.8.1
 
 ### Patch Changes
