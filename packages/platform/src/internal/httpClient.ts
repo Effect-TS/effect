@@ -755,7 +755,7 @@ export const retryTransient: {
   >(
     options: {
       readonly mode?: Mode | undefined
-      readonly while?: Predicate.Predicate<NoInfer<Input>>
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<Input>, R1>
@@ -773,7 +773,7 @@ export const retryTransient: {
     self: Client.HttpClient.With<E, R>,
     options: {
       readonly mode?: Mode | undefined
-      readonly while?: Predicate.Predicate<NoInfer<Input>>
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<Input>, R1>
@@ -784,7 +784,7 @@ export const retryTransient: {
     self: Client.HttpClient.With<E, R>,
     options: {
       readonly mode?: "errors-only" | "response-only" | "both" | undefined
-      readonly while?: Predicate.Predicate<ClientResponse.HttpClientResponse | NoInfer<E>>
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, ClientResponse.HttpClientResponse | NoInfer<E>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, ClientResponse.HttpClientResponse | NoInfer<E>, R1>
@@ -800,9 +800,7 @@ export const retryTransient: {
         mode === "errors-only" ? identity : Effect.repeat({
           schedule: passthroughSchedule,
           times,
-          while: isOnlySchedule || options.while === undefined
-            ? isTransientResponse
-            : Predicate.and(isTransientResponse, options.while)
+          while: isTransientResponse
         }),
         mode === "response-only" ? identity : Effect.retry({
           while: isOnlySchedule || options.while === undefined
@@ -824,7 +822,13 @@ const isTransientHttpError = (error: unknown) =>
   ((error._tag === "RequestError" && error.reason === "Transport") ||
     (error._tag === "ResponseError" && isTransientResponse(error.response)))
 
-const isTransientResponse = (response: ClientResponse.HttpClientResponse) => response.status >= 429
+const isTransientResponse = (response: ClientResponse.HttpClientResponse) =>
+  response.status === 408 ||
+  response.status === 429 ||
+  response.status === 500 ||
+  response.status === 502 ||
+  response.status === 503 ||
+  response.status === 504
 
 /** @internal */
 export const tap = dual<

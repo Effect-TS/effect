@@ -534,7 +534,7 @@ export const retryTransient: {
   >(
     options: {
       readonly mode?: Mode | undefined
-      readonly while?: Predicate.Predicate<NoInfer<Input>>
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<Input>, R1>
@@ -552,7 +552,7 @@ export const retryTransient: {
     self: HttpClient.With<E, R>,
     options: {
       readonly mode?: Mode | undefined
-      readonly while?: Predicate.Predicate<NoInfer<Input>>
+      readonly while?: Predicate.Predicate<NoInfer<E>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
     } | Schedule.Schedule<B, NoInfer<Input>, R1>
