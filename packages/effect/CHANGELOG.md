@@ -1,5 +1,15 @@
 # effect
 
+## 3.19.16
+
+### Patch Changes
+
+- [#6018](https://github.com/Effect-TS/effect/pull/6018) [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49) Thanks @codewithkenzo! - fix(Match): handle null/undefined in `Match.tag` and `Match.tagStartsWith`
+
+  Added null checks to `discriminator` and `discriminatorStartsWith` predicates to prevent crashes when matching nullable union types.
+
+  Fixes #6017
+
 ## 3.19.15
 
 ### Patch Changes

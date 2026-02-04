@@ -1,5 +1,38 @@
 # @effect/platform
 
+## 0.94.3
+
+### Patch Changes
+
+- [#6021](https://github.com/Effect-TS/effect/pull/6021) [`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7) Thanks @codewithkenzo! - Fix `HttpClientRequest.appendUrl` to properly join URL paths.
+
+  Previously, `appendUrl` used simple string concatenation which could produce invalid URLs:
+
+  ```typescript
+  // Before (broken):
+  appendUrl("https://api.example.com/v1", "users")
+  // Result: "https://api.example.com/v1users" (missing slash!)
+  ```
+
+  Now it ensures proper path joining:
+
+  ```typescript
+  // After (fixed):
+  appendUrl("https://api.example.com/v1", "users")
+  // Result: "https://api.example.com/v1/users"
+  ```
+
+- [#6019](https://github.com/Effect-TS/effect/pull/6019) [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e) Thanks @codewithkenzo! - Fix `retryTransient` to use correct transient status codes
+
+  Changed `isTransientResponse` from `status >= 429` to an explicit allowlist (408, 429, 500, 502, 503, 504). This correctly excludes 501 (Not Implemented) and 505+ permanent errors, while including 408 (Request Timeout) which was previously missed.
+
+  Also aligned response retry behavior with v4: the `while` predicate now only applies to error retries, not response retries. Response retries are determined solely by `isTransientResponse`. This matches the semantic intent since `while` is typed for errors, not responses.
+
+  Fixes #5995
+
+- Updated dependencies [[`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49)]:
+  - effect@3.19.16
+
 ## 0.94.2
 
 ### Patch Changes

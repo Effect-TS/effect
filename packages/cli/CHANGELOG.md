@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.73.2
+
+### Patch Changes
+
+- [#6022](https://github.com/Effect-TS/effect/pull/6022) [`5df4da1`](https://github.com/Effect-TS/effect/commit/5df4da10de444f379a166f4b28721e75100bb838) Thanks @m9tdev! - Fixed `Prompt.text` rendering duplicate lines when input text wraps to a new terminal line.
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
 ## 0.73.1
 
 ### Patch Changes
