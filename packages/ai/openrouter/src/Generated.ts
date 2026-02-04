@@ -14,117 +14,14 @@ export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("Cache
   "type": S.Literal("ephemeral")
 }) {}
 
-export class ReasoningDetailSummaryType extends S.Literal("reasoning.summary") {}
-
-export class ReasoningDetailSummaryFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
-
-/**
- * Reasoning summary detail
- */
-export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("ReasoningDetailSummary")({
-  "type": ReasoningDetailSummaryType,
-  "summary": S.String,
-  "id": S.optionalWith(S.String, { nullable: true }),
-  "format": S.optionalWith(ReasoningDetailSummaryFormat, {
-    nullable: true,
-    default: () => "anthropic-claude-v1" as const
-  }),
-  "index": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-export class ReasoningDetailEncryptedType extends S.Literal("reasoning.encrypted") {}
-
-export class ReasoningDetailEncryptedFormat
-  extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1")
-{}
-
-/**
- * Encrypted reasoning detail
- */
-export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>("ReasoningDetailEncrypted")({
-  "type": ReasoningDetailEncryptedType,
-  "data": S.String,
-  "id": S.optionalWith(S.String, { nullable: true }),
-  "format": S.optionalWith(ReasoningDetailEncryptedFormat, {
-    nullable: true,
-    default: () => "anthropic-claude-v1" as const
-  }),
-  "index": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-export class ReasoningDetailTextType extends S.Literal("reasoning.text") {}
-
-export class ReasoningDetailTextFormat extends S.Literal("unknown", "openai-responses-v1", "anthropic-claude-v1") {}
-
-/**
- * Text reasoning detail
- */
-export class ReasoningDetailText extends S.Class<ReasoningDetailText>("ReasoningDetailText")({
-  "type": ReasoningDetailTextType,
-  "text": S.optionalWith(S.String, { nullable: true }),
-  "signature": S.optionalWith(S.String, { nullable: true }),
-  "id": S.optionalWith(S.String, { nullable: true }),
-  "format": S.optionalWith(ReasoningDetailTextFormat, {
-    nullable: true,
-    default: () => "anthropic-claude-v1" as const
-  }),
-  "index": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Reasoning detail information
- */
-export class ReasoningDetail extends S.Union(ReasoningDetailSummary, ReasoningDetailEncrypted, ReasoningDetailText) {}
-
-export class FileAnnotationDetailType extends S.Literal("file") {}
-
-/**
- * File annotation with content
- */
-export class FileAnnotationDetail extends S.Class<FileAnnotationDetail>("FileAnnotationDetail")({
-  "type": FileAnnotationDetailType,
-  "file": S.Struct({
-    "hash": S.String,
-    "name": S.optionalWith(S.String, { nullable: true }),
-    "content": S.Array(S.Union(
-      S.Struct({
-        "type": S.Literal("text"),
-        "text": S.String
-      }),
-      S.Struct({
-        "type": S.Literal("image_url"),
-        "image_url": S.Struct({
-          "url": S.String
-        })
-      })
-    ))
-  })
-}) {}
-
-export class URLCitationAnnotationDetailType extends S.Literal("url_citation") {}
-
-/**
- * URL citation annotation
- */
-export class URLCitationAnnotationDetail extends S.Class<URLCitationAnnotationDetail>("URLCitationAnnotationDetail")({
-  "type": URLCitationAnnotationDetailType,
-  "url_citation": S.Struct({
-    "end_index": S.Number,
-    "start_index": S.Number,
-    "title": S.String,
-    "url": S.String,
-    "content": S.optionalWith(S.String, { nullable: true })
-  })
-}) {}
-
-/**
- * Annotation information
- */
-export class AnnotationDetail extends S.Union(FileAnnotationDetail, URLCitationAnnotationDetail) {}
-
-export class OpenResponsesReasoningFormat
-  extends S.Literal("unknown", "openai-responses-v1", "xai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
-{}
+export class OpenResponsesReasoningFormat extends S.Literal(
+  "unknown",
+  "openai-responses-v1",
+  "azure-openai-responses-v1",
+  "xai-responses-v1",
+  "anthropic-claude-v1",
+  "google-gemini-v1"
+) {}
 
 export class OpenResponsesReasoningType extends S.Literal("reasoning") {}
 
@@ -158,6 +55,70 @@ export class OpenResponsesReasoning extends S.Class<OpenResponsesReasoning>("Ope
   )
 }) {}
 
+export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("ReasoningDetailSummary")({
+  id: S.optionalWith(S.String, { nullable: true }),
+  type: S.Literal("reasoning.summary"),
+  index: S.optional(S.Number),
+  format: S.optionalWith(OpenResponsesReasoningFormat, { nullable: true }),
+  summary: S.String
+}) {}
+
+export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>("ReasoningDetailEncrypted")({
+  id: S.optionalWith(S.String, { nullable: true }),
+  type: S.Literal("reasoning.encrypted"),
+  index: S.optional(S.Number),
+  format: S.optionalWith(OpenResponsesReasoningFormat, { nullable: true }),
+  data: S.String
+}) {}
+
+export class ReasoningDetailText extends S.Class<ReasoningDetailText>("ReasoningDetailText")({
+  id: S.optionalWith(S.String, { nullable: true }),
+  type: S.Literal("reasoning.text"),
+  index: S.optional(S.Number),
+  format: S.optionalWith(OpenResponsesReasoningFormat, { nullable: true }),
+  text: S.optionalWith(S.String, { nullable: true }),
+  signature: S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ReasoningDetail extends S.Union(
+  ReasoningDetailSummary,
+  ReasoningDetailEncrypted,
+  ReasoningDetailText
+) {}
+
+export class FileAnnotationDetail extends S.Class<FileAnnotationDetail>("FileAnnotationDetail")({
+  "type": S.Literal("file"),
+  "file": S.Struct({
+    "hash": S.String,
+    "name": S.optionalWith(S.String, { nullable: true }),
+    "content": S.Array(S.Union(
+      S.Struct({
+        "type": S.Literal("text"),
+        "text": S.String
+      }),
+      S.Struct({
+        "type": S.Literal("image_url"),
+        "image_url": S.Struct({
+          "url": S.String
+        })
+      })
+    ))
+  })
+}) {}
+
+export class URLCitationAnnotationDetail extends S.Class<URLCitationAnnotationDetail>("URLCitationAnnotationDetail")({
+  "type": S.Literal("url_citation"),
+  "url_citation": S.Struct({
+    "end_index": S.Number,
+    "start_index": S.Number,
+    "title": S.String,
+    "url": S.String,
+    "content": S.optionalWith(S.String, { nullable: true })
+  })
+}) {}
+
+export class AnnotationDetail extends S.Union(FileAnnotationDetail, URLCitationAnnotationDetail) {}
+
 export class OpenResponsesEasyInputMessageType extends S.Literal("message") {}
 
 export class OpenResponsesEasyInputMessageRoleEnum extends S.Literal("developer") {}
@@ -170,19 +131,6 @@ export class ResponseInputTextType extends S.Literal("input_text") {}
 export class ResponseInputText extends S.Class<ResponseInputText>("ResponseInputText")({
   "type": ResponseInputTextType,
   "text": S.String
-}) {}
-
-export class ResponseInputImageType extends S.Literal("input_image") {}
-
-export class ResponseInputImageDetail extends S.Literal("auto", "high", "low") {}
-
-/**
- * Image input content item
- */
-export class ResponseInputImage extends S.Class<ResponseInputImage>("ResponseInputImage")({
-  "type": ResponseInputImageType,
-  "detail": ResponseInputImageDetail,
-  "image_url": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class ResponseInputFileType extends S.Literal("input_file") {}
@@ -213,6 +161,19 @@ export class ResponseInputAudio extends S.Class<ResponseInputAudio>("ResponseInp
   })
 }) {}
 
+export class ResponseInputVideoType extends S.Literal("input_video") {}
+
+/**
+ * Video input content item
+ */
+export class ResponseInputVideo extends S.Class<ResponseInputVideo>("ResponseInputVideo")({
+  "type": ResponseInputVideoType,
+  /**
+   * A base64 data URL or remote URL that resolves to a video file
+   */
+  "video_url": S.String
+}) {}
+
 export class OpenResponsesEasyInputMessage
   extends S.Class<OpenResponsesEasyInputMessage>("OpenResponsesEasyInputMessage")({
     "type": S.optionalWith(OpenResponsesEasyInputMessageType, { nullable: true }),
@@ -223,7 +184,20 @@ export class OpenResponsesEasyInputMessage
       OpenResponsesEasyInputMessageRoleEnum
     ),
     "content": S.Union(
-      S.Array(S.Union(ResponseInputText, ResponseInputImage, ResponseInputFile, ResponseInputAudio)),
+      S.Array(S.Union(
+        ResponseInputText,
+        /**
+         * Image input content item
+         */
+        S.Struct({
+          "type": S.Literal("input_image"),
+          "detail": S.Literal("auto", "high", "low"),
+          "image_url": S.optionalWith(S.String, { nullable: true })
+        }),
+        ResponseInputFile,
+        ResponseInputAudio,
+        ResponseInputVideo
+      )),
       S.String
     )
   })
@@ -242,7 +216,20 @@ export class OpenResponsesInputMessageItem
       OpenResponsesInputMessageItemRoleEnum,
       OpenResponsesInputMessageItemRoleEnum
     ),
-    "content": S.Array(S.Union(ResponseInputText, ResponseInputImage, ResponseInputFile, ResponseInputAudio))
+    "content": S.Array(S.Union(
+      ResponseInputText,
+      /**
+       * Image input content item
+       */
+      S.Struct({
+        "type": S.Literal("input_image"),
+        "detail": S.Literal("auto", "high", "low"),
+        "image_url": S.optionalWith(S.String, { nullable: true })
+      }),
+      ResponseInputFile,
+      ResponseInputAudio,
+      ResponseInputVideo
+    ))
   })
 {}
 
@@ -319,7 +306,20 @@ export class OpenAIResponsesAnnotation extends S.Union(FileCitation, URLCitation
 export class ResponseOutputText extends S.Class<ResponseOutputText>("ResponseOutputText")({
   "type": ResponseOutputTextType,
   "text": S.String,
-  "annotations": S.optionalWith(S.Array(OpenAIResponsesAnnotation), { nullable: true })
+  "annotations": S.optionalWith(S.Array(OpenAIResponsesAnnotation), { nullable: true }),
+  "logprobs": S.optionalWith(
+    S.Array(S.Struct({
+      "token": S.String,
+      "bytes": S.Array(S.Number),
+      "logprob": S.Number,
+      "top_logprobs": S.Array(S.Struct({
+        "token": S.String,
+        "bytes": S.Array(S.Number),
+        "logprob": S.Number
+      }))
+    })),
+    { nullable: true }
+  )
 }) {}
 
 export class OpenAIResponsesRefusalContentType extends S.Literal("refusal") {}
@@ -342,12 +342,32 @@ export class ResponsesOutputMessage extends S.Class<ResponsesOutputMessage>("Res
   "content": S.Array(S.Union(ResponseOutputText, OpenAIResponsesRefusalContent))
 }) {}
 
+/**
+ * The format of the reasoning content
+ */
+export class ResponsesOutputItemReasoningFormat extends S.Literal(
+  "unknown",
+  "openai-responses-v1",
+  "azure-openai-responses-v1",
+  "xai-responses-v1",
+  "anthropic-claude-v1",
+  "google-gemini-v1"
+) {}
+
 export class ResponsesOutputItemReasoningType extends S.Literal("reasoning") {}
 
 export class ResponsesOutputItemReasoningStatusEnum extends S.Literal("in_progress") {}
 
 export class ResponsesOutputItemReasoning
   extends S.Class<ResponsesOutputItemReasoning>("ResponsesOutputItemReasoning")({
+    /**
+     * A signature for the reasoning content, used for verification
+     */
+    "signature": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The format of the reasoning content
+     */
+    "format": S.optionalWith(ResponsesOutputItemReasoningFormat, { nullable: true }),
     "type": ResponsesOutputItemReasoningType,
     "id": S.String,
     "content": S.optionalWith(S.Array(ReasoningTextContent), { nullable: true }),
@@ -625,6 +645,8 @@ export class OpenResponsesReasoningConfig
   })
 {}
 
+export class ResponsesOutputModality extends S.Literal("text", "image") {}
+
 export class OpenAIResponsesPrompt extends S.Class<OpenAIResponsesPrompt>("OpenAIResponsesPrompt")({
   "id": S.String,
   "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
@@ -679,12 +701,12 @@ export class ProviderName extends S.Literal(
   "Fireworks",
   "Friendli",
   "GMICloud",
-  "GoPomelo",
   "Google",
   "Google AI Studio",
   "Groq",
   "Hyperbolic",
   "Inception",
+  "Inceptron",
   "InferenceNet",
   "Infermatic",
   "Inflection",
@@ -709,13 +731,14 @@ export class ProviderName extends S.Literal(
   "Phala",
   "Relace",
   "SambaNova",
+  "Seed",
   "SiliconFlow",
   "Sourceful",
   "Stealth",
   "StreamLake",
   "Switchpoint",
-  "Targon",
   "Together",
+  "Upstage",
   "Venice",
   "WandB",
   "Xiaomi",
@@ -739,6 +762,60 @@ export class ProviderSortConfig extends S.Class<ProviderSortConfig>("ProviderSor
  * A value in string format that is a large number
  */
 export class BigNumberUnion extends S.String {}
+
+/**
+ * Percentile-based throughput cutoffs. All specified cutoffs must be met for an endpoint to be preferred.
+ */
+export class PercentileThroughputCutoffs extends S.Class<PercentileThroughputCutoffs>("PercentileThroughputCutoffs")({
+  /**
+   * Minimum p50 throughput (tokens/sec)
+   */
+  "p50": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Minimum p75 throughput (tokens/sec)
+   */
+  "p75": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Minimum p90 throughput (tokens/sec)
+   */
+  "p90": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Minimum p99 throughput (tokens/sec)
+   */
+  "p99": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * Preferred minimum throughput (in tokens per second). Can be a number (applies to p50) or an object with percentile-specific cutoffs. Endpoints below the threshold(s) may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+ */
+export class PreferredMinThroughput extends S.Union(S.Number, PercentileThroughputCutoffs) {}
+
+/**
+ * Percentile-based latency cutoffs. All specified cutoffs must be met for an endpoint to be preferred.
+ */
+export class PercentileLatencyCutoffs extends S.Class<PercentileLatencyCutoffs>("PercentileLatencyCutoffs")({
+  /**
+   * Maximum p50 latency (seconds)
+   */
+  "p50": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Maximum p75 latency (seconds)
+   */
+  "p75": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Maximum p90 latency (seconds)
+   */
+  "p90": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Maximum p99 latency (seconds)
+   */
+  "p99": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * Preferred maximum latency (in seconds). Can be a number (applies to p50) or an object with percentile-specific cutoffs. Endpoints above the threshold(s) may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+ */
+export class PreferredMaxLatency extends S.Union(S.Number, PercentileLatencyCutoffs) {}
 
 /**
  * The search engine to use for web search.
@@ -791,7 +868,23 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
   "max_output_tokens": S.optionalWith(S.Number, { nullable: true }),
   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), { nullable: true }),
   "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
+  "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
+  "max_tool_calls": S.optionalWith(S.Int, { nullable: true }),
+  "presence_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
+    nullable: true
+  }),
+  "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
+    nullable: true
+  }),
   "top_k": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Provider-specific image configuration options. Keys and values vary by model/provider. See https://openrouter.ai/docs/features/multimodal/image-generation for more details.
+   */
+  "image_config": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * Output modalities for the response. Supported values are "text" and "image".
+   */
+  "modalities": S.optionalWith(S.Array(ResponsesOutputModality), { nullable: true }),
   "prompt_cache_key": S.optionalWith(S.String, { nullable: true }),
   "previous_response_id": S.optionalWith(S.String, { nullable: true }),
   "prompt": S.optionalWith(OpenAIResponsesPrompt, { nullable: true }),
@@ -859,22 +952,8 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
         }),
         { nullable: true }
       ),
-      /**
-       * Preferred minimum throughput (in tokens per second). Endpoints below this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
-       */
-      "preferred_min_throughput": S.optionalWith(S.Number, { nullable: true }),
-      /**
-       * Preferred maximum latency (in seconds). Endpoints above this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
-       */
-      "preferred_max_latency": S.optionalWith(S.Number, { nullable: true }),
-      /**
-       * **DEPRECATED** Use preferred_min_throughput instead. Backwards-compatible alias for preferred_min_throughput.
-       */
-      "min_throughput": S.optionalWith(S.Number, { nullable: true }),
-      /**
-       * **DEPRECATED** Use preferred_max_latency instead. Backwards-compatible alias for preferred_max_latency.
-       */
-      "max_latency": S.optionalWith(S.Number, { nullable: true })
+      "preferred_min_throughput": S.optionalWith(PreferredMinThroughput, { nullable: true }),
+      "preferred_max_latency": S.optionalWith(PreferredMaxLatency, { nullable: true })
     }),
     { nullable: true }
   ),
@@ -883,6 +962,17 @@ export class OpenResponsesRequest extends S.Class<OpenResponsesRequest>("OpenRes
    */
   "plugins": S.optionalWith(
     S.Array(S.Union(
+      S.Struct({
+        "id": S.Literal("auto-router"),
+        /**
+         * Set to false to disable the auto-router plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+        /**
+         * List of model patterns to filter which models the auto-router can route between. Supports wildcards (e.g., "anthropic/*" matches all Anthropic models). When not specified, uses the default supported models list.
+         */
+        "allowed_models": S.optionalWith(S.Array(S.String), { nullable: true })
+      }),
       S.Struct({
         "id": S.Literal("moderation")
       }),
@@ -1059,6 +1149,19 @@ export class OpenAIResponsesIncompleteDetails
   })
 {}
 
+export class ResponseInputImageType extends S.Literal("input_image") {}
+
+export class ResponseInputImageDetail extends S.Literal("auto", "high", "low") {}
+
+/**
+ * Image input content item
+ */
+export class ResponseInputImage extends S.Class<ResponseInputImage>("ResponseInputImage")({
+  "type": ResponseInputImageType,
+  "detail": ResponseInputImageDetail,
+  "image_url": S.optionalWith(S.String, { nullable: true })
+}) {}
+
 export class OpenAIResponsesInput extends S.Union(
   S.String,
   S.Array(S.Union(
@@ -1134,7 +1237,8 @@ export class OpenResponsesNonStreamingResponse
     "object": OpenResponsesNonStreamingResponseObject,
     "created_at": S.Number,
     "model": S.String,
-    "status": S.optionalWith(OpenAIResponsesResponseStatus, { nullable: true }),
+    "status": OpenAIResponsesResponseStatus,
+    "completed_at": S.NullOr(S.Number),
     "user": S.optionalWith(S.String, { nullable: true }),
     "output_text": S.optionalWith(S.String, { nullable: true }),
     "prompt_cache_key": S.optionalWith(S.String, { nullable: true }),
@@ -1146,6 +1250,8 @@ export class OpenResponsesNonStreamingResponse
     "max_output_tokens": S.optionalWith(S.Number, { nullable: true }),
     "temperature": S.NullOr(S.Number),
     "top_p": S.NullOr(S.Number),
+    "presence_penalty": S.NullOr(S.Number),
+    "frequency_penalty": S.NullOr(S.Number),
     "instructions": OpenAIResponsesInput,
     "metadata": S.NullOr(OpenResponsesRequestMetadata),
     "tools": S.Array(S.Union(
@@ -1412,6 +1518,982 @@ export class ProviderOverloadedResponse extends S.Class<ProviderOverloadedRespon
   "user_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
+export class OpenRouterAnthropicMessageParamRole extends S.Literal("user", "assistant") {}
+
+/**
+ * Anthropic message with OpenRouter extensions
+ */
+export class OpenRouterAnthropicMessageParam
+  extends S.Class<OpenRouterAnthropicMessageParam>("OpenRouterAnthropicMessageParam")({
+    "role": OpenRouterAnthropicMessageParamRole,
+    "content": S.Union(
+      S.String,
+      S.Array(S.Union(
+        S.Struct({
+          "type": S.Literal("text"),
+          "text": S.String,
+          "citations": S.optionalWith(
+            S.Array(S.Union(
+              S.Struct({
+                "type": S.Literal("char_location"),
+                "cited_text": S.String,
+                "document_index": S.Number,
+                "document_title": S.NullOr(S.String),
+                "start_char_index": S.Number,
+                "end_char_index": S.Number
+              }),
+              S.Struct({
+                "type": S.Literal("page_location"),
+                "cited_text": S.String,
+                "document_index": S.Number,
+                "document_title": S.NullOr(S.String),
+                "start_page_number": S.Number,
+                "end_page_number": S.Number
+              }),
+              S.Struct({
+                "type": S.Literal("content_block_location"),
+                "cited_text": S.String,
+                "document_index": S.Number,
+                "document_title": S.NullOr(S.String),
+                "start_block_index": S.Number,
+                "end_block_index": S.Number
+              }),
+              S.Struct({
+                "type": S.Literal("web_search_result_location"),
+                "cited_text": S.String,
+                "encrypted_index": S.String,
+                "title": S.NullOr(S.String),
+                "url": S.String
+              }),
+              S.Struct({
+                "type": S.Literal("search_result_location"),
+                "cited_text": S.String,
+                "search_result_index": S.Number,
+                "source": S.String,
+                "title": S.NullOr(S.String),
+                "start_block_index": S.Number,
+                "end_block_index": S.Number
+              })
+            )),
+            { nullable: true }
+          ),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("image"),
+          "source": S.Union(
+            S.Struct({
+              "type": S.Literal("base64"),
+              "media_type": S.Literal("image/jpeg", "image/png", "image/gif", "image/webp"),
+              "data": S.String
+            }),
+            S.Struct({
+              "type": S.Literal("url"),
+              "url": S.String
+            })
+          ),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("document"),
+          "source": S.Union(
+            S.Struct({
+              "type": S.Literal("base64"),
+              "media_type": S.Literal("application/pdf"),
+              "data": S.String
+            }),
+            S.Struct({
+              "type": S.Literal("text"),
+              "media_type": S.Literal("text/plain"),
+              "data": S.String
+            }),
+            S.Struct({
+              "type": S.Literal("content"),
+              "content": S.Union(
+                S.String,
+                S.Array(S.Union(
+                  S.Struct({
+                    "type": S.Literal("text"),
+                    "text": S.String,
+                    "citations": S.optionalWith(
+                      S.Array(S.Union(
+                        S.Struct({
+                          "type": S.Literal("char_location"),
+                          "cited_text": S.String,
+                          "document_index": S.Number,
+                          "document_title": S.NullOr(S.String),
+                          "start_char_index": S.Number,
+                          "end_char_index": S.Number
+                        }),
+                        S.Struct({
+                          "type": S.Literal("page_location"),
+                          "cited_text": S.String,
+                          "document_index": S.Number,
+                          "document_title": S.NullOr(S.String),
+                          "start_page_number": S.Number,
+                          "end_page_number": S.Number
+                        }),
+                        S.Struct({
+                          "type": S.Literal("content_block_location"),
+                          "cited_text": S.String,
+                          "document_index": S.Number,
+                          "document_title": S.NullOr(S.String),
+                          "start_block_index": S.Number,
+                          "end_block_index": S.Number
+                        }),
+                        S.Struct({
+                          "type": S.Literal("web_search_result_location"),
+                          "cited_text": S.String,
+                          "encrypted_index": S.String,
+                          "title": S.NullOr(S.String),
+                          "url": S.String
+                        }),
+                        S.Struct({
+                          "type": S.Literal("search_result_location"),
+                          "cited_text": S.String,
+                          "search_result_index": S.Number,
+                          "source": S.String,
+                          "title": S.NullOr(S.String),
+                          "start_block_index": S.Number,
+                          "end_block_index": S.Number
+                        })
+                      )),
+                      { nullable: true }
+                    ),
+                    "cache_control": S.optionalWith(
+                      S.Struct({
+                        "type": S.Literal("ephemeral"),
+                        "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+                      }),
+                      { nullable: true }
+                    )
+                  }),
+                  S.Struct({
+                    "type": S.Literal("image"),
+                    "source": S.Union(
+                      S.Struct({
+                        "type": S.Literal("base64"),
+                        "media_type": S.Literal("image/jpeg", "image/png", "image/gif", "image/webp"),
+                        "data": S.String
+                      }),
+                      S.Struct({
+                        "type": S.Literal("url"),
+                        "url": S.String
+                      })
+                    ),
+                    "cache_control": S.optionalWith(
+                      S.Struct({
+                        "type": S.Literal("ephemeral"),
+                        "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+                      }),
+                      { nullable: true }
+                    )
+                  })
+                ))
+              )
+            }),
+            S.Struct({
+              "type": S.Literal("url"),
+              "url": S.String
+            })
+          ),
+          "citations": S.optionalWith(
+            S.Struct({
+              "enabled": S.optionalWith(S.Boolean, { nullable: true })
+            }),
+            { nullable: true }
+          ),
+          "context": S.optionalWith(S.String, { nullable: true }),
+          "title": S.optionalWith(S.String, { nullable: true }),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("tool_use"),
+          "id": S.String,
+          "name": S.String,
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("tool_result"),
+          "tool_use_id": S.String,
+          "content": S.optionalWith(
+            S.Union(
+              S.String,
+              S.Array(S.Union(
+                S.Struct({
+                  "type": S.Literal("text"),
+                  "text": S.String,
+                  "citations": S.optionalWith(
+                    S.Array(S.Union(
+                      S.Struct({
+                        "type": S.Literal("char_location"),
+                        "cited_text": S.String,
+                        "document_index": S.Number,
+                        "document_title": S.NullOr(S.String),
+                        "start_char_index": S.Number,
+                        "end_char_index": S.Number
+                      }),
+                      S.Struct({
+                        "type": S.Literal("page_location"),
+                        "cited_text": S.String,
+                        "document_index": S.Number,
+                        "document_title": S.NullOr(S.String),
+                        "start_page_number": S.Number,
+                        "end_page_number": S.Number
+                      }),
+                      S.Struct({
+                        "type": S.Literal("content_block_location"),
+                        "cited_text": S.String,
+                        "document_index": S.Number,
+                        "document_title": S.NullOr(S.String),
+                        "start_block_index": S.Number,
+                        "end_block_index": S.Number
+                      }),
+                      S.Struct({
+                        "type": S.Literal("web_search_result_location"),
+                        "cited_text": S.String,
+                        "encrypted_index": S.String,
+                        "title": S.NullOr(S.String),
+                        "url": S.String
+                      }),
+                      S.Struct({
+                        "type": S.Literal("search_result_location"),
+                        "cited_text": S.String,
+                        "search_result_index": S.Number,
+                        "source": S.String,
+                        "title": S.NullOr(S.String),
+                        "start_block_index": S.Number,
+                        "end_block_index": S.Number
+                      })
+                    )),
+                    { nullable: true }
+                  ),
+                  "cache_control": S.optionalWith(
+                    S.Struct({
+                      "type": S.Literal("ephemeral"),
+                      "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+                    }),
+                    { nullable: true }
+                  )
+                }),
+                S.Struct({
+                  "type": S.Literal("image"),
+                  "source": S.Union(
+                    S.Struct({
+                      "type": S.Literal("base64"),
+                      "media_type": S.Literal("image/jpeg", "image/png", "image/gif", "image/webp"),
+                      "data": S.String
+                    }),
+                    S.Struct({
+                      "type": S.Literal("url"),
+                      "url": S.String
+                    })
+                  ),
+                  "cache_control": S.optionalWith(
+                    S.Struct({
+                      "type": S.Literal("ephemeral"),
+                      "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+                    }),
+                    { nullable: true }
+                  )
+                })
+              ))
+            ),
+            { nullable: true }
+          ),
+          "is_error": S.optionalWith(S.Boolean, { nullable: true }),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("thinking"),
+          "thinking": S.String,
+          "signature": S.String
+        }),
+        S.Struct({
+          "type": S.Literal("redacted_thinking"),
+          "data": S.String
+        }),
+        S.Struct({
+          "type": S.Literal("server_tool_use"),
+          "id": S.String,
+          "name": S.Literal("web_search"),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("web_search_tool_result"),
+          "tool_use_id": S.String,
+          "content": S.Union(
+            S.Array(S.Struct({
+              "type": S.Literal("web_search_result"),
+              "encrypted_content": S.String,
+              "title": S.String,
+              "url": S.String,
+              "page_age": S.optionalWith(S.String, { nullable: true })
+            })),
+            S.Struct({
+              "type": S.Literal("web_search_tool_result_error"),
+              "error_code": S.Literal(
+                "invalid_tool_input",
+                "unavailable",
+                "max_uses_exceeded",
+                "too_many_requests",
+                "query_too_long"
+              )
+            })
+          ),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        }),
+        S.Struct({
+          "type": S.Literal("search_result"),
+          "source": S.String,
+          "title": S.String,
+          "content": S.Array(S.Struct({
+            "type": S.Literal("text"),
+            "text": S.String,
+            "citations": S.optionalWith(
+              S.Array(S.Union(
+                S.Struct({
+                  "type": S.Literal("char_location"),
+                  "cited_text": S.String,
+                  "document_index": S.Number,
+                  "document_title": S.NullOr(S.String),
+                  "start_char_index": S.Number,
+                  "end_char_index": S.Number
+                }),
+                S.Struct({
+                  "type": S.Literal("page_location"),
+                  "cited_text": S.String,
+                  "document_index": S.Number,
+                  "document_title": S.NullOr(S.String),
+                  "start_page_number": S.Number,
+                  "end_page_number": S.Number
+                }),
+                S.Struct({
+                  "type": S.Literal("content_block_location"),
+                  "cited_text": S.String,
+                  "document_index": S.Number,
+                  "document_title": S.NullOr(S.String),
+                  "start_block_index": S.Number,
+                  "end_block_index": S.Number
+                }),
+                S.Struct({
+                  "type": S.Literal("web_search_result_location"),
+                  "cited_text": S.String,
+                  "encrypted_index": S.String,
+                  "title": S.NullOr(S.String),
+                  "url": S.String
+                }),
+                S.Struct({
+                  "type": S.Literal("search_result_location"),
+                  "cited_text": S.String,
+                  "search_result_index": S.Number,
+                  "source": S.String,
+                  "title": S.NullOr(S.String),
+                  "start_block_index": S.Number,
+                  "end_block_index": S.Number
+                })
+              )),
+              { nullable: true }
+            ),
+            "cache_control": S.optionalWith(
+              S.Struct({
+                "type": S.Literal("ephemeral"),
+                "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+              }),
+              { nullable: true }
+            )
+          })),
+          "citations": S.optionalWith(
+            S.Struct({
+              "enabled": S.optionalWith(S.Boolean, { nullable: true })
+            }),
+            { nullable: true }
+          ),
+          "cache_control": S.optionalWith(
+            S.Struct({
+              "type": S.Literal("ephemeral"),
+              "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+            }),
+            { nullable: true }
+          )
+        })
+      ))
+    )
+  })
+{}
+
+export class AnthropicMessagesRequestToolChoiceEnumType extends S.Literal("tool") {}
+
+export class AnthropicMessagesRequestThinkingEnumType extends S.Literal("disabled") {}
+
+export class AnthropicMessagesRequestServiceTier extends S.Literal("auto", "standard_only") {}
+
+/**
+ * The sorting strategy to use for this request, if "order" is not specified. When set, no load balancing is performed.
+ */
+export class AnthropicMessagesRequestProviderSort extends S.Literal("price", "throughput", "latency") {}
+
+/**
+ * **DEPRECATED** Use providers.sort.partition instead. Backwards-compatible alias for providers.sort.partition. Accepts legacy values: "fallback" (maps to "model"), "sort" (maps to "none").
+ */
+export class AnthropicMessagesRequestRoute extends S.Literal("fallback", "sort") {}
+
+/**
+ * Request schema for Anthropic Messages API endpoint
+ */
+export class AnthropicMessagesRequest extends S.Class<AnthropicMessagesRequest>("AnthropicMessagesRequest")({
+  "model": S.String,
+  "max_tokens": S.Number,
+  "messages": S.Array(OpenRouterAnthropicMessageParam),
+  "system": S.optionalWith(
+    S.Union(
+      S.String,
+      S.Array(S.Struct({
+        "type": S.Literal("text"),
+        "text": S.String,
+        "citations": S.optionalWith(
+          S.Array(S.Union(
+            S.Struct({
+              "type": S.Literal("char_location"),
+              "cited_text": S.String,
+              "document_index": S.Number,
+              "document_title": S.NullOr(S.String),
+              "start_char_index": S.Number,
+              "end_char_index": S.Number
+            }),
+            S.Struct({
+              "type": S.Literal("page_location"),
+              "cited_text": S.String,
+              "document_index": S.Number,
+              "document_title": S.NullOr(S.String),
+              "start_page_number": S.Number,
+              "end_page_number": S.Number
+            }),
+            S.Struct({
+              "type": S.Literal("content_block_location"),
+              "cited_text": S.String,
+              "document_index": S.Number,
+              "document_title": S.NullOr(S.String),
+              "start_block_index": S.Number,
+              "end_block_index": S.Number
+            }),
+            S.Struct({
+              "type": S.Literal("web_search_result_location"),
+              "cited_text": S.String,
+              "encrypted_index": S.String,
+              "title": S.NullOr(S.String),
+              "url": S.String
+            }),
+            S.Struct({
+              "type": S.Literal("search_result_location"),
+              "cited_text": S.String,
+              "search_result_index": S.Number,
+              "source": S.String,
+              "title": S.NullOr(S.String),
+              "start_block_index": S.Number,
+              "end_block_index": S.Number
+            })
+          )),
+          { nullable: true }
+        ),
+        "cache_control": S.optionalWith(
+          S.Struct({
+            "type": S.Literal("ephemeral"),
+            "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+          }),
+          { nullable: true }
+        )
+      }))
+    ),
+    { nullable: true }
+  ),
+  "metadata": S.optionalWith(
+    S.Struct({
+      "user_id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "stop_sequences": S.optionalWith(S.Array(S.String), { nullable: true }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  "temperature": S.optionalWith(S.Number, { nullable: true }),
+  "top_p": S.optionalWith(S.Number, { nullable: true }),
+  "top_k": S.optionalWith(S.Number, { nullable: true }),
+  "tools": S.optionalWith(
+    S.Array(S.Union(
+      S.Struct({
+        "name": S.String,
+        "description": S.optionalWith(S.String, { nullable: true }),
+        "input_schema": S.Struct({
+          "type": S.Literal("object"),
+          "required": S.optionalWith(S.Array(S.String), { nullable: true })
+        }),
+        "type": S.optionalWith(S.Literal("custom"), { nullable: true }),
+        "cache_control": S.optionalWith(
+          S.Struct({
+            "type": S.Literal("ephemeral"),
+            "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+          }),
+          { nullable: true }
+        )
+      }),
+      S.Struct({
+        "type": S.Literal("bash_20250124"),
+        "name": S.Literal("bash"),
+        "cache_control": S.optionalWith(
+          S.Struct({
+            "type": S.Literal("ephemeral"),
+            "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+          }),
+          { nullable: true }
+        )
+      }),
+      S.Struct({
+        "type": S.Literal("text_editor_20250124"),
+        "name": S.Literal("str_replace_editor"),
+        "cache_control": S.optionalWith(
+          S.Struct({
+            "type": S.Literal("ephemeral"),
+            "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+          }),
+          { nullable: true }
+        )
+      }),
+      S.Struct({
+        "type": S.Literal("web_search_20250305"),
+        "name": S.Literal("web_search"),
+        "allowed_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+        "blocked_domains": S.optionalWith(S.Array(S.String), { nullable: true }),
+        "max_uses": S.optionalWith(S.Number, { nullable: true }),
+        "user_location": S.optionalWith(
+          S.Struct({
+            "type": S.Literal("approximate"),
+            "city": S.optionalWith(S.String, { nullable: true }),
+            "country": S.optionalWith(S.String, { nullable: true }),
+            "region": S.optionalWith(S.String, { nullable: true }),
+            "timezone": S.optionalWith(S.String, { nullable: true })
+          }),
+          { nullable: true }
+        ),
+        "cache_control": S.optionalWith(
+          S.Struct({
+            "type": S.Literal("ephemeral"),
+            "ttl": S.optionalWith(S.Literal("5m", "1h"), { nullable: true })
+          }),
+          { nullable: true }
+        )
+      })
+    )),
+    { nullable: true }
+  ),
+  "tool_choice": S.optionalWith(
+    S.Union(
+      S.Struct({
+        "type": AnthropicMessagesRequestToolChoiceEnumType,
+        "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true })
+      }),
+      S.Struct({
+        "type": AnthropicMessagesRequestToolChoiceEnumType,
+        "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true })
+      }),
+      S.Struct({
+        "type": AnthropicMessagesRequestToolChoiceEnumType
+      }),
+      S.Struct({
+        "type": AnthropicMessagesRequestToolChoiceEnumType,
+        "name": S.String,
+        "disable_parallel_tool_use": S.optionalWith(S.Boolean, { nullable: true })
+      })
+    ),
+    { nullable: true }
+  ),
+  "thinking": S.optionalWith(
+    S.Union(
+      S.Struct({
+        "type": AnthropicMessagesRequestThinkingEnumType,
+        "budget_tokens": S.Number
+      }),
+      S.Struct({
+        "type": AnthropicMessagesRequestThinkingEnumType
+      })
+    ),
+    { nullable: true }
+  ),
+  "service_tier": S.optionalWith(AnthropicMessagesRequestServiceTier, { nullable: true }),
+  /**
+   * When multiple model providers are available, optionally indicate your routing preference.
+   */
+  "provider": S.optionalWith(
+    S.Struct({
+      /**
+       * Whether to allow backup providers to serve requests
+       * - true: (default) when the primary provider (or your custom providers in "order") is unavailable, use the next best provider.
+       * - false: use only the primary/custom provider, and return the upstream error if it's unavailable.
+       */
+      "allow_fallbacks": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * Whether to filter providers to only those that support the parameters you've provided. If this setting is omitted or set to false, then providers will receive only the parameters they support, and ignore the rest.
+       */
+      "require_parameters": S.optionalWith(S.Boolean, { nullable: true }),
+      "data_collection": S.optionalWith(DataCollection, { nullable: true }),
+      /**
+       * Whether to restrict routing to only ZDR (Zero Data Retention) endpoints. When true, only endpoints that do not retain prompts will be used.
+       */
+      "zdr": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * Whether to restrict routing to only models that allow text distillation. When true, only models where the author has allowed distillation will be used.
+       */
+      "enforce_distillable_text": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * An ordered list of provider slugs. The router will attempt to use the first provider in the subset of this list that supports your requested model, and fall back to the next if it is unavailable. If no providers are available, the request will fail with an error message.
+       */
+      "order": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
+      /**
+       * List of provider slugs to allow. If provided, this list is merged with your account-wide allowed provider settings for this request.
+       */
+      "only": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
+      /**
+       * List of provider slugs to ignore. If provided, this list is merged with your account-wide ignored provider settings for this request.
+       */
+      "ignore": S.optionalWith(S.Array(S.Union(ProviderName, S.String)), { nullable: true }),
+      /**
+       * A list of quantization levels to filter the provider by.
+       */
+      "quantizations": S.optionalWith(S.Array(Quantization), { nullable: true }),
+      "sort": S.optionalWith(AnthropicMessagesRequestProviderSort, { nullable: true }),
+      /**
+       * The object specifying the maximum price you want to pay for this request. USD price per million tokens, for prompt and completion.
+       */
+      "max_price": S.optionalWith(
+        S.Struct({
+          "prompt": S.optionalWith(BigNumberUnion, { nullable: true }),
+          "completion": S.optionalWith(BigNumberUnion, { nullable: true }),
+          "image": S.optionalWith(BigNumberUnion, { nullable: true }),
+          "audio": S.optionalWith(BigNumberUnion, { nullable: true }),
+          "request": S.optionalWith(BigNumberUnion, { nullable: true })
+        }),
+        { nullable: true }
+      ),
+      "preferred_min_throughput": S.optionalWith(PreferredMinThroughput, { nullable: true }),
+      "preferred_max_latency": S.optionalWith(PreferredMaxLatency, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * Plugins you want to enable for this request, including their settings.
+   */
+  "plugins": S.optionalWith(
+    S.Array(S.Union(
+      S.Struct({
+        "id": S.Literal("auto-router"),
+        /**
+         * Set to false to disable the auto-router plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+        /**
+         * List of model patterns to filter which models the auto-router can route between. Supports wildcards (e.g., "anthropic/*" matches all Anthropic models). When not specified, uses the default supported models list.
+         */
+        "allowed_models": S.optionalWith(S.Array(S.String), { nullable: true })
+      }),
+      S.Struct({
+        "id": S.Literal("moderation")
+      }),
+      S.Struct({
+        "id": S.Literal("web"),
+        /**
+         * Set to false to disable the web-search plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+        "max_results": S.optionalWith(S.Number, { nullable: true }),
+        "search_prompt": S.optionalWith(S.String, { nullable: true }),
+        "engine": S.optionalWith(WebSearchEngine, { nullable: true })
+      }),
+      S.Struct({
+        "id": S.Literal("file-parser"),
+        /**
+         * Set to false to disable the file-parser plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+        "pdf": S.optionalWith(PDFParserOptions, { nullable: true })
+      }),
+      S.Struct({
+        "id": S.Literal("response-healing"),
+        /**
+         * Set to false to disable the response-healing plugin for this request. Defaults to true.
+         */
+        "enabled": S.optionalWith(S.Boolean, { nullable: true })
+      })
+    )),
+    { nullable: true }
+  ),
+  /**
+   * **DEPRECATED** Use providers.sort.partition instead. Backwards-compatible alias for providers.sort.partition. Accepts legacy values: "fallback" (maps to "model"), "sort" (maps to "none").
+   */
+  "route": S.optionalWith(AnthropicMessagesRequestRoute, { nullable: true }),
+  /**
+   * A unique identifier representing your end-user, which helps distinguish between different users of your app. This allows your app to identify specific users in case of abuse reports, preventing your entire app from being affected by the actions of individual users. Maximum of 128 characters.
+   */
+  "user": S.optionalWith(S.String.pipe(S.maxLength(128)), { nullable: true }),
+  /**
+   * A unique identifier for grouping related requests (e.g., a conversation or agent workflow) for observability. If provided in both the request body and the x-session-id header, the body value takes precedence. Maximum of 128 characters.
+   */
+  "session_id": S.optionalWith(S.String.pipe(S.maxLength(128)), { nullable: true }),
+  "models": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+export class AnthropicMessagesResponseType extends S.Literal("message") {}
+
+export class AnthropicMessagesResponseRole extends S.Literal("assistant") {}
+
+export class AnthropicMessagesResponseStopReason extends S.Literal(
+  "end_turn",
+  "max_tokens",
+  "stop_sequence",
+  "tool_use",
+  "pause_turn",
+  "refusal",
+  "model_context_window_exceeded"
+) {}
+
+export class AnthropicMessagesResponseUsageServiceTier extends S.Literal("standard", "priority", "batch") {}
+
+export class AnthropicMessagesResponse extends S.Class<AnthropicMessagesResponse>("AnthropicMessagesResponse")({
+  "id": S.String,
+  "type": AnthropicMessagesResponseType,
+  "role": AnthropicMessagesResponseRole,
+  "content": S.Array(S.Union(
+    S.Struct({
+      "type": S.Literal("text"),
+      "text": S.String,
+      "citations": S.NullOr(S.Array(S.Union(
+        S.Struct({
+          "type": S.Literal("char_location"),
+          "cited_text": S.String,
+          "document_index": S.Number,
+          "document_title": S.NullOr(S.String),
+          "start_char_index": S.Number,
+          "end_char_index": S.Number,
+          "file_id": S.NullOr(S.String)
+        }),
+        S.Struct({
+          "type": S.Literal("page_location"),
+          "cited_text": S.String,
+          "document_index": S.Number,
+          "document_title": S.NullOr(S.String),
+          "start_page_number": S.Number,
+          "end_page_number": S.Number,
+          "file_id": S.NullOr(S.String)
+        }),
+        S.Struct({
+          "type": S.Literal("content_block_location"),
+          "cited_text": S.String,
+          "document_index": S.Number,
+          "document_title": S.NullOr(S.String),
+          "start_block_index": S.Number,
+          "end_block_index": S.Number,
+          "file_id": S.NullOr(S.String)
+        }),
+        S.Struct({
+          "type": S.Literal("web_search_result_location"),
+          "cited_text": S.String,
+          "encrypted_index": S.String,
+          "title": S.NullOr(S.String),
+          "url": S.String
+        }),
+        S.Struct({
+          "type": S.Literal("search_result_location"),
+          "cited_text": S.String,
+          "search_result_index": S.Number,
+          "source": S.String,
+          "title": S.NullOr(S.String),
+          "start_block_index": S.Number,
+          "end_block_index": S.Number
+        })
+      )))
+    }),
+    S.Struct({
+      "type": S.Literal("tool_use"),
+      "id": S.String,
+      "name": S.String
+    }),
+    S.Struct({
+      "type": S.Literal("thinking"),
+      "thinking": S.String,
+      "signature": S.String
+    }),
+    S.Struct({
+      "type": S.Literal("redacted_thinking"),
+      "data": S.String
+    }),
+    S.Struct({
+      "type": S.Literal("server_tool_use"),
+      "id": S.String,
+      "name": S.Literal("web_search")
+    }),
+    S.Struct({
+      "type": S.Literal("web_search_tool_result"),
+      "tool_use_id": S.String,
+      "content": S.Union(
+        S.Array(S.Struct({
+          "type": S.Literal("web_search_result"),
+          "encrypted_content": S.String,
+          "page_age": S.NullOr(S.String),
+          "title": S.String,
+          "url": S.String
+        })),
+        S.Struct({
+          "type": S.Literal("web_search_tool_result_error"),
+          "error_code": S.Literal(
+            "invalid_tool_input",
+            "unavailable",
+            "max_uses_exceeded",
+            "too_many_requests",
+            "query_too_long"
+          )
+        })
+      )
+    })
+  )),
+  "model": S.String,
+  "stop_reason": S.NullOr(AnthropicMessagesResponseStopReason),
+  "stop_sequence": S.NullOr(S.String),
+  "usage": S.Struct({
+    "input_tokens": S.Number,
+    "output_tokens": S.Number,
+    "cache_creation_input_tokens": S.NullOr(S.Number),
+    "cache_read_input_tokens": S.NullOr(S.Number),
+    "cache_creation": S.NullOr(S.Struct({
+      "ephemeral_5m_input_tokens": S.Number,
+      "ephemeral_1h_input_tokens": S.Number
+    })),
+    "server_tool_use": S.NullOr(S.Struct({
+      "web_search_requests": S.Number
+    })),
+    "service_tier": S.NullOr(AnthropicMessagesResponseUsageServiceTier)
+  })
+}) {}
+
+export class CreateMessages400Type extends S.Literal("error") {}
+
+export class CreateMessages400 extends S.Struct({
+  "type": CreateMessages400Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages401Type extends S.Literal("error") {}
+
+export class CreateMessages401 extends S.Struct({
+  "type": CreateMessages401Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages403Type extends S.Literal("error") {}
+
+export class CreateMessages403 extends S.Struct({
+  "type": CreateMessages403Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages404Type extends S.Literal("error") {}
+
+export class CreateMessages404 extends S.Struct({
+  "type": CreateMessages404Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages429Type extends S.Literal("error") {}
+
+export class CreateMessages429 extends S.Struct({
+  "type": CreateMessages429Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages500Type extends S.Literal("error") {}
+
+export class CreateMessages500 extends S.Struct({
+  "type": CreateMessages500Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages503Type extends S.Literal("error") {}
+
+export class CreateMessages503 extends S.Struct({
+  "type": CreateMessages503Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
+export class CreateMessages529Type extends S.Literal("error") {}
+
+export class CreateMessages529 extends S.Struct({
+  "type": CreateMessages529Type,
+  "error": S.Struct({
+    "type": S.String,
+    "message": S.String
+  })
+}) {}
+
 export class GetUserActivityParams extends S.Struct({
   /**
    * Filter by a single UTC date in the last 30 days (YYYY-MM-DD format).
@@ -1606,22 +2688,8 @@ export class ProviderPreferences extends S.Class<ProviderPreferences>("ProviderP
     }),
     { nullable: true }
   ),
-  /**
-   * Preferred minimum throughput (in tokens per second). Endpoints below this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
-   */
-  "preferred_min_throughput": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Preferred maximum latency (in seconds). Endpoints above this threshold may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
-   */
-  "preferred_max_latency": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * **DEPRECATED** Use preferred_min_throughput instead. Backwards-compatible alias for preferred_min_throughput.
-   */
-  "min_throughput": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * **DEPRECATED** Use preferred_max_latency instead. Backwards-compatible alias for preferred_max_latency.
-   */
-  "max_latency": S.optionalWith(S.Number, { nullable: true })
+  "preferred_min_throughput": S.optionalWith(PreferredMinThroughput, { nullable: true }),
+  "preferred_max_latency": S.optionalWith(PreferredMaxLatency, { nullable: true })
 }) {}
 
 export class CreateEmbeddingsRequest extends S.Class<CreateEmbeddingsRequest>("CreateEmbeddingsRequest")({
@@ -1685,6 +2753,7 @@ export class PublicPricing extends S.Class<PublicPricing>("PublicPricing")({
   "image_token": S.optionalWith(BigNumberUnion, { nullable: true }),
   "image_output": S.optionalWith(BigNumberUnion, { nullable: true }),
   "audio": S.optionalWith(BigNumberUnion, { nullable: true }),
+  "audio_output": S.optionalWith(BigNumberUnion, { nullable: true }),
   "input_audio_cache": S.optionalWith(BigNumberUnion, { nullable: true }),
   "web_search": S.optionalWith(BigNumberUnion, { nullable: true }),
   "internal_reasoning": S.optionalWith(BigNumberUnion, { nullable: true }),
@@ -1748,7 +2817,7 @@ export class ModelArchitectureInstructType extends S.Literal(
 
 export class InputModality extends S.Literal("text", "image", "file", "audio", "video") {}
 
-export class OutputModality extends S.Literal("text", "image", "embeddings") {}
+export class OutputModality extends S.Literal("text", "image", "embeddings", "audio") {}
 
 /**
  * Model architecture information
@@ -1883,7 +2952,11 @@ export class Model extends S.Class<Model>("Model")({
    * List of supported parameters for this model
    */
   "supported_parameters": S.Array(Parameter),
-  "default_parameters": S.NullOr(DefaultParameters)
+  "default_parameters": S.NullOr(DefaultParameters),
+  /**
+   * The date after which the model may be removed. ISO 8601 date string (YYYY-MM-DD) or null if no expiration.
+   */
+  "expiration_date": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -2042,7 +3115,11 @@ export class GetGeneration200 extends S.Struct({
     /**
      * Type of API used for the generation
      */
-    "api_type": S.NullOr(GetGeneration200DataApiType)
+    "api_type": S.NullOr(GetGeneration200DataApiType),
+    /**
+     * Router used for the request (e.g., openrouter/auto)
+     */
+    "router": S.NullOr(S.String)
   })
 }) {}
 
@@ -2061,8 +3138,29 @@ export class ModelsCountResponse extends S.Class<ModelsCountResponse>("ModelsCou
   })
 }) {}
 
+/**
+ * Filter models by use case category
+ */
+export class GetModelsParamsCategory extends S.Literal(
+  "programming",
+  "roleplay",
+  "marketing",
+  "marketing/seo",
+  "technology",
+  "science",
+  "translation",
+  "legal",
+  "finance",
+  "health",
+  "trivia",
+  "academia"
+) {}
+
 export class GetModelsParams extends S.Struct({
-  "category": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Filter models by use case category
+   */
+  "category": S.optionalWith(GetModelsParamsCategory, { nullable: true }),
   "supported_parameters": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -2151,10 +3249,58 @@ export class PublicEndpointQuantization extends PublicEndpointQuantizationEnum {
 export class EndpointStatus extends S.Literal(0, -1, -2, -3, -5, -10) {}
 
 /**
+ * Latency percentiles in milliseconds over the last 30 minutes. Latency measures time to first token. Only visible when authenticated with an API key or cookie; returns null for unauthenticated requests.
+ */
+export class PercentileStats extends S.Class<PercentileStats>("PercentileStats")({
+  /**
+   * Median (50th percentile)
+   */
+  "p50": S.Number,
+  /**
+   * 75th percentile
+   */
+  "p75": S.Number,
+  /**
+   * 90th percentile
+   */
+  "p90": S.Number,
+  /**
+   * 99th percentile
+   */
+  "p99": S.Number
+}) {}
+
+/**
+ * Throughput percentiles in tokens per second over the last 30 minutes. Throughput measures output token generation speed. Only visible when authenticated with an API key or cookie; returns null for unauthenticated requests.
+ */
+export class PublicEndpointThroughputLast30M extends S.Struct({
+  /**
+   * Median (50th percentile)
+   */
+  "p50": S.Number,
+  /**
+   * 75th percentile
+   */
+  "p75": S.Number,
+  /**
+   * 90th percentile
+   */
+  "p90": S.Number,
+  /**
+   * 99th percentile
+   */
+  "p99": S.Number
+}) {}
+
+/**
  * Information about a specific model endpoint
  */
 export class PublicEndpoint extends S.Class<PublicEndpoint>("PublicEndpoint")({
   "name": S.String,
+  /**
+   * The unique identifier for the model (permaslug)
+   */
+  "model_id": S.String,
   "model_name": S.String,
   "context_length": S.Number,
   "pricing": S.Struct({
@@ -2165,6 +3311,7 @@ export class PublicEndpoint extends S.Class<PublicEndpoint>("PublicEndpoint")({
     "image_token": S.optionalWith(BigNumberUnion, { nullable: true }),
     "image_output": S.optionalWith(BigNumberUnion, { nullable: true }),
     "audio": S.optionalWith(BigNumberUnion, { nullable: true }),
+    "audio_output": S.optionalWith(BigNumberUnion, { nullable: true }),
     "input_audio_cache": S.optionalWith(BigNumberUnion, { nullable: true }),
     "web_search": S.optionalWith(BigNumberUnion, { nullable: true }),
     "internal_reasoning": S.optionalWith(BigNumberUnion, { nullable: true }),
@@ -2180,7 +3327,9 @@ export class PublicEndpoint extends S.Class<PublicEndpoint>("PublicEndpoint")({
   "supported_parameters": S.Array(Parameter),
   "status": S.optionalWith(EndpointStatus, { nullable: true }),
   "uptime_last_30m": S.NullOr(S.Number),
-  "supports_implicit_caching": S.Boolean
+  "supports_implicit_caching": S.Boolean,
+  "latency_last_30m": S.NullOr(PercentileStats),
+  "throughput_last_30m": PublicEndpointThroughputLast30M
 }) {}
 
 /**
@@ -2216,53 +3365,6 @@ export class ListEndpoints200 extends S.Struct({
 
 export class ListEndpointsZdr200 extends S.Struct({
   "data": S.Array(PublicEndpoint)
-}) {}
-
-export class GetParametersParams extends S.Struct({
-  "provider": S.optionalWith(ProviderName, { nullable: true })
-}) {}
-
-export class GetParameters200 extends S.Struct({
-  /**
-   * Parameter analytics data
-   */
-  "data": S.Struct({
-    /**
-     * Model identifier
-     */
-    "model": S.String,
-    /**
-     * List of parameters supported by this model
-     */
-    "supported_parameters": S.Array(
-      S.Literal(
-        "temperature",
-        "top_p",
-        "top_k",
-        "min_p",
-        "top_a",
-        "frequency_penalty",
-        "presence_penalty",
-        "repetition_penalty",
-        "max_tokens",
-        "logit_bias",
-        "logprobs",
-        "top_logprobs",
-        "seed",
-        "response_format",
-        "structured_outputs",
-        "stop",
-        "tools",
-        "tool_choice",
-        "parallel_tool_calls",
-        "include_reasoning",
-        "reasoning",
-        "reasoning_effort",
-        "web_search_options",
-        "verbosity"
-      )
-    )
-  })
 }) {}
 
 export class ListProviders200 extends S.Struct({
@@ -2704,6 +3806,567 @@ export class UpdateKeys200 extends S.Struct({
   })
 }) {}
 
+export class ListGuardrailsParams extends S.Struct({
+  /**
+   * Number of records to skip for pagination
+   */
+  "offset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Maximum number of records to return (max 100)
+   */
+  "limit": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListGuardrails200 extends S.Struct({
+  /**
+   * List of guardrails
+   */
+  "data": S.Array(S.Struct({
+    /**
+     * Unique identifier for the guardrail
+     */
+    "id": S.String,
+    /**
+     * Name of the guardrail
+     */
+    "name": S.String,
+    /**
+     * Description of the guardrail
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Spending limit in USD
+     */
+    "limit_usd": S.optionalWith(S.Number.pipe(S.greaterThan(0)), { nullable: true }),
+    /**
+     * Interval at which the limit resets (daily, weekly, monthly)
+     */
+    "reset_interval": S.optionalWith(S.Literal("daily", "weekly", "monthly"), { nullable: true }),
+    /**
+     * List of allowed provider IDs
+     */
+    "allowed_providers": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Array of model canonical_slugs (immutable identifiers)
+     */
+    "allowed_models": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Whether to enforce zero data retention
+     */
+    "enforce_zdr": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * ISO 8601 timestamp of when the guardrail was created
+     */
+    "created_at": S.String,
+    /**
+     * ISO 8601 timestamp of when the guardrail was last updated
+     */
+    "updated_at": S.optionalWith(S.String, { nullable: true })
+  })),
+  /**
+   * Total number of guardrails
+   */
+  "total_count": S.Number
+}) {}
+
+/**
+ * Interval at which the limit resets (daily, weekly, monthly)
+ */
+export class CreateGuardrailRequestResetInterval extends S.Literal("daily", "weekly", "monthly") {}
+
+export class CreateGuardrailRequest extends S.Class<CreateGuardrailRequest>("CreateGuardrailRequest")({
+  /**
+   * Name for the new guardrail
+   */
+  "name": S.String.pipe(S.minLength(1), S.maxLength(200)),
+  /**
+   * Description of the guardrail
+   */
+  "description": S.optionalWith(S.String.pipe(S.maxLength(1000)), { nullable: true }),
+  /**
+   * Spending limit in USD
+   */
+  "limit_usd": S.optionalWith(S.Number.pipe(S.greaterThan(0)), { nullable: true }),
+  /**
+   * Interval at which the limit resets (daily, weekly, monthly)
+   */
+  "reset_interval": S.optionalWith(CreateGuardrailRequestResetInterval, { nullable: true }),
+  /**
+   * List of allowed provider IDs
+   */
+  "allowed_providers": S.optionalWith(S.NonEmptyArray(S.String).pipe(S.minItems(1)), { nullable: true }),
+  /**
+   * Array of model identifiers (slug or canonical_slug accepted)
+   */
+  "allowed_models": S.optionalWith(S.NonEmptyArray(S.String).pipe(S.minItems(1)), { nullable: true }),
+  /**
+   * Whether to enforce zero data retention
+   */
+  "enforce_zdr": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+/**
+ * Interval at which the limit resets (daily, weekly, monthly)
+ */
+export class CreateGuardrail201DataResetInterval extends S.Literal("daily", "weekly", "monthly") {}
+
+export class CreateGuardrail201 extends S.Struct({
+  /**
+   * The created guardrail
+   */
+  "data": S.Struct({
+    /**
+     * Unique identifier for the guardrail
+     */
+    "id": S.String,
+    /**
+     * Name of the guardrail
+     */
+    "name": S.String,
+    /**
+     * Description of the guardrail
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Spending limit in USD
+     */
+    "limit_usd": S.optionalWith(S.Number.pipe(S.greaterThan(0)), { nullable: true }),
+    /**
+     * Interval at which the limit resets (daily, weekly, monthly)
+     */
+    "reset_interval": S.optionalWith(CreateGuardrail201DataResetInterval, { nullable: true }),
+    /**
+     * List of allowed provider IDs
+     */
+    "allowed_providers": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Array of model canonical_slugs (immutable identifiers)
+     */
+    "allowed_models": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Whether to enforce zero data retention
+     */
+    "enforce_zdr": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * ISO 8601 timestamp of when the guardrail was created
+     */
+    "created_at": S.String,
+    /**
+     * ISO 8601 timestamp of when the guardrail was last updated
+     */
+    "updated_at": S.optionalWith(S.String, { nullable: true })
+  })
+}) {}
+
+/**
+ * Interval at which the limit resets (daily, weekly, monthly)
+ */
+export class GetGuardrail200DataResetInterval extends S.Literal("daily", "weekly", "monthly") {}
+
+export class GetGuardrail200 extends S.Struct({
+  /**
+   * The guardrail
+   */
+  "data": S.Struct({
+    /**
+     * Unique identifier for the guardrail
+     */
+    "id": S.String,
+    /**
+     * Name of the guardrail
+     */
+    "name": S.String,
+    /**
+     * Description of the guardrail
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Spending limit in USD
+     */
+    "limit_usd": S.optionalWith(S.Number.pipe(S.greaterThan(0)), { nullable: true }),
+    /**
+     * Interval at which the limit resets (daily, weekly, monthly)
+     */
+    "reset_interval": S.optionalWith(GetGuardrail200DataResetInterval, { nullable: true }),
+    /**
+     * List of allowed provider IDs
+     */
+    "allowed_providers": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Array of model canonical_slugs (immutable identifiers)
+     */
+    "allowed_models": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Whether to enforce zero data retention
+     */
+    "enforce_zdr": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * ISO 8601 timestamp of when the guardrail was created
+     */
+    "created_at": S.String,
+    /**
+     * ISO 8601 timestamp of when the guardrail was last updated
+     */
+    "updated_at": S.optionalWith(S.String, { nullable: true })
+  })
+}) {}
+
+export class DeleteGuardrail200 extends S.Struct({
+  /**
+   * Confirmation that the guardrail was deleted
+   */
+  "deleted": S.Literal(true)
+}) {}
+
+/**
+ * Interval at which the limit resets (daily, weekly, monthly)
+ */
+export class UpdateGuardrailRequestResetInterval extends S.Literal("daily", "weekly", "monthly") {}
+
+export class UpdateGuardrailRequest extends S.Class<UpdateGuardrailRequest>("UpdateGuardrailRequest")({
+  /**
+   * New name for the guardrail
+   */
+  "name": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(200)), { nullable: true }),
+  /**
+   * New description for the guardrail
+   */
+  "description": S.optionalWith(S.String.pipe(S.maxLength(1000)), { nullable: true }),
+  /**
+   * New spending limit in USD
+   */
+  "limit_usd": S.optionalWith(S.Number.pipe(S.greaterThan(0)), { nullable: true }),
+  /**
+   * Interval at which the limit resets (daily, weekly, monthly)
+   */
+  "reset_interval": S.optionalWith(UpdateGuardrailRequestResetInterval, { nullable: true }),
+  /**
+   * New list of allowed provider IDs
+   */
+  "allowed_providers": S.optionalWith(S.NonEmptyArray(S.String).pipe(S.minItems(1)), { nullable: true }),
+  /**
+   * Array of model identifiers (slug or canonical_slug accepted)
+   */
+  "allowed_models": S.optionalWith(S.NonEmptyArray(S.String).pipe(S.minItems(1)), { nullable: true }),
+  /**
+   * Whether to enforce zero data retention
+   */
+  "enforce_zdr": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+/**
+ * Interval at which the limit resets (daily, weekly, monthly)
+ */
+export class UpdateGuardrail200DataResetInterval extends S.Literal("daily", "weekly", "monthly") {}
+
+export class UpdateGuardrail200 extends S.Struct({
+  /**
+   * The updated guardrail
+   */
+  "data": S.Struct({
+    /**
+     * Unique identifier for the guardrail
+     */
+    "id": S.String,
+    /**
+     * Name of the guardrail
+     */
+    "name": S.String,
+    /**
+     * Description of the guardrail
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Spending limit in USD
+     */
+    "limit_usd": S.optionalWith(S.Number.pipe(S.greaterThan(0)), { nullable: true }),
+    /**
+     * Interval at which the limit resets (daily, weekly, monthly)
+     */
+    "reset_interval": S.optionalWith(UpdateGuardrail200DataResetInterval, { nullable: true }),
+    /**
+     * List of allowed provider IDs
+     */
+    "allowed_providers": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Array of model canonical_slugs (immutable identifiers)
+     */
+    "allowed_models": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * Whether to enforce zero data retention
+     */
+    "enforce_zdr": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * ISO 8601 timestamp of when the guardrail was created
+     */
+    "created_at": S.String,
+    /**
+     * ISO 8601 timestamp of when the guardrail was last updated
+     */
+    "updated_at": S.optionalWith(S.String, { nullable: true })
+  })
+}) {}
+
+export class ListKeyAssignmentsParams extends S.Struct({
+  /**
+   * Number of records to skip for pagination
+   */
+  "offset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Maximum number of records to return (max 100)
+   */
+  "limit": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListKeyAssignments200 extends S.Struct({
+  /**
+   * List of key assignments
+   */
+  "data": S.Array(S.Struct({
+    /**
+     * Unique identifier for the assignment
+     */
+    "id": S.String,
+    /**
+     * Hash of the assigned API key
+     */
+    "key_hash": S.String,
+    /**
+     * ID of the guardrail
+     */
+    "guardrail_id": S.String,
+    /**
+     * Name of the API key
+     */
+    "key_name": S.String,
+    /**
+     * Label of the API key
+     */
+    "key_label": S.String,
+    /**
+     * User ID of who made the assignment
+     */
+    "assigned_by": S.NullOr(S.String),
+    /**
+     * ISO 8601 timestamp of when the assignment was created
+     */
+    "created_at": S.String
+  })),
+  /**
+   * Total number of key assignments for this guardrail
+   */
+  "total_count": S.Number
+}) {}
+
+export class ListMemberAssignmentsParams extends S.Struct({
+  /**
+   * Number of records to skip for pagination
+   */
+  "offset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Maximum number of records to return (max 100)
+   */
+  "limit": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListMemberAssignments200 extends S.Struct({
+  /**
+   * List of member assignments
+   */
+  "data": S.Array(S.Struct({
+    /**
+     * Unique identifier for the assignment
+     */
+    "id": S.String,
+    /**
+     * Clerk user ID of the assigned member
+     */
+    "user_id": S.String,
+    /**
+     * Organization ID
+     */
+    "organization_id": S.String,
+    /**
+     * ID of the guardrail
+     */
+    "guardrail_id": S.String,
+    /**
+     * User ID of who made the assignment
+     */
+    "assigned_by": S.NullOr(S.String),
+    /**
+     * ISO 8601 timestamp of when the assignment was created
+     */
+    "created_at": S.String
+  })),
+  /**
+   * Total number of member assignments
+   */
+  "total_count": S.Number
+}) {}
+
+export class ListGuardrailKeyAssignmentsParams extends S.Struct({
+  /**
+   * Number of records to skip for pagination
+   */
+  "offset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Maximum number of records to return (max 100)
+   */
+  "limit": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListGuardrailKeyAssignments200 extends S.Struct({
+  /**
+   * List of key assignments
+   */
+  "data": S.Array(S.Struct({
+    /**
+     * Unique identifier for the assignment
+     */
+    "id": S.String,
+    /**
+     * Hash of the assigned API key
+     */
+    "key_hash": S.String,
+    /**
+     * ID of the guardrail
+     */
+    "guardrail_id": S.String,
+    /**
+     * Name of the API key
+     */
+    "key_name": S.String,
+    /**
+     * Label of the API key
+     */
+    "key_label": S.String,
+    /**
+     * User ID of who made the assignment
+     */
+    "assigned_by": S.NullOr(S.String),
+    /**
+     * ISO 8601 timestamp of when the assignment was created
+     */
+    "created_at": S.String
+  })),
+  /**
+   * Total number of key assignments for this guardrail
+   */
+  "total_count": S.Number
+}) {}
+
+export class BulkAssignKeysToGuardrailRequest
+  extends S.Class<BulkAssignKeysToGuardrailRequest>("BulkAssignKeysToGuardrailRequest")({
+    /**
+     * Array of API key hashes to assign to the guardrail
+     */
+    "key_hashes": S.NonEmptyArray(S.String.pipe(S.minLength(1))).pipe(S.minItems(1))
+  })
+{}
+
+export class BulkAssignKeysToGuardrail200 extends S.Struct({
+  /**
+   * Number of keys successfully assigned
+   */
+  "assigned_count": S.Number
+}) {}
+
+export class ListGuardrailMemberAssignmentsParams extends S.Struct({
+  /**
+   * Number of records to skip for pagination
+   */
+  "offset": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Maximum number of records to return (max 100)
+   */
+  "limit": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ListGuardrailMemberAssignments200 extends S.Struct({
+  /**
+   * List of member assignments
+   */
+  "data": S.Array(S.Struct({
+    /**
+     * Unique identifier for the assignment
+     */
+    "id": S.String,
+    /**
+     * Clerk user ID of the assigned member
+     */
+    "user_id": S.String,
+    /**
+     * Organization ID
+     */
+    "organization_id": S.String,
+    /**
+     * ID of the guardrail
+     */
+    "guardrail_id": S.String,
+    /**
+     * User ID of who made the assignment
+     */
+    "assigned_by": S.NullOr(S.String),
+    /**
+     * ISO 8601 timestamp of when the assignment was created
+     */
+    "created_at": S.String
+  })),
+  /**
+   * Total number of member assignments
+   */
+  "total_count": S.Number
+}) {}
+
+export class BulkAssignMembersToGuardrailRequest
+  extends S.Class<BulkAssignMembersToGuardrailRequest>("BulkAssignMembersToGuardrailRequest")({
+    /**
+     * Array of member user IDs to assign to the guardrail
+     */
+    "member_user_ids": S.NonEmptyArray(S.String.pipe(S.minLength(1))).pipe(S.minItems(1))
+  })
+{}
+
+export class BulkAssignMembersToGuardrail200 extends S.Struct({
+  /**
+   * Number of members successfully assigned
+   */
+  "assigned_count": S.Number
+}) {}
+
+export class BulkUnassignKeysFromGuardrailRequest
+  extends S.Class<BulkUnassignKeysFromGuardrailRequest>("BulkUnassignKeysFromGuardrailRequest")({
+    /**
+     * Array of API key hashes to unassign from the guardrail
+     */
+    "key_hashes": S.NonEmptyArray(S.String.pipe(S.minLength(1))).pipe(S.minItems(1))
+  })
+{}
+
+export class BulkUnassignKeysFromGuardrail200 extends S.Struct({
+  /**
+   * Number of keys successfully unassigned
+   */
+  "unassigned_count": S.Number
+}) {}
+
+export class BulkUnassignMembersFromGuardrailRequest
+  extends S.Class<BulkUnassignMembersFromGuardrailRequest>("BulkUnassignMembersFromGuardrailRequest")({
+    /**
+     * Array of member user IDs to unassign from the guardrail
+     */
+    "member_user_ids": S.NonEmptyArray(S.String.pipe(S.minLength(1))).pipe(S.minItems(1))
+  })
+{}
+
+export class BulkUnassignMembersFromGuardrail200 extends S.Struct({
+  /**
+   * Number of members successfully unassigned
+   */
+  "unassigned_count": S.Number
+}) {}
+
 export class GetCurrentKey200 extends S.Struct({
   /**
    * Current API key information
@@ -2905,12 +4568,12 @@ export class Schema0 extends S.Array(
       "Fireworks",
       "Friendli",
       "GMICloud",
-      "GoPomelo",
       "Google",
       "Google AI Studio",
       "Groq",
       "Hyperbolic",
       "Inception",
+      "Inceptron",
       "InferenceNet",
       "Infermatic",
       "Inflection",
@@ -2935,13 +4598,14 @@ export class Schema0 extends S.Array(
       "Phala",
       "Relace",
       "SambaNova",
+      "Seed",
       "SiliconFlow",
       "Sourceful",
       "Stealth",
       "StreamLake",
       "Switchpoint",
-      "Targon",
       "Together",
+      "Upstage",
       "Venice",
       "WandB",
       "Xiaomi",
@@ -3017,6 +4681,23 @@ export class ChatMessageToolCall extends S.Class<ChatMessageToolCall>("ChatMessa
   })
 }) {}
 
+export class Schema3 extends S.Union(S.String, S.Null) {}
+
+export class Schema4Enum extends S.Literal(
+  "unknown",
+  "openai-responses-v1",
+  "azure-openai-responses-v1",
+  "xai-responses-v1",
+  "anthropic-claude-v1",
+  "google-gemini-v1"
+) {}
+
+export class Schema4 extends S.Union(Schema4Enum, S.Null) {}
+
+export class Schema5 extends S.Number {}
+
+export class Schema2 extends S.Record({ key: S.String, value: S.Unknown }) {}
+
 export class AssistantMessage extends S.Class<AssistantMessage>("AssistantMessage")({
   "role": S.Literal("assistant"),
   "content": S.optionalWith(S.Union(S.String, S.Array(ChatMessageContentItem)), { nullable: true }),
@@ -3025,7 +4706,14 @@ export class AssistantMessage extends S.Class<AssistantMessage>("AssistantMessag
   "refusal": S.optionalWith(S.String, { nullable: true }),
   "reasoning": S.optionalWith(S.String, { nullable: true }),
   "reasoning_details": S.optionalWith(S.Array(ReasoningDetail), { nullable: true }),
-  "images": S.optionalWith(S.Array(ChatMessageContentItemImage), { nullable: true }),
+  "images": S.optionalWith(
+    S.Array(S.Struct({
+      "image_url": S.Struct({
+        "url": S.String
+      })
+    })),
+    { nullable: true }
+  ),
   "annotations": S.optionalWith(S.Array(AnnotationDetail), { nullable: true })
 }) {}
 
@@ -3146,10 +4834,36 @@ export class ChatGenerationParams extends S.Class<ChatGenerationParams>("ChatGen
         }),
         { nullable: true }
       ),
-      "preferred_min_throughput": S.optionalWith(S.Number, { nullable: true }),
-      "preferred_max_latency": S.optionalWith(S.Number, { nullable: true }),
-      "min_throughput": S.optionalWith(S.Number, { nullable: true }),
-      "max_latency": S.optionalWith(S.Number, { nullable: true })
+      /**
+       * Preferred minimum throughput (in tokens per second). Can be a number (applies to p50) or an object with percentile-specific cutoffs. Endpoints below the threshold(s) may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+       */
+      "preferred_min_throughput": S.optionalWith(
+        S.Union(
+          S.Number,
+          S.Struct({
+            "p50": S.optionalWith(S.Number, { nullable: true }),
+            "p75": S.optionalWith(S.Number, { nullable: true }),
+            "p90": S.optionalWith(S.Number, { nullable: true }),
+            "p99": S.optionalWith(S.Number, { nullable: true })
+          })
+        ),
+        { nullable: true }
+      ),
+      /**
+       * Preferred maximum latency (in seconds). Can be a number (applies to p50) or an object with percentile-specific cutoffs. Endpoints above the threshold(s) may still be used, but are deprioritized in routing. When using fallback models, this may cause a fallback model to be used instead of the primary model if it meets the threshold.
+       */
+      "preferred_max_latency": S.optionalWith(
+        S.Union(
+          S.Number,
+          S.Struct({
+            "p50": S.optionalWith(S.Number, { nullable: true }),
+            "p75": S.optionalWith(S.Number, { nullable: true }),
+            "p90": S.optionalWith(S.Number, { nullable: true }),
+            "p99": S.optionalWith(S.Number, { nullable: true })
+          })
+        ),
+        { nullable: true }
+      )
     }),
     { nullable: true }
   ),
@@ -3207,24 +4921,14 @@ export class ChatGenerationParams extends S.Class<ChatGenerationParams>("ChatGen
       "echo_upstream_body": S.optionalWith(S.Boolean, { nullable: true })
     }),
     { nullable: true }
-  )
+  ),
+  "image_config": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "modalities": S.optionalWith(S.Array(S.Literal("text", "image")), { nullable: true })
 }) {}
 
 export class ChatCompletionFinishReason extends S.Literal("tool_calls", "stop", "length", "content_filter", "error") {}
 
-export class Schema2 extends S.Union(ChatCompletionFinishReason, S.Null) {}
-
-export class Schema4 extends S.Union(S.String, S.Null) {}
-
-export class Schema5Enum
-  extends S.Literal("unknown", "openai-responses-v1", "xai-responses-v1", "anthropic-claude-v1", "google-gemini-v1")
-{}
-
-export class Schema5 extends S.Union(Schema5Enum, S.Null) {}
-
-export class Schema6 extends S.Number {}
-
-export class Schema3 extends S.Record({ key: S.String, value: S.Unknown }) {}
+export class Schema6 extends S.Union(ChatCompletionFinishReason, S.Null) {}
 
 export class ChatMessageTokenLogprob extends S.Class<ChatMessageTokenLogprob>("ChatMessageTokenLogprob")({
   "token": S.String,
@@ -3246,7 +4950,6 @@ export class ChatResponseChoice extends S.Class<ChatResponseChoice>("ChatRespons
   "finish_reason": S.NullOr(ChatCompletionFinishReason),
   "index": S.Number,
   "message": AssistantMessage,
-  "reasoning_details": S.optionalWith(S.Array(Schema3), { nullable: true }),
   "logprobs": S.optionalWith(ChatMessageTokenLogprobs, { nullable: true })
 }) {}
 
@@ -3254,13 +4957,6 @@ export class ChatGenerationTokenUsage extends S.Class<ChatGenerationTokenUsage>(
   "completion_tokens": S.Number,
   "prompt_tokens": S.Number,
   "total_tokens": S.Number,
-  "cost": S.optionalWith(S.Number, { nullable: true }),
-  "cost_details": S.optionalWith(
-    S.Struct({
-      upstream_inference_cost: S.optionalWith(S.Number, { nullable: true })
-    }),
-    { nullable: true }
-  ),
   "completion_tokens_details": S.optionalWith(
     S.Struct({
       "reasoning_tokens": S.optionalWith(S.Number, { nullable: true }),
@@ -3273,11 +4969,16 @@ export class ChatGenerationTokenUsage extends S.Class<ChatGenerationTokenUsage>(
   "prompt_tokens_details": S.optionalWith(
     S.Struct({
       "cached_tokens": S.optionalWith(S.Number, { nullable: true }),
+      "cache_write_tokens": S.optionalWith(S.Number, { nullable: true }),
       "audio_tokens": S.optionalWith(S.Number, { nullable: true }),
       "video_tokens": S.optionalWith(S.Number, { nullable: true })
     }),
     { nullable: true }
-  )
+  ),
+  "cost": S.optionalWith(S.Number, { nullable: true }),
+  "cost_details": S.optionalWith(S.Struct({ upstream_inference_cost: S.optionalWith(S.Number, { nullable: true }) }), {
+    nullable: true
+  })
 }) {}
 
 export class ChatResponse extends S.Class<ChatResponse>("ChatResponse")({
@@ -3436,6 +5137,22 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "createMessages": (options) =>
+      HttpClientRequest.post(`/messages`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(AnthropicMessagesResponse),
+          "400": decodeError("CreateMessages400", CreateMessages400),
+          "401": decodeError("CreateMessages401", CreateMessages401),
+          "403": decodeError("CreateMessages403", CreateMessages403),
+          "404": decodeError("CreateMessages404", CreateMessages404),
+          "429": decodeError("CreateMessages429", CreateMessages429),
+          "500": decodeError("CreateMessages500", CreateMessages500),
+          "503": decodeError("CreateMessages503", CreateMessages503),
+          "529": decodeError("CreateMessages529", CreateMessages529),
+          orElse: unexpectedStatus
+        }))
+      ),
     "getUserActivity": (options) =>
       HttpClientRequest.get(`/activity`).pipe(
         HttpClientRequest.setUrlParams({ "date": options?.["date"] as any }),
@@ -3560,17 +5277,6 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
-    "getParameters": (author, slug, options) =>
-      HttpClientRequest.get(`/parameters/${author}/${slug}`).pipe(
-        HttpClientRequest.setUrlParams({ "provider": options?.["provider"] as any }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(GetParameters200),
-          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
-          "404": decodeError("NotFoundResponse", NotFoundResponse),
-          "500": decodeError("InternalServerResponse", InternalServerResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
     "listProviders": () =>
       HttpClientRequest.get(`/providers`).pipe(
         withResponse(HttpClientResponse.matchStatus({
@@ -3636,6 +5342,149 @@ export const make = (
           "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
           "404": decodeError("NotFoundResponse", NotFoundResponse),
           "429": decodeError("TooManyRequestsResponse", TooManyRequestsResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listGuardrails": (options) =>
+      HttpClientRequest.get(`/guardrails`).pipe(
+        HttpClientRequest.setUrlParams({ "offset": options?.["offset"] as any, "limit": options?.["limit"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListGuardrails200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createGuardrail": (options) =>
+      HttpClientRequest.post(`/guardrails`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(CreateGuardrail201),
+          "400": decodeError("BadRequestResponse", BadRequestResponse),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "getGuardrail": (id) =>
+      HttpClientRequest.get(`/guardrails/${id}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GetGuardrail200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteGuardrail": (id) =>
+      HttpClientRequest.del(`/guardrails/${id}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeleteGuardrail200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "updateGuardrail": (id, options) =>
+      HttpClientRequest.patch(`/guardrails/${id}`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(UpdateGuardrail200),
+          "400": decodeError("BadRequestResponse", BadRequestResponse),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listKeyAssignments": (options) =>
+      HttpClientRequest.get(`/guardrails/assignments/keys`).pipe(
+        HttpClientRequest.setUrlParams({ "offset": options?.["offset"] as any, "limit": options?.["limit"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListKeyAssignments200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listMemberAssignments": (options) =>
+      HttpClientRequest.get(`/guardrails/assignments/members`).pipe(
+        HttpClientRequest.setUrlParams({ "offset": options?.["offset"] as any, "limit": options?.["limit"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListMemberAssignments200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listGuardrailKeyAssignments": (id, options) =>
+      HttpClientRequest.get(`/guardrails/${id}/assignments/keys`).pipe(
+        HttpClientRequest.setUrlParams({ "offset": options?.["offset"] as any, "limit": options?.["limit"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListGuardrailKeyAssignments200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "bulkAssignKeysToGuardrail": (id, options) =>
+      HttpClientRequest.post(`/guardrails/${id}/assignments/keys`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BulkAssignKeysToGuardrail200),
+          "400": decodeError("BadRequestResponse", BadRequestResponse),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listGuardrailMemberAssignments": (id, options) =>
+      HttpClientRequest.get(`/guardrails/${id}/assignments/members`).pipe(
+        HttpClientRequest.setUrlParams({ "offset": options?.["offset"] as any, "limit": options?.["limit"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListGuardrailMemberAssignments200),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "bulkAssignMembersToGuardrail": (id, options) =>
+      HttpClientRequest.post(`/guardrails/${id}/assignments/members`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BulkAssignMembersToGuardrail200),
+          "400": decodeError("BadRequestResponse", BadRequestResponse),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "bulkUnassignKeysFromGuardrail": (id, options) =>
+      HttpClientRequest.post(`/guardrails/${id}/assignments/keys/remove`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BulkUnassignKeysFromGuardrail200),
+          "400": decodeError("BadRequestResponse", BadRequestResponse),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
+          "500": decodeError("InternalServerResponse", InternalServerResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "bulkUnassignMembersFromGuardrail": (id, options) =>
+      HttpClientRequest.post(`/guardrails/${id}/assignments/members/remove`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BulkUnassignMembersFromGuardrail200),
+          "400": decodeError("BadRequestResponse", BadRequestResponse),
+          "401": decodeError("UnauthorizedResponse", UnauthorizedResponse),
+          "404": decodeError("NotFoundResponse", NotFoundResponse),
           "500": decodeError("InternalServerResponse", InternalServerResponse),
           orElse: unexpectedStatus
         }))
@@ -3724,7 +5573,25 @@ export interface Client {
     | ClientError<"ProviderOverloadedResponse", typeof ProviderOverloadedResponse.Type>
   >
   /**
-   * Returns user activity data grouped by endpoint for the last 30 (completed) UTC days
+   * Creates a message using the Anthropic Messages API format. Supports text, images, PDFs, tools, and extended thinking.
+   */
+  readonly "createMessages": (
+    options: typeof AnthropicMessagesRequest.Encoded
+  ) => Effect.Effect<
+    typeof AnthropicMessagesResponse.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"CreateMessages400", typeof CreateMessages400.Type>
+    | ClientError<"CreateMessages401", typeof CreateMessages401.Type>
+    | ClientError<"CreateMessages403", typeof CreateMessages403.Type>
+    | ClientError<"CreateMessages404", typeof CreateMessages404.Type>
+    | ClientError<"CreateMessages429", typeof CreateMessages429.Type>
+    | ClientError<"CreateMessages500", typeof CreateMessages500.Type>
+    | ClientError<"CreateMessages503", typeof CreateMessages503.Type>
+    | ClientError<"CreateMessages529", typeof CreateMessages529.Type>
+  >
+  /**
+   * Returns user activity data grouped by endpoint for the last 30 (completed) UTC days. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "getUserActivity": (
     options?: typeof GetUserActivityParams.Encoded | undefined
@@ -3738,7 +5605,7 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * Get total credits purchased and used for the authenticated user
+   * Get total credits purchased and used for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "getCredits": () => Effect.Effect<
     typeof GetCredits200.Type,
@@ -3864,21 +5731,6 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * Get a model's supported parameters and data about which are most popular
-   */
-  readonly "getParameters": (
-    author: string,
-    slug: string,
-    options?: typeof GetParametersParams.Encoded | undefined
-  ) => Effect.Effect<
-    typeof GetParameters200.Type,
-    | HttpClientError.HttpClientError
-    | ParseError
-    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
-    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
-    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
-  >
-  /**
    * List all providers
    */
   readonly "listProviders": () => Effect.Effect<
@@ -3888,7 +5740,7 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * List API keys
+   * List all API keys for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "list": (
     options?: typeof ListParams.Encoded | undefined
@@ -3901,7 +5753,7 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * Create a new API key
+   * Create a new API key for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "createKeys": (
     options: typeof CreateKeysRequest.Encoded
@@ -3915,7 +5767,7 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * Get a single API key
+   * Get a single API key by hash. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "getKey": (
     hash: string
@@ -3929,7 +5781,7 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * Delete an API key
+   * Delete an existing API key. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "deleteKeys": (
     hash: string
@@ -3943,7 +5795,7 @@ export interface Client {
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**
-   * Update an API key
+   * Update an existing API key. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
    */
   readonly "updateKeys": (
     hash: string,
@@ -3956,6 +5808,184 @@ export interface Client {
     | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
     | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
     | ClientError<"TooManyRequestsResponse", typeof TooManyRequestsResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * List all guardrails for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "listGuardrails": (
+    options?: typeof ListGuardrailsParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListGuardrails200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Create a new guardrail for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "createGuardrail": (
+    options: typeof CreateGuardrailRequest.Encoded
+  ) => Effect.Effect<
+    typeof CreateGuardrail201.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"BadRequestResponse", typeof BadRequestResponse.Type>
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Get a single guardrail by ID. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "getGuardrail": (
+    id: string
+  ) => Effect.Effect<
+    typeof GetGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Delete an existing guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "deleteGuardrail": (
+    id: string
+  ) => Effect.Effect<
+    typeof DeleteGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Update an existing guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "updateGuardrail": (
+    id: string,
+    options: typeof UpdateGuardrailRequest.Encoded
+  ) => Effect.Effect<
+    typeof UpdateGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"BadRequestResponse", typeof BadRequestResponse.Type>
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * List all API key guardrail assignments for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "listKeyAssignments": (
+    options?: typeof ListKeyAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListKeyAssignments200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * List all organization member guardrail assignments for the authenticated user. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "listMemberAssignments": (
+    options?: typeof ListMemberAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListMemberAssignments200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * List all API key assignments for a specific guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "listGuardrailKeyAssignments": (
+    id: string,
+    options?: typeof ListGuardrailKeyAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListGuardrailKeyAssignments200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Assign multiple API keys to a specific guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "bulkAssignKeysToGuardrail": (
+    id: string,
+    options: typeof BulkAssignKeysToGuardrailRequest.Encoded
+  ) => Effect.Effect<
+    typeof BulkAssignKeysToGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"BadRequestResponse", typeof BadRequestResponse.Type>
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * List all organization member assignments for a specific guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "listGuardrailMemberAssignments": (
+    id: string,
+    options?: typeof ListGuardrailMemberAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<
+    typeof ListGuardrailMemberAssignments200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Assign multiple organization members to a specific guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "bulkAssignMembersToGuardrail": (
+    id: string,
+    options: typeof BulkAssignMembersToGuardrailRequest.Encoded
+  ) => Effect.Effect<
+    typeof BulkAssignMembersToGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"BadRequestResponse", typeof BadRequestResponse.Type>
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Unassign multiple API keys from a specific guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "bulkUnassignKeysFromGuardrail": (
+    id: string,
+    options: typeof BulkUnassignKeysFromGuardrailRequest.Encoded
+  ) => Effect.Effect<
+    typeof BulkUnassignKeysFromGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"BadRequestResponse", typeof BadRequestResponse.Type>
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
+    | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
+  >
+  /**
+   * Unassign multiple organization members from a specific guardrail. [Provisioning key](/docs/guides/overview/auth/provisioning-api-keys) required.
+   */
+  readonly "bulkUnassignMembersFromGuardrail": (
+    id: string,
+    options: typeof BulkUnassignMembersFromGuardrailRequest.Encoded
+  ) => Effect.Effect<
+    typeof BulkUnassignMembersFromGuardrail200.Type,
+    | HttpClientError.HttpClientError
+    | ParseError
+    | ClientError<"BadRequestResponse", typeof BadRequestResponse.Type>
+    | ClientError<"UnauthorizedResponse", typeof UnauthorizedResponse.Type>
+    | ClientError<"NotFoundResponse", typeof NotFoundResponse.Type>
     | ClientError<"InternalServerResponse", typeof InternalServerResponse.Type>
   >
   /**

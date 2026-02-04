@@ -77,7 +77,7 @@ export type OpenRouterReasoningInfo = {
   readonly signature: string | undefined
 } | {
   readonly type: "encrypted_reasoning"
-  readonly format: typeof Generated.ReasoningDetailSummaryFormat.Type
+  readonly format: typeof Generated.ReasoningDetailSummary.Type["format"]
   readonly redactedData: string
 }
 

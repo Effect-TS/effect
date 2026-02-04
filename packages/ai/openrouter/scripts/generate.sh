@@ -12,7 +12,8 @@ cleanup() {
 
 trap cleanup EXIT
 
-openapi_spec_url="https://spec.speakeasy.com/openrouter/sdk/open-router-chat-completions-api-with-code-samples"
+openapi_spec_url="https://openrouter.ai/openapi.yaml"
+# openapi_spec_url="https://spec.speakeasy.com/openrouter/sdk/open-router-chat-completions-api-with-code-samples"
 temp_file="${temp_dir}/openrouter.yaml"
 
 touch "${temp_file}"
