@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.56.2
+
+### Patch Changes
+
+- [#6031](https://github.com/Effect-TS/effect/pull/6031) [`1781244`](https://github.com/Effect-TS/effect/commit/17812444c6c0d8f19f9fbc85d82f911dff5523ab) Thanks @tim-smart! - backport effect v4 MessageStorage improvements
+
 ## 0.56.1
 
 ### Patch Changes
