@@ -40,7 +40,7 @@ The `index.ts` files are automatically generated. Do not manually edit them. Use
 
 If you need to run some code for testing or debugging purposes, create a new
 file in the `scratchpad/` directory at the root of the repository. You can then
-run the file with `node scratchpad/your-file.ts`.
+run the file with `tsx scratchpad/your-file.ts`.
 
 Make sure to delete the file after you are done testing.
 
