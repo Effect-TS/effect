@@ -83,10 +83,10 @@ import * as Toolkit from "./Toolkit.js"
  * @example
  * ```ts
  * import { LanguageModel } from "@effect/ai"
- * import { Effect } from "effect"
+ * import * as Effect from "effect/Effect"
  *
  * const useLanguageModel = Effect.gen(function* () {
- *   const model = yield* LanguageModel
+ *   const model = yield* LanguageModel.LanguageModel
  *   const response = yield* model.generateText({
  *     prompt: "What is machine learning?"
  *   })

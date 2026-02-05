@@ -78,10 +78,10 @@ import type * as Tool from "./Tool.js"
  * @example
  * ```ts
  * import { Chat } from "@effect/ai"
- * import { Effect } from "effect"
+ * import * as Effect from "effect/Effect"
  *
  * const useChat = Effect.gen(function* () {
- *   const chat = yield* Chat
+ *   const chat = yield* Chat.Chat
  *   const response = yield* chat.generateText({
  *     prompt: "Explain quantum computing in simple terms"
  *   })
