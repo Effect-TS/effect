@@ -377,9 +377,15 @@ importers:
       '@testcontainers/postgresql':
         specifier: ^10.25.0
         version: 10.28.0
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.15.6
       effect:
         specifier: workspace:^
         version: link:../effect
+      pg:
+        specifier: ^8.16.3
+        version: 8.16.3
     publishDirectory: dist
 
   packages/effect:
@@ -768,12 +774,18 @@ importers:
       '@testcontainers/postgresql':
         specifier: ^10.25.0
         version: 10.28.0
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.15.6
       drizzle-orm:
         specifier: ^0.43.1
         version: 0.43.1(@cloudflare/workers-types@4.20250715.0)(@libsql/client@0.12.0)(@op-engineering/op-sqlite@7.1.0(react-native@0.80.1(@babel/core@7.28.5)(@types/react@19.1.8)(react@19.1.0))(react@19.1.0))(@opentelemetry/api@1.9.0)(@types/better-sqlite3@7.6.13)(@types/pg@8.15.6)(better-sqlite3@11.10.0)(bun-types@1.2.18(@types/react@19.1.8))(kysely@0.28.2)(mysql2@3.14.2)(pg@8.16.3)(postgres@3.4.7)
       effect:
         specifier: workspace:^
         version: link:../effect
+      pg:
+        specifier: ^8.16.3
+        version: 8.16.3
     publishDirectory: dist
 
   packages/sql-kysely:

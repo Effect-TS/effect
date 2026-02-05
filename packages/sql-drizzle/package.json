@@ -59,8 +59,10 @@
     "@effect/sql-sqlite-node": "workspace:^",
     "@testcontainers/mysql": "^10.25.0",
     "@testcontainers/postgresql": "^10.25.0",
+    "@types/pg": "^8.15.6",
     "drizzle-orm": "^0.43.1",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "pg": "^8.16.3"
   },
   "peerDependencies": {
     "@effect/sql": "workspace:^",
