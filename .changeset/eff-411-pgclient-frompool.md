@@ -1,5 +1,5 @@
 ---
-"@effect/sql-pg": minor
+"@effect/sql-pg": patch
 "@effect/cluster": patch
 "@effect/sql-drizzle": patch
 ---
