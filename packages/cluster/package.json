@@ -50,7 +50,9 @@
     "@effect/workflow": "workspace:^",
     "@testcontainers/mysql": "^10.25.0",
     "@testcontainers/postgresql": "^10.25.0",
-    "effect": "workspace:^"
+    "@types/pg": "^8.15.6",
+    "effect": "workspace:^",
+    "pg": "^8.16.3"
   },
   "dependencies": {
     "kubernetes-types": "^1.30.0"

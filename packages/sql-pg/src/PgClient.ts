@@ -96,12 +96,17 @@ export interface PgClientConfig {
   readonly types?: Pg.CustomTypesConfig | undefined
 }
 
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const make = (
-  options: PgClientConfig
+type ClientOptions = {
+  readonly spanAttributes?: Record<string, unknown> | undefined
+  readonly transformResultNames?: ((str: string) => string) | undefined
+  readonly transformQueryNames?: ((str: string) => string) | undefined
+  readonly transformJson?: boolean | undefined
+}
+
+const makeClient = (
+  pool: Pg.Pool,
+  config: PgClientConfig,
+  options: ClientOptions
 ): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = makeCompiler(
@@ -114,54 +119,6 @@ export const make = (
         options.transformJson
       ).array :
       undefined
-
-    const pool = new Pg.Pool({
-      connectionString: options.url ? Redacted.value(options.url) : undefined,
-      user: options.username,
-      host: options.host,
-      database: options.database,
-      password: options.password ? Redacted.value(options.password) : undefined,
-      ssl: options.ssl,
-      port: options.port,
-      stream: options.stream!,
-      connectionTimeoutMillis: options.connectTimeout
-        ? Duration.toMillis(options.connectTimeout)
-        : undefined,
-      idleTimeoutMillis: options.idleTimeout
-        ? Duration.toMillis(options.idleTimeout)
-        : undefined,
-      max: options.maxConnections,
-      min: options.minConnections,
-      maxLifetimeSeconds: options.connectionTTL
-        ? Duration.toSeconds(options.connectionTTL)
-        : undefined,
-      application_name: options.applicationName ?? "@effect/sql-pg",
-      types: options.types
-    })
-
-    pool.on("error", (_err) => {
-    })
-
-    yield* Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () => pool.query("SELECT 1"),
-        catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
-      }),
-      () =>
-        Effect.promise(() => pool.end()).pipe(
-          Effect.interruptible,
-          Effect.timeoutOption(1000)
-        )
-    ).pipe(
-      Effect.timeoutFail({
-        duration: options.connectTimeout ?? Duration.seconds(5),
-        onTimeout: () =>
-          new SqlError({
-            cause: new Error("Connection timed out"),
-            message: "PgClient: Connection timed out"
-          })
-      })
-    )
 
     class ConnectionImpl implements Connection {
       readonly pg: Pg.PoolClient | undefined
@@ -358,23 +315,6 @@ export const make = (
       acquire: reserveRaw
     })
 
-    let config = options
-    if (pool.options.connectionString) {
-      try {
-        const parsed = PgConnString.parse(pool.options.connectionString)
-        config = {
-          ...config,
-          host: config.host ?? parsed.host ?? undefined,
-          port: config.port ?? (parsed.port ? Option.getOrUndefined(Number.parse(parsed.port)) : undefined),
-          username: config.username ?? parsed.user ?? undefined,
-          password: config.password ?? (parsed.password ? Redacted.make(parsed.password) : undefined),
-          database: config.database ?? parsed.database ?? undefined
-        }
-      } catch {
-        //
-      }
-    }
-
     return Object.assign(
       yield* Client.make({
         acquirer: Effect.succeed(new ConnectionImpl()),
@@ -383,9 +323,9 @@ export const make = (
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "postgresql"],
-          [ATTR_DB_NAMESPACE, options.database ?? options.username ?? "postgres"],
-          [ATTR_SERVER_ADDRESS, options.host ?? "localhost"],
-          [ATTR_SERVER_PORT, options.port ?? 5432]
+          [ATTR_DB_NAMESPACE, config.database ?? config.username ?? "postgres"],
+          [ATTR_SERVER_ADDRESS, config.host ?? "localhost"],
+          [ATTR_SERVER_PORT, config.port ?? 5432]
         ],
         transformRows
       }),
@@ -426,6 +366,142 @@ export const make = (
       }
     )
   })
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const make = (
+  options: PgClientConfig
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
+  Effect.gen(function*() {
+    const pool = new Pg.Pool({
+      connectionString: options.url ? Redacted.value(options.url) : undefined,
+      user: options.username,
+      host: options.host,
+      database: options.database,
+      password: options.password ? Redacted.value(options.password) : undefined,
+      ssl: options.ssl,
+      port: options.port,
+      ...(options.stream ? { stream: options.stream } : {}),
+      connectionTimeoutMillis: options.connectTimeout
+        ? Duration.toMillis(options.connectTimeout)
+        : undefined,
+      idleTimeoutMillis: options.idleTimeout
+        ? Duration.toMillis(options.idleTimeout)
+        : undefined,
+      max: options.maxConnections,
+      min: options.minConnections,
+      maxLifetimeSeconds: options.connectionTTL
+        ? Duration.toSeconds(options.connectionTTL)
+        : undefined,
+      application_name: options.applicationName ?? "@effect/sql-pg",
+      types: options.types
+    })
+
+    pool.on("error", (_err) => {
+    })
+
+    yield* Effect.acquireRelease(
+      Effect.tryPromise({
+        try: () => pool.query("SELECT 1"),
+        catch: (cause) => new SqlError({ cause, message: "PgClient: Failed to connect" })
+      }),
+      () =>
+        Effect.promise(() => pool.end()).pipe(
+          Effect.interruptible,
+          Effect.timeoutOption(1000)
+        )
+    ).pipe(
+      Effect.timeoutFail({
+        duration: options.connectTimeout ?? Duration.seconds(5),
+        onTimeout: () =>
+          new SqlError({
+            cause: new Error("Connection timed out"),
+            message: "PgClient: Connection timed out"
+          })
+      })
+    )
+
+    let config = options
+    if (pool.options.connectionString) {
+      try {
+        const parsed = PgConnString.parse(pool.options.connectionString)
+        config = {
+          ...config,
+          host: config.host ?? parsed.host ?? undefined,
+          port: config.port ?? (parsed.port ? Option.getOrUndefined(Number.parse(parsed.port)) : undefined),
+          username: config.username ?? parsed.user ?? undefined,
+          password: config.password ?? (parsed.password ? Redacted.make(parsed.password) : undefined),
+          database: config.database ?? parsed.database ?? undefined
+        }
+      } catch {
+        //
+      }
+    }
+
+    return yield* makeClient(pool, config, options)
+  })
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export interface PgClientFromPoolOptions {
+  readonly acquire: Effect.Effect<Pg.Pool, SqlError, Scope.Scope>
+
+  readonly applicationName?: string | undefined
+  readonly spanAttributes?: Record<string, unknown> | undefined
+
+  readonly transformResultNames?: ((str: string) => string) | undefined
+  readonly transformQueryNames?: ((str: string) => string) | undefined
+  readonly transformJson?: boolean | undefined
+  readonly types?: Pg.CustomTypesConfig | undefined
+}
+
+/**
+ * Create a `PgClient` from an existing `pg` pool.
+ *
+ * You control the pool lifecycle via `acquire` (typically `Effect.acquireRelease`).
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const fromPool = Effect.fnUntraced(function*(
+  options: PgClientFromPoolOptions
+): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
+  const pool = yield* options.acquire
+
+  let config: PgClientConfig = {
+    url: pool.options.connectionString ? Redacted.make(pool.options.connectionString) : undefined,
+    host: pool.options.host,
+    port: pool.options.port,
+    database: pool.options.database,
+    username: pool.options.user,
+    password: typeof pool.options.password === "string" ? Redacted.make(pool.options.password) : undefined,
+    ssl: pool.options.ssl,
+    applicationName: (pool.options as any).application_name,
+    types: pool.options.types
+  }
+
+  if (pool.options.connectionString) {
+    try {
+      const parsed = PgConnString.parse(pool.options.connectionString)
+      config = {
+        ...config,
+        host: config.host ?? parsed.host ?? undefined,
+        port: config.port ?? (parsed.port ? Option.getOrUndefined(Number.parse(parsed.port)) : undefined),
+        username: config.username ?? parsed.user ?? undefined,
+        password: config.password ?? (parsed.password ? Redacted.make(parsed.password) : undefined),
+        database: config.database ?? parsed.database ?? undefined
+      }
+    } catch {
+      //
+    }
+  }
+
+  return yield* makeClient(pool, config, options)
+})
 
 const cancelEffects = new WeakMap<Pg.PoolClient, Effect.Effect<void> | undefined>()
 const makeCancel = (pool: Pg.Pool, client: Pg.PoolClient) => {
@@ -476,6 +552,20 @@ export const layer = (
 ): Layer.Layer<PgClient | Client.SqlClient, SqlError> =>
   Layer.scopedContext(
     Effect.map(make(config), (client) =>
+      Context.make(PgClient, client).pipe(
+        Context.add(Client.SqlClient, client)
+      ))
+  ).pipe(Layer.provide(Reactivity.layer))
+
+/**
+ * @category layers
+ * @since 1.0.0
+ */
+export const layerFromPool = (
+  options: PgClientFromPoolOptions
+): Layer.Layer<PgClient | Client.SqlClient, SqlError> =>
+  Layer.scopedContext(
+    Effect.map(fromPool(options), (client) =>
       Context.make(PgClient, client).pipe(
         Context.add(Client.SqlClient, client)
       ))

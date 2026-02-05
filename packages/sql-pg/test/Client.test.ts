@@ -318,3 +318,29 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       expect(sql.config.database).toEqual(parsedConfig.database)
     }))
 })
+
+it.layer(PgContainer.ClientFromPoolLive, { timeout: "30 seconds" })("PgClient fromPool", (it) => {
+  it.effect("uses compiler transforms", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const [query] = sql`SELECT * from ${sql("peopleTest")}`.compile()
+      expect(query).toEqual(`SELECT * from "people_test"`)
+    }))
+
+  it.effect("Should populate config", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+
+      assert.isDefined(sql.config.url)
+      const parsedConfig = parsePgConnectionString(Redacted.value(sql.config.url))
+
+      expect(sql.config.host).toEqual(parsedConfig.host)
+      assert.isNotNull(parsedConfig.port)
+      assert.isDefined(parsedConfig.port)
+      expect(sql.config.port).toEqual(parseInt(parsedConfig.port))
+      expect(sql.config.username).toEqual(parsedConfig.user)
+      assert.isDefined(sql.config.password)
+      expect(Redacted.value(sql.config.password)).toEqual(parsedConfig.password)
+      expect(sql.config.database).toEqual(parsedConfig.database)
+    }))
+})
