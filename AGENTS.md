@@ -17,7 +17,7 @@ This is the Effect library repository, focusing on functional programming patter
 ### Mandatory Validation Steps
 
 - Run `pnpm lint-fix` after editing files
-- Always run tests after making changes: `pnpm test <test_file.ts>`
+- Always run tests after making changes: `pnpm test run <test_file.ts>`
 - Run type checking: `pnpm check`
   - If type checking continues to fail, run `pnpm clean` to clear caches, then re-run `pnpm check`
 - Build the project: `pnpm build`

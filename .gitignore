@@ -11,3 +11,4 @@ scratchpad/
 .idea/
 .env*
 .lalph/
+.repos/
