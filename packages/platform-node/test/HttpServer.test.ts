@@ -19,6 +19,7 @@ import {
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Deferred, Duration, Fiber, Stream } from "effect"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -478,6 +479,17 @@ describe("HttpServer", () => {
       const [response] = HttpServerError.causeResponseStripped(cause)
       expect(response.status).toEqual(499)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("causeResponse uses client abort when present", () =>
+    Effect.gen(function*() {
+      const parentFiberId = yield* Effect.fiberId
+      const cause = Cause.sequential(
+        Cause.interrupt(parentFiberId),
+        Cause.interrupt(HttpServerError.clientAbortFiberId)
+      )
+      const [response] = yield* HttpServerError.causeResponse(cause)
+      expect(response.status).toEqual(499)
+    }))
 
   it.scoped("multiplex", () =>
     Effect.gen(function*() {
