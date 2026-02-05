@@ -36,6 +36,11 @@ to automatically format code according to the project's style guidelines.
 The `index.ts` files are automatically generated. Do not manually edit them. Use
 `pnpm codegen` to regenerate barrel files after adding or removing modules.
 
+## Changesets
+
+All pull requests must include a changeset in the `.changeset/` directory.
+This is important for maintaining a clear changelog and ensuring proper versioning of packages.
+
 ## Running test code
 
 If you need to run some code for testing or debugging purposes, create a new
