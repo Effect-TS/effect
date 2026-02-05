@@ -1,5 +1,5 @@
 import type { Either, Types } from "effect"
-import { Array as Arr, Context, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
+import { Array as Arr, Context, Data, Effect, hole, Option, pipe, Predicate, Schedule } from "effect"
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 import type { Cause, NoSuchElementException, UnknownException } from "effect/Cause"
 import type { Exit } from "effect/Exit"
@@ -13,6 +13,10 @@ class TestError2 {
 }
 
 class TestService extends Context.Tag("TestService")<TestService, {}>() {}
+
+class RateLimitError extends Data.TaggedError("RateLimitError")<{
+  readonly retryAfter: number
+}> {}
 
 declare const string: Effect.Effect<string, "err-1", "dep-1">
 declare const number: Effect.Effect<number, "err-2", "dep-2">
@@ -1547,5 +1551,108 @@ describe("Effect", () => {
     expect(withRequirement.pipe(Effect.ensureRequirementsType<TestService>())).type.toBe<
       Effect.Effect<never, never, TestService>
     >()
+  })
+
+  describe("Effect.fn", () => {
+    it("with a span, generator", () => {
+      const fn = Effect.fn("span")(function*() {
+        return yield* Effect.fail("bye")
+      })
+      expect(fn).type.toBe<() => Effect.Effect<never, string, never>>()
+    })
+
+    it("with a span, generator with yieldable", () => {
+      const fn = Effect.fn("span")(function*() {
+        return yield* new RateLimitError({ retryAfter: 1 })
+      })
+      expect(fn).type.toBe<() => Effect.Effect<never, RateLimitError, never>>()
+    })
+
+    it("with a span, generator and pipe arguments", () => {
+      const fn = Effect.fn("span")(
+        function*() {
+          return yield* Effect.succeed("hello")
+        },
+        Effect.map((x) => {
+          expect(x).type.toBe<string>()
+          return x.length
+        })
+      )
+      expect(fn).type.toBe<() => Effect.Effect<number, never, never>>()
+    })
+
+    it("without a span, generator", () => {
+      const fn = Effect.fn(function*() {
+        return yield* Effect.fail("bye")
+      })
+      expect(fn).type.toBe<() => Effect.Effect<never, string, never>>()
+    })
+
+    it("without a span, generator with yieldable", () => {
+      const fn = Effect.fn(function*() {
+        return yield* new RateLimitError({ retryAfter: 1 })
+      })
+      expect(fn).type.toBe<() => Effect.Effect<never, RateLimitError, never>>()
+    })
+
+    it("without a span, generator and pipe arguments", () => {
+      const fn = Effect.fn(
+        function*() {
+          return yield* Effect.succeed("hello")
+        },
+        Effect.map((x) => {
+          expect(x).type.toBe<string>()
+          return x.length
+        })
+      )
+      expect(fn).type.toBe<() => Effect.Effect<number, never, never>>()
+    })
+
+    it("with a span, function", () => {
+      const fn = Effect.fn("span")(function() {
+        return Effect.fail("bye")
+      })
+      expect(fn).type.toBe<() => Effect.Effect<never, string, never>>()
+    })
+
+    it("with a span, function and pipe arguments", () => {
+      const fn = Effect.fn("span")(
+        function() {
+          return Effect.succeed("hello")
+        },
+        Effect.map((x) => {
+          expect(x).type.toBe<string>()
+          return x.length
+        })
+      )
+      expect(fn).type.toBe<() => Effect.Effect<number, never, never>>()
+    })
+
+    it("without a span, function", () => {
+      const fn = Effect.fn(function() {
+        return Effect.fail("bye")
+      })
+      expect(fn).type.toBe<() => Effect.Effect<never, string, never>>()
+    })
+
+    it("without a span, function and pipe arguments", () => {
+      const fn = Effect.fn(
+        function() {
+          return Effect.succeed("hello")
+        },
+        Effect.map((x) => {
+          expect(x).type.toBe<string>()
+          return x.length
+        })
+      )
+      expect(fn).type.toBe<() => Effect.Effect<number, never, never>>()
+    })
+
+    it("should not unwrap nested effects", () => {
+      const fn = Effect.fn(function() {
+        return Effect.succeed(Effect.succeed(1))
+      })
+      expect(fn).type.toBe<() => Effect.Effect<Effect.Effect<number, never, never>, never, never>>()
+    })
   })
 })
