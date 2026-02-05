@@ -31,6 +31,7 @@ import type { Stream } from "./Stream.js"
 import type { Concurrency, Covariant, Equals, NoExcessProperties, NotFunction, Simplify } from "./Types.js"
 import type * as Unify from "./Unify.js"
 import { SingleShotGen, YieldWrap, yieldWrapGet } from "./Utils.js"
+import { canWriteStackTraceLimit } from "./internal/stackTraceLimit.js"
 
 /**
  * @since 3.4.0
@@ -2984,10 +2985,15 @@ export const withTrace: {
   (name: string): <A, E, R>(self: Micro<A, E, R>) => Micro<A, E, R>
   <A, E, R>(self: Micro<A, E, R>, name: string): Micro<A, E, R>
 } = function() {
-  const prevLimit = globalThis.Error.stackTraceLimit
-  globalThis.Error.stackTraceLimit = 2
-  const error = new globalThis.Error()
-  globalThis.Error.stackTraceLimit = prevLimit
+  let error: globalThis.Error
+  if (!canWriteStackTraceLimit) {
+    error = new globalThis.Error()
+  } else {
+    const prevLimit = Error.stackTraceLimit
+    Error.stackTraceLimit = 2
+    error = new globalThis.Error()
+    Error.stackTraceLimit = prevLimit
+  }
   function generate(name: string, cause: MicroCause<any>) {
     const stack = error.stack
     if (!stack) {
