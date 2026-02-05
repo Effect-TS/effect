@@ -63,3 +63,10 @@ functionality to follow established patterns.
 
 Before writing tests, look at existing tests in the codebase for similar
 functionality to follow established patterns.
+
+## Learning about "effect" v4
+
+If you need to learn more about the new version of effect (version 4), you can
+access the repository here:
+
+\`.repos/effect-v4\`
