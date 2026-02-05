@@ -10,3 +10,4 @@ scratchpad/
 .direnv/
 .idea/
 .env*
+.lalph/
