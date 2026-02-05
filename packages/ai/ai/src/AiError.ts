@@ -162,7 +162,8 @@ export const HttpRequestDetails = Schema.Struct({
  * @example
  * ```ts
  * import { AiError } from "@effect/ai"
- * import { Effect } from "effect"
+ * import * as Effect from "effect/Effect"
+ * import * as Option from "effect/Option"
  *
  * const handleNetworkError = Effect.gen(function* () {
  *   const error = new AiError.HttpRequestError({
@@ -466,9 +467,9 @@ export class HttpResponseError extends Schema.TaggedError<HttpResponseError>(
  * @example
  * ```ts
  * import { AiError } from "@effect/ai"
- * import { Effect } from "effect"
+ * import * as Effect from "effect/Effect"
  *
- * const validateInput = (data: unknown) =>
+ * const validateInput = (data: unknown): Effect.Effect<string, AiError.MalformedInput> =>
  *   typeof data === "string" && data.length > 0
  *     ? Effect.succeed(data)
  *     : Effect.fail(new AiError.MalformedInput({
