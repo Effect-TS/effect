@@ -314,6 +314,101 @@ describe("Effect", () => {
       }))
       deepStrictEqual(result, { _tag: "ErrorB" })
     }))
+  it.effect("catchTagOrDie - recovers from matching tagged error", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      interface ErrorB {
+        readonly _tag: "ErrorB"
+      }
+      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorA" })
+      const result = yield* (Effect.catchTagOrDie(effect, "ErrorA", (e) => Effect.succeed(e)))
+      deepStrictEqual(result, { _tag: "ErrorA" })
+    }))
+  it.effect("catchTagOrDie - dies on unmatched tagged error", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      interface ErrorB {
+        readonly _tag: "ErrorB"
+      }
+      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const result = yield* Effect.exit(
+        Effect.catchTagOrDie(effect, "ErrorA", () => Effect.succeed("recovered"))
+      )
+      deepStrictEqual(result, Exit.die({ _tag: "ErrorB" }))
+    }))
+  it.effect("catchTagOrDie - preserves success value", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      const effect: Effect.Effect<string, ErrorA, never> = Effect.succeed("hello")
+      const result = yield* effect.pipe(
+        Effect.catchTagOrDie("ErrorA", () => Effect.succeed("fallback"))
+      )
+      strictEqual(result, "hello")
+    }))
+  it.effect("catchTagsOrDie - recovers from one of several tagged errors", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      interface ErrorB {
+        readonly _tag: "ErrorB"
+      }
+      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorA" })
+      const result = yield* (Effect.catchTagsOrDie(effect, {
+        ErrorA: (e) => Effect.succeed(e)
+      }))
+      deepStrictEqual(result, { _tag: "ErrorA" })
+    }))
+  it.effect("catchTagsOrDie - dies on unhandled tagged error", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      interface ErrorB {
+        readonly _tag: "ErrorB"
+      }
+      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const result = yield* Effect.exit(
+        Effect.catchTagsOrDie(effect, {
+          ErrorA: (e) => Effect.succeed(e)
+        })
+      )
+      deepStrictEqual(result, Exit.die({ _tag: "ErrorB" }))
+    }))
+  it.effect("catchTagsOrDie - recovers from all tagged errors", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      interface ErrorB {
+        readonly _tag: "ErrorB"
+      }
+      const effect: Effect.Effect<never, ErrorA | ErrorB, never> = Effect.fail({ _tag: "ErrorB" })
+      const result = yield* (Effect.catchTagsOrDie(effect, {
+        ErrorA: (e) => Effect.succeed(e),
+        ErrorB: (e) => Effect.succeed(e)
+      }))
+      deepStrictEqual(result, { _tag: "ErrorB" })
+    }))
+  it.effect("catchTagsOrDie - preserves success value", () =>
+    Effect.gen(function*() {
+      interface ErrorA {
+        readonly _tag: "ErrorA"
+      }
+      const effect: Effect.Effect<string, ErrorA, never> = Effect.succeed("hello")
+      const result = yield* effect.pipe(
+        Effect.catchTagsOrDie({
+          ErrorA: () => Effect.succeed("fallback")
+        })
+      )
+      strictEqual(result, "hello")
+    }))
   it.effect("fold - sandbox -> terminate", () =>
     Effect.gen(function*() {
       const result = yield* pipe(
