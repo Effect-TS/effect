@@ -31,7 +31,6 @@ import * as InternalCommandDirective from "./commandDirective.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalOptions from "./options.js"
-import * as InternalPrimitive from "./primitive.js"
 import * as InternalPrompt from "./prompt.js"
 import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalUsage from "./usage.js"
@@ -670,22 +669,10 @@ const parseInternal = (
     case "Subcommands": {
       const names = getNamesInternal(self)
       const subcommands = getSubcommandsInternal(self)
-      const subcommandNames = new Set(Arr.map(subcommands, ([name]) => name))
-      const parentOptionInfo = getParentOptionInfo(self.parent)
-      const childOptionNames = getChildOptionNames(subcommands)
-      const { parentArgs: extractedParentArgs, remainingArgs } = extractParentOptionsFromArgs(
+      const [parentArgs, childArgs] = Arr.span(
         args,
-        parentOptionInfo.names,
-        parentOptionInfo.booleanNames,
-        childOptionNames,
-        subcommandNames
+        (arg) => !Arr.some(subcommands, ([name]) => name === arg)
       )
-      const [preSubcommandArgs, childArgs] = Arr.span(
-        remainingArgs,
-        (arg) => !subcommandNames.has(arg)
-      )
-      const parentArgs = Arr.appendAll(preSubcommandArgs, extractedParentArgs)
-
       const parseChildrenWith = (argsForChildren: ReadonlyArray<string>) =>
         Effect.suspend(() => {
           const iterator = self.children[Symbol.iterator]()
@@ -839,145 +826,6 @@ const splitForcedArgs = (
 ): [Array<string>, Array<string>] => {
   const [remainingArgs, forcedArgs] = Arr.span(args, (str) => str !== "--")
   return [remainingArgs, Arr.drop(forcedArgs, 1)]
-}
-
-const getParentOptionInfo = (
-  self: Instruction
-): { names: Set<string>; booleanNames: Set<string> } => {
-  const names = new Set<string>()
-  const booleanNames = new Set<string>()
-  const loop = (cmd: Instruction): void => {
-    switch (cmd._tag) {
-      case "Standard": {
-        for (const name of InternalOptions.getNames(cmd.options as InternalOptions.Instruction)) {
-          names.add(name)
-        }
-        collectBooleanNames(cmd.options as InternalOptions.Instruction, booleanNames)
-        break
-      }
-      case "Map": {
-        loop(cmd.command)
-        break
-      }
-      case "Subcommands": {
-        loop(cmd.parent)
-        break
-      }
-      case "GetUserInput": {
-        break
-      }
-    }
-  }
-  loop(self)
-  return { names, booleanNames }
-}
-
-const collectBooleanNames = (self: InternalOptions.Instruction, out: Set<string>): void => {
-  switch (self._tag) {
-    case "Empty": {
-      break
-    }
-    case "Single": {
-      if (InternalPrimitive.isBool(self.primitiveType)) {
-        out.add(self.fullName)
-        for (const alias of self.aliases) {
-          out.add(alias.length === 1 ? `-${alias}` : `--${alias}`)
-        }
-      }
-      break
-    }
-    case "KeyValueMap":
-    case "Variadic": {
-      collectBooleanNames(self.argumentOption as InternalOptions.Instruction, out)
-      break
-    }
-    case "Map":
-    case "WithDefault":
-    case "WithFallback": {
-      collectBooleanNames(self.options as InternalOptions.Instruction, out)
-      break
-    }
-    case "Both":
-    case "OrElse": {
-      collectBooleanNames(self.left as InternalOptions.Instruction, out)
-      collectBooleanNames(self.right as InternalOptions.Instruction, out)
-      break
-    }
-  }
-}
-
-const getChildOptionNames = (
-  subcommands: Array<[string, GetUserInput | Standard]>
-): Set<string> => {
-  const names = new Set<string>()
-  for (const [, cmd] of subcommands) {
-    if (cmd._tag === "Standard") {
-      for (const name of InternalOptions.getNames(cmd.options as InternalOptions.Instruction)) {
-        names.add(name)
-      }
-    }
-  }
-  return names
-}
-
-const extractParentOptionsFromArgs = (
-  args: ReadonlyArray<string>,
-  parentOptionNames: Set<string>,
-  parentBooleanOptionNames: Set<string>,
-  childOptionNames: Set<string>,
-  subcommandNames: Set<string>
-): { parentArgs: Array<string>; remainingArgs: Array<string> } => {
-  const parentArgs: Array<string> = []
-  const remainingArgs: Array<string> = []
-  let i = 0
-  let foundSubcommand = false
-
-  while (i < args.length) {
-    const arg = args[i]
-
-    if (!foundSubcommand && subcommandNames.has(arg)) {
-      foundSubcommand = true
-      remainingArgs.push(arg)
-      i++
-      continue
-    }
-
-    if (!foundSubcommand) {
-      remainingArgs.push(arg)
-      i++
-      continue
-    }
-
-    if (arg.startsWith("-")) {
-      const equalsIndex = arg.indexOf("=")
-      const optionName = equalsIndex !== -1 ? arg.substring(0, equalsIndex) : arg
-
-      // Child wins for shared options
-      if (parentOptionNames.has(optionName) && !childOptionNames.has(optionName)) {
-        if (equalsIndex !== -1) {
-          parentArgs.push(arg)
-          i++
-        } else if (parentBooleanOptionNames.has(optionName)) {
-          // Boolean options don't consume next token
-          parentArgs.push(arg)
-          i++
-        } else {
-          parentArgs.push(arg)
-          i++
-          if (i < args.length && !args[i].startsWith("-") && !subcommandNames.has(args[i])) {
-            parentArgs.push(args[i])
-            i++
-          }
-        }
-        continue
-      }
-    }
-
-    remainingArgs.push(arg)
-    i++
-  }
-
-  return { parentArgs, remainingArgs }
 }
 
 const withDescriptionInternal = (
