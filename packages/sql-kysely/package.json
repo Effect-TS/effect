@@ -60,7 +60,7 @@
     "@testcontainers/mysql": "^10.25.0",
     "@testcontainers/postgresql": "^10.25.0",
     "@types/better-sqlite3": "^7.6.13",
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^12.6.2",
     "effect": "workspace:^",
     "kysely": "^0.28.2"
   },
