@@ -31,6 +31,7 @@ import * as InternalCommandDirective from "./commandDirective.js"
 import * as InternalHelpDoc from "./helpDoc.js"
 import * as InternalSpan from "./helpDoc/span.js"
 import * as InternalOptions from "./options.js"
+import * as InternalPrimitive from "./primitive.js"
 import * as InternalPrompt from "./prompt.js"
 import * as InternalSelectPrompt from "./prompt/select.js"
 import * as InternalUsage from "./usage.js"
@@ -670,10 +671,13 @@ const parseInternal = (
       const names = getNamesInternal(self)
       const subcommands = getSubcommandsInternal(self)
       const subcommandNames = new Set(Arr.map(subcommands, ([name]) => name))
-      const parentOptionNames = getParentOptionNames(self.parent)
+      const parentOptionInfo = getParentOptionInfo(self.parent)
+      const childOptionNames = getChildOptionNames(subcommands)
       const { parentArgs: extractedParentArgs, remainingArgs } = extractParentOptionsFromArgs(
         args,
-        parentOptionNames,
+        parentOptionInfo.names,
+        parentOptionInfo.booleanNames,
+        childOptionNames,
         subcommandNames
       )
       const [preSubcommandArgs, childArgs] = Arr.span(
@@ -837,14 +841,18 @@ const splitForcedArgs = (
   return [remainingArgs, Arr.drop(forcedArgs, 1)]
 }
 
-const getParentOptionNames = (self: Instruction): Set<string> => {
+const getParentOptionInfo = (
+  self: Instruction
+): { names: Set<string>; booleanNames: Set<string> } => {
   const names = new Set<string>()
+  const booleanNames = new Set<string>()
   const loop = (cmd: Instruction): void => {
     switch (cmd._tag) {
       case "Standard": {
         for (const name of InternalOptions.getNames(cmd.options as InternalOptions.Instruction)) {
           names.add(name)
         }
+        collectBooleanNames(cmd.options as InternalOptions.Instruction, booleanNames)
         break
       }
       case "Map": {
@@ -861,12 +869,62 @@ const getParentOptionNames = (self: Instruction): Set<string> => {
     }
   }
   loop(self)
+  return { names, booleanNames }
+}
+
+const collectBooleanNames = (self: InternalOptions.Instruction, out: Set<string>): void => {
+  switch (self._tag) {
+    case "Empty": {
+      break
+    }
+    case "Single": {
+      if (InternalPrimitive.isBool(self.primitiveType)) {
+        out.add(self.fullName)
+        for (const alias of self.aliases) {
+          out.add(alias.length === 1 ? `-${alias}` : `--${alias}`)
+        }
+      }
+      break
+    }
+    case "KeyValueMap":
+    case "Variadic": {
+      collectBooleanNames(self.argumentOption as InternalOptions.Instruction, out)
+      break
+    }
+    case "Map":
+    case "WithDefault":
+    case "WithFallback": {
+      collectBooleanNames(self.options as InternalOptions.Instruction, out)
+      break
+    }
+    case "Both":
+    case "OrElse": {
+      collectBooleanNames(self.left as InternalOptions.Instruction, out)
+      collectBooleanNames(self.right as InternalOptions.Instruction, out)
+      break
+    }
+  }
+}
+
+const getChildOptionNames = (
+  subcommands: Array<[string, GetUserInput | Standard]>
+): Set<string> => {
+  const names = new Set<string>()
+  for (const [, cmd] of subcommands) {
+    if (cmd._tag === "Standard") {
+      for (const name of InternalOptions.getNames(cmd.options as InternalOptions.Instruction)) {
+        names.add(name)
+      }
+    }
+  }
   return names
 }
 
 const extractParentOptionsFromArgs = (
   args: ReadonlyArray<string>,
   parentOptionNames: Set<string>,
+  parentBooleanOptionNames: Set<string>,
+  childOptionNames: Set<string>,
   subcommandNames: Set<string>
 ): { parentArgs: Array<string>; remainingArgs: Array<string> } => {
   const parentArgs: Array<string> = []
@@ -894,8 +952,13 @@ const extractParentOptionsFromArgs = (
       const equalsIndex = arg.indexOf("=")
       const optionName = equalsIndex !== -1 ? arg.substring(0, equalsIndex) : arg
 
-      if (parentOptionNames.has(optionName)) {
+      // Child wins for shared options
+      if (parentOptionNames.has(optionName) && !childOptionNames.has(optionName)) {
         if (equalsIndex !== -1) {
+          parentArgs.push(arg)
+          i++
+        } else if (parentBooleanOptionNames.has(optionName)) {
+          // Boolean options don't consume next token
           parentArgs.push(arg)
           i++
         } else {

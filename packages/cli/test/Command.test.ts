@@ -54,8 +54,25 @@ const add = Command.make("add", {
   Command.provideEffect(AddService, (_) => Effect.succeed("AddService" as const))
 )
 
+const status = Command.make("status", {
+  verbose: Options.boolean("verbose").pipe(Options.withAlias("v")),
+  pathspec: Args.text({ name: "pathspec" })
+}, ({ verbose, pathspec }) =>
+  Effect.gen(function*() {
+    const { log } = yield* Messages
+    const parent = yield* git
+    if (verbose) {
+      yield* log(`Status verbose ${pathspec}`)
+    } else {
+      yield* log(`Status ${pathspec}`)
+    }
+    if (parent.verbose) {
+      yield* log("parent verbose")
+    }
+  })).pipe(Command.withDescription("Show the working tree status"))
+
 const run = git.pipe(
-  Command.withSubcommands([clone, add]),
+  Command.withSubcommands([clone, add, status]),
   Command.run({
     name: "git",
     version: "1.0.0"
@@ -130,32 +147,9 @@ describe("Command", () => {
         Effect.runPromise
       ))
 
-    it("options after positional args", () =>
-      Effect.gen(function*() {
-        const messages = yield* Messages
-        // --verbose after the positional arg "repo"
-        yield* run(["node", "git.js", "clone", "repo", "--verbose"])
-        assert.deepStrictEqual(yield* messages.messages, [
-          "shared",
-          "Cloning repo"
-        ])
-      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
-
-    it("options after positional args with alias", () =>
-      Effect.gen(function*() {
-        const messages = yield* Messages
-        // -v after the positional arg "repo"
-        yield* run(["node", "git.js", "clone", "repo", "-v"])
-        assert.deepStrictEqual(yield* messages.messages, [
-          "shared",
-          "Cloning repo"
-        ])
-      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
-
     it("parent options after subcommand and its args", () =>
       Effect.gen(function*() {
         const messages = yield* Messages
-        // --verbose (parent option) appears after "clone repo" (subcommand + args)
         yield* run(["node", "git.js", "clone", "repo", "--verbose"])
         assert.deepStrictEqual(yield* messages.messages, [
           "shared",
@@ -166,7 +160,6 @@ describe("Command", () => {
     it("parent options with alias after subcommand and its args", () =>
       Effect.gen(function*() {
         const messages = yield* Messages
-        // -v (parent option alias) appears after "add file" (subcommand + args)
         yield* run(["node", "git.js", "add", "file", "-v"])
         assert.deepStrictEqual(yield* messages.messages, [
           "shared",
@@ -183,6 +176,16 @@ describe("Command", () => {
         assert.deepStrictEqual(yield* messages.messages, [
           "shared",
           "Cloning repo"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("shared option: child wins over parent", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        yield* run(["node", "git.js", "status", ".", "--verbose"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Status verbose ."
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
   })
