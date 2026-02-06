@@ -8773,7 +8773,7 @@ export const decodeText = dual<
 >((args) => isStream(args[0]), (self, encoding = "utf-8") =>
   suspend(() => {
     const decoder = new TextDecoder(encoding)
-    return map(self, (s) => decoder.decode(s))
+    return map(self, (s) => decoder.decode(s, { stream: true }))
   }))
 
 /** @internal */
