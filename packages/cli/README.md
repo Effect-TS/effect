@@ -448,17 +448,31 @@ npx tsx echo.ts -b "This is a test"
 
 Both commands will display "This is a test" in bold text, assuming your terminal supports ANSI escape codes.
 
-## Important Note on Argument Order
+## Note on Argument Order
 
-When using your CLI, it's crucial to understand the order in which you specify options and arguments. By default, the `@effect/cli` parses `Options` and `Args` **before** any subcommands. This means that options need to be placed directly after the main command, and before any subcommands or additional arguments.
-
-For example, the command:
+Options can appear before or after positional arguments. Both of the following are valid:
 
 ```sh
+npx tsx echo.ts -b "This is a test"
 npx tsx echo.ts "This is a test" -b
 ```
 
-**would not work** because the `-b` option appears after the text argument `"This is a test"`. The parser expects options to be specified before any standalone arguments or subcommands. This ensures that the options are correctly associated with the main command and not misinterpreted as arguments for a subcommand or additional text.
+This flexibility also applies to parent command options when using subcommands. For example, if a parent command defines `--verbose`, all of the following work:
+
+```sh
+myapp --verbose clone repo
+myapp clone repo --verbose
+myapp clone --verbose repo
+```
+
+**Shared options:** When a parent command and a subcommand define the same option (e.g., both have `--verbose`), the option is resolved based on position:
+
+- **Before the subcommand:** it belongs to the parent
+- **After the subcommand:** it belongs to the child
+
+This matches the behavior of tools like `git`, where `git --verbose status` uses git's verbose flag, while `git status --verbose` uses the status subcommand's verbose flag.
+
+> **Note:** This positional flexibility applies only to **options** (flags like `--verbose` or `-v`), not to **arguments** (positional values). Arguments are always parsed in order.
 
 ## Adding Valued Options to Commands
 
@@ -1196,45 +1210,39 @@ npx tsx minigit.ts -c key1=value1 clone --depth 1 https://github.com/Effect-TS/c
 
 Understanding how command-line arguments are parsed in your applications is crucial for designing effective and user-friendly command interfaces. Here are the key rules that the internal command-line argument parser follows:
 
-### 1. Order of Options and Subcommands
+### 1. Flexible Option Placement
 
-Options and arguments (collectively referred to as `Options` / `Args`) associated with a command must be specified **before** any subcommands. This rule helps the parser determine which command the options apply to.
-
-**Examples:**
-
-- **Correct Usage**:
-
-  ```sh
-  program -v subcommand
-  ```
-
-  In this example, the `-v` option applies to the main program before the subcommand is processed.
-
-- **Incorrect Usage**:
-  ```sh
-  program subcommand -v
-  ```
-  Here, placing `-v` after the subcommand causes confusion as to whether `-v` applies to the main program or the subcommand.
-
-### 2. Parsing Options Before Positional Arguments
-
-The parser is designed to recognize options before any positional arguments. This ordering ensures clarity and prevents confusion between options and regular arguments.
+Options can appear before or after positional arguments and subcommands. The parser scans all arguments to find matching options regardless of position.
 
 **Examples:**
 
-- **Valid Command**:
+```sh
+# All of these are equivalent:
+program -v subcommand
+program subcommand -v
+```
 
-  ```sh
-  program --option arg
-  ```
+When a parent command and subcommand share the same option name, position determines ownership:
 
-  This command correctly places the `--option` before the positional argument `arg`.
+```sh
+# -v belongs to the parent (before subcommand)
+program -v subcommand
 
-- **Invalid Command**:
-  ```sh
-  program arg --option
-  ```
-  Placing an argument before an option is not allowed and can lead to errors in command processing.
+# -v belongs to the subcommand (after subcommand)
+program subcommand -v
+```
+
+If only the parent defines an option, it is extracted regardless of position:
+
+```sh
+# --config belongs to the parent in both cases
+program --config prod.json subcommand arg
+program subcommand arg --config prod.json
+```
+
+### 2. Positional Arguments Are Order-Dependent
+
+Unlike options, positional arguments are always parsed in the order they appear. They cannot be rearranged.
 
 ### 3. Handling Excess Arguments
 
