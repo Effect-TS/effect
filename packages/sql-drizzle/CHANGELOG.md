@@ -1,5 +1,11 @@
 # @effect/sql-drizzle
 
+## 0.48.1
+
+### Patch Changes
+
+- [#6033](https://github.com/Effect-TS/effect/pull/6033) [`740a912`](https://github.com/Effect-TS/effect/commit/740a912142c2578defcf3e1e7d449535b074bd61) Thanks @tim-smart! - Add `PgClient.fromPool` and `PgClient.layerFromPool`.
+
 ## 0.48.0
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-node
 
+## 0.50.1
+
+### Patch Changes
+
+- [#6042](https://github.com/Effect-TS/effect/pull/6042) [`8e22862`](https://github.com/Effect-TS/effect/commit/8e2286271a982b1cc34c78fca8b9f59de71fc790) Thanks @tim-smart! - Upgrade `better-sqlite3` to v12 for the Node SQLite client.
+
+- Updated dependencies [[`22d9d27`](https://github.com/Effect-TS/effect/commit/22d9d27bc007db86d9e4748c17324fab5f950c7d)]:
+  - @effect/platform@0.94.4
+
 ## 0.50.0
 
 ### Patch Changes

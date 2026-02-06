@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.94.4
+
+### Patch Changes
+
+- [#6035](https://github.com/Effect-TS/effect/pull/6035) [`22d9d27`](https://github.com/Effect-TS/effect/commit/22d9d27bc007db86d9e4748c17324fab5f950c7d) Thanks @tim-smart! - Fix `HttpServerError.causeResponse` to prefer 499 when a client abort interrupt is present.
+
 ## 0.94.3
 
 ### Patch Changes
