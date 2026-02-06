@@ -51,7 +51,6 @@ import type {
   RequestEncoded
 } from "./RpcMessage.js"
 import { constEof, constPong, RequestId, ResponseDefectEncoded } from "./RpcMessage.js"
-import type { RpcMiddleware } from "./RpcMiddleware.js"
 import * as RpcSchema from "./RpcSchema.js"
 import * as RpcSerialization from "./RpcSerialization.js"
 import type { InitialMessage } from "./RpcWorker.js"
@@ -440,24 +439,8 @@ const applyMiddleware = <A, E, R>(
   }
 
   for (const tag of rpc.middlewares) {
-    if (tag.wrap) {
-      const middleware = Context.unsafeGet(context, tag)
-      handler = middleware({ ...options, next: handler as any })
-    } else if (tag.optional) {
-      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
-      const previous = handler
-      handler = Effect.matchEffect(middleware(options), {
-        onFailure: () => previous,
-        onSuccess: tag.provides !== undefined
-          ? (value) => Effect.provideService(previous, tag.provides as any, value)
-          : (_) => previous
-      })
-    } else {
-      const middleware = Context.unsafeGet(context, tag) as RpcMiddleware<any, any>
-      handler = tag.provides !== undefined
-        ? Effect.provideServiceEffect(handler, tag.provides as any, middleware(options))
-        : Effect.zipRight(middleware(options), handler)
-    }
+    const middleware = Context.unsafeGet(context, tag)
+    handler = middleware(handler as any, { ...options }) as any
   }
 
   return handler
