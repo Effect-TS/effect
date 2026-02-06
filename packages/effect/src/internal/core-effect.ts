@@ -352,6 +352,122 @@ export const catchTags: {
   )
 })
 
+/** @internal */
+export const catchTagOrDie: {
+  <
+    E,
+    const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>,
+    A1,
+    E1,
+    R1
+  >(
+    ...args: [
+      ...tags: K,
+      f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>
+    ]
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A | A1, E1, R | R1>
+  <
+    A,
+    E,
+    R,
+    const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>,
+    A1,
+    E1,
+    R1
+  >(
+    self: Effect.Effect<A, E, R>,
+    ...args: [
+      ...tags: K,
+      f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>
+    ]
+  ): Effect.Effect<A | A1, E1, R | R1>
+} = dual(
+  (args: any) => core.isEffect(args[0]),
+  <A, E, R, const K extends Arr.NonEmptyReadonlyArray<E extends { _tag: string } ? E["_tag"] : never>, R1, E1, A1>(
+    self: Effect.Effect<A, E, R>,
+    ...args: [
+      ...tags: K & { [I in keyof K]: E extends { _tag: string } ? E["_tag"] : never },
+      f: (e: Extract<Types.NoInfer<E>, { _tag: K[number] }>) => Effect.Effect<A1, E1, R1>
+    ]
+  ): Effect.Effect<A | A1, E1, R | R1> => {
+    const f = args[args.length - 1] as any
+    let predicate: Predicate.Predicate<E>
+    if (args.length === 2) {
+      predicate = Predicate.isTagged(args[0] as string)
+    } else {
+      predicate = (e) => {
+        const tag = Predicate.hasProperty(e, "_tag") ? e["_tag"] : undefined
+        if (!tag) return false
+        for (let i = 0; i < args.length - 1; i++) {
+          if (args[i] === tag) return true
+        }
+        return false
+      }
+    }
+    return core.catchAll(self, (e) =>
+      predicate(e) ? f(e as Extract<E, { _tag: K[number] }>) : core.die(e) as any
+    ) as any
+  }
+) as any
+
+/** @internal */
+export const catchTagsOrDie: {
+  <
+    E,
+    Cases extends (E extends { _tag: string } ? {
+        [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
+      } :
+      {})
+  >(
+    cases: Cases
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<
+    | A
+    | {
+      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<infer A, any, any>) ? A : never
+    }[keyof Cases],
+    {
+      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, infer E, any>) ? E : never
+    }[keyof Cases],
+    | R
+    | {
+      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
+    }[keyof Cases]
+  >
+  <
+    R,
+    E,
+    A,
+    Cases extends (E extends { _tag: string } ? {
+        [K in E["_tag"]]+?: (error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>
+      } :
+      {})
+  >(
+    self: Effect.Effect<A, E, R>,
+    cases: Cases
+  ): Effect.Effect<
+    | A
+    | {
+      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<infer A, any, any>) ? A : never
+    }[keyof Cases],
+    {
+      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, infer E, any>) ? E : never
+    }[keyof Cases],
+    | R
+    | {
+      [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, any, infer R>) ? R : never
+    }[keyof Cases]
+  >
+} = dual(2, (self: Effect.Effect<any, any, any>, cases: Record<string, Function>) => {
+  let keys: Array<string>
+  return core.catchAll(self, (e: any) => {
+    keys ??= Object.keys(cases)
+    if (Predicate.hasProperty(e, "_tag") && Predicate.isString(e["_tag"]) && keys.includes(e["_tag"])) {
+      return (cases as any)[e["_tag"]](e)
+    }
+    return core.die(e)
+  })
+})
+
 /* @internal */
 export const cause = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<Cause.Cause<E>, never, R> =>
   core.matchCause(self, { onFailure: identity, onSuccess: () => internalCause.empty })
