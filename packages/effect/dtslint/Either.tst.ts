@@ -1,6 +1,7 @@
 import { Array, Either, hole, Option, pipe, Predicate } from "effect"
 import { describe, expect, it } from "tstyche"
 
+declare const number: number
 declare const string$string: Either.Either<string, string>
 declare const number$string: Either.Either<number, string>
 declare const boolean$string: Either.Either<boolean, string>
@@ -60,6 +61,54 @@ describe("Either", () => {
       expect(Either.all(eitherRecord)).type.toBe<Either.Either<{ [x: string]: number }, string>>()
       expect(pipe(eitherRecord, Either.all)).type.toBe<Either.Either<{ [x: string]: number }, string>>()
     })
+  })
+
+  it("forEach", () => {
+    expect(Either.forEach([], (a) => {
+      expect(a).type.toBe<never>()
+      return number$string
+    })).type.toBe<Either.Either<Array<number>, string>>()
+    expect(pipe(
+      [],
+      Either.forEach((a) => {
+        expect(a).type.toBe<never>()
+        return number$string
+      })
+    )).type.toBe<Either.Either<Array<number>, string>>()
+    expect(Either.forEach([number], (a) => {
+      expect(a).type.toBe<number>()
+      return number$string
+    })).type.toBe<Either.Either<Array<number>, string>>()
+    expect(pipe(
+      [number],
+      Either.forEach((a) => {
+        expect(a).type.toBe<number>()
+        return number$string
+      })
+    )).type.toBe<Either.Either<Array<number>, string>>()
+    expect(Either.forEach([number] as const, (a) => {
+      expect(a).type.toBe<number>()
+      return number$string
+    })).type.toBe<Either.Either<[number, ...Array<number>], string>>()
+    expect(pipe(
+      [number] as const,
+      Either.forEach((a) => {
+        expect(a).type.toBe<number>()
+        return number$string
+      })
+    )).type.toBe<Either.Either<[number, ...Array<number>], string>>()
+
+    expect(Either.forEach(new Map<string, number>(), (a) => {
+      expect(a).type.toBe<[string, number]>()
+      return number$string
+    })).type.toBe<Either.Either<Array<number>, string>>()
+    expect(pipe(
+      new Map<string, number>(),
+      Either.forEach((a) => {
+        expect(a).type.toBe<[string, number]>()
+        return number$string
+      })
+    )).type.toBe<Either.Either<Array<number>, string>>()
   })
 
   it("andThen", () => {
