@@ -457,20 +457,62 @@ npx tsx echo.ts -b "This is a test"
 npx tsx echo.ts "This is a test" -b
 ```
 
-This flexibility also applies to parent command options when using subcommands. For example, if a parent command defines `--verbose`, all of the following work:
+This flexibility also applies to parent command options when using subcommands:
 
-```sh
-myapp --verbose clone repo
-myapp clone repo --verbose
-myapp clone --verbose repo
+```ts
+import { Args, Command, Options } from "@effect/cli"
+import { NodeContext, NodeRuntime } from "@effect/platform-node"
+import { Console, Effect } from "effect"
+
+const app = Command.make("app", {
+  verbose: Options.boolean("verbose").pipe(Options.withAlias("v"))
+})
+
+const deploy = Command.make("deploy", {
+  target: Args.text({ name: "target" })
+}, ({ target }) =>
+  Effect.flatMap(app, ({ verbose }) =>
+    Console.log(`Deploying ${target}${verbose ? " (verbose)" : ""}`)
+  )
+)
+
+const command = app.pipe(Command.withSubcommands([deploy]))
+const cli = Command.run(command, { name: "app", version: "1.0.0" })
+cli(process.argv).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain)
 ```
 
-**Shared options:** When a parent command and a subcommand define the same option (e.g., both have `--verbose`), the option is resolved based on position:
+```sh
+# All equivalent — parent options can appear anywhere:
+npx tsx app.ts --verbose deploy prod
+npx tsx app.ts deploy prod --verbose
+npx tsx app.ts deploy --verbose prod
+```
 
-- **Before the subcommand:** it belongs to the parent
-- **After the subcommand:** it belongs to the child
+**Shared options:** When a parent and subcommand define the same option, position determines ownership — before the subcommand it belongs to the parent, after it belongs to the child:
 
-This matches the behavior of tools like `git`, where `git --verbose status` uses git's verbose flag, while `git status --verbose` uses the status subcommand's verbose flag.
+```ts
+// Parent "app" has --verbose, child "status" also has --verbose
+const status = Command.make("status", {
+  verbose: Options.boolean("verbose").pipe(Options.withAlias("v")),
+  path: Args.text({ name: "path" })
+}, ({ verbose, path }) =>
+  Effect.flatMap(app, (parent) =>
+    Console.log(
+      `Status ${path}: child verbose=${verbose}, parent verbose=${parent.verbose}`
+    )
+  )
+)
+```
+
+```sh
+# --verbose before subcommand → parent gets it
+npx tsx app.ts --verbose status .
+# Output: Status .: child verbose=false, parent verbose=true
+
+# --verbose after subcommand → child gets it
+npx tsx app.ts status . --verbose
+# Output: Status .: child verbose=true, parent verbose=false
+```
 
 > **Note:** This positional flexibility applies only to **options** (flags like `--verbose` or `-v`), not to **arguments** (positional values). Arguments are always parsed in order.
 
