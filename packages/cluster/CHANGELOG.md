@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.56.3
+
+### Patch Changes
+
+- [#6033](https://github.com/Effect-TS/effect/pull/6033) [`740a912`](https://github.com/Effect-TS/effect/commit/740a912142c2578defcf3e1e7d449535b074bd61) Thanks @tim-smart! - Add `PgClient.fromPool` and `PgClient.layerFromPool`.
+
+- Updated dependencies [[`22d9d27`](https://github.com/Effect-TS/effect/commit/22d9d27bc007db86d9e4748c17324fab5f950c7d)]:
+  - @effect/platform@0.94.4
+
 ## 0.56.2
 
 ### Patch Changes
