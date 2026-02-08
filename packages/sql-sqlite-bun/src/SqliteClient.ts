@@ -104,10 +104,10 @@ export const make = (
       ) =>
         Effect.withFiberRuntime<Array<any>, SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.currentContext, Client.SafeIntegers)
-          const statement = db.query(sql)
-          // @ts-ignore bun-types missing safeIntegers method, fixed in https://github.com/oven-sh/bun/pull/26627
-          statement.safeIntegers(useSafeIntegers)
           try {
+            const statement = db.query(sql)
+            // @ts-ignore bun-types missing safeIntegers method, fixed in https://github.com/oven-sh/bun/pull/26627
+            statement.safeIntegers(useSafeIntegers)
             return Effect.succeed((statement.all(...(params as any)) ?? []) as Array<any>)
           } catch (cause) {
             return Effect.fail(new SqlError({ cause, message: "Failed to execute statement" }))
@@ -120,10 +120,10 @@ export const make = (
       ) =>
         Effect.withFiberRuntime<Array<any>, SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.currentContext, Client.SafeIntegers)
-          const statement = db.query(sql)
-          // @ts-ignore bun-types missing safeIntegers method, fixed in https://github.com/oven-sh/bun/pull/26627
-          statement.safeIntegers(useSafeIntegers)
           try {
+            const statement = db.query(sql)
+            // @ts-ignore bun-types missing safeIntegers method, fixed in https://github.com/oven-sh/bun/pull/26627
+            statement.safeIntegers(useSafeIntegers)
             return Effect.succeed((statement.values(...(params as any)) ?? []) as Array<any>)
           } catch (cause) {
             return Effect.fail(new SqlError({ cause, message: "Failed to execute statement" }))
