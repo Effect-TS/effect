@@ -1,5 +1,14 @@
 # @effect/sql-sqlite-bun
 
+## 0.50.2
+
+### Patch Changes
+
+- [#6044](https://github.com/Effect-TS/effect/pull/6044) [`708b8ba`](https://github.com/Effect-TS/effect/commit/708b8ba2dc4557767f9008e0dcd58f93721a065e) Thanks @0xh3x! - Wrap `db.query()` (prepare) errors in `SqlError` so they surface as catchable failures instead of defects.
+
+- Updated dependencies [[`22d9d27`](https://github.com/Effect-TS/effect/commit/22d9d27bc007db86d9e4748c17324fab5f950c7d)]:
+  - @effect/platform@0.94.4
+
 ## 0.50.1
 
 ### Patch Changes
