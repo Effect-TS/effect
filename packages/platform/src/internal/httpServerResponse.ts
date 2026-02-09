@@ -197,14 +197,20 @@ export const json = (
   body: unknown,
   options?: ServerResponse.Options.WithContent | undefined
 ): Effect.Effect<ServerResponse.HttpServerResponse, Body.HttpBodyError> =>
-  Effect.map(internalBody.json(body), (body) =>
-    new ServerResponseImpl(
-      options?.status ?? 200,
-      options?.statusText,
-      options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
-      options?.cookies ?? Cookies.empty,
-      body
-    ))
+  Effect.map(
+    internalBody.json(
+      body,
+      getContentType(options, options?.headers ? Headers.fromInput(options.headers) : Headers.empty)
+    ),
+    (body) =>
+      new ServerResponseImpl(
+        options?.status ?? 200,
+        options?.statusText,
+        options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+        options?.cookies ?? Cookies.empty,
+        body
+      )
+  )
 
 /** @internal */
 export const unsafeJson = (

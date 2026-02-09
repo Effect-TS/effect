@@ -114,12 +114,13 @@ export const text = (body: string, contentType?: string): Body.Uint8Array =>
   uint8Array(encoder.encode(body), contentType ?? "text/plain")
 
 /** @internal */
-export const unsafeJson = (body: unknown): Body.Uint8Array => text(JSON.stringify(body), "application/json")
+export const unsafeJson = (body: unknown, contentType?: string): Body.Uint8Array =>
+  text(JSON.stringify(body), contentType ?? "application/json")
 
 /** @internal */
-export const json = (body: unknown): Effect.Effect<Body.Uint8Array, Body.HttpBodyError> =>
+export const json = (body: unknown, contentType?: string): Effect.Effect<Body.Uint8Array, Body.HttpBodyError> =>
   Effect.try({
-    try: () => unsafeJson(body),
+    try: () => unsafeJson(body, contentType),
     catch: (error) => HttpBodyError({ _tag: "JsonError", error })
   })
 
