@@ -165,13 +165,13 @@ export const text: (body: string, contentType?: string) => Uint8Array = internal
  * @since 1.0.0
  * @category constructors
  */
-export const unsafeJson: (body: unknown) => Uint8Array = internal.unsafeJson
+export const unsafeJson: (body: unknown, contentType?: string) => Uint8Array = internal.unsafeJson
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const json: (body: unknown) => Effect.Effect<Uint8Array, HttpBodyError> = internal.json
+export const json: (body: unknown, contentType?: string) => Effect.Effect<Uint8Array, HttpBodyError> = internal.json
 
 /**
  * @since 1.0.0
@@ -179,13 +179,13 @@ export const json: (body: unknown) => Effect.Effect<Uint8Array, HttpBodyError> =
  */
 export const jsonSchema: <A, I, R>(
   schema: Schema.Schema<A, I, R>
-) => (body: A) => Effect.Effect<Uint8Array, HttpBodyError, R> = internal.jsonSchema
+) => (body: A, contentType?: string) => Effect.Effect<Uint8Array, HttpBodyError, R> = internal.jsonSchema
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const urlParams: (urlParams: UrlParams.UrlParams) => Uint8Array = internal.urlParams
+export const urlParams: (urlParams: UrlParams.UrlParams, contentType?: string) => Uint8Array = internal.urlParams
 
 /**
  * @since 1.0.0
