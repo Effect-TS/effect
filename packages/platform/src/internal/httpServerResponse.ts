@@ -195,29 +195,33 @@ export const htmlStream = <A extends ReadonlyArray<Template.InterpolatedWithStre
 /** @internal */
 export const json = (
   body: unknown,
-  options?: ServerResponse.Options.WithContent | undefined
-): Effect.Effect<ServerResponse.HttpServerResponse, Body.HttpBodyError> =>
-  Effect.map(internalBody.json(body), (body) =>
+  options?: ServerResponse.Options.WithContentType | undefined
+): Effect.Effect<ServerResponse.HttpServerResponse, Body.HttpBodyError> => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return Effect.map(internalBody.json(body, getContentType(options, headers)), (body) =>
     new ServerResponseImpl(
       options?.status ?? 200,
       options?.statusText,
-      options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+      headers,
       options?.cookies ?? Cookies.empty,
       body
     ))
+}
 
 /** @internal */
 export const unsafeJson = (
   body: unknown,
-  options?: ServerResponse.Options.WithContent | undefined
-): ServerResponse.HttpServerResponse =>
-  new ServerResponseImpl(
+  options?: ServerResponse.Options.WithContentType | undefined
+): ServerResponse.HttpServerResponse => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+    headers,
     options?.cookies ?? Cookies.empty,
-    internalBody.unsafeJson(body)
+    internalBody.unsafeJson(body, getContentType(options, headers))
   )
+}
 
 /** @internal */
 export const schemaJson = <A, I, R>(
@@ -227,16 +231,18 @@ export const schemaJson = <A, I, R>(
   const encode = internalBody.jsonSchema(schema, options)
   return (
     body: A,
-    options?: ServerResponse.Options.WithContent | undefined
-  ): Effect.Effect<ServerResponse.HttpServerResponse, Body.HttpBodyError, R> =>
-    Effect.map(encode(body), (body) =>
+    options?: ServerResponse.Options.WithContentType | undefined
+  ): Effect.Effect<ServerResponse.HttpServerResponse, Body.HttpBodyError, R> => {
+    const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+    return Effect.map(encode(body, getContentType(options, headers)), (body) =>
       new ServerResponseImpl(
         options?.status ?? 200,
         options?.statusText,
-        options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+        headers,
         options?.cookies ?? Cookies.empty,
         body
       ))
+  }
 }
 
 const httpPlatform = Context.GenericTag<Platform.HttpPlatform>("@effect/platform/HttpPlatform")
@@ -264,15 +270,20 @@ export const fileWeb = (
 /** @internal */
 export const urlParams = (
   body: UrlParams.Input,
-  options?: ServerResponse.Options.WithContent | undefined
-): ServerResponse.HttpServerResponse =>
-  new ServerResponseImpl(
+  options?: ServerResponse.Options.WithContentType | undefined
+): ServerResponse.HttpServerResponse => {
+  const headers = options?.headers ? Headers.fromInput(options.headers) : Headers.empty
+  return new ServerResponseImpl(
     options?.status ?? 200,
     options?.statusText,
-    options?.headers ? Headers.fromInput(options.headers) : Headers.empty,
+    headers,
     options?.cookies ?? Cookies.empty,
-    internalBody.text(UrlParams.toString(UrlParams.fromInput(body)), "application/x-www-form-urlencoded")
+    internalBody.urlParams(
+      UrlParams.fromInput(body),
+      getContentType(options, headers)
+    )
   )
+}
 
 /** @internal */
 export const raw = (body: unknown, options?: ServerResponse.Options | undefined): ServerResponse.HttpServerResponse =>

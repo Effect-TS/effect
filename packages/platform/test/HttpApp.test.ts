@@ -1,7 +1,7 @@
 import { HttpApp, HttpServerResponse } from "@effect/platform"
 import { describe, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, FiberRef, Runtime, Stream } from "effect"
+import { Context, Effect, FiberRef, Runtime, Schema, Stream } from "effect"
 import * as Layer from "effect/Layer"
 
 describe("Http/App", () => {
@@ -18,6 +18,38 @@ describe("Http/App", () => {
       const handler = HttpApp.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
       const response = await handler(new Request("http://localhost:3000/"))
       strictEqual(response.headers.get("Content-Type"), "application/json")
+    })
+
+    test("json supports contentType option", async () => {
+      const handler = HttpApp.toWebHandler(
+        HttpServerResponse.json({ foo: "bar" }, { contentType: "application/problem+json" })
+      )
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/problem+json")
+    })
+
+    test("json supports content-type header", async () => {
+      const handler = HttpApp.toWebHandler(
+        HttpServerResponse.json({ foo: "bar" }, { headers: { "content-type": "application/vnd.api+json" } })
+      )
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/vnd.api+json")
+    })
+
+    test("schemaJson supports contentType option", async () => {
+      const encode = HttpServerResponse.schemaJson(Schema.Struct({ foo: Schema.String }))
+      const handler = HttpApp.toWebHandler(encode({ foo: "bar" }, { contentType: "application/merge-patch+json" }))
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/merge-patch+json")
+    })
+
+    test("urlParams supports contentType option", async () => {
+      const handler = HttpApp.toWebHandler(
+        HttpServerResponse.urlParams({ foo: "bar" }, { contentType: "text/plain" })
+      )
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "text/plain")
+      strictEqual(await response.text(), "foo=bar")
     })
 
     test("cookies", async () => {
