@@ -3,7 +3,7 @@
  */
 import type { Brand } from "effect/Brand"
 import type * as Effect from "effect/Effect"
-import { constUndefined, dual } from "effect/Function"
+import { dual } from "effect/Function"
 import * as Option from "effect/Option"
 import * as ParseResult from "effect/ParseResult"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
@@ -16,7 +16,9 @@ import * as Struct_ from "effect/Struct"
  * @since 1.0.0
  * @category type ids
  */
-export const TypeId: unique symbol = Symbol.for("@effect/experimental/VariantSchema")
+export const TypeId: unique symbol = Symbol.for(
+  "@effect/experimental/VariantSchema"
+)
 
 /**
  * @since 1.0.0
@@ -71,8 +73,9 @@ export declare namespace Struct {
    * @category models
    */
   export type Validate<A, Variant extends string> = {
-    readonly [K in keyof A]: A[K] extends { readonly [TypeId]: infer _ } ? Validate<A[K], Variant> :
-      A[K] extends Field<infer Config> ? [keyof Config] extends [Variant] ? {} : "field must have valid variants"
+    readonly [K in keyof A]: A[K] extends { readonly [TypeId]: infer _ } ? Validate<A[K], Variant>
+      : A[K] extends Field<infer Config> ? [keyof Config] extends [Variant] ? {}
+        : "field must have valid variants"
       : {}
   }
 }
@@ -128,7 +131,10 @@ export declare namespace Field {
    * @category models
    */
   export type Config = {
-    readonly [key: string]: Schema.Schema.All | Schema.PropertySignature.All | undefined
+    readonly [key: string]:
+      | Schema.Schema.All
+      | Schema.PropertySignature.All
+      | undefined
   }
 
   /**
@@ -157,7 +163,11 @@ export declare namespace Field {
  * @since 1.0.0
  * @category extractors
  */
-export type ExtractFields<V extends string, Fields extends Struct.Fields, IsDefault = false> = {
+export type ExtractFields<
+  V extends string,
+  Fields extends Struct.Fields,
+  IsDefault = false
+> = {
   readonly [
     K in keyof Fields as [Fields[K]] extends [Field<infer Config>] ? V extends keyof Config ? K
       : never
@@ -174,11 +184,12 @@ export type ExtractFields<V extends string, Fields extends Struct.Fields, IsDefa
  * @since 1.0.0
  * @category extractors
  */
-export type Extract<V extends string, A extends Struct<any>, IsDefault = false> = [A] extends [
-  Struct<infer Fields>
-] ?
-  IsDefault extends true
-    ? [A] extends [Schema.Schema.Any] ? A : Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
+export type Extract<
+  V extends string,
+  A extends Struct<any>,
+  IsDefault = false
+> = [A] extends [Struct<infer Fields>] ? IsDefault extends true ? [A] extends [Schema.Schema.Any] ? A
+    : Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
   : Schema.Struct<Schema.Simplify<ExtractFields<V, Fields>>>
   : never
 
@@ -189,9 +200,17 @@ const extract: {
       readonly isDefault?: IsDefault | undefined
     }
   ): <A extends Struct<any>>(self: A) => Extract<V, A, IsDefault>
-  <V extends string, A extends Struct<any>, const IsDefault extends boolean = false>(self: A, variant: V, options?: {
-    readonly isDefault?: IsDefault | undefined
-  }): Extract<V, A, IsDefault>
+  <
+    V extends string,
+    A extends Struct<any>,
+    const IsDefault extends boolean = false
+  >(
+    self: A,
+    variant: V,
+    options?: {
+      readonly isDefault?: IsDefault | undefined
+    }
+  ): Extract<V, A, IsDefault>
 } = dual(
   (args) => isStruct(args[0]),
   <V extends string, A extends Struct<any>>(
@@ -223,7 +242,7 @@ const extract: {
         fields[key] = value
       }
     }
-    return cache[cacheKey] = Schema.Struct(fields) as any
+    return (cache[cacheKey] = Schema.Struct(fields) as any)
   }
 )
 
@@ -297,7 +316,8 @@ type MissingSelfGeneric<Params extends string = ""> =
 export interface Union<Members extends ReadonlyArray<Struct<any>>> extends
   Schema.Union<
     {
-      readonly [K in keyof Members]: [Members[K]] extends [Schema.Schema.All] ? Members[K] : never
+      readonly [K in keyof Members]: [Members[K]] extends [Schema.Schema.All] ? Members[K]
+        : never
     }
   >
 {}
@@ -311,7 +331,10 @@ export declare namespace Union {
    * @since 1.0.0
    * @category models
    */
-  export type Variants<Members extends ReadonlyArray<Struct<any>>, Variants extends string> = {
+  export type Variants<
+    Members extends ReadonlyArray<Struct<any>>,
+    Variants extends string
+  > = {
     readonly [Variant in Variants]: Schema.Union<
       {
         [K in keyof Members]: Extract<Variant, Members[K]>
@@ -344,7 +367,10 @@ export declare namespace fromKey {
   /**
    * @since 1.0.0
    */
-  export type Rename<S, Key extends string> = S extends Schema.PropertySignature<
+  export type Rename<
+    S,
+    Key extends string
+  > = S extends Schema.PropertySignature<
     infer _TypeToken,
     infer _Type,
     infer _Key,
@@ -352,7 +378,15 @@ export declare namespace fromKey {
     infer _Encoded,
     infer _HasDefault,
     infer _R
-  > ? Schema.PropertySignature<_TypeToken, _Type, Key, _EncodedToken, _Encoded, _HasDefault, _R>
+  > ? Schema.PropertySignature<
+      _TypeToken,
+      _Type,
+      Key,
+      _EncodedToken,
+      _Encoded,
+      _HasDefault,
+      _R
+    >
     : S extends Schema.Schema.All ? fromKey<S, Key>
     : never
 }
@@ -387,36 +421,53 @@ export const make = <
   readonly fieldEvolve: {
     <
       Self extends Field<any> | Field.ValueAny,
-      const Mapping
-        extends (Self extends Field<infer S> ? { readonly [K in keyof S]?: (variant: S[K]) => Field.ValueAny }
-          : { readonly [K in Variants[number]]?: (variant: Self) => Field.ValueAny })
-    >(f: Mapping): (self: Self) => Field<
+      const Mapping extends Self extends Field<infer S>
+        ? { readonly [K in keyof S]?: (variant: S[K]) => Field.ValueAny }
+        : {
+          readonly [K in Variants[number]]?: (
+            variant: Self
+          ) => Field.ValueAny
+        }
+    >(
+      f: Mapping
+    ): (self: Self) => Field<
       Self extends Field<infer S> ? {
           readonly [K in keyof S]: K extends keyof Mapping
-            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : S[K]
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]>
             : S[K]
-        } :
-        {
+            : S[K]
+        }
+        : {
           readonly [K in Variants[number]]: K extends keyof Mapping
-            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]>
+            : Self
             : Self
         }
     >
     <
       Self extends Field<any> | Field.ValueAny,
-      const Mapping extends (Self extends Field<infer S> ? {
+      const Mapping extends Self extends Field<infer S> ? {
           readonly [K in keyof S]?: (variant: S[K]) => Field.ValueAny
         }
-        : { readonly [K in Variants[number]]?: (variant: Self) => Field.ValueAny })
-    >(self: Self, f: Mapping): Field<
+        : {
+          readonly [K in Variants[number]]?: (
+            variant: Self
+          ) => Field.ValueAny
+        }
+    >(
+      self: Self,
+      f: Mapping
+    ): Field<
       Self extends Field<infer S> ? {
           readonly [K in keyof S]: K extends keyof Mapping
-            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : S[K]
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]>
             : S[K]
-        } :
-        {
+            : S[K]
+        }
+        : {
           readonly [K in Variants[number]]: K extends keyof Mapping
-            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]> : Self
+            ? Mapping[K] extends (arg: any) => any ? ReturnType<Mapping[K]>
+            : Self
             : Self
         }
     >
@@ -424,43 +475,43 @@ export const make = <
   readonly fieldFromKey: {
     <
       Self extends Field<any> | Field.ValueAny,
-      const Mapping extends (Self extends Field<infer S> ? { readonly [K in keyof S]?: string }
-        : { readonly [K in Variants[number]]?: string })
+      const Mapping extends Self extends Field<infer S> ? { readonly [K in keyof S]?: string }
+        : { readonly [K in Variants[number]]?: string }
     >(
       mapping: Mapping
     ): (self: Self) => Field<
       Self extends Field<infer S> ? {
-          readonly [K in keyof S]: K extends keyof Mapping ?
-            Mapping[K] extends string ? fromKey.Rename<S[K], Mapping[K]>
-            : S[K] :
-            S[K]
-        } :
-        {
-          readonly [K in Variants[number]]: K extends keyof Mapping ?
-            Mapping[K] extends string ? fromKey.Rename<Self, Mapping[K]>
-            : Self :
-            Self
+          readonly [K in keyof S]: K extends keyof Mapping
+            ? Mapping[K] extends string ? fromKey.Rename<S[K], Mapping[K]>
+            : S[K]
+            : S[K]
+        }
+        : {
+          readonly [K in Variants[number]]: K extends keyof Mapping
+            ? Mapping[K] extends string ? fromKey.Rename<Self, Mapping[K]>
+            : Self
+            : Self
         }
     >
     <
       Self extends Field<any> | Field.ValueAny,
-      const Mapping extends (Self extends Field<infer S> ? { readonly [K in keyof S]?: string }
-        : { readonly [K in Variants[number]]?: string })
+      const Mapping extends Self extends Field<infer S> ? { readonly [K in keyof S]?: string }
+        : { readonly [K in Variants[number]]?: string }
     >(
       self: Self,
       mapping: Mapping
     ): Field<
       Self extends Field<infer S> ? {
-          readonly [K in keyof S]: K extends keyof Mapping ?
-            Mapping[K] extends string ? fromKey.Rename<S[K], Mapping[K]>
-            : S[K] :
-            S[K]
-        } :
-        {
-          readonly [K in Variants[number]]: K extends keyof Mapping ?
-            Mapping[K] extends string ? fromKey.Rename<Self, Mapping[K]>
-            : Self :
-            Self
+          readonly [K in keyof S]: K extends keyof Mapping
+            ? Mapping[K] extends string ? fromKey.Rename<S[K], Mapping[K]>
+            : S[K]
+            : S[K]
+        }
+        : {
+          readonly [K in Variants[number]]: K extends keyof Mapping
+            ? Mapping[K] extends string ? fromKey.Rename<Self, Mapping[K]>
+            : Self
+            : Self
         }
     >
   }
@@ -471,11 +522,7 @@ export const make = <
     annotations?: Schema.Annotations.Schema<Self>
   ) => [Self] extends [never] ? MissingSelfGeneric
     :
-      & ClassFromFields<
-        Self,
-        Fields,
-        ExtractFields<Default, Fields, true>
-      >
+      & ClassFromFields<Self, Fields, ExtractFields<Default, Fields, true>>
       & {
         readonly [V in Variants[number]]: Extract<V, Struct<Fields>>
       }
@@ -485,7 +532,9 @@ export const make = <
   readonly extract: {
     <V extends Variants[number]>(
       variant: V
-    ): <A extends Struct<any>>(self: A) => Extract<V, A, V extends Default ? true : false>
+    ): <A extends Struct<any>>(
+      self: A
+    ) => Extract<V, A, V extends Default ? true : false>
     <V extends Variants[number], A extends Struct<any>>(
       self: A,
       variant: V
@@ -501,7 +550,10 @@ export const make = <
       const schema = extract(variantStruct, options.defaultVariant, {
         isDefault: true
       })
-      class Base extends Schema.Class<any>(identifier)(schema.fields, annotations) {
+      class Base extends Schema.Class<any>(identifier)(
+        schema.fields,
+        annotations
+      ) {
         static [TypeId] = fields
       }
       for (const variant of options.variants) {
@@ -516,7 +568,9 @@ export const make = <
     }
   }
   function FieldOnly<Keys extends Variants>(...keys: Keys) {
-    return function<S extends Schema.Schema.All | Schema.PropertySignature.All>(schema: S) {
+    return function<
+      S extends Schema.Schema.All | Schema.PropertySignature.All
+    >(schema: S) {
       const obj: Record<string, S> = {}
       for (const key of keys) {
         obj[key] = schema
@@ -525,7 +579,9 @@ export const make = <
     }
   }
   function FieldExcept<Keys extends Variants>(...keys: Keys) {
-    return function<S extends Schema.Schema.All | Schema.PropertySignature.All>(schema: S) {
+    return function<
+      S extends Schema.Schema.All | Schema.PropertySignature.All
+    >(schema: S) {
       const obj: Record<string, S> = {}
       for (const variant of options.variants) {
         if (!keys.includes(variant)) {
@@ -544,9 +600,13 @@ export const make = <
       self: Field<any> | Schema.Schema.All | Schema.PropertySignature.All,
       f: Record<string, (schema: Field.ValueAny) => Field.ValueAny>
     ): Field<any> => {
-      const field = isField(self) ? self : Field(Object.fromEntries(
-        options.variants.map((variant) => [variant, self])
-      ))
+      const field = isField(self)
+        ? self
+        : Field(
+          Object.fromEntries(
+            options.variants.map((variant) => [variant, self])
+          )
+        )
       return Field(Struct_.evolve(field.schemas, f))
     }
   )
@@ -555,7 +615,10 @@ export const make = <
     (
       self:
         | Field<{
-          readonly [key: string]: Schema.Schema.All | Schema.PropertySignature.Any | undefined
+          readonly [key: string]:
+            | Schema.Schema.All
+            | Schema.PropertySignature.Any
+            | undefined
         }>
         | Schema.Schema.All
         | Schema.PropertySignature.Any,
@@ -564,23 +627,24 @@ export const make = <
       const obj: Record<string, any> = {}
       if (isField(self)) {
         for (const [key, schema] of Object.entries(self.schemas)) {
-          obj[key] = mapping[key] !== undefined ? renameFieldValue(schema as any, mapping[key]) : schema
+          obj[key] = mapping[key] !== undefined
+            ? renameFieldValue(schema as any, mapping[key])
+            : schema
         }
       } else {
         for (const key of options.variants) {
-          obj[key] = mapping[key] !== undefined ? renameFieldValue(self as any, mapping[key]) : self
+          obj[key] = mapping[key] !== undefined
+            ? renameFieldValue(self as any, mapping[key])
+            : self
         }
       }
       return Field(obj)
     }
   )
-  const extractVariants = dual(
-    2,
-    (self: Struct<any>, variant: string): any =>
-      extract(self, variant, {
-        isDefault: variant === options.defaultVariant
-      })
-  )
+  const extractVariants = dual(2, (self: Struct<any>, variant: string): any =>
+    extract(self, variant, {
+      isDefault: variant === options.defaultVariant
+    }))
   return {
     Struct,
     Field,
@@ -604,31 +668,67 @@ export const Override = <A>(value: A): A & Brand<"Override"> => value as any
  * @since 1.0.0
  * @category overrideable
  */
-export interface Overrideable<To, From, R = never>
-  extends Schema.PropertySignature<":", (To & Brand<"Override">) | undefined, never, ":", From, true, R>
+export interface Overrideable<
+  To,
+  From,
+  R = never,
+  HasDefault extends boolean = false
+> extends
+  Schema.PropertySignature<
+    "?:",
+    To & Brand<"Override">,
+    never,
+    ":",
+    From,
+    HasDefault,
+    R
+  >
 {}
 
 /**
  * @since 1.0.0
  * @category overrideable
  */
-export const Overrideable = <From, IFrom, RFrom, To, ITo, R>(
+export const Overrideable = <
+  From,
+  IFrom,
+  RFrom,
+  To,
+  ITo,
+  R,
+  const HasDefault extends boolean = false
+>(
   from: Schema.Schema<From, IFrom, RFrom>,
   to: Schema.Schema<To, ITo>,
-  options: {
-    readonly generate: (_: Option.Option<ITo>) => Effect.Effect<From, ParseResult.ParseIssue, R>
-    readonly decode?: Schema.Schema<ITo, From>
-    readonly constructorDefault?: () => To
-  }
-): Overrideable<To, IFrom, RFrom | R> =>
-  Schema.transformOrFail(
-    from,
-    Schema.Union(Schema.Undefined, to as Schema.brand<Schema.Schema<To, ITo>, "Override">),
-    {
-      decode: (_) => options.decode ? ParseResult.decode(options.decode)(_) : ParseResult.succeed(undefined),
-      encode: (dt) => options.generate(dt === undefined ? Option.none() : Option.some(dt))
+  options: HasDefault extends true ? {
+      readonly generate: (_: Option.Option<ITo>) => Effect.Effect<From, ParseResult.ParseIssue, R>
+      readonly decode?: Schema.Schema<ITo, From>
+      readonly constructorDefault: () => To
     }
-  ).pipe(Schema.propertySignature, Schema.withConstructorDefault(options.constructorDefault ?? constUndefined as any))
+    : {
+      readonly generate: (_: Option.Option<ITo>) => Effect.Effect<From, ParseResult.ParseIssue, R>
+      readonly decode?: Schema.Schema<ITo, From>
+      readonly constructorDefault?: never
+    }
+): Overrideable<To, IFrom, RFrom | R, HasDefault> => {
+  const propertySignature = Schema.requiredToOptionalOrFail(
+    from,
+    to,
+    {
+      decode: (_) =>
+        options.decode
+          ? ParseResult.decode(options.decode)(_).pipe(ParseResult.map(Option.some))
+          : ParseResult.succeed(Option.none()),
+      encode: options.generate
+    }
+  )
+
+  if (options.constructorDefault) {
+    return Schema.withConstructorDefault(propertySignature, options.constructorDefault) as any
+  }
+
+  return propertySignature as any
+}
 
 const StructProto = {
   pipe() {
@@ -655,11 +755,16 @@ const Field = <const A extends Field.Config>(schemas: A): Field<A> => {
   return self
 }
 
-const Union = <Members extends ReadonlyArray<Struct<any>>, Variants extends ReadonlyArray<string>>(
+const Union = <
+  Members extends ReadonlyArray<Struct<any>>,
+  Variants extends ReadonlyArray<string>
+>(
   members: Members,
   variants: Variants
 ) => {
-  class VariantUnion extends (Schema.Union(...members.filter((member) => Schema.isSchema(member))) as any) {}
+  class VariantUnion extends (Schema.Union(
+    ...members.filter((member) => Schema.isSchema(member))
+  ) as any) {}
   for (const variant of variants) {
     Object.defineProperty(VariantUnion, variant, {
       value: Schema.Union(...members.map((member) => extract(member, variant)))
@@ -668,7 +773,9 @@ const Union = <Members extends ReadonlyArray<Struct<any>>, Variants extends Read
   return VariantUnion
 }
 
-const renameFieldValue = <F extends Schema.Schema.All | Schema.PropertySignature.Any>(
+const renameFieldValue = <
+  F extends Schema.Schema.All | Schema.PropertySignature.Any
+>(
   self: F,
   key: string
 ) =>

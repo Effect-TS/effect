@@ -2290,6 +2290,41 @@ export const requiredToOptional = <FA, FI, FR, TA, TI, TR>(
   )
 
 /**
+ * Effectful version of `requiredToOptional`.
+ *
+ * Converts a required property to an optional property through effectful transformations.
+ *
+ * - `decode`: `none` as return value means the value will be missing in the output.
+ * - `encode`: `none` as argument means the value is missing in the input.
+ *
+ * @category PropertySignature
+ * @since 3.20.0
+ */
+export const requiredToOptionalOrFail = <FA, FI, FR, TA, TI, TR, RD, RE>(
+  from: Schema<FA, FI, FR>,
+  to: Schema<TA, TI, TR>,
+  options: {
+    readonly decode: (fa: FA) => Effect.Effect<option_.Option<TI>, ParseResult.ParseIssue, RD>
+    readonly encode: (o: option_.Option<TI>) => Effect.Effect<FA, ParseResult.ParseIssue, RE>
+  }
+): PropertySignature<"?:", TA, never, ":", FI, false, FR | TR | RD | RE> => {
+  const intermediate = transformOrFail(
+    from,
+    OptionFromSelf(encodedSchema(to)),
+    {
+      strict: true,
+      decode: (fa) => options.decode(fa),
+      encode: (o) => options.encode(o)
+    }
+  )
+  return requiredToOptional(
+    intermediate,
+    to,
+    { decode: identity, encode: identity }
+  )
+}
+
+/**
  * Converts an optional property to another optional property through a transformation `Option -> Option`.
  *
  * - `decode`:
