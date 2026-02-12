@@ -600,6 +600,8 @@ export const make: <Rpcs extends Rpc.Any>(
       })
     )
 
+  const encodeDefect = Schema.encodeSync(Schema.Defect)
+
   const sendRequestDefect = (client: Client, requestId: RequestId, defect: unknown) =>
     Effect.catchAllCause(
       send(client.id, {
@@ -609,7 +611,7 @@ export const make: <Rpcs extends Rpc.Any>(
           _tag: "Failure",
           cause: {
             _tag: "Die",
-            defect
+            defect: encodeDefect(defect)
           }
         }
       }),
@@ -618,7 +620,7 @@ export const make: <Rpcs extends Rpc.Any>(
 
   const sendDefect = (client: Client, defect: unknown) =>
     Effect.catchAllCause(
-      send(client.id, { _tag: "Defect", defect }),
+      send(client.id, { _tag: "Defect", defect: encodeDefect(defect) }),
       (cause) =>
         Effect.annotateLogs(Effect.logDebug(cause), {
           module: "RpcServer",
