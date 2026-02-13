@@ -572,8 +572,9 @@ export const make = Effect.fnUntraced(function*(options?: {
         withTracerDisabled
       ),
 
-    resetShards: (shardIds) =>
-      sql`
+    resetShards: (shardIds) => {
+      if (shardIds.length === 0) return Effect.void
+      return sql`
         UPDATE ${messagesTableSql}
         SET last_read = NULL
         WHERE processed = ${sqlFalse}
@@ -583,6 +584,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         PersistenceError.refail,
         withTracerDisabled
       )
+    }
   })
 }, withTracerDisabled)
 
