@@ -493,6 +493,7 @@ export const make = Effect.fnUntraced(function*(options?: {
 
     unprocessedMessages: Effect.fnUntraced(
       function*(shardIds, now) {
+        if (shardIds.length === 0) return []
         const rows = yield* getUnprocessedMessages(shardIds, now)
         if (rows.length === 0) {
           return []
