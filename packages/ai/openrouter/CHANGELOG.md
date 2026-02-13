@@ -1,5 +1,15 @@
 # @effect/ai-openrouter
 
+## 0.8.3
+
+### Patch Changes
+
+- [#6060](https://github.com/Effect-TS/effect/pull/6060) [`c3e706f`](https://github.com/Effect-TS/effect/commit/c3e706ff4d01c70ae1754b13c9cbc1f001c09068) Thanks @nvonbulow! - fix(ai-openrouter): deduplicate reasoning parts when both `reasoning` and `reasoning_details` are present in a stream delta
+
+- Updated dependencies [[`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a), [`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f)]:
+  - @effect/platform@0.94.5
+  - effect@3.19.17
+
 ## 0.8.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.17
+
+### Patch Changes
+
+- [#6040](https://github.com/Effect-TS/effect/pull/6040) [`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f) Thanks @jacobconley! - Fix `Stream.decodeText` to correctly handle multi-byte UTF-8 characters split across chunk boundaries.
+
 ## 3.19.16
 
 ### Patch Changes
