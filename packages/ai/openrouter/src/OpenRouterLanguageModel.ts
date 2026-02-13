@@ -796,10 +796,6 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
           })
         }
 
-        if (Predicate.isNotNullable(delta.reasoning) && delta.reasoning.length > 0) {
-          emitReasoningPart(delta.reasoning)
-        }
-
         if (Predicate.isNotNullable(delta.reasoning_details) && delta.reasoning_details.length > 0) {
           for (const detail of delta.reasoning_details) {
             switch (detail.type) {
@@ -830,6 +826,8 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
               }
             }
           }
+        } else if (Predicate.isNotNullable(delta.reasoning) && delta.reasoning.length > 0) {
+          emitReasoningPart(delta.reasoning)
         }
 
         // Text Parts
