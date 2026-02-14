@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.94.5
+
+### Patch Changes
+
+- [#6050](https://github.com/Effect-TS/effect/pull/6050) [`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a) Thanks @tim-smart! - Backport Effect 4 `contentType` support for `HttpBody` JSON / URL-encoded constructors and `HttpServerResponse` JSON / URL-encoded helpers.
+
+- Updated dependencies [[`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f)]:
+  - effect@3.19.17
+
 ## 0.94.4
 
 ### Patch Changes

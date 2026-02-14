@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.56.4
+
+### Patch Changes
+
+- [#6056](https://github.com/Effect-TS/effect/pull/6056) [`52cd531`](https://github.com/Effect-TS/effect/commit/52cd53115fe14e2b9c36dd0d51eb490aead74ee6) Thanks @0xh3x! - use HttpLayerRouter variants for route registration in HttpRunner
+
+- Updated dependencies [[`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a), [`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f), [`598ff76`](https://github.com/Effect-TS/effect/commit/598ff7642fdee7f3379bca49e378a0e9647bbe75)]:
+  - @effect/platform@0.94.5
+  - effect@3.19.17
+  - @effect/rpc@0.73.1
+
 ## 0.56.3
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @effect/rpc
 
+## 0.73.1
+
+### Patch Changes
+
+- [#6055](https://github.com/Effect-TS/effect/pull/6055) [`598ff76`](https://github.com/Effect-TS/effect/commit/598ff7642fdee7f3379bca49e378a0e9647bbe75) Thanks @marbemac! - Fix `sendRequestDefect` and `sendDefect` to encode defects with `Schema.Defect`, preventing `Error` objects from being serialized as `{}` due to non-enumerable properties.
+
+- Updated dependencies [[`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a), [`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f)]:
+  - @effect/platform@0.94.5
+  - effect@3.19.17
+
 ## 0.73.0
 
 ### Patch Changes
