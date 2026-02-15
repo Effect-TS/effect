@@ -510,6 +510,7 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
+            schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeChunk(response.values), schemas.context),
             (values) => ({ _tag: "Chunk", requestId: String(response.requestId), values })
@@ -522,6 +523,7 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
+            schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeExit(response.exit), schemas.context),
             (exit) => ({ _tag: "Exit", requestId: String(response.requestId), exit })
@@ -552,6 +554,7 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, ParseError>
     readonly encodeChunk: (u: ReadonlyArray<unknown>) => Effect.Effect<NonEmptyReadonlyArray<unknown>, ParseError>
     readonly encodeExit: (u: unknown) => Effect.Effect<Schema.ExitEncoded<unknown, unknown, unknown>, ParseError>
+    readonly encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>
     readonly context: Context.Context<never>
     readonly collector?: Transferable.CollectorService | undefined
   }
@@ -568,6 +571,7 @@ export const make: <Rpcs extends Rpc.Any>(
           Schema.Array(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
         ) as any,
         encodeExit: Schema.encodeUnknown(Rpc.exitSchema(rpc as any)) as any,
+        encodeDefect: Schema.encodeUnknown(rpc.defectSchema) as any,
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -584,6 +588,7 @@ export const make: <Rpcs extends Rpc.Any>(
   const handleEncode = <A, R>(
     client: Client,
     requestId: RequestId,
+    encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>,
     collector: Transferable.CollectorService | undefined,
     effect: Effect.Effect<A, ParseError, R>,
     onSuccess: (a: A) => FromServerEncoded
@@ -594,7 +599,7 @@ export const make: <Rpcs extends Rpc.Any>(
         client.schemas.delete(requestId)
         const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
         return Effect.zipRight(
-          sendRequestDefect(client, requestId, defect),
+          sendRequestDefect(client, requestId, encodeDefect, defect),
           server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
         )
       })
@@ -602,19 +607,26 @@ export const make: <Rpcs extends Rpc.Any>(
 
   const encodeDefect = Schema.encodeSync(Schema.Defect)
 
-  const sendRequestDefect = (client: Client, requestId: RequestId, defect: unknown) =>
+  const sendRequestDefect = (
+    client: Client,
+    requestId: RequestId,
+    encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>,
+    defect: unknown
+  ) =>
     Effect.catchAllCause(
-      send(client.id, {
-        _tag: "Exit",
-        requestId: String(requestId),
-        exit: {
-          _tag: "Failure",
-          cause: {
-            _tag: "Die",
-            defect: encodeDefect(defect)
+      encodeDefect(defect).pipe(Effect.flatMap((encodedDefect) =>
+        send(client.id, {
+          _tag: "Exit",
+          requestId: String(requestId),
+          exit: {
+            _tag: "Failure",
+            cause: {
+              _tag: "Die",
+              defect: encodedDefect
+            }
           }
-        }
-      }),
+        })
+      )),
       (cause) => sendDefect(client, Cause.squash(cause))
     )
 
@@ -661,7 +673,8 @@ export const make: <Rpcs extends Rpc.Any>(
         return Effect.matchEffect(
           Effect.provide(schemas.decode(request.payload), schemas.context),
           {
-            onFailure: (error) => sendRequestDefect(client, requestId, TreeFormatter.formatErrorSync(error)),
+            onFailure: (error) =>
+              sendRequestDefect(client, requestId, schemas.encodeDefect, TreeFormatter.formatErrorSync(error)),
             onSuccess: (payload) => {
               client.schemas.set(
                 requestId,
