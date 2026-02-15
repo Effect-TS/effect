@@ -58,6 +58,7 @@ export interface Rpc<
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly defectSchema: Schema.Schema.Any
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 
@@ -171,6 +172,7 @@ export interface AnyWithProps {
   readonly payloadSchema: AnySchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
+  readonly defectSchema: Schema.Schema.Any
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<RpcMiddleware.TagClassAnyWithProps>
 }
@@ -541,6 +543,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -551,6 +554,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -561,6 +565,7 @@ const Proto = {
       payloadSchema: Schema.isSchema(payloadSchema) ? payloadSchema as any : Schema.Struct(payloadSchema as any),
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -571,6 +576,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: new Set([...this.middlewares, middleware])
     })
@@ -581,6 +587,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -591,6 +598,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       middlewares: this.middlewares,
       annotations: Context_.add(this.annotations, tag, value)
     })
@@ -601,6 +609,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       middlewares: this.middlewares,
       annotations: Context_.merge(this.annotations, context)
     })
@@ -618,6 +627,7 @@ const makeProto = <
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly defectSchema: Schema.Schema.Any
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 }): Rpc<Tag, Payload, Success, Error, Middleware> => {
@@ -643,6 +653,7 @@ export const make = <
   readonly success?: Success
   readonly error?: Error
   readonly stream?: Stream
+  readonly defect?: Schema.Schema.Any
   readonly primaryKey?: [Payload] extends [Schema.Struct.Fields] ?
     ((payload: Schema.Simplify<Schema.Struct.Type<NoInfer<Payload>>>) => string) :
     never
@@ -678,6 +689,7 @@ export const make = <
       }) :
       successSchema,
     errorSchema: options?.stream ? Schema.Never : errorSchema,
+    defectSchema: options?.defect ?? Schema.Defect,
     annotations: Context_.empty(),
     middlewares: new Set<never>()
   }) as any
@@ -719,6 +731,7 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
     payloadSchema: schema as any,
     successSchema: schema.success as any,
     errorSchema: schema.failure,
+    defectSchema: Schema.Defect,
     annotations: Context_.empty(),
     middlewares: new Set()
   })
@@ -747,7 +760,7 @@ export const exitSchema = <R extends Any>(
   const schema = Schema.Exit({
     success: Option.isSome(streamSchemas) ? Schema.Void : rpc.successSchema,
     failure: Schema.Union(...failures),
-    defect: Schema.Defect
+    defect: rpc.defectSchema
   })
   exitSchemaCache.set(self, schema)
   return schema as any

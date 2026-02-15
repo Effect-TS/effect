@@ -59,6 +59,13 @@ export const UserRpcs = RpcGroup.make(
   }),
   Rpc.make("ProduceDefect"),
   Rpc.make("ProduceErrorDefect"),
+  Rpc.make("ProduceDefectCustom", {
+    defect: Schema.Struct({
+      message: Schema.String,
+      stack: Schema.String,
+      code: Schema.Number
+    })
+  }),
   Rpc.make("Never"),
   Rpc.make("nested.test"),
   Rpc.make("TimedMethod", {
@@ -134,6 +141,8 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
     GetEmits: () => Effect.sync(() => emits),
     ProduceDefect: () => Effect.die("boom"),
     ProduceErrorDefect: () => Effect.die(new Error("error defect message")),
+    ProduceDefectCustom: () =>
+      Effect.die({ message: "detailed error", stack: "Error: detailed error\n  at handler.ts:1", code: 42 }),
     Never: () => Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupts++))),
     "nested.test": () => Effect.void,
     TimedMethod: (_) => _.shouldFail ? Effect.die("boom") : Effect.succeed(1),
@@ -147,6 +156,14 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
 }))
 
 export const RpcLive = RpcServer.layer(UserRpcs).pipe(
+  Layer.provide([
+    UsersLive,
+    AuthLive,
+    TimingLive
+  ])
+)
+
+export const RpcLiveDisableFatalDefects = RpcServer.layer(UserRpcs, { disableFatalDefects: true }).pipe(
   Layer.provide([
     UsersLive,
     AuthLive,
