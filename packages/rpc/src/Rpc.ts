@@ -58,7 +58,7 @@ export interface Rpc<
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
-  readonly defectSchema: Schema.Schema.Any
+  readonly defectSchema: Schema.Schema<unknown, unknown>
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 
@@ -172,7 +172,7 @@ export interface AnyWithProps {
   readonly payloadSchema: AnySchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
-  readonly defectSchema: Schema.Schema.Any
+  readonly defectSchema: Schema.Schema<unknown, unknown>
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<RpcMiddleware.TagClassAnyWithProps>
 }
@@ -627,7 +627,7 @@ const makeProto = <
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
-  readonly defectSchema: Schema.Schema.Any
+  readonly defectSchema: Schema.Schema<unknown, unknown>
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 }): Rpc<Tag, Payload, Success, Error, Middleware> => {
@@ -653,7 +653,7 @@ export const make = <
   readonly success?: Success
   readonly error?: Error
   readonly stream?: Stream
-  readonly defect?: Schema.Schema.Any
+  readonly defect?: Schema.Schema<unknown, unknown>
   readonly primaryKey?: [Payload] extends [Schema.Struct.Fields] ?
     ((payload: Schema.Simplify<Schema.Struct.Type<NoInfer<Payload>>>) => string) :
     never

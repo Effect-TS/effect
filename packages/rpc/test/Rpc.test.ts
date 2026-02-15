@@ -22,15 +22,9 @@ describe("Rpc", () => {
     }))
 
   it("exitSchema uses custom defect schema", () => {
-    const DetailedDefect = Schema.Struct({
-      message: Schema.String,
-      stack: Schema.String,
-      code: Schema.Number
-    })
-
     const myRpc = Rpc.make("customDefect", {
       success: Schema.String,
-      defect: DetailedDefect
+      defect: Schema.Unknown
     })
 
     const schema = Rpc.exitSchema(myRpc)
@@ -40,7 +34,7 @@ describe("Rpc", () => {
     const error = { message: "boom", stack: "Error: boom\n  at foo.ts:1", code: 42 }
     const exit = Exit.die(error)
 
-    // With a custom defect schema, structured error info survives the round-trip
+    // Schema.Unknown preserves the full defect value, unlike the default Schema.Defect
     const roundTripped = decode(encode(exit))
 
     assert.isTrue(Exit.isFailure(roundTripped))

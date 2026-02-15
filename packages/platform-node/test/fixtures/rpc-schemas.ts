@@ -60,11 +60,7 @@ export const UserRpcs = RpcGroup.make(
   Rpc.make("ProduceDefect"),
   Rpc.make("ProduceErrorDefect"),
   Rpc.make("ProduceDefectCustom", {
-    defect: Schema.Struct({
-      message: Schema.String,
-      stack: Schema.String,
-      code: Schema.Number
-    })
+    defect: Schema.Unknown
   }),
   Rpc.make("Never"),
   Rpc.make("nested.test"),
