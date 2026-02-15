@@ -1397,6 +1397,7 @@ export const changesWith = dual<
             return [Option.some(output), pipe(outputs, Chunk.append(output))] as const
           }
         )
+        if (Chunk.isEmpty(newChunk)) return writer(newLast)
         return core.flatMap(
           core.write(newChunk),
           () => writer(newLast)
