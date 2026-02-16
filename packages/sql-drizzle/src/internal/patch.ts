@@ -86,7 +86,7 @@ export const makeRemoteCallback = Effect.gen(function*() {
         if (header && typeof header === "object" && "rows" in header) {
           return { rows: header.rows }
         }
-        return { rows: Array.isArray(header) ? header : [header] }
+        return { rows: [header] }
       }))).then((res) => {
         if (res._tag === "Left") {
           throw res.left.cause
