@@ -57,11 +57,7 @@ export const patchCount = (prototype: any) => {
             try: () => {
               const pre = currentRuntime
               currentRuntime = context
-              const promise = new Promise((resolve, reject) => originalThen.call(this, resolve, reject)).then(
-                (result) => {
-                  return result
-                }
-              )
+              const promise = new Promise((resolve, reject) => originalThen.call(this, resolve, reject))
               currentRuntime = pre
               return promise
             },
