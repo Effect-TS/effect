@@ -1,5 +1,14 @@
 # @effect/rpc
 
+## 0.73.2
+
+### Patch Changes
+
+- [#6065](https://github.com/Effect-TS/effect/pull/6065) [`94b00c8`](https://github.com/Effect-TS/effect/commit/94b00c8e4c5c150f858c95262d0ff1433276ede5) Thanks @marbemac! - Add optional `defect` parameter to `Rpc.make` for customizing defect serialization per-RPC. Defaults to `Schema.Defect`, preserving existing behavior.
+
+- Updated dependencies [[`12b1f1e`](https://github.com/Effect-TS/effect/commit/12b1f1eadf649e30dec581b7351ba3abb12f8004)]:
+  - effect@3.19.18
+
 ## 0.73.1
 
 ### Patch Changes

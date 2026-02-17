@@ -1,5 +1,11 @@
 # effect
 
+## 3.19.18
+
+### Patch Changes
+
+- [#6062](https://github.com/Effect-TS/effect/pull/6062) [`12b1f1e`](https://github.com/Effect-TS/effect/commit/12b1f1eadf649e30dec581b7351ba3abb12f8004) Thanks @tim-smart! - prevent Stream.changes from writing empty chunks
+
 ## 3.19.17
 
 ### Patch Changes
