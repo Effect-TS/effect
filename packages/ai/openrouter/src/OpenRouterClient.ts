@@ -315,7 +315,7 @@ export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMess
   id: Schema.optionalWith(Schema.String, { nullable: true }),
   type: Schema.Literal("function"),
   function: Schema.Struct({
-    name: Schema.String,
+    name: Schema.optionalWith(Schema.String, { nullable: true }),
     arguments: Schema.String
   })
 }) {}
