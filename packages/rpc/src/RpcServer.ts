@@ -1231,6 +1231,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly supportsSpanPropagation?: boolean | undefined
   } | undefined
 ) => Effect.Effect<
   HttpApp.Default<never, Scope.Scope>,
@@ -1247,11 +1248,17 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly disableFatalDefects?: boolean | undefined
+    readonly supportsSpanPropagation?: boolean | undefined
   }
 ) {
   const { httpApp, protocol } = yield* makeProtocolWithHttpApp
+
+  const finalProtocol = options?.supportsSpanPropagation
+    ? { ...protocol, supportsSpanPropagation: true as const }
+    : protocol
+
   yield* make(group, options).pipe(
-    Effect.provideService(Protocol, protocol),
+    Effect.provideService(Protocol, finalProtocol),
     Effect.interruptible,
     Effect.forkScoped
   )
