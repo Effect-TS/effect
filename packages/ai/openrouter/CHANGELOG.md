@@ -1,5 +1,15 @@
 # @effect/ai-openrouter
 
+## 0.8.4
+
+### Patch Changes
+
+- [#6071](https://github.com/Effect-TS/effect/pull/6071) [`a91364d`](https://github.com/Effect-TS/effect/commit/a91364d0ef48de0f66afe801c4da13bfe8a5aeed) Thanks @marbemac! - Fix `ChatStreamingMessageToolCall` schema rejecting valid streaming tool call chunks.
+
+  The OpenAI streaming spec splits tool calls across multiple SSE chunks — `function.name` is only present on the first chunk, but the schema required it on every chunk, causing a `MalformedOutput` error whenever the model returned a tool call.
+
+  Made `function.name` optional to match `id` which was already optional.
+
 ## 0.8.3
 
 ### Patch Changes
