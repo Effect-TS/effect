@@ -12,6 +12,7 @@ import type * as HashSet from "effect/HashSet"
 import type * as Layer from "effect/Layer"
 import type * as Option from "effect/Option"
 import { pipeArguments } from "effect/Pipeable"
+import type * as Predicate from "effect/Predicate"
 import type * as Types from "effect/Types"
 import type * as Args from "../Args.js"
 import type * as CliApp from "../CliApp.js"
@@ -25,6 +26,7 @@ import type * as Usage from "../Usage.js"
 import * as ValidationError from "../ValidationError.js"
 import * as InternalArgs from "./args.js"
 import * as InternalCliApp from "./cliApp.js"
+import * as InternalCliConfig from "./cliConfig.js"
 import * as InternalDescriptor from "./commandDescriptor.js"
 import * as InternalOptions from "./options.js"
 
@@ -128,6 +130,23 @@ const Prototype = {
 const registeredDescriptors = globalValue(
   "@effect/cli/Command/registeredDescriptors",
   () => new WeakMap<Context.Tag<any, any>, Descriptor.Command<any>>()
+)
+
+const conditionalBehaviors = globalValue(
+  "@effect/cli/Command/conditionalBehaviors",
+  () => new WeakMap<Command.Command<any, any, any, any>, {
+    predicate: Predicate.Predicate<ReadonlyArray<string>>
+    behavior:
+      | "wizard"
+      | ((
+        command: Command.Command<any, any, any, any>,
+        args: ReadonlyArray<string>
+      ) => Effect.Effect<
+        ReadonlyArray<string>,
+        Terminal.QuitException | ValidationError.ValidationError,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
+      >)
+  }>()
 )
 
 const getDescriptor = <Name extends string, R, E, A>(self: Command.Command<Name, R, E, A>) =>
@@ -542,13 +561,13 @@ export const run = dual<
     self: Command.Command<Name, R, E, A>
   ) => (
     args: ReadonlyArray<string>
-  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>,
+  ) => Effect.Effect<void, E | ValidationError.ValidationError | Terminal.QuitException, R | CliApp.CliApp.Environment | FileSystem.FileSystem | Path.Path | Terminal.Terminal>,
   <Name extends string, R, E, A>(
     self: Command.Command<Name, R, E, A>,
     config: Omit<CliApp.CliApp.ConstructorArgs<never>, "command">
   ) => (
     args: ReadonlyArray<string>
-  ) => Effect.Effect<void, E | ValidationError.ValidationError, R | CliApp.CliApp.Environment>
+  ) => Effect.Effect<void, E | ValidationError.ValidationError | Terminal.QuitException, R | CliApp.CliApp.Environment | FileSystem.FileSystem | Path.Path | Terminal.Terminal>
 >(2, (self, config) => {
   const app = InternalCliApp.make({
     ...config,
@@ -556,5 +575,82 @@ export const run = dual<
   })
   registeredDescriptors.set(self.tag, self.descriptor)
   const handler = (args: any) => self.transform(self.handler(args), args)
-  return (args) => InternalCliApp.run(app, args, handler)
+  const normalRun = (args: ReadonlyArray<string>) => InternalCliApp.run(app, args, handler)
+
+  // Check if the command has conditional behavior attached
+  const conditionalBehavior = conditionalBehaviors.get(self)
+  if (conditionalBehavior) {
+    const { behavior, predicate } = conditionalBehavior
+
+    return (args) => {
+      // If the predicate matches, run the behavior first
+      if (predicate(args)) {
+        // Determine which behavior to run
+        const behaviorEffect = behavior === "wizard"
+          ? wizard(self, Arr.take(args, 1), InternalCliConfig.defaultConfig)
+          : behavior(self, args)
+
+        // Run the behavior to get new args, then run normally with those args
+        return Effect.flatMap(
+          behaviorEffect,
+          (newArgs: ReadonlyArray<string>) => normalRun(newArgs)
+        )
+      }
+
+      // Predicate didn't match, run normally
+      return normalRun(args)
+    }
+  }
+
+  return normalRun
+})
+
+/** @internal */
+export const withConditionalBehavior = dual<
+  <Name extends string, R, E, A>(
+    predicate: Predicate.Predicate<ReadonlyArray<string>>,
+    behavior:
+      | "wizard"
+      | ((
+        command: Command.Command<Name, R, E, A>,
+        args: ReadonlyArray<string>
+      ) => Effect.Effect<
+        ReadonlyArray<string>,
+        Terminal.QuitException | ValidationError.ValidationError,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
+      >)
+  ) => (
+    self: Command.Command<Name, R, E, A>
+  ) => Command.Command<Name, R, E, A>,
+  <Name extends string, R, E, A>(
+    self: Command.Command<Name, R, E, A>,
+    predicate: Predicate.Predicate<ReadonlyArray<string>>,
+    behavior:
+      | "wizard"
+      | ((
+        command: Command.Command<Name, R, E, A>,
+        args: ReadonlyArray<string>
+      ) => Effect.Effect<
+        ReadonlyArray<string>,
+        Terminal.QuitException | ValidationError.ValidationError,
+        FileSystem.FileSystem | Path.Path | Terminal.Terminal
+      >)
+  ) => Command.Command<Name, R, E, A>
+>(3, <Name extends string, R, E, A>(
+  self: Command.Command<Name, R, E, A>,
+  predicate: Predicate.Predicate<ReadonlyArray<string>>,
+  behavior:
+    | "wizard"
+    | ((
+      command: Command.Command<Name, R, E, A>,
+      args: ReadonlyArray<string>
+    ) => Effect.Effect<
+      ReadonlyArray<string>,
+      Terminal.QuitException | ValidationError.ValidationError,
+      FileSystem.FileSystem | Path.Path | Terminal.Terminal
+    >)
+): Command.Command<Name, R, E, A> => {
+  const command: Command.Command<Name, R, E, A> = makeDerive(self, {})
+  conditionalBehaviors.set(command, { predicate, behavior })
+  return command
 })
