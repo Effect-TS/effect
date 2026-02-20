@@ -240,9 +240,22 @@ export const match: {
   <B, A, C = B>(
     options: {
       readonly onEmpty: LazyArg<B>
+      readonly onNonEmpty: (self: NonEmptyArray<A>) => C
+    }
+  ): (self: Array<A>) => B | C
+  <B, A, C = B>(
+    options: {
+      readonly onEmpty: LazyArg<B>
       readonly onNonEmpty: (self: NonEmptyReadonlyArray<A>) => C
     }
   ): (self: ReadonlyArray<A>) => B | C
+  <A, B, C = B>(
+    self: Array<A>,
+    options: {
+      readonly onEmpty: LazyArg<B>
+      readonly onNonEmpty: (self: NonEmptyArray<A>) => C
+    }
+  ): B | C
   <A, B, C = B>(
     self: ReadonlyArray<A>,
     options: {

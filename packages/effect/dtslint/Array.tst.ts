@@ -1,6 +1,7 @@
 import { Array, Effect, Either, Option, Order, Predicate } from "effect"
 import { hole, identity, pipe } from "effect/Function"
 import { describe, expect, it, when } from "tstyche"
+import { NonEmptyArray, NonEmptyReadonlyArray } from "effect/Array"
 
 declare const nonEmptyReadonlyStrings: Array.NonEmptyReadonlyArray<string>
 declare const nonEmptyNumbers: Array.NonEmptyArray<number>
@@ -1268,4 +1269,27 @@ describe("Array", () => {
       })
     )).type.toBe<[state: number, mappedArray: [string, ...Array<string>]]>()
   })
+
+  it("match", () => {
+    const array: Array<number> = [1, 2, 3]
+    const readonlyArray: ReadonlyArray<number> = [1, 2, 3];
+
+    expect(pipe(array, Array.match({ onEmpty: () => 1, onNonEmpty: (xs) => {
+      expect(xs).type.toBe<NonEmptyArray<never>>()
+      return 1
+    } })))
+    // TODO: not sure what to do about this
+    expect(pipe(readonlyArray, Array.match({ onEmpty: () => 1, onNonEmpty: (xs) => {
+      expect(xs).type.toBe<NonEmptyReadonlyArray<never>>()
+      return 1
+    } })))
+    expect(Array.match(array, { onEmpty: () => 1, onNonEmpty: (xs) => {
+      expect(xs).type.toBe<NonEmptyArray<never>>()
+      return 1
+    } }))
+    expect(Array.match(readonlyArray, { onEmpty: () => 1, onNonEmpty: (xs) => {
+      expect(xs).type.toBe<NonEmptyReadonlyArray<never>>()
+      return 1
+    } }))
+  });
 })
