@@ -114,8 +114,8 @@ class Person extends Schema.Class<Person>("Person")({
   updatedAt: Schema.DateFromSelf
 }) {}
 
-const InsertPersonSchema = Schema.Struct(
-  Struct.omit(Person.fields, "id", "createdAt", "updatedAt")
+const InsertPersonSchema = Schema.Struct(Person.fields).pipe(
+  Schema.omit("id", "createdAt", "updatedAt")
 )
 
 export const makePersonService = Effect.gen(function* () {
