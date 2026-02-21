@@ -1,5 +1,15 @@
 # effect
 
+## 3.19.19
+
+### Patch Changes
+
+- [#6079](https://github.com/Effect-TS/effect/pull/6079) [`4eb5c00`](https://github.com/Effect-TS/effect/commit/4eb5c008dfc7d2a97b191ca608948d994a2cce4c) Thanks @tim-smart! - add short circuit to fiber.await internals
+
+- [#6079](https://github.com/Effect-TS/effect/pull/6079) [`4eb5c00`](https://github.com/Effect-TS/effect/commit/4eb5c008dfc7d2a97b191ca608948d994a2cce4c) Thanks @tim-smart! - build ManagedRuntime synchronously if possible
+
+- [#6081](https://github.com/Effect-TS/effect/pull/6081) [`2d2bb13`](https://github.com/Effect-TS/effect/commit/2d2bb1364a906bd44800c6387b9575fddccdaf53) Thanks @tim-smart! - fix semaphore race condition where permits could be leaked
+
 ## 3.19.18
 
 ### Patch Changes
