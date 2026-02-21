@@ -76,4 +76,10 @@ describe("ManagedRuntime", () => {
     const result = Context.get(runtime.context, tag)
     strictEqual(result, "test")
   })
+
+  it("is built synchronously with runFork", () => {
+    const runtime = ManagedRuntime.make(Layer.empty)
+    runtime.runFork(Effect.void)
+    runtime.runSync(Effect.void)
+  })
 })

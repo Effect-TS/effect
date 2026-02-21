@@ -451,6 +451,10 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   get await(): Effect.Effect<Exit.Exit<A, E>> {
     return core.async((resume) => {
       const cb = (exit: Exit.Exit<A, E>) => resume(core.succeed(exit))
+      if (this._exitValue !== null) {
+        cb(this._exitValue!)
+        return
+      }
       this.tell(
         FiberMessage.stateful((fiber, _) => {
           if (fiber._exitValue !== null) {
