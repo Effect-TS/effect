@@ -940,4 +940,12 @@ describe("ConfigProvider", () => {
         hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
       })
     }))
+
+  it.effect("fromJson - should load configs from nested arrays", () =>
+    Effect.gen(function*() {
+      const configProvider = ConfigProvider.fromJson({ nestedArray: [["a", "b"]] })
+      const config = Config.array(Config.array(Config.string()), "nestedArray")
+      const result = yield* configProvider.load(config)
+      deepStrictEqual(result, [["a", "b"]])
+    }))
 })
