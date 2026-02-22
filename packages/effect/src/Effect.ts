@@ -12409,6 +12409,44 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = runt
  * @category Error Accumulation
  */
 export const validate: {
+  <A, B, E, R>(
+    f: (a: A, i: number) => Effect<B, E, R>,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    } | undefined
+  ): (elements: Iterable<A>) => Effect<Array<B>, RA.NonEmptyArray<E>, R>
+  <A, B, E, R>(
+    f: (a: A, i: number) => Effect<B, E, R>,
+    options: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
+    }
+  ): (elements: Iterable<A>) => Effect<void, RA.NonEmptyArray<E>, R>
+  <A, B, E, R>(
+    elements: Iterable<A>,
+    f: (a: A, i: number) => Effect<B, E, R>,
+    options?: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard?: false | undefined
+      readonly concurrentFinalizers?: boolean | undefined
+    } | undefined
+  ): Effect<Array<B>, RA.NonEmptyArray<E>, R>
+  <A, B, E, R>(
+    elements: Iterable<A>,
+    f: (a: A, i: number) => Effect<B, E, R>,
+    options: {
+      readonly concurrency?: Concurrency | undefined
+      readonly batching?: boolean | "inherit" | undefined
+      readonly discard: true
+      readonly concurrentFinalizers?: boolean | undefined
+    }
+  ): Effect<void, RA.NonEmptyArray<E>, R>
   <B, E1, R1>(
     that: Effect<B, E1, R1>,
     options?: {

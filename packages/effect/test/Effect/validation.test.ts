@@ -36,6 +36,31 @@ describe("Effect", () => {
       const result = yield* pipe(Effect.succeed(1), Effect.validateWith(Effect.succeed(2), (a, b) => a + b))
       strictEqual(result, 3)
     }))
+  it.effect("validate (collection) - accumulate successes", () =>
+    Effect.gen(function*() {
+      const array = Array.from({ length: 10 }, (_, i) => i)
+      const result = yield* pipe(array, Effect.validate(Effect.succeed))
+      deepStrictEqual(Array.from(result), array)
+    }))
+  it.effect("validate (collection) - returns all errors if never valid", () =>
+    Effect.gen(function*() {
+      const array = Array.from({ length: 10 }, () => 0)
+      const result = yield* pipe(array, Effect.validate(Effect.fail), Effect.flip)
+      deepStrictEqual(Array.from(result), array)
+    }))
+  it.effect("validate (collection) - supports concurrency + discard", () =>
+    Effect.gen(function*() {
+      const array = Array.from({ length: 10 }, () => 0)
+      const result = yield* pipe(
+        array,
+        Effect.validate(Effect.fail, {
+          concurrency: "unbounded",
+          discard: true
+        }),
+        Effect.flip
+      )
+      deepStrictEqual(Array.from(result), array)
+    }))
   it.effect("validateAll - accumulate successes", () =>
     Effect.gen(function*() {
       const array = Array.from({ length: 10 }, (_, i) => i)

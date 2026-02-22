@@ -578,6 +578,20 @@ describe("Effect", () => {
     expect(Effect.validate(Effect.succeed(1), Effect.succeed("a"))).type.toBe<
       Effect.Effect<[number, string]>
     >()
+
+    expect(Effect.validate([1, 2, 3], Effect.succeed)).type.toBe<
+      Effect.Effect<Array<number>, [never, ...Array<never>]>
+    >()
+
+    expect(pipe([1, 2, 3], Effect.validate(Effect.succeed))).type.toBe<
+      Effect.Effect<Array<number>, [never, ...Array<never>]>
+    >()
+
+    expect(
+      Effect.validate([1, 2, 3], Effect.succeed, { discard: true })
+    ).type.toBe<
+      Effect.Effect<void, [never, ...Array<never>]>
+    >()
   })
 
   it("promise", () => {

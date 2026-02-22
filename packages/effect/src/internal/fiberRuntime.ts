@@ -2896,26 +2896,71 @@ export const using = dual<
 
 /** @internal */
 export const validate = dual<
-  <B, E1, R1>(
-    that: Effect.Effect<B, E1, R1>,
-    options?: {
-      readonly concurrent?: boolean | undefined
-      readonly batching?: boolean | "inherit" | undefined
-      readonly concurrentFinalizers?: boolean | undefined
-    }
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<[A, B], E | E1, R | R1>,
-  <A, E, R, B, E1, R1>(
-    self: Effect.Effect<A, E, R>,
-    that: Effect.Effect<B, E1, R1>,
-    options?: {
-      readonly concurrent?: boolean | undefined
-      readonly batching?: boolean | "inherit" | undefined
-      readonly concurrentFinalizers?: boolean | undefined
-    }
-  ) => Effect.Effect<[A, B], E | E1, R | R1>
+  {
+    <A, B, E, R>(
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
+      options?: {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly discard?: false | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+    ): (elements: Iterable<A>) => Effect.Effect<Array<B>, RA.NonEmptyArray<E>, R>
+    <A, B, E, R>(
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
+      options: {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly discard: true
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+    ): (elements: Iterable<A>) => Effect.Effect<void, RA.NonEmptyArray<E>, R>
+    <B, E1, R1>(
+      that: Effect.Effect<B, E1, R1>,
+      options?: {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+    ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<[A, B], E | E1, R | R1>
+  },
+  {
+    <A, B, E, R>(
+      elements: Iterable<A>,
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
+      options?: {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly discard?: false | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+    ): Effect.Effect<Array<B>, RA.NonEmptyArray<E>, R>
+    <A, B, E, R>(
+      elements: Iterable<A>,
+      f: (a: A, i: number) => Effect.Effect<B, E, R>,
+      options: {
+        readonly concurrency?: Concurrency | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly discard: true
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+    ): Effect.Effect<void, RA.NonEmptyArray<E>, R>
+    <A, E, R, B, E1, R1>(
+      self: Effect.Effect<A, E, R>,
+      that: Effect.Effect<B, E1, R1>,
+      options?: {
+        readonly concurrent?: boolean | undefined
+        readonly batching?: boolean | "inherit" | undefined
+        readonly concurrentFinalizers?: boolean | undefined
+      }
+    ): Effect.Effect<[A, B], E | E1, R | R1>
+  }
 >(
-  (args) => core.isEffect(args[1]),
-  (self, that, options) => validateWith(self, that, (a, b) => [a, b], options)
+  (args) => Predicate.isIterable(args[0]) || core.isEffect(args[1]),
+  ((self: any, that: any, options: any) =>
+    Predicate.isIterable(self) && Predicate.isFunction(that)
+      ? validateAll(self, that, options)
+      : validateWith(self, that, (a: any, b: any) => [a, b], options)) as any
 )
 
 /** @internal */
