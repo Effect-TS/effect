@@ -140,21 +140,25 @@ export const make = Effect.fnUntraced(function*(options: {
         )
       `,
     mysql: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id VARCHAR(50) PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          acquired_at DATETIME NOT NULL
-        )
-      `,
+      disableAdvisoryLocks ?
+        sql`
+          CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+            shard_id VARCHAR(50) PRIMARY KEY,
+            address VARCHAR(255) NOT NULL,
+            acquired_at DATETIME NOT NULL
+          )
+        ` :
+        Effect.void,
     pg: () =>
-      sql`
-        CREATE TABLE IF NOT EXISTS ${locksTableSql} (
-          shard_id VARCHAR(50) PRIMARY KEY,
-          address VARCHAR(255) NOT NULL,
-          acquired_at TIMESTAMP NOT NULL
-        )
-      `,
+      disableAdvisoryLocks ?
+        sql`
+          CREATE TABLE IF NOT EXISTS ${locksTableSql} (
+            shard_id VARCHAR(50) PRIMARY KEY,
+            address VARCHAR(255) NOT NULL,
+            acquired_at TIMESTAMP NOT NULL
+          )
+        ` :
+        Effect.void,
     orElse: () =>
       // sqlite
       sql`
