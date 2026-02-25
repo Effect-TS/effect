@@ -5105,7 +5105,8 @@ const UserHandlers = UserRpcs.toLayer({
 // Use `HttpLayerRouter` to register the rpc server
 const RpcRoute = RpcServer.layerHttpRouter({
   group: UserRpcs,
-  path: "/rpc"
+  path: "/rpc",
+  protocol: "http"
 }).pipe(
   Layer.provide(UserHandlers),
   Layer.provide(RpcSerialization.layerJson),
