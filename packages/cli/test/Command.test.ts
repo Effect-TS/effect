@@ -54,8 +54,25 @@ const add = Command.make("add", {
   Command.provideEffect(AddService, (_) => Effect.succeed("AddService" as const))
 )
 
+const status = Command.make("status", {
+  verbose: Options.boolean("verbose").pipe(Options.withAlias("v")),
+  pathspec: Args.text({ name: "pathspec" })
+}, ({ verbose, pathspec }) =>
+  Effect.gen(function*() {
+    const { log } = yield* Messages
+    const parent = yield* git
+    if (verbose) {
+      yield* log(`Status verbose ${pathspec}`)
+    } else {
+      yield* log(`Status ${pathspec}`)
+    }
+    if (parent.verbose) {
+      yield* log("parent verbose")
+    }
+  })).pipe(Command.withDescription("Show the working tree status"))
+
 const run = git.pipe(
-  Command.withSubcommands([clone, add]),
+  Command.withSubcommands([clone, add, status]),
   Command.run({
     name: "git",
     version: "1.0.0"
@@ -130,10 +147,9 @@ describe("Command", () => {
         Effect.runPromise
       ))
 
-    it("options after positional args", () =>
+    it("parent options after subcommand and its args", () =>
       Effect.gen(function*() {
         const messages = yield* Messages
-        // --verbose after the positional arg "repo"
         yield* run(["node", "git.js", "clone", "repo", "--verbose"])
         assert.deepStrictEqual(yield* messages.messages, [
           "shared",
@@ -141,17 +157,118 @@ describe("Command", () => {
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 
-    it("options after positional args with alias", () =>
+    it("parent options with alias after subcommand and its args", () =>
       Effect.gen(function*() {
         const messages = yield* Messages
-        // -v after the positional arg "repo"
-        yield* run(["node", "git.js", "clone", "repo", "-v"])
+        yield* run(["node", "git.js", "add", "file", "-v"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Adding file"
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("parent options both before and after subcommand", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        // Mix: some parent options before subcommand, parent option after subcommand
+        // Using --verbose before and testing it still works
+        yield* run(["node", "git.js", "--verbose", "clone", "repo"])
         assert.deepStrictEqual(yield* messages.messages, [
           "shared",
           "Cloning repo"
         ])
       }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+    it("shared option: child wins over parent", () =>
+      Effect.gen(function*() {
+        const messages = yield* Messages
+        yield* run(["node", "git.js", "status", ".", "--verbose"])
+        assert.deepStrictEqual(yield* messages.messages, [
+          "shared",
+          "Status verbose ."
+        ])
+      }).pipe(Effect.provide(EnvLive), Effect.runPromise))
   })
+})
+
+// Parent provides shared options as a service to subcommands
+
+const SharedOptions = Context.GenericTag<{ verbose: boolean }>("SharedOptions")
+
+const app = Command.make("app", {
+  verbose: Options.boolean("verbose").pipe(Options.withAlias("v"))
+}).pipe(
+  Command.provideSync(SharedOptions, ({ verbose }) => ({ verbose }))
+)
+
+const push = Command.make("push", {
+  force: Options.boolean("force")
+}, ({ force }) =>
+  Effect.gen(function*() {
+    const { log } = yield* Messages
+    const { verbose } = yield* SharedOptions
+    yield* log(`push force=${force} verbose=${verbose}`)
+  }))
+
+const show = Command.make("show", {
+  ref: Args.text({ name: "ref" })
+}, ({ ref }) =>
+  Effect.gen(function*() {
+    const { log } = yield* Messages
+    const { verbose } = yield* SharedOptions
+    yield* log(`show ${ref} verbose=${verbose}`)
+  }))
+
+const runApp = app.pipe(
+  Command.withSubcommands([push, show]),
+  Command.run({ name: "app", version: "1.0.0" })
+)
+
+describe("shared parent options provided as service", () => {
+  it("parent --verbose before subcommand", () =>
+    Effect.gen(function*() {
+      const messages = yield* Messages
+      yield* runApp(["node", "app", "--verbose", "push", "--force"])
+      assert.deepStrictEqual(yield* messages.messages, [
+        "push force=true verbose=true"
+      ])
+    }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+  it("parent --verbose after subcommand options", () =>
+    Effect.gen(function*() {
+      const messages = yield* Messages
+      yield* runApp(["node", "app", "push", "--force", "--verbose"])
+      assert.deepStrictEqual(yield* messages.messages, [
+        "push force=true verbose=true"
+      ])
+    }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+  it("parent -v after subcommand options", () =>
+    Effect.gen(function*() {
+      const messages = yield* Messages
+      yield* runApp(["node", "app", "push", "--force", "-v"])
+      assert.deepStrictEqual(yield* messages.messages, [
+        "push force=true verbose=true"
+      ])
+    }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+  it("parent --verbose after subcommand positional arg", () =>
+    Effect.gen(function*() {
+      const messages = yield* Messages
+      yield* runApp(["node", "app", "show", "main", "--verbose"])
+      assert.deepStrictEqual(yield* messages.messages, [
+        "show main verbose=true"
+      ])
+    }).pipe(Effect.provide(EnvLive), Effect.runPromise))
+
+  it("no --verbose defaults to false", () =>
+    Effect.gen(function*() {
+      const messages = yield* Messages
+      yield* runApp(["node", "app", "push", "--force"])
+      assert.deepStrictEqual(yield* messages.messages, [
+        "push force=true verbose=false"
+      ])
+    }).pipe(Effect.provide(EnvLive), Effect.runPromise))
 })
 
 // --
