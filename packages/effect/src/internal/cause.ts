@@ -17,6 +17,7 @@ import type { AnySpan, Span } from "../Tracer.js"
 import type { NoInfer } from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
+import { canWriteStackTraceLimit } from "./stackTraceLimit.js"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -900,8 +901,10 @@ export class PrettyError extends globalThis.Error implements Cause.PrettyError {
   span: undefined | Span = undefined
   constructor(originalError: unknown) {
     const originalErrorIsObject = typeof originalError === "object" && originalError !== null
-    const prevLimit = Error.stackTraceLimit
-    Error.stackTraceLimit = 1
+    const prevLimit = canWriteStackTraceLimit ? Error.stackTraceLimit : undefined
+    if (canWriteStackTraceLimit) {
+      Error.stackTraceLimit = 1
+    }
     super(
       prettyErrorMessage(originalError),
       originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
@@ -911,7 +914,9 @@ export class PrettyError extends globalThis.Error implements Cause.PrettyError {
     if (this.message === "") {
       this.message = "An error has occurred"
     }
-    Error.stackTraceLimit = prevLimit
+    if (prevLimit !== undefined) {
+      Error.stackTraceLimit = prevLimit
+    }
     this.name = originalError instanceof Error ? originalError.name : "Error"
     if (originalErrorIsObject) {
       if (spanSymbol in originalError) {

@@ -1499,6 +1499,20 @@ function filter(obj: any) {
   return obj
 }
 
+// Utility for safely manipulating Error.stackTraceLimit in environments
+// where intrinsics may be frozen (e.g., SES/hardened JavaScript)
+const isStackTraceLimitWritable = (): boolean => {
+  const desc = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")
+  if (desc === undefined) {
+    return Object.isExtensible(Error)
+  }
+  return Object.prototype.hasOwnProperty.call(desc, "writable")
+    ? desc.writable === true
+    : desc.set !== undefined
+}
+
+const canWriteStackTraceLimit = isStackTraceLimitWritable()
+
 /**
  * **Unsafe**: This function will throw an error if an insecure property is
  * found in the parsed JSON or if the provided JSON text is not parseable.
@@ -1508,11 +1522,14 @@ function filter(obj: any) {
  */
 export const unsafeSecureJsonParse = (text: string): unknown => {
   // Performance optimization, see https://github.com/fastify/secure-json-parse/pull/90
-  const { stackTraceLimit } = Error
+  if (!canWriteStackTraceLimit) {
+    return _parse(text)
+  }
+  const prevLimit = Error.stackTraceLimit
   Error.stackTraceLimit = 0
   try {
     return _parse(text)
   } finally {
-    Error.stackTraceLimit = stackTraceLimit
+    Error.stackTraceLimit = prevLimit
   }
 }
