@@ -51,11 +51,11 @@
   "peerDependencies": {
     "@effect/platform": "workspace:^",
     "effect": "workspace:^",
-    "ioredis": "^5",
+    "redis": "^5",
     "lmdb": "^3"
   },
   "peerDependenciesMeta": {
-    "ioredis": {
+    "redis": {
       "optional": true
     },
     "lmdb": {
@@ -67,7 +67,7 @@
     "@effect/platform-node": "workspace:^",
     "@testcontainers/redis": "^11.8.1",
     "@types/ws": "^8.18.1",
-    "ioredis": "^5.6.1",
+    "redis": "^5.8.3",
     "lmdb": "^3.3.0"
   }
 }
