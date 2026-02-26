@@ -41,6 +41,13 @@ function effectifyWith(
   }
   return new Proxy(obj, {
     get(target, prop): any {
+      if (typeof prop === "symbol") {
+        return target[prop]
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(target, prop)
+      if (descriptor && !descriptor.configurable) {
+        return target[prop]
+      }
       const prototype = Object.getPrototypeOf(target)
       if (Effect.EffectTypeId in prototype && prop === "commit") {
         return commit.bind(target)
