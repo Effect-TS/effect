@@ -62,11 +62,11 @@ export interface SuccessValue {
  * @since 1.0.0
  * @category models
  */
-export interface RpcMiddlewareClient<R = never> {
+export interface RpcMiddlewareClient<R = never, CE = never> {
   (options: {
     readonly rpc: Rpc.AnyWithProps
     readonly request: Request<Rpc.Any>
-  }): Effect.Effect<Request<Rpc.Any>, never, R>
+  }): Effect.Effect<Request<Rpc.Any>, CE, R>
 }
 
 /**
@@ -98,12 +98,14 @@ export interface Any {
 export interface TagClass<
   Self,
   Name extends string,
-  Options
+  Options,
+  ClientError
 > extends
   TagClass.Base<
     Self,
     Name,
     Options,
+    ClientError,
     TagClass.Wrap<Options> extends true ? RpcMiddlewareWrap<
         TagClass.Provides<Options>,
         TagClass.Failure<Options>
@@ -188,8 +190,14 @@ export declare namespace TagClass {
    * @since 1.0.0
    * @category models
    */
-  export interface Base<Self, Name extends string, Options, Service> extends Context.Tag<Self, Service> {
-    new(_: never): Context.TagClassShape<Name, Service>
+  export type ClientError<Options> = Options extends { readonly "~ClientError": any } ? Options["~ClientError"] : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface Base<Self, Name extends string, Options, ClientError, Service> extends Context.Tag<Self, Service> {
+    new(_: never): Context.TagClassShape<Name, Service> & { readonly "~ClientError": ClientError }
     readonly [TypeId]: TypeId
     readonly optional: Optional<Options>
     readonly failure: FailureSchema<Options>
@@ -197,6 +205,7 @@ export declare namespace TagClass {
       : undefined
     readonly requiredForClient: RequiredForClient<Options>
     readonly wrap: Wrap<Options>
+    readonly "~ClientError": ClientError
   }
 }
 
@@ -211,6 +220,7 @@ export interface TagClassAny extends Context.Tag<any, any> {
   readonly failure: Schema.Schema.All
   readonly requiredForClient: boolean
   readonly wrap: boolean
+  readonly "~ClientError": any
 }
 
 /**
@@ -224,13 +234,28 @@ export interface TagClassAnyWithProps extends Context.Tag<any, RpcMiddleware<any
   readonly failure: Schema.Schema.All
   readonly requiredForClient: boolean
   readonly wrap: boolean
+  readonly "~ClientError": any
+}
+
+/**
+ * @since 4.0.0
+ * @category models
+ */
+export interface AnyId {
+  readonly [TypeId]: TypeId
+  readonly "~ClientError"?: any
 }
 
 /**
  * @since 1.0.0
  * @category tags
  */
-export const Tag = <Self>(): <
+export const Tag = <
+  Self,
+  const Config extends {
+    clientError?: any
+  } = { clientError: never }
+>(): <
   const Name extends string,
   const Options extends {
     readonly wrap?: boolean
@@ -242,7 +267,7 @@ export const Tag = <Self>(): <
 >(
   id: Name,
   options?: Options | undefined
-) => TagClass<Self, Name, Options> =>
+) => TagClass<Self, Name, Options, "clientError" extends keyof Config ? Config["clientError"] : never> =>
 (
   id: string,
   options?: {
@@ -285,7 +310,9 @@ export const Tag = <Self>(): <
  */
 export const layerClient = <Id, S, R, EX = never, RX = never>(
   tag: Context.Tag<Id, S>,
-  service: RpcMiddlewareClient<R> | Effect.Effect<RpcMiddlewareClient<R>, EX, RX>
+  service:
+    | RpcMiddlewareClient<R, TagClass.ClientError<Id>>
+    | Effect.Effect<RpcMiddlewareClient<R, TagClass.ClientError<Id>>, EX, RX>
 ): Layer.Layer<ForClient<Id>, EX, R | Exclude<RX, Scope>> =>
   Layer.scopedContext(Effect.gen(function*() {
     const context = (yield* Effect.context<R | Scope>()).pipe(

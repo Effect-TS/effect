@@ -118,7 +118,10 @@ export declare namespace RpcClient {
       infer _Error,
       infer _Middleware
     > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsMailbox extends true ? Effect.Effect<
-            Mailbox.ReadonlyMailbox<_A["Type"], _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"]>,
+            Mailbox.ReadonlyMailbox<
+              _A["Type"],
+              _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"] | _Middleware["~ClientError"]
+            >,
             never,
             | Scope.Scope
             | _Payload["Context"]
@@ -128,12 +131,13 @@ export declare namespace RpcClient {
           >
         : Stream.Stream<
           _A["Type"],
-          _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"],
+          _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"] | _Middleware["~ClientError"],
           _Payload["Context"] | _Success["Context"] | _Error["Context"] | _Middleware["failure"]["Context"]
         >
       : Effect.Effect<
         Discard extends true ? void : _Success["Type"],
-        Discard extends true ? E : _Error["Type"] | E | _Middleware["failure"]["Type"],
+        Discard extends true ? E | _Middleware["~ClientError"]
+          : _Error["Type"] | E | _Middleware["failure"]["Type"] | _Middleware["~ClientError"],
         _Payload["Context"] | _Success["Context"] | _Error["Context"] | _Middleware["failure"]["Context"]
       > :
       never
@@ -168,7 +172,10 @@ export declare namespace RpcClient {
     infer _Error,
     infer _Middleware
   > ? [_Success] extends [RpcSchema.Stream<infer _A, infer _E>] ? AsMailbox extends true ? Effect.Effect<
-          Mailbox.ReadonlyMailbox<_A["Type"], _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"]>,
+          Mailbox.ReadonlyMailbox<
+            _A["Type"],
+            _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"] | _Middleware["~ClientError"]
+          >,
           never,
           | Scope.Scope
           | _Payload["Context"]
@@ -178,12 +185,13 @@ export declare namespace RpcClient {
         >
       : Stream.Stream<
         _A["Type"],
-        _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"],
+        _E["Type"] | _Error["Type"] | E | _Middleware["failure"]["Type"] | _Middleware["~ClientError"],
         _Payload["Context"] | _Success["Context"] | _Error["Context"] | _Middleware["failure"]["Context"]
       >
     : Effect.Effect<
       Discard extends true ? void : _Success["Type"],
-      Discard extends true ? E : _Error["Type"] | E | _Middleware["failure"]["Type"],
+      Discard extends true ? E | _Middleware["~ClientError"]
+        : _Error["Type"] | E | _Middleware["failure"]["Type"] | _Middleware["~ClientError"],
       _Payload["Context"] | _Success["Context"] | _Error["Context"] | _Middleware["failure"]["Context"]
     > :
     never
@@ -329,7 +337,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
 
   const onEffectRequest = (
     rpc: Rpc.AnyWithProps,
-    middleware: (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>>,
+    middleware: (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>, any>,
     span: Span | undefined,
     payload: any,
     headers: Headers.Headers,
@@ -352,12 +360,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         headers: Headers.merge(parentFiber.getFiberRef(currentHeaders), headers)
       })
       if (discard) {
-        return Effect.flatMap(send, (message) =>
-          options.onFromClient({
-            message,
-            context,
-            discard
-          }))
+        return Effect.matchEffect(send, {
+          onFailure: () => Effect.void,
+          onSuccess: (message) =>
+            options.onFromClient({
+              message,
+              context,
+              discard
+            })
+        })
       }
       const runtime = Runtime.make({
         context: parentFiber.currentContext,
@@ -414,7 +425,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
 
   const onStreamRequest = Effect.fnUntraced(function*(
     rpc: Rpc.AnyWithProps,
-    middleware: (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>>,
+    middleware: (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>, any>,
     payload: any,
     headers: Headers.Headers,
     streamBufferSize: number,
@@ -483,8 +494,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     return mailbox
   })
 
-  const getRpcClientMiddleware = (rpc: Rpc.AnyWithProps): (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>> => {
-    const middlewares: Array<RpcMiddleware.RpcMiddlewareClient> = []
+  const getRpcClientMiddleware = (
+    rpc: Rpc.AnyWithProps
+  ): (request: Request<Rpcs>) => Effect.Effect<Request<Rpcs>, any> => {
+    const middlewares: Array<RpcMiddleware.RpcMiddlewareClient<never, any>> = []
     for (const tag of rpc.middlewares.values()) {
       const middleware = context.unsafeMap.get(`${tag.key}/Client`)
       if (!middleware) continue
@@ -501,7 +514,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
               middlewares[i]({
                 rpc,
                 request
-              }) as Effect.Effect<Request<Rpcs>>,
+              }) as Effect.Effect<Request<Rpcs>, any>,
             step(nextRequest) {
               request = nextRequest
               i++
