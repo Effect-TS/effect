@@ -52,6 +52,16 @@ describe("Client", () => {
       ])
     }))
 
+  it.scoped("should work with rawClient", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      const rawClient = yield* sql.rawClient
+      yield* Effect.sync(() => rawClient.exec("CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)"))
+      yield* Effect.sync(() => rawClient.exec("INSERT INTO test (name) VALUES ('hello')"))
+      const rows = yield* Effect.try(() => rawClient.prepare("SELECT * FROM test").all())
+      assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
+    }))
+
   it.scoped("withTransaction", () =>
     Effect.gen(function*() {
       const sql = yield* makeClient
