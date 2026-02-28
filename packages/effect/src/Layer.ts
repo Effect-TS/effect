@@ -1226,3 +1226,55 @@ export const updateService = dual<
     layer,
     map(context(), (c) => Context.add(c, tag, f(Context.unsafeGet(c, tag))))
   ))
+
+// -----------------------------------------------------------------------------
+// Type constraints
+// -----------------------------------------------------------------------------
+
+/**
+ * A no-op type constraint that enforces the success channel of a Layer conforms to
+ * the specified success type `ROut`.
+ *
+ * @example
+ * import { Layer } from "effect"
+ *
+ * // Ensure that the layer produces the expected services.
+ * const program = Layer.succeed(MyService, new MyServiceImpl()).pipe(Layer.ensureSuccessType<MyService>())
+ *
+ * @since 3.20.0
+ * @category Type constraints
+ */
+export const ensureSuccessType =
+  <ROut>() => <ROut2 extends ROut, E, RIn>(layer: Layer<ROut2, E, RIn>): Layer<ROut2, E, RIn> => layer
+
+/**
+ * A no-op type constraint that enforces the error channel of a Layer conforms to
+ * the specified error type `E`.
+ *
+ * @example
+ * import { Layer } from "effect"
+ *
+ * // Ensure that the layer does not expose any unhandled errors.
+ * const program = Layer.succeed(MyService, new MyServiceImpl()).pipe(Layer.ensureErrorType<never>())
+ *
+ * @since 3.20.0
+ * @category Type constraints
+ */
+export const ensureErrorType = <E>() => <ROut, E2 extends E, RIn>(layer: Layer<ROut, E2, RIn>): Layer<ROut, E2, RIn> =>
+  layer
+
+/**
+ * A no-op type constraint that enforces the requirements channel of a Layer conforms to
+ * the specified requirements type `RIn`.
+ *
+ * @example
+ * import { Layer } from "effect"
+ *
+ * // Ensure that the layer does not have any requirements.
+ * const program = Layer.succeed(MyService, new MyServiceImpl()).pipe(Layer.ensureRequirementsType<never>())
+ *
+ * @since 3.20.0
+ * @category Type constraints
+ */
+export const ensureRequirementsType =
+  <RIn>() => <ROut, E, RIn2 extends RIn>(layer: Layer<ROut, E, RIn2>): Layer<ROut, E, RIn2> => layer

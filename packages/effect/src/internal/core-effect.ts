@@ -1966,7 +1966,7 @@ export const annotateCurrentSpan: {
 } = function(): Effect.Effect<void> {
   const args = arguments
   return ignore(core.flatMap(
-    currentSpan,
+    currentPropagatedSpan,
     (span) =>
       core.sync(() => {
         if (typeof args[0] === "string") {
@@ -2041,6 +2041,16 @@ export const currentSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementExceptio
   }
 )
 
+export const currentPropagatedSpan: Effect.Effect<Tracer.Span, Cause.NoSuchElementException> = core.flatMap(
+  core.context<never>(),
+  (context) => {
+    const span = filterDisablePropagation(Context.getOption(context, internalTracer.spanTag))
+    return span._tag === "Some" && span.value._tag === "Span"
+      ? core.succeed(span.value)
+      : core.fail(new core.NoSuchElementException())
+  }
+)
+
 /* @internal */
 export const linkSpans = dual<
   (
@@ -2070,12 +2080,13 @@ export const linkSpans = dual<
 
 const bigint0 = BigInt(0)
 
-const filterDisablePropagation: (self: Option.Option<Tracer.AnySpan>) => Option.Option<Tracer.AnySpan> = Option.flatMap(
-  (span) =>
-    Context.get(span.context, internalTracer.DisablePropagation)
-      ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
-      : Option.some(span)
-)
+export const filterDisablePropagation: (self: Option.Option<Tracer.AnySpan>) => Option.Option<Tracer.AnySpan> = Option
+  .flatMap(
+    (span) =>
+      Context.get(span.context, internalTracer.DisablePropagation)
+        ? span._tag === "Span" ? filterDisablePropagation(span.parent) : Option.none()
+        : Option.some(span)
+  )
 
 /** @internal */
 export const unsafeMakeSpan = <XA, XE>(
