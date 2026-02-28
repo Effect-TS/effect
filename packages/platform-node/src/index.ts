@@ -81,6 +81,11 @@ export * as NodeSocketServer from "./NodeSocketServer.js"
 /**
  * @since 1.0.0
  */
+export * as NodeUdpSocket from "./NodeUdpSocket.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as NodeStream from "./NodeStream.js"
 
 /**
