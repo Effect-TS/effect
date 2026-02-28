@@ -3921,9 +3921,11 @@ export const catchTag: {
  * const program = Effect.gen(function* () {
  *   const n1 = yield* Random.next
  *   const n2 = yield* Random.next
+ *
  *   if (n1 < 0.5) {
  *     yield* Effect.fail(new HttpError())
  *   }
+ *
  *   if (n2 < 0.5) {
  *     yield* Effect.fail(new ValidationError())
  *   }
@@ -3939,6 +3941,52 @@ export const catchTag: {
  *     ValidationError: (_ValidationError) =>
  *       Effect.succeed(`Recovering from ValidationError`)
  *   })
+ * )
+ * ```
+ *
+ * **Example** (Handling Tagged Error Types and Remaining Errors)
+ *
+ * ```ts
+ * import { Effect, Random } from "effect"
+ *
+ * class HttpError {
+ *   readonly _tag = "HttpError"
+ * }
+ *
+ * class ValidationError {
+ *   readonly _tag = "ValidationError"
+ * }
+ *
+ * class AnotherValidationError {
+ *   readonly _tag = "ValidationError"
+ * }
+ *
+ * //      ┌─── Effect<string, HttpError | ValidationError | AnotherValidationError, never>
+ * //      ▼
+ * const program = Effect.gen(function* () {
+ *   const n1 = yield* Random.next
+ *   const n2 = yield* Random.next
+ *   const n3 = yield* Random.next
+ *
+ *   if (n1 < 0.5) {
+ *     yield* Effect.fail(new HttpError())
+ *   }
+ *   if (n2 < 0.5) {
+ *     yield* Effect.fail(new ValidationError())
+ *   }
+ *
+ *   return "some result"
+ * })
+ *
+ * //      ┌─── Effect<string, never, never>
+ * //      ▼
+ * const recovered = program.pipe(
+ *   Effect.catchTags({
+ *     HttpError: (_HttpError) =>
+ *       Effect.succeed(`Recovering from HttpError`),
+ *     ValidationError: (_ValidationError) =>
+ *       Effect.succeed(`Recovering from ValidationError`)
+ *   }, remaining => Effect.succeed(remaining._tag)) // AnotherValidationError
  * )
  * ```
  *
@@ -3970,6 +4018,33 @@ export const catchTags: {
     }[keyof Cases]
   >
   <
+    E,
+    Cases extends
+      & { [K in Extract<E, { _tag: string }>["_tag"]]?: (error: Extract<E, { _tag: K }>) => Effect<any, any, any> }
+      & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>["_tag"]>]: never }),
+    OnOther extends (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
+  >(
+    cases: Cases,
+    onOther: OnOther
+  ): <A, R>(
+    self: Effect<A, E, R>
+  ) => Effect<
+    | A
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<infer A1, any, any> ? A1 : never
+    }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<infer A2, any, any> ? A2 : never),
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, infer E1, any> ? E1 : never
+    }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, infer E2, any> ? E2 : never),
+    | R
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R1> ? R1 : never
+    }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, any, infer R2> ? R2 : never)
+  >
+  <
     R,
     E,
     A,
@@ -3992,6 +4067,34 @@ export const catchTags: {
     | {
       [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R> ? R : never
     }[keyof Cases]
+  >
+  <
+    E,
+    A,
+    R,
+    Cases extends
+      & { [K in Extract<E, { _tag: string }>["_tag"]]?: (error: Extract<E, { _tag: K }>) => Effect<any, any, any> }
+      & (unknown extends E ? {} : { [K in Exclude<keyof Cases, Extract<E, { _tag: string }>["_tag"]>]: never }),
+    OnOther extends (error: Exclude<E, { _tag: keyof Cases }>) => Effect<any, any, any>
+  >(
+    self: Effect<A, E, R>,
+    cases: Cases,
+    onOther: OnOther
+  ): Effect<
+    | A
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<infer A1, any, any> ? A1 : never
+    }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<infer A2, any, any> ? A2 : never),
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, infer E1, any> ? E1 : never
+    }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, infer E2, any> ? E2 : never),
+    | R
+    | {
+      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect<any, any, infer R1> ? R1 : never
+    }[keyof Cases]
+    | (ReturnType<OnOther> extends Effect<any, any, infer R2> ? R2 : never)
   >
 } = effect.catchTags
 
