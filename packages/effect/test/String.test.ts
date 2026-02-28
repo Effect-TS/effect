@@ -277,4 +277,13 @@ describe("String", () => {
       deepStrictEqual(Array.from(result), ["", "$", "    $Hello,", "    $World!", " $"])
     })
   })
+
+  it("truncate", () => {
+    expect(S.truncate("Hello World!", { length: 5 })).toBe("Hello...")
+    expect(S.truncate("Hello World!", { length: 5, omission: "" })).toBe("Hello")
+    expect(S.truncate("Hello World!", { length: 7 })).toBe("Hello W...")
+    expect(S.truncate("Hello World!", { length: 7, separator: " " })).toBe(
+      "Hello..."
+    )
+  })
 })
