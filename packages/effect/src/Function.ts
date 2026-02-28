@@ -1220,3 +1220,196 @@ export const hole: <T>() => T = unsafeCoerce(absurd)
  * @since 2.0.0
  */
 export const SK = <A, B>(_: A, b: B): B => b
+
+/**
+ * Empty ArgNode result sentinel.
+ *
+ * @internal
+ */
+const EMPTY = Symbol.for("effect/Function.memo")
+
+/**
+ * Memo helper class.
+ *
+ * @internal
+ */
+class ArgNode<A> {
+  /** The cached result of the args that led to this node, or `EMPTY`. */
+  r: A | typeof EMPTY = EMPTY
+
+  /** The primitive arg branch. */
+  private p: Map<unknown, ArgNode<A>> | null = null
+
+  /** The object arg branch. */
+  private o: WeakMap<object, ArgNode<A>> | null = null
+
+  /** Get the next node for an arg. If uninitialized, one will be created, set, and returned. */
+  at(arg: unknown): ArgNode<A> {
+    if (
+      (typeof arg === "object" && arg !== null) ||
+      typeof arg === "function"
+    ) {
+      if (!this.o) this.o = new WeakMap()
+      const next = this.o.get(arg)
+      if (next) return next
+
+      const fresh = new ArgNode<A>()
+      this.o.set(arg, fresh)
+      return fresh
+    }
+
+    if (!this.p) this.p = new Map()
+    const next = this.p.get(arg)
+    if (next) return next
+
+    const fresh = new ArgNode<A>()
+    this.p.set(arg, fresh)
+    return fresh
+  }
+}
+
+/**
+ * A global WeakMap from original functions to memo wrappers, so that we can avoid re-wrapping.
+ *
+ * @internal
+ */
+const origToMemo = new WeakMap<Function, Function>()
+/**
+ * Private branding for memo wrappers.
+ *
+ * @internal
+ */
+const allMemos = new WeakSet<Function>()
+
+export declare namespace memo {
+  interface Options {
+    /**
+     * Optimizes caching by not setting the path for trailing `undefined`
+     * arguments. This is useful for functions with optional arguments, treating
+     * provided-`undefined` and absent-`undefined` the same way. The wrapped
+     * function will nevertheless receive all arguments.
+     *
+     * This option should be disabled if:
+     *
+     * - The function has variadic arguments and `undefined` is a valid input
+     * - The function distinguishes `f(1)` vs `f(1, undefined)` via `arguments.length` or `rest.length`
+     *
+     * @default true
+     */
+    readonly trimUndefined?: boolean
+  }
+}
+
+/**
+ * Memoize a function, method, or getter, with any number of arguments.
+ * Repeated calls to the returned function with the same arguments will return
+ * cached values.
+ *
+ * Usage notes:
+ * - Memoized functions should be totally pure, and should return immutable
+ *   values.
+ * - The cache size is unbounded, but internally a `WeakMap` is used when
+ *   possible. To make the most of this, memoized functions should have
+ *   object-type args at the start and primitive args at the end.
+ * - Works as a class method decorator under modern settings
+ *   (`experimentalDecorators: false`), though you will have to use the curried
+ *   form (`@Function.memo()`).
+ *
+ * Cache hazard under point-free usage: if you pass a memoized function to a
+ * callback like `Array.prototype.map`, the extra args it passes will be
+ * included in the cache path, causing misses. To prevent this, use a small
+ * closure to ensure no extra args are passed in.
+ *
+ * @example
+ * ```ts
+ * import { memo } from "effect/Function"
+ *
+ * const add = memo((x: number, y: number) => {
+ *   console.log("running add");
+ *   return x + y;
+ * });
+ *
+ * add(2, 3); // logs "running add", returns 5
+ * add(2, 3); // no log, returns cached 5
+ * add(2, 4); // logs "running add", returns 6
+ *
+ * // Expected console output:
+ * // running add
+ * // running add
+ * ```
+ *
+ * @since 3.20.0
+ */
+export const memo: {
+  (
+    options?: memo.Options
+  ): <Args extends Array<any>, Return>(fn: (...args: Args) => Return) => (...args: Args) => Return
+  <Args extends Array<any>, Return>(
+    fn: (...args: Args) => Return,
+    options?: memo.Options
+  ): (...args: Args) => Return
+} = dual(
+  (args) => isFunction(args[0]),
+  <Args extends Array<any>, Return>(
+    fn: (...args: Args) => Return,
+    options?: memo.Options
+  ): (...args: Args) => Return => {
+    // If input is a 'base' function and already memoized, return it
+    if (origToMemo.has(fn)) return origToMemo.get(fn) as any
+
+    // If input is a memo function, don't re-wrap it
+    if (allMemos.has(fn)) return fn
+
+    // Create the `ArgNode` root for this function
+    const root = new ArgNode<Return>()
+
+    const shouldTrim = options?.trimUndefined ?? true
+
+    const out = function(this: unknown, ...args: Args): Return {
+      // Find the defined length
+      let argsLength = args.length
+      if (shouldTrim) {
+        let definedLength = argsLength
+        while (definedLength > 0 && args[definedLength - 1] === undefined) {
+          definedLength -= 1
+        }
+        if (definedLength < argsLength) {
+          argsLength = definedLength
+        }
+      }
+
+      // Drill through `this` and `args` to get the ArgNode that holds the result
+      let node = root.at(this)
+      for (let i = 0; i < argsLength; i += 1) {
+        node = node.at(args[i])
+      }
+
+      if (node.r !== EMPTY) return node.r
+
+      const result = fn.apply(this, args)
+      node.r = result
+
+      return result
+    }
+
+    origToMemo.set(fn, out)
+    allMemos.add(out)
+
+    return out
+  }
+)
+
+/**
+ * See {@link memo}. This is an alias that infers `This` and uses it in the returned function signature.
+ *
+ * @since 3.20.0
+ */
+export const memoThis: {
+  (options?: memo.Options): <This, Args extends Array<any>, Return>(
+    fn: (this: This, ...args: Args) => Return
+  ) => (this: This, ...args: Args) => Return
+  <This, Args extends Array<any>, Return>(
+    fn: (this: This, ...args: Args) => Return,
+    options?: memo.Options
+  ): (this: This, ...args: Args) => Return
+} = memo
