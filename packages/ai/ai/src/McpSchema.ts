@@ -1784,11 +1784,9 @@ export class McpServerClient extends Context.Tag("@effect/ai/McpSchema/McpServer
  * @since 1.0.0
  * @category McpServerClient
  */
-export class McpServerClientMiddleware
-  extends RpcMiddleware.Tag<McpServerClientMiddleware>()("@effect/ai/McpSchema/McpServerClientMiddleware", {
-    provides: McpServerClient
-  })
-{}
+export class McpServerClientMiddleware extends RpcMiddleware.Tag<McpServerClientMiddleware, {
+  provides: McpServerClient
+}>()("@effect/ai/McpSchema/McpServerClientMiddleware") {}
 
 // =============================================================================
 // Protocol
