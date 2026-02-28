@@ -137,6 +137,39 @@ export declare namespace HttpApi {
    * @category models
    */
   export type AnyWithProps = HttpApi<string, HttpApiGroup.HttpApiGroup.AnyWithProps, any, any>
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type Groups<Api> = Api extends HttpApi<
+    infer _Id,
+    infer _Groups,
+    infer _E,
+    infer _R
+  > ? _Groups
+    : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type EndpointsWithGroupName<Api extends Any, GroupName extends HttpApiGroup.HttpApiGroup.Name<Groups<Api>>> =
+    GroupName extends HttpApiGroup.HttpApiGroup.Name<Groups<Api>> ?
+      HttpApiGroup.HttpApiGroup.EndpointsWithName<Groups<Api>, GroupName>
+      : never
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type ExtractHandlerType<
+    Api extends HttpApi.Any,
+    GroupName extends HttpApiGroup.HttpApiGroup.Name<Groups<Api>>,
+    EndpointName extends HttpApiEndpoint.HttpApiEndpoint.Name<EndpointsWithGroupName<Api, GroupName>>,
+    E = never,
+    R = never
+  > = HttpApiEndpoint.HttpApiEndpoint.HandlerWithName<EndpointsWithGroupName<Api, GroupName>, EndpointName, E, R>
 }
 
 const Proto = {
