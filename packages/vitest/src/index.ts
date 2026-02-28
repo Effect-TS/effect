@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as VR from "@vitest/runner"
 import type * as Duration from "effect/Duration"
 import type * as Effect from "effect/Effect"
 import type * as FC from "effect/FastCheck"
@@ -25,18 +26,10 @@ export type API =
   & TestCollectorCallable
 
 interface TestCollectorCallable<C = object> {
-  /**
-   * @deprecated Use options as the second argument instead
-   */
   <ExtraContext extends C>(
     name: string | Function,
     fn: V.TestFunction<ExtraContext>,
-    options: TestCollectorOptions
-  ): void
-  <ExtraContext extends C>(
-    name: string | Function,
-    fn?: V.TestFunction<ExtraContext>,
-    options?: number | TestCollectorOptions
+    options?: number
   ): void
   <ExtraContext extends C>(
     name: string | Function,
@@ -45,17 +38,7 @@ interface TestCollectorCallable<C = object> {
   ): void
 }
 
-type TestCollectorOptions = {
-  concurrent?: boolean
-  sequential?: boolean
-  only?: boolean
-  skip?: boolean
-  todo?: boolean
-  fails?: boolean
-  timeout?: number
-  retry?: number
-  repeats?: number
-}
+type TestCollectorOptions = Omit<VR.TestOptions, "shuffle">
 
 /**
  * @since 1.0.0

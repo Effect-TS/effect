@@ -86,7 +86,7 @@ export function assertInstanceOf<C extends abstract new(...args: any) => any>(
   message?: string,
   ..._: Array<never>
 ): asserts value is InstanceType<C> {
-  // @ts-ignore
+  // @ts-expect-error Chai type does not allow abstract constructors
   vassert.instanceOf(value, constructor, message)
 }
 
