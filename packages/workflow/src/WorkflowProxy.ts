@@ -64,7 +64,10 @@ export const toRpcGroup = <
         payload: workflow.payloadSchema
       }).annotateContext(workflow.annotations),
       Rpc.make(`${prefix}${workflow.name}Resume`, { payload: ResumePayload })
-        .annotateContext(workflow.annotations)
+        .annotateContext(workflow.annotations),
+      Rpc.make(`${prefix}${workflow.name}Interrupt`, {
+        payload: InterruptPayload
+      }).annotateContext(workflow.annotations)
     )
   }
   return RpcGroup.make(...rpcs) as any
@@ -82,6 +85,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
     | Rpc.Rpc<`${Prefix}${_Name}`, _Payload, _Success, _Error>
     | Rpc.Rpc<`${Prefix}${_Name}Discard`, _Payload>
     | Rpc.Rpc<`${Prefix}${_Name}Resume`, typeof ResumePayload>
+    | Rpc.Rpc<`${Prefix}${_Name}Interrupt`, typeof InterruptPayload>
   : never
 
 /**
@@ -140,6 +144,10 @@ export const toHttpApiGroup = <const Name extends string, const Workflows extend
       HttpApiEndpoint.post(workflow.name + "Resume", `${path}/resume`)
         .setPayload(ResumePayload)
         .annotateContext(workflow.annotations)
+    ).add(
+      HttpApiEndpoint.post(workflow.name + "Interrupt", `${path}/interrupt`)
+        .setPayload(InterruptPayload)
+        .annotateContext(workflow.annotations)
     ) as any
   }
   return group as any
@@ -193,7 +201,20 @@ export type ConvertHttpApi<Workflows extends Workflow.Any> = Workflows extends W
       void,
       never,
       typeof ResumePayload.Context
+    >
+    | HttpApiEndpoint.HttpApiEndpoint<
+      `${_Name}Interrupt`,
+      "POST",
+      never,
+      never,
+      typeof InterruptPayload.Type,
+      never,
+      void,
+      never,
+      typeof InterruptPayload.Context
     > :
   never
 
 const ResumePayload = Schema.Struct({ executionId: Schema.String })
+
+const InterruptPayload = Schema.Struct({ executionId: Schema.String })
