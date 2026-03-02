@@ -241,7 +241,7 @@ export class HttpRequestError extends Schema.TaggedError<HttpRequestError>(
         url: error.request.url,
         urlParams: error.request.urlParams
       }
-    })
+    }, { disableValidation: true })
   }
 
   get message(): string {
@@ -413,7 +413,7 @@ export class HttpResponseError extends Schema.TaggedError<HttpResponseError>(
           status: error.response.status
         },
         body: Inspectable.format(body)
-      }))
+      }, { disableValidation: true }))
   }
 
   get message(): string {
