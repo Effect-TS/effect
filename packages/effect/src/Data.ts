@@ -19,8 +19,7 @@ export declare namespace Case {
    */
   export interface Constructor<A, Tag extends keyof A = never> {
     (
-      args: Types.Equals<Omit<A, Tag>, {}> extends true ? void
-        : { readonly [P in keyof A as P extends Tag ? never : P]: A[P] }
+      args: Types.VoidIfEmpty<{ readonly [P in keyof A as P extends Tag ? never : P]: A[P] }>
     ): A
   }
 }
@@ -202,8 +201,7 @@ export const tagged = <A extends { readonly _tag: string }>(
  * @category constructors
  */
 export const Class: new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A]: A[P] }
+  args: Types.VoidIfEmpty<{ readonly [P in keyof A]: A[P] }>
 ) => Readonly<A> = internal.Structural as any
 
 /**
@@ -234,8 +232,7 @@ export const Class: new<A extends Record<string, any> = {}>(
 export const TaggedClass = <Tag extends string>(
   tag: Tag
 ): new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
+  args: Types.VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }>
 ) => Readonly<A> & { readonly _tag: Tag } => {
   class Base extends Class<any> {
     readonly _tag = tag
@@ -248,8 +245,7 @@ export const TaggedClass = <Tag extends string>(
  * @category constructors
  */
 export const Structural: new<A>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A]: A[P] }
+  args: Types.VoidIfEmpty<{ readonly [P in keyof A]: A[P] }>
 ) => {} = internal.Structural as any
 
 /**
@@ -339,7 +335,7 @@ export declare namespace TaggedEnum {
     A extends { readonly _tag: string },
     K extends A["_tag"],
     E = Extract<A, { readonly _tag: K }>
-  > = { readonly [K in keyof E as K extends "_tag" ? never : K]: E[K] } extends infer T ? {} extends T ? void : T
+  > = { readonly [K in keyof E as K extends "_tag" ? never : K]: E[K] } extends infer T ? Types.VoidIfEmpty<T>
     : never
 
   /**
@@ -556,8 +552,7 @@ function taggedMatch<
  * @category constructors
  */
 export const Error: new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A]: A[P] }
+  args: Types.VoidIfEmpty<{ readonly [P in keyof A]: A[P] }>
 ) => Cause.YieldableError & Readonly<A> = (function() {
   const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
   const O = {
@@ -583,8 +578,7 @@ export const Error: new<A extends Record<string, any> = {}>(
  * @category constructors
  */
 export const TaggedError = <Tag extends string>(tag: Tag): new<A extends Record<string, any> = {}>(
-  args: Types.Equals<A, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }
+  args: Types.VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P] }>
 ) => Cause.YieldableError & { readonly _tag: Tag } & Readonly<A> => {
   const O = {
     BaseEffectError: class extends Error<{}> {
