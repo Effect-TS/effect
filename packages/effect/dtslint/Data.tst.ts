@@ -73,38 +73,6 @@ describe("Data", () => {
     expect(taggedPerson).type.toBe<(args: { readonly name: string; readonly optional?: string }) => TaggedPerson>()
   })
 
-  it("TaggedEnum", () => {
-    type HttpError = Data.TaggedEnum<{
-      BadRequest: { readonly status: 400; readonly a: string }
-      NotFound: { readonly status: 404; readonly b: number }
-    }>
-    expect<Extract<HttpError, { _tag: "BadRequest" }>>().type.toBe<
-      { readonly _tag: "BadRequest"; readonly status: 400; readonly a: string }
-    >()
-    expect<Extract<HttpError, { _tag: "NotFound" }>>().type.toBe<
-      { readonly _tag: "NotFound"; readonly status: 404; readonly b: number }
-    >()
-
-    // @ts-expect-error: It looks like you're trying to create a tagged enum, but one or more of its members already has a `_tag` property.
-    type _Err = Data.TaggedEnum<{
-      A: { readonly _tag: "A" }
-      B: { readonly tag: "B" }
-    }>
-  })
-
-  it("taggedEnum", () => {
-    const { NotFound } = Data.taggedEnum<
-      | { readonly _tag: "BadRequest"; readonly status: 400; readonly message: string }
-      | { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
-    >()
-
-    expect(NotFound).type.toBe<
-      (
-        args: { readonly status: 404; readonly message: string }
-      ) => { readonly _tag: "NotFound"; readonly status: 404; readonly message: string }
-    >()
-  })
-
   it("Class", () => {
     class Person extends Data.Class<{ name: string; age?: number }> {}
     const person = new Person({ name: "Mike" })
@@ -160,5 +128,66 @@ describe("Data", () => {
     class Void extends Data.TaggedError("Foo") {}
     // void constructor
     expect<ConstructorParameters<typeof Void>>().type.toBe<[args?: void]>()
+  })
+
+  describe("TaggedEnum", () => {
+    it("should be able to create a tagged enum", () => {
+      type TE = Data.TaggedEnum<{
+        A: { readonly required: string }
+        B: { readonly optional?: number }
+      }>
+      expect<Extract<TE, { _tag: "A" }>>().type.toBe<
+        { readonly _tag: "A"; readonly required: string }
+      >()
+      expect<Extract<TE, { _tag: "B" }>>().type.toBe<
+        { readonly _tag: "B"; readonly optional?: number }
+      >()
+    })
+
+    it("should raise an error if one of the variants has a _tag property", () => {
+      // @ts-expect-error: It looks like you're trying to create a tagged enum, but one or more of its members already has a `_tag` property.
+      type TE = Data.TaggedEnum<{
+        A: { readonly _tag: "A" }
+        B: { readonly b: number }
+      }>
+    })
+  })
+
+  describe("taggedEnum", () => {
+    it("should be able to create a concrete tagged enum", () => {
+      type TE = Data.TaggedEnum<{
+        A: { readonly required: string }
+        B: { readonly optional?: number }
+      }>
+
+      const { $is, A, B } = Data.taggedEnum<TE>()
+      expect<Parameters<typeof A>>().type.toBe<[{ readonly required: string }]>()
+      expect<ReturnType<typeof A>>().type.toBe<{ readonly _tag: "A"; readonly required: string }>()
+      expect<Parameters<typeof B>>().type.toBe<[{ readonly optional?: number }]>()
+      expect<ReturnType<typeof B>>().type.toBe<{ readonly _tag: "B"; readonly optional?: number }>()
+      const isA = $is("A")
+      expect(isA).type.toBe<
+        (u: unknown) => u is { readonly _tag: "A"; readonly required: string }
+      >()
+      const isB = $is("B")
+      expect(isB).type.toBe<
+        (u: unknown) => u is { readonly _tag: "B"; readonly optional?: number }
+      >()
+    })
+
+    it("should be able to create a generic tagged enum", () => {
+      type TE<T> = Data.TaggedEnum<{
+        A: { a: T }
+        B: { b?: T }
+      }>
+
+      interface TEDefinition extends Data.TaggedEnum.WithGenerics<1> {
+        readonly taggedEnum: TE<this["A"]>
+      }
+
+      const { A, B } = Data.taggedEnum<TEDefinition>()
+      expect<typeof A>().type.toBe<(<A>(args: { readonly a: A }) => { readonly _tag: "A"; readonly a: A })>()
+      expect<typeof B>().type.toBe<(<B>(args: { readonly b?: B }) => { readonly _tag: "B"; readonly b?: B })>()
+    })
   })
 })
