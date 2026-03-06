@@ -150,14 +150,25 @@ export const fromIterableWith: {
  * ```ts
  * import * as assert from "node:assert"
  * import { fromIterableBy } from "effect/Record"
+ * import { pipe } from "effect/Function"
  *
  * const users = [
  *   { id: "2", name: "name2" },
  *   { id: "1", name: "name1" }
  * ]
  *
+ * // data-first
  * assert.deepStrictEqual(
  *   fromIterableBy(users, user => user.id),
+ *   {
+ *     "2": { id: "2", name: "name2" },
+ *     "1": { id: "1", name: "name1" }
+ *   }
+ * )
+ *
+ * // data-last (pipeable)
+ * assert.deepStrictEqual(
+ *   pipe(users, fromIterableBy(user => user.id)),
  *   {
  *     "2": { id: "2", name: "name2" },
  *     "1": { id: "1", name: "name1" }
@@ -168,10 +179,21 @@ export const fromIterableWith: {
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterableBy = <A, K extends string | symbol>(
-  items: Iterable<A>,
-  f: (a: A) => K
-): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(items, (a) => [f(a), a])
+export const fromIterableBy: {
+  <A, K extends string | symbol>(
+    f: (a: A) => K
+  ): (self: Iterable<A>) => Record<ReadonlyRecord.NonLiteralKey<K>, A>
+  <A, K extends string | symbol>(
+    self: Iterable<A>,
+    f: (a: A) => K
+  ): Record<ReadonlyRecord.NonLiteralKey<K>, A>
+} = dual(
+  2,
+  <A, K extends string | symbol>(
+    self: Iterable<A>,
+    f: (a: A) => K
+  ): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(self, (a) => [f(a), a])
+)
 
 /**
  * Builds a record from an iterable of key-value pairs.
