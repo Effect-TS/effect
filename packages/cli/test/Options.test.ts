@@ -701,6 +701,27 @@ describe("Options", () => {
       yield* Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-no-default"))
     }).pipe(runEffect))
 
+  it("displays default value in help when default is a primitive value", () =>
+    Effect.gen(function*() {
+      const option = Options.withDefault(Options.integer("count"), 42)
+      const helpDoc = Options.getHelp(option)
+      yield* Effect.promise(() =>
+        expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-default-primitive-value")
+      )
+    }).pipe(runEffect))
+
+  it("displays default value in help when default is a primitive boolean", () =>
+    Effect.gen(function*() {
+      const option = Options.withDefault(
+        Options.choiceWithValue("uppercase", [["true", true], ["false", false]]),
+        false
+      )
+      const helpDoc = Options.getHelp(option)
+      yield* Effect.promise(() =>
+        expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-default-primitive-boolean")
+      )
+    }).pipe(runEffect))
+
   describe("options after positional arguments", () => {
     it("parses a text option that appears after positional args", () =>
       Effect.gen(function*() {
