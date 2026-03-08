@@ -775,10 +775,15 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         const ResponseSchema = Schema.mutable(Schema.Array(Response.Part(toolkit)))
 
         // If tool call resolution is disabled, return the response without
-        // resolving the tool calls that were generated
+        // resolving the tool calls that were generated.
+        // Use the raw schema (GenericToolCallPart) to avoid decoding tool
+        // call parameters through the tool's parametersSchema, so that
+        // params remain as raw JSON values. This prevents double-decoding
+        // when the user later calls toolkit.handle() which also decodes
+        // via parametersSchema.
         if (options.disableToolCallResolution === true) {
           const rawContent = yield* params.generateText(providerOptions)
-          const content = yield* Schema.decodeUnknown(ResponseSchema)(rawContent)
+          const content = yield* Schema.decodeUnknown(RawPartSchema)(rawContent)
           return content as Array<Response.Part<Tools>>
         }
 
@@ -837,10 +842,11 @@ export const make: (params: ConstructorParams) => Effect.Effect<Service> = Effec
         providerOptions.toolChoice = toolChoice
 
         // If tool call resolution is disabled, return the response without
-        // resolving the tool calls that were generated
+        // resolving the tool calls that were generated.
+        // Use the raw schema to avoid decoding tool call parameters, keeping
+        // params as raw JSON for the same reason as in generateContent above.
         if (options.disableToolCallResolution === true) {
-          const schema = Schema.ChunkFromSelf(Response.StreamPart(toolkit))
-          const decode = Schema.decode(schema)
+          const decode = Schema.decode(RawStreamPartSchema)
           return params.streamText(providerOptions).pipe(
             Stream.mapChunksEffect(decode)
           ) as Stream.Stream<Response.StreamPart<Tools>, AiError.AiError | ParseResult.ParseError, IdGenerator>
@@ -984,6 +990,80 @@ export const streamText = <
   ExtractError<Options>,
   LanguageModel | ExtractContext<Options>
 > => Stream.unwrap(LanguageModel.pipe(Effect.map((model) => model.streamText(options))))
+
+// =============================================================================
+// Raw Response Schemas (for disableToolCallResolution)
+// =============================================================================
+
+// A generic tool-call schema that passes params through as unknown,
+// avoiding parameter decoding that would cause double-decode when
+// toolkit.handle() is later called manually.
+const GenericToolCallPart = Schema.Struct({
+  type: Schema.Literal("tool-call"),
+  id: Schema.String,
+  name: Schema.String,
+  params: Schema.Unknown,
+  providerName: Schema.optional(Schema.String),
+  providerExecuted: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  metadata: Schema.optionalWith(Response.ProviderMetadata, { default: () => ({}) })
+}).pipe(
+  Schema.attachPropertySignature(Response.PartTypeId, Response.PartTypeId),
+  Schema.annotations({ identifier: "GenericToolCallPart" })
+)
+
+// A generic tool-result schema that passes result through as unknown.
+// Included for type-completeness (the provider stream type includes
+// ToolResultPartEncoded even though results shouldn't appear when
+// tool call resolution is disabled).
+const GenericToolResultPart = Schema.Struct({
+  type: Schema.Literal("tool-result"),
+  id: Schema.String,
+  name: Schema.String,
+  result: Schema.Unknown,
+  isFailure: Schema.Boolean,
+  providerName: Schema.optional(Schema.String),
+  providerExecuted: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  metadata: Schema.optionalWith(Response.ProviderMetadata, { default: () => ({}) })
+}).pipe(
+  Schema.attachPropertySignature(Response.PartTypeId, Response.PartTypeId),
+  Schema.annotations({ identifier: "GenericToolResultPart" })
+)
+
+const RawPartSchema = Schema.mutable(Schema.Array(
+  Schema.Union(
+    Response.TextPart,
+    Response.ReasoningPart,
+    Response.FilePart,
+    Response.DocumentSourcePart,
+    Response.UrlSourcePart,
+    Response.ResponseMetadataPart,
+    Response.FinishPart,
+    GenericToolCallPart,
+    GenericToolResultPart
+  )
+))
+
+const RawStreamPartSchema = Schema.ChunkFromSelf(
+  Schema.Union(
+    Response.TextStartPart,
+    Response.TextDeltaPart,
+    Response.TextEndPart,
+    Response.ReasoningStartPart,
+    Response.ReasoningDeltaPart,
+    Response.ReasoningEndPart,
+    Response.ToolParamsStartPart,
+    Response.ToolParamsDeltaPart,
+    Response.ToolParamsEndPart,
+    Response.FilePart,
+    Response.DocumentSourcePart,
+    Response.UrlSourcePart,
+    Response.ResponseMetadataPart,
+    Response.FinishPart,
+    Response.ErrorPart,
+    GenericToolCallPart,
+    GenericToolResultPart
+  )
+)
 
 // =============================================================================
 // Tool Call Resolution
