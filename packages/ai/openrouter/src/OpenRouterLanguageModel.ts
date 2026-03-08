@@ -753,7 +753,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
 
         const choice = event.choices[0]
 
-        if (Predicate.isUndefined(choice)) {
+        if (Predicate.isUndefined(choice) && Predicate.isUndefined(event.usage)) {
           return yield* new AiError.MalformedOutput({
             module: "OpenRouterLanguageModel",
             method: "makeResponse",
@@ -761,11 +761,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
           })
         }
 
-        const delta = choice.delta
-
-        if (Predicate.isUndefined(delta)) {
-          return parts
-        }
+        const delta = choice?.delta
 
         // Reasoning Parts
 
@@ -796,7 +792,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
           })
         }
 
-        if (Predicate.isNotNullable(delta.reasoning_details) && delta.reasoning_details.length > 0) {
+        if (Predicate.isNotNullable(delta?.reasoning_details) && delta.reasoning_details.length > 0) {
           for (const detail of delta.reasoning_details) {
             switch (detail.type) {
               case "reasoning.summary": {
@@ -826,13 +822,13 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
               }
             }
           }
-        } else if (Predicate.isNotNullable(delta.reasoning) && delta.reasoning.length > 0) {
+        } else if (Predicate.isNotNullable(delta?.reasoning) && delta.reasoning.length > 0) {
           emitReasoningPart(delta.reasoning)
         }
 
         // Text Parts
 
-        if (Predicate.isNotNullable(delta.content) && delta.content.length > 0) {
+        if (Predicate.isNotNullable(delta?.content) && delta.content.length > 0) {
           // End in-progress reasoning part if present before starting text
           if (Predicate.isNotUndefined(activeReasoningId)) {
             parts.push({
@@ -859,7 +855,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
 
         // Source Parts
 
-        if (Predicate.isNotNullable(delta.annotations)) {
+        if (Predicate.isNotNullable(delta?.annotations)) {
           for (const annotation of delta.annotations) {
             if (annotation.type === "url_citation") {
               parts.push({
@@ -880,7 +876,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
 
         // Tool Call Parts
 
-        if (Predicate.isNotNullable(delta.tool_calls) && delta.tool_calls.length > 0) {
+        if (Predicate.isNotNullable(delta?.tool_calls) && delta.tool_calls.length > 0) {
           for (const toolCall of delta.tool_calls) {
             // Get the active tool call, if present
             let activeToolCall = activeToolCalls[toolCall.index]
@@ -946,7 +942,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
 
         // File Parts
 
-        if (Predicate.isNotNullable(delta.images)) {
+        if (Predicate.isNotNullable(delta?.images)) {
           for (const image of delta.images) {
             parts.push({
               type: "file",
@@ -958,7 +954,7 @@ const makeStreamResponse: (stream: Stream.Stream<ChatStreamingResponseChunk, AiE
 
         // Finish Parts
 
-        if (Predicate.isNotNullable(choice.finish_reason)) {
+        if (Predicate.isNotNullable(choice?.finish_reason)) {
           finishReason = InternalUtilities.resolveFinishReason(choice.finish_reason)
         }
 
