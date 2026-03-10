@@ -176,7 +176,10 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type WithName<Group, Name extends string> = Extract<Group, { readonly identifier: Name }>
+  export type WithName<Group extends Any, Name extends HttpApiGroup.Name<Group>> = Extract<
+    Group,
+    { readonly identifier: Name }
+  >
 
   /**
    * @since 1.0.0
@@ -198,7 +201,9 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type EndpointsWithName<Group extends Any, Name extends string> = Endpoints<WithName<Group, Name>>
+  export type EndpointsWithName<Group extends Any, Name extends HttpApiGroup.Name<Group>> = Endpoints<
+    WithName<Group, Name>
+  >
 
   /**
    * @since 1.0.0
@@ -227,7 +232,7 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type ErrorWithName<Group extends Any, Name extends string> = Error<WithName<Group, Name>>
+  export type ErrorWithName<Group extends Any, Name extends HttpApiGroup.Name<Group>> = Error<WithName<Group, Name>>
 
   /**
    * @since 1.0.0
@@ -271,13 +276,13 @@ export declare namespace HttpApiGroup {
    * @since 1.0.0
    * @category models
    */
-  export type ContextWithName<Group extends Any, Name extends string> = Context<WithName<Group, Name>>
+  export type ContextWithName<Group extends Any, Name extends HttpApiGroup.Name<Group>> = Context<WithName<Group, Name>>
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type MiddlewareWithName<Group extends Any, Name extends string> = Middleware<
+  export type MiddlewareWithName<Group extends Any, Name extends HttpApiGroup.Name<Group>> = Middleware<
     WithName<Group, Name>
   >
 }
