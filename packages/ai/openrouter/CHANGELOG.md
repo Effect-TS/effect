@@ -1,5 +1,15 @@
 # @effect/ai-openrouter
 
+## 0.8.5
+
+### Patch Changes
+
+- [#6117](https://github.com/Effect-TS/effect/pull/6117) [`7103e24`](https://github.com/Effect-TS/effect/commit/7103e2473db805cc9f0024d4744c77c16d81e2f1) Thanks @nickbreaton! - Fix OpenRouter streaming finalization for usage-only terminal chunks.
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`88a5260`](https://github.com/Effect-TS/effect/commit/88a5260788d57bb0c31a645fa44b5a68f5c73c38), [`cf74940`](https://github.com/Effect-TS/effect/commit/cf749405214282edc916a783b3417c766d2bbfe3)]:
+  - effect@3.19.20
+  - @effect/ai@0.33.3
+
 ## 0.8.4
 
 ### Patch Changes
