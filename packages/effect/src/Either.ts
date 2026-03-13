@@ -2,6 +2,7 @@
  * @since 2.0.0
  */
 
+import type * as RA from "./Array.js"
 import * as Equivalence from "./Equivalence.js"
 import type { LazyArg } from "./Function.js"
 import { constNull, constUndefined, dual, identity } from "./Function.js"
@@ -766,6 +767,38 @@ export const all: <const I extends Iterable<Either<any, any>> | Record<string, E
     return right(out)
   }
 
+/**
+ * Takes an `Iterable` and a function that transforms each item to an `Either` and returns an `Either` of an `Array`.
+ *
+ * @example
+ * ```ts
+ * import * as assert from "node:assert"
+ * import { Either } from "effect"
+ *
+ * assert.deepStrictEqual(Either.forEach([1, 2], n => Either.right(n * 2)), Either.right([2, 4]))
+ * assert.deepStrictEqual(Either.forEach([1, 2], n => n === 1 ? Either.left("error") : Either.right(1)), Either.left("error"))
+ * ```
+ *
+ * @category combining
+ * @since 3.20.0
+ */
+export const forEach = dual<
+  <B, E, S extends Iterable<any>>(
+    f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Either<B, E>
+  ) => (
+    self: S
+  ) => Either<RA.ReadonlyArray.With<S, B>, E>,
+  <B, E, S extends Iterable<any>>(
+    self: S,
+    f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Either<B, E>
+  ) => Either<RA.ReadonlyArray.With<S, B>, E>
+>(
+  2,
+  <B, E, S extends Iterable<any>>(
+    self: S,
+    f: (a: RA.ReadonlyArray.Infer<S>, i: number) => Either<B, E>
+  ): Either<any, E> => all(Array.from(self).map(f))
+)
 /**
  * Returns an `Either` that swaps the error/success cases. This allows you to
  * use all methods on the error channel, possibly before flipping back.
