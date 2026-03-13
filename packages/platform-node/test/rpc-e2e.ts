@@ -2,7 +2,7 @@ import { RpcClient, RpcServer } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
 import type { Layer } from "effect"
 import { Cause, Effect, Fiber, Option, Stream } from "effect"
-import { User, UsersClient } from "./fixtures/rpc-schemas.js"
+import { InvalidClientCredentials, Unauthorized, User, UsersClient } from "./fixtures/rpc-schemas.js"
 
 export const e2eSuite = <E>(
   name: string,
@@ -16,6 +16,20 @@ export const e2eSuite = <E>(
         const user = yield* client.GetUser({ id: "1" })
         assert.instanceOf(user, User)
         assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("should short circuit on client middleware failure", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const failure = yield* client.GetUser({ id: "1" }, { headers: { userid: "-1" } }).pipe(Effect.flip)
+        assert.instanceOf(failure, InvalidClientCredentials)
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("should fail on server middleware failure", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const failure = yield* client.GetUser({ id: "1" }, { headers: { userid: "-2" } }).pipe(Effect.flip)
+        assert.instanceOf(failure, Unauthorized)
       }).pipe(Effect.provide(layer)))
 
     it.effect("nested method", () =>
