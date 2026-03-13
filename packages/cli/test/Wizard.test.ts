@@ -41,4 +41,59 @@ describe("Wizard", () => {
       const result = Array.some(lines, (line) => line.includes("Quitting wizard mode..."))
       expect(result).toBe(true)
     }).pipe(runEffect))
+
+  describe("withConditionalBehavior", () => {
+    it("should skip wizard mode when predicate returns false", () =>
+      Effect.gen(function*() {
+        let executedWithName: string | undefined
+        const command = Command.make("greet", {
+          name: Options.text("name")
+        }, ({ name }) =>
+          Effect.sync(() => {
+            executedWithName = name
+          })).pipe(
+            Command.withDescription("Greet someone"),
+            Command.withConditionalBehavior((args) => args.length <= 1, "wizard")
+          )
+
+        const cli = Command.run(command, {
+          name: "Test",
+          version: "1.0.0"
+        })
+
+        // Simulate running with args (should NOT trigger wizard)
+        const args = Array.make("node", "greet", "--name", "Bob")
+        yield* cli(args)
+
+        // Verify the command was executed with the provided value
+        expect(executedWithName).toBe("Bob")
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true })
+        const wizardStarted = Array.some(lines, (line) => line.includes("Wizard Mode") || line.includes("wizard"))
+        // Wizard should NOT have been started
+        expect(wizardStarted).toBe(false)
+      }).pipe(runEffect))
+
+    it("should use standard wizard flag when predicate is not met", () =>
+      Effect.gen(function*() {
+        const command = Command.make("foo", { message: Options.text("message") }).pipe(
+          Command.withConditionalBehavior((args) => args.length <= 1, "wizard")
+        )
+
+        const cli = Command.run(command, {
+          name: "Test",
+          version: "1.0.0"
+        })
+
+        // Using --wizard flag explicitly (predicate returns false because args.length > 1)
+        const args = Array.make("node", "test", "--wizard")
+        const fiber = yield* Effect.fork(cli(args))
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+        yield* Fiber.join(fiber)
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true })
+        const result = Array.some(lines, (line) => line.includes("Quitting wizard mode..."))
+        expect(result).toBe(true)
+      }).pipe(runEffect))
+  })
 })
