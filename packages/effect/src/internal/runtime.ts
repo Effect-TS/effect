@@ -9,7 +9,6 @@ import * as FiberId from "../FiberId.js"
 import type * as FiberRef from "../FiberRef.js"
 import * as FiberRefs from "../FiberRefs.js"
 import { dual, pipe } from "../Function.js"
-import * as Inspectable from "../Inspectable.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
 import * as Predicate from "../Predicate.js"
@@ -17,6 +16,7 @@ import type * as Runtime from "../Runtime.js"
 import type * as RuntimeFlags from "../RuntimeFlags.js"
 import * as scheduler_ from "../Scheduler.js"
 import * as scope_ from "../Scope.js"
+import type * as Tracer from "../Tracer.js"
 import * as InternalCause from "./cause.js"
 import * as core from "./core.js"
 import * as executionStrategy from "./executionStrategy.js"
@@ -162,7 +162,7 @@ export const unsafeRunSync: {
 } = makeDual((runtime, effect) => {
   const result = unsafeRunSyncExit(runtime)(effect)
   if (result._tag === "Failure") {
-    throw fiberFailure(result.effect_instruction_i0)
+    rethrowCauseErrors(result.effect_instruction_i0, unsafeRunSync)
   }
   return result.effect_instruction_i0
 })
@@ -190,55 +190,127 @@ const asyncFiberException = <A, E>(fiber: Fiber.RuntimeFiber<A, E>): Runtime.Asy
 export const isAsyncFiberException = (u: unknown): u is Runtime.AsyncFiberException<unknown, unknown> =>
   Predicate.isTagged(u, "AsyncFiberException") && "fiber" in u
 
-/** @internal */
-export const FiberFailureId: Runtime.FiberFailureId = Symbol.for("effect/Runtime/FiberFailure") as any
-/** @internal */
-export const FiberFailureCauseId: Runtime.FiberFailureCauseId = Symbol.for(
-  "effect/Runtime/FiberFailure/Cause"
-) as any
+// TODO(dmaretskyi): Move to cause.ts
+const locationRegex = /at (.*)\((.*)\)/
 
-class FiberFailureImpl extends Error implements Runtime.FiberFailure {
-  readonly [FiberFailureId]: Runtime.FiberFailureId
-  readonly [FiberFailureCauseId]: Cause.Cause<unknown>
-  constructor(cause: Cause.Cause<unknown>) {
-    const head = InternalCause.prettyErrors(cause)[0]
+/**
+ * Adds effect spans.
+ * Removes effect internal functions.
+ */
+// TODO(dmaretskyi): Move to cause.ts and unify with existing PrettyError code.
+const prettyErrorStack = (error: any, appendStacks: Array<string> = []): void => {
+  const span = error[InternalCause.spanSymbol]
 
-    super(head?.message || "An error has occurred")
-    this[FiberFailureId] = FiberFailureId
-    this[FiberFailureCauseId] = cause
+  const lines = error.stack.split("\n")
+  const out = []
 
-    this.name = head ? `(FiberFailure) ${head.name}` : "FiberFailure"
-    if (head?.stack) {
-      this.stack = head.stack
+  let atStack = false
+  for (let i = 0; i < lines.length; i++) {
+    if (!atStack && !lines[i].startsWith("    at ")) {
+      out.push(lines[i])
+      continue
+    }
+    atStack = true
+
+    if (lines[i].includes(" at new BaseEffectError") || lines[i].includes(" at new YieldableError")) {
+      i++
+      continue
+    }
+    if (lines[i].includes("Generator.next")) {
+      break
+    }
+    if (lines[i].includes("effect_internal_function")) {
+      break
+    }
+    out.push(
+      lines[i]
+        .replace(/at .*effect_instruction_i.*\((.*)\)/, "at $1")
+        .replace(/EffectPrimitive\.\w+/, "<anonymous>")
+        .replace(/at Arguments\./, "at ")
+    )
+  }
+
+  if (span) {
+    let current: Tracer.Span | Tracer.AnySpan | undefined = span
+    let i = 0
+    while (current && current._tag === "Span" && i < 10) {
+      const stackFn = InternalCause.spanToTrace.get(current)
+      if (typeof stackFn === "function") {
+        const stack = stackFn()
+        if (typeof stack === "string") {
+          const locationMatchAll = stack.matchAll(locationRegex)
+          let match = false
+          for (const [, location] of locationMatchAll) {
+            match = true
+            out.push(`    at ${current.name} (${location})`)
+          }
+          if (!match) {
+            out.push(`    at ${current.name} (${stack.replace(/^at /, "")})`)
+          }
+        } else {
+          out.push(`    at ${current.name}`)
+        }
+      } else {
+        out.push(`    at ${current.name}`)
+      }
+      current = Option.getOrUndefined(current.parent)
+      i++
     }
   }
 
-  toJSON(): unknown {
-    return {
-      _id: "FiberFailure",
-      cause: this[FiberFailureCauseId].toJSON()
+  // eslint-disable-next-line no-restricted-syntax
+  out.push(...appendStacks)
+
+  Object.defineProperty(error, "stack", {
+    value: out.join("\n"),
+    writable: true,
+    enumerable: false,
+    configurable: true
+  })
+}
+
+/**
+ * Rethrow original errors from failures and defects.
+ * Spans are inserted into the stack trace.
+ * Stack frames from the effect runtime internals are removed.
+ * Stack frames from the caller function is appended to the stack trace.
+ *
+ * If cause has multiple failures or defects, they are wrapped in an `AggregateError`.
+ *
+ * @internal
+ * @param callerFunction - Function that called `rethrowCauseErrors`. Used to trim the caller stack trace.
+ */
+const rethrowCauseErrors = (cause: Cause.Cause<unknown>, callerFunction: Function | undefined): never => {
+  if (InternalCause.isEmpty(cause)) {
+    // Can this branch ever be reached?
+    // TODO(dmaretskyi): Define a new error type for this.
+    throw new Error("Fiber failed without a cause")
+  } else if (InternalCause.isInterrupted(cause)) {
+    // TODO(dmaretskyi): Define a new error type for this.
+    throw new Error("Fiber was interrupted")
+  } else {
+    const o: { stack: string } = {} as any
+    Error.captureStackTrace(o, callerFunction)
+    const stackFrames = o.stack.split("\n").slice(1)
+    const errors: Array<Error> = []
+
+    for (const failure of InternalCause.failures(cause)) {
+      prettyErrorStack(failure, stackFrames)
+      errors.push(failure as Error)
+    }
+
+    for (const defect of InternalCause.defects(cause)) {
+      prettyErrorStack(defect, stackFrames)
+      errors.push(defect as Error)
+    }
+
+    if (errors.length === 1) {
+      throw errors[0]
+    } else {
+      throw new AggregateError(errors)
     }
   }
-
-  toString(): string {
-    return "(FiberFailure) " + InternalCause.pretty(this[FiberFailureCauseId], { renderErrorCause: true })
-  }
-  [Inspectable.NodeInspectSymbol](): unknown {
-    return this.toString()
-  }
 }
-
-/** @internal */
-export const fiberFailure = <E>(cause: Cause.Cause<E>): Runtime.FiberFailure => {
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 0
-  const error = new FiberFailureImpl(cause)
-  Error.stackTraceLimit = limit
-  return error
-}
-
-/** @internal */
-export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure => Predicate.hasProperty(u, FiberFailureId)
 
 const fastPath = <A, E, R>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> | undefined => {
   const op = effect as core.Primitive
@@ -311,7 +383,7 @@ export const unsafeRunPromise: {
         return result.effect_instruction_i0
       }
       case OpCodes.OP_FAILURE: {
-        throw fiberFailure(result.effect_instruction_i0)
+        rethrowCauseErrors(result.effect_instruction_i0, unsafeRunPromise)
       }
     }
   })
