@@ -41,6 +41,12 @@ function effectifyWith(
   }
   return new Proxy(obj, {
     get(target, prop): any {
+      // Respect the proxy invariant: non-configurable, non-writable
+      // properties must return their actual value.
+      const desc = Object.getOwnPropertyDescriptor(target, prop)
+      if (desc && !desc.configurable && !desc.writable) {
+        return target[prop]
+      }
       const prototype = Object.getPrototypeOf(target)
       if (Effect.EffectTypeId in prototype && prop === "commit") {
         return commit.bind(target)
