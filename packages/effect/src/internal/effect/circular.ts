@@ -70,14 +70,18 @@ class Semaphore {
   updateTakenUnsafe(fiber: Fiber.RuntimeFiber<any, any>, f: (n: number) => number): Effect.Effect<number> {
     this.taken = f(this.taken)
     if (this.waiters.size > 0) {
-      fiber.getFiberRef(currentScheduler).scheduleTask(() => {
-        const iter = this.waiters.values()
-        let item = iter.next()
-        while (item.done === false && this.free > 0) {
-          item.value()
-          item = iter.next()
-        }
-      }, fiber.getFiberRef(core.currentSchedulingPriority))
+      fiber.getFiberRef(currentScheduler).scheduleTask(
+        () => {
+          const iter = this.waiters.values()
+          let item = iter.next()
+          while (item.done === false && this.free > 0) {
+            item.value()
+            item = iter.next()
+          }
+        },
+        fiber.getFiberRef(core.currentSchedulingPriority),
+        fiber
+      )
     }
     return core.succeed(this.free)
   }
@@ -143,7 +147,7 @@ class Latch extends Effectable.Class<void> implements Effect.Latch {
       return core.void
     }
     this.scheduled = true
-    fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority))
+    fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority), fiber)
     return core.void
   }
   private flushWaiters = () => {

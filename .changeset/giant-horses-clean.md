@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Runtime.runPromise` to isolate `AsyncLocalStorage` across concurrent calls.
+Fix scheduler task draining to isolate `AsyncLocalStorage` across fibers.

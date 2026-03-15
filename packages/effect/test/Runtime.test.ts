@@ -87,23 +87,29 @@ describe("Runtime", () => {
         Effect.sync(() => requestStore.getStore()?.userId ?? "NONE").pipe(
           Effect.flatMap((expected) =>
             Effect.async<Result>((resume) => {
-              fiber.currentScheduler.scheduleTask(() => {
-                resume(
-                  Effect.succeed({
-                    expected,
-                    observed: requestStore.getStore()?.userId ?? "NONE"
-                  })
-                )
-              }, 0)
+              fiber.currentScheduler.scheduleTask(
+                () => {
+                  resume(
+                    Effect.succeed({
+                      expected,
+                      observed: requestStore.getStore()?.userId ?? "NONE"
+                    })
+                  )
+                },
+                0,
+                fiber
+              )
             })
           )
         )
       )
 
+      const runtime = yield* Effect.runtime<never>()
+
       const runRequest = (userId: string): Promise<Result> =>
         requestStore.run(
           { userId },
-          () => Runtime.runPromise(Runtime.defaultRuntime)(readAlsOnScheduledContinuation)
+          () => Runtime.runPromise(runtime)(readAlsOnScheduledContinuation)
         )
 
       const results = yield* Effect.promise(() =>

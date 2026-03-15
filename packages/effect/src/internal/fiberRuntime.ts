@@ -708,7 +708,8 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   drainQueueLaterOnExecutor() {
     this.currentScheduler.scheduleTask(
       this.run,
-      this.getFiberRef(core.currentSchedulingPriority)
+      this.getFiberRef(core.currentSchedulingPriority),
+      this
     )
   }
 
@@ -2209,9 +2210,13 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
         const results = new Array()
         const interruptAll = () =>
           fibers.forEach((fiber) => {
-            fiber.currentScheduler.scheduleTask(() => {
-              fiber.unsafeInterruptAsFork(parent.id())
-            }, 0)
+            fiber.currentScheduler.scheduleTask(
+              () => {
+                fiber.unsafeInterruptAsFork(parent.id())
+              },
+              0,
+              fiber
+            )
           })
         const startOrder = new Array<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
         const joinOrder = new Array<FiberRuntime<Exit.Exit<X, E> | Effect.Blocked<X, E>>>()
@@ -2234,12 +2239,16 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
             parent.currentRuntimeFlags,
             fiberScope.globalScope
           )
-          parent.currentScheduler.scheduleTask(() => {
-            if (interruptImmediately) {
-              fiber.unsafeInterruptAsFork(parent.id())
-            }
-            fiber.resume(runnable)
-          }, 0)
+          parent.currentScheduler.scheduleTask(
+            () => {
+              if (interruptImmediately) {
+                fiber.unsafeInterruptAsFork(parent.id())
+              }
+              fiber.resume(runnable)
+            },
+            0,
+            fiber
+          )
           return fiber
         }
         const onInterruptSignal = () => {
@@ -2295,9 +2304,13 @@ export const forEachConcurrentDiscard = <A, X, E, R>(
                 startOrder.push(fiber)
                 fibers.add(fiber)
                 if (interrupted) {
-                  fiber.currentScheduler.scheduleTask(() => {
-                    fiber.unsafeInterruptAsFork(parent.id())
-                  }, 0)
+                  fiber.currentScheduler.scheduleTask(
+                    () => {
+                      fiber.unsafeInterruptAsFork(parent.id())
+                    },
+                    0,
+                    fiber
+                  )
                 }
                 fiber.addObserver((wrapped) => {
                   let exit: Exit.Exit<any, any> | core.Blocked

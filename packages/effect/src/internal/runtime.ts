@@ -63,8 +63,6 @@ export const unsafeFork: {
 
   if (options?.scheduler) {
     fiberRefUpdates.push([scheduler_.currentScheduler, [[fiberId, options.scheduler]]])
-  } else if (!runtime.fiberRefs.locals.has(scheduler_.currentScheduler)) {
-    fiberRefUpdates.push([scheduler_.currentScheduler, [[fiberId, new scheduler_.MixedScheduler(2048)]]])
   }
 
   let fiberRefs = FiberRefs.updateManyAs(runtime.fiberRefs, {
