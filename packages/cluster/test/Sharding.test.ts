@@ -96,10 +96,14 @@ describe.concurrent("Sharding", () => {
         yield* TestClock.adjust(1)
         const config = yield* ShardingConfig.ShardingConfig
         ;(config as any).runnerAddress = Option.some(RunnerAddress.make("localhost", 1234))
-        fiber.currentScheduler.scheduleTask(() => {
-          fiber.unsafeInterruptAsFork(FiberId.none)
-          Effect.runFork(testClock.adjust(30000))
-        }, 0)
+        fiber.currentScheduler.scheduleTask(
+          () => {
+            fiber.unsafeInterruptAsFork(FiberId.none)
+            Effect.runFork(testClock.adjust(30000))
+          },
+          0,
+          fiber
+        )
       }).pipe(
         Effect.provide(TestShardingWithoutRunners.pipe(
           Layer.provide(Layer.scoped(

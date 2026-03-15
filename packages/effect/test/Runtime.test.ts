@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks"
+
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throwsAsync } from "@effect/vitest/utils"
 import { Effect, Exit, FiberRef, Layer, pipe, Runtime } from "effect"
@@ -67,6 +69,61 @@ describe("Runtime", () => {
       }
     )
   })
+
+  it.effect("runPromise isolates AsyncLocalStorage across concurrent calls", () =>
+    Effect.gen(function*() {
+      type RequestStore = {
+        readonly userId: string
+      }
+
+      type Result = {
+        readonly expected: string
+        readonly observed: string
+      }
+
+      const requestStore = new AsyncLocalStorage<RequestStore>()
+
+      const readAlsOnScheduledContinuation = Effect.withFiberRuntime<Result>((fiber) =>
+        Effect.sync(() => requestStore.getStore()?.userId ?? "NONE").pipe(
+          Effect.flatMap((expected) =>
+            Effect.async<Result>((resume) => {
+              fiber.currentScheduler.scheduleTask(
+                () => {
+                  resume(
+                    Effect.succeed({
+                      expected,
+                      observed: requestStore.getStore()?.userId ?? "NONE"
+                    })
+                  )
+                },
+                0,
+                fiber
+              )
+            })
+          )
+        )
+      )
+
+      const runtime = yield* Effect.runtime<never>()
+
+      const runRequest = (userId: string): Promise<Result> =>
+        requestStore.run(
+          { userId },
+          () => Runtime.runPromise(runtime)(readAlsOnScheduledContinuation)
+        )
+
+      const results = yield* Effect.promise(() =>
+        Promise.all([
+          runRequest("user-A"),
+          runRequest("user-B")
+        ])
+      )
+
+      deepStrictEqual(results, [
+        { expected: "user-A", observed: "user-A" },
+        { expected: "user-B", observed: "user-B" }
+      ])
+    }))
 
   it("runPromiseExit", async () => {
     deepStrictEqual(

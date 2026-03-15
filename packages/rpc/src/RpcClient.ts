@@ -376,9 +376,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
               completed = true
               resume(exit)
               if (fiber && !fiber.unsafePoll()) {
-                parentFiber.currentScheduler.scheduleTask(() => {
-                  fiber.unsafeInterruptAsFork(parentFiber.id())
-                }, 0)
+                parentFiber.currentScheduler.scheduleTask(
+                  () => {
+                    fiber.unsafeInterruptAsFork(parentFiber.id())
+                  },
+                  0,
+                  fiber
+                )
               }
             }
           }
