@@ -1,5 +1,25 @@
 # effect
 
+## 3.20.0
+
+### Minor Changes
+
+- [#6124](https://github.com/Effect-TS/effect/pull/6124) [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da) Thanks @mikearnaldi! - Fix scheduler task draining to isolate `AsyncLocalStorage` across fibers.
+
+### Patch Changes
+
+- [#6107](https://github.com/Effect-TS/effect/pull/6107) [`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54) Thanks @gcanti! - Backport `Types.VoidIfEmpty` to 3.x
+
+- [#6088](https://github.com/Effect-TS/effect/pull/6088) [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7) Thanks @taylorOntologize! - Schema: fix `Schema.omit` producing wrong result on Struct with `optionalWith({ default })` and index signatures
+
+  `getIndexSignatures` now handles `Transformation` AST nodes by delegating to `ast.to`, matching the existing behavior of `getPropertyKeys` and `getPropertyKeyIndexedAccess`. Previously, `Schema.omit` on a struct combining `Schema.optionalWith` (with `{ default }`, `{ as: "Option" }`, etc.) and `Schema.Record` would silently take the wrong code path, returning a Transformation with property signatures instead of a TypeLiteral with index signatures.
+
+- [#6086](https://github.com/Effect-TS/effect/pull/6086) [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada) Thanks @taylorOntologize! - Schema: fix `getPropertySignatures` crash on Struct with `optionalWith({ default })` and other Transformation-producing variants
+
+  `SchemaAST.getPropertyKeyIndexedAccess` now handles `Transformation` AST nodes by delegating to `ast.to`, matching the existing behavior of `getPropertyKeys`. Previously, calling `getPropertySignatures` on a `Schema.Struct` containing `Schema.optionalWith` with `{ default }`, `{ as: "Option" }`, `{ nullable: true }`, or similar options would throw `"Unsupported schema (Transformation)"`.
+
+- [#6097](https://github.com/Effect-TS/effect/pull/6097) [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2) Thanks @gcanti! - Fix TupleWithRest post-rest validation to check each tail index sequentially.
+
 ## 3.19.19
 
 ### Patch Changes
