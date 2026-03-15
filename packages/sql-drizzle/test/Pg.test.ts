@@ -91,4 +91,30 @@ describe.sequential("Pg", () => {
       Effect.catchTag("ContainerError", () => Effect.void)
     )
   }, { timeout: 60000 })
+
+  it.effect("supports object params (auto JSON serialization)", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* Pg.PgDrizzle
+
+      yield* sql`CREATE TABLE data_objects (id SERIAL PRIMARY KEY, payload JSONB NOT NULL)`
+
+      const payload = { foo: "bar", count: 42 }
+
+      yield* db.insert(D.pgTable("data_objects", {
+        id: D.serial("id").primaryKey(),
+        payload: D.jsonb("payload").notNull()
+      })).values({ payload })
+
+      const rows = yield* sql`SELECT id, payload FROM data_objects ORDER BY id`
+
+      assert.deepStrictEqual(rows, [
+        { id: 1, payload }
+      ])
+    }).pipe(
+      Effect.provide(DrizzlePgLive),
+      Effect.catchTag("ContainerError", () => Effect.void)
+    ), {
+    timeout: 60000
+  })
 })
