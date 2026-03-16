@@ -302,6 +302,7 @@ const colors = {
 
 const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> = {
   None: [],
+  Off: [],
   All: [],
   Trace: [colors.gray],
   Debug: [colors.blue],
@@ -312,6 +313,7 @@ const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> =
 }
 const logLevelStyle: Record<LogLevel.LogLevel["_tag"], string> = {
   None: "",
+  Off: "",
   All: "",
   Trace: "color:gray",
   Debug: "color:blue",
