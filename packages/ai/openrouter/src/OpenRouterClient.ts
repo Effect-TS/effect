@@ -313,10 +313,10 @@ export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMess
 )({
   index: Schema.Number,
   id: Schema.optionalWith(Schema.String, { nullable: true }),
-  type: Schema.Literal("function"),
+  type: Schema.optionalWith(Schema.Literal("function"), { nullable: true }),
   function: Schema.Struct({
     name: Schema.optionalWith(Schema.String, { nullable: true }),
-    arguments: Schema.String
+    arguments: Schema.optionalWith(Schema.String, { nullable: true })
   })
 }) {}
 
