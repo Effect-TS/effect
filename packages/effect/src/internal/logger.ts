@@ -456,7 +456,7 @@ const prettyLoggerBrowser = (options: {
       console.groupCollapsed(firstLine, ...firstParams)
 
       if (!Cause.isEmpty(cause)) {
-        console.error(Cause.pretty(cause, { renderErrorCause: true }))
+        console.error(...Cause.prettyErrors(cause))
       }
 
       if (messageIndex < message.length) {
