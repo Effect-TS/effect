@@ -1,5 +1,46 @@
 # effect
 
+## 3.21.0
+
+### Minor Changes
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109) Thanks @kitlangton! - Add `Cron.prev` and reverse iteration support, aligning next/prev lookup tables, fixing DST handling symmetry, and expanding cron backward/forward test coverage.
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31) Thanks @mattiamanzati! - Add type-level utils to asserting layer types
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098) Thanks @schickling! - RcMap: support dynamic `idleTimeToLive` values per key
+
+  The `idleTimeToLive` option can now be a function that receives the key and returns a duration, allowing different TTL values for different resources.
+
+  ```ts
+  const map =
+    yield *
+    RcMap.make({
+      lookup: (key: string) => acquireResource(key),
+      idleTimeToLive: (key: string) => {
+        if (key.startsWith("premium:")) return Duration.minutes(10)
+        return Duration.minutes(1)
+      }
+    })
+  ```
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb) Thanks @mikearnaldi! - Fix annotateCurrentSpan, add Effect.currentPropagatedSpan
+
+### Patch Changes
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb) Thanks @mikearnaldi! - Add logs to first propagated span, in the following case before this fix the log would not be added to the `p` span because `Effect.fn` adds a fake span for the purpose of adding a stack frame.
+
+  ```ts
+  import { Effect } from "effect"
+
+  const f = Effect.fn(function* () {
+    yield* Effect.logWarning("FooBar")
+    return yield* Effect.fail("Oops")
+  })
+
+  const p = f().pipe(Effect.withSpan("p"))
+  ```
+
 ## 3.20.1
 
 ### Patch Changes
