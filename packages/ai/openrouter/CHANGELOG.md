@@ -1,5 +1,14 @@
 # @effect/ai-openrouter
 
+## 0.9.1
+
+### Patch Changes
+
+- [#6131](https://github.com/Effect-TS/effect/pull/6131) [`5c80e57`](https://github.com/Effect-TS/effect/commit/5c80e578bd95e0cf6fceffc72fa0b130ca11ec8e) Thanks @fabstorres! - Allow partial tool_call deltas in OpenRouter streaming
+
+- Updated dependencies [[`add06f4`](https://github.com/Effect-TS/effect/commit/add06f4521403cbf4b9a692f9b59fb9d3d48293c), [`a03b6a2`](https://github.com/Effect-TS/effect/commit/a03b6a29ed0b983b0440b8ef4be47f47c57d73d7)]:
+  - effect@3.20.1
+
 ## 0.9.0
 
 ### Patch Changes
