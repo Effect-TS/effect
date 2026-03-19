@@ -211,8 +211,8 @@ export const setUrl: {
  * @category combinators
  */
 export const prependUrl: {
-  (path: string): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, path: string): HttpClientRequest
+  (path: string | URL): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, path: string | URL): HttpClientRequest
 } = internal.prependUrl
 
 /**
