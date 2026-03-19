@@ -1,5 +1,17 @@
 # @effect/platform-bun
 
+## 0.89.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/cluster@0.58.0
+  - @effect/platform@0.96.0
+  - @effect/platform-node-shared@0.59.0
+  - @effect/rpc@0.75.0
+  - @effect/sql@0.51.0
+
 ## 0.88.0
 
 ### Patch Changes

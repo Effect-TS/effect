@@ -1,5 +1,26 @@
 # @effect/opentelemetry
 
+## 0.63.0
+
+### Patch Changes
+
+- [#5780](https://github.com/Effect-TS/effect/pull/5780) [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb) Thanks @mikearnaldi! - Add logs to first propagated span, in the following case before this fix the log would not be added to the `p` span because `Effect.fn` adds a fake span for the purpose of adding a stack frame.
+
+  ```ts
+  import { Effect } from "effect"
+
+  const f = Effect.fn(function* () {
+    yield* Effect.logWarning("FooBar")
+    return yield* Effect.fail("Oops")
+  })
+
+  const p = f().pipe(Effect.withSpan("p"))
+  ```
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/platform@0.96.0
+
 ## 0.62.0
 
 ### Patch Changes
