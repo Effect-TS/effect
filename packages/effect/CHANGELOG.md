@@ -1,5 +1,13 @@
 # effect
 
+## 3.20.1
+
+### Patch Changes
+
+- [#6133](https://github.com/Effect-TS/effect/pull/6133) [`add06f4`](https://github.com/Effect-TS/effect/commit/add06f4521403cbf4b9a692f9b59fb9d3d48293c) Thanks @aniravi24! - Fix `Equal.equals` crash when comparing `null` values inside `structuralRegion`. Added null guard before `Object.getPrototypeOf` calls to prevent `TypeError: Cannot convert undefined or null to object`.
+
+- [#6093](https://github.com/Effect-TS/effect/pull/6093) [`a03b6a2`](https://github.com/Effect-TS/effect/commit/a03b6a29ed0b983b0440b8ef4be47f47c57d73d7) Thanks @luchersou! - avoid class for PrettyError to preserve error.name
+
 ## 3.20.0
 
 ### Minor Changes

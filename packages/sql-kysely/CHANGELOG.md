@@ -1,5 +1,14 @@
 # @effect/sql-kysely
 
+## 0.46.1
+
+### Patch Changes
+
+- [#6123](https://github.com/Effect-TS/effect/pull/6123) [`041dd22`](https://github.com/Effect-TS/effect/commit/041dd22de07235de08b75f0bc29e206e3c27942b) Thanks @0xh3x! - Fix proxy get invariant violation in sql-kysely when hashing cached properties
+
+- Updated dependencies [[`add06f4`](https://github.com/Effect-TS/effect/commit/add06f4521403cbf4b9a692f9b59fb9d3d48293c), [`a03b6a2`](https://github.com/Effect-TS/effect/commit/a03b6a29ed0b983b0440b8ef4be47f47c57d73d7)]:
+  - effect@3.20.1
+
 ## 0.46.0
 
 ### Patch Changes
