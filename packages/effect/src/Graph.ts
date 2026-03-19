@@ -3,6 +3,7 @@
  * @since 3.18.0
  */
 
+import * as Arr from "./Array.js"
 import * as Data from "./Data.js"
 import * as Equal from "./Equal.js"
 import { dual } from "./Function.js"
@@ -10,6 +11,7 @@ import * as Hash from "./Hash.js"
 import type { Inspectable } from "./Inspectable.js"
 import { format, NodeInspectSymbol } from "./Inspectable.js"
 import * as Option from "./Option.js"
+import type * as Order from "./Order.js"
 import type { Pipeable } from "./Pipeable.js"
 import { pipeArguments } from "./Pipeable.js"
 import type { Mutable } from "./Types.js"
@@ -3162,6 +3164,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
 export interface SearchConfig {
   readonly start?: Array<NodeIndex>
   readonly direction?: Direction
+  readonly order?: Order.Order<NodeIndex>
 }
 
 /**
@@ -3202,6 +3205,7 @@ export const dfs = <N, E, T extends Kind = "directed">(
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const order = config.order
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -3212,7 +3216,9 @@ export const dfs = <N, E, T extends Kind = "directed">(
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const stack = [...start]
+      // Sort start nodes if order is provided
+      const sortedStart = order ? Arr.sort(start, order) : start
+      const stack = [...sortedStart]
       const discovered = new Set<NodeIndex>()
 
       const nextMapped = () => {
@@ -3231,8 +3237,10 @@ export const dfs = <N, E, T extends Kind = "directed">(
           }
 
           const neighbors = neighborsDirected(graph, current, direction)
-          for (let i = neighbors.length - 1; i >= 0; i--) {
-            const neighbor = neighbors[i]
+          // Sort neighbors if order is provided
+          const sortedNeighbors = order ? Arr.sort(neighbors, order) : neighbors
+          for (let i = sortedNeighbors.length - 1; i >= 0; i--) {
+            const neighbor = sortedNeighbors[i]
             if (!discovered.has(neighbor)) {
               stack.push(neighbor)
             }
@@ -3287,6 +3295,7 @@ export const bfs = <N, E, T extends Kind = "directed">(
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const order = config.order
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -3297,7 +3306,9 @@ export const bfs = <N, E, T extends Kind = "directed">(
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const queue = [...start]
+      // Sort start nodes if order is provided
+      const sortedStart = order ? Arr.sort(start, order) : start
+      const queue = [...sortedStart]
       const discovered = new Set<NodeIndex>()
 
       const nextMapped = () => {
@@ -3308,7 +3319,9 @@ export const bfs = <N, E, T extends Kind = "directed">(
             discovered.add(current)
 
             const neighbors = neighborsDirected(graph, current, direction)
-            for (const neighbor of neighbors) {
+            // Sort neighbors if order is provided
+            const sortedNeighbors = order ? Arr.sort(neighbors, order) : neighbors
+            for (const neighbor of sortedNeighbors) {
               if (!discovered.has(neighbor)) {
                 queue.push(neighbor)
               }
@@ -3503,6 +3516,7 @@ export const dfsPostOrder = <N, E, T extends Kind = "directed">(
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const order = config.order
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -3517,9 +3531,10 @@ export const dfsPostOrder = <N, E, T extends Kind = "directed">(
       const discovered = new Set<NodeIndex>()
       const finished = new Set<NodeIndex>()
 
-      // Initialize stack with start nodes
-      for (let i = start.length - 1; i >= 0; i--) {
-        stack.push({ node: start[i], visitedChildren: false })
+      // Sort start nodes if order is provided, then initialize stack in reverse order
+      const sortedStart = order ? Arr.sort(start, order) : start
+      for (let i = sortedStart.length - 1; i >= 0; i--) {
+        stack.push({ node: sortedStart[i], visitedChildren: false })
       }
 
       const nextMapped = () => {
@@ -3535,8 +3550,10 @@ export const dfsPostOrder = <N, E, T extends Kind = "directed">(
             current.visitedChildren = true
             const neighbors = neighborsDirected(graph, current.node, direction)
 
-            for (let i = neighbors.length - 1; i >= 0; i--) {
-              const neighbor = neighbors[i]
+            // Sort neighbors if order is provided
+            const sortedNeighbors = order ? Arr.sort(neighbors, order) : neighbors
+            for (let i = sortedNeighbors.length - 1; i >= 0; i--) {
+              const neighbor = sortedNeighbors[i]
               if (!discovered.has(neighbor) && !finished.has(neighbor)) {
                 stack.push({ node: neighbor, visitedChildren: false })
               }
