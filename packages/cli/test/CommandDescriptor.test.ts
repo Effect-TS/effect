@@ -461,4 +461,232 @@ describe("Command", () => {
         yield* Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/fish-completions"))
       }).pipe(runEffect))
   })
+
+  describe("parent options after subcommand arguments", () => {
+    // Fixture A: parent with text option --config/-c, subcommand "run" with text arg
+    const fixtureA = Descriptor.make("app", Options.text("config").pipe(
+      Options.withAlias("c"),
+      Options.withDefault("default.json")
+    )).pipe(Descriptor.withSubcommands([
+      ["run", Descriptor.make("run", Options.none, Args.text())]
+    ]))
+
+    // Fixture B: parent with boolean --verbose/-v + boolean --all/-a,
+    // subcommand "exec" with text arg and its own --verbose boolean
+    const fixtureB = Descriptor.make("tool", Options.all([
+      Options.boolean("verbose").pipe(Options.withAlias("v")),
+      Options.boolean("all").pipe(Options.withAlias("a"))
+    ])).pipe(Descriptor.withSubcommands([
+      ["exec", Descriptor.make(
+        "exec",
+        Options.boolean("verbose").pipe(Options.withAlias("v")),
+        Args.text()
+      )]
+    ]))
+
+    // Fixture C: parent with integer --count/-n + boolean --debug/-d,
+    // subcommand "deploy" with text arg + text option --target/-t
+    const fixtureC = Descriptor.make("cli", Options.all([
+      Options.integer("count").pipe(Options.withAlias("n"), Options.withDefault(0)),
+      Options.boolean("debug").pipe(Options.withAlias("d"))
+    ])).pipe(Descriptor.withSubcommands([
+      ["deploy", Descriptor.make(
+        "deploy",
+        Options.text("target").pipe(Options.withAlias("t"), Options.withDefault("default")),
+        Args.text()
+      )]
+    ]))
+
+    it("--config separated after child arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("app", "run", "script.js", "--config", "prod.json")
+        const result = yield* Descriptor.parse(fixtureA, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "app",
+          options: "prod.json",
+          args: void 0,
+          subcommand: Option.some(["run", { name: "run", options: void 0, args: "script.js" }])
+        }))
+      }).pipe(runEffect))
+
+    it("--config=value after child arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("app", "run", "script.js", "--config=prod.json")
+        const result = yield* Descriptor.parse(fixtureA, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "app",
+          options: "prod.json",
+          args: void 0,
+          subcommand: Option.some(["run", { name: "run", options: void 0, args: "script.js" }])
+        }))
+      }).pipe(runEffect))
+
+    it("-c short alias after child arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("app", "run", "script.js", "-c", "prod.json")
+        const result = yield* Descriptor.parse(fixtureA, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "app",
+          options: "prod.json",
+          args: void 0,
+          subcommand: Option.some(["run", { name: "run", options: void 0, args: "script.js" }])
+        }))
+      }).pipe(runEffect))
+
+    it("--config before subcommand (existing behavior)", () =>
+      Effect.gen(function*() {
+        const args = Array.make("app", "--config", "prod.json", "run", "script.js")
+        const result = yield* Descriptor.parse(fixtureA, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "app",
+          options: "prod.json",
+          args: void 0,
+          subcommand: Option.some(["run", { name: "run", options: void 0, args: "script.js" }])
+        }))
+      }).pipe(runEffect))
+
+    it("positional values not extracted as parent opts", () =>
+      Effect.gen(function*() {
+        const args = Array.make("app", "run", "prod.json")
+        const result = yield* Descriptor.parse(fixtureA, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "app",
+          options: "default.json",
+          args: void 0,
+          subcommand: Option.some(["run", { name: "run", options: void 0, args: "prod.json" }])
+        }))
+      }).pipe(runEffect))
+
+    it("shared --verbose after child arg: child wins", () =>
+      Effect.gen(function*() {
+        const args = Array.make("tool", "exec", "task", "--verbose")
+        const result = yield* Descriptor.parse(fixtureB, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "tool",
+          options: [false, false],
+          args: void 0,
+          subcommand: Option.some(["exec", { name: "exec", options: true, args: "task" }])
+        }))
+      }).pipe(runEffect))
+
+    it("shared -v after child arg: child wins", () =>
+      Effect.gen(function*() {
+        const args = Array.make("tool", "exec", "task", "-v")
+        const result = yield* Descriptor.parse(fixtureB, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "tool",
+          options: [false, false],
+          args: void 0,
+          subcommand: Option.some(["exec", { name: "exec", options: true, args: "task" }])
+        }))
+      }).pipe(runEffect))
+
+    it("shared option before subcommand: parent wins", () =>
+      Effect.gen(function*() {
+        const args = Array.make("tool", "--verbose", "exec", "task")
+        const result = yield* Descriptor.parse(fixtureB, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "tool",
+          options: [true, false],
+          args: void 0,
+          subcommand: Option.some(["exec", { name: "exec", options: false, args: "task" }])
+        }))
+      }).pipe(runEffect))
+
+    it("parent-only --all extracted, shared --verbose stays with child", () =>
+      Effect.gen(function*() {
+        const args = Array.make("tool", "exec", "task", "--all", "--verbose")
+        const result = yield* Descriptor.parse(fixtureB, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "tool",
+          options: [false, true],
+          args: void 0,
+          subcommand: Option.some(["exec", { name: "exec", options: true, args: "task" }])
+        }))
+      }).pipe(runEffect))
+
+    it("mixed: parent bool + parent int after child arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "--debug", "--count", "3")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [3, true],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "default", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+
+    it("parent int with = syntax after child", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "--count=5")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [5, false],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "default", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+
+    it("parent short -n after child arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "-n", "5")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [5, false],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "default", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+
+    it("parent short -d bool after child arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "-d")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [0, true],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "default", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+
+    it("child option stays with child", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "--target", "staging")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [0, false],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "staging", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+
+    it("mixed parent + child options after arg", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "--debug", "--target", "staging", "--count", "2")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [2, true],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "staging", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+
+    it("bool parent option does not steal next positional", () =>
+      Effect.gen(function*() {
+        const args = Array.make("cli", "deploy", "prod", "--debug", "--count", "3")
+        const result = yield* Descriptor.parse(fixtureC, args, CliConfig.defaultConfig)
+        expect(result).toEqual(CommandDirective.userDefined(Array.empty(), {
+          name: "cli",
+          options: [3, true],
+          args: void 0,
+          subcommand: Option.some(["deploy", { name: "deploy", options: "default", args: "prod" }])
+        }))
+      }).pipe(runEffect))
+  })
 })
