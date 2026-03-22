@@ -3722,7 +3722,7 @@ export const invokeWithInterrupt: <A, E, R>(
   onInterrupt?: () => void
 ) =>
   core.fiberIdWith((id) =>
-    core.flatMap(
+    ensuring(
       core.flatMap(
         forkDaemon(core.interruptible(self)),
         (processing) =>
@@ -3770,19 +3770,18 @@ export const invokeWithInterrupt: <A, E, R>(
             })
           })
       ),
-      () =>
-        core.suspend(() => {
-          const residual = entries.flatMap((entry) => {
-            if (!entry.state.completed) {
-              return [entry]
-            }
-            return []
-          })
-          return core.forEachSequentialDiscard(
-            residual,
-            (entry) => complete(entry.request as any, core.exitInterrupt(id))
-          )
+      core.suspend(() => {
+        const residual = entries.flatMap((entry) => {
+          if (!entry.state.completed) {
+            return [entry]
+          }
+          return []
         })
+        return core.forEachSequentialDiscard(
+          residual,
+          (entry) => complete(entry.request as any, core.exitInterrupt(id))
+        )
+      })
     )
   )
 
