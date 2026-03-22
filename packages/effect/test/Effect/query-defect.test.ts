@@ -15,9 +15,7 @@ describe("batched resolver defect", () => {
   // should run on all exits.
   it.live("resolver defect should not hang consumers", () =>
     Effect.gen(function*() {
-      const resolver = RequestResolver.makeBatched((_requests: Array<GetValue>) =>
-        Effect.die("boom")
-      )
+      const resolver = RequestResolver.makeBatched((_requests: Array<GetValue>) => Effect.die("boom"))
 
       const fiber = yield* Effect.request(new GetValue({ id: 1 }), resolver).pipe(
         Effect.fork
@@ -40,9 +38,7 @@ describe("batched resolver defect", () => {
 
   it.live("resolver defect should not hang multiple consumers", () =>
     Effect.gen(function*() {
-      const resolver = RequestResolver.makeBatched((_requests: Array<GetValue>) =>
-        Effect.die("boom")
-      )
+      const resolver = RequestResolver.makeBatched((_requests: Array<GetValue>) => Effect.die("boom"))
 
       const fiber = yield* Effect.forEach(
         [1, 2, 3],
