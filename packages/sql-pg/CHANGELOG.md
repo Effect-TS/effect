@@ -1,5 +1,11 @@
 # @effect/sql-pg
 
+## 0.52.1
+
+### Patch Changes
+
+- [#6140](https://github.com/Effect-TS/effect/pull/6140) [`4767f86`](https://github.com/Effect-TS/effect/commit/4767f860a8231fc8d805d38173b85b47da41a6b0) Thanks @tim-smart! - Use a dedicated PostgreSQL connection for LISTEN / UNLISTEN so active listeners do not consume a pooled query connection.
+
 ## 0.52.0
 
 ### Patch Changes
