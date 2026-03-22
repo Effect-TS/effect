@@ -50,4 +50,14 @@ export class PgContainer extends Effect.Service<PgContainer>()("test/PgContainer
       })
     })
   ).pipe(Layer.provide(this.Default))
+
+  static ClientSingleConnectionLive = Layer.unwrapEffect(
+    Effect.gen(function*() {
+      const container = yield* PgContainer
+      return PgClient.layer({
+        url: Redacted.make(container.getConnectionUri()),
+        maxConnections: 1
+      })
+    })
+  ).pipe(Layer.provide(this.Default))
 }
