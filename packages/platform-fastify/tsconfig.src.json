@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build/dts",
+    "declarationDir": "build/dts"
+  },
+  "include": ["src"],
+  "references": [{ "path": "../platform" }, { "path": "../rpc" }]
+}
