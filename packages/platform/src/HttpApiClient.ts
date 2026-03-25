@@ -32,7 +32,7 @@ export type Client<Groups extends HttpApiGroup.Any, E, R> = Simplify<
   & {
     readonly [Group in Extract<Groups, { readonly topLevel: false }> as HttpApiGroup.Name<Group>]: Client.Group<
       Group,
-      Group["identifier"],
+      HttpApiGroup.Name<Groups>,
       E,
       R
     >
@@ -51,7 +51,7 @@ export declare namespace Client {
    * @since 1.0.0
    * @category models
    */
-  export type Group<Groups extends HttpApiGroup.Any, GroupName extends Groups["identifier"], E, R> =
+  export type Group<Groups extends HttpApiGroup.Any, GroupName extends HttpApiGroup.Name<Groups>, E, R> =
     [HttpApiGroup.WithName<Groups, GroupName>] extends
       [HttpApiGroup<infer _GroupName, infer _Endpoints, infer _GroupError, infer _GroupErrorR>] ? {
         readonly [Endpoint in _Endpoints as HttpApiEndpoint.Name<Endpoint>]: Method<
