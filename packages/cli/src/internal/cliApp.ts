@@ -166,7 +166,7 @@ const handleBuiltInOption = <R, E, A>(
       const baseArgs = Arr.take(originalArgs, 2)
       const filteredArgs: Array<string> = []
       for (let i = 0; i < args.length; i++) {
-        if (isLogLevelArg(args[i]) || isLogLevelArg(args[i - 1])) {
+        if (isLogLevelArg(args[i]) || args[i - 1] === "--log-level") {
           continue
         }
         filteredArgs.push(args[i])
