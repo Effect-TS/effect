@@ -52,6 +52,7 @@ import * as sortedSet_ from "./SortedSet.js"
 import * as string_ from "./String.js"
 import * as struct_ from "./Struct.js"
 import type * as Types from "./Types.js"
+import type { Unify } from "./Unify.js"
 
 /**
  * @since 3.10.0
@@ -10912,3 +10913,100 @@ export class ArrayFormatterIssue extends Struct({
   identifier: "ArrayFormatterIssue",
   description: "Represents an issue returned by the ArrayFormatter formatter"
 }) {}
+
+/**
+ * @category TaggedUnion
+ * @since 3.15.0
+ */
+export interface TaggedUnion<Cases extends Record<string, Struct.Fields>> extends
+  AnnotableClass<
+    TaggedUnion<Cases>,
+    TaggedUnion.Members<Cases>["Type"],
+    TaggedUnion.Members<Cases>["Encoded"],
+    TaggedUnion.Members<Cases>["Context"]
+  >
+{
+  readonly members: {
+    readonly [K in keyof Cases]: K extends string ? TaggedUnion.Member<K, Cases[K]> : never
+  }
+
+  readonly $match: {
+    <
+      C extends {
+        readonly [Tag in keyof Cases]: (
+          args: Extract<TaggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
+        ) => any
+      }
+    >(cases: C): (value: TaggedUnion.Members<Cases>["Type"]) => Unify<ReturnType<C[keyof C]>>
+    <
+      C extends {
+        readonly [Tag in keyof Cases]: (
+          args: Extract<TaggedUnion.Members<Cases>["Type"], { readonly _tag: Tag }>
+        ) => any
+      }
+    >(value: TaggedUnion.Members<Cases>["Type"], cases: C): Unify<ReturnType<C[keyof C]>>
+  }
+}
+
+/**
+ * @category TaggedUnion
+ * @since 3.15.0
+ */
+export declare namespace TaggedUnion {
+  /**
+   * @category TaggedUnion
+   * @since 3.15.0
+   */
+  export interface Member<Tag extends string, Fields extends Struct.Fields> extends Data<TaggedStruct<Tag, Fields>> {
+    readonly make: TaggedStruct<Tag, Fields>["make"]
+  }
+
+  /**
+   * @category TaggedUnion
+   * @since 3.15.0
+   */
+  export type Members<Cases extends Record<string, Struct.Fields>> = keyof Cases extends infer K
+    ? K extends string ? Member<K, Cases[K]> : never
+    : never
+}
+
+const constDataEnum$Match = data_.taggedEnum().$match
+
+/**
+ * Defines a schema for a union of tagged structs.
+ *
+ * @example
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.TaggedUnion({
+ *   Circle: { radius: Schema.Number },
+ *   Square: { sideLength: Schema.Number },
+ * })
+ *
+ * Schema.decodeUnknownSync(schema)({ _tag: "Circle", radius: 10 })
+ * ```
+ *
+ * @category TaggedUnion
+ * @since 3.15.0
+ */
+export function TaggedUnion<
+  Cases extends Record<string, Struct.Fields>
+>(cases: Cases): TaggedUnion<Cases> {
+  const members: Record<string, TaggedUnion.Member<any, any>> = {}
+  const unionArr = []
+  for (const [key, fields] of Object.entries(cases)) {
+    const taggedStruct = TaggedStruct(key, fields)
+    const dataTaggedStruct = Data(taggedStruct) as unknown as TaggedUnion.Member<any, any>
+    ;(dataTaggedStruct as any).make = (props: any, options?: {}) =>
+      data_.unsafeStruct(taggedStruct.make(props, options))
+    members[key] = dataTaggedStruct
+    unionArr.push(dataTaggedStruct)
+  }
+
+  const schema = Union(...unionArr) as Types.Mutable<TaggedUnion<any>>
+  schema.members = members
+  schema.$match = constDataEnum$Match as any
+
+  return schema as any
+}
