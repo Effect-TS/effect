@@ -29,15 +29,31 @@ class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
 class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {}) {}
 
-class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
-  provides: CurrentUser,
+class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware, { provides: CurrentUser }>()("AuthMiddleware", {
   failure: Unauthorized,
   requiredForClient: true
 }) {}
 
-class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware", {
-  wrap: true
-}) {}
+class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware") {}
+
+export class Something extends Context.Tag("Something")<Something, "something">() {}
+export class SomethingElse extends Context.Tag("SomethingElse")<SomethingElse, "something-else">() {}
+export class SomethingElseElse extends Context.Tag("SomethingElseElse")<SomethingElseElse, "something-else-else">() {}
+
+class SomethingMiddleware extends RpcMiddleware.Tag<
+  SomethingMiddleware,
+  { requires: SomethingElseElse; provides: Something | SomethingElse }
+>()("SomethingMiddleware") {}
+
+class SomethingWrapMiddleware
+  extends RpcMiddleware.Tag<SomethingWrapMiddleware, { provides: Something | SomethingElse }>()(
+    "SomethingWrapMiddleware"
+  )
+{}
+
+class SomethingElseElseMiddleware extends RpcMiddleware.Tag<SomethingElseElseMiddleware, {
+  provides: SomethingElseElse
+}>()("SomethingElseElseMiddleware") {}
 
 class GetUser extends Rpc.make("GetUser", {
   success: User,
@@ -70,6 +86,12 @@ export const UserRpcs = RpcGroup.make(
     },
     success: Schema.Number
   }).middleware(TimingMiddleware),
+  Rpc.make("GetContext", {
+    success: Schema.Struct({
+      Something: Schema.String,
+      SomethingElse: Schema.String
+    })
+  }).middleware(SomethingMiddleware),
   Rpc.make("GetTimingMiddlewareMetrics", {
     success: Schema.Struct({
       success: Schema.Number,
@@ -77,12 +99,16 @@ export const UserRpcs = RpcGroup.make(
       count: Schema.Number
     })
   })
-).middleware(AuthMiddleware)
+)
+  .middleware(AuthMiddleware)
+  .middleware(SomethingElseElseMiddleware)
 
 const AuthLive = Layer.succeed(
   AuthMiddleware,
-  AuthMiddleware.of((options) =>
-    Effect.succeed(
+  AuthMiddleware.of((next, options) =>
+    Effect.provideService(
+      next,
+      CurrentUser,
       new User({ id: options.headers.userid ?? "1", name: options.headers.name ?? "Fallback name" })
     )
   )
@@ -93,12 +119,44 @@ const rpcDefects = Metric.counter("rpc_middleware_defects")
 const rpcCount = Metric.counter("rpc_middleware_count")
 const TimingLive = Layer.succeed(
   TimingMiddleware,
-  TimingMiddleware.of((options) =>
-    options.next.pipe(
+  TimingMiddleware.of((next) =>
+    next.pipe(
       Effect.tap(Metric.increment(rpcSuccesses)),
       Effect.tapDefect(() => Metric.increment(rpcDefects)),
       Effect.ensuring(Metric.increment(rpcCount))
     )
+  )
+)
+
+const SomethingLive = Layer.succeed(
+  SomethingMiddleware,
+  SomethingMiddleware.of((next) =>
+    SomethingElseElse.pipe(Effect.flatMap(() =>
+      Effect.provide(
+        next,
+        Context.empty().pipe(
+          Context.add(Something, "something"),
+          Context.add(SomethingElse, "something-else")
+        )
+      )
+    ))
+  )
+).pipe(
+  Layer.merge(Layer.succeed(
+    SomethingElseElseMiddleware,
+    SomethingElseElseMiddleware.of(Effect.provideService(SomethingElseElse, "something-else-else"))
+  ))
+)
+
+Layer.succeed(
+  SomethingWrapMiddleware,
+  SomethingWrapMiddleware.of((next) =>
+    next.pipe(Effect.provide(
+      Context.empty().pipe(
+        Context.add(Something, "something"),
+        Context.add(SomethingElse, "something-else")
+      )
+    ))
   )
 )
 
@@ -142,6 +200,7 @@ const UsersLive = UserRpcs.toLayer(Effect.gen(function*() {
     Never: () => Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => interrupts++))),
     "nested.test": () => Effect.void,
     TimedMethod: (_) => _.shouldFail ? Effect.die("boom") : Effect.succeed(1),
+    GetContext: () => Effect.all({ Something, SomethingElse }),
     GetTimingMiddlewareMetrics: () =>
       Effect.all({
         defect: Metric.value(rpcDefects).pipe(Effect.map((_) => _.count)),
@@ -155,7 +214,8 @@ export const RpcLive = RpcServer.layer(UserRpcs).pipe(
   Layer.provide([
     UsersLive,
     AuthLive,
-    TimingLive
+    TimingLive,
+    SomethingLive
   ])
 )
 
@@ -181,6 +241,6 @@ export class UsersClient extends Context.Tag("UsersClient")<
     Layer.provide(AuthClient)
   )
   static layerTest = Layer.scoped(UsersClient, RpcTest.makeClient(UserRpcs)).pipe(
-    Layer.provide([UsersLive, AuthLive, TimingLive, AuthClient])
+    Layer.provide([UsersLive, AuthLive, TimingLive, SomethingLive, AuthClient])
   )
 }
