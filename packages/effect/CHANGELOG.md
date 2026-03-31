@@ -1,5 +1,13 @@
 # effect
 
+## 3.21.1
+
+### Patch Changes
+
+- [#6139](https://github.com/Effect-TS/effect/pull/6139) [`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b) Thanks @marbemac! - Fix batched request resolver defects causing consumer fibers to hang forever.
+
+  When a `RequestResolver.makeBatched` resolver died with a defect, the request `Deferred`s were never completed because the cleanup logic in `invokeWithInterrupt` used `flatMap` (which only runs on success). Changed to `ensuring` so uncompleted request entries are always resolved regardless of exit type.
+
 ## 3.21.0
 
 ### Minor Changes
