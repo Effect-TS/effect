@@ -130,5 +130,38 @@ describe("CliApp", () => {
         yield* cli(["C:\\Program Files\\node.exe", "C:\\My Scripts\\test.js", "--log-level", "info", "hello"])
         expect(executedValue).toEqual("hello")
       }).pipe(runEffect))
+
+    it("should not swallow the next argument when using --log-level=value equals syntax", () =>
+      Effect.gen(function*() {
+        let executedValue: string | undefined = undefined
+        const cmd = Command.make("test", { value: Args.text() }, ({ value }) =>
+          Effect.sync(() => {
+            executedValue = value
+          }))
+        const cli = Command.run(cmd, {
+          name: "Test",
+          version: "1.0.0"
+        })
+        yield* cli(["node", "test.js", "--log-level=debug", "hello"])
+        expect(executedValue).toEqual("hello")
+      }).pipe(runEffect))
+
+    it("should set log level and preserve argument with --log-level=value combined", () =>
+      Effect.gen(function*() {
+        let logLevel: LogLevel.LogLevel | undefined = undefined
+        let executedValue: string | undefined = undefined
+        const cmd = Command.make("test", { value: Args.text() }, ({ value }) =>
+          Effect.gen(function*() {
+            logLevel = yield* FiberRef.get(FiberRef.currentMinimumLogLevel)
+            executedValue = value
+          }))
+        const cli = Command.run(cmd, {
+          name: "Test",
+          version: "1.0.0"
+        })
+        yield* cli(["node", "test.js", "--log-level=info", "hello"])
+        expect(logLevel).toEqual(LogLevel.Info)
+        expect(executedValue).toEqual("hello")
+      }).pipe(runEffect))
   })
 })
