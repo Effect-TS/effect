@@ -509,19 +509,25 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type WithName<Endpoints extends Any, Name extends string> = Extract<Endpoints, { readonly name: Name }>
+  export type WithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>> = Extract<
+    Endpoints,
+    { readonly name: Name }
+  >
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ExcludeName<Endpoints extends Any, Name extends string> = Exclude<Endpoints, { readonly name: Name }>
+  export type ExcludeName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>> = Exclude<
+    Endpoints,
+    { readonly name: Name }
+  >
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type HandlerWithName<Endpoints extends Any, Name extends string, E, R> = Handler<
+  export type HandlerWithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>, E, R> = Handler<
     WithName<Endpoints, Name>,
     E,
     R
@@ -531,41 +537,50 @@ export declare namespace HttpApiEndpoint {
    * @since 1.0.0
    * @category models
    */
-  export type HandlerRawWithName<Endpoints extends Any, Name extends string, E, R> = HandlerRaw<
-    WithName<Endpoints, Name>,
-    E,
-    R
+  export type HandlerRawWithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>, E, R> =
+    HandlerRaw<
+      WithName<Endpoints, Name>,
+      E,
+      R
+    >
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export type SuccessWithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>> = Success<
+    WithName<Endpoints, Name>
   >
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type SuccessWithName<Endpoints extends Any, Name extends string> = Success<WithName<Endpoints, Name>>
+  export type ErrorWithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>> = Error<
+    WithName<Endpoints, Name>
+  >
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ErrorWithName<Endpoints extends Any, Name extends string> = Error<WithName<Endpoints, Name>>
+  export type ContextWithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>> = Context<
+    WithName<Endpoints, Name>
+  >
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ContextWithName<Endpoints extends Any, Name extends string> = Context<WithName<Endpoints, Name>>
+  export type ErrorContextWithName<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>> = ErrorContext<
+    WithName<Endpoints, Name>
+  >
 
   /**
    * @since 1.0.0
    * @category models
    */
-  export type ErrorContextWithName<Endpoints extends Any, Name extends string> = ErrorContext<WithName<Endpoints, Name>>
-
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export type ExcludeProvided<Endpoints extends Any, Name extends string, R> = Exclude<
+  export type ExcludeProvided<Endpoints extends Any, Name extends HttpApiEndpoint.Name<Endpoints>, R> = Exclude<
     R,
     | HttpRouter.HttpRouter.DefaultServices
     | HttpRouter.HttpRouter.Provided
