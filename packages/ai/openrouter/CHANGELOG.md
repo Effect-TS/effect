@@ -1,5 +1,14 @@
 # @effect/ai-openrouter
 
+## 0.10.1
+
+### Patch Changes
+
+- [#6145](https://github.com/Effect-TS/effect/pull/6145) [`6c39a34`](https://github.com/Effect-TS/effect/commit/6c39a34c6145811f5c41292f03bf7939cfa8e70d) Thanks @LikiosSedo! - Fix typo in HTTP header name: `HTTP-Referrer` → `HTTP-Referer`. The HTTP spec spells it "Referer" (single r), and OpenRouter expects this exact header name for app attribution.
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
 ## 0.10.0
 
 ### Patch Changes
