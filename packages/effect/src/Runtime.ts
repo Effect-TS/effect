@@ -1,7 +1,6 @@
 /**
  * @since 2.0.0
  */
-import type { Cause } from "./Cause.js"
 import type * as Context from "./Context.js"
 import type * as Effect from "./Effect.js"
 import type * as Exit from "./Exit.js"
@@ -9,7 +8,6 @@ import type * as Fiber from "./Fiber.js"
 import type * as FiberId from "./FiberId.js"
 import type * as FiberRef from "./FiberRef.js"
 import type * as FiberRefs from "./FiberRefs.js"
-import type { Inspectable } from "./Inspectable.js"
 import * as internal from "./internal/runtime.js"
 import type { Pipeable } from "./Pipeable.js"
 import type * as RuntimeFlags from "./RuntimeFlags.js"
@@ -224,54 +222,10 @@ export const make: <R>(
 
 /**
  * @since 2.0.0
- * @category symbols
- */
-export const FiberFailureId = Symbol.for("effect/Runtime/FiberFailure")
-/**
- * @since 2.0.0
- * @category symbols
- */
-export type FiberFailureId = typeof FiberFailureId
-
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const FiberFailureCauseId: unique symbol = internal.FiberFailureCauseId
-
-/**
- * @since 2.0.0
- * @category exports
- */
-export type FiberFailureCauseId = typeof FiberFailureCauseId
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface FiberFailure extends Error, Inspectable {
-  readonly [FiberFailureId]: FiberFailureId
-  readonly [FiberFailureCauseId]: Cause<unknown>
-}
-
-/**
- * @since 2.0.0
  * @category guards
  */
 export const isAsyncFiberException: (u: unknown) => u is AsyncFiberException<unknown, unknown> =
   internal.isAsyncFiberException
-
-/**
- * @since 2.0.0
- * @category guards
- */
-export const isFiberFailure: (u: unknown) => u is FiberFailure = internal.isFiberFailure
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure = internal.fiberFailure
 
 /**
  * @since 2.0.0
