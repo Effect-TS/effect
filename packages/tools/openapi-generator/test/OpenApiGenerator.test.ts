@@ -52,6 +52,23 @@ function assertRuntimeIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string
   )
 }
 
+function assertTypeOnlyIncludes(spec: OpenAPISpec, includes: ReadonlyArray<string>) {
+  return Effect.gen(function*() {
+    const generator = yield* OpenApiGenerator.OpenApiGenerator
+
+    const result = yield* generator.generate(spec, {
+      name: "TestClient",
+      format: "httpclient-type-only"
+    })
+
+    for (const expected of includes) {
+      assert.include(result, expected)
+    }
+  }).pipe(
+    Effect.provide(OpenApiGenerator.layerTransformerTs)
+  )
+}
+
 function assertHttpApiIncludes(
   spec: OpenAPISpec,
   includes: ReadonlyArray<string>,
@@ -588,9 +605,235 @@ export const TestClientError = <Tag extends string, E>(
           `readonly payload: typeof IssueTokenRequestFormUrlEncoded.Encoded`
         ]
       ))
+
+    it.effect("unions JSON-compatible response media types on the same status in httpclient format", () =>
+      assertRuntimeIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/auth/device/token": {
+              post: {
+                operationId: "exchangeDeviceCode",
+                parameters: [],
+                responses: {
+                  400: {
+                    description: "Problem or OAuth error",
+                    content: {
+                      "application/problem+json": {
+                        schema: {
+                          $ref: "#/components/schemas/ProblemError"
+                        }
+                      },
+                      "application/json": {
+                        schema: {
+                          $ref: "#/components/schemas/DeviceTokenOAuthError"
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["Auth"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              ProblemError: {
+                type: "object",
+                properties: {
+                  kind: { const: "ProblemError" },
+                  title: { type: "string" }
+                },
+                required: ["kind", "title"],
+                additionalProperties: false
+              },
+              DeviceTokenOAuthError: {
+                type: "object",
+                properties: {
+                  error: { type: "string" },
+                  error_description: { type: "string" }
+                },
+                required: ["error"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: []
+        },
+        [
+          `export type ExchangeDeviceCode400 = ProblemError | DeviceTokenOAuthError`,
+          `export const ExchangeDeviceCode400 = Schema.Union([ProblemError, DeviceTokenOAuthError])`,
+          `"400": decodeError("ExchangeDeviceCode400", ExchangeDeviceCode400)`
+        ]
+      ))
+
+    it.effect("supports binary success and problem+json error responses in httpclient format", () =>
+      assertRuntimeIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/archive": {
+              get: {
+                operationId: "downloadArchive",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Archive bytes",
+                    content: {
+                      "application/zip": {
+                        schema: {
+                          type: "string",
+                          format: "binary"
+                        }
+                      }
+                    }
+                  },
+                  404: {
+                    description: "Missing archive",
+                    content: {
+                      "application/problem+json": {
+                        schema: {
+                          $ref: "#/components/schemas/ProblemError"
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["Archive"],
+                security: []
+              }
+            },
+            "/metadata": {
+              get: {
+                operationId: "getMetadata",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Archive metadata",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            name: { type: "string" }
+                          },
+                          required: ["name"]
+                        }
+                      }
+                    }
+                  },
+                  404: {
+                    description: "Missing metadata",
+                    content: {
+                      "application/problem+json": {
+                        schema: {
+                          $ref: "#/components/schemas/ProblemError"
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["Archive"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              ProblemError: {
+                type: "object",
+                properties: {
+                  kind: { const: "ProblemError" },
+                  title: { type: "string" }
+                },
+                required: ["kind", "title"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: []
+        },
+        [
+          `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
+          `"2xx": decodeBinary`,
+          `"404": decodeError("DownloadArchive404", DownloadArchive404)`,
+          `readonly "downloadArchiveStream": () => Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`
+        ]
+      ))
   })
 
   describe("type-only", () => {
+    it.effect("keeps error decoder arguments aligned when another operation has a binary success", () =>
+      assertTypeOnlyIncludes(
+        {
+          openapi: "3.1.0",
+          info: { title: "Test API", version: "1.0.0" },
+          paths: {
+            "/archive": {
+              get: {
+                operationId: "downloadArchive",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Archive bytes",
+                    content: {
+                      "application/zip": {
+                        schema: { type: "string", format: "binary" }
+                      }
+                    }
+                  }
+                },
+                tags: ["Archive"],
+                security: []
+              }
+            },
+            "/metadata": {
+              get: {
+                operationId: "getMetadata",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Archive metadata",
+                    content: {
+                      "application/json": {
+                        schema: { type: "string" }
+                      }
+                    }
+                  },
+                  404: {
+                    description: "Missing metadata",
+                    content: {
+                      "application/problem+json": {
+                        schema: { type: "string" }
+                      }
+                    }
+                  }
+                },
+                tags: ["Archive"],
+                security: []
+              }
+            }
+          },
+          components: { schemas: {}, securitySchemes: {} },
+          security: [],
+          tags: []
+        },
+        [`onRequest(options?.config)(["2xx"], undefined, {"404":"GetMetadata404"})`]
+      ))
+
     it.effect("get operation", () =>
       assertTypeOnly(
         {
