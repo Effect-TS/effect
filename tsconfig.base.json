@@ -41,6 +41,7 @@
           "effect",
           "@effect/ai",
           "@effect/ai-anthropic",
+          "@effect/ai-azure-foundry",
           "@effect/ai-openai",
           "@effect/cli",
           "@effect/cluster",

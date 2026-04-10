@@ -239,6 +239,28 @@ importers:
         version: link:../../effect
     publishDirectory: dist
 
+  packages/ai/azure-foundry:
+    devDependencies:
+      '@effect/ai':
+        specifier: workspace:^
+        version: link:../ai
+      '@effect/ai-openai':
+        specifier: workspace:^
+        version: link:../openai
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../../experimental
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform-node
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+    publishDirectory: dist
+
   packages/ai/google:
     devDependencies:
       '@effect/ai':
