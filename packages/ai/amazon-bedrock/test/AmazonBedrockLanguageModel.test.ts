@@ -52,8 +52,7 @@ const makeConverseTestLayer = (converse: Effect.Effect<AmazonBedrockSchema.Conve
 // Event builders — decode from encoded (wire) format into decoded types
 // ---------------------------------------------------------------------------
 
-const messageStart = (role: "user" | "assistant" = "assistant") =>
-  decodeStreamEvent({ messageStart: { role } })
+const messageStart = (role: "user" | "assistant" = "assistant") => decodeStreamEvent({ messageStart: { role } })
 
 const textBlockStart = (index: number) =>
   decodeStreamEvent({ contentBlockStart: { contentBlockIndex: index, start: {} } })
@@ -61,11 +60,9 @@ const textBlockStart = (index: number) =>
 const textDelta = (index: number, text: string) =>
   decodeStreamEvent({ contentBlockDelta: { contentBlockIndex: index, delta: { text } } })
 
-const contentBlockStop = (index: number) =>
-  decodeStreamEvent({ contentBlockStop: { contentBlockIndex: index } })
+const contentBlockStop = (index: number) => decodeStreamEvent({ contentBlockStop: { contentBlockIndex: index } })
 
-const messageStop = (stopReason: string = "end_turn") =>
-  decodeStreamEvent({ messageStop: { stopReason } })
+const messageStop = (stopReason: string = "end_turn") => decodeStreamEvent({ messageStop: { stopReason } })
 
 const metadataEvent = (usage: {
   readonly inputTokens: number
