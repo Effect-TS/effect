@@ -41,6 +41,7 @@
           "effect",
           "@effect/ai",
           "@effect/ai-anthropic",
+          "@effect/ai-google-vertex",
           "@effect/ai-openai",
           "@effect/cli",
           "@effect/cluster",
