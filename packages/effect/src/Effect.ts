@@ -14622,6 +14622,32 @@ export namespace fn {
  * // timestamp=... level=ERROR fiber=#0 cause="Error: Boom! (<= after 1 second)
  * ```
  *
+ * **Example** (Explicit Type Annotations with Effect.fn)
+ *
+ * When migrating from a function with explicit return types, you can use
+ * `Effect.fn.Return` to annotate the generator return type:
+ *
+ * ```ts
+ * import { Effect, Data } from "effect"
+ *
+ * class NotFound extends Data.TaggedError("NotFound")<{ id: number }> {}
+ *
+ * // Before: explicit return type on a regular function
+ * const findUser1 = (id: number): Effect.Effect<string, NotFound> =>
+ *   id > 0 ? Effect.succeed("Alice") : Effect.fail(new NotFound({ id }))
+ *
+ * // After: using Effect.fn with explicit types via the Return helper
+ * const findUser2 = Effect.fn(function* (
+ *   id: number
+ * ): Effect.fn.Return<string, NotFound> {
+ *   if (id <= 0) yield* Effect.fail(new NotFound({ id }))
+ *   return "Alice"
+ * })
+ * ```
+ *
+ * The `Effect.fn.Return<A, E, R>` type is a shorthand for the generator
+ * return type, matching the same `A, E, R` parameters as `Effect.Effect`.
+ *
  * @see {@link fnUntraced} for a version of this function that doesn't add a span.
  *
  * @since 3.11.0
