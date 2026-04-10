@@ -252,7 +252,11 @@ export const layer = (options: {
 // Prompt Conversion
 // =============================================================================
 
-const prepareMessages: (
+/**
+ * @since 1.0.0
+ * @category Prompt Conversion
+ */
+export const prepareMessages: (
   options: LanguageModel.ProviderOptions,
   config: Config.Service
 ) => Effect.Effect<{
@@ -418,7 +422,11 @@ const prepareMessages: (
 // Response Conversion
 // =============================================================================
 
-const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effect<
+/**
+ * @since 1.0.0
+ * @category Response Conversion
+ */
+export const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effect<
   Array<Response.PartEncoded>,
   AiError.AiError,
   IdGenerator.IdGenerator
@@ -560,7 +568,11 @@ const makeResponse: (response: Generated.GenerateContentResponse) => Effect.Effe
   }
 )
 
-const makeStreamResponse: (
+/**
+ * @since 1.0.0
+ * @category Response Conversion
+ */
+export const makeStreamResponse: (
   stream: Stream.Stream<Generated.GenerateContentResponse, AiError.AiError>
 ) => Effect.Effect<
   Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
@@ -832,7 +844,11 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded): v
 // Tool Calling
 // =============================================================================
 
-const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Service) => Effect.Effect<{
+/**
+ * @since 1.0.0
+ * @category Tool Calling
+ */
+export const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Service) => Effect.Effect<{
   readonly tools: typeof Generated.Tool.Encoded | undefined
   readonly toolConfig: typeof Generated.ToolConfig.Encoded | undefined
 }, AiError.AiError> = Effect.fnUntraced(function*(options, config) {
@@ -1007,3 +1023,13 @@ const getToolCalls = Effect.fnUntraced(
     return parts
   }
 )
+
+// =============================================================================
+// Re-exports from internal utilities
+// =============================================================================
+
+/**
+ * @since 1.0.0
+ * @category Utilities
+ */
+export { jsonSchemaToOpenApiSchema, resolveFinishReason } from "./internal/utilities.js"

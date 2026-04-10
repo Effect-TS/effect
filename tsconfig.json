@@ -7,6 +7,7 @@
     { "path": "packages/ai/amazon-bedrock" },
     { "path": "packages/ai/anthropic" },
     { "path": "packages/ai/google" },
+    { "path": "packages/ai/google-vertex" },
     { "path": "packages/ai/openai" },
     { "path": "packages/cli" },
     { "path": "packages/cluster" },

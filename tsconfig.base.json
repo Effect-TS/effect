@@ -42,6 +42,7 @@
           "@effect/ai",
           "@effect/ai-anthropic",
           "@effect/ai-azure-foundry",
+          "@effect/ai-google-vertex",
           "@effect/ai-openai",
           "@effect/cli",
           "@effect/cluster",

@@ -283,6 +283,28 @@ importers:
         version: link:../../effect
     publishDirectory: dist
 
+  packages/ai/google-vertex:
+    devDependencies:
+      '@effect/ai':
+        specifier: workspace:^
+        version: link:../ai
+      '@effect/ai-google':
+        specifier: workspace:^
+        version: link:../google
+      '@effect/experimental':
+        specifier: workspace:^
+        version: link:../../experimental
+      '@effect/platform':
+        specifier: workspace:^
+        version: link:../../platform
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform-node
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+    publishDirectory: dist
+
   packages/ai/openai:
     dependencies:
       gpt-tokenizer:
