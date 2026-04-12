@@ -257,7 +257,7 @@ export const setUrlParams: {
   (url: URL, urlParams: UrlParams.UrlParams): URL
 } = dual(2, (url: URL, searchParams: UrlParams.UrlParams) =>
   mutate(url, (url) => {
-    url.search = UrlParams.toString(searchParams)
+    url.search = UrlParams.toStringPercent(searchParams)
   }))
 
 /**
@@ -320,5 +320,5 @@ export const modifyUrlParams: {
 } = dual(2, (url: URL, f: (urlParams: UrlParams.UrlParams) => UrlParams.UrlParams) =>
   mutate(url, (url) => {
     const params = f(UrlParams.fromInput(url.searchParams))
-    url.search = UrlParams.toString(params)
+    url.search = UrlParams.toStringPercent(params)
   }))

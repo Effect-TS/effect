@@ -229,6 +229,17 @@ export const makeUrl = (url: string, params: UrlParams, hash: Option.Option<stri
  */
 export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString()
 
+/**
+ * Encode url params using percent-encoding (RFC 3986) instead of the
+ * `application/x-www-form-urlencoded` format used by `URLSearchParams`.
+ * This preserves `%20` for spaces rather than converting them to `+`.
+ *
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toStringPercent = (self: UrlParams): string =>
+  self.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&")
+
 const baseUrl = (): string | undefined => {
   if (
     "location" in globalThis &&
