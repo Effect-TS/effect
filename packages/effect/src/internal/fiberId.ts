@@ -259,9 +259,30 @@ export const toSet = (self: FiberId.FiberId): HashSet.HashSet<FiberId.Runtime> =
   }
 }
 
+/**
+ * Configurable clock source for FiberId creation.
+ * Defaults to Date.now but can be replaced for deterministic testing.
+ * This avoids monkey-patching Date.now globally which breaks timers,
+ * logging, and concurrent tests.
+ */
+const _clockSource = globalValue(
+  Symbol.for("effect/Fiber/Id/_clockSource"),
+  (): { now: () => number } => ({ now: () => Date.now() })
+)
+
+/** @internal */
+export const setClockSource = (now: () => number): void => {
+  _clockSource.now = now
+}
+
+/** @internal */
+export const resetClockSource = (): void => {
+  _clockSource.now = () => Date.now()
+}
+
 /** @internal */
 export const unsafeMake = (): FiberId.Runtime => {
   const id = MutableRef.get(_fiberCounter)
   pipe(_fiberCounter, MutableRef.set(id + 1))
-  return new Runtime(id, Date.now())
+  return new Runtime(id, _clockSource.now())
 }
