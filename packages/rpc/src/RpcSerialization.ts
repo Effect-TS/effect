@@ -382,7 +382,11 @@ export const msgPack: RpcSerialization["Type"] = RpcSerialization.of({
             incomplete = buf.subarray(error.lastPosition)
             return error.values ?? []
           }
-          return []
+          // Non-`incomplete` errors are genuine decode failures (corrupted
+          // data, encoding mismatches, runtime restrictions on
+          // `new Function()`, etc.) — propagate so the caller sees them
+          // instead of receiving a silent empty response.
+          throw error_
         }
       },
       encode: (response) => packr.pack(response)
