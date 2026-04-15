@@ -300,9 +300,9 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const messages = yield* prepareMessages(providerOptions, config)
-      const { toolChoice, tools } = yield* prepareTools(providerOptions)
+      const { toolChoice, tools } = yield* prepareTools(providerOptions, config)
       const include = prepareInclude(providerOptions, config)
-      const responseFormat = prepareResponseFormat(providerOptions)
+      const responseFormat = prepareResponseFormat(providerOptions, config)
       const verbosity = config.text?.verbosity
       const request: typeof Generated.CreateResponse.Encoded = {
         ...config,
