@@ -567,7 +567,16 @@ const makeResponse: (
       timestamp: DateTime.formatIso(DateTime.unsafeFromDate(createdAt))
     })
 
+    // Deduplicate output items by ID to handle OpenAI Responses API bug
+    // where duplicate OutputMessage items appear in response.output
+    const seenOutputIds = new Set<string>()
     for (const part of response.output) {
+      if (part.id && seenOutputIds.has(part.id)) {
+        continue
+      }
+      if (part.id) {
+        seenOutputIds.add(part.id)
+      }
       switch (part.type) {
         case "message": {
           for (const contentPart of part.content) {
