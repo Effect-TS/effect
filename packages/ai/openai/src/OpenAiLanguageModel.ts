@@ -96,20 +96,20 @@ export declare namespace Config {
     }
 
     /**
-    * Controls whether tool and response format schemas are sent with
-    * `strict: true` to enable OpenAI's structured outputs mode.
-    *
-    * When `true` (default), OpenAI validates that tool schemas comply with
-    * strict mode requirements (all properties in `required`,
-    * `additionalProperties: false` on all objects, etc.).
-    *
-    * Set to `false` to send tool schemas without strict mode validation,
-    * which is useful when tool parameter schemas use `Schema.optional()`
-    * (optional properties are not listed in `required` by Effect's JSON
-    * schema generator, which strict mode rejects).
-    *
-    * Defaults to `true` for backward compatibility.
-    */
+     * Controls whether tool and response format schemas are sent with
+     * `strict: true` to enable OpenAI's structured outputs mode.
+     *
+     * When `true` (default), OpenAI validates that tool schemas comply with
+     * strict mode requirements (all properties in `required`,
+     * `additionalProperties: false` on all objects, etc.).
+     *
+     * Set to `false` to send tool schemas without strict mode validation,
+     * which is useful when tool parameter schemas use `Schema.optional()`
+     * (optional properties are not listed in `required` by Effect's JSON
+     * schema generator, which strict mode rejects).
+     *
+     * Defaults to `true` for backward compatibility.
+     */
     readonly strict?: boolean
   }
 }
