@@ -1,5 +1,18 @@
 # @effect/ai-openai
 
+## 0.39.1
+
+### Patch Changes
+
+- [`47f0439`](https://github.com/Effect-TS/effect/commit/47f04399d317a1a5619de7dec5b23f6ad7255eca) Thanks @aayushbaluni! - fix(ai-openai): deduplicate response.output items to prevent invalid JSON concatenation
+
+- [#6187](https://github.com/Effect-TS/effect/pull/6187) [`b63fdb8`](https://github.com/Effect-TS/effect/commit/b63fdb8783a606077ac80d263b4e09b57cdab476) Thanks @alex-dixon! - Change 'in-memory' to 'in_memory' in prompt cache enums
+
+- [#6174](https://github.com/Effect-TS/effect/pull/6174) [`739f077`](https://github.com/Effect-TS/effect/commit/739f077d1cdfb63d26d4744abd59822231866dac) Thanks @mollyegibson! - Make 'strict' mode configurable for tool definitions passed to the OpenAI model
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
 ## 0.39.0
 
 ### Patch Changes
