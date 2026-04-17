@@ -1,5 +1,14 @@
 # @effect/cluster
 
+## 0.58.1
+
+### Patch Changes
+
+- [#6183](https://github.com/Effect-TS/effect/pull/6183) [`4708bb8`](https://github.com/Effect-TS/effect/commit/4708bb8e327f24651ab9072221289d8214c4e2df) Thanks @tim-smart! - backport cluster serialization fix for notify path
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
 ## 0.58.0
 
 ### Patch Changes

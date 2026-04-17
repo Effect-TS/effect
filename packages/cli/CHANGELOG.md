@@ -1,5 +1,14 @@
 # @effect/cli
 
+## 0.75.1
+
+### Patch Changes
+
+- [#6144](https://github.com/Effect-TS/effect/pull/6144) [`ec5c505`](https://github.com/Effect-TS/effect/commit/ec5c50507b1a2f5ad712c148a7da0fadb8cb9f52) Thanks @LikiosSedo! - Fix `--log-level=value` equals syntax incorrectly swallowing the next argument. Only skip the next arg when the previous arg is exactly `--log-level` (space-separated form).
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
 ## 0.75.0
 
 ### Patch Changes
