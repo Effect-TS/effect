@@ -287,8 +287,9 @@ export const make = Effect.fnUntraced(function*(options: {
       const include = prepareInclude(providerOptions, config)
       const responseFormat = prepareResponseFormat(providerOptions)
       const verbosity = config.text?.verbosity
+      const { strict: _strict, ...requestConfig } = config
       const request: typeof Generated.CreateResponse.Encoded = {
-        ...config,
+        ...requestConfig,
         input: messages,
         include,
         text: { format: responseFormat, verbosity },
