@@ -1,5 +1,11 @@
 # @effect/ai-openai
 
+## 0.39.2
+
+### Patch Changes
+
+- [`49c5acd`](https://github.com/Effect-TS/effect/commit/49c5acd5932b3d3981353481664606097082ea2f) Thanks @mollyegibson! - Previously, setting `strict: false` on `OpenAiLanguageModel` config caused a 400 "Unknown parameter: 'strict'" response from the OpenAI Responses API, because the flag was spread into the top-level request body instead of being consumed only by the tool and response_format schema builders. The `strict` flag is now stripped from the request body while still controlling `strict` on tool schemas (`prepareTools`) and json_schema response formats (`prepareResponseFormat`).
+
 ## 0.39.1
 
 ### Patch Changes
