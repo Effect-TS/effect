@@ -48,7 +48,7 @@
   },
   "dependencies": {
     "find-my-way-ts": "^0.1.6",
-    "msgpackr": "^1.11.4",
+    "msgpackr": "^1.11.10",
     "multipasta": "^0.2.7"
   },
   "peerDependencies": {
