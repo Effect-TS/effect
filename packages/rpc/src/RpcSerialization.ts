@@ -361,7 +361,7 @@ export const makeMsgPack = (options?: Msgpackr.Options | undefined): RpcSerializ
   RpcSerialization.of({
     contentType: "application/msgpack",
     includesFraming: true,
-    unsafeMake: () => {
+    unsafeMake() {
       const unpackr = new Msgpackr.Unpackr(options)
       const packr = new Msgpackr.Packr(options)
       const encoder = new TextEncoder()
@@ -397,7 +397,7 @@ export const makeMsgPack = (options?: Msgpackr.Options | undefined): RpcSerializ
  * @since 1.0.0
  * @category serialization
  */
-export const msgPack: RpcSerialization["Type"] = makeMsgPack()
+export const msgPack: RpcSerialization["Type"] = makeMsgPack({ useRecords: true })
 
 /**
  * A rpc serialization layer that uses JSON for serialization.
