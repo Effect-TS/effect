@@ -1,5 +1,16 @@
 # @effect/platform
 
+## 0.96.1
+
+### Patch Changes
+
+- [#6147](https://github.com/Effect-TS/effect/pull/6147) [`518d0e3`](https://github.com/Effect-TS/effect/commit/518d0e3f4879be6d9d9a7fa137a1820604bb3ea7) Thanks @syhstanley! - Fix `HttpLayerRouter.addHttpApi` silently skipping API-level middleware.
+
+- [#6191](https://github.com/Effect-TS/effect/pull/6191) [`c016642`](https://github.com/Effect-TS/effect/commit/c0166426f80b7eb8e7f7d3aecc95dcd4fdb5cb55) Thanks @IGassmann! - Update `msgpackr` to 1.11.10 to fix silent decode failures in environments that block `new Function()` at runtime (e.g. Cloudflare Workers). The new version wraps the JIT `new Function()` call in a try/catch, falling back to the interpreted path when dynamic code evaluation is blocked.
+
+- Updated dependencies [[`74f3267`](https://github.com/Effect-TS/effect/commit/74f3267a6cc7ed7818c4c34cc1232f7cfc7d3339)]:
+  - effect@3.21.2
+
 ## 0.96.0
 
 ### Patch Changes

@@ -1,5 +1,19 @@
 # @effect/rpc
 
+## 0.75.1
+
+### Patch Changes
+
+- [#6191](https://github.com/Effect-TS/effect/pull/6191) [`c016642`](https://github.com/Effect-TS/effect/commit/c0166426f80b7eb8e7f7d3aecc95dcd4fdb5cb55) Thanks @IGassmann! - Update `msgpackr` to 1.11.10 to fix silent decode failures in environments that block `new Function()` at runtime (e.g. Cloudflare Workers). The new version wraps the JIT `new Function()` call in a try/catch, falling back to the interpreted path when dynamic code evaluation is blocked.
+
+- [#6110](https://github.com/Effect-TS/effect/pull/6110) [`0fac630`](https://github.com/Effect-TS/effect/commit/0fac630b27095ffbfa6c48851087950ddc29cda0) Thanks @mitre88! - fix: correct typos in source code (receive, separate)
+
+- [#6161](https://github.com/Effect-TS/effect/pull/6161) [`e2374c2`](https://github.com/Effect-TS/effect/commit/e2374c20ce699d9f5340baf744cf1bd67bb220a0) Thanks @bohdanbirdie! - add RpcSerialization.makeMsgPack
+
+- Updated dependencies [[`74f3267`](https://github.com/Effect-TS/effect/commit/74f3267a6cc7ed7818c4c34cc1232f7cfc7d3339), [`518d0e3`](https://github.com/Effect-TS/effect/commit/518d0e3f4879be6d9d9a7fa137a1820604bb3ea7), [`c016642`](https://github.com/Effect-TS/effect/commit/c0166426f80b7eb8e7f7d3aecc95dcd4fdb5cb55)]:
+  - effect@3.21.2
+  - @effect/platform@0.96.1
+
 ## 0.75.0
 
 ### Patch Changes
