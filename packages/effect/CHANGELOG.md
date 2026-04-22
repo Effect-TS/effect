@@ -1,5 +1,11 @@
 # effect
 
+## 3.21.2
+
+### Patch Changes
+
+- [#6194](https://github.com/Effect-TS/effect/pull/6194) [`74f3267`](https://github.com/Effect-TS/effect/commit/74f3267a6cc7ed7818c4c34cc1232f7cfc7d3339) Thanks @mikearnaldi! - Fix `TestClock.unsafeCurrentTimeNanos()` to floor fractional millisecond instants before converting them to `BigInt`.
+
 ## 3.21.1
 
 ### Patch Changes
