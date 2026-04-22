@@ -220,7 +220,7 @@ When adding new failing tests, you might not be able to fix them right away. Ins
 import { it } from "@effect/vitest"
 import { Effect, Exit } from "effect"
 
-function divide(a: number, b: number): number {
+function divide(a: number, b: number): Effect.Effect<number, string> {
   if (b === 0) return Effect.fail("Cannot divide by zero")
   return Effect.succeed(a / b)
 }
