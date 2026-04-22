@@ -432,7 +432,7 @@ export const layerJsonRpc = (options?: {
 }): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization, jsonRpc(options))
 
 /**
- * A rpc serialization layer that uses JSON-RPC for serialization seperated by
+ * A rpc serialization layer that uses JSON-RPC for serialization separated by
  * new lines.
  *
  * @since 1.0.0
