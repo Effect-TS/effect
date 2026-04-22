@@ -54,6 +54,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "msgpackr": "^1.11.4"
+    "msgpackr": "^1.11.10"
   }
 }
