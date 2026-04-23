@@ -638,10 +638,25 @@ const makeStreamResponse: (
 
     let trace: ConverseTrace | undefined = undefined
     let cacheWriteInputTokens: number | undefined = undefined
+    let finishReason: Response.FinishReason | undefined = undefined
+    let hasMetadata = false
     const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
       outputTokens: undefined,
       totalTokens: undefined
+    }
+
+    const tryEmitFinish = (parts: Array<Response.StreamPartEncoded>) => {
+      if (finishReason !== undefined && hasMetadata) {
+        parts.push({
+          type: "finish",
+          reason: finishReason,
+          usage,
+          metadata: {
+            bedrock: { trace, usage: { cacheWriteInputTokens } }
+          }
+        })
+      }
     }
 
     return stream.pipe(
@@ -659,16 +674,8 @@ const makeStreamResponse: (
           }
 
           case "messageStop": {
-            const reason = InternalUtilities.resolveFinishReason(event.messageStop.stopReason)
-            parts.push({
-              type: "finish",
-              reason,
-              usage,
-              metadata: {
-                bedrock: { trace, usage: { cacheWriteInputTokens } }
-              }
-            })
-
+            finishReason = InternalUtilities.resolveFinishReason(event.messageStop.stopReason)
+            tryEmitFinish(parts)
             break
           }
 
@@ -890,6 +897,8 @@ const makeStreamResponse: (
             if (Predicate.isNotUndefined(event.metadata.trace)) {
               trace = event.metadata.trace
             }
+            hasMetadata = true
+            tryEmitFinish(parts)
             break
           }
 
