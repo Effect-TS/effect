@@ -3,7 +3,7 @@
  */
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import type * as Brand from "effect/Brand"
-import type * as Cause from "effect/Cause"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
@@ -159,12 +159,23 @@ export const into: {
 > =>
   Effect.contextWithEffect((context: Context.Context<WorkflowEngine | WorkflowInstance>) => {
     const engine = Context.get(context, EngineTag)
-    const instance = Context.get(context, InstanceTag)
-    return Effect.onExit(effect, (exit) => {
-      if (instance.suspended) return Effect.void
+    const parentInstance = Context.get(context, InstanceTag)
+    const instance = { ...parentInstance }
+    return Effect.onExit(Effect.provideService(effect, InstanceTag, instance), (exit) => {
+      if (Exit.isFailure(exit) && Cause.isInterrupted(exit.cause)) {
+        const isInterruptedOnly = Cause.isInterruptedOnly(exit.cause)
+        if (isInterruptedOnly && instance.suspended) {
+          parentInstance.suspended = true
+          return Effect.void
+        } else if (!isInterruptedOnly) {
+          exit = Exit.failCause(
+            Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
+          )
+        }
+      }
       return engine.deferredDone(self, {
-        workflowName: instance.workflow.name,
-        executionId: instance.executionId,
+        workflowName: parentInstance.workflow.name,
+        executionId: parentInstance.executionId,
         deferredName: self.name,
         exit
       })
