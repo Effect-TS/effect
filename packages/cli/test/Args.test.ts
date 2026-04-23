@@ -171,4 +171,13 @@ describe("Args", () => {
       const helpDoc = Args.getHelp(option)
       yield* Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/args-no-default"))
     }).pipe(runEffect))
+
+  it("displays default value in help when default is a primitive value", () =>
+    Effect.gen(function*() {
+      const args = Args.withDefault(Args.integer({ name: "count" }), 42)
+      const helpDoc = Args.getHelp(args)
+      yield* Effect.promise(() =>
+        expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/args-default-primitive-value")
+      )
+    }).pipe(runEffect))
 })

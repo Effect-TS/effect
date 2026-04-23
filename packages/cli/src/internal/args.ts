@@ -535,16 +535,17 @@ const getHelpInternal = (self: Instruction): HelpDoc.HelpDoc => {
       return InternalHelpDoc.mapDescriptionList(
         getHelpInternal(self.args as Instruction),
         (span, block) => {
+          const defaultDescription = (value: unknown) => {
+            const inspectableValue = Predicate.isObject(value) ? value : String(value)
+            const displayValue = Inspectable.toStringUnknown(inspectableValue, 0)
+            return InternalHelpDoc.p(`This setting is optional. Defaults to: ${displayValue}`)
+          }
           const optionalDescription = Option.isOption(self.fallback)
             ? Option.match(self.fallback, {
               onNone: () => InternalHelpDoc.p("This setting is optional."),
-              onSome: (fallbackValue) => {
-                const inspectableValue = Predicate.isObject(fallbackValue) ? fallbackValue : String(fallbackValue)
-                const displayValue = Inspectable.toStringUnknown(inspectableValue, 0)
-                return InternalHelpDoc.p(`This setting is optional. Defaults to: ${displayValue}`)
-              }
+              onSome: defaultDescription
             })
-            : InternalHelpDoc.p("This setting is optional.")
+            : defaultDescription(self.fallback)
           return [span, InternalHelpDoc.sequence(block, optionalDescription)]
         }
       )
