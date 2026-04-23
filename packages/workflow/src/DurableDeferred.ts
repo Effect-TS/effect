@@ -99,11 +99,6 @@ const CurrentAttempt = Context.Reference<Activity.CurrentAttempt>()(
   }
 )
 
-const withoutInterrupts = <E>(cause: Cause.Cause<E>): Cause.Cause<E> =>
-  Cause.isInterrupted(cause) && !Cause.isInterruptedOnly(cause)
-    ? Cause.filter(cause, (cause) => !Cause.isInterruptType(cause))
-    : cause
-
 const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
   self: DurableDeferred<Success, Error>
 ) => Effect.Effect<
@@ -167,13 +162,16 @@ export const into: {
     const parentInstance = Context.get(context, InstanceTag)
     const instance = { ...parentInstance }
     return Effect.onExit(Effect.provideService(effect, InstanceTag, instance), (exit) => {
-      if (Exit.isFailure(exit)) {
+      if (Exit.isFailure(exit) && Cause.isInterrupted(exit.cause)) {
         const isInterruptedOnly = Cause.isInterruptedOnly(exit.cause)
         if (isInterruptedOnly && instance.suspended) {
           parentInstance.suspended = true
           return Effect.void
+        } else if (!isInterruptedOnly) {
+          exit = Exit.failCause(
+            Cause.filter(exit.cause, (cause) => !Cause.isInterruptType(cause))
+          )
         }
-        exit = Exit.failCause(withoutInterrupts(exit.cause))
       }
       return engine.deferredDone(self, {
         workflowName: parentInstance.workflow.name,

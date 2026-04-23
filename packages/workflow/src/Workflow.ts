@@ -256,11 +256,6 @@ const InstanceTag = Context.GenericTag<WorkflowInstance, WorkflowInstance["Type"
   "@effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
 )
 
-const withoutInterrupts = <E>(cause: Cause.Cause<E>): Cause.Cause<E> =>
-  Cause.isInterrupted(cause) && !Cause.isInterruptedOnly(cause)
-    ? Cause.filter(cause, (cause) => !Cause.isInterruptType(cause))
-    : cause
-
 /**
  * @since 1.0.0
  * @category Constructors
@@ -537,9 +532,9 @@ export const intoResult = <A, E, R>(
       Effect.scoped,
       Effect.matchCauseEffect({
         onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
-        onFailure: (cause): Effect.Effect<Result<A, E>> => {
+        onFailure(cause): Effect.Effect<Result<A, E>> {
           const isInterruptedOnly = Cause.isInterruptedOnly(cause)
-          const filtered = withoutInterrupts(cause)
+          const filtered = isInterruptedOnly ? cause : withoutInterrupts(cause)
           return instance.suspended && isInterruptedOnly
             ? Effect.succeed(new Suspended({ cause: instance.cause }))
             : (!instance.interrupted && isInterruptedOnly) || (!captureDefects && Cause.isDie(cause))
@@ -558,6 +553,11 @@ export const intoResult = <A, E, R>(
       Effect.uninterruptible
     )
   })
+
+const withoutInterrupts = <E>(cause: Cause.Cause<E>): Cause.Cause<E> =>
+  Cause.isInterrupted(cause)
+    ? Cause.filter(cause, (cause) => !Cause.isInterruptType(cause))
+    : cause
 
 /**
  * @since 1.0.0
