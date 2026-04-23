@@ -1,5 +1,11 @@
 # @effect/workflow
 
+## 0.18.1
+
+### Patch Changes
+
+- [#6196](https://github.com/Effect-TS/effect/pull/6196) [`ec042e7`](https://github.com/Effect-TS/effect/commit/ec042e71add5fe72637a48b3c6ba9795e3afe534) Thanks @tim-smart! - Fix workflow suspension handling so mixed failures preserve non-interrupt causes and DurableDeferred.into isolates inner suspension state.
+
 ## 0.18.0
 
 ### Patch Changes
