@@ -438,6 +438,20 @@ export declare namespace TaggedEnum {
  * ```
  *
  * @example
+ * ```ts
+ * import { Data } from "effect"
+ *
+ * type HttpError = Data.TaggedEnum<{
+ *   BadRequest: { readonly status: 400; readonly message: string }
+ *   NotFound: { readonly status: 404; readonly message: string }
+ * }>
+ *
+ * const { BadRequest, NotFound } = Data.taggedEnum<HttpError>()
+ *
+ * const notFound = NotFound({ status: 404, message: "Not Found" })
+ * ```
+ *
+ * @example
  * import { Data } from "effect"
  *
  * type MyResult<E, A> = Data.TaggedEnum<{
