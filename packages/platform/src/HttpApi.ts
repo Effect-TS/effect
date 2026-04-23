@@ -249,20 +249,30 @@ const makeProto = <Id extends string, Groups extends HttpApiGroup.HttpApiGroup.A
   return HttpApi as any
 }
 
+export interface HttpApiMakeOptions<E = never> {
+  errorSchema?: Schema.Schema<HttpApiDecodeError, E>
+}
+
 /**
  * An `HttpApi` is a collection of `HttpApiEndpoint`s. You can use an `HttpApi` to
  * represent a portion of your domain.
  *
  * The endpoints can be implemented later using the `HttpApiBuilder.make` api.
  *
+ * Allows a base error schema to be provided for transcoding HttpApiDecodeErrors.
+ * Defaults to `HttpApiDecodeError`.
+ *
  * @since 1.0.0
  * @category constructors
  */
-export const make = <const Id extends string>(identifier: Id): HttpApi<Id, never, HttpApiDecodeError> =>
+export const make = <const Id extends string>(
+  identifier: Id,
+  options?: HttpApiMakeOptions<any>
+): HttpApi<Id, never, HttpApiDecodeError> =>
   makeProto({
     identifier,
     groups: new Map() as any,
-    errorSchema: HttpApiDecodeError,
+    errorSchema: options?.errorSchema ?? HttpApiDecodeError,
     annotations: Context.empty(),
     middlewares: new Set()
   })
