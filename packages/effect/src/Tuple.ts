@@ -1,6 +1,11 @@
 /**
  * This module provides utility functions for working with tuples in TypeScript.
  *
+ * Some functions in this module (such as {@link getFirst}, {@link getSecond}, {@link mapBoth},
+ * {@link mapFirst}, {@link mapSecond}, and {@link swap}) only work with tuples of exactly
+ * 2 elements (pairs). Other functions (such as {@link make}, {@link map}, {@link at},
+ * {@link appendElement}) work with tuples of any length.
+ *
  * @since 2.0.0
  */
 import * as Equivalence from "./Equivalence.js"
@@ -34,7 +39,9 @@ export interface TupleTypeLambda extends TypeLambda {
 export const make = <A extends ReadonlyArray<any>>(...elements: A): A => elements
 
 /**
- * Return the first element from a tuple with two elements.
+ * Return the first element of a tuple with exactly 2 elements.
+ *
+ * For tuples of arbitrary length, use {@link at} with index `0` instead.
  *
  * @example
  * ```ts
@@ -50,7 +57,9 @@ export const make = <A extends ReadonlyArray<any>>(...elements: A): A => element
 export const getFirst = <L, R>(self: readonly [L, R]): L => self[0]
 
 /**
- * Return the second element from a tuple with two elements.
+ * Return the second element of a tuple with exactly 2 elements.
+ *
+ * For tuples of arbitrary length, use {@link at} with index `1` instead.
  *
  * @example
  * ```ts
@@ -100,7 +109,10 @@ export const map: {
 )
 
 /**
- * Transforms both elements of a tuple with two elements using the given functions.
+ * Transforms both elements of a tuple with exactly 2 elements using the given functions.
+ *
+ * This function only works with 2-element tuples (pairs). For tuples of
+ * arbitrary length, use {@link map} instead.
  *
  * @example
  * ```ts
@@ -137,7 +149,9 @@ export const mapBoth: {
 )
 
 /**
- * Transforms the first component of a tuple with two elements using a given function.
+ * Transforms the first element of a tuple with exactly 2 elements using a given function.
+ *
+ * Only works with 2-element tuples (pairs).
  *
  * @example
  * ```ts
@@ -159,7 +173,9 @@ export const mapFirst: {
 } = dual(2, <L1, R, L2>(self: readonly [L1, R], f: (left: L1) => L2): [L2, R] => [f(self[0]), self[1]])
 
 /**
- * Transforms the second component of a tuple with two elements using a given function.
+ * Transforms the second element of a tuple with exactly 2 elements using a given function.
+ *
+ * Only works with 2-element tuples (pairs).
  *
  * @example
  * ```ts
@@ -181,7 +197,9 @@ export const mapSecond: {
 } = dual(2, <L, R1, R2>(self: readonly [L, R1], f: (right: R1) => R2): [L, R2] => [self[0], f(self[1])])
 
 /**
- * Swaps the elements of a tuple with two elements.
+ * Swaps the two elements of a tuple with exactly 2 elements.
+ *
+ * Only works with 2-element tuples (pairs).
  *
  * @example
  * ```ts
