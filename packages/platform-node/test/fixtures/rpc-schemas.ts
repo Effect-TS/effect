@@ -27,13 +27,18 @@ class StreamUsers extends Schema.TaggedRequest<StreamUsers>()("StreamUsers", {
 
 class CurrentUser extends Context.Tag("CurrentUser")<CurrentUser, User>() {}
 
-class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {}) {}
+export class Unauthorized extends Schema.TaggedError<Unauthorized>("Unauthorized")("Unauthorized", {}) {}
+export class InvalidClientCredentials
+  extends Schema.TaggedError<InvalidClientCredentials>("InvalidClientCredentials")("InvalidClientCredentials", {})
+{}
 
-class AuthMiddleware extends RpcMiddleware.Tag<AuthMiddleware>()("AuthMiddleware", {
-  provides: CurrentUser,
-  failure: Unauthorized,
-  requiredForClient: true
-}) {}
+class AuthMiddleware
+  extends RpcMiddleware.Tag<AuthMiddleware, { clientError: InvalidClientCredentials }>()("AuthMiddleware", {
+    provides: CurrentUser,
+    failure: Unauthorized,
+    requiredForClient: true
+  })
+{}
 
 class TimingMiddleware extends RpcMiddleware.Tag<TimingMiddleware>()("TimingMiddleware", {
   wrap: true
@@ -82,9 +87,9 @@ export const UserRpcs = RpcGroup.make(
 const AuthLive = Layer.succeed(
   AuthMiddleware,
   AuthMiddleware.of((options) =>
-    Effect.succeed(
-      new User({ id: options.headers.userid ?? "1", name: options.headers.name ?? "Fallback name" })
-    )
+    options.headers.userid && options.headers.userid === "-2" ?
+      new Unauthorized({ failedOn: "Server" }) :
+      Effect.succeed(new User({ id: options.headers.userid ?? "1", name: options.headers.name ?? "Fallback name" }))
   )
 )
 
@@ -168,10 +173,12 @@ export const RpcLiveDisableFatalDefects = RpcServer.layer(UserRpcs, { disableFat
 )
 
 const AuthClient = RpcMiddleware.layerClient(AuthMiddleware, ({ request }) =>
-  Effect.succeed({
-    ...request,
-    headers: Headers.set(request.headers, "name", "Logged in user")
-  }))
+  request.headers.userid === "-1" ?
+    new InvalidClientCredentials() :
+    Effect.succeed({
+      ...request,
+      headers: Headers.set(request.headers, "name", "Logged in user")
+    }))
 
 export class UsersClient extends Context.Tag("UsersClient")<
   UsersClient,
