@@ -256,6 +256,11 @@ const InstanceTag = Context.GenericTag<WorkflowInstance, WorkflowInstance["Type"
   "@effect/workflow/WorkflowEngine/WorkflowInstance" satisfies typeof WorkflowInstance.key
 )
 
+const withoutInterrupts = <E>(cause: Cause.Cause<E>): Cause.Cause<E> =>
+  Cause.isInterrupted(cause) && !Cause.isInterruptedOnly(cause)
+    ? Cause.filter(cause, (cause) => !Cause.isInterruptType(cause))
+    : cause
+
 /**
  * @since 1.0.0
  * @category Constructors
@@ -532,12 +537,15 @@ export const intoResult = <A, E, R>(
       Effect.scoped,
       Effect.matchCauseEffect({
         onSuccess: (value) => Effect.succeed(new Complete({ exit: Exit.succeed(value) })),
-        onFailure: (cause): Effect.Effect<Result<A, E>> =>
-          instance.suspended
+        onFailure: (cause): Effect.Effect<Result<A, E>> => {
+          const isInterruptedOnly = Cause.isInterruptedOnly(cause)
+          const filtered = withoutInterrupts(cause)
+          return instance.suspended && isInterruptedOnly
             ? Effect.succeed(new Suspended({ cause: instance.cause }))
-            : (!instance.interrupted && Cause.isInterruptedOnly(cause)) || (!captureDefects && Cause.isDie(cause))
-            ? Effect.failCause(cause as Cause.Cause<never>)
-            : Effect.succeed(new Complete({ exit: Exit.failCause(cause) }))
+            : (!instance.interrupted && isInterruptedOnly) || (!captureDefects && Cause.isDie(cause))
+            ? Effect.failCause(filtered as Cause.Cause<never>)
+            : Effect.succeed(new Complete({ exit: Exit.failCause(filtered) }))
+        }
       }),
       Effect.onExit((exit) => {
         if (Exit.isFailure(exit)) {
@@ -562,11 +570,6 @@ export const wrapActivityResult = <A, E, R>(
   Effect.contextWithEffect((context: Context.Context<WorkflowInstance>) => {
     const instance = Context.get(context, InstanceTag)
     const state = instance.activityState
-    if (instance.suspended) {
-      return waitForZero(instance).pipe(
-        Effect.andThen(suspend(instance))
-      )
-    }
     if (state.count === 0) state.latch.unsafeClose()
     state.count++
     return Effect.onExit(effect, (exit) => {

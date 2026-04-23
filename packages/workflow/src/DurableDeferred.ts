@@ -3,7 +3,7 @@
  */
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import type * as Brand from "effect/Brand"
-import type * as Cause from "effect/Cause"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Encoding from "effect/Encoding"
@@ -99,6 +99,11 @@ const CurrentAttempt = Context.Reference<Activity.CurrentAttempt>()(
   }
 )
 
+const withoutInterrupts = <E>(cause: Cause.Cause<E>): Cause.Cause<E> =>
+  Cause.isInterrupted(cause) && !Cause.isInterruptedOnly(cause)
+    ? Cause.filter(cause, (cause) => !Cause.isInterruptType(cause))
+    : cause
+
 const await_: <Success extends Schema.Schema.Any, Error extends Schema.Schema.All>(
   self: DurableDeferred<Success, Error>
 ) => Effect.Effect<
@@ -159,12 +164,20 @@ export const into: {
 > =>
   Effect.contextWithEffect((context: Context.Context<WorkflowEngine | WorkflowInstance>) => {
     const engine = Context.get(context, EngineTag)
-    const instance = Context.get(context, InstanceTag)
-    return Effect.onExit(effect, (exit) => {
-      if (instance.suspended) return Effect.void
+    const parentInstance = Context.get(context, InstanceTag)
+    const instance = { ...parentInstance }
+    return Effect.onExit(Effect.provideService(effect, InstanceTag, instance), (exit) => {
+      if (Exit.isFailure(exit)) {
+        const isInterruptedOnly = Cause.isInterruptedOnly(exit.cause)
+        if (isInterruptedOnly && instance.suspended) {
+          parentInstance.suspended = true
+          return Effect.void
+        }
+        exit = Exit.failCause(withoutInterrupts(exit.cause))
+      }
       return engine.deferredDone(self, {
-        workflowName: instance.workflow.name,
-        executionId: instance.executionId,
+        workflowName: parentInstance.workflow.name,
+        executionId: parentInstance.executionId,
         deferredName: self.name,
         exit
       })
