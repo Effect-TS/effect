@@ -227,7 +227,7 @@ export const makeUrl = (url: string, params: UrlParams, hash: Option.Option<stri
  * @since 1.0.0
  * @category conversions
  */
-export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString()
+export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString().replace(/\+/g, "%20")
 
 const baseUrl = (): string | undefined => {
   if (

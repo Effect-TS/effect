@@ -84,6 +84,17 @@ describe("Url", () => {
     expectUrl(Url.modifyUrlParams(testURL, UrlParams.append("key", "value")), "https://example.com/test?key=value")
   })
 
+  it("modifyUrlParams preserves percent-encoded spaces in unmodified params", () => {
+    const url = new URL("https://example.com?foo=bar%20baz")
+    const result = Url.modifyUrlParams(url, (params) => params)
+    deepStrictEqual(result.search, "?foo=bar%20baz")
+  })
+
+  it("modifyUrlParams encodes spaces as %20 in new params", () => {
+    const result = Url.modifyUrlParams(testURL, UrlParams.append("key", "hello world"))
+    deepStrictEqual(result.search, "?key=hello%20world")
+  })
+
   it("urlParams", () => {
     const params = Url.urlParams(new URL("https://example.com?foo=bar&baz=qux"))
     deepStrictEqual(params, UrlParams.fromInput([["foo", "bar"], ["baz", "qux"]]))
