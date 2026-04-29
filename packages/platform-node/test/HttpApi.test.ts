@@ -311,6 +311,122 @@ describe("HttpApi", () => {
     assert.deepStrictEqual(spec, OpenApiFixture as any)
   })
 
+  it.effect("withEncoding sets custom JSON content-type on success response", () => {
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.get("test")`/test`.addSuccess(
+          Schema.Struct({ value: Schema.String }).pipe(
+            HttpApiSchema.withEncoding({ kind: "Json", contentType: "application/scim+json" })
+          )
+        )
+      )
+    )
+    const ApiLive = HttpLayerRouter.addHttpApi(Api).pipe(
+      Layer.provide(
+        HttpApiBuilder.group(
+          Api,
+          "group",
+          (handlers) => handlers.handle("test", () => Effect.succeed({ value: "hello" }))
+        )
+      ),
+      HttpLayerRouter.serve,
+      Layer.provideMerge(NodeHttpServer.layerTest)
+    )
+    return Effect.gen(function*() {
+      const response = yield* HttpClient.get("/test")
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["content-type"], "application/scim+json")
+    }).pipe(Effect.provide(ApiLive))
+  })
+
+  it.effect("withEncoding custom content-type on Class schema success response", () => {
+    class MyScimResult extends Schema.Class<MyScimResult>("MyScimResult")({ value: Schema.String }) {}
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.get("test")`/test`.addSuccess(
+          MyScimResult.pipe(
+            HttpApiSchema.withEncoding({ kind: "Json", contentType: "application/scim+json" })
+          )
+        )
+      )
+    )
+    const ApiLive = HttpLayerRouter.addHttpApi(Api).pipe(
+      Layer.provide(
+        HttpApiBuilder.group(
+          Api,
+          "group",
+          (handlers) => handlers.handle("test", () => Effect.succeed(new MyScimResult({ value: "hello" })))
+        )
+      ),
+      HttpLayerRouter.serve,
+      Layer.provideMerge(NodeHttpServer.layerTest)
+    )
+    return Effect.gen(function*() {
+      const response = yield* HttpClient.get("/test")
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["content-type"], "application/scim+json")
+    }).pipe(Effect.provide(ApiLive))
+  })
+
+  it.effect("withEncoding client decodes custom JSON content-type response", () => {
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.get("test")`/test`.addSuccess(
+          Schema.Struct({ value: Schema.String }).pipe(
+            HttpApiSchema.withEncoding({ kind: "Json", contentType: "application/scim+json" })
+          )
+        )
+      )
+    )
+    const ApiLive = HttpLayerRouter.addHttpApi(Api).pipe(
+      Layer.provide(
+        HttpApiBuilder.group(
+          Api,
+          "group",
+          (handlers) => handlers.handle("test", () => Effect.succeed({ value: "hello" }))
+        )
+      ),
+      HttpLayerRouter.serve,
+      Layer.provideMerge(NodeHttpServer.layerTest)
+    )
+    return Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const result = yield* client.group.test({})
+      assert.deepStrictEqual(result, { value: "hello" })
+    }).pipe(Effect.provide(ApiLive))
+  })
+
+  it.effect("withEncoding payload with custom JSON content-type is parsed as JSON on server", () => {
+    const Api = HttpApi.make("api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.post("test")`/test`
+          .setPayload(
+            Schema.Struct({ value: Schema.String }).pipe(
+              HttpApiSchema.withEncoding({ kind: "Json", contentType: "application/scim+json" })
+            )
+          )
+          .addSuccess(Schema.Struct({ received: Schema.String }))
+      )
+    )
+    const ApiLive = HttpLayerRouter.addHttpApi(Api).pipe(
+      Layer.provide(
+        HttpApiBuilder.group(
+          Api,
+          "group",
+          (handlers) =>
+            handlers.handle("test", ({ payload }) => Effect.succeed({ received: payload.value }))
+        )
+      ),
+      HttpLayerRouter.serve,
+      Layer.provideMerge(NodeHttpServer.layerTest)
+    )
+    return Effect.gen(function*() {
+      const client = yield* HttpApiClient.make(Api)
+      const result = yield* client.group.test({ payload: { value: "world" } })
+      assert.deepStrictEqual(result, { received: "world" })
+    }).pipe(Effect.provide(ApiLive))
+  })
+
   it.effect("error from plain text", () => {
     class RateLimitError extends Schema.TaggedError<RateLimitError>("RateLimitError")(
       "RateLimitError",
