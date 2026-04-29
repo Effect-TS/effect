@@ -8,6 +8,7 @@
     { "path": "packages/ai/anthropic/tsconfig.build.json" },
     { "path": "packages/ai/google/tsconfig.build.json" },
     { "path": "packages/ai/openai/tsconfig.build.json" },
+    { "path": "packages/ai/perplexity/tsconfig.build.json" },
     { "path": "packages/cli/tsconfig.build.json" },
     { "path": "packages/cluster/tsconfig.build.json" },
     { "path": "packages/experimental/tsconfig.build.json" },
