@@ -1951,6 +1951,78 @@ describe("OpenApi", () => {
           expectSpecPaths(api, expected)
         })
       })
+
+      it("setPayload with a flat JSON union produces flat anyOf (not nested)", () => {
+        const A = Schema.Struct({ _tag: Schema.Literal("A"), a: Schema.String })
+        const B = Schema.Struct({ _tag: Schema.Literal("B"), b: Schema.Number })
+        const C = Schema.Struct({ _tag: Schema.Literal("C"), c: Schema.Boolean })
+        const api = HttpApi.make("api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.post("post", "/")
+              .addSuccess(Schema.String)
+              .setPayload(Schema.Union(A, B, C))
+          )
+        )
+        expectSpecPaths(api, {
+          "/": {
+            "post": {
+              "tags": ["group"],
+              "operationId": "group.post",
+              "parameters": [],
+              "security": [],
+              "requestBody": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": ["_tag", "a"],
+                          "properties": {
+                            "_tag": { "enum": ["A"], "type": "string" },
+                            "a": { "type": "string" }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": ["_tag", "b"],
+                          "properties": {
+                            "_tag": { "enum": ["B"], "type": "string" },
+                            "b": { "type": "number" }
+                          },
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "required": ["_tag", "c"],
+                          "properties": {
+                            "_tag": { "enum": ["C"], "type": "string" },
+                            "c": { "type": "boolean" }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": true
+              },
+              "responses": {
+                "200": {
+                  "description": "a string",
+                  "content": {
+                    "application/json": {
+                      "schema": { "type": "string" }
+                    }
+                  }
+                },
+                "400": HttpApiDecodeError
+              }
+            }
+          }
+        })
+      })
     })
 
     describe("HttpApiEndpoint.del", () => {

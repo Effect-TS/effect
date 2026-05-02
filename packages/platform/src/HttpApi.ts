@@ -419,7 +419,7 @@ const extractPayloads = (topAst: AST.AST): ReadonlyMap<string, {
         ast
       })
     } else {
-      current.ast = AST.Union.make([current.ast, ast])
+      current.ast = HttpApiSchema.UnionUnifyAST(current.ast, ast)
     }
   }
   if (topAst._tag === "Union") {
