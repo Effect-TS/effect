@@ -139,7 +139,7 @@ export const toAnsiDoc = (self: Span.Span): Doc.AnsiDoc => {
       return Doc.annotate(Doc.text(self.value), Ansi.underlined)
     }
     case "Weak": {
-      return Doc.annotate(toAnsiDoc(self.value), Ansi.black)
+      return Doc.annotate(toAnsiDoc(self.value), Ansi.blackBright)
     }
   }
 }
