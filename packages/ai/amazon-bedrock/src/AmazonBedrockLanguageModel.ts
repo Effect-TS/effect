@@ -206,6 +206,26 @@ export const make = Effect.fnUntraced(function*(options: {
       const { messages, system } = yield* prepareMessages(providerOptions)
       const { additionalTools, betas, toolConfig } = yield* prepareTools(providerOptions, config)
       const responseFormat = providerOptions.responseFormat
+
+      // Anthropic rejects requests that combine extended thinking with forced tool use.
+      // generateObject always forces toolChoice, so strip "thinking" in the json path.
+      // Return an explicit object (even if empty) when fields are present so the spread
+      // overrides the thinking config already placed in the request by ...config above.
+      const requestAdditionalFields: Record<string, unknown> | undefined = responseFormat.type === "json"
+        ? (Predicate.isNotUndefined(config.additionalModelRequestFields) ||
+            Predicate.isNotUndefined(additionalTools))
+          ? (() => {
+            const { thinking: _thinking, ...rest } = {
+              ...config.additionalModelRequestFields,
+              ...additionalTools
+            }
+            return rest
+          })()
+          : undefined
+        : Predicate.isNotUndefined(additionalTools)
+        ? { ...config.additionalModelRequestFields, ...additionalTools }
+        : undefined
+
       const request: typeof ConverseRequest.Encoded = {
         ...config,
         system,
@@ -231,13 +251,8 @@ export const make = Effect.fnUntraced(function*(options: {
           ? { toolConfig }
           : {}),
         // Handle additional model request fields
-        ...(Predicate.isNotUndefined(additionalTools)
-          ? {
-            additionalModelRequestFields: {
-              ...config.additionalModelRequestFields,
-              ...additionalTools
-            }
-          }
+        ...(Predicate.isNotUndefined(requestAdditionalFields)
+          ? { additionalModelRequestFields: requestAdditionalFields }
           : {})
       }
       return { betas, request }
