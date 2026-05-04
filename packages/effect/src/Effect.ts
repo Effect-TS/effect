@@ -5461,6 +5461,29 @@ export const acquireRelease: {
 } = fiberRuntime.acquireRelease
 
 /**
+ * Constructs a scoped resource from an {@linkcode AsyncDisposable} or {@linkcode Disposable}
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using}
+ *
+ * @example
+ * import sqlite from "node:sqlite";
+ * import { Effect } from "effect";
+ *
+ * // Define how the resource is acquired
+ * const acquire = Effect.sync(() => new sqlite.DatabaseSync(":memory:"))
+ * const resource = Effect.acquireDisposable(acquire)
+ *
+ * @see {@link acquireRelease} for more information about scopes.
+ *
+ * @since 3.0.0
+ * @category Scoping, Resources & Finalization
+ */
+export const acquireDisposable: {
+  <A extends AsyncDisposable | Disposable, E, R>(
+    acquire: Effect<A, E, R>
+  ): Effect<A, E, R | Scope.Scope>
+} = fiberRuntime.acquireDisposable
+
+/**
  * Creates a scoped resource with an interruptible acquire action.
  *
  * **Details**

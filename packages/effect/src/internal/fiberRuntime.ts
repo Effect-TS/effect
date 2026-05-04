@@ -1692,6 +1692,17 @@ export const acquireRelease: {
   ))
 
 /* @internal */
+export const acquireDisposable: {
+  <A extends AsyncDisposable | Disposable, E, R>(
+    acquire: Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R | Scope.Scope>
+} = (acquire) =>
+  acquireRelease(acquire, (resource) =>
+    Predicate.hasProperty(resource, Symbol.asyncDispose)
+      ? internalEffect.promise(() => resource[Symbol.asyncDispose]())
+      : core.sync(() => resource[Symbol.dispose]()))
+
+/* @internal */
 export const acquireReleaseInterruptible: {
   <X, R2>(
     release: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<X, never, R2>
