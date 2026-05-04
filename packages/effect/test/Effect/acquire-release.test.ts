@@ -3,7 +3,6 @@ import { assertEquals, assertFalse, assertTrue, strictEqual } from "@effect/vite
 import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Effect from "effect/Effect"
-import { equals } from "effect/Equal"
 import * as Exit from "effect/Exit"
 import { pipe } from "effect/Function"
 import * as Ref from "effect/Ref"
@@ -64,8 +63,8 @@ describe("Effect", () => {
         exit,
         Exit.matchEffect({ onFailure: Effect.succeed, onSuccess: () => Effect.fail("effect should have failed") })
       )
-      assertTrue(equals(Cause.failures(result), Chunk.of("use failed")))
-      assertTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
+      assertEquals(Cause.failures(result), Chunk.of("use failed"))
+      assertEquals(Cause.defects(result), Chunk.of(releaseDied))
     }))
   it.effect("acquireUseRelease - error handling + disconnect", () =>
     Effect.gen(function*() {
@@ -86,8 +85,8 @@ describe("Effect", () => {
           onSuccess: () => Effect.fail("effect should have failed")
         })
       )
-      assertTrue(equals(Cause.failures(result), Chunk.of("use failed")))
-      assertTrue(equals(Cause.defects(result), Chunk.of(releaseDied)))
+      assertEquals(Cause.failures(result), Chunk.of("use failed"))
+      assertEquals(Cause.defects(result), Chunk.of(releaseDied))
     }))
   it.effect("acquireUseRelease - beast mode error handling + disconnect", () =>
     Effect.gen(function*() {
@@ -116,7 +115,7 @@ describe("Effect", () => {
         )
       )
       const released = yield* (Ref.get(release))
-      assertTrue(equals(Cause.defects(result), Chunk.of(useDied)))
+      assertEquals(Cause.defects(result), Chunk.of(useDied))
       assertTrue(released)
     }))
   it.effect("acquireDisposable - happy path", () =>
