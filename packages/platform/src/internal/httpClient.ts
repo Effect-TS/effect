@@ -3,7 +3,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import { constFalse, dual, flow, identity } from "effect/Function"
+import { constFalse, constTrue, dual, flow, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
@@ -97,6 +97,58 @@ export const withSpanNameGenerator = dual<
     f: (request: ClientRequest.HttpClientRequest) => string
   ) => Client.HttpClient.With<E, R>
 >(2, (self, f) => transformResponse(self, Effect.provideService(SpanNameGenerator, f)))
+
+/** @internal */
+export const currentTracerRequestHeadersFilter = globalValue(
+  Symbol.for("@effect/platform/HttpClient/tracerRequestHeadersFilter"),
+  () => FiberRef.unsafeMake<Predicate.Predicate<string>>(constTrue)
+)
+
+/** @internal */
+export const withTracerRequestHeadersFilter = dual<
+  (
+    predicate: Predicate.Predicate<string>
+  ) => <E, R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R>,
+  <E, R>(
+    self: Client.HttpClient.With<E, R>,
+    predicate: Predicate.Predicate<string>
+  ) => Client.HttpClient.With<E, R>
+>(2, (self, predicate) => transformResponse(self, Effect.locally(currentTracerRequestHeadersFilter, predicate)))
+
+/** @internal */
+export const currentTracerResponseHeadersFilter = globalValue(
+  Symbol.for("@effect/platform/HttpClient/tracerResponseHeadersFilter"),
+  () => FiberRef.unsafeMake<Predicate.Predicate<string>>(constTrue)
+)
+
+/** @internal */
+export const withTracerResponseHeadersFilter = dual<
+  (
+    predicate: Predicate.Predicate<string>
+  ) => <E, R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R>,
+  <E, R>(
+    self: Client.HttpClient.With<E, R>,
+    predicate: Predicate.Predicate<string>
+  ) => Client.HttpClient.With<E, R>
+>(2, (self, predicate) => transformResponse(self, Effect.locally(currentTracerResponseHeadersFilter, predicate)))
+
+/** @internal */
+export const withTracerHeadersFilter = dual<
+  (
+    predicate: Predicate.Predicate<string>
+  ) => <E, R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R>,
+  <E, R>(
+    self: Client.HttpClient.With<E, R>,
+    predicate: Predicate.Predicate<string>
+  ) => Client.HttpClient.With<E, R>
+>(2, (self, predicate) =>
+  transformResponse(
+    self,
+    flow(
+      Effect.locally(currentTracerRequestHeadersFilter, predicate),
+      Effect.locally(currentTracerResponseHeadersFilter, predicate)
+    )
+  ))
 
 const ClientProto = {
   [TypeId]: TypeId,
@@ -250,8 +302,11 @@ export const make = (
             }
             const redactedHeaderNames = fiber.getFiberRef(Headers.currentRedactedNames)
             const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
+            const requestHeaderFilter = fiber.getFiberRef(currentTracerRequestHeadersFilter)
             for (const name in redactedHeaders) {
-              span.attribute(ATTR_HTTP_REQUEST_HEADER(name), String(redactedHeaders[name]))
+              if (requestHeaderFilter(name)) {
+                span.attribute(ATTR_HTTP_REQUEST_HEADER(name), String(redactedHeaders[name]))
+              }
             }
             request = fiber.getFiberRef(currentTracerPropagation)
               ? internalRequest.setHeaders(request, TraceContext.toHeaders(span))
@@ -263,8 +318,11 @@ export const make = (
                   onSuccess: (response) => {
                     span.attribute(ATTR_HTTP_RESPONSE_STATUS_CODE, response.status)
                     const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
+                    const responseHeaderFilter = fiber.getFiberRef(currentTracerResponseHeadersFilter)
                     for (const name in redactedHeaders) {
-                      span.attribute(ATTR_HTTP_RESPONSE_HEADER(name), String(redactedHeaders[name]))
+                      if (responseHeaderFilter(name)) {
+                        span.attribute(ATTR_HTTP_RESPONSE_HEADER(name), String(redactedHeaders[name]))
+                      }
                     }
                     if (scopedController) return Effect.succeed(response)
                     responseRegistry.register(response, controller)

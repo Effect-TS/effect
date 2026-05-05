@@ -724,6 +724,111 @@ export const withSpanNameGenerator: {
 } = internal.withSpanNameGenerator
 
 /**
+ * A `FiberRef` controlling which request headers are captured as OTEL span
+ * attributes. The predicate receives each header name (lower-cased) and should
+ * return `true` to include it. Defaults to `constTrue` (capture all).
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const currentTracerRequestHeadersFilter: FiberRef.FiberRef<Predicate.Predicate<string>> =
+  internal.currentTracerRequestHeadersFilter
+
+/**
+ * Restricts which request headers are recorded as OTEL span attributes.
+ *
+ * ```ts
+ * import { FetchHttpClient, HttpClient } from "@effect/platform"
+ * import { NodeRuntime } from "@effect/platform-node"
+ * import { Effect } from "effect"
+ *
+ * const allowedRequestHeaders = new Set(["content-type", "x-request-id"])
+ *
+ * Effect.gen(function* () {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.withTracerRequestHeadersFilter((name) => allowedRequestHeaders.has(name))
+ *   )
+ *
+ *   yield* client.get("https://api.example.com/data")
+ * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+ * ```
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const withTracerRequestHeadersFilter: {
+  (predicate: Predicate.Predicate<string>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, predicate: Predicate.Predicate<string>): HttpClient.With<E, R>
+} = internal.withTracerRequestHeadersFilter
+
+/**
+ * A `FiberRef` controlling which response headers are captured as OTEL span
+ * attributes. The predicate receives each header name (lower-cased) and should
+ * return `true` to include it. Defaults to `constTrue` (capture all).
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const currentTracerResponseHeadersFilter: FiberRef.FiberRef<Predicate.Predicate<string>> =
+  internal.currentTracerResponseHeadersFilter
+
+/**
+ * Restricts which response headers are recorded as OTEL span attributes.
+ *
+ * ```ts
+ * import { FetchHttpClient, HttpClient } from "@effect/platform"
+ * import { NodeRuntime } from "@effect/platform-node"
+ * import { Effect } from "effect"
+ *
+ * const allowedResponseHeaders = new Set(["content-type", "x-request-id", "x-ratelimit-remaining"])
+ *
+ * Effect.gen(function* () {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.withTracerResponseHeadersFilter((name) => allowedResponseHeaders.has(name))
+ *   )
+ *
+ *   yield* client.get("https://api.example.com/data")
+ * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+ * ```
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const withTracerResponseHeadersFilter: {
+  (predicate: Predicate.Predicate<string>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, predicate: Predicate.Predicate<string>): HttpClient.With<E, R>
+} = internal.withTracerResponseHeadersFilter
+
+/**
+ * Restricts which headers are recorded as OTEL span attributes for both
+ * requests and responses. Equivalent to calling `withTracerRequestHeadersFilter`
+ * and `withTracerResponseHeadersFilter` with the same predicate.
+ *
+ * ```ts
+ * import { FetchHttpClient, HttpClient } from "@effect/platform"
+ * import { NodeRuntime } from "@effect/platform-node"
+ * import { Effect } from "effect"
+ *
+ * const allowedHeaders = new Set(["content-type", "x-request-id"])
+ *
+ * Effect.gen(function* () {
+ *   const client = (yield* HttpClient.HttpClient).pipe(
+ *     HttpClient.withTracerHeadersFilter((name) => allowedHeaders.has(name))
+ *   )
+ *
+ *   yield* client.get("https://api.example.com/data")
+ * }).pipe(Effect.provide(FetchHttpClient.layer), NodeRuntime.runMain)
+ * ```
+ *
+ * @since 1.0.0
+ * @category Tracing
+ */
+export const withTracerHeadersFilter: {
+  (predicate: Predicate.Predicate<string>): <E, R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R>
+  <E, R>(self: HttpClient.With<E, R>, predicate: Predicate.Predicate<string>): HttpClient.With<E, R>
+} = internal.withTracerHeadersFilter
+
+/**
  * Ties the lifetime of the `HttpClientRequest` to a `Scope`.
  *
  * @since 1.0.0
