@@ -313,10 +313,12 @@ export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
       if (self.state._tag === "Closed" || self.state.fiber === undefined) {
         return Effect.void
       }
+      const target = self.state.fiber
+
       return Effect.zipRight(
-        restore(Fiber.interruptAs(self.state.fiber, FiberId.combine(fiber.id(), internalFiberId))),
+        restore(Fiber.interruptAs(target, FiberId.combine(fiber.id(), internalFiberId))),
         Effect.sync(() => {
-          if (self.state._tag === "Open") {
+          if (self.state._tag === "Open" && self.state.fiber === target) {
             self.state.fiber = undefined
           }
         })
