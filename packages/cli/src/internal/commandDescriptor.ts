@@ -1081,7 +1081,7 @@ const getBashCompletionsInternal = (
         : pipe(
           info.parentCommands,
           Arr.append(info.command.name),
-          Arr.map((command) => command.replace("-", "__"))
+          Arr.map((command) => command.replaceAll("-", "__"))
         )
       const caseName = Arr.join(preformatted, ",")
       const funcName = Arr.join(preformatted, "__")
@@ -1238,7 +1238,7 @@ const getZshCompletionsInternal = (
       : pipe(
         info.parentCommands,
         Arr.append(info.command.name),
-        Arr.map((command) => command.replace("-", "__"))
+        Arr.map((command) => command.replaceAll("-", "__"))
       )
     const underscoreName = Arr.join(preformatted, "__")
     const spaceName = Arr.join(preformatted, " ")
