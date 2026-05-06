@@ -77,7 +77,6 @@ export const makeDSTTester = (
     const timeout = options?.timeout ?? 60_000
 
     it(name, { timeout }, async (ctx) => {
-      // Lazy-load DSTScheduler to avoid circular deps at import time
       const DSTScheduler: typeof DSTSchedulerMod = require("effect/DSTScheduler")
 
       for (let i = 0; i < seeds; i++) {

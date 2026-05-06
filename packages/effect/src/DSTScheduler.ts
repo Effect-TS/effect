@@ -112,14 +112,6 @@ export const make: (config: DSTConfig) => DSTScheduler = DSTSchedulerImpl.make
 /**
  * Run an Effect under full deterministic simulation.
  *
- * This function:
- * 1. Creates a DSTScheduler with the given seed
- * 2. Installs it as the current scheduler via `withScheduler`
- * 3. Installs a seeded Random for deterministic randomness
- * 4. Patches FiberId generation for deterministic fiber IDs
- * 5. Steps the scheduler until completion or maxSteps
- * 6. Returns the DSTResult with exit value and event log
- *
  * @since 3.22.0
  * @category execution
  */

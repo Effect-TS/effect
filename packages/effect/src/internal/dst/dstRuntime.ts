@@ -56,7 +56,6 @@ export const patchFiberId = (deterministicTimeMs: number): FiberIdPatch => {
   const savedCount = MutableRef.get(counter)
   MutableRef.set(counter, 0)
 
-  // Use the proper clock source API instead of monkey-patching Date.now
   _fiberId.setClockSource(() => deterministicTimeMs)
 
   return { savedCount }
@@ -67,7 +66,6 @@ export const unpatchFiberId = (patch: FiberIdPatch): void => {
   const counter = getFiberCounter()
   MutableRef.set(counter, patch.savedCount)
 
-  // Restore the real clock source
   _fiberId.resetClockSource()
 }
 
@@ -86,24 +84,18 @@ export const run = <A, E>(
     const scheduler = DSTSchedulerImpl.make(config)
     const seededRandom = _random.make(config.seed)
 
-    // Patch FiberId for determinism — uses configurable clock source, NOT Date.now monkey-patch
     const fiberIdPatch = patchFiberId(0)
 
     try {
-      // Wrap with seeded random
       const wrappedEffect = defaultServices.withRandom(seededRandom)(effect)
 
-      // Fork fiber with DST scheduler, immediate:false so initial task
-      // goes through scheduleTask() instead of drainQueueOnCurrentThread()
       const fiber = _runtime.unsafeForkEffect(wrappedEffect, {
         scheduler,
         immediate: false
       })
 
-      // Step the scheduler synchronously until all fibers complete or maxSteps
       const steps = scheduler.stepUntilDone()
 
-      // Read the fiber's exit value synchronously
       const exit = fiber.unsafePoll()
 
       return {

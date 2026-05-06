@@ -72,7 +72,6 @@ export const blameLines = (
 
     const relativePath = path.relative(repoRoot, filePath)
 
-    // Build -L flags for each line
     const lineFlags = lines.map((l) => `-L ${l},${l}`).join(" ")
 
     const stdout = yield* Effect.try(() =>
@@ -98,7 +97,6 @@ export const parseLinePorcelain = (output: string, filePath: string): BlameMap =
   while (i < lines.length) {
     const line = lines[i]!
 
-    // Each block starts with a 40-char hex commit hash
     const headerMatch = line.match(/^([0-9a-f]{40})\s+(\d+)\s+(\d+)/)
     if (!headerMatch) {
       i++

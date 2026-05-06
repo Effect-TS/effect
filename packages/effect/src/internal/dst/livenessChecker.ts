@@ -91,8 +91,6 @@ export const checkLiveness = (
   }
 
   // ── Starvation detection ────────────────────────────────────────────
-  // For each fiber, check if the gap between consecutive executions
-  // exceeds maxStarvationTicks.
 
   const starvation: Array<StarvationEntry> = []
 
@@ -110,10 +108,6 @@ export const checkLiveness = (
   }
 
   // ── Deadlock detection ──────────────────────────────────────────────
-  // Deadlock: the event log ends with no executions in the last N events,
-  // only schedule events (fibers are scheduling but nobody is making progress).
-  // Or: there are fibers that were scheduled but never completed, and
-  // stepping stopped due to maxSteps.
 
   let deadlockDetected = false
   if (events.length > 10) {
@@ -125,7 +119,6 @@ export const checkLiveness = (
     }
   }
 
-  // Also detect mutual wait: fibers that were scheduled but never executed
   const scheduledFibers = new Set(fiberScheduleTicks.keys())
   const executedFibers = new Set(fiberExecuteTicks.keys())
   for (const fid of scheduledFibers) {
@@ -136,8 +129,6 @@ export const checkLiveness = (
   }
 
   // ── Infinite loop detection ─────────────────────────────────────────
-  // Sliding window over execute events. If one fiberId appears in >80%
-  // of executions in a window, it's monopolizing the scheduler.
 
   const infiniteLoops: Array<InfiniteLoopEntry> = []
   const executeEvents = events.filter(e => e.action === "execute" && e.fiberId !== -1)

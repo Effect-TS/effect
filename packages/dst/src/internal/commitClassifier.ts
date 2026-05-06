@@ -59,14 +59,12 @@ const KEYWORD_PATTERNS: Array<[RegExp, CommitIntent]> = [
 export const classifyCommit = (message: string): CommitIntent => {
   const trimmed = message.trim()
 
-  // Phase 1: Conventional commit prefix
   for (const [pattern, intent] of CONVENTIONAL_PATTERNS) {
     if (pattern.test(trimmed)) {
       return intent
     }
   }
 
-  // Phase 2: Keyword detection
   for (const [pattern, intent] of KEYWORD_PATTERNS) {
     if (pattern.test(trimmed)) {
       return intent

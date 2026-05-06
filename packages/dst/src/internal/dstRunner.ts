@@ -74,12 +74,10 @@ const runSingleSeed = <A, E>(
     }
 
     if (config.enableProfiling) {
-      // Run with V8 profiling
       const profileResult = yield* V8Profiler.captureProfile(
         DSTScheduler.run(effect, dstConfig),
         { testName: `dst-seed-${seed}`, seed, steps: 0 }
       ).pipe(Effect.catchAll((err) => {
-        // If profiling fails, fall back to non-profiled run
         return Effect.map(DSTScheduler.run(effect, dstConfig), (dstResult) => ({
           exit: Exit.succeed(dstResult) as any,
           profile: { nodes: [], startTime: 0, endTime: 0 } as V8Profiler.V8Profile,
@@ -100,7 +98,6 @@ const runSingleSeed = <A, E>(
       const passed = Exit.isSuccess(dstResult.exit)
       const durationMs = Date.now() - startMs
 
-      // Annotate with git blame if enabled
       let report: ReportGenerator.DSTReport | undefined
       if (config.enableBlame && repoRoot && profileResult.profile.nodes.length > 0) {
         const annotated = yield* ProfileAnnotator.annotateProfile(
@@ -115,7 +112,6 @@ const runSingleSeed = <A, E>(
         })
       }
 
-      // Save profile to disk if output dir specified
       if (config.outputDir && profileResult.profile.nodes.length > 0) {
         const outputPath = `${config.outputDir}/seed-${seed}.cpuprofile`
         yield* V8Profiler.saveProfile(
@@ -135,7 +131,6 @@ const runSingleSeed = <A, E>(
         report
       }
     } else {
-      // Run without profiling
       const dstResult = yield* DSTScheduler.run(effect, dstConfig)
       const passed = Exit.isSuccess(dstResult.exit)
       const durationMs = Date.now() - startMs
@@ -167,7 +162,6 @@ export const runSuite = <A, E>(
       const seedStart = config.seedStart ?? 0
       const seedCount = config.seedCount ?? 100
 
-      // Detect repo root if blame is enabled
       let repoRoot: string | null = null
       if (config.enableBlame) {
         repoRoot = yield* GitBlame.findRepoRoot().pipe(
@@ -188,7 +182,6 @@ export const runSuite = <A, E>(
         }
       }
 
-      // Attempt shrinking on first failure
       let shrunkSeed: number | undefined
       if (failingSeeds.length > 0) {
         const firstFail = failingSeeds[0]!
@@ -223,7 +216,6 @@ const shrinkFailure = <A, E>(
   repoRoot: string | null
 ): Effect.Effect<number, never, Scope.Scope> =>
   Effect.gen(function*() {
-    // Try increasing maxOpsBeforeYield to find simpler interleaving
     for (const maxOps of [2, 4, 8, 16, 32]) {
       const result = yield* runSingleSeed(
         effect,
@@ -232,7 +224,6 @@ const shrinkFailure = <A, E>(
         repoRoot
       )
       if (result.passed) {
-        // Previous maxOps was the minimal
         return failingSeed
       }
     }

@@ -81,10 +81,8 @@ export const captureProfile = <A, E, R>(
   metadata: Omit<ProfileMetadata, "capturedAt" | "passed">
 ): Effect.Effect<ProfileResult<A, E>, Error, R | Scope.Scope> =>
   Effect.gen(function*() {
-    // Dynamic import to avoid issues in non-Node environments
     const inspector = yield* Effect.try(() => require("node:inspector") as typeof import("node:inspector"))
 
-    // Create and manage session
     const session = new inspector.Session()
     session.connect()
 
@@ -93,19 +91,15 @@ export const captureProfile = <A, E, R>(
         try {
           session.disconnect()
         } catch {
-          // Session may already be disconnected
         }
       })
     )
 
-    // Enable profiler and start
     yield* post(session, "Profiler.enable")
     yield* post(session, "Profiler.start")
 
-    // Run the effect, capturing its exit
     const exit = yield* Effect.exit(effect)
 
-    // Stop profiler and get results
     const { profile } = yield* post(session, "Profiler.stop")
     yield* post(session, "Profiler.disable")
 

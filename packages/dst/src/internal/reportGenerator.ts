@@ -54,7 +54,6 @@ export const generateReport = (
 ): DSTReport => {
   const totalTime = annotatedNodes.reduce((sum, n) => sum + n.selfTime, 0)
 
-  // Group by author
   const byAuthor = new Map<string, {
     email: string
     totalTime: number
@@ -96,7 +95,6 @@ export const generateReport = (
     }))
     .sort((a, b) => b.totalSelfTime - a.totalSelfTime)
 
-  // Top functions across all developers
   const allFrames: Array<HotFrame & { author: string }> = []
   for (const spot of hotspots) {
     for (const frame of spot.hotFrames) {
@@ -134,7 +132,6 @@ export const toMarkdown = (report: DSTReport): string => {
   lines.push(`- **Total Profiled Time**: ${(report.totalProfiledTime / 1000).toFixed(1)}ms`)
   lines.push("")
 
-  // Developer Hotspots
   lines.push("## Developer Hotspots")
   lines.push("")
   lines.push("| Rank | Developer | Email | Self Time | % |")
@@ -148,7 +145,6 @@ export const toMarkdown = (report: DSTReport): string => {
   }
   lines.push("")
 
-  // Top Functions
   lines.push("## Top Functions by Self Time")
   lines.push("")
   lines.push("| Function | File:Line | Author | Self Time | Commit |")

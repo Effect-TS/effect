@@ -41,10 +41,8 @@ export const annotateProfile = (
   repoRoot: string
 ): Effect.Effect<ReadonlyArray<AnnotatedNode>, Error> =>
   Effect.gen(function*() {
-    // Step 1: Resolve source maps
     const resolvedNodes = SourceMapResolver.resolveProfileNodes(profile.nodes)
 
-    // Step 2: Collect unique source files
     const uniqueFiles = new Set<string>()
     for (const { resolved } of resolvedNodes) {
       if (resolved?.originalFile) {
@@ -52,7 +50,6 @@ export const annotateProfile = (
       }
     }
 
-    // Step 3: Run git blame for each file (bounded concurrency)
     const blameMaps = yield* Effect.forEach(
       [...uniqueFiles],
       (file) =>
@@ -63,7 +60,6 @@ export const annotateProfile = (
       { concurrency: 8 }
     )
 
-    // Step 4: Build unified blame lookup
     const blameIndex = new Map<string, BlameEntry>()
     for (const [_, map] of blameMaps) {
       for (const [key, entry] of map) {
@@ -71,10 +67,8 @@ export const annotateProfile = (
       }
     }
 
-    // Step 5: Compute self-times
     const selfTimes = computeSelfTimes(profile)
 
-    // Step 6: Annotate
     return resolvedNodes.map(({ node, resolved }) => ({
       node,
       resolved,

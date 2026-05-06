@@ -66,9 +66,6 @@ export const make = (config: DSTSchedulerConfig): DSTScheduler => {
 
   let tick = 0
 
-  // Per-fiber pending task count — used to detect fiber completion.
-  // When a fiber's count drops to 0 after execution and no new tasks
-  // were scheduled for it, the fiber has completed.
   const fiberPendingCount = new Map<number, number>()
 
   const incFiberPending = (fiberId: number) => {
@@ -122,11 +119,9 @@ export const make = (config: DSTSchedulerConfig): DSTScheduler => {
         return false
       }
 
-      // Use PRNG to pick which task to execute next
       const index = pending.length === 1 ? 0 : prng.integer(pending.length)
       const chosen = pending[index]!
 
-      // Remove the chosen task from pending
       pending.splice(index, 1)
       decFiberPending(chosen.fiberId)
 
@@ -139,21 +134,15 @@ export const make = (config: DSTSchedulerConfig): DSTScheduler => {
         pendingCount: pending.length
       })
 
-      // Track the pending count for this fiber BEFORE execution
       const fiberPendingBefore = fiberPendingCount.get(chosen.fiberId) ?? 0
 
       tick++
 
-      // Execute the task. This may cause new tasks to be scheduled.
-      // executing
       try {
         chosen.task()
       } finally {
-        // done executing
       }
 
-      // Check if this fiber completed: it had no pending tasks before
-      // execution, and still has none after (no new tasks were scheduled for it)
       const fiberPendingAfter = fiberPendingCount.get(chosen.fiberId) ?? 0
       if (fiberPendingBefore === 0 && fiberPendingAfter === 0) {
         eventLog.append({

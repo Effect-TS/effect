@@ -31,7 +31,6 @@ export const resolveCallFrame = (callFrame: CallFrame): ResolvedLocation | null 
       return null
     }
 
-    // Try node:module's findSourceMap (works for loaded modules)
     try {
       const { findSourceMap } = require("node:module") as typeof import("node:module")
       const sourceMap = findSourceMap(filePath)
@@ -48,10 +47,8 @@ export const resolveCallFrame = (callFrame: CallFrame): ResolvedLocation | null 
         }
       }
     } catch {
-      // findSourceMap not available or failed
     }
 
-    // Fallback: try reading the .map file directly
     try {
       const fs = require("node:fs") as typeof import("node:fs")
       const path = require("node:path") as typeof import("node:path")
@@ -71,10 +68,8 @@ export const resolveCallFrame = (callFrame: CallFrame): ResolvedLocation | null 
         }
       }
     } catch {
-      // .map file not found or invalid
     }
 
-    // If the file is already a .ts file, return it directly
     if (filePath.endsWith(".ts") || filePath.endsWith(".tsx")) {
       return {
         originalFile: filePath,
