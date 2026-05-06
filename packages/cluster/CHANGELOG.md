@@ -1,5 +1,11 @@
 # @effect/cluster
 
+## 0.58.3
+
+### Patch Changes
+
+- [#6217](https://github.com/Effect-TS/effect/pull/6217) [`54e61b3`](https://github.com/Effect-TS/effect/commit/54e61b3e08ab30a52fb20eba3104a83b99f443fa) Thanks @tim-smart! - Allow Kubernetes pod condition `lastTransitionTime` values to be null.
+
 ## 0.58.2
 
 ### Patch Changes
