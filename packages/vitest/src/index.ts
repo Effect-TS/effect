@@ -9,6 +9,7 @@ import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as TestServices from "effect/TestServices"
 import * as V from "vitest"
+import * as dst from "./internal/dst.js"
 import * as internal from "./internal/internal.js"
 
 /**
@@ -172,6 +173,42 @@ export namespace Vitest {
   export interface Methods<R = never> extends MethodsNonLive<R> {
     readonly live: Vitest.Tester<R>
     readonly scopedLive: Vitest.Tester<Scope.Scope | R>
+    readonly dst: DSTTester
+  }
+
+  /**
+   * @since 1.0.0
+   */
+  export interface DSTTestOptions {
+    /** Number of seeds to test. Default: 50 */
+    readonly seeds?: number
+    /** Starting seed. Default: 0 */
+    readonly seedStart?: number
+    /** Max scheduler steps per seed. Default: 100_000 */
+    readonly maxSteps?: number
+    /** Max ops before yield (lower = more interleaving). Default: 1 */
+    readonly maxOpsBeforeYield?: number
+    /** Vitest timeout in ms. Default: 60_000 */
+    readonly timeout?: number
+  }
+
+  /**
+   * DST tester for deterministic simulation testing.
+   *
+   * Runs an Effect test across multiple seeds with deterministic fiber
+   * interleaving. If any seed produces a failure, the test fails with
+   * the seed number for reproducibility.
+   *
+   * @since 1.0.0
+   */
+  export interface DSTTester {
+    <A, E>(
+      name: string,
+      self: (ctx: V.TestContext) => Effect.Effect<A, E>,
+      options?: DSTTestOptions
+    ): void
+    skip: DSTTester
+    only: DSTTester
   }
 }
 
@@ -271,8 +308,35 @@ export const prop: Vitest.Methods["prop"] = internal.prop
  * @since 1.0.0
  */
 
+/**
+ * Deterministic Simulation Testing tester.
+ *
+ * Runs an Effect test across multiple seeds with deterministic fiber
+ * interleaving controlled by a seeded PRNG scheduler.
+ *
+ * @example
+ * ```ts
+ * import { it } from "@effect/vitest"
+ * import { Effect } from "effect"
+ *
+ * it.dst("race always produces a result", () =>
+ *   Effect.gen(function*() {
+ *     const result = yield* Effect.race(
+ *       Effect.succeed("left"),
+ *       Effect.succeed("right")
+ *     )
+ *     expect(["left", "right"]).toContain(result)
+ *   }),
+ *   { seeds: 100 }
+ * )
+ * ```
+ *
+ * @since 1.0.0
+ */
+export const dstTest: Vitest.DSTTester = dst.makeDSTTester(V.it as any as API)
+
 /** @ignored */
-const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as const
+const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop, dst: dstTest } as const
 
 /**
  * @since 1.0.0

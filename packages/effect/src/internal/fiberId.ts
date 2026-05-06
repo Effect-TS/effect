@@ -259,9 +259,22 @@ export const toSet = (self: FiberId.FiberId): HashSet.HashSet<FiberId.Runtime> =
   }
 }
 
+
+let _clockSource: () => number = () => Date.now()
+
+/** @internal */
+export const setClockSource = (source: () => number): void => {
+  _clockSource = source
+}
+
+/** @internal */
+export const resetClockSource = (): void => {
+  _clockSource = () => Date.now()
+}
+
 /** @internal */
 export const unsafeMake = (): FiberId.Runtime => {
   const id = MutableRef.get(_fiberCounter)
   pipe(_fiberCounter, MutableRef.set(id + 1))
-  return new Runtime(id, Date.now())
+  return new Runtime(id, _clockSource())
 }
