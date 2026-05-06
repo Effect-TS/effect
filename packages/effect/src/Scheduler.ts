@@ -278,7 +278,7 @@ export class ControlledScheduler implements Scheduler {
   stepOne(): boolean {
     const buckets = this.tasks.buckets
     for (let i = 0; i < buckets.length; i++) {
-      const [priority, tasks] = buckets[i]
+      const [, tasks] = buckets[i]
       if (tasks.length > 0) {
         const task = tasks.shift()!
         if (tasks.length === 0) {

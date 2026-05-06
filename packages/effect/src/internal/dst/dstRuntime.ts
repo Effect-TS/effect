@@ -140,8 +140,8 @@ export const runMany = <A, E>(
     (seed) =>
       run(effect, {
         seed,
-        maxOpsBeforeYield: config.maxOpsBeforeYield,
-        maxSteps: config.maxSteps
+        ...(config.maxOpsBeforeYield !== undefined ? { maxOpsBeforeYield: config.maxOpsBeforeYield } : {}),
+        ...(config.maxSteps !== undefined ? { maxSteps: config.maxSteps } : {})
       })
   ) as Effect.Effect<ReadonlyArray<DSTResult<A, E>>>
 }

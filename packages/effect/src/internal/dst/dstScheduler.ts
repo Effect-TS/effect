@@ -65,7 +65,6 @@ export const make = (config: DSTSchedulerConfig): DSTScheduler => {
   const maxSteps = config.maxSteps ?? 100_000
 
   let tick = 0
-  let _executing = false
 
   // Per-fiber pending task count — used to detect fiber completion.
   // When a fiber's count drops to 0 after execution and no new tasks
@@ -146,11 +145,11 @@ export const make = (config: DSTSchedulerConfig): DSTScheduler => {
       tick++
 
       // Execute the task. This may cause new tasks to be scheduled.
-      _executing = true
+      // executing
       try {
         chosen.task()
       } finally {
-        _executing = false
+        // done executing
       }
 
       // Check if this fiber completed: it had no pending tasks before
