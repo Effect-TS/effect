@@ -557,6 +557,31 @@ export const withPseudoName: {
 } = InternalOptions.withPseudoName
 
 /**
+ * Allows the option to be specified on the command line without a value, in
+ * which case `fallback` is used. When the option is followed by a value that
+ * value is used as normal. The option itself must still appear on the command
+ * line unless combined with `.optional()` or `.withDefault()`.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import * as Options from "@effect/cli/Options"
+ *
+ * // --log-level        → "info"  (fallback)
+ * // --log-level debug  → "debug" (supplied value)
+ * // (flag absent)      → error: Expected to find option: '--log-level'
+ * const logLevel = Options.text("log-level").pipe(Options.withOptionalValue("info"))
+ * ```
+ *
+ * @since 1.0.0
+ * @category combinators
+ */
+export const withOptionalValue: {
+  <A>(fallback: A): (self: Options<A>) => Options<A>
+  <A>(self: Options<A>, fallback: A): Options<A>
+} = InternalOptions.withOptionalValue
+
+/**
  * @since 1.0.0
  * @category combinators
  */

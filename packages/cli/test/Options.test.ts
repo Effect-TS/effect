@@ -785,4 +785,117 @@ describe("Options", () => {
         expect(result).toEqual([["positional"], HashMap.make(["key1", "value1"], ["key2", "value2"])])
       }).pipe(runEffect))
   })
+
+  describe("withOptionalValue", () => {
+    const level = Options.text("level").pipe(Options.withOptionalValue("info"))
+
+    it("uses the supplied value when the flag is followed by a value", () =>
+      Effect.gen(function*() {
+        const result = yield* process(level, ["--level", "debug"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], "debug"])
+      }).pipe(runEffect))
+
+    it("uses the fallback when the flag is present with no value", () =>
+      Effect.gen(function*() {
+        const result = yield* process(level, ["--level"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], "info"])
+      }).pipe(runEffect))
+
+    it("fails when the flag is absent", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.flip(process(level, [], CliConfig.defaultConfig))
+        expect(result).toEqual(ValidationError.missingValue(HelpDoc.p("Expected to find option: '--level'")))
+      }).pipe(runEffect))
+
+    it("uses the fallback when the flag appears after other args with no trailing value", () =>
+      Effect.gen(function*() {
+        const options = Options.all([Options.text("host"), level])
+        const result = yield* process(
+          options,
+          ["--host", "localhost", "--level"],
+          CliConfig.defaultConfig
+        )
+        expect(result).toEqual([[], ["localhost", "info"]])
+      }).pipe(runEffect))
+
+    it("uses the supplied value when the flag appears after other args", () =>
+      Effect.gen(function*() {
+        const options = Options.all([Options.text("host"), level])
+        const result = yield* process(
+          options,
+          ["--host", "localhost", "--level", "warn"],
+          CliConfig.defaultConfig
+        )
+        expect(result).toEqual([[], ["localhost", "warn"]])
+      }).pipe(runEffect))
+
+    it("composes with optional() — flag present no value → Some(fallback), absent → None", () =>
+      Effect.gen(function*() {
+        const levelOpt = Options.optional(level)
+        const result1 = yield* process(levelOpt, ["--level"], CliConfig.defaultConfig)
+        const result2 = yield* process(levelOpt, [], CliConfig.defaultConfig)
+        const result3 = yield* process(levelOpt, ["--level", "warn"], CliConfig.defaultConfig)
+        expect(result1).toEqual([[], Option.some("info")])
+        expect(result2).toEqual([[], Option.none()])
+        expect(result3).toEqual([[], Option.some("warn")])
+      }).pipe(runEffect))
+
+    it("composes with withDefault() — flag present no value → fallback, absent → withDefault value", () =>
+      Effect.gen(function*() {
+        const levelDefault = level.pipe(Options.withDefault("warn"))
+        const result1 = yield* process(levelDefault, ["--level"], CliConfig.defaultConfig)
+        const result2 = yield* process(levelDefault, [], CliConfig.defaultConfig)
+        expect(result1).toEqual([[], "info"])
+        expect(result2).toEqual([[], "warn"])
+      }).pipe(runEffect))
+
+    it("preserves aliases applied before withOptionalValue", () =>
+      Effect.gen(function*() {
+        const levelAliased = Options.text("level").pipe(
+          Options.withAlias("l"),
+          Options.withOptionalValue("info")
+        )
+        const result = yield* process(levelAliased, ["-l"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], "info"])
+      }).pipe(runEffect))
+
+    it("preserves aliases applied after withOptionalValue", () =>
+      Effect.gen(function*() {
+        const levelAliased = Options.text("level").pipe(
+          Options.withOptionalValue("info"),
+          Options.withAlias("l")
+        )
+        const result = yield* process(levelAliased, ["-l"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], "info"])
+      }).pipe(runEffect))
+
+    it("uses --flag=value syntax normally", () =>
+      Effect.gen(function*() {
+        const result = yield* process(level, ["--level=debug"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], "debug"])
+      }).pipe(runEffect))
+
+    it("works with choice options (canonical use case from the feature request)", () =>
+      Effect.gen(function*() {
+        const watch = Options.choice("watch", ["first-failure", "until-done"] as const).pipe(
+          Options.withOptionalValue("first-failure" as const),
+          Options.optional
+        )
+        const result1 = yield* process(watch, ["--watch"], CliConfig.defaultConfig)
+        const result2 = yield* process(watch, ["--watch", "until-done"], CliConfig.defaultConfig)
+        const result3 = yield* process(watch, [], CliConfig.defaultConfig)
+        expect(result1).toEqual([[], Option.some("first-failure")])
+        expect(result2).toEqual([[], Option.some("until-done")])
+        expect(result3).toEqual([[], Option.none()])
+      }).pipe(runEffect))
+
+    it("works with integer options", () =>
+      Effect.gen(function*() {
+        const count = Options.integer("count").pipe(Options.withOptionalValue(1))
+        const result1 = yield* process(count, ["--count"], CliConfig.defaultConfig)
+        const result2 = yield* process(count, ["--count", "5"], CliConfig.defaultConfig)
+        expect(result1).toEqual([[], 1])
+        expect(result2).toEqual([[], 5])
+      }).pipe(runEffect))
+  })
 })

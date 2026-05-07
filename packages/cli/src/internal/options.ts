@@ -88,6 +88,7 @@ export interface Single extends
     readonly primitiveType: Primitive.Primitive<unknown>
     readonly description: HelpDoc.HelpDoc
     readonly pseudoName: Option.Option<string>
+    readonly optionalValueDefault: Option.Option<unknown>
   }>
 {}
 
@@ -589,7 +590,8 @@ export const withAlias = dual<
       aliases,
       single.primitiveType,
       single.description,
-      single.pseudoName
+      single.pseudoName,
+      single.optionalValueDefault
     ) as Single
   }))
 
@@ -645,7 +647,8 @@ export const withDescription = dual<
       single.aliases,
       single.primitiveType,
       description,
-      single.pseudoName
+      single.pseudoName,
+      single.optionalValueDefault
     ) as Single
   }))
 
@@ -660,7 +663,23 @@ export const withPseudoName = dual<
       single.aliases,
       single.primitiveType,
       single.description,
-      Option.some(pseudoName)
+      Option.some(pseudoName),
+      single.optionalValueDefault
+    ) as Single))
+
+/** @internal */
+export const withOptionalValue = dual<
+  <A>(fallback: A) => (self: Options.Options<A>) => Options.Options<A>,
+  <A>(self: Options.Options<A>, fallback: A) => Options.Options<A>
+>(2, (self, fallback) =>
+  modifySingle(self as Instruction, (single) =>
+    makeSingle(
+      single.name,
+      single.aliases,
+      single.primitiveType,
+      single.description,
+      single.pseudoName,
+      Option.some(fallback as unknown)
     ) as Single))
 
 /** @internal */
@@ -926,7 +945,10 @@ const getUsageInternal = (self: Instruction): Usage.Usage => {
           InternalPrimitive.getChoices(self.primitiveType),
           () => Option.some(self.placeholder)
         )
-      return InternalUsage.named(getNames(self), acceptedValues)
+      const displayValues = Option.isSome(self.optionalValueDefault)
+        ? Option.map(acceptedValues, (v) => `[${v}]`)
+        : acceptedValues
+      return InternalUsage.named(getNames(self), displayValues)
     }
     case "KeyValueMap": {
       return getUsageInternal(self.argumentOption as Instruction)
@@ -1022,7 +1044,8 @@ const makeSingle = <A>(
   aliases: ReadonlyArray<string>,
   primitiveType: Primitive.Primitive<A>,
   description: HelpDoc.HelpDoc = InternalHelpDoc.empty,
-  pseudoName: Option.Option<string> = Option.none()
+  pseudoName: Option.Option<string> = Option.none(),
+  optionalValueDefault: Option.Option<unknown> = Option.none()
 ): Options.Options<A> => {
   const op = Object.create(proto)
   op._tag = "Single"
@@ -1033,6 +1056,7 @@ const makeSingle = <A>(
   op.primitiveType = primitiveType
   op.description = description
   op.pseudoName = pseudoName
+  op.optionalValueDefault = optionalValueDefault
   return op
 }
 
@@ -1202,6 +1226,9 @@ const parseInternal = (
         const tail = Arr.tailNonEmpty(singleNames)
         if (Arr.isEmptyReadonlyArray(tail)) {
           if (Arr.isEmptyReadonlyArray(head)) {
+            if (Option.isSome(self.optionalValueDefault)) {
+              return Effect.succeed(self.optionalValueDefault.value)
+            }
             return InternalPrimitive.validate(self.primitiveType, Option.none(), config).pipe(
               Effect.mapError((e) => InternalValidationError.invalidValue(InternalHelpDoc.p(e)))
             )
@@ -1761,6 +1788,10 @@ const parseCommandLine = (
               }
               return Arr.matchLeft(tail, {
                 onEmpty: () => {
+                  if (Option.isSome(self.optionalValueDefault)) {
+                    const parsed = Option.some({ name: head, values: Arr.empty() })
+                    return Effect.succeed<ParsedCommandLine>({ parsed, leftover: tail })
+                  }
                   const error = InternalHelpDoc.p(
                     `Expected a value following option: '${self.fullName}'`
                   )
@@ -1856,6 +1887,11 @@ const parseCommandLine = (
             }
 
             if (afterOption.length === 0) {
+              if (Option.isSome(self.optionalValueDefault)) {
+                const parsed = Option.some({ name: optionName, values: Arr.empty() })
+                const leftover = Arr.appendAll(beforeOption, afterOption)
+                return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+              }
               const error = InternalHelpDoc.p(
                 `Expected a value following option: '${self.fullName}'`
               )
