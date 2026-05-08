@@ -295,7 +295,7 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
  * @category Constructors
  */
 export const run: (
-  options: { readonly name: string; readonly version: string }
+  options: { readonly name: string; readonly version: string; readonly instructions?: string | undefined }
 ) => Effect.Effect<
   never,
   never,
@@ -303,6 +303,7 @@ export const run: (
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
 }) {
   const protocol = yield* RpcServer.Protocol
   const handlers = yield* Layer.build(layerHandlers(options))
@@ -437,6 +438,7 @@ export const run: (
 export const layer = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
 }): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol> =>
   Layer.scopedDiscard(Effect.forkScoped(run(options))).pipe(
     Layer.provideMerge(McpServer.layer)
@@ -504,6 +506,14 @@ export const layerStdio = <EIn, RIn, EOut, ROut>(options: {
   readonly version: string
   readonly stdin: Stream<Uint8Array, EIn, RIn>
   readonly stdout: Sink<unknown, Uint8Array | string, unknown, EOut, ROut>
+  /**
+   * Optional instructions describing how to use the server and its features.
+   *
+   * When set, this string is returned in the `InitializeResult.instructions`
+   * field per the MCP specification. Clients can use it to improve the LLM's
+   * understanding of the server (e.g. by injecting it into the system prompt).
+   */
+  readonly instructions?: string | undefined
 }): Layer.Layer<McpServer | McpServerClient, never, RIn | ROut> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolStdio({
@@ -579,6 +589,14 @@ export const layerHttp = <I = HttpRouter.Default>(options: {
   readonly version: string
   readonly path: HttpRouter.PathInput
   readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
+  /**
+   * Optional instructions describing how to use the server and its features.
+   *
+   * When set, this string is returned in the `InitializeResult.instructions`
+   * field per the MCP specification. Clients can use it to improve the LLM's
+   * understanding of the server (e.g. by injecting it into the system prompt).
+   */
+  readonly instructions?: string | undefined
 }): Layer.Layer<McpServer | McpServerClient> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolHttp(options)),
@@ -597,6 +615,14 @@ export const layerHttpRouter = (options: {
   readonly name: string
   readonly version: string
   readonly path: HttpRouter.PathInput
+  /**
+   * Optional instructions describing how to use the server and its features.
+   *
+   * When set, this string is returned in the `InitializeResult.instructions`
+   * field per the MCP specification. Clients can use it to improve the LLM's
+   * understanding of the server (e.g. by injecting it into the system prompt).
+   */
+  readonly instructions?: string | undefined
 }): Layer.Layer<McpServer | McpServerClient, never, HttpLayerRouter.HttpRouter> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolHttpRouter(options)),
@@ -1132,13 +1158,15 @@ const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: Readonly
   } as const
 }
 
-const layerHandlers = (serverInfo: {
+const layerHandlers = (options: {
   readonly name: string
   readonly version: string
+  readonly instructions?: string | undefined
 }) =>
   ClientRpcs.toLayer(
     Effect.gen(function*() {
       const server = yield* McpServer
+      const serverInfo = { name: options.name, version: options.version }
 
       return {
         // Requests
@@ -1166,7 +1194,8 @@ const layerHandlers = (serverInfo: {
             serverInfo,
             protocolVersion: SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion)
               ? requestedVersion
-              : LATEST_PROTOCOL_VERSION
+              : LATEST_PROTOCOL_VERSION,
+            ...(options.instructions !== undefined ? { instructions: options.instructions } : {})
           })
         },
         "completion/complete": server.completion,
