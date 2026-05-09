@@ -14,6 +14,7 @@ import { Headers } from "@effect/platform"
 import { Rpc, RpcSchema } from "@effect/rpc"
 import { describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Layer, Option, PrimaryKey, Schema } from "effect"
+import * as TestClock from "effect/TestClock"
 
 const MemoryLive = MessageStorage.layerMemory.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -79,15 +80,61 @@ describe("MessageStorage", () => {
         const latch = yield* Effect.makeLatch()
         const request = yield* makeRequest()
         yield* storage.saveRequest(request)
-        yield* storage.registerReplyHandler(
+        const fiber = yield* storage.registerReplyHandler(
           new Message.OutgoingRequest({
             ...request,
             respond: () => latch.open
           })
-        )
+        ).pipe(Effect.fork)
+        yield* TestClock.adjust(1)
         yield* storage.saveReply(yield* makeReply(request))
         yield* latch.await
+        yield* fiber.await
       }).pipe(Effect.provide(MemoryLive)))
+
+    it.effect("unregisterReplyHandler", () =>
+      Effect.gen(function*() {
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest()
+        yield* storage.saveRequest(request)
+        const fiber = yield* storage.registerReplyHandler(
+          new Message.OutgoingRequest({
+            ...request,
+            respond: () => Effect.void
+          })
+        ).pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+        yield* storage.unregisterReplyHandler(request.envelope.requestId)
+        yield* fiber.await
+      }).pipe(Effect.provide(MemoryLive)))
+  })
+
+  describe("makeEncoded", () => {
+    it.effect("guards empty id lists before delegating", () =>
+      Effect.gen(function*() {
+        const encoded = {
+          saveEnvelope: () => Effect.succeed(MessageStorage.SaveResultEncoded.Success()),
+          saveReply: () => Effect.void,
+          clearReplies: () => Effect.void,
+          requestIdForPrimaryKey: () => Effect.succeed(Option.none()),
+          repliesFor: () => Effect.succeed([]),
+          repliesForUnfiltered: () => Effect.die("unexpected repliesForUnfiltered call"),
+          unprocessedMessages: () => Effect.succeed([]),
+          unprocessedMessagesById: () => Effect.succeed([]),
+          resetAddress: () => Effect.void,
+          clearAddress: () => Effect.void,
+          resetShards: () => Effect.die("unexpected resetShards call")
+        }
+
+        const storage = yield* MessageStorage.makeEncoded(encoded).pipe(
+          Effect.provide(Snowflake.layerGenerator)
+        )
+
+        const replies = yield* storage.repliesForUnfiltered([])
+        expect(replies).toEqual([])
+
+        yield* storage.resetShards([])
+      }))
   })
 })
 

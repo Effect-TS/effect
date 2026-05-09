@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-pg",
-  "version": "0.45.1",
+  "version": "0.52.1",
   "type": "module",
   "license": "MIT",
   "description": "A PostgreSQL toolkit for Effect",
@@ -50,6 +50,8 @@
     "@effect/platform": "workspace:^",
     "@effect/sql": "workspace:^",
     "@testcontainers/postgresql": "^10.25.0",
+    "@types/pg": "^8.15.6",
+    "@types/pg-cursor": "^2.7.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {
@@ -59,6 +61,10 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "postgres": "^3.4.4"
+    "pg": "^8.16.3",
+    "pg-connection-string": "2.9.1",
+    "pg-cursor": "^2.15.3",
+    "pg-pool": "^3.10.1",
+    "pg-types": "^4.1.0"
   }
 }

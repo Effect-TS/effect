@@ -3,6 +3,10 @@ import { describe, expect, it } from "tstyche"
 
 describe("Types", () => {
   it("TupleOf", () => {
+    expect<Types.TupleOf<-1, number>>()
+      .type.toBe<never>()
+    expect<Types.TupleOf<0, number>>()
+      .type.toBe<[]>()
     expect<Types.TupleOf<3, number>>()
       .type.toBe<[number, number, number]>()
   })
@@ -138,6 +142,25 @@ describe("Types", () => {
           Types.DeepMutable<true>
         ]
       >().type.toBe<[string, number, boolean, bigint, symbol, never, null, "a", 1, true]>()
+    })
+
+    it("functions", () => {
+      expect<Types.DeepMutable<(arg: 1) => 2>>().type.toBe<(arg: 1) => 2>()
+    })
+
+    it("built in objects", () => {
+      expect<
+        [
+          Types.DeepMutable<String>,
+          Types.DeepMutable<Number>,
+          Types.DeepMutable<Boolean>,
+          Types.DeepMutable<BigInt>,
+          Types.DeepMutable<Symbol>,
+          Types.DeepMutable<Date>,
+          Types.DeepMutable<RegExp>,
+          Types.DeepMutable<Generator>
+        ]
+      >().type.toBeAssignableTo<[String, Number, Boolean, BigInt, Symbol, Date, RegExp, Generator]>()
     })
 
     describe("Branded", () => {

@@ -21,7 +21,7 @@ export const unknownToAttributeValue = (value: unknown): OtelApi.AttributeValue 
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
     return value
   } else if (typeof value === "bigint") {
-    return Number(value)
+    return value.toString()
   }
   return Inspectable.toStringUnknown(value)
 }

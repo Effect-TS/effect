@@ -100,7 +100,7 @@ export declare namespace RpcClient {
       const Discard = false
     >(
       input: Rpc.PayloadConstructor<Current>,
-      options?: Rpc.Success<Current> extends Stream.Stream<infer _A, infer _E, infer _R> ? {
+      options?: [Rpc.SuccessSchema<Current>] extends [RpcSchema.Stream<infer _A, infer _E>] ? {
           readonly asMailbox?: AsMailbox | undefined
           readonly streamBufferSize?: number | undefined
           readonly headers?: Headers.Input | undefined
@@ -268,9 +268,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   let isShutdown = false
   yield* Scope.addFinalizer(
     scope,
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       isShutdown = true
-      return clearEntries(Exit.interrupt(fiberId))
+      return clearEntries(Exit.interrupt(fiberIdTransientInterrupt))
     })
   )
 
@@ -365,6 +365,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         runtimeFlags: Runtime.defaultRuntime.runtimeFlags
       })
       let fiber: Fiber.RuntimeFiber<any, any>
+      let completed = false
       return Effect.onInterrupt(
         Effect.async<any, any>((resume) => {
           const entry: ClientEntry = {
@@ -372,11 +373,16 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             rpc,
             context,
             resume(exit) {
+              completed = true
               resume(exit)
               if (fiber && !fiber.unsafePoll()) {
-                parentFiber.currentScheduler.scheduleTask(() => {
-                  fiber.unsafeInterruptAsFork(parentFiber.id())
-                }, 0)
+                parentFiber.currentScheduler.scheduleTask(
+                  () => {
+                    fiber.unsafeInterruptAsFork(parentFiber.id())
+                  },
+                  0,
+                  fiber
+                )
               }
             }
           }
@@ -399,6 +405,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           })
         }),
         (interruptors) => {
+          if (completed) return Effect.void
           entries.delete(id)
           const ids = Array.from(interruptors).flatMap((id) => Array.from(FiberId.toSet(id)))
           return Effect.zipRight(
@@ -601,6 +608,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   return { client, write } as const
 })
 
+const fiberIdTransientInterrupt = FiberId.make(-503, 0) as FiberId.Runtime
+
 /**
  * @since 1.0.0
  * @category client
@@ -736,13 +745,17 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         ) as Effect.Effect<void>
       }
       case "Defect": {
+        entries.clear()
         return write({ _tag: "Defect", clientId: 0, defect: decodeDefect(message.defect) })
       }
       case "ClientProtocolError": {
         const exit = Exit.fail(message.error)
         return Effect.forEach(
           entries.keys(),
-          (requestId) => write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
+          (requestId) => {
+            entries.delete(requestId)
+            return write({ _tag: "Exit", clientId: 0, requestId, exit: exit as any })
+          }
         )
       }
       default: {
@@ -925,6 +938,7 @@ export const layerProtocolHttp = (options: {
  */
 export const makeProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Effect.Effect<
   Protocol["Type"],
   never,
@@ -933,12 +947,14 @@ export const makeProtocolSocket = (options?: {
   Protocol.make(Effect.fnUntraced(function*(writeResponse) {
     const socket = yield* Socket.Socket
     const serialization = yield* RpcSerialization.RpcSerialization
-
     const write = yield* socket.writer
-
     let parser = serialization.unsafeMake()
-
     const pinger = yield* makePinger(write(parser.encode(constPing)!))
+
+    let currentError: RpcClientError | undefined
+    const clearCurrentError = Effect.sync(() => {
+      currentError = undefined
+    })
 
     yield* Effect.suspend(() => {
       parser = serialization.unsafeMake()
@@ -969,7 +985,7 @@ export const makeProtocolSocket = (options?: {
             })
           })
         }
-      }).pipe(
+      }, { onOpen: clearCurrentError }).pipe(
         Effect.raceFirst(Effect.zipRight(
           pinger.timeout,
           Effect.fail(
@@ -995,16 +1011,17 @@ export const makeProtocolSocket = (options?: {
         ) {
           return Effect.void
         }
+        currentError = new RpcClientError({
+          reason: "Protocol",
+          message: "Error in socket",
+          cause: Cause.squash(cause)
+        })
         return writeResponse({
           _tag: "ClientProtocolError",
-          error: new RpcClientError({
-            reason: "Protocol",
-            message: "Error in socket",
-            cause: Cause.squash(cause)
-          })
+          error: currentError
         })
       }),
-      Effect.retry(Schedule.spaced(1000)),
+      Effect.retry(options?.retrySchedule ?? defaultRetrySchedule),
       Effect.annotateLogs({
         module: "RpcClient",
         method: "makeProtocolSocket"
@@ -1015,6 +1032,9 @@ export const makeProtocolSocket = (options?: {
 
     return {
       send(request) {
+        if (currentError) {
+          return Effect.fail(currentError)
+        }
         const encoded = parser.encode(request)
         if (encoded === undefined) return Effect.void
         return Effect.orDie(write(encoded))
@@ -1024,19 +1044,23 @@ export const makeProtocolSocket = (options?: {
     }
   }))
 
+const defaultRetrySchedule = Schedule.exponential(500, 1.5).pipe(
+  Schedule.union(Schedule.spaced(5000))
+)
+
 const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>) {
-  let recievedPong = true
+  let receivedPong = true
   const latch = Effect.unsafeMakeLatch()
   const reset = () => {
-    recievedPong = true
+    receivedPong = true
     latch.unsafeClose()
   }
   const onPong = () => {
-    recievedPong = true
+    receivedPong = true
   }
   yield* Effect.suspend(() => {
-    if (!recievedPong) return latch.open
-    recievedPong = false
+    if (!receivedPong) return latch.open
+    receivedPong = false
     return writePing
   }).pipe(
     Effect.delay("10 seconds"),
@@ -1224,6 +1248,7 @@ export const layerProtocolWorker = (
  */
 export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly retrySchedule?: Schedule.Schedule<any, Socket.SocketError> | undefined
 }): Layer.Layer<
   Protocol,
   never,

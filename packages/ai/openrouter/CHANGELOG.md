@@ -1,0 +1,286 @@
+# @effect/ai-openrouter
+
+## 0.10.1
+
+### Patch Changes
+
+- [#6145](https://github.com/Effect-TS/effect/pull/6145) [`6c39a34`](https://github.com/Effect-TS/effect/commit/6c39a34c6145811f5c41292f03bf7939cfa8e70d) Thanks @LikiosSedo! - Fix typo in HTTP header name: `HTTP-Referrer` → `HTTP-Referer`. The HTTP spec spells it "Referer" (single r), and OpenRouter expects this exact header name for app attribution.
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
+## 0.10.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/ai@0.35.0
+  - @effect/experimental@0.60.0
+  - @effect/platform@0.96.0
+
+## 0.9.1
+
+### Patch Changes
+
+- [#6131](https://github.com/Effect-TS/effect/pull/6131) [`5c80e57`](https://github.com/Effect-TS/effect/commit/5c80e578bd95e0cf6fceffc72fa0b130ca11ec8e) Thanks @fabstorres! - Allow partial tool_call deltas in OpenRouter streaming
+
+- Updated dependencies [[`add06f4`](https://github.com/Effect-TS/effect/commit/add06f4521403cbf4b9a692f9b59fb9d3d48293c), [`a03b6a2`](https://github.com/Effect-TS/effect/commit/a03b6a29ed0b983b0440b8ef4be47f47c57d73d7)]:
+  - effect@3.20.1
+
+## 0.9.0
+
+### Patch Changes
+
+- [#6117](https://github.com/Effect-TS/effect/pull/6117) [`7103e24`](https://github.com/Effect-TS/effect/commit/7103e2473db805cc9f0024d4744c77c16d81e2f1) Thanks @nickbreaton! - Fix OpenRouter streaming finalization for usage-only terminal chunks.
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/ai@0.34.0
+  - @effect/experimental@0.59.0
+  - @effect/platform@0.95.0
+
+## 0.8.4
+
+### Patch Changes
+
+- [#6071](https://github.com/Effect-TS/effect/pull/6071) [`a91364d`](https://github.com/Effect-TS/effect/commit/a91364d0ef48de0f66afe801c4da13bfe8a5aeed) Thanks @marbemac! - Fix `ChatStreamingMessageToolCall` schema rejecting valid streaming tool call chunks.
+
+  The OpenAI streaming spec splits tool calls across multiple SSE chunks — `function.name` is only present on the first chunk, but the schema required it on every chunk, causing a `MalformedOutput` error whenever the model returned a tool call.
+
+  Made `function.name` optional to match `id` which was already optional.
+
+## 0.8.3
+
+### Patch Changes
+
+- [#6060](https://github.com/Effect-TS/effect/pull/6060) [`c3e706f`](https://github.com/Effect-TS/effect/commit/c3e706ff4d01c70ae1754b13c9cbc1f001c09068) Thanks @nvonbulow! - fix(ai-openrouter): deduplicate reasoning parts when both `reasoning` and `reasoning_details` are present in a stream delta
+
+- Updated dependencies [[`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a), [`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f)]:
+  - @effect/platform@0.94.5
+  - effect@3.19.17
+
+## 0.8.2
+
+### Patch Changes
+
+- [#6026](https://github.com/Effect-TS/effect/pull/6026) [`38241de`](https://github.com/Effect-TS/effect/commit/38241dee2319d051f3ab15781f73f838d626ac24) Thanks @IMax153! - Fix the OpenRouter AI provider schemas
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.8.1
+
+### Patch Changes
+
+- [#5928](https://github.com/Effect-TS/effect/pull/5928) [`34fbbb1`](https://github.com/Effect-TS/effect/commit/34fbbb18e34cbad6ee5f0f396b3e27ba590925b8) Thanks @harrysolovay! - Regenerate OpenRouter schemas to fix schema validation.
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+  - @effect/ai@0.33.1
+
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/experimental@0.58.0
+
+## 0.7.1
+
+### Patch Changes
+
+- [#5799](https://github.com/Effect-TS/effect/pull/5799) [`5d7c9d8`](https://github.com/Effect-TS/effect/commit/5d7c9d8bb89b955b79303e7445c713ce56b06977) Thanks @subtleGradient! - Add support for google-gemini-v1 reasoning format
+
+- Updated dependencies [[`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6)]:
+  - @effect/platform@0.93.7
+
+## 0.7.0
+
+### Minor Changes
+
+- [#5849](https://github.com/Effect-TS/effect/pull/5849) [`2dcbf98`](https://github.com/Effect-TS/effect/commit/2dcbf98b0b426536f71dfb33cbe6f310d7ad4e77) Thanks @IMax153! - Update generated schema definitions and apply patch fixes
+
+### Patch Changes
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform@0.93.0
+  - @effect/ai@0.32.0
+  - @effect/experimental@0.57.0
+
+## 0.5.0
+
+### Minor Changes
+
+- [#5621](https://github.com/Effect-TS/effect/pull/5621) [`4c3bdfb`](https://github.com/Effect-TS/effect/commit/4c3bdfbcbc2dcd7ecd6321df3e4a504af19de825) Thanks @IMax153! - Remove `Either` / `EitherEncoded` from tool call results.
+
+  Specifically, the encoding of tool call results as an `Either` / `EitherEncoded` has been removed and is replaced by encoding the tool call success / failure directly into the `result` property.
+
+  To allow type-safe discrimination between a tool call result which was a success vs. one that was a failure, an `isFailure` property has also been added to the `"tool-result"` part. If `isFailure` is `true`, then the tool call handler result was an error.
+
+  ```ts
+  import * as AnthropicClient from "@effect/ai-anthropic/AnthropicClient"
+  import * as AnthropicLanguageModel from "@effect/ai-anthropic/AnthropicLanguageModel"
+  import * as LanguageModel from "@effect/ai/LanguageModel"
+  import * as Tool from "@effect/ai/Tool"
+  import * as Toolkit from "@effect/ai/Toolkit"
+  import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient"
+  import { Config, Effect, Layer, Schema, Stream } from "effect"
+
+  const Claude = AnthropicLanguageModel.model("claude-4-sonnet-20250514")
+
+  const MyTool = Tool.make("MyTool", {
+    description: "An example of a tool with success and failure types",
+    failureMode: "return", // Return errors in the response
+    parameters: { bar: Schema.Number },
+    success: Schema.Number,
+    failure: Schema.Struct({ reason: Schema.Literal("reason-1", "reason-2") })
+  })
+
+  const MyToolkit = Toolkit.make(MyTool)
+
+  const MyToolkitLayer = MyToolkit.toLayer({
+    MyTool: () => Effect.succeed(42)
+  })
+
+  const program = LanguageModel.streamText({
+    prompt: "Tell me about the meaning of life",
+    toolkit: MyToolkit
+  }).pipe(
+    Stream.runForEach((part) => {
+      if (part.type === "tool-result" && part.name === "MyTool") {
+        // The `isFailure` property can be used to discriminate whether the result
+        // of a tool call is a success or a failure
+        if (part.isFailure) {
+          part.result
+          //   ^? { readonly reason: "reason-1" | "reason-2"; }
+        } else {
+          part.result
+          //   ^? number
+        }
+      }
+      return Effect.void
+    }),
+    Effect.provide(Claude)
+  )
+
+  const Anthropic = AnthropicClient.layerConfig({
+    apiKey: Config.redacted("ANTHROPIC_API_KEY")
+  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
+
+  program.pipe(Effect.provide([Anthropic, MyToolkitLayer]), Effect.runPromise)
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`4c3bdfb`](https://github.com/Effect-TS/effect/commit/4c3bdfbcbc2dcd7ecd6321df3e4a504af19de825)]:
+  - @effect/ai@0.31.0
+
+## 0.4.0
+
+### Minor Changes
+
+- [#5614](https://github.com/Effect-TS/effect/pull/5614) [`c63e658`](https://github.com/Effect-TS/effect/commit/c63e6582244fbb50d31650c4b4ea0660fe194652) Thanks @IMax153! - Previously, tool call handler errors were _always_ raised as an expected error in the Effect `E` channel at the point of execution of the tool call handler (i.e. when a `generate*` method is invoked on a `LanguageModel`).
+
+  With this PR, the end user now has control over whether tool call handler errors should be raised as an Effect error, or returned by the SDK to allow, for example, sending that error information to another application.
+
+  ### Tool Call Specification
+
+  The `Tool.make` and `Tool.providerDefined` constructors now take an extra optional parameter called `failureMode`, which can be set to either `"error"` or `"return"`.
+
+  ```ts
+  import { Tool } from "@effect/ai"
+  import { Schema } from "effect"
+
+  const MyTool = Tool.make("MyTool", {
+    description: "My special tool",
+    failureMode: "return" // "error" (default) or "return"
+    parameters: {
+      myParam: Schema.String
+    },
+    success: Schema.Struct({
+      mySuccess: Schema.String
+    }),
+    failure: Schema.Struct({
+      myFailure: Schema.String
+    })
+  })
+
+  ```
+
+  The semantics of `failureMode` are as follows:
+  - If set to `"error"` (the default), errors that occur during tool call handler execution will be returned in the error channel of the calling effect
+  - If set to `"return"`, errors that occur during tool call handler execution will be captured and returned as part of the tool call result
+
+  ### Response - Tool Result Parts
+
+  The `result` field of a `"tool-result"` part of a large language model provider response is now represented as an `Either`.
+  - If the `result` is a `Left`, the `result` will be the `failure` specified in the tool call specification
+  - If the `result` is a `Right`, the `result` will be the `success` specified in the tool call specification
+
+  This is only relevant if the end user sets `failureMode` to `"return"`. If set to `"error"` (the default), then the `result` property will always be a `Right` with the successful result of the tool call handler.
+
+  Similarly the `encodedResult` field of a `"tool-result"` part will be represented as an `EitherEncoded`, where:
+  - `{ _tag: "Left", left: <failure> }` represents a tool call handler failure
+  - `{ _tag: "Right", right: <success> }` represents a tool call handler success
+
+  ### Prompt - Tool Result Parts
+
+  The `result` field of a `"tool-result"` part of a prompt will now only accept an `EitherEncoded` as specified above.
+
+### Patch Changes
+
+- Updated dependencies [[`6ae2f5d`](https://github.com/Effect-TS/effect/commit/6ae2f5da45a9ed9832605eca12b3e2bf2e2a1a67), [`c63e658`](https://github.com/Effect-TS/effect/commit/c63e6582244fbb50d31650c4b4ea0660fe194652)]:
+  - effect@3.18.4
+  - @effect/ai@0.30.0
+
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2), [`f8b93ac`](https://github.com/Effect-TS/effect/commit/f8b93ac6446efd3dd790778b0fc71d299a38f272)]:
+  - effect@3.18.0
+  - @effect/ai@0.29.0
+  - @effect/platform@0.92.0
+  - @effect/experimental@0.56.0
+
+## 0.2.1
+
+### Patch Changes
+
+- [#5571](https://github.com/Effect-TS/effect/pull/5571) [`122aa53`](https://github.com/Effect-TS/effect/commit/122aa53058ff008cf605cc2f0f0675a946c3cae9) Thanks @IMax153! - Ensure that AI provider clients filter response status for stream requests
+
+## 0.2.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/ai@0.28.0
+  - @effect/experimental@0.55.0
+
+## 0.1.0
+
+### Minor Changes
+
+- [#5521](https://github.com/Effect-TS/effect/pull/5521) [`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80) Thanks @IMax153! - Add Effect AI SDK provider integration package for OpenRouter
+
+### Patch Changes
+
+- [#5521](https://github.com/Effect-TS/effect/pull/5521) [`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80) Thanks @IMax153! - Fix provider metadata and parse tool call parameters safely
+
+- Updated dependencies [[`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80)]:
+  - @effect/ai@0.27.1

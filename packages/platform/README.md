@@ -550,14 +550,19 @@ const csv = HttpApiEndpoint.get("csv")`/users/csv`
 
 ### Setting Request Headers
 
-The `HttpApiEndpoint.setHeaders` method allows you to define the expected structure of request headers. You can specify the schema for each header and include additional metadata, such as descriptions.
+Use `HttpApiEndpoint.setHeaders` to declare a single, cumulative schema that describes all expected request headers.
+Provide one struct schema where each header name maps to its validator, and you can attach metadata such as descriptions.
 
-**Example** (Defining Request Headers with Metadata)
+> [!IMPORTANT]
+> All headers are normalized to lowercase. Always use lowercase keys in the headers schema.
+
+**Example** (Describe and validate custom headers)
 
 ```ts
 import { HttpApiEndpoint } from "@effect/platform"
 import { Schema } from "effect"
 
+// Model for successful responses
 const User = Schema.Struct({
   id: Schema.Number,
   name: Schema.String,
@@ -565,19 +570,31 @@ const User = Schema.Struct({
 })
 
 const getUsers = HttpApiEndpoint.get("getUsers", "/users")
-  // Specify the headers schema
+  // Describe the headers the endpoint expects
   .setHeaders(
+    // Declare a single struct schema for all headers
+    // Header keys MUST be lowercase in the schema
     Schema.Struct({
-      // Header must be a string
-      "X-API-Key": Schema.String,
-      // Header must be a string with an added description
-      "X-Request-ID": Schema.String.annotations({
+      // This header must be a string
+      "x-api-key": Schema.String,
+
+      // A human-friendly description is useful for generated docs (e.g. OpenAPI)
+      "x-request-id": Schema.String.annotations({
         description: "Unique identifier for the request"
       })
     })
   )
+  // Successful response: an array of User
   .addSuccess(Schema.Array(User))
 ```
+
+You can test the endpoint by sending the headers:
+
+```sh
+curl -H "X-API-Key: 1234567890" -H "X-Request-ID: 1234567890" http://localhost:3000/users
+```
+
+The server validates these headers against the declared schema before handling the request.
 
 ## Defining a HttpApiGroup
 

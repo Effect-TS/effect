@@ -28,39 +28,59 @@ export const clientAbortFiberId = globalValue(
 export const causeResponse = <E>(
   cause: Cause.Cause<E>
 ): Effect.Effect<readonly [HttpServerResponse, Cause.Cause<E>]> => {
-  const [effect, stripped] = Cause.reduce(
-    cause,
-    [Effect.succeed(internalServerError), Cause.empty as Cause.Cause<E>] as const,
-    (acc, cause) => {
-      switch (cause._tag) {
-        case "Empty": {
-          return Option.some(acc)
+  let effect: Effect.Effect<HttpServerResponse> = Effect.succeed(internalServerError)
+  let stripped: Cause.Cause<E> = Cause.empty as Cause.Cause<E>
+  let isClientInterrupt = false
+  let hasResponse = false
+
+  Cause.reduce(cause, void 0 as void, (_, current) => {
+    const withoutInterrupt = Cause.isInterruptType(stripped) ? Cause.empty : stripped
+    switch (current._tag) {
+      case "Fail": {
+        effect = Respondable.toResponseOrElse(current.error, internalServerError)
+        stripped = combineCauses(withoutInterrupt, current)
+        break
+      }
+      case "Die": {
+        const isResponse = internalServerResponse.isServerResponse(current.defect)
+        effect = Respondable.toResponseOrElseDefect(current.defect, internalServerError)
+        stripped = isResponse ? withoutInterrupt : combineCauses(withoutInterrupt, current)
+        hasResponse = hasResponse || isResponse
+        break
+      }
+      case "Interrupt": {
+        isClientInterrupt = isClientInterrupt || current.fiberId === clientAbortFiberId
+        if (Cause.isEmptyType(stripped) && !hasResponse) {
+          stripped = current
         }
-        case "Fail": {
-          return Option.some([Respondable.toResponseOrElse(cause.error, internalServerError), cause] as const)
-        }
-        case "Die": {
-          return Option.some([Respondable.toResponseOrElseDefect(cause.defect, internalServerError), cause] as const)
-        }
-        case "Interrupt": {
-          if (acc[1]._tag !== "Empty") {
-            return Option.none()
-          }
-          const response = cause.fiberId === clientAbortFiberId ? clientAbortError : serverAbortError
-          return Option.some([Effect.succeed(response), cause] as const)
-        }
-        default: {
-          return Option.none()
-        }
+        break
       }
     }
-  )
-  return Effect.map(effect, (response) => {
-    if (Cause.isEmptyType(stripped)) {
-      return [response, Cause.die(response)] as const
-    }
-    return [response, Cause.sequential(stripped, Cause.die(response))] as const
+    return Option.none()
   })
+
+  const responseEffect = !hasResponse && Cause.isInterruptType(stripped)
+    ? Effect.succeed(isClientInterrupt ? clientAbortError : serverAbortError)
+    : effect
+  const strippedCause: Cause.Cause<E> = !hasResponse && Cause.isInterruptType(stripped) && isClientInterrupt
+    ? Cause.interrupt(clientAbortFiberId) as Cause.Cause<E>
+    : stripped
+
+  return Effect.map(responseEffect, (response) => {
+    if (Cause.isEmptyType(strippedCause)) {
+      return [response, Cause.empty] as const
+    }
+    return [response, Cause.sequential(strippedCause, Cause.die(response))] as const
+  })
+}
+
+const combineCauses = <A = never, B = never>(left: Cause.Cause<A>, right: Cause.Cause<B>): Cause.Cause<A | B> => {
+  if (Cause.isEmptyType(left)) {
+    return right
+  } else if (Cause.isEmptyType(right)) {
+    return left
+  }
+  return Cause.sequential(left, right)
 }
 
 /** @internal */

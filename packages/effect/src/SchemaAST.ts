@@ -7,6 +7,7 @@ import type { Effect } from "./Effect.js"
 import type { Equivalence } from "./Equivalence.js"
 import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
+import * as Inspectable from "./Inspectable.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Number from "./Number.js"
@@ -50,6 +51,23 @@ export type AST =
 // -------------------------------------------------------------------------------------
 // annotations
 // -------------------------------------------------------------------------------------
+
+/**
+ * @category annotations
+ * @since 3.19.0
+ * @experimental
+ */
+export type TypeConstructorAnnotation = {
+  readonly _tag: string
+  [key: PropertyKey]: unknown
+}
+
+/**
+ * @category annotations
+ * @since 3.19.0
+ * @experimental
+ */
+export const TypeConstructorAnnotationId: unique symbol = Symbol.for("effect/annotation/TypeConstructor")
 
 /**
  * @category annotations
@@ -327,6 +345,13 @@ export const getAnnotation: {
 
 /**
  * @category annotations
+ * @since 3.19.0
+ * @experimental
+ */
+export const getTypeConstructorAnnotation = getAnnotation<TypeConstructorAnnotation>(TypeConstructorAnnotationId)
+
+/**
+ * @category annotations
  * @since 3.10.0
  */
 export const getBrandAnnotation = getAnnotation<BrandAnnotation>(BrandAnnotationId)
@@ -533,7 +558,7 @@ export class Literal implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.literal))
+    return Option.getOrElse(getExpected(this), () => Inspectable.formatUnknown(this.literal))
   }
   /**
    * @since 3.10.0
@@ -577,7 +602,7 @@ export class UniqueSymbol implements Annotated {
    * @since 3.10.0
    */
   toString() {
-    return Option.getOrElse(getExpected(this), () => util_.formatUnknown(this.symbol))
+    return Option.getOrElse(getExpected(this), () => Inspectable.formatUnknown(this.symbol))
   }
   /**
    * @since 3.10.0
@@ -2206,6 +2231,8 @@ const getIndexSignatures = (ast: AST): Array<IndexSignature> => {
       return getIndexSignatures(ast.f())
     case "Refinement":
       return getIndexSignatures(ast.from)
+    case "Transformation":
+      return getIndexSignatures(ast.to)
   }
   return []
 }
@@ -2303,6 +2330,8 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
       return getPropertyKeyIndexedAccess(ast.f(), name)
     case "Refinement":
       return getPropertyKeyIndexedAccess(ast.from, name)
+    case "Transformation":
+      return getPropertyKeyIndexedAccess(ast.to, name)
   }
   throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }
@@ -2968,7 +2997,7 @@ const formatKeyword = (ast: AST): string => Option.getOrElse(getExpected(ast), (
 function getBrands(ast: Annotated): string {
   return Option.match(getBrandAnnotation(ast), {
     onNone: () => "",
-    onSome: (brands) => brands.map((brand) => ` & Brand<${util_.formatUnknown(brand)}>`).join("")
+    onSome: (brands) => brands.map((brand) => ` & Brand<${Inspectable.formatUnknown(brand)}>`).join("")
   })
 }
 

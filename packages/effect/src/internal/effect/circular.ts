@@ -37,7 +37,7 @@ class Semaphore {
   public waiters = new Set<() => void>()
   public taken = 0
 
-  constructor(readonly permits: number) {}
+  constructor(public permits: number) {}
 
   get free() {
     return this.permits - this.taken
@@ -47,37 +47,59 @@ class Semaphore {
     core.asyncInterrupt<number>((resume) => {
       if (this.free < n) {
         const observer = () => {
-          if (this.free < n) {
-            return
-          }
+          if (this.free < n) return
           this.waiters.delete(observer)
-          this.taken += n
-          resume(core.succeed(n))
+          resume(core.suspend(() => {
+            if (this.free < n) return this.take(n)
+            this.taken += n
+            return core.succeed(n)
+          }))
         }
         this.waiters.add(observer)
         return core.sync(() => {
           this.waiters.delete(observer)
         })
       }
-      this.taken += n
-      return resume(core.succeed(n))
+      resume(core.suspend(() => {
+        if (this.free < n) return this.take(n)
+        this.taken += n
+        return core.succeed(n)
+      }))
     })
 
-  readonly updateTaken = (f: (n: number) => number): Effect.Effect<number> =>
-    core.withFiberRuntime((fiber) => {
-      this.taken = f(this.taken)
-      if (this.waiters.size > 0) {
-        fiber.getFiberRef(currentScheduler).scheduleTask(() => {
+  updateTakenUnsafe(fiber: Fiber.RuntimeFiber<any, any>, f: (n: number) => number): Effect.Effect<number> {
+    this.taken = f(this.taken)
+    if (this.waiters.size > 0) {
+      fiber.getFiberRef(currentScheduler).scheduleTask(
+        () => {
           const iter = this.waiters.values()
           let item = iter.next()
           while (item.done === false && this.free > 0) {
             item.value()
             item = iter.next()
           }
-        }, fiber.getFiberRef(core.currentSchedulingPriority))
-      }
-      return core.succeed(this.free)
-    })
+        },
+        fiber.getFiberRef(core.currentSchedulingPriority),
+        fiber
+      )
+    }
+    return core.succeed(this.free)
+  }
+
+  updateTaken(f: (n: number) => number): Effect.Effect<number> {
+    return core.withFiberRuntime((fiber) => this.updateTakenUnsafe(fiber, f))
+  }
+
+  readonly resize = (permits: number) =>
+    core.asVoid(
+      core.withFiberRuntime((fiber) => {
+        this.permits = permits
+        if (this.free < 0) {
+          return core.void
+        }
+        return this.updateTakenUnsafe(fiber, (taken) => taken)
+      })
+    )
 
   readonly release = (n: number): Effect.Effect<number> => this.updateTaken((taken) => taken - n)
 
@@ -104,7 +126,7 @@ class Semaphore {
 }
 
 /** @internal */
-export const unsafeMakeSemaphore = (permits: number): Semaphore => new Semaphore(permits)
+export const unsafeMakeSemaphore = (permits: number): Effect.Semaphore => new Semaphore(permits)
 
 /** @internal */
 export const makeSemaphore = (permits: number) => core.sync(() => unsafeMakeSemaphore(permits))
@@ -125,7 +147,7 @@ class Latch extends Effectable.Class<void> implements Effect.Latch {
       return core.void
     }
     this.scheduled = true
-    fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority))
+    fiber.currentScheduler.scheduleTask(this.flushWaiters, fiber.getFiberRef(core.currentSchedulingPriority), fiber)
     return core.void
   }
   private flushWaiters = () => {

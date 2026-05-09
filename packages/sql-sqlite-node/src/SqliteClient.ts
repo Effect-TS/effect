@@ -121,7 +121,7 @@ export const make = (
 
       const runStatement = (
         statement: Sqlite.Statement,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         raw: boolean
       ) =>
         Effect.withFiberRuntime<ReadonlyArray<any>, SqlError>((fiber) => {
@@ -141,7 +141,7 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>,
+        params: ReadonlyArray<unknown>,
         raw = false
       ) =>
         Effect.flatMap(
@@ -151,7 +151,7 @@ export const make = (
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive>
+        params: ReadonlyArray<unknown>
       ) =>
         Effect.acquireUseRelease(
           prepareCache.get(sql),
@@ -161,7 +161,7 @@ export const make = (
                 if (statement.reader) {
                   statement.raw(true)
                   return statement.all(...params) as ReadonlyArray<
-                    ReadonlyArray<Statement.Primitive>
+                    ReadonlyArray<unknown>
                   >
                 }
                 statement.run(...params)

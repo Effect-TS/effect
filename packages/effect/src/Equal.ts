@@ -52,16 +52,21 @@ function compareBoth(self: unknown, that: unknown): boolean {
             : false
         }
       } else if (self instanceof Date && that instanceof Date) {
-        return self.toISOString() === that.toISOString()
+        const t1 = self.getTime()
+        const t2 = that.getTime()
+        return t1 === t2 || (Number.isNaN(t1) && Number.isNaN(t2))
       } else if (self instanceof URL && that instanceof URL) {
         return self.href === that.href
       }
     }
     if (structuralRegionState.enabled) {
+      if (self === null || that === null) {
+        return false
+      }
       if (Array.isArray(self) && Array.isArray(that)) {
         return self.length === that.length && self.every((v, i) => compareBoth(v, that[i]))
       }
-      if (Object.getPrototypeOf(self) === Object.prototype && Object.getPrototypeOf(self) === Object.prototype) {
+      if (Object.getPrototypeOf(self) === Object.prototype && Object.getPrototypeOf(that) === Object.prototype) {
         const keysSelf = Object.keys(self as any)
         const keysThat = Object.keys(that as any)
         if (keysSelf.length === keysThat.length) {

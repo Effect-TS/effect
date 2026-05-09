@@ -4,19 +4,21 @@
 import type { Channel } from "effect/Channel"
 import type { Chunk } from "effect/Chunk"
 import type * as Context from "effect/Context"
-import type * as Effect from "effect/Effect"
-import type { Option } from "effect/Option"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import type { ReadonlyRecord } from "effect/Record"
+import * as Runtime from "effect/Runtime"
 import type * as Schema from "effect/Schema"
 import type { ParseOptions } from "effect/SchemaAST"
 import type * as Scope from "effect/Scope"
-import type * as Stream from "effect/Stream"
+import * as Stream from "effect/Stream"
 import type * as FileSystem from "./FileSystem.js"
 import type * as Headers from "./Headers.js"
 import type * as IncomingMessage from "./HttpIncomingMessage.js"
-import type { HttpMethod } from "./HttpMethod.js"
-import type * as Error from "./HttpServerError.js"
+import { hasBody, type HttpMethod } from "./HttpMethod.js"
+import * as Error from "./HttpServerError.js"
 import * as internal from "./internal/httpServerRequest.js"
 import type * as Multipart from "./Multipart.js"
 import type * as Path from "./Path.js"
@@ -235,4 +237,50 @@ export const fromWeb: (request: Request) => HttpServerRequest = internal.fromWeb
  * @since 1.0.0
  * @category conversions
  */
-export const toURL: (self: HttpServerRequest) => Option<URL> = internal.toURL
+export const toWebEither = (self: HttpServerRequest, options?: {
+  readonly signal?: AbortSignal | undefined
+  readonly runtime?: Runtime.Runtime<never> | undefined
+}): Either.Either<Request, Error.RequestError> => {
+  if (self.source instanceof Request) {
+    return Either.right(self.source)
+  }
+  const ourl = toURL(self)
+  if (Option.isNone(ourl)) {
+    return Either.left(
+      new Error.RequestError({
+        request: self,
+        reason: "Decode",
+        description: "Invalid URL"
+      })
+    )
+  }
+  const requestInit: RequestInit = {
+    method: self.method,
+    headers: self.headers,
+    signal: options?.signal
+  }
+  if (hasBody(self.method)) {
+    requestInit.body = Stream.toReadableStreamRuntime(self.stream, options?.runtime ?? Runtime.defaultRuntime)
+    ;(requestInit as any).duplex = "half"
+  }
+  return Either.right(new Request(ourl.value, requestInit))
+}
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toWeb = (self: HttpServerRequest, options?: {
+  readonly signal?: AbortSignal | undefined
+}): Effect.Effect<Request, Error.RequestError> =>
+  Effect.flatMap(Effect.runtime<never>(), (runtime) =>
+    toWebEither(self, {
+      signal: options?.signal,
+      runtime
+    }))
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toURL: (self: HttpServerRequest) => Option.Option<URL> = internal.toURL

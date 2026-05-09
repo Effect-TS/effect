@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual } from "@effect/vitest/utils"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { DateTime, Effect, TestClock } from "effect"
 
 describe("TestClock", () => {
@@ -22,6 +22,13 @@ describe("TestClock", () => {
         yield* TestClock.setTime(DateTime.toDate(arbitraryDateTime))
         const now = yield* DateTime.now
         deepStrictEqual(now, arbitraryDateTime)
+      }))
+
+    it.effect("should floor nanoseconds for fractional millisecond instants", () =>
+      Effect.gen(function*() {
+        yield* TestClock.setTime(199023438.0000004)
+        const testClock = yield* TestClock.testClock()
+        strictEqual(testClock.unsafeCurrentTimeNanos(), 199023438000000n)
       }))
   })
 })

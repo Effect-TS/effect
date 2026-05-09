@@ -34,6 +34,21 @@ declare const ABs: ReadonlyArray<AB>
 declare const nonEmptyABs: Array.NonEmptyReadonlyArray<AB>
 declare const orderA: Order.Order<A>
 
+interface Eff<R> {
+  readonly _R: (_: R) => void
+}
+interface R1 {
+  readonly _r1: unique symbol
+}
+interface R2 {
+  readonly _r2: unique symbol
+}
+interface R3 {
+  readonly _r3: unique symbol
+}
+declare const arg1: Eff<R1 | R2>
+declare const arg2: Eff<R1 | R2 | R3>
+
 describe("Array", () => {
   it("isArray", () => {
     if (Array.isArray(unknownValue)) {
@@ -619,6 +634,9 @@ describe("Array", () => {
         return Array.flatten(x)
       }))
     ).type.toBe<Effect.Effect<[number, ...Array<number>], never, never>>()
+
+    expect(Array.flatten([[arg1], [arg2]])).type.toBe<Array.NonEmptyArray<Eff<R1 | R2> | Eff<R1 | R2 | R3>>>()
+    expect(Array.flatten([[arg2], [arg1]])).type.toBe<Array.NonEmptyArray<Eff<R1 | R2> | Eff<R1 | R2 | R3>>>()
   })
 
   it("prependAll", () => {
@@ -940,15 +958,26 @@ describe("Array", () => {
   })
 
   it("window", () => {
+    const two: number = 2
     // Array
-    expect(Array.window(strings, 2)).type.toBe<Array<Array<string>>>()
-    expect(pipe(strings, Array.window(2))).type.toBe<Array<Array<string>>>()
-    expect(Array.window(2)(strings)).type.toBe<Array<Array<string>>>()
+    expect(Array.window(strings, two)).type.toBe<Array<Array<string>>>()
+    expect(pipe(strings, Array.window(two))).type.toBe<Array<Array<string>>>()
+    expect(Array.window(two)(strings)).type.toBe<Array<Array<string>>>()
 
     // NonEmptyArray
-    expect(Array.window(nonEmptyStrings, 2)).type.toBe<Array<Array<string>>>()
-    expect(pipe(nonEmptyStrings, Array.window(2))).type.toBe<Array<Array<string>>>()
-    expect(Array.window(2)(nonEmptyStrings)).type.toBe<Array<Array<string>>>()
+    expect(Array.window(nonEmptyStrings, two)).type.toBe<Array<Array<string>>>()
+    expect(pipe(nonEmptyStrings, Array.window(two))).type.toBe<Array<Array<string>>>()
+    expect(Array.window(two)(nonEmptyStrings)).type.toBe<Array<Array<string>>>()
+
+    // literal + Array
+    expect(Array.window(strings, 2)).type.toBe<Array<[string, string]>>()
+    expect(pipe(strings, Array.window(2))).type.toBe<Array<[string, string]>>()
+    expect(Array.window(2)(strings)).type.toBe<Array<[string, string]>>()
+
+    // literal + NonEmptyArray
+    expect(Array.window(nonEmptyStrings, 2)).type.toBe<Array<[string, string]>>()
+    expect(pipe(nonEmptyStrings, Array.window(2))).type.toBe<Array<[string, string]>>()
+    expect(Array.window(2)(nonEmptyStrings)).type.toBe<Array<[string, string]>>()
   })
 
   it("reverse", () => {

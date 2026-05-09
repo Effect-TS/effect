@@ -32,3 +32,8 @@ export * as OpenAiTelemetry from "./OpenAiTelemetry.js"
  * @since 1.0.0
  */
 export * as OpenAiTokenizer from "./OpenAiTokenizer.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as OpenAiTool from "./OpenAiTool.js"

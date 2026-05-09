@@ -17,7 +17,7 @@ export type SqlErrorTypeId = typeof SqlErrorTypeId
  * @since 1.0.0
  */
 export class SqlError extends TypeIdError(SqlErrorTypeId, "SqlError")<{
-  cause: unknown
+  cause?: unknown
   message?: string
 }> {}
 

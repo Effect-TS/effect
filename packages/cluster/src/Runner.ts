@@ -38,7 +38,7 @@ export type TypeId = typeof TypeId
 export class Runner extends Schema.Class<Runner>(SymbolKey)({
   address: RunnerAddress,
   groups: Schema.Array(Schema.String),
-  version: Schema.Int
+  weight: Schema.Number
 }) {
   /**
    * @since 1.0.0
@@ -71,14 +71,14 @@ export class Runner extends Schema.Class<Runner>(SymbolKey)({
    * @since 1.0.0
    */
   [Equal.symbol](that: Runner): boolean {
-    return this.address[Equal.symbol](that.address) && this.version === that.version
+    return this.address[Equal.symbol](that.address) && this.weight === that.weight
   }
 
   /**
    * @since 1.0.0
    */
   [Hash.symbol](): number {
-    return Hash.cached(this, Hash.string(`${this.address.toString()}:${this.version}`))
+    return Hash.cached(this, Hash.string(`${this.address.toString()}:${this.weight}`))
   }
 }
 
@@ -98,5 +98,5 @@ export class Runner extends Schema.Class<Runner>(SymbolKey)({
 export const make = (props: {
   readonly address: RunnerAddress
   readonly groups: ReadonlyArray<string>
-  readonly version: number
+  readonly weight: number
 }): Runner => new Runner(props)

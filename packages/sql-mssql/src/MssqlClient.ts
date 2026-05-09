@@ -51,7 +51,7 @@ export interface MssqlClient extends Client.SqlClient {
 
   readonly param: (
     type: DataType,
-    value: Statement.Primitive,
+    value: unknown,
     options?: ParameterOptions
   ) => Statement.Fragment
 
@@ -91,7 +91,7 @@ export interface MssqlClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.DurationInput | undefined
 
-  readonly parameterTypes?: Record<Statement.PrimitiveKind, DataType> | undefined
+  readonly parameterTypes?: Record<string, DataType> | undefined
 
   readonly spanAttributes?: Record<string, unknown> | undefined
 
@@ -392,7 +392,7 @@ export const make = (
         withTransaction,
         param: (
           type: DataType,
-          value: Statement.Primitive,
+          value: unknown,
           options: ParameterOptions = {}
         ) => mssqlParam(type, value, options),
         call: <
@@ -519,7 +519,8 @@ export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = 
   Date: Tedious.TYPES.DateTime,
   Uint8Array: Tedious.TYPES.VarBinary,
   Int8Array: Tedious.TYPES.VarBinary,
-  null: Tedious.TYPES.Bit
+  null: Tedious.TYPES.Bit,
+  object: Tedious.TYPES.NVarChar
 }
 
 // custom types
@@ -530,7 +531,7 @@ interface MssqlParam extends
   Statement.Custom<
     "MssqlParam",
     DataType,
-    Statement.Primitive,
+    unknown,
     ParameterOptions
   >
 {}

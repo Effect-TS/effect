@@ -14,3 +14,9 @@ export const EntityId = Schema.NonEmptyTrimmedString.pipe(Schema.brand("EntityId
  * @category models
  */
 export type EntityId = typeof EntityId.Type
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make = (id: string): EntityId => id as EntityId

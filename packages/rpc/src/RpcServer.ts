@@ -5,6 +5,7 @@ import * as Headers from "@effect/platform/Headers"
 import * as HttpApp from "@effect/platform/HttpApp"
 import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
 import * as HttpRouter from "@effect/platform/HttpRouter"
+import type * as HttpServerError from "@effect/platform/HttpServerError"
 import * as HttpServerRequest from "@effect/platform/HttpServerRequest"
 import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type * as Socket from "@effect/platform/Socket"
@@ -30,6 +31,7 @@ import * as Option from "effect/Option"
 import { type ParseError, TreeFormatter } from "effect/ParseResult"
 import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
+import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -110,7 +112,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   )
   const concurrencySemaphore = concurrency === "unbounded"
     ? undefined
-    : yield* Effect.makeSemaphore(concurrency)
+    : Effect.unsafeMakeSemaphore(concurrency).withPermits(1)
 
   type Client = {
     readonly id: number
@@ -124,7 +126,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   const shutdownLatch = Effect.unsafeMakeLatch(false)
   yield* Scope.addFinalizer(
     scope,
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       isShutdown = true
       for (const client of clients.values()) {
         client.ended = true
@@ -133,7 +135,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           continue
         }
         for (const fiber of client.fibers.values()) {
-          fiber.unsafeInterruptAsFork(fiberId)
+          fiber.unsafeInterruptAsFork(fiberIdTransientInterrupt)
         }
       }
       if (clients.size === 0) {
@@ -144,11 +146,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   )
 
   const disconnect = (clientId: number) =>
-    Effect.fiberIdWith((fiberId) => {
+    Effect.suspend(() => {
       const client = clients.get(clientId)
       if (!client) return Effect.void
       for (const fiber of client.fibers.values()) {
-        fiber.unsafeInterruptAsFork(fiberId)
+        fiber.unsafeInterruptAsFork(fiberIdTransientInterrupt)
       }
       clients.delete(clientId)
       return Effect.void
@@ -181,7 +183,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           }
           case "Interrupt": {
             const fiber = client.fibers.get(message.requestId)
-            return fiber ? Fiber.interruptFork(fiber) : options.onFromServer({
+            return fiber ? Fiber.interruptAsFork(fiber, fiberIdClientInterrupt) : options.onFromServer({
               _tag: "Exit",
               clientId,
               requestId: message.requestId,
@@ -219,7 +221,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     request: Request<Rpcs>
   ): Effect.Effect<void> => {
     if (client.fibers.has(request.id)) {
-      return Effect.interrupt
+      return Effect.flatMap(
+        Fiber.await(client.fibers.get(request.id)!),
+        () => handleRequest(requestFiber, client, request)
+      )
     }
     const rpc = group.requests.get(request.tag) as any as Rpc.AnyWithProps
     const entry = context.unsafeMap.get(rpc?.key) as Rpc.Handler<Rpcs["_tag"]>
@@ -243,22 +248,24 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     })
 
     // if the handler requested forking, then we skip the concurrency control
-    const isFork = Rpc.isFork(result)
+    const isWrapper = Rpc.isWrapper(result)
+    const isFork = isWrapper && result.fork
+    const isUninterruptible = isWrapper && result.uninterruptible
     // unwrap the fork data type
-    const streamOrEffect = isFork ? result.value : result
-
+    const streamOrEffect = isWrapper ? result.value : result
+    const handler = applyMiddleware(
+      rpc,
+      context,
+      client.id,
+      request.payload,
+      request.headers,
+      isStream
+        ? streamEffect(client, request, streamOrEffect)
+        : streamOrEffect as Effect.Effect<any>
+    )
     let responded = false
-    let effect = Effect.uninterruptible(Effect.matchCauseEffect(
-      Effect.interruptible(applyMiddleware(
-        rpc,
-        context,
-        client.id,
-        request.payload,
-        request.headers,
-        isStream
-          ? streamEffect(client, request, streamOrEffect)
-          : streamOrEffect as Effect.Effect<any>
-      )),
+    let effect = Effect.matchCauseEffect(
+      isUninterruptible ? handler : Effect.interruptible(handler),
       {
         onSuccess: (value) => {
           responded = true
@@ -271,7 +278,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         },
         onFailure: (cause) => {
           responded = true
-          if (!disableFatalDefects && Cause.isDie(cause)) {
+          if (!disableFatalDefects && Cause.isDie(cause) && !Cause.isInterrupted(cause)) {
             return sendDefect(client, Cause.squash(cause))
           }
           return options.onFromServer({
@@ -282,12 +289,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           })
         }
       }
-    ))
+    )
     if (enableTracing) {
       const parentSpan = requestFiber.currentContext.unsafeMap.get(Tracer.ParentSpan.key) as Tracer.AnySpan | undefined
       effect = Effect.withSpan(effect, `${spanPrefix}.${request.tag}`, {
         captureStackTrace: false,
-        attributes: options.spanAttributes,
+        attributes: {
+          requestId: String(request.id),
+          ...options.spanAttributes
+        },
         parent: enableSpanPropagation && request.spanId ?
           {
             _tag: "ExternalSpan",
@@ -307,15 +317,14 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       })
     }
     if (!isFork && concurrencySemaphore) {
-      effect = concurrencySemaphore.withPermits(1)(effect)
+      effect = concurrencySemaphore(effect)
     }
     const runtime = Runtime.make({
       context: Context.merge(entry.context, requestFiber.currentContext),
       fiberRefs: requestFiber.getFiberRefs(),
-      runtimeFlags: Runtime.defaultRuntime.runtimeFlags
+      runtimeFlags: RuntimeFlags.disable(Runtime.defaultRuntime.runtimeFlags, RuntimeFlags.Interruption)
     })
     const fiber = Runtime.runFork(runtime, effect)
-    FiberSet.unsafeAdd(fiberSet, fiber)
     client.fibers.set(request.id, fiber)
     fiber.addObserver((exit) => {
       if (!responded && exit._tag === "Failure") {
@@ -472,7 +481,7 @@ export const make: <Rpcs extends Rpc.Any>(
 ) => Effect.Effect<
   never,
   never,
-  Protocol | Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>
+  Protocol | Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs> | Rpc.Context<Rpcs>
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
   options?: {
@@ -501,6 +510,7 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
+            schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeChunk(response.values), schemas.context),
             (values) => ({ _tag: "Chunk", requestId: String(response.requestId), values })
@@ -513,6 +523,7 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
+            schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeExit(response.exit), schemas.context),
             (exit) => ({ _tag: "Exit", requestId: String(response.requestId), exit })
@@ -543,6 +554,7 @@ export const make: <Rpcs extends Rpc.Any>(
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, ParseError>
     readonly encodeChunk: (u: ReadonlyArray<unknown>) => Effect.Effect<NonEmptyReadonlyArray<unknown>, ParseError>
     readonly encodeExit: (u: unknown) => Effect.Effect<Schema.ExitEncoded<unknown, unknown, unknown>, ParseError>
+    readonly encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>
     readonly context: Context.Context<never>
     readonly collector?: Transferable.CollectorService | undefined
   }
@@ -559,6 +571,7 @@ export const make: <Rpcs extends Rpc.Any>(
           Schema.Array(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
         ) as any,
         encodeExit: Schema.encodeUnknown(Rpc.exitSchema(rpc as any)) as any,
+        encodeDefect: Schema.encodeUnknown(rpc.defectSchema) as any,
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -575,6 +588,7 @@ export const make: <Rpcs extends Rpc.Any>(
   const handleEncode = <A, R>(
     client: Client,
     requestId: RequestId,
+    encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>,
     collector: Transferable.CollectorService | undefined,
     effect: Effect.Effect<A, ParseError, R>,
     onSuccess: (a: A) => FromServerEncoded
@@ -585,31 +599,40 @@ export const make: <Rpcs extends Rpc.Any>(
         client.schemas.delete(requestId)
         const defect = Cause.squash(Cause.map(cause, TreeFormatter.formatErrorSync))
         return Effect.zipRight(
-          sendRequestDefect(client, requestId, defect),
+          sendRequestDefect(client, requestId, encodeDefect, defect),
           server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
         )
       })
     )
 
-  const sendRequestDefect = (client: Client, requestId: RequestId, defect: unknown) =>
+  const encodeDefect = Schema.encodeSync(Schema.Defect)
+
+  const sendRequestDefect = (
+    client: Client,
+    requestId: RequestId,
+    encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>,
+    defect: unknown
+  ) =>
     Effect.catchAllCause(
-      send(client.id, {
-        _tag: "Exit",
-        requestId: String(requestId),
-        exit: {
-          _tag: "Failure",
-          cause: {
-            _tag: "Die",
-            defect
+      encodeDefect(defect).pipe(Effect.flatMap((encodedDefect) =>
+        send(client.id, {
+          _tag: "Exit",
+          requestId: String(requestId),
+          exit: {
+            _tag: "Failure",
+            cause: {
+              _tag: "Die",
+              defect: encodedDefect
+            }
           }
-        }
-      }),
+        })
+      )),
       (cause) => sendDefect(client, Cause.squash(cause))
     )
 
   const sendDefect = (client: Client, defect: unknown) =>
     Effect.catchAllCause(
-      send(client.id, { _tag: "Defect", defect }),
+      send(client.id, { _tag: "Defect", defect: encodeDefect(defect) }),
       (cause) =>
         Effect.annotateLogs(Effect.logDebug(cause), {
           module: "RpcServer",
@@ -650,7 +673,8 @@ export const make: <Rpcs extends Rpc.Any>(
         return Effect.matchEffect(
           Effect.provide(schemas.decode(request.payload), schemas.context),
           {
-            onFailure: (error) => sendRequestDefect(client, requestId, TreeFormatter.formatErrorSync(error)),
+            onFailure: (error) =>
+              sendRequestDefect(client, requestId, schemas.encodeDefect, TreeFormatter.formatErrorSync(error)),
             onSuccess: (payload) => {
               client.schemas.set(
                 requestId,
@@ -700,7 +724,8 @@ export const make: <Rpcs extends Rpc.Any>(
   }).pipe(
     Effect.interruptible,
     Effect.tapErrorCause((cause) => Effect.logFatal("BUG: RpcServer protocol crashed", cause)),
-    Effect.onExit((exit) => Scope.close(scope, exit))
+    Effect.onExit((exit) => Scope.close(scope, exit)),
+    Effect.withUnhandledErrorLogLevel(Option.none())
   )
 })
 
@@ -715,12 +740,14 @@ export const layer = <Rpcs extends Rpc.Any>(
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
     readonly concurrency?: number | "unbounded" | undefined
+    readonly disableFatalDefects?: boolean | undefined
   }
 ): Layer.Layer<
   never,
   never,
   | Protocol
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > => Layer.scopedDiscard(Effect.forkScoped(Effect.interruptible(make(group, options))))
 
@@ -741,12 +768,14 @@ export const layerHttpRouter = <Rpcs extends Rpc.Any>(options: {
   readonly spanPrefix?: string | undefined
   readonly spanAttributes?: Record<string, unknown> | undefined
   readonly concurrency?: number | "unbounded" | undefined
+  readonly disableFatalDefects?: boolean | undefined
 }): Layer.Layer<
   never,
   never,
   | RpcSerialization.RpcSerialization
   | HttpLayerRouter.HttpRouter
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > =>
   layer(options.group, options).pipe(
@@ -791,9 +820,10 @@ export class Protocol extends Context.Tag("@effect/rpc/RpcServer/Protocol")<Prot
 export const makeProtocolSocketServer = Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
   const { onSocket, protocol } = yield* makeSocketProtocol
-  yield* Effect.forkScoped(Effect.interruptible(
-    server.run(Effect.fnUntraced(onSocket, Effect.scoped))
-  ))
+  yield* server.run(Effect.fnUntraced(onSocket, Effect.scoped)).pipe(
+    Effect.interruptible,
+    Effect.forkScoped
+  )
   return protocol
 })
 
@@ -922,51 +952,67 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
   const includesFraming = serialization.includesFraming
+  const isBinary = !serialization.contentType.includes("json")
 
   const disconnects = yield* Mailbox.make<number>()
   let writeRequest!: (clientId: number, message: FromClientEncoded) => Effect.Effect<void>
 
   let clientId = 0
 
-  const clients = new Map<number, {
+  type Client = {
     readonly write: (bytes: FromServerEncoded) => Effect.Effect<void>
     readonly end: Effect.Effect<void>
-  }>()
+  }
+  const clients = new Map<number, Client>()
   const clientIds = new Set<number>()
+
+  const encoder = new TextEncoder()
 
   const httpApp: HttpApp.Default<never, Scope.Scope> = Effect.gen(function*() {
     const request = yield* HttpServerRequest.HttpServerRequest
+    const scope = yield* Effect.scope
     const requestHeaders = Object.entries(request.headers)
-    const data = yield* Effect.orDie(request.arrayBuffer)
+    const data = yield* Effect.orDie<string | Uint8Array<ArrayBuffer>, HttpServerError.HttpServerError, never>(
+      isBinary ? Effect.map(request.arrayBuffer, (ab) => new Uint8Array(ab)) : request.text
+    )
     const id = clientId++
     const mailbox = yield* Mailbox.make<Uint8Array | FromServerEncoded>()
     const parser = serialization.unsafeMake()
-    const encoder = new TextEncoder()
 
     const offer = (data: Uint8Array | string) =>
       typeof data === "string" ? mailbox.offer(encoder.encode(data)) : mailbox.offer(data)
 
     clientIds.add(id)
-    clients.set(id, {
-      write: (response) => {
+    const client: Client = {
+      write: !includesFraming ? ((response) => mailbox.offer(response)) : (response) => {
         try {
-          if (!includesFraming) return mailbox.offer(response)
           const encoded = parser.encode(response)
           if (encoded === undefined) return Effect.void
           return offer(encoded)
         } catch (cause) {
-          return !includesFraming
-            ? mailbox.offer(ResponseDefectEncoded(cause))
-            : offer(parser.encode(ResponseDefectEncoded(cause))!)
+          return offer(parser.encode(ResponseDefectEncoded(cause))!)
         }
       },
       end: mailbox.end
+    }
+    clients.set(id, client)
+
+    yield* Scope.addFinalizerExit(scope, () => {
+      clientIds.delete(id)
+      clients.delete(id)
+      disconnects.unsafeOffer(id)
+      if (mailbox.unsafeSize()._tag === "None") return Effect.void
+      return Effect.forEach(
+        requestIds,
+        (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
+        { discard: true }
+      )
     })
 
     const requestIds: Array<RequestId> = []
 
     try {
-      const decoded = parser.decode(new Uint8Array(data)) as ReadonlyArray<FromClientEncoded>
+      const decoded = parser.decode(data) as ReadonlyArray<FromClientEncoded>
       for (const message of decoded) {
         if (message._tag === "Request") {
           requestIds.push(RequestId(message.id))
@@ -977,24 +1023,12 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         yield* writeRequest(id, message)
       }
     } catch (cause) {
-      yield* offer(parser.encode(ResponseDefectEncoded(cause))!)
+      yield* client.write(ResponseDefectEncoded(cause))
     }
 
     yield* writeRequest(id, constEof)
 
     if (!includesFraming) {
-      let done = false
-      yield* Effect.addFinalizer(() => {
-        clientIds.delete(id)
-        clients.delete(id)
-        disconnects.unsafeOffer(id)
-        if (done) return Effect.void
-        return Effect.forEach(
-          requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-          { discard: true }
-        )
-      })
       const responses = Arr.empty<FromServerEncoded>()
       while (true) {
         const [items, done] = yield* mailbox.takeAll
@@ -1002,25 +1036,26 @@ export const makeProtocolWithHttpApp: Effect.Effect<
         responses.push(...items as any)
         if (done) break
       }
-      done = true
       return HttpServerResponse.text(parser.encode(responses) as string, { contentType: serialization.contentType })
     }
 
+    const [initialChunk, done] = yield* mailbox.takeAll
+    if (done) {
+      return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk as Chunk.Chunk<Uint8Array>), {
+        contentType: serialization.contentType
+      })
+    }
+
     return HttpServerResponse.stream(
-      Stream.ensuringWith(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>), (exit) => {
-        clientIds.delete(id)
-        clients.delete(id)
-        disconnects.unsafeOffer(id)
-        if (!Exit.isInterrupted(exit)) return Effect.void
-        return Effect.forEach(
-          requestIds,
-          (requestId) => writeRequest(id, { _tag: "Interrupt", requestId: String(requestId) }),
-          { discard: true }
-        )
-      }),
+      Stream.fromChunk(initialChunk as Chunk.Chunk<Uint8Array>).pipe(
+        Stream.concat(Mailbox.toStream(mailbox as Mailbox.ReadonlyMailbox<Uint8Array>))
+      ),
       { contentType: serialization.contentType }
     )
-  }).pipe(Effect.interruptible)
+  }).pipe(
+    Effect.interruptible,
+    Effect.withUnhandledErrorLogLevel(Option.none())
+  )
 
   const protocol = yield* Protocol.make((writeRequest_) => {
     writeRequest = writeRequest_
@@ -1046,6 +1081,19 @@ export const makeProtocolWithHttpApp: Effect.Effect<
 
   return { protocol, httpApp } as const
 })
+
+const mergeUint8Arrays = (arrays: Chunk.Chunk<Uint8Array>) => {
+  if (arrays.length === 0) return new Uint8Array(0)
+  if (arrays.length === 1) return Chunk.unsafeHead(arrays)
+  const length = Chunk.reduce(arrays, 0, (acc, a) => acc + a.length)
+  const result = new Uint8Array(length)
+  let offset = 0
+  for (const array of arrays) {
+    result.set(array, offset)
+    offset += array.length
+  }
+  return result
+}
 
 /**
  * @since 1.0.0
@@ -1094,7 +1142,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
 
   yield* Deferred.await(closeLatch).pipe(
     Effect.onExit(() => {
-      fiber.currentScheduler.scheduleTask(() => fiber.unsafeInterruptAsFork(fiber.id()), 0)
+      fiber.currentScheduler.scheduleTask(() => fiber.unsafeInterruptAsFork(fiber.id()), 0, fiber)
       return Effect.void
     }),
     Effect.forkScoped
@@ -1106,7 +1154,9 @@ export const makeProtocolWorkerRunner: Effect.Effect<
       return Deferred.succeed(initialMessage, message.value)
     }
     return writeRequest(clientId, message)
-  })
+  }).pipe(
+    Effect.withUnhandledErrorLogLevel(Option.none())
+  )
 
   yield* disconnects.take.pipe(
     Effect.tap((clientId) => {
@@ -1180,6 +1230,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly disableFatalDefects?: boolean | undefined
   } | undefined
 ) => Effect.Effect<
   HttpApp.Default<never, Scope.Scope>,
@@ -1187,6 +1238,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
   | Scope.Scope
   | RpcSerialization.RpcSerialization
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
@@ -1194,6 +1246,7 @@ export const toHttpApp: <Rpcs extends Rpc.Any>(
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly disableFatalDefects?: boolean | undefined
   }
 ) {
   const { httpApp, protocol } = yield* makeProtocolWithHttpApp
@@ -1215,6 +1268,7 @@ export const toHttpAppWebsocket: <Rpcs extends Rpc.Any>(
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly disableFatalDefects?: boolean | undefined
   } | undefined
 ) => Effect.Effect<
   HttpApp.Default<never, Scope.Scope>,
@@ -1222,6 +1276,7 @@ export const toHttpAppWebsocket: <Rpcs extends Rpc.Any>(
   | Scope.Scope
   | RpcSerialization.RpcSerialization
   | Rpc.ToHandler<Rpcs>
+  | Rpc.Context<Rpcs>
   | Rpc.Middleware<Rpcs>
 > = Effect.fnUntraced(function*<Rpcs extends Rpc.Any>(
   group: RpcGroup.RpcGroup<Rpcs>,
@@ -1229,6 +1284,7 @@ export const toHttpAppWebsocket: <Rpcs extends Rpc.Any>(
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly disableFatalDefects?: boolean | undefined
   }
 ) {
   const { httpApp, protocol } = yield* makeProtocolWithHttpAppWebsocket
@@ -1259,6 +1315,7 @@ export const toWebHandler = <Rpcs extends Rpc.Any, LE>(
     readonly disableTracing?: boolean | undefined
     readonly spanPrefix?: string | undefined
     readonly spanAttributes?: Record<string, unknown> | undefined
+    readonly disableFatalDefects?: boolean | undefined
     readonly middleware?: (
       httpApp: HttpApp.Default
     ) => HttpApp.Default<
@@ -1310,7 +1367,8 @@ export const makeProtocolStdio = Effect.fnUntraced(function*<EIn, EOut, RIn, ROu
       Effect.retry(Schedule.spaced(500)),
       Effect.ensuring(Fiber.interruptFork(fiber)),
       Effect.forkScoped,
-      Effect.interruptible
+      Effect.interruptible,
+      Effect.withUnhandledErrorLogLevel(Option.none())
     )
 
     yield* Mailbox.toStream(mailbox).pipe(
@@ -1352,6 +1410,22 @@ export const layerProtocolStdio = <EIn, EOut, RIn, ROut>(options: {
   readonly stdout: Sink.Sink<void, Uint8Array | string, unknown, EOut, ROut>
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | RIn | ROut> =>
   Layer.scoped(Protocol, makeProtocolStdio(options))
+
+/**
+ * Fiber id used for client interruptions.
+ *
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdClientInterrupt = FiberId.make(-499, 0) as FiberId.Runtime
+
+/**
+ * Fiber id used for transient interruptions.
+ *
+ * @since 1.0.0
+ * @category Interruption
+ */
+export const fiberIdTransientInterrupt = FiberId.make(-503, 0) as FiberId.Runtime
 
 // internal
 
@@ -1416,7 +1490,8 @@ const makeSocketProtocol = Effect.gen(function*() {
     }).pipe(
       Effect.interruptible,
       Effect.catchIf((error) => error.reason === "Close", () => Effect.void),
-      Effect.orDie
+      Effect.orDie,
+      Effect.withUnhandledErrorLogLevel(Option.none())
     )
   }
 

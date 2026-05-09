@@ -164,6 +164,7 @@ export class MultipartError extends Schema.TaggedError<MultipartError>()("Multip
  * @category Schemas
  */
 export const FileSchema: Schema.Schema<PersistedFile> = Schema.declare(isPersistedFile, {
+  typeConstructor: { _tag: "effect/platform/Multipart.PersistedFile" },
   identifier: "PersistedFile",
   jsonSchema: {
     type: "string",

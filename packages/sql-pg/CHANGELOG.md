@@ -1,5 +1,165 @@
 # @effect/sql-pg
 
+## 0.52.1
+
+### Patch Changes
+
+- [#6140](https://github.com/Effect-TS/effect/pull/6140) [`4767f86`](https://github.com/Effect-TS/effect/commit/4767f860a8231fc8d805d38173b85b47da41a6b0) Thanks @tim-smart! - Use a dedicated PostgreSQL connection for LISTEN / UNLISTEN so active listeners do not consume a pooled query connection.
+
+## 0.52.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/experimental@0.60.0
+  - @effect/platform@0.96.0
+  - @effect/sql@0.51.0
+
+## 0.51.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/experimental@0.59.0
+  - @effect/platform@0.95.0
+  - @effect/sql@0.50.0
+
+## 0.50.3
+
+### Patch Changes
+
+- [#6033](https://github.com/Effect-TS/effect/pull/6033) [`740a912`](https://github.com/Effect-TS/effect/commit/740a912142c2578defcf3e1e7d449535b074bd61) Thanks @tim-smart! - Add `PgClient.fromPool` and `PgClient.layerFromPool`.
+
+- Updated dependencies [[`22d9d27`](https://github.com/Effect-TS/effect/commit/22d9d27bc007db86d9e4748c17324fab5f950c7d)]:
+  - @effect/platform@0.94.4
+
+## 0.50.2
+
+### Patch Changes
+
+- [#5998](https://github.com/Effect-TS/effect/pull/5998) [`7b8165f`](https://github.com/Effect-TS/effect/commit/7b8165f45779380fea8ac8e09badef898b63eb41) Thanks @Brandon-Perry! - Readded stream as an optional parameter to PgClientConfig.
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.50.1
+
+### Patch Changes
+
+- [#5943](https://github.com/Effect-TS/effect/pull/5943) [`c5a1e33`](https://github.com/Effect-TS/effect/commit/c5a1e332e004acc9374ced41d69c557c1e392bf2) Thanks @sidpremkumar! - Fix crash when pool.connect fails by ensuring client exists before attaching error handler
+
+## 0.50.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/experimental@0.58.0
+  - @effect/sql@0.49.0
+
+## 0.49.7
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
+- Updated dependencies [[`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b)]:
+  - @effect/experimental@0.57.5
+  - @effect/sql@0.48.1
+
+## 0.49.6
+
+### Patch Changes
+
+- [#5758](https://github.com/Effect-TS/effect/pull/5758) [`fe2792a`](https://github.com/Effect-TS/effect/commit/fe2792a670529b1d6da91aa1865e6ab125b263bb) Thanks @rocwang! - Fix query result streaming in @effect/sql-pg
+
+- Updated dependencies [[`1deeb6a`](https://github.com/Effect-TS/effect/commit/1deeb6a58cde29e99f57c56d9adcdcda7ac610d0), [`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f)]:
+  - @effect/experimental@0.57.2
+  - @effect/platform@0.93.3
+
+## 0.49.5
+
+### Patch Changes
+
+- [#5735](https://github.com/Effect-TS/effect/pull/5735) [`973c90a`](https://github.com/Effect-TS/effect/commit/973c90af48a43a48070a56128f8ce0d0b98afbab) Thanks @tim-smart! - handle undefined pg client
+
+## 0.49.4
+
+### Patch Changes
+
+- [#5725](https://github.com/Effect-TS/effect/pull/5725) [`06b49b9`](https://github.com/Effect-TS/effect/commit/06b49b9b6ab8cb445a426aa13123795c4914b953) Thanks @janglad! - Fix: populate PgClient config with values parsed from URL if not provided
+
+## 0.49.3
+
+### Patch Changes
+
+- [#5717](https://github.com/Effect-TS/effect/pull/5717) [`d277a32`](https://github.com/Effect-TS/effect/commit/d277a32b6c9e095553263eac204c026ecd2711fe) Thanks @tim-smart! - improve pg client error handling
+
+## 0.49.2
+
+### Patch Changes
+
+- [#5705](https://github.com/Effect-TS/effect/pull/5705) [`84d22eb`](https://github.com/Effect-TS/effect/commit/84d22eb75985da4f3c626a59bcfa2b5a19a17fa2) Thanks @tim-smart! - only cancel postgres queries on a best effort basis
+
+## 0.49.1
+
+### Patch Changes
+
+- [#5701](https://github.com/Effect-TS/effect/pull/5701) [`c00268d`](https://github.com/Effect-TS/effect/commit/c00268d6ae82fcceda6d71a99e1ec4c5072c1deb) Thanks @tim-smart! - support query interuption in sql-pg
+
+## 0.49.0
+
+### Minor Changes
+
+- [#5686](https://github.com/Effect-TS/effect/pull/5686) [`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313) Thanks @tim-smart! - allow any type to be used as sql parameters
+
+### Patch Changes
+
+- [#5690](https://github.com/Effect-TS/effect/pull/5690) [`106abe0`](https://github.com/Effect-TS/effect/commit/106abe042658ebe12b221d00fe704fc2ee9b9be8) Thanks @lucas-barake! - fix handling of multi-statement queries (pg returns an array of results)
+
+- Updated dependencies [[`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313)]:
+  - @effect/sql@0.48.0
+  - @effect/experimental@0.57.0
+
+## 0.48.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - Use "pg" npm library for @effect/sql-pg backend
+
+### Patch Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - disable pg onnotice by default
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform@0.93.0
+  - @effect/experimental@0.57.0
+  - @effect/sql@0.47.0
+
+## 0.47.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/experimental@0.56.0
+  - @effect/sql@0.46.0
+
+## 0.46.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/experimental@0.55.0
+  - @effect/sql@0.45.0
+
 ## 0.45.1
 
 ### Patch Changes

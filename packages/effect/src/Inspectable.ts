@@ -3,7 +3,7 @@
  */
 import type * as FiberRefs from "./FiberRefs.js"
 import { globalValue } from "./GlobalValue.js"
-import { hasProperty, isFunction } from "./Predicate.js"
+import * as Predicate from "./Predicate.js"
 
 /**
  * @since 2.0.0
@@ -33,7 +33,7 @@ export interface Inspectable {
 export const toJSON = (x: unknown): unknown => {
   try {
     if (
-      hasProperty(x, "toJSON") && isFunction(x["toJSON"]) &&
+      Predicate.hasProperty(x, "toJSON") && Predicate.isFunction(x["toJSON"]) &&
       x["toJSON"].length === 0
     ) {
       return x.toJSON()
@@ -44,6 +44,119 @@ export const toJSON = (x: unknown): unknown => {
     return {}
   }
   return redact(x)
+}
+
+const CIRCULAR = "[Circular]"
+
+/** @internal */
+export function formatDate(date: Date): string {
+  try {
+    return date.toISOString()
+  } catch {
+    return "Invalid Date"
+  }
+}
+
+function safeToString(input: any): string {
+  try {
+    const s = input.toString()
+    return typeof s === "string" ? s : String(s)
+  } catch {
+    return "[toString threw]"
+  }
+}
+
+/** @internal */
+export function formatPropertyKey(name: PropertyKey): string {
+  return Predicate.isString(name) ? JSON.stringify(name) : String(name)
+}
+
+/** @internal */
+export function formatUnknown(
+  input: unknown,
+  options?: {
+    readonly space?: number | string | undefined
+    readonly ignoreToString?: boolean | undefined
+  }
+): string {
+  const space = options?.space ?? 0
+  const seen = new WeakSet<object>()
+  const gap = !space ? "" : (Predicate.isNumber(space) ? " ".repeat(space) : space)
+  const ind = (d: number) => gap.repeat(d)
+
+  const wrap = (v: unknown, body: string): string => {
+    const ctor = (v as any)?.constructor
+    return ctor && ctor !== Object.prototype.constructor && ctor.name ? `${ctor.name}(${body})` : body
+  }
+
+  const ownKeys = (o: object): Array<PropertyKey> => {
+    try {
+      return Reflect.ownKeys(o)
+    } catch {
+      return ["[ownKeys threw]"]
+    }
+  }
+
+  function go(v: unknown, d = 0): string {
+    if (Array.isArray(v)) {
+      if (seen.has(v)) return CIRCULAR
+      seen.add(v)
+      if (!gap || v.length <= 1) return `[${v.map((x) => go(x, d)).join(",")}]`
+      const inner = v.map((x) => go(x, d + 1)).join(",\n" + ind(d + 1))
+      return `[\n${ind(d + 1)}${inner}\n${ind(d)}]`
+    }
+
+    if (Predicate.isDate(v)) return formatDate(v)
+
+    if (
+      !options?.ignoreToString &&
+      Predicate.hasProperty(v, "toString") &&
+      Predicate.isFunction(v["toString"]) &&
+      v["toString"] !== Object.prototype.toString &&
+      v["toString"] !== Array.prototype.toString
+    ) {
+      const s = safeToString(v)
+      if (v instanceof Error && v.cause) {
+        return `${s} (cause: ${go(v.cause, d)})`
+      }
+      return s
+    }
+
+    if (Predicate.isString(v)) return JSON.stringify(v)
+
+    if (
+      Predicate.isNumber(v) ||
+      v == null ||
+      Predicate.isBoolean(v) ||
+      Predicate.isSymbol(v)
+    ) return String(v)
+
+    if (Predicate.isBigInt(v)) return String(v) + "n"
+
+    if (v instanceof Set || v instanceof Map) {
+      if (seen.has(v)) return CIRCULAR
+      seen.add(v)
+      return `${v.constructor.name}(${go(Array.from(v), d)})`
+    }
+
+    if (Predicate.isObject(v)) {
+      if (seen.has(v)) return CIRCULAR
+      seen.add(v)
+      const keys = ownKeys(v)
+      if (!gap || keys.length <= 1) {
+        const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${go((v as any)[k], d)}`).join(",")}}`
+        return wrap(v, body)
+      }
+      const body = `{\n${
+        keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${go((v as any)[k], d + 1)}`).join(",\n")
+      }\n${ind(d)}}`
+      return wrap(v, body)
+    }
+
+    return String(v)
+  }
+
+  return go(input, 0)
 }
 
 /**

@@ -1,11 +1,14 @@
-import type * as AiResponse from "@effect/ai/AiResponse"
+import type * as Response from "@effect/ai/Response"
 import * as Predicate from "effect/Predicate"
 import type { StopReason } from "../AmazonBedrockSchema.js"
 
 /** @internal */
+export const ProviderOptionsKey = "@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel/ProviderOptions"
+
+/** @internal */
 export const ProviderMetadataKey = "@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel/ProviderMetadata"
 
-const finishReasonMap: Record<StopReason, AiResponse.FinishReason> = {
+const finishReasonMap: Record<StopReason, Response.FinishReason> = {
   content_filtered: "content-filter",
   end_turn: "stop",
   guardrail_intervened: "content-filter",
@@ -15,7 +18,7 @@ const finishReasonMap: Record<StopReason, AiResponse.FinishReason> = {
 }
 
 /** @internal */
-export const resolveFinishReason = (stopReason: StopReason): AiResponse.FinishReason => {
+export const resolveFinishReason = (stopReason: StopReason): Response.FinishReason => {
   const reason = finishReasonMap[stopReason]
   return Predicate.isUndefined(reason) ? "unknown" : reason
 }

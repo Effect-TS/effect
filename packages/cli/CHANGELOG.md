@@ -1,5 +1,118 @@
 # @effect/cli
 
+## 0.75.1
+
+### Patch Changes
+
+- [#6144](https://github.com/Effect-TS/effect/pull/6144) [`ec5c505`](https://github.com/Effect-TS/effect/commit/ec5c50507b1a2f5ad712c148a7da0fadb8cb9f52) Thanks @LikiosSedo! - Fix `--log-level=value` equals syntax incorrectly swallowing the next argument. Only skip the next arg when the previous arg is exactly `--log-level` (space-separated form).
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
+## 0.75.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/platform@0.96.0
+  - @effect/printer@0.49.0
+  - @effect/printer-ansi@0.49.0
+
+## 0.74.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/platform@0.95.0
+  - @effect/printer@0.48.0
+  - @effect/printer-ansi@0.48.0
+
+## 0.73.2
+
+### Patch Changes
+
+- [#6022](https://github.com/Effect-TS/effect/pull/6022) [`5df4da1`](https://github.com/Effect-TS/effect/commit/5df4da10de444f379a166f4b28721e75100bb838) Thanks @m9tdev! - Fixed `Prompt.text` rendering duplicate lines when input text wraps to a new terminal line.
+
+- Updated dependencies [[`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7), [`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49), [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e)]:
+  - @effect/platform@0.94.3
+  - effect@3.19.16
+
+## 0.73.1
+
+### Patch Changes
+
+- [#5983](https://github.com/Effect-TS/effect/pull/5983) [`0d1a44f`](https://github.com/Effect-TS/effect/commit/0d1a44fa142c0da25fe36a1ac35675f666944803) Thanks @cevr! - Allow options to appear after positional arguments
+
+  Previously, `@effect/cli` required all options to appear before positional arguments. For example, `cmd --force staging` worked but `cmd staging --force` failed with "Received unknown argument".
+
+  This change updates the option parsing logic to scan through all arguments to find options, regardless of their position relative to positional arguments. This aligns with the behavior of most CLI tools (git, npm, docker, etc.) which allow options anywhere in the command.
+
+  **Before:**
+
+  ```bash
+  myapp deploy --force staging  # worked
+  myapp deploy staging --force  # failed: "Received unknown argument: '--force'"
+  ```
+
+  **After:**
+
+  ```bash
+  myapp deploy --force staging  # works
+  myapp deploy staging --force  # works
+  ```
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform@0.94.2
+
+## 0.73.0
+
+### Patch Changes
+
+- [#5853](https://github.com/Effect-TS/effect/pull/5853) [`1b23741`](https://github.com/Effect-TS/effect/commit/1b23741a3d43acfa99ffa385b9c496d411704d0c) Thanks @Masty88! - handle executable paths with spaces in CLI arguments
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+
+## 0.72.1
+
+### Patch Changes
+
+- [#5677](https://github.com/Effect-TS/effect/pull/5677) [`f8273c9`](https://github.com/Effect-TS/effect/commit/f8273c9de13ffa6d96c08686f28951177b59f430) Thanks @nemmtor! - fix log level cli arg infinite loop
+
+- Updated dependencies [[`7d28a90`](https://github.com/Effect-TS/effect/commit/7d28a908f965854cff386a19515141aea5b39eb7)]:
+  - effect@3.19.3
+
+## 0.72.0
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform@0.93.0
+  - @effect/printer@0.47.0
+  - @effect/printer-ansi@0.47.0
+
+## 0.71.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/printer@0.46.0
+  - @effect/printer-ansi@0.46.0
+
+## 0.70.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+
 ## 0.69.2
 
 ### Patch Changes

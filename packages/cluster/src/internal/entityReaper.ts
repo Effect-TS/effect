@@ -35,7 +35,7 @@ export class EntityReaper extends Effect.Service<EntityReaper>()("@effect/cluste
         for (const { entities, maxIdleTime, servers } of registered) {
           for (const state of servers.values()) {
             const duration = now - state.lastActiveCheck
-            if (state.activeRequests.size > 0 || duration < maxIdleTime) {
+            if (state.keepAliveEnabled || state.activeRequests.size > 0 || duration < maxIdleTime) {
               continue
             }
             yield* Effect.fork(entities.removeIgnore(state.address))

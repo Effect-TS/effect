@@ -382,7 +382,7 @@ const makeTempFileFactory = (method: string) => {
   return (options?: FileSystem.MakeTempFileOptions) =>
     pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
-      Effect.map(([directory, random]) => Path.join(directory, random)),
+      Effect.map(([directory, random]) => Path.join(directory, random + (options?.suffix ?? ""))),
       Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" })))
     )
 }
@@ -487,7 +487,7 @@ const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   uid: Option.fromNullable(stat.uid),
   gid: Option.fromNullable(stat.gid),
   size: FileSystem.Size(stat.size),
-  blksize: Option.fromNullable(FileSystem.Size(stat.blksize)),
+  blksize: Option.map(Option.fromNullable(stat.blksize), FileSystem.Size),
   blocks: Option.fromNullable(stat.blocks)
 })
 const stat = (() => {

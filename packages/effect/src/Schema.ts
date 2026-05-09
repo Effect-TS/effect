@@ -29,6 +29,7 @@ import { dual, identity } from "./Function.js"
 import { globalValue } from "./GlobalValue.js"
 import * as hashMap_ from "./HashMap.js"
 import * as hashSet_ from "./HashSet.js"
+import * as Inspectable from "./Inspectable.js"
 import * as internalCause_ from "./internal/cause.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as schemaId_ from "./internal/schema/schemaId.js"
@@ -230,6 +231,7 @@ interface AllAnnotations<A, TypeParameters extends ReadonlyArray<any>>
 {}
 
 const builtInAnnotations = {
+  typeConstructor: AST.TypeConstructorAnnotationId,
   schemaId: AST.SchemaIdAnnotationId,
   message: AST.MessageAnnotationId,
   missingMessage: AST.MissingMessageAnnotationId,
@@ -4147,6 +4149,7 @@ export declare namespace Annotations {
    * @since 3.10.0
    */
   export interface Schema<A, TypeParameters extends ReadonlyArray<any> = readonly []> extends Doc<A> {
+    readonly typeConstructor?: AST.TypeConstructorAnnotation
     readonly identifier?: AST.IdentifierAnnotation
     readonly message?: AST.MessageAnnotation
     readonly schemaId?: AST.SchemaIdAnnotation
@@ -4917,6 +4920,7 @@ export class ULID extends String$.pipe(
  * @since 3.11.0
  */
 export class URLFromSelf extends instanceOf(URL, {
+  typeConstructor: { _tag: "URL" },
   identifier: "URLFromSelf",
   arbitrary: (): LazyArbitrary<URL> => (fc) => fc.webUrl().map((s) => new URL(s)),
   pretty: () => (url) => url.toString()
@@ -5411,7 +5415,7 @@ export type JsonNumberSchemaId = typeof JsonNumberSchemaId
  * import * as assert from "node:assert"
  * import * as Schema from "effect/Schema"
  *
- * const is = Schema.is(S.JsonNumber)
+ * const is = Schema.is(Schema.JsonNumber)
  *
  * assert.deepStrictEqual(is(42), true)
  * assert.deepStrictEqual(is(Number.NaN), false)
@@ -5849,6 +5853,7 @@ export const RedactedFromSelf = <Value extends Schema.Any>(value: Value): Redact
       encode: (value) => redactedParse(ParseResult.encodeUnknown(value))
     },
     {
+      typeConstructor: { _tag: "effect/Redacted" },
       description: "Redacted(<redacted>)",
       pretty: () => () => "Redacted(<redacted>)",
       arbitrary: redactedArbitrary,
@@ -5890,6 +5895,7 @@ export function Redacted<Value extends Schema.Any>(value: Value): Redacted<Value
 export class DurationFromSelf extends declare(
   duration_.isDuration,
   {
+    typeConstructor: { _tag: "effect/Duration" },
     identifier: "DurationFromSelf",
     pretty: (): pretty_.Pretty<duration_.Duration> => String,
     arbitrary: (): LazyArbitrary<duration_.Duration> => (fc) =>
@@ -6193,6 +6199,7 @@ export const betweenDuration = <S extends Schema.Any>(
 export class Uint8ArrayFromSelf extends declare(
   Predicate.isUint8Array,
   {
+    typeConstructor: { _tag: "Uint8Array" },
     identifier: "Uint8ArrayFromSelf",
     pretty: (): pretty_.Pretty<Uint8Array> => (u8arr) => `new Uint8Array(${JSON.stringify(Array.from(u8arr))})`,
     arbitrary: (): LazyArbitrary<Uint8Array> => (fc) => fc.uint8Array(),
@@ -6647,8 +6654,8 @@ export const lessThanDate = <S extends Schema.Any>(
     filter((a: Date) => a < max, {
       schemaId: LessThanDateSchemaId,
       [LessThanDateSchemaId]: { max },
-      title: `lessThanDate(${util_.formatDate(max)})`,
-      description: `a date before ${util_.formatDate(max)}`,
+      title: `lessThanDate(${Inspectable.formatDate(max)})`,
+      description: `a date before ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6674,8 +6681,8 @@ export const lessThanOrEqualToDate = <S extends Schema.Any>(
     filter((a: Date) => a <= max, {
       schemaId: LessThanOrEqualToDateSchemaId,
       [LessThanOrEqualToDateSchemaId]: { max },
-      title: `lessThanOrEqualToDate(${util_.formatDate(max)})`,
-      description: `a date before or equal to ${util_.formatDate(max)}`,
+      title: `lessThanOrEqualToDate(${Inspectable.formatDate(max)})`,
+      description: `a date before or equal to ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6699,8 +6706,8 @@ export const greaterThanDate = <S extends Schema.Any>(
     filter((a: Date) => a > min, {
       schemaId: GreaterThanDateSchemaId,
       [GreaterThanDateSchemaId]: { min },
-      title: `greaterThanDate(${util_.formatDate(min)})`,
-      description: `a date after ${util_.formatDate(min)}`,
+      title: `greaterThanDate(${Inspectable.formatDate(min)})`,
+      description: `a date after ${Inspectable.formatDate(min)}`,
       ...annotations
     })
   )
@@ -6726,8 +6733,8 @@ export const greaterThanOrEqualToDate = <S extends Schema.Any>(
     filter((a: Date) => a >= min, {
       schemaId: GreaterThanOrEqualToDateSchemaId,
       [GreaterThanOrEqualToDateSchemaId]: { min },
-      title: `greaterThanOrEqualToDate(${util_.formatDate(min)})`,
-      description: `a date after or equal to ${util_.formatDate(min)}`,
+      title: `greaterThanOrEqualToDate(${Inspectable.formatDate(min)})`,
+      description: `a date after or equal to ${Inspectable.formatDate(min)}`,
       ...annotations
     })
   )
@@ -6752,8 +6759,8 @@ export const betweenDate = <S extends Schema.Any>(
     filter((a: Date) => a <= max && a >= min, {
       schemaId: BetweenDateSchemaId,
       [BetweenDateSchemaId]: { max, min },
-      title: `betweenDate(${util_.formatDate(min)}, ${util_.formatDate(max)})`,
-      description: `a date between ${util_.formatDate(min)} and ${util_.formatDate(max)}`,
+      title: `betweenDate(${Inspectable.formatDate(min)}, ${Inspectable.formatDate(max)})`,
+      description: `a date between ${Inspectable.formatDate(min)} and ${Inspectable.formatDate(max)}`,
       ...annotations
     })
   )
@@ -6780,6 +6787,7 @@ export type DateFromSelfSchemaId = typeof DateFromSelfSchemaId
 export class DateFromSelf extends declare(
   Predicate.isDate,
   {
+    typeConstructor: { _tag: "Date" },
     identifier: "DateFromSelf",
     schemaId: DateFromSelfSchemaId,
     [DateFromSelfSchemaId]: { noInvalidDate: false },
@@ -6822,7 +6830,7 @@ export class DateFromString extends transform(
   {
     strict: true,
     decode: (i) => new Date(i),
-    encode: (a) => util_.formatDate(a)
+    encode: (a) => Inspectable.formatDate(a)
   }
 ).annotations({ identifier: "DateFromString" }) {}
 
@@ -6873,6 +6881,7 @@ export class DateFromNumber extends transform(
 export class DateTimeUtcFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isUtc(u),
   {
+    typeConstructor: { _tag: "effect/DateTime.Utc" },
     identifier: "DateTimeUtcFromSelf",
     description: "a DateTime.Utc instance",
     pretty: (): pretty_.Pretty<dateTime.Utc> => (dateTime) => dateTime.toString(),
@@ -6885,7 +6894,8 @@ export class DateTimeUtcFromSelf extends declare(
 const decodeDateTimeUtc = <A extends dateTime.DateTime.Input>(input: A, ast: AST.AST) =>
   ParseResult.try({
     try: () => dateTime.unsafeMake(input),
-    catch: () => new ParseResult.Type(ast, input, `Unable to decode ${util_.formatUnknown(input)} into a DateTime.Utc`)
+    catch: () =>
+      new ParseResult.Type(ast, input, `Unable to decode ${Inspectable.formatUnknown(input)} into a DateTime.Utc`)
   })
 
 /**
@@ -6948,6 +6958,7 @@ const timeZoneOffsetArbitrary = (): LazyArbitrary<dateTime.TimeZone.Offset> => (
 export class TimeZoneOffsetFromSelf extends declare(
   dateTime.isTimeZoneOffset,
   {
+    typeConstructor: { _tag: "effect/DateTime.TimeZone.Offset" },
     identifier: "TimeZoneOffsetFromSelf",
     description: "a TimeZone.Offset instance",
     pretty: (): pretty_.Pretty<dateTime.TimeZone.Offset> => (zone) => zone.toString(),
@@ -6983,6 +6994,7 @@ const timeZoneNamedArbitrary = (): LazyArbitrary<dateTime.TimeZone.Named> => (fc
 export class TimeZoneNamedFromSelf extends declare(
   dateTime.isTimeZoneNamed,
   {
+    typeConstructor: { _tag: "effect/DateTime.TimeZone.Named" },
     identifier: "TimeZoneNamedFromSelf",
     description: "a TimeZone.Named instance",
     pretty: (): pretty_.Pretty<dateTime.TimeZone.Named> => (zone) => zone.toString(),
@@ -7052,6 +7064,7 @@ const timeZoneArbitrary: LazyArbitrary<dateTime.TimeZone> = (fc) =>
 export class DateTimeZonedFromSelf extends declare(
   (u) => dateTime.isDateTime(u) && dateTime.isZoned(u),
   {
+    typeConstructor: { _tag: "effect/DateTime.Zoned" },
     identifier: "DateTimeZonedFromSelf",
     description: "a DateTime.Zoned instance",
     pretty: (): pretty_.Pretty<dateTime.Zoned> => (dateTime) => dateTime.toString(),
@@ -7167,6 +7180,7 @@ const OptionFromSelf_ = <Value extends Schema.Any>(value: Value): OptionFromSelf
       encode: (value) => optionParse(ParseResult.encodeUnknown(value))
     },
     {
+      typeConstructor: { _tag: "effect/Option" },
       pretty: optionPretty,
       arbitrary: optionArbitrary,
       equivalence: option_.getEquivalence
@@ -7425,6 +7439,7 @@ export const EitherFromSelf = <R extends Schema.All, L extends Schema.All>({ lef
       encode: (right, left) => eitherParse(ParseResult.encodeUnknown(right), ParseResult.encodeUnknown(left))
     },
     {
+      typeConstructor: { _tag: "effect/Either" },
       description: `Either<${format(right)}, ${format(left)}>`,
       pretty: eitherPretty,
       arbitrary: eitherArbitrary,
@@ -7613,6 +7628,7 @@ const mapFromSelf_ = <K extends Schema.Any, V extends Schema.Any>(
       encode: (Key, Value) => readonlyMapParse(ParseResult.encodeUnknown(Array$(Tuple(Key, Value))))
     },
     {
+      typeConstructor: { _tag: "ReadonlyMap" },
       description,
       pretty: readonlyMapPretty,
       arbitrary: mapArbitrary,
@@ -7795,6 +7811,7 @@ const setFromSelf_ = <Value extends Schema.Any>(value: Value, description: strin
       encode: (item) => readonlySetParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "ReadonlySet" },
       description,
       pretty: readonlySetPretty,
       arbitrary: setArbitrary,
@@ -7886,7 +7903,7 @@ const bigDecimalPretty = (): pretty_.Pretty<bigDecimal_.BigDecimal> => (val) =>
   `BigDecimal(${bigDecimal_.format(bigDecimal_.normalize(val))})`
 
 const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
-  fc.tuple(fc.bigInt(), fc.integer({ min: 0, max: 18 }))
+  fc.tuple(fc.bigInt(), fc.integer({ min: -18, max: 18 }))
     .map(([value, scale]) => bigDecimal_.make(value, scale))
 
 /**
@@ -7896,6 +7913,7 @@ const bigDecimalArbitrary = (): LazyArbitrary<bigDecimal_.BigDecimal> => (fc) =>
 export class BigDecimalFromSelf extends declare(
   bigDecimal_.isBigDecimal,
   {
+    typeConstructor: { _tag: "effect/BigDecimal" },
     identifier: "BigDecimalFromSelf",
     pretty: bigDecimalPretty,
     arbitrary: bigDecimalArbitrary,
@@ -8265,6 +8283,7 @@ export const ChunkFromSelf = <Value extends Schema.Any>(value: Value): ChunkFrom
       encode: (item) => chunkParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "effect/Chunk" },
       description: `Chunk<${format(value)}>`,
       pretty: chunkPretty,
       arbitrary: chunkArbitrary,
@@ -8336,6 +8355,7 @@ export const NonEmptyChunkFromSelf = <Value extends Schema.Any>(value: Value): N
       encode: (item) => nonEmptyChunkParse(ParseResult.encodeUnknown(NonEmptyArray(item)))
     },
     {
+      typeConstructor: { _tag: "effect/Chunk.NonEmptyChunk" },
       description: `NonEmptyChunk<${format(value)}>`,
       pretty: nonEmptyChunkPretty,
       arbitrary: nonEmptyChunkArbitrary,
@@ -8847,7 +8867,7 @@ export const TaggedError = <Self = never>(identifier?: string) =>
       get() {
         return `{ ${
           Reflect.ownKeys(fields)
-            .map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown((this)[p])}`)
+            .map((p: any) => `${Inspectable.formatPropertyKey(p)}: ${Inspectable.formatUnknown((this)[p])}`)
             .join(", ")
         } }`
       },
@@ -9112,7 +9132,9 @@ const makeClass = <Fields extends Struct.Fields>(
     Object.defineProperty(klass.prototype, "toString", {
       value() {
         return `${identifier}({ ${
-          Reflect.ownKeys(fields).map((p: any) => `${util_.formatPropertyKey(p)}: ${util_.formatUnknown(this[p])}`)
+          Reflect.ownKeys(fields).map((p: any) =>
+            `${Inspectable.formatPropertyKey(p)}: ${Inspectable.formatUnknown(this[p])}`
+          )
             .join(", ")
         } })`
       },
@@ -9190,6 +9212,7 @@ const fiberIdPretty: pretty_.Pretty<fiberId_.FiberId> = (fiberId) => {
 export class FiberIdFromSelf extends declare(
   fiberId_.isFiberId,
   {
+    typeConstructor: { _tag: "effect/FiberId" },
     identifier: "FiberIdFromSelf",
     pretty: () => fiberIdPretty,
     arbitrary: () => fiberIdArbitrary
@@ -9405,6 +9428,7 @@ export const CauseFromSelf = <E extends Schema.All, D extends Schema.All>({ defe
       encode: (error, defect) => causeParse(ParseResult.encodeUnknown(causeEncoded(error, defect)))
     },
     {
+      typeConstructor: { _tag: "effect/Cause" },
       title: `Cause<${error.ast}>`,
       pretty: causePretty,
       arbitrary: causeArbitrary
@@ -9655,6 +9679,7 @@ export const ExitFromSelf = <A extends Schema.All, E extends Schema.All, D exten
         )
     },
     {
+      typeConstructor: { _tag: "effect/Exit" },
       title: `Exit<${success.ast}, ${failure.ast}>`,
       pretty: exitPretty,
       arbitrary: exitArbitrary
@@ -9767,6 +9792,7 @@ export const HashSetFromSelf = <Value extends Schema.Any>(
       encode: (item) => hashSetParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "effect/HashSet" },
       description: `HashSet<${format(value)}>`,
       pretty: hashSetPretty,
       arbitrary: hashSetArbitrary,
@@ -9866,6 +9892,7 @@ export const HashMapFromSelf = <K extends Schema.Any, V extends Schema.Any>({ ke
       encode: (key, value) => hashMapParse(ParseResult.encodeUnknown(Array$(Tuple(key, value))))
     },
     {
+      typeConstructor: { _tag: "effect/HashMap" },
       description: `HashMap<${format(key)}, ${format(value)}>`,
       pretty: hashMapPretty,
       arbitrary: hashMapArbitrary,
@@ -9952,6 +9979,7 @@ export const ListFromSelf = <Value extends Schema.Any>(
       encode: (item) => listParse(ParseResult.encodeUnknown(Array$(item)))
     },
     {
+      typeConstructor: { _tag: "effect/List" },
       description: `List<${format(value)}>`,
       pretty: listPretty,
       arbitrary: listArbitrary,
@@ -10042,6 +10070,7 @@ export const SortedSetFromSelf = <Value extends Schema.Any>(
       encode: (item) => sortedSetParse(ParseResult.encodeUnknown(Array$(item)), ordI)
     },
     {
+      typeConstructor: { _tag: "effect/SortedSet" },
       description: `SortedSet<${format(value)}>`,
       pretty: sortedSetPretty,
       arbitrary: (arb, ctx) => sortedSetArbitrary(arb, ordA, ctx),

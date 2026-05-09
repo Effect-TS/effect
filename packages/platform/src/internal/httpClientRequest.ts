@@ -250,17 +250,21 @@ export const setUrl = dual<
 export const appendUrl = dual<
   (path: string) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
   (self: ClientRequest.HttpClientRequest, path: string) => ClientRequest.HttpClientRequest
->(2, (self, url) =>
-  makeInternal(
+>(2, (self, path) => {
+  if (path === "") {
+    return self
+  }
+  const baseUrl = self.url.endsWith("/") ? self.url : self.url + "/"
+  const pathSegment = path.startsWith("/") ? path.slice(1) : path
+  return makeInternal(
     self.method,
-    self.url.endsWith("/") && url.startsWith("/") ?
-      self.url + url.slice(1) :
-      self.url + url,
+    baseUrl + pathSegment,
     self.urlParams,
     self.hash,
     self.headers,
     self.body
-  ))
+  )
+})
 
 /** @internal */
 export const prependUrl = dual<

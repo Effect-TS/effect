@@ -49,7 +49,12 @@ export const makeRemoteCallback = Effect.gen(function*() {
     const runPromise = Runtime.runPromise(currentRuntime ? currentRuntime : constructionRuntime)
     const statement = client.unsafe(sql, params)
     if (method === "execute") {
-      return runPromise(Effect.map(statement.raw, (header) => ({ rows: [header] })))
+      return runPromise(Effect.either(Effect.map(statement.raw, (header) => ({ rows: [header] })))).then((res) => {
+        if (res._tag === "Left") {
+          throw res.left.cause
+        }
+        return res.right
+      })
     }
     let effect: Effect.Effect<any, SqlError> = method === "all" || method === "values"
       ? statement.values
@@ -57,6 +62,11 @@ export const makeRemoteCallback = Effect.gen(function*() {
     if (method === "get") {
       effect = Effect.map(effect, (rows) => rows[0] ?? [])
     }
-    return runPromise(Effect.map(effect, (rows) => ({ rows })))
+    return runPromise(Effect.either(Effect.map(effect, (rows) => ({ rows })))).then((res) => {
+      if (res._tag === "Left") {
+        throw res.left.cause
+      }
+      return res.right
+    })
   }
 })

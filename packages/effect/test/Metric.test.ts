@@ -380,6 +380,7 @@ describe("Metric", () => {
         strictEqual(result.min, 1)
         strictEqual(result.max, 3)
       }))
+
     it.effect("direct observe", () =>
       Effect.gen(function*() {
         const name = nextName()
@@ -444,6 +445,7 @@ describe("Metric", () => {
         strictEqual(result.min, 1)
         strictEqual(result.max, 3)
       }))
+
     it.effect("observe + taggedWith", () =>
       Effect.gen(function*() {
         const name = nextName()
@@ -470,7 +472,26 @@ describe("Metric", () => {
         strictEqual(result2.count, 1)
         strictEqual(result3.count, 1)
       }))
+
+    it.effect("preserves precision of boundary values", () =>
+      Effect.gen(function*() {
+        const preciseBoundaries = [0.005, 0.01, 0.025, 0.05, 0.075, 0.1]
+
+        const histogram = Metric.histogram(
+          "precision_test",
+          MetricBoundaries.fromIterable(preciseBoundaries)
+        )
+
+        const result = yield* Metric.value(histogram)
+
+        result.buckets.forEach(([boundary], index) => {
+          if (index < preciseBoundaries.length) {
+            strictEqual(boundary, preciseBoundaries[index])
+          }
+        })
+      }))
   })
+
   describe("Summary", () => {
     it.effect("custom observe as aspect", () =>
       Effect.gen(function*() {

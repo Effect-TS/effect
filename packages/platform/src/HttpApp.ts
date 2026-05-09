@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -84,14 +85,17 @@ export const toHandled = <E, R, _, EH, RH>(
           const handler = fiber.getFiberRef(currentPreResponseHandlers)
           if (handler._tag === "None") {
             ;(request as any)[handledSymbol] = true
-            return Effect.zipRight(handleResponse(request, response), Effect.failCause(cause))
+            return Effect.zipRight(
+              handleResponse(request, response),
+              Cause.isEmptyType(cause) ? Effect.succeed(response) : Effect.failCause(cause)
+            )
           }
           return Effect.zipRight(
             Effect.tap(handler.value(request, response), (response) => {
               ;(request as any)[handledSymbol] = true
               return handleResponse(request, response)
             }),
-            Effect.failCause(cause)
+            Cause.isEmptyType(cause) ? Effect.succeed(response) : Effect.failCause(cause)
           )
         })
       )
@@ -100,7 +104,7 @@ export const toHandled = <E, R, _, EH, RH>(
   const withMiddleware = unify(
     middleware === undefined ?
       internalMiddleware.tracer(withErrorHandling) :
-      Effect.matchCauseEffect(middleware(internalMiddleware.tracer(withErrorHandling)), {
+      Effect.matchCauseEffect(internalMiddleware.tracer(middleware(withErrorHandling)), {
         onFailure: (cause): Effect.Effect<void, EH, RH> =>
           Effect.withFiberRuntime((fiber) => {
             const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
@@ -313,4 +317,39 @@ export const toWebHandlerLayer = <E, R, RE>(
   toWebHandlerLayerWith(layer, {
     ...options,
     toHandler: () => Effect.succeed(self)
+  })
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const fromWebHandler = (
+  handler: (request: Request) => Promise<Response>
+): Default<ServerError.HttpServerError> =>
+  Effect.async((resume, signal) => {
+    const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+    const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
+    const requestResult = ServerRequest.toWebEither(request, {
+      signal,
+      runtime: Runtime.make({
+        context: fiber.currentContext,
+        fiberRefs: fiber.getFiberRefs(),
+        runtimeFlags: Runtime.defaultRuntimeFlags
+      })
+    })
+    if (requestResult._tag === "Left") {
+      return resume(Effect.fail(requestResult.left))
+    }
+    handler(requestResult.right).then(
+      (response) => resume(Effect.succeed(ServerResponse.fromWeb(response))),
+      (cause) =>
+        resume(Effect.fail(
+          new ServerError.RequestError({
+            cause,
+            request,
+            reason: "Transport",
+            description: "HttpApp.fromWebHandler: Error in handler"
+          })
+        ))
+    )
   })

@@ -85,6 +85,22 @@ export const e2eSuite = <E>(
         Effect.provide(layer)
       ))
 
+    it.effect("defect serializes Error objects", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const cause = yield* client.ProduceErrorDefect().pipe(
+          Effect.sandbox,
+          Effect.flip
+        )
+        const defect = Cause.squash(cause)
+        // Error details should survive serialization, not be lost as {}
+        assert.instanceOf(defect, Error)
+        assert.include(defect.message, "error defect message")
+      }).pipe(
+        RpcClient.withHeaders({ userId: "123" }),
+        Effect.provide(layer)
+      ))
+
     it.live("never", () =>
       Effect.gen(function*() {
         const client = yield* UsersClient

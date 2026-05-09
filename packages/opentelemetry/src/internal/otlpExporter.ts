@@ -1,4 +1,5 @@
 import * as Headers from "@effect/platform/Headers"
+import type * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
@@ -36,7 +37,7 @@ export const make: (
     readonly label: string
     readonly exportInterval: Duration.DurationInput
     readonly maxBatchSize: number | "disabled"
-    readonly body: (data: Array<any>) => unknown
+    readonly body: (data: Array<any>) => HttpBody.HttpBody
     readonly shutdownTimeout: Duration.DurationInput
   }
 ) => Effect.Effect<
@@ -75,9 +76,10 @@ export const make: (
       }
       buffer = []
     }
-    return client.execute(
-      HttpClientRequest.bodyUnsafeJson(request, options.body(items))
-    ).pipe(
+    const body = options.body(items)
+    const requestWithBody = HttpClientRequest.setBody(request, body)
+
+    return client.execute(requestWithBody).pipe(
       Effect.asVoid,
       Effect.withTracerEnabled(false)
     )

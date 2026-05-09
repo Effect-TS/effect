@@ -12,6 +12,8 @@ import * as Record from "./Record.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 
+type JsonValue = string | number | boolean | null | Array<JsonValue> | { [key: string]: JsonValue }
+
 /**
  * @category model
  * @since 3.10.0
@@ -19,8 +21,8 @@ import * as AST from "./SchemaAST.js"
 export interface JsonSchemaAnnotations {
   title?: string
   description?: string
-  default?: unknown
-  examples?: Array<unknown>
+  default?: JsonValue
+  examples?: Array<JsonValue>
 }
 
 /**
@@ -163,7 +165,8 @@ export interface JsonSchema7Boolean extends JsonSchemaAnnotations {
  */
 export interface JsonSchema7Array extends JsonSchemaAnnotations {
   type: "array"
-  items?: JsonSchema7 | Array<JsonSchema7>
+  items?: JsonSchema7 | Array<JsonSchema7> | false
+  prefixItems?: Array<JsonSchema7>
   minItems?: number
   maxItems?: number
   additionalItems?: JsonSchema7 | boolean
@@ -245,20 +248,34 @@ export type JsonSchema7Root = JsonSchema7 & {
 }
 
 /**
+ * Generates a JSON Schema from a schema.
+ *
+ * **Options**
+ *
+ * - `target`: The target JSON Schema version. Possible values are:
+ *   - `"jsonSchema7"`: JSON Schema draft-07 (default behavior).
+ *   - `"jsonSchema2019-09"`: JSON Schema draft-2019-09.
+ *   - `"jsonSchema2020-12"`: JSON Schema draft-2020-12.
+ *   - `"openApi3.1"`: OpenAPI 3.1.
+ *
  * @category encoding
  * @since 3.10.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: {
+  readonly target?: Target | undefined
+}): JsonSchema7Root => {
   const definitions: Record<string, any> = {}
+  const target = options?.target ?? "jsonSchema7"
   const ast = AST.isTransformation(schema.ast) && isParseJsonTransformation(schema.ast.from)
     // Special case top level `parseJson` transformations
     ? schema.ast.to
     : schema.ast
   const jsonSchema = fromAST(ast, {
-    definitions
+    definitions,
+    target
   })
   const out: JsonSchema7Root = {
-    $schema,
+    $schema: getMetaSchemaUri(target),
     $defs: {},
     ...jsonSchema
   }
@@ -270,11 +287,24 @@ export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root =
   return out
 }
 
-type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1"
+type Target = "jsonSchema7" | "jsonSchema2019-09" | "openApi3.1" | "jsonSchema2020-12"
 
 type TopLevelReferenceStrategy = "skip" | "keep"
 
 type AdditionalPropertiesStrategy = "allow" | "strict"
+
+/** @internal */
+export function getMetaSchemaUri(target: Target) {
+  switch (target) {
+    case "jsonSchema7":
+      return "http://json-schema.org/draft-07/schema#"
+    case "jsonSchema2019-09":
+      return "https://json-schema.org/draft/2019-09/schema"
+    case "jsonSchema2020-12":
+    case "openApi3.1":
+      return "https://json-schema.org/draft/2020-12/schema"
+  }
+}
 
 /**
  * Returns a JSON Schema with additional options and definitions.
@@ -314,16 +344,17 @@ export const fromAST = (ast: AST.AST, options: {
   const definitionPath = options.definitionPath ?? "#/$defs/"
   const getRef = (id: string) => definitionPath + id
   const target = options.target ?? "jsonSchema7"
-  const handleIdentifier = options.topLevelReferenceStrategy !== "skip" ? "handle-identifier" : "ignore-identifier"
+  const topLevelReferenceStrategy = options.topLevelReferenceStrategy ?? "keep"
   const additionalPropertiesStrategy = options.additionalPropertiesStrategy ?? "strict"
   return go(
     ast,
     options.definitions,
-    handleIdentifier,
+    "handle-identifier",
     [],
     {
       getRef,
       target,
+      topLevelReferenceStrategy,
       additionalPropertiesStrategy
     },
     "handle-annotation",
@@ -364,8 +395,6 @@ const constEmptyStruct: JsonSchema7empty = {
   ]
 }
 
-const $schema = "http://json-schema.org/draft-07/schema#"
-
 function getRawDescription(annotated: AST.Annotated | undefined): string | undefined {
   if (annotated !== undefined) return Option.getOrUndefined(AST.getDescriptionAnnotation(annotated))
 }
@@ -379,13 +408,18 @@ function getRawDefault(annotated: AST.Annotated | undefined): Option.Option<unkn
   return Option.none()
 }
 
+function encodeDefault(ast: AST.AST, def: unknown): Option.Option<unknown> {
+  const getOption = ParseResult.getOption(ast, false)
+  return getOption(def)
+}
+
 function getRawExamples(annotated: AST.Annotated | undefined): ReadonlyArray<unknown> | undefined {
   if (annotated !== undefined) return Option.getOrUndefined(AST.getExamplesAnnotation(annotated))
 }
 
-function encodeExamples(ast: AST.AST, examples: ReadonlyArray<unknown>): Array<unknown> | undefined {
+function encodeExamples(ast: AST.AST, examples: ReadonlyArray<unknown>): Array<JsonValue> | undefined {
   const getOption = ParseResult.getOption(ast, false)
-  const out = Arr.filterMap(examples, (e) => getOption(e))
+  const out = Arr.filterMap(examples, (e) => getOption(e).pipe(Option.filter(isJsonValue)))
   return out.length > 0 ? out : undefined
 }
 
@@ -403,6 +437,38 @@ function filterBuiltIn(ast: AST.AST, annotation: string | undefined, key: symbol
   return annotation
 }
 
+function isJsonValue(value: unknown, visited: Set<unknown> = new Set()): value is JsonValue {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return true
+  }
+  if (Array.isArray(value) || typeof value === "object") {
+    // Check for cyclic references
+    if (visited.has(value)) {
+      return false
+    }
+    visited.add(value)
+    try {
+      if (Array.isArray(value)) {
+        return value.every((item) => isJsonValue(item, visited))
+      }
+      // Exclude non-plain objects (Date, RegExp, etc.) by checking constructor
+      const proto = Object.getPrototypeOf(value)
+      if (proto !== null && proto !== Object.prototype) {
+        return false
+      }
+      // JSON only allows string keys, so exclude objects with Symbol keys
+      if (Object.getOwnPropertySymbols(value).length > 0) {
+        return false
+      }
+      // Check all values are JSON values
+      return Object.values(value).every((v) => isJsonValue(v, visited))
+    } finally {
+      visited.delete(value)
+    }
+  }
+  return false
+}
+
 function pruneJsonSchemaAnnotations(
   ast: AST.AST,
   description: string | undefined,
@@ -413,7 +479,12 @@ function pruneJsonSchemaAnnotations(
   const out: JsonSchemaAnnotations = {}
   if (description !== undefined) out.description = description
   if (title !== undefined) out.title = title
-  if (Option.isSome(def)) out.default = def.value
+  if (Option.isSome(def)) {
+    const o = encodeDefault(ast, def.value)
+    if (Option.isSome(o) && isJsonValue(o.value)) {
+      out.default = o.value
+    }
+  }
   if (examples !== undefined) {
     const encodedExamples = encodeExamples(ast, examples)
     if (encodedExamples !== undefined) {
@@ -509,6 +580,7 @@ const mergeRefinements = (from: any, jsonSchema: any, ast: AST.AST): any => {
 type GoOptions = {
   readonly getRef: (id: string) => string
   readonly target: Target
+  readonly topLevelReferenceStrategy: TopLevelReferenceStrategy
   readonly additionalPropertiesStrategy: AdditionalPropertiesStrategy
 }
 
@@ -517,6 +589,7 @@ function isContentSchemaSupported(options: GoOptions): boolean {
     case "jsonSchema7":
       return false
     case "jsonSchema2019-09":
+    case "jsonSchema2020-12":
     case "openApi3.1":
       return true
   }
@@ -571,7 +644,10 @@ function go(
   annotation: "handle-annotation" | "ignore-annotation",
   errors: "handle-errors" | "ignore-errors"
 ): JsonSchema7 {
-  if (identifier === "handle-identifier") {
+  if (
+    identifier === "handle-identifier" &&
+    (options.topLevelReferenceStrategy !== "skip" || AST.isSuspend(ast))
+  ) {
     const id = getIdentifierAnnotation(ast)
     if (id !== undefined) {
       const escapedId = id.replace(/~/ig, "~0").replace(/\//ig, "~1")
@@ -701,7 +777,11 @@ function go(
       const len = ast.elements.length
       if (len > 0) {
         output.minItems = len - ast.elements.filter((element) => element.isOptional).length
-        output.items = elements
+        if (options.target === "jsonSchema7") {
+          output.items = elements
+        } else {
+          output.prefixItems = elements
+        }
       }
       // ---------------------------------------------
       // handle rest element
@@ -711,9 +791,18 @@ function go(
         const head = rest[0]
         const isHomogeneous = restLength === 1 && ast.elements.every((e) => e.type === ast.rest[0].type)
         if (isHomogeneous) {
-          output.items = head
+          if (options.target === "jsonSchema7") {
+            output.items = head
+          } else {
+            output.items = head
+            delete output.prefixItems
+          }
         } else {
-          output.additionalItems = head
+          if (options.target === "jsonSchema7") {
+            output.additionalItems = head
+          } else {
+            output.items = head
+          }
         }
 
         // ---------------------------------------------
@@ -725,7 +814,11 @@ function go(
         }
       } else {
         if (len > 0) {
-          output.additionalItems = false
+          if (options.target === "jsonSchema7") {
+            output.additionalItems = false
+          } else {
+            output.items = false
+          }
         } else {
           output.maxItems = 0
         }
@@ -890,7 +983,9 @@ function go(
                   if (Predicate.isString(toProperty.title)) annotations.title = toProperty.title
                   if (Predicate.isString(toProperty.description)) annotations.description = toProperty.description
                   if (Array.isArray(toProperty.examples)) annotations.examples = toProperty.examples
-                  if (Object.hasOwn(toProperty, "default")) annotations.default = toProperty.default
+                  if (Object.hasOwn(toProperty, "default") && toProperty.default !== undefined) {
+                    annotations.default = toProperty.default
+                  }
                   from.properties[fromKey] = addAnnotations(fromProperty, annotations)
                 }
               }

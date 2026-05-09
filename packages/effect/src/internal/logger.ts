@@ -356,7 +356,6 @@ const prettyLoggerTty = (options: {
   readonly stderr: boolean
   readonly formatDate: (date: Date) => string
 }) => {
-  const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
   const color = options.colors ? withColor : withColorNoop
   return makeLogger<unknown, void>(
     ({ annotations, cause, context, date, fiberId, logLevel, message: message_, spans }) => {
@@ -389,7 +388,7 @@ const prettyLoggerTty = (options: {
       }
 
       log(firstLine)
-      if (!processIsBun) console.group()
+      console.group()
 
       if (!Cause.isEmpty(cause)) {
         log(Cause.pretty(cause, { renderErrorCause: true }))
@@ -407,7 +406,7 @@ const prettyLoggerTty = (options: {
         }
       }
 
-      if (!processIsBun) console.groupEnd()
+      console.groupEnd()
     }
   )
 }
@@ -457,7 +456,7 @@ const prettyLoggerBrowser = (options: {
       console.groupCollapsed(firstLine, ...firstParams)
 
       if (!Cause.isEmpty(cause)) {
-        console.error(Cause.pretty(cause, { renderErrorCause: true }))
+        console.error(...Cause.prettyErrors(cause))
       }
 
       if (messageIndex < message.length) {

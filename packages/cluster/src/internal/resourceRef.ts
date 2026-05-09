@@ -70,6 +70,9 @@ export class ResourceRef<A, E = never> {
     }).pipe(
       Effect.andThen(this.acquire(scope)),
       Effect.flatMap((value) => {
+        if (this.state.current._tag === "Closed") {
+          return Effect.interrupt
+        }
         MutableRef.set(this.state, { _tag: "Acquired", scope, value })
         return this.latch.open
       })

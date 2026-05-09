@@ -58,6 +58,7 @@ export interface Rpc<
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly defectSchema: Schema.Schema<unknown, any>
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 
@@ -171,6 +172,7 @@ export interface AnyWithProps {
   readonly payloadSchema: AnySchema
   readonly successSchema: Schema.Schema.Any
   readonly errorSchema: Schema.Schema.All
+  readonly defectSchema: Schema.Schema<unknown, any>
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<RpcMiddleware.TagClassAnyWithProps>
 }
@@ -186,6 +188,19 @@ export type Tag<R> = R extends Rpc<
   infer _Error,
   infer _Middleware
 > ? _Tag
+  : never
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type SuccessSchema<R> = R extends Rpc<
+  infer _Tag,
+  infer _Payload,
+  infer _Success,
+  infer _Error,
+  infer _Middleware
+> ? _Success
   : never
 
 /**
@@ -218,15 +233,16 @@ export type SuccessEncoded<R> = R extends Rpc<
  * @since 1.0.0
  * @category models
  */
-export type SuccessExit<R> = Success<R> extends infer T ? T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+export type SuccessExit<R> = SuccessSchema<R> extends infer S ?
+  S extends RpcSchema.Stream<infer _A, infer _E> ? void : Schema.Schema.Type<S>
   : never
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type SuccessExitEncoded<R> = SuccessEncoded<R> extends infer T ?
-  T extends Stream<infer _A, infer _E, infer _Env> ? void : T
+export type SuccessExitEncoded<R> = SuccessSchema<R> extends infer S ?
+  S extends RpcSchema.Stream<infer _A, infer _E> ? void : Schema.Schema.Encoded<S>
   : never
 
 /**
@@ -269,14 +285,15 @@ export type ErrorEncoded<R> = Schema.Schema.Encoded<ErrorSchema<R>>
  * @since 1.0.0
  * @category models
  */
-export type ErrorExit<R> = Success<R> extends Stream<infer _A, infer _E, infer _Env> ? _E | Error<R> : Error<R>
+export type ErrorExit<R> = SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ? _E["Type"] | Error<R>
+  : Error<R>
 
 /**
  * @since 1.0.0
  * @category models
  */
-export type ErrorExitEncoded<R> = SuccessEncoded<R> extends Stream<infer _A, infer _E, infer _Env>
-  ? _E | ErrorEncoded<R>
+export type ErrorExitEncoded<R> = SuccessSchema<R> extends RpcSchema.Stream<infer _A, infer _E> ?
+  _E["Encoded"] | ErrorEncoded<R>
   : ErrorEncoded<R>
 
 /**
@@ -423,7 +440,7 @@ export type ToHandlerFn<Current extends Any, R = any> = (
     readonly clientId: number
     readonly headers: Headers
   }
-) => ResultFrom<Current, R> | Fork<ResultFrom<Current, R>>
+) => ResultFrom<Current, R> | Wrapper<ResultFrom<Current, R>>
 
 /**
  * @since 1.0.0
@@ -526,6 +543,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -536,6 +554,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -546,6 +565,7 @@ const Proto = {
       payloadSchema: Schema.isSchema(payloadSchema) ? payloadSchema as any : Schema.Struct(payloadSchema as any),
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -556,6 +576,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: new Set([...this.middlewares, middleware])
     })
@@ -566,6 +587,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       annotations: this.annotations,
       middlewares: this.middlewares
     })
@@ -576,6 +598,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       middlewares: this.middlewares,
       annotations: Context_.add(this.annotations, tag, value)
     })
@@ -586,6 +609,7 @@ const Proto = {
       payloadSchema: this.payloadSchema,
       successSchema: this.successSchema,
       errorSchema: this.errorSchema,
+      defectSchema: this.defectSchema,
       middlewares: this.middlewares,
       annotations: Context_.merge(this.annotations, context)
     })
@@ -603,6 +627,7 @@ const makeProto = <
   readonly payloadSchema: Payload
   readonly successSchema: Success
   readonly errorSchema: Error
+  readonly defectSchema: Schema.Schema<unknown, any>
   readonly annotations: Context_.Context<never>
   readonly middlewares: ReadonlySet<Middleware>
 }): Rpc<Tag, Payload, Success, Error, Middleware> => {
@@ -628,6 +653,7 @@ export const make = <
   readonly success?: Success
   readonly error?: Error
   readonly stream?: Stream
+  readonly defect?: Schema.Schema<unknown, any>
   readonly primaryKey?: [Payload] extends [Schema.Struct.Fields] ?
     ((payload: Schema.Simplify<Schema.Struct.Type<NoInfer<Payload>>>) => string) :
     never
@@ -663,6 +689,7 @@ export const make = <
       }) :
       successSchema,
     errorSchema: options?.stream ? Schema.Never : errorSchema,
+    defectSchema: options?.defect ?? Schema.Defect,
     annotations: Context_.empty(),
     middlewares: new Set<never>()
   }) as any
@@ -704,6 +731,7 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
     payloadSchema: schema as any,
     successSchema: schema.success as any,
     errorSchema: schema.failure,
+    defectSchema: Schema.Defect,
     annotations: Context_.empty(),
     middlewares: new Set()
   })
@@ -732,7 +760,7 @@ export const exitSchema = <R extends Any>(
   const schema = Schema.Exit({
     success: Option.isSome(streamSchemas) ? Schema.Void : rpc.successSchema,
     failure: Schema.Union(...failures),
-    defect: Schema.Defect
+    defect: rpc.defectSchema
   })
   exitSchemaCache.set(self, schema)
   return schema as any
@@ -740,24 +768,55 @@ export const exitSchema = <R extends Any>(
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const ForkTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Fork")
+export const WrapperTypeId: unique symbol = Symbol.for("@effect/rpc/Rpc/Wrapper")
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export type ForkTypeId = typeof ForkTypeId
+export type WrapperTypeId = typeof WrapperTypeId
 
 /**
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export interface Fork<A> {
-  readonly [ForkTypeId]: ForkTypeId
+export interface Wrapper<A> {
+  readonly [WrapperTypeId]: WrapperTypeId
   readonly value: A
+  readonly fork: boolean
+  readonly uninterruptible: boolean
 }
+
+/**
+ * @since 1.0.0
+ * @category Wrapper
+ */
+export const isWrapper = (u: object): u is Wrapper<any> => WrapperTypeId in u
+
+/**
+ * @since 1.0.0
+ * @category Wrapper
+ */
+export const wrap = (options: {
+  readonly fork?: boolean | undefined
+  readonly uninterruptible?: boolean | undefined
+}) =>
+<A extends object>(value: A): A extends Wrapper<infer _> ? A : Wrapper<A> =>
+  (isWrapper(value) ?
+    {
+      [WrapperTypeId]: WrapperTypeId,
+      value: value.value,
+      fork: options.fork ?? value.fork,
+      uninterruptible: options.uninterruptible ?? value.uninterruptible
+    } :
+    {
+      [WrapperTypeId]: WrapperTypeId,
+      value,
+      fork: options.fork ?? false,
+      uninterruptible: options.uninterruptible ?? false
+    }) as any
 
 /**
  * You can use `fork` to wrap a response Effect or Stream, to ensure that the
@@ -765,12 +824,17 @@ export interface Fork<A> {
  * setting.
  *
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const fork = <A>(value: A): Fork<A> => ({ [ForkTypeId]: ForkTypeId, value })
+export const fork: <A extends object>(value: A) => A extends Wrapper<infer _> ? A : Wrapper<A> = wrap({ fork: true })
 
 /**
+ * You can use `uninterruptible` to wrap a response Effect or Stream, to ensure
+ * that it is executed inside an uninterruptible region.
+ *
  * @since 1.0.0
- * @category Fork
+ * @category Wrapper
  */
-export const isFork = (u: object): u is Fork<any> => ForkTypeId in u
+export const uninterruptible: <A extends object>(value: A) => A extends Wrapper<infer _> ? A : Wrapper<A> = wrap({
+  uninterruptible: true
+})

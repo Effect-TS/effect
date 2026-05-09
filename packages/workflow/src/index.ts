@@ -16,6 +16,16 @@ export * as DurableDeferred from "./DurableDeferred.js"
 /**
  * @since 1.0.0
  */
+export * as DurableQueue from "./DurableQueue.js"
+
+/**
+ * @since 1.0.0
+ */
+export * as DurableRateLimiter from "./DurableRateLimiter.js"
+
+/**
+ * @since 1.0.0
+ */
 export * as Workflow from "./Workflow.js"
 
 /**

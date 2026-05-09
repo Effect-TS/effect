@@ -263,7 +263,7 @@ export declare namespace Effect {
     T extends Effect<infer _A, infer _E, infer _R> ? _A : never,
     T extends Effect<infer _A, infer _E, infer _R> ? _E : never,
     T extends Effect<infer _A, infer _E, infer _R> ? _R : never
-  >
+  > extends infer Q ? Q : never
 }
 
 /**
@@ -11771,6 +11771,11 @@ export interface Permit {
  */
 export interface Semaphore {
   /**
+   * Adjusts the number of permits available in the semaphore.
+   */
+  resize(permits: number): Effect<void>
+
+  /**
    * Runs an effect with the given number of permits and releases the permits
    * when the effect completes.
    *
@@ -12994,6 +12999,12 @@ export const annotateCurrentSpan: {
 export const currentSpan: Effect<Tracer.Span, Cause.NoSuchElementException> = effect.currentSpan
 
 /**
+ * @since 3.20.0
+ * @category Tracing
+ */
+export const currentPropagatedSpan: Effect<Tracer.Span, Cause.NoSuchElementException> = effect.currentPropagatedSpan
+
+/**
  * @since 2.0.0
  * @category Tracing
  */
@@ -13941,6 +13952,11 @@ export declare namespace Service {
  * @category Models
  */
 export namespace fn {
+  /**
+   * @since 3.19.0
+   * @category Models
+   */
+  export type Return<A, E = never, R = never> = Generator<YieldWrap<Effect<any, E, R>>, A, any>
   /**
    * @since 3.11.0
    * @category Models

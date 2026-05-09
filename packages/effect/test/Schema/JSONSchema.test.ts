@@ -670,6 +670,16 @@ describe("fromAST", () => {
 })
 
 describe("make", () => {
+  it("should filter out non-JSON values and cyclic references from default and examples", () => {
+    const cyclic: any = { value: "test" }
+    cyclic.self = cyclic
+    const schema = Schema.String.annotations({ default: 1n as any, examples: ["a", 1n as any, cyclic, "b"] })
+    expectJSONSchemaAnnotations(schema, {
+      "type": "string",
+      "examples": ["a", "b"]
+    })
+  })
+
   it("handling of a top level `parseJson` should targeting the \"to\" side", () => {
     const schema = Schema.parseJson(Schema.Struct({
       a: Schema.parseJson(Schema.NumberFromString)

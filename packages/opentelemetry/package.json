@@ -1,6 +1,6 @@
 {
   "name": "@effect/opentelemetry",
-  "version": "0.56.5",
+  "version": "0.63.0",
   "type": "module",
   "license": "MIT",
   "description": "OpenTelemetry integration for Effect",
@@ -57,51 +57,28 @@
     "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9",
     "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/sdk-logs": ">=0.203.0 <0.300.0",
     "@opentelemetry/sdk-metrics": "^2.0.0",
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-node": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/sdk-logs": "^0.203.0",
     "@opentelemetry/semantic-conventions": "^1.33.0",
     "effect": "workspace:^"
-  },
-  "peerDependenciesMeta": {
-    "@opentelemetry/api": {
-      "optional": true
-    },
-    "@opentelemetry/resources": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-metrics": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-base": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-node": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-web": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-logs": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@effect/platform": "workspace:^",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/context-async-hooks": "^2.0.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "0.203.0",
-    "@opentelemetry/exporter-prometheus": "^0.203.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
-    "@opentelemetry/otlp-exporter-base": "^0.203.0",
-    "@opentelemetry/resources": "^2.0.0",
-    "@opentelemetry/sdk-logs": "^0.203.0",
-    "@opentelemetry/sdk-metrics": "^2.0.0",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
-    "@opentelemetry/sdk-trace-node": "^2.0.0",
-    "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/semantic-conventions": "^1.33.0"
+    "@opentelemetry/context-async-hooks": "^2.2.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.208.0",
+    "@opentelemetry/exporter-prometheus": "^0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
+    "@opentelemetry/otlp-exporter-base": "^0.208.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@opentelemetry/sdk-logs": "^0.208.0",
+    "@opentelemetry/sdk-metrics": "^2.2.0",
+    "@opentelemetry/sdk-trace-base": "^2.2.0",
+    "@opentelemetry/sdk-trace-node": "^2.2.0",
+    "@opentelemetry/sdk-trace-web": "^2.2.0",
+    "@opentelemetry/semantic-conventions": "^1.38.0"
   }
 }

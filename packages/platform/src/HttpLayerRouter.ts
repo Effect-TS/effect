@@ -10,6 +10,7 @@ import * as FiberRef from "effect/FiberRef"
 import { compose, constant, dual, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import type * as Predicate from "effect/Predicate"
 import * as Scope from "effect/Scope"
 import * as Tracer from "effect/Tracer"
 import type * as Types from "effect/Types"
@@ -903,7 +904,7 @@ export declare namespace middleware {
  */
 export const cors = (
   options?: {
-    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowedOrigins?: ReadonlyArray<string> | Predicate.Predicate<string> | undefined
     readonly allowedMethods?: ReadonlyArray<string> | undefined
     readonly allowedHeaders?: ReadonlyArray<string> | undefined
     readonly exposedHeaders?: ReadonlyArray<string> | undefined
@@ -1031,7 +1032,7 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
       existing.add(route)
       routes.push(makeRoute({
         ...route as any,
-        handler: Effect.provide(route.handler, context)
+        handler: Effect.mapInputContext(route.handler, (input) => Context.merge(context, input))
       }))
     }
 
@@ -1083,7 +1084,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
   }
 ): Layer.Layer<
-  never,
+  A,
   Request.Without<E>,
   HttpServer.HttpServer | Exclude<Request.Without<R> | Exclude<HR, GlobalProvided>, HttpRouter>
 > => {
@@ -1100,7 +1101,7 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
     return middleware ? HttpServer.serve(handler, middleware) : HttpServer.serve(handler)
   }).pipe(
     Layer.unwrapScoped,
-    Layer.provide(appLayer),
+    Layer.provideMerge(appLayer),
     Layer.provide(RouterLayer),
     options?.disableListenLog ? identity : HttpServer.withLogAddress
   ) as any

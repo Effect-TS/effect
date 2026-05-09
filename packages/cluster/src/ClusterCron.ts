@@ -6,6 +6,7 @@ import * as Cron from "effect/Cron"
 import * as DateTime from "effect/DateTime"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as PrimaryKey from "effect/PrimaryKey"
@@ -65,12 +66,11 @@ export const make = <E, R>(options: {
   const InitialRun = Singleton.make(
     `ClusterCron/${options.name}`,
     Effect.gen(function*() {
-      const client = (yield* CronEntity.client)("initial")
       const now = yield* DateTime.now
-      const next = Cron.next(options.cron, now)
-      yield* client.run({
-        dateTime: DateTime.unsafeFromDate(next)
-      }, { discard: true })
+      const next = DateTime.unsafeFromDate(Cron.next(options.cron, now))
+      const entityId = options.calculateNextRunFromPrevious ? "initial" : DateTime.formatIso(next)
+      const client = (yield* CronEntity.client)(entityId)
+      yield* client.run({ dateTime: next }, { discard: true })
     }),
     { shardGroup: options.shardGroup }
   )
@@ -91,9 +91,13 @@ export const make = <E, R>(options: {
   const EntityLayer = CronEntity.toLayer(Effect.gen(function*() {
     const makeClient = yield* CronEntity.client
     return {
-      run(request) {
-        return effect(request.payload.dateTime).pipe(
-          Effect.ensuring(Effect.gen(function*() {
+      run: (request) =>
+        effect(request.payload.dateTime).pipe(
+          Effect.exit,
+          Effect.flatMap(Effect.fnUntraced(function*(exit) {
+            if (Exit.isFailure(exit)) {
+              yield* Effect.logWarning(exit.cause)
+            }
             const now = yield* DateTime.now
             const next = DateTime.unsafeFromDate(Cron.next(
               options.cron,
@@ -107,14 +111,12 @@ export const make = <E, R>(options: {
               Effect.orDie
             )
           })),
-          Effect.catchAllCause(Effect.logWarning),
           Effect.annotateLogs({
             module: "ClusterCron",
             name: options.name,
             dateTime: request.payload.dateTime
           })
         )
-      }
     }
   }))
 

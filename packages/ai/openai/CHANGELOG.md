@@ -1,5 +1,516 @@
 # @effect/ai-openai
 
+## 0.39.2
+
+### Patch Changes
+
+- [`49c5acd`](https://github.com/Effect-TS/effect/commit/49c5acd5932b3d3981353481664606097082ea2f) Thanks @mollyegibson! - Previously, setting `strict: false` on `OpenAiLanguageModel` config caused a 400 "Unknown parameter: 'strict'" response from the OpenAI Responses API, because the flag was spread into the top-level request body instead of being consumed only by the tool and response_format schema builders. The `strict` flag is now stripped from the request body while still controlling `strict` on tool schemas (`prepareTools`) and json_schema response formats (`prepareResponseFormat`).
+
+## 0.39.1
+
+### Patch Changes
+
+- [`47f0439`](https://github.com/Effect-TS/effect/commit/47f04399d317a1a5619de7dec5b23f6ad7255eca) Thanks @aayushbaluni! - fix(ai-openai): deduplicate response.output items to prevent invalid JSON concatenation
+
+- [#6187](https://github.com/Effect-TS/effect/pull/6187) [`b63fdb8`](https://github.com/Effect-TS/effect/commit/b63fdb8783a606077ac80d263b4e09b57cdab476) Thanks @alex-dixon! - Change 'in-memory' to 'in_memory' in prompt cache enums
+
+- [#6174](https://github.com/Effect-TS/effect/pull/6174) [`739f077`](https://github.com/Effect-TS/effect/commit/739f077d1cdfb63d26d4744abd59822231866dac) Thanks @mollyegibson! - Make 'strict' mode configurable for tool definitions passed to the OpenAI model
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
+## 0.39.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/ai@0.35.0
+  - @effect/experimental@0.60.0
+  - @effect/platform@0.96.0
+
+## 0.38.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/ai@0.34.0
+  - @effect/experimental@0.59.0
+  - @effect/platform@0.95.0
+
+## 0.37.2
+
+### Patch Changes
+
+- [#5949](https://github.com/Effect-TS/effect/pull/5949) [`577f839`](https://github.com/Effect-TS/effect/commit/577f839e00bc74bccb96444e53b9d710310b50e3) Thanks @thewilkybarkid! - Ensure OpenAI headers are redacted
+
+## 0.37.1
+
+### Patch Changes
+
+- [#5938](https://github.com/Effect-TS/effect/pull/5938) [`72f61be`](https://github.com/Effect-TS/effect/commit/72f61be280fdda98eb3835b3d559d6d5031699dc) Thanks @tensor2077! - Fix streaming decode: response.output_item.added may emit web_search_call without action (when status="in_progress").
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+  - @effect/ai@0.33.1
+
+## 0.37.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/experimental@0.58.0
+
+## 0.36.0
+
+### Minor Changes
+
+- [#5850](https://github.com/Effect-TS/effect/pull/5850) [`1ddd4e4`](https://github.com/Effect-TS/effect/commit/1ddd4e477a9677fb3820f80450a378d3550d31a7) Thanks @IMax153! - Update the generated OpenAI schema definitions
+
+### Patch Changes
+
+- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
+  - @effect/experimental@0.57.10
+
+## 0.35.0
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform@0.93.0
+  - @effect/ai@0.32.0
+  - @effect/experimental@0.57.0
+
+## 0.34.0
+
+### Minor Changes
+
+- [#5621](https://github.com/Effect-TS/effect/pull/5621) [`4c3bdfb`](https://github.com/Effect-TS/effect/commit/4c3bdfbcbc2dcd7ecd6321df3e4a504af19de825) Thanks @IMax153! - Remove `Either` / `EitherEncoded` from tool call results.
+
+  Specifically, the encoding of tool call results as an `Either` / `EitherEncoded` has been removed and is replaced by encoding the tool call success / failure directly into the `result` property.
+
+  To allow type-safe discrimination between a tool call result which was a success vs. one that was a failure, an `isFailure` property has also been added to the `"tool-result"` part. If `isFailure` is `true`, then the tool call handler result was an error.
+
+  ```ts
+  import * as AnthropicClient from "@effect/ai-anthropic/AnthropicClient"
+  import * as AnthropicLanguageModel from "@effect/ai-anthropic/AnthropicLanguageModel"
+  import * as LanguageModel from "@effect/ai/LanguageModel"
+  import * as Tool from "@effect/ai/Tool"
+  import * as Toolkit from "@effect/ai/Toolkit"
+  import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient"
+  import { Config, Effect, Layer, Schema, Stream } from "effect"
+
+  const Claude = AnthropicLanguageModel.model("claude-4-sonnet-20250514")
+
+  const MyTool = Tool.make("MyTool", {
+    description: "An example of a tool with success and failure types",
+    failureMode: "return", // Return errors in the response
+    parameters: { bar: Schema.Number },
+    success: Schema.Number,
+    failure: Schema.Struct({ reason: Schema.Literal("reason-1", "reason-2") })
+  })
+
+  const MyToolkit = Toolkit.make(MyTool)
+
+  const MyToolkitLayer = MyToolkit.toLayer({
+    MyTool: () => Effect.succeed(42)
+  })
+
+  const program = LanguageModel.streamText({
+    prompt: "Tell me about the meaning of life",
+    toolkit: MyToolkit
+  }).pipe(
+    Stream.runForEach((part) => {
+      if (part.type === "tool-result" && part.name === "MyTool") {
+        // The `isFailure` property can be used to discriminate whether the result
+        // of a tool call is a success or a failure
+        if (part.isFailure) {
+          part.result
+          //   ^? { readonly reason: "reason-1" | "reason-2"; }
+        } else {
+          part.result
+          //   ^? number
+        }
+      }
+      return Effect.void
+    }),
+    Effect.provide(Claude)
+  )
+
+  const Anthropic = AnthropicClient.layerConfig({
+    apiKey: Config.redacted("ANTHROPIC_API_KEY")
+  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
+
+  program.pipe(Effect.provide([Anthropic, MyToolkitLayer]), Effect.runPromise)
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`4c3bdfb`](https://github.com/Effect-TS/effect/commit/4c3bdfbcbc2dcd7ecd6321df3e4a504af19de825)]:
+  - @effect/ai@0.31.0
+
+## 0.33.0
+
+### Minor Changes
+
+- [#5614](https://github.com/Effect-TS/effect/pull/5614) [`c63e658`](https://github.com/Effect-TS/effect/commit/c63e6582244fbb50d31650c4b4ea0660fe194652) Thanks @IMax153! - Previously, tool call handler errors were _always_ raised as an expected error in the Effect `E` channel at the point of execution of the tool call handler (i.e. when a `generate*` method is invoked on a `LanguageModel`).
+
+  With this PR, the end user now has control over whether tool call handler errors should be raised as an Effect error, or returned by the SDK to allow, for example, sending that error information to another application.
+
+  ### Tool Call Specification
+
+  The `Tool.make` and `Tool.providerDefined` constructors now take an extra optional parameter called `failureMode`, which can be set to either `"error"` or `"return"`.
+
+  ```ts
+  import { Tool } from "@effect/ai"
+  import { Schema } from "effect"
+
+  const MyTool = Tool.make("MyTool", {
+    description: "My special tool",
+    failureMode: "return" // "error" (default) or "return"
+    parameters: {
+      myParam: Schema.String
+    },
+    success: Schema.Struct({
+      mySuccess: Schema.String
+    }),
+    failure: Schema.Struct({
+      myFailure: Schema.String
+    })
+  })
+
+  ```
+
+  The semantics of `failureMode` are as follows:
+  - If set to `"error"` (the default), errors that occur during tool call handler execution will be returned in the error channel of the calling effect
+  - If set to `"return"`, errors that occur during tool call handler execution will be captured and returned as part of the tool call result
+
+  ### Response - Tool Result Parts
+
+  The `result` field of a `"tool-result"` part of a large language model provider response is now represented as an `Either`.
+  - If the `result` is a `Left`, the `result` will be the `failure` specified in the tool call specification
+  - If the `result` is a `Right`, the `result` will be the `success` specified in the tool call specification
+
+  This is only relevant if the end user sets `failureMode` to `"return"`. If set to `"error"` (the default), then the `result` property will always be a `Right` with the successful result of the tool call handler.
+
+  Similarly the `encodedResult` field of a `"tool-result"` part will be represented as an `EitherEncoded`, where:
+  - `{ _tag: "Left", left: <failure> }` represents a tool call handler failure
+  - `{ _tag: "Right", right: <success> }` represents a tool call handler success
+
+  ### Prompt - Tool Result Parts
+
+  The `result` field of a `"tool-result"` part of a prompt will now only accept an `EitherEncoded` as specified above.
+
+### Patch Changes
+
+- Updated dependencies [[`6ae2f5d`](https://github.com/Effect-TS/effect/commit/6ae2f5da45a9ed9832605eca12b3e2bf2e2a1a67), [`c63e658`](https://github.com/Effect-TS/effect/commit/c63e6582244fbb50d31650c4b4ea0660fe194652)]:
+  - effect@3.18.4
+  - @effect/ai@0.30.0
+
+## 0.32.1
+
+### Patch Changes
+
+- [#5601](https://github.com/Effect-TS/effect/pull/5601) [`8048b44`](https://github.com/Effect-TS/effect/commit/8048b443170f0a24873dc1f1043e8ab9ee111435) Thanks @janglad! - Fix FilePart validation always returning an MalformedInput error
+
+## 0.32.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2), [`f8b93ac`](https://github.com/Effect-TS/effect/commit/f8b93ac6446efd3dd790778b0fc71d299a38f272)]:
+  - effect@3.18.0
+  - @effect/ai@0.29.0
+  - @effect/platform@0.92.0
+  - @effect/experimental@0.56.0
+
+## 0.31.1
+
+### Patch Changes
+
+- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Improve the information available to the user following a model response error
+
+- Updated dependencies [[`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a)]:
+  - @effect/ai@0.28.2
+
+## 0.31.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/ai@0.28.0
+  - @effect/experimental@0.55.0
+
+## 0.30.2
+
+### Patch Changes
+
+- [#5545](https://github.com/Effect-TS/effect/pull/5545) [`f71a731`](https://github.com/Effect-TS/effect/commit/f71a7319c52ae2a66f1266d8777d8de94e7db3cb) Thanks @timurrakhimzhan! - fixed message shape of tool call result being sent to openai for tool call result
+
+## 0.30.1
+
+### Patch Changes
+
+- [#5521](https://github.com/Effect-TS/effect/pull/5521) [`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80) Thanks @IMax153! - Fix provider metadata and parse tool call parameters safely
+
+- Updated dependencies [[`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80)]:
+  - @effect/ai@0.27.1
+
+## 0.30.0
+
+### Minor Changes
+
+- [#5469](https://github.com/Effect-TS/effect/pull/5469) [`42b914a`](https://github.com/Effect-TS/effect/commit/42b914a0e8750350ce17d434afaec7d655ddf4b7) Thanks @IMax153! - Refactor the Effect AI SDK and associated provider packages
+
+  This pull request contains a complete refactor of the base Effect AI SDK package
+  as well as the associated provider integration packages to improve flexibility
+  and enhance ergonomics. Major changes are outlined below.
+
+  ## Modules
+
+  All modules in the base Effect AI SDK have had the leading `Ai` prefix dropped
+  from their name (except for the `AiError` module).
+
+  For example, the `AiLanguageModel` module is now the `LanguageModel` module.
+
+  In addition, the `AiInput` module has been renamed to the `Prompt` module.
+
+  ## Prompts
+
+  The `Prompt` module has been completely redesigned with flexibility in mind.
+
+  The `Prompt` module now supports building a prompt using either the constructors
+  exposed from the `Prompt` module, or using raw prompt content parts / messages,
+  which should be familiar to those coming from other AI SDKs.
+
+  In addition, the `system` option has been removed from all `LanguageModel` methods
+  and must now be provided as part of the prompt.
+
+  **Prompt Constructors**
+
+  ```ts
+  import { LanguageModel, Prompt } from "@effect/ai"
+
+  const textPart = Prompt.makePart("text", {
+    text: "What is machine learning?"
+  })
+
+  const userMessage = Prompt.makeMessage("user", {
+    content: [textPart]
+  })
+
+  const systemMessage = Prompt.makeMessage("system", {
+    content: "You are an expert in machine learning"
+  })
+
+  const program = LanguageModel.generateText({
+    prompt: Prompt.fromMessages([systemMessage, userMessage])
+  })
+  ```
+
+  **Raw Prompt Input**
+
+  ```ts
+  import { LanguageModel } from "@effect/ai"
+
+  const program = LanguageModel.generateText({
+    prompt: [
+      { role: "system", content: "You are an expert in machine learning" },
+      {
+        role: "user",
+        content: [{ type: "text", text: "What is machine learning?" }]
+      }
+    ]
+  })
+  ```
+
+  **NOTE**: Providing a plain string as a prompt is still supported, and will be converted
+  internally into a user message with a single text content part.
+
+  ### Provider-Specific Options
+
+  To support specification of provider-specific options when interacting with large
+  language model providers, support has been added for adding provider-specific
+  options to the parts of a `Prompt`.
+
+  ```ts
+  import { LanguageModel } from "@effect/ai"
+  import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+
+  const Claude = AnthropicLanguageModel.model("claude-sonnet-4-20250514")
+
+  const program = LanguageModel.generateText({
+    prompt: [
+      {
+        role: "user",
+        content: [{ type: "text", text: "What is machine learning?" }],
+        options: {
+          anthropic: { cacheControl: { type: "ephemeral", ttl: "1h" } }
+        }
+      }
+    ]
+  }).pipe(Effect.provide(Claude))
+  ```
+
+  ## Responses
+
+  The `Response` module has also been completely redesigned to support a wider
+  variety of response parts, particularly when streaming.
+
+  ### Streaming Responses
+
+  When streaming text via the `LanguageModel.streamText` method, you will now
+  receive a stream of content parts instead of a stream of responses, which should
+  make it much simpler to filter down the stream to the parts you are interested in.
+
+  In addition, additional content parts will be present in the stream to allow you to track,
+  for example, when a text content part starts / ends.
+
+  ### Tool Calls / Tool Call Results
+
+  The decoded parts of a `Response` (as returned by the methods of `LanguageModel`)
+  are now fully type-safe on tool calls / tool call results. Filtering the content parts of a
+  response to tool calls will narrow the type of the tool call `params` based on the tool
+  `name`. Similarly, filtering the response to tool call results will narrow the type of the
+  tool call `result` based on the tool `name`.
+
+  ```ts
+  import { LanguageModel, Tool, Toolkit } from "@effect/ai"
+  import { Effect, Schema } from "effect"
+
+  const DadJokeTool = Tool.make("DadJokeTool", {
+    parameters: { topic: Schema.String },
+    success: Schema.Struct({ joke: Schema.String })
+  })
+
+  const FooTool = Tool.make("FooTool", {
+    parameters: { foo: Schema.Number },
+    success: Schema.Struct({ bar: Schema.Boolean })
+  })
+
+  const MyToolkit = Toolkit.make(DadJokeTool, FooTool)
+
+  const program = Effect.gen(function* () {
+    const response = yield* LanguageModel.generateText({
+      prompt: "Tell me a dad joke",
+      toolkit: MyToolkit
+    })
+
+    for (const toolCall of response.toolCalls) {
+      if (toolCall.name === "DadJokeTool") {
+        //         ^? "DadJokeTool" | "FooTool"
+        toolCall.params
+        //       ^? { readonly topic: string }
+      }
+    }
+
+    for (const toolResult of response.toolResults) {
+      if (toolResult.name === "DadJokeTool") {
+        //           ^? "DadJokeTool" | "FooTool"
+        toolResult.result
+        //         ^? { readonly joke: string }
+      }
+    }
+  })
+  ```
+
+  ### Provider Metadata
+
+  As with provider-specific options, provider-specific metadata is now returned as
+  part of the response from the large language model provider.
+
+  ```ts
+  import { LanguageModel } from "@effect/ai"
+  import { AnthropicLanguageModel } from "@effect/ai-anthropic"
+  import { Effect } from "effect"
+
+  const Claude = AnthropicLanguageModel.model("claude-4-sonnet-20250514")
+
+  const program = Effect.gen(function* () {
+    const response = yield* LanguageModel.generateText({
+      prompt: "What is the meaning of life?"
+    })
+
+    for (const part of response.content) {
+      // When metadata **is not** defined for a content part, accessing the
+      // provider's key on the part's metadata will return an untyped record
+      if (part.type === "text") {
+        const metadata = part.metadata.anthropic
+        //    ^? { readonly [x: string]: unknown } | undefined
+      }
+      // When metadata **is** defined for a content part, accessing the
+      // provider's key on the part's metadata will return typed metadata
+      if (part.type === "reasoning") {
+        const metadata = part.metadata.anthropic
+        //    ^? AnthropicReasoningInfo | undefined
+      }
+    }
+  }).pipe(Effect.provide(Claude))
+  ```
+
+  ## Tool Calls
+
+  The `Tool` module has been enhanced to support provider-defined tools (e.g.
+  web search, computer use, etc.). Large language model providers which support
+  calling their own tools now have a separate module present in their provider
+  integration packages which contain definitions for their tools.
+
+  These provider-defined tools can be included alongside user-defined tools in
+  existing `Toolkit`s. Provider-defined tools that require a user-space handler
+  will be raise a type error in the associated `Toolkit` layer if no such handler
+  is defined.
+
+  ```ts
+  import { LanguageModel, Tool, Toolkit } from "@effect/ai"
+  import { AnthropicTool } from "@effect/ai-anthropic"
+  import { Schema } from "effect"
+
+  const DadJokeTool = Tool.make("DadJokeTool", {
+    parameters: { topic: Schema.String },
+    success: Schema.Struct({ joke: Schema.String })
+  })
+
+  const MyToolkit = Toolkit.make(
+    DadJokeTool,
+    AnthropicTool.WebSearch_20250305({ max_uses: 1 })
+  )
+
+  const program = LanguageModel.generateText({
+    prompt: "Search the web for a dad joke",
+    toolkit: MyToolkit
+  })
+  ```
+
+  ## AiError
+
+  The `AiError` type has been refactored into a union of different error types
+  which can be raised by the Effect AI SDK. The goal of defining separate error
+  types is to allow providing the end-user with more granular information about
+  the error that occurred.
+
+  For now, the following errors have been defined. More error types may be added
+  over time based upon necessity / use case.
+
+  ```ts
+  type AiError =
+    | HttpRequestError,
+    | HttpResponseError,
+    | MalformedInput,
+    | MalformedOutput,
+    | UnknownError
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`42b914a`](https://github.com/Effect-TS/effect/commit/42b914a0e8750350ce17d434afaec7d655ddf4b7)]:
+  - @effect/ai@0.27.0
+
 ## 0.29.1
 
 ### Patch Changes

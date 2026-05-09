@@ -1,10 +1,11 @@
 import * as OtelApi from "@opentelemetry/api"
 import * as OtelSemConv from "@opentelemetry/semantic-conventions"
 import * as Cause from "effect/Cause"
+import type * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import type { Exit } from "effect/Exit"
-import { dual } from "effect/Function"
+import * as Exit from "effect/Exit"
+import { constTrue, dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
@@ -22,6 +23,21 @@ const kindMap = {
   "consumer": OtelApi.SpanKind.CONSUMER
 }
 
+const getOtelParent = (tracer: OtelApi.TraceAPI, otelContext: OtelApi.Context, context: Context.Context<never>) => {
+  const active = tracer.getSpan(otelContext)
+  const otelParent = active ? active.spanContext() : undefined
+  return otelParent
+    ? Option.some(
+      EffectTracer.externalSpan({
+        spanId: otelParent.spanId,
+        traceId: otelParent.traceId,
+        sampled: (otelParent.traceFlags & 1) === 1,
+        context
+      })
+    )
+    : Option.none()
+}
+
 /** @internal */
 export class OtelSpan implements EffectTracer.Span {
   readonly [OtelSpanTypeId]: typeof OtelSpanTypeId
@@ -32,20 +48,28 @@ export class OtelSpan implements EffectTracer.Span {
   readonly traceId: string
   readonly attributes = new Map<string, unknown>()
   readonly sampled: boolean
+  readonly parent: Option.Option<EffectTracer.AnySpan>
   status: EffectTracer.SpanStatus
 
   constructor(
     contextApi: OtelApi.ContextAPI,
+    traceApi: OtelApi.TraceAPI,
     tracer: OtelApi.Tracer,
     readonly name: string,
-    readonly parent: Option.Option<EffectTracer.AnySpan>,
+    effectParent: Option.Option<EffectTracer.AnySpan>,
     readonly context: Context.Context<never>,
     readonly links: Array<EffectTracer.SpanLink>,
     startTime: bigint,
-    readonly kind: EffectTracer.SpanKind
+    readonly kind: EffectTracer.SpanKind,
+    options?: EffectTracer.SpanOptions
   ) {
     this[OtelSpanTypeId] = OtelSpanTypeId
     const active = contextApi.active()
+    this.parent = effectParent._tag === "Some"
+      ? effectParent
+      : (options?.root !== true)
+      ? getOtelParent(traceApi, active, context)
+      : Option.none()
     this.span = tracer.startSpan(
       name,
       {
@@ -58,8 +82,8 @@ export class OtelSpan implements EffectTracer.Span {
           : undefined as any,
         kind: kindMap[this.kind]
       },
-      parent._tag === "Some"
-        ? populateContext(active, parent.value, context)
+      this.parent._tag === "Some"
+        ? populateContext(active, this.parent.value, context)
         : OtelApi.trace.deleteSpan(active)
     )
     const spanContext = this.span.spanContext()
@@ -86,7 +110,7 @@ export class OtelSpan implements EffectTracer.Span {
     })))
   }
 
-  end(endTime: bigint, exit: Exit<unknown, unknown>) {
+  end(endTime: bigint, exit: Exit.Exit<unknown, unknown>) {
     const hrTime = nanosToHrTime(endTime)
     this.status = {
       _tag: "Ended",
@@ -143,16 +167,18 @@ export const Tracer = Context.GenericTag<OtelTracer, OtelApi.Tracer>("@effect/op
 /** @internal */
 export const make = Effect.map(Tracer, (tracer) =>
   EffectTracer.make({
-    span(name, parent, context, links, startTime, kind) {
+    span(name, parent, context, links, startTime, kind, options) {
       return new OtelSpan(
         OtelApi.context,
+        OtelApi.trace,
         tracer,
         name,
         parent,
         context,
         links.slice(),
         startTime,
-        kind
+        kind,
+        options
       )
     },
     context(execution, fiber) {
@@ -188,7 +214,7 @@ export const makeExternalSpan = (options: {
 }): EffectTracer.ExternalSpan => {
   let context = Context.empty()
 
-  if (options.traceFlags) {
+  if (options.traceFlags !== undefined) {
     context = Context.add(context, traceFlagsTag, options.traceFlags)
   }
 
@@ -205,22 +231,124 @@ export const makeExternalSpan = (options: {
     _tag: "ExternalSpan",
     traceId: options.traceId,
     spanId: options.spanId,
-    sampled: options.traceFlags
+    sampled: options.traceFlags !== undefined
       ? (options.traceFlags & OtelApi.TraceFlags.SAMPLED) === OtelApi.TraceFlags.SAMPLED
       : true,
     context
   }
 }
 
-/** @internal */
-export const currentOtelSpan = Effect.flatMap(
-  Effect.currentSpan,
-  (span) => {
-    if (OtelSpanTypeId in span) {
-      return Effect.succeed((span as OtelSpan).span)
-    }
-    return Effect.fail(new Cause.NoSuchElementException())
+const makeOtelSpan = (span: EffectTracer.Span, clock: Clock.Clock): OtelApi.Span => {
+  const spanContext: OtelApi.SpanContext = {
+    traceId: span.traceId,
+    spanId: span.spanId,
+    traceFlags: span.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
+    isRemote: false
   }
+
+  let exit = Exit.void
+
+  const self: OtelApi.Span = {
+    spanContext: () => spanContext,
+    setAttribute(key, value) {
+      span.attribute(key, value)
+      return self
+    },
+    setAttributes(attributes) {
+      for (const [key, value] of Object.entries(attributes)) {
+        span.attribute(key, value)
+      }
+      return self
+    },
+    addEvent(name) {
+      let attributes: OtelApi.Attributes | undefined = undefined
+      let startTime: OtelApi.TimeInput | undefined = undefined
+      if (arguments.length === 3) {
+        attributes = arguments[1]
+        startTime = arguments[2]
+      } else if (arguments.length === 2) {
+        const arg1 = arguments[1]
+        if (isTimeInput(arg1)) {
+          startTime = arg1
+        } else {
+          attributes = arg1
+        }
+      }
+      span.event(name, convertOtelTimeInput(startTime, clock), attributes)
+      return self
+    },
+    addLink(link) {
+      span.addLinks([{
+        _tag: "SpanLink",
+        span: makeExternalSpan(link.context),
+        attributes: link.attributes ?? {}
+      }])
+      return self
+    },
+    addLinks(links) {
+      span.addLinks(links.map((link) => ({
+        _tag: "SpanLink",
+        span: makeExternalSpan(link.context),
+        attributes: link.attributes ?? {}
+      })))
+      return self
+    },
+    setStatus(status) {
+      exit = OtelApi.SpanStatusCode.ERROR
+        ? Exit.die(status.message ?? "Unknown error")
+        : Exit.void
+      return self
+    },
+    updateName: () => self,
+    end(endTime) {
+      const time = convertOtelTimeInput(endTime, clock)
+      span.end(time, exit)
+      return self
+    },
+    isRecording: constTrue,
+    recordException(exception, timeInput) {
+      const time = convertOtelTimeInput(timeInput, clock)
+      const cause = Cause.fail(exception)
+      const error = Cause.prettyErrors(cause)[0]
+      span.event(error.message, time, {
+        "exception.type": error.name,
+        "exception.message": error.message,
+        "exception.stacktrace": error.stack ?? ""
+      })
+    }
+  }
+  return self
+}
+
+const bigint1e6 = BigInt(1_000_000)
+const bigint1e9 = BigInt(1_000_000_000)
+
+/** Distinguishes TimeInput (number | Date | [number, number]) from Attributes (plain object) */
+const isTimeInput = (u: unknown): u is OtelApi.TimeInput =>
+  typeof u === "number" ||
+  u instanceof Date ||
+  (Array.isArray(u) && u.length === 2 && typeof u[0] === "number" && typeof u[1] === "number")
+
+const convertOtelTimeInput = (input: OtelApi.TimeInput | undefined, clock: Clock.Clock): bigint => {
+  if (input === undefined) {
+    return clock.unsafeCurrentTimeNanos()
+  } else if (typeof input === "number") {
+    return BigInt(Math.round(input * 1_000_000))
+  } else if (input instanceof Date) {
+    return BigInt(input.getTime()) * bigint1e6
+  }
+  const [seconds, nanos] = input
+  return BigInt(seconds) * bigint1e9 + BigInt(nanos)
+}
+
+/** @internal */
+export const currentOtelSpan: Effect.Effect<OtelApi.Span, Cause.NoSuchElementException> = Effect.clockWith((clock) =>
+  Effect.map(Effect.currentSpan, (span): OtelApi.Span => {
+    if (OtelSpanTypeId in span) {
+      return (span as OtelSpan).span
+    }
+    return makeOtelSpan(span, clock)
+  })
 )
 
 /** @internal */

@@ -1397,6 +1397,7 @@ export const changesWith = dual<
             return [Option.some(output), pipe(outputs, Chunk.append(output))] as const
           }
         )
+        if (Chunk.isEmpty(newChunk)) return writer(newLast)
         return core.flatMap(
           core.write(newChunk),
           () => writer(newLast)
@@ -8773,7 +8774,7 @@ export const decodeText = dual<
 >((args) => isStream(args[0]), (self, encoding = "utf-8") =>
   suspend(() => {
     const decoder = new TextDecoder(encoding)
-    return map(self, (s) => decoder.decode(s))
+    return map(self, (s) => decoder.decode(s, { stream: true }))
   }))
 
 /** @internal */

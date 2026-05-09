@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { assertFalse, assertTrue, strictEqual } from "@effect/vitest/utils"
 import { absurd, Equal, Hash, HashSet, identity, Option, Utils } from "effect"
 
@@ -71,5 +71,10 @@ describe("Hash", () => {
     assertTrue(Hash.isHash(HashSet.empty()))
     assertFalse(Hash.isHash(null))
     assertFalse(Hash.isHash({}))
+  })
+
+  it("invalid Date", () => {
+    const invalidDate = new Date("invalid")
+    expect(() => Hash.hash(invalidDate)).not.toThrow()
   })
 })

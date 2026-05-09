@@ -31,7 +31,8 @@ export interface Tracer {
     context: Context.Context<never>,
     links: ReadonlyArray<SpanLink>,
     startTime: bigint,
-    kind: SpanKind
+    kind: SpanKind,
+    options?: SpanOptions
   ): Span
   context<X>(f: () => X, fiber: Fiber.RuntimeFiber<any, any>): X
 }

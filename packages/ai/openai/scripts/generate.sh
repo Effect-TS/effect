@@ -12,7 +12,7 @@ cleanup() {
 
 trap cleanup EXIT
 
-openapi_spec_url="https://raw.githubusercontent.com/openai/openai-openapi/refs/heads/manual_spec/openapi.yaml"
+openapi_spec_url="https://app.stainless.com/api/spec/documented/openai/openapi.documented.yml"
 temp_file="${temp_dir}/openai.yaml"
 
 touch "${temp_file}"

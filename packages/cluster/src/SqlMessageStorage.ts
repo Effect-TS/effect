@@ -6,7 +6,6 @@ import * as SqlClient from "@effect/sql/SqlClient"
 import type { Row } from "@effect/sql/SqlConnection"
 import type { SqlError } from "@effect/sql/SqlError"
 import * as Arr from "effect/Array"
-import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -41,6 +40,7 @@ export const make = Effect.fnUntraced(function*(options?: {
   )
 
   const messageKindAckChunk = sql.literal(String(messageKind.AckChunk))
+  const messageKindInterrupt = sql.literal(String(messageKind.Interrupt))
   const replyKindWithExit = sql.literal(String(replyKind.WithExit))
 
   const messagesTable = table("messages")
@@ -205,34 +205,33 @@ export const make = Effect.fnUntraced(function*(options?: {
   ) => Effect.Effect<ReadonlyArray<Row>, SqlError> = sql.onDialectOrElse({
     pg: () => (row, message_id) =>
       sql`
-        WITH inserted AS (
-          INSERT INTO ${messagesTableSql} ${sql.insert(row)}
-          ON CONFLICT (message_id) DO NOTHING
-          RETURNING id
-        ),
-        existing AS (
+        INSERT INTO ${messagesTableSql} ${sql.insert(row)}
+        ON CONFLICT (message_id) DO NOTHING
+        RETURNING id
+      `.pipe(Effect.flatMap((rows) => {
+        // inserted a new row
+        if (rows.length > 0) return Effect.succeed([])
+        return sql`
           SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
           FROM ${messagesTableSql} m
           LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
           WHERE m.message_id = ${message_id}
-          AND NOT EXISTS (SELECT 1 FROM inserted)
-        )
-        SELECT * FROM existing
-      `,
+        `
+      })),
     mysql: () => (row, message_id) =>
-      sql`
-        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id};
-        INSERT INTO ${messagesTableSql} ${sql.insert(row)}
-        ON DUPLICATE KEY UPDATE id = id;
-      `.unprepared.pipe(
-        // we need 2 queries for mysql, so we need to run them in a
-        // transaction with retries
-        sql.withTransaction,
-        Effect.retry({ times: 3 }),
-        Effect.map(([rows]) => rows as any as ReadonlyArray<Row>)
+      Effect.flatMap(
+        sql`INSERT IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`.raw,
+        (row: any) => {
+          if (row.affectedRows > 0) {
+            return Effect.succeed([])
+          }
+          return sql`
+            SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+            FROM ${messagesTableSql} m
+            LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+            WHERE m.message_id = ${message_id}
+          `
+        }
       ),
     mssql: () => (row, message_id) =>
       sql`
@@ -285,11 +284,11 @@ export const make = Effect.fnUntraced(function*(options?: {
       )
   })
 
-  const fiveMinutesAgo = sql.onDialectOrElse({
-    mssql: () => sql.literal(`DATEADD(MINUTE, -5, GETDATE())`),
-    mysql: () => sql.literal(`NOW() - INTERVAL 5 MINUTE`),
-    pg: () => sql.literal(`NOW() - INTERVAL '5 minutes'`),
-    orElse: () => sql.literal(`DATETIME('now', '-5 minute')`)
+  const tenMinutesAgo = sql.onDialectOrElse({
+    mssql: () => sql.literal(`DATEADD(MINUTE, -10, GETDATE())`),
+    mysql: () => sql.literal(`NOW() - INTERVAL 10 MINUTE`),
+    pg: () => sql.literal(`NOW() - INTERVAL '10 minutes'`),
+    orElse: () => sql.literal(`DATETIME('now', '-10 minute')`)
   })
   const sqlNowString = sql.onDialectOrElse({
     pg: () => "NOW()",
@@ -303,32 +302,38 @@ export const make = Effect.fnUntraced(function*(options?: {
     mssql: () => (s: string) => `N'${s}'`,
     orElse: () => (s: string) => `'${s}'`
   })
+  const forUpdate = sql.onDialectOrElse({
+    sqlite: () => sql.literal(""),
+    orElse: () => sql.literal("FOR UPDATE")
+  })
 
   const getUnprocessedMessages = sql.onDialectOrElse({
-    pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
+    pg: () => (shardIds: Arr.NonEmptyArray<string>, now: number) =>
       sql<MessageJoinRow>`
-        UPDATE ${messagesTableSql} m
-        SET last_read = ${sqlNow}
-        FROM (
-          SELECT m.*
-          FROM ${messagesTableSql} m
-          WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
-          AND NOT EXISTS (
-            SELECT 1 FROM ${repliesTableSql}
-            WHERE request_id = m.request_id
-            AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
-          )
-          AND m.processed = ${sqlFalse}
-          AND (m.last_read IS NULL OR m.last_read < ${fiveMinutesAgo})
-          AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
-          ORDER BY m.rowid ASC
-          FOR UPDATE
-        ) AS ids
-        LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
-        WHERE m.id = ids.id
-        RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        WITH messages AS (
+          UPDATE ${messagesTableSql} m
+          SET last_read = ${sqlNow}
+          FROM (
+            SELECT m.*
+            FROM ${messagesTableSql} m
+            WHERE m.shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+            AND NOT EXISTS (
+              SELECT 1 FROM ${repliesTableSql}
+              WHERE request_id = m.request_id
+              AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
+            )
+            AND m.processed = ${sqlFalse}
+            AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
+            AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
+            FOR UPDATE
+          ) AS ids
+          LEFT JOIN ${repliesTableSql} r ON r.id = ids.last_reply_id
+          WHERE m.id = ids.id
+          RETURNING ids.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+        )
+        SELECT * FROM messages ORDER BY rowid ASC
       `,
-    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
+    orElse: () => (shardIds: Arr.NonEmptyArray<string>, now: number) =>
       sql<MessageJoinRow>`
         SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
@@ -340,9 +345,10 @@ export const make = Effect.fnUntraced(function*(options?: {
           AND (kind = ${replyKindWithExit} OR acked = ${sqlFalse})
         )
         AND processed = ${sqlFalse}
-        AND (m.last_read IS NULL OR m.last_read < ${fiveMinutesAgo})
+        AND (m.last_read IS NULL OR m.last_read < ${tenMinutesAgo})
         AND (m.deliver_at IS NULL OR m.deliver_at <= ${sql.literal(String(now))})
         ORDER BY m.rowid ASC
+        ${forUpdate}
       `.unprepared.pipe(
         Effect.tap((rows) => {
           if (rows.length === 0) {
@@ -380,14 +386,15 @@ export const make = Effect.fnUntraced(function*(options?: {
               return SaveResultEncoded.Success()
             }
             const row = rows[0]
+            const replyKindNum = typeof row.reply_kind === "bigint" ? Number(row.reply_kind) : row.reply_kind
             return SaveResultEncoded.Duplicate({
               originalId: Snowflake.Snowflake(row.id as any),
               lastReceivedReply: row.reply_id ?
                 Option.some({
                   id: String(row.reply_id),
                   requestId: String(row.id),
-                  _tag: row.reply_kind === replyKind.WithExit ? "WithExit" : "Chunk",
-                  ...(row.reply_kind === replyKind.WithExit
+                  _tag: replyKindNum === replyKind.WithExit ? "WithExit" : "Chunk",
+                  ...(replyKindNum === replyKind.WithExit
                     ? { exit: JSON.parse(row.reply_payload as string) }
                     : {
                       sequence: Number(row.reply_sequence),
@@ -400,7 +407,8 @@ export const make = Effect.fnUntraced(function*(options?: {
         )
       }).pipe(
         Effect.provideService(SqlClient.SafeIntegers, true),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     saveReply: (reply) =>
@@ -415,18 +423,23 @@ export const make = Effect.fnUntraced(function*(options?: {
         )
       }).pipe(
         Effect.asVoid,
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     clearReplies: Effect.fnUntraced(
       function*(requestId) {
-        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)}`
+        yield* sql`DELETE FROM ${repliesTableSql} WHERE request_id = ${String(requestId)} AND kind = 0`
+        yield* sql`DELETE FROM ${messagesTableSql} WHERE request_id = ${
+          String(requestId)
+        } AND kind = ${messageKindInterrupt}`
         yield* sql`UPDATE ${messagesTableSql} SET processed = ${sqlFalse}, last_reply_id = NULL, last_read = NULL WHERE request_id = ${
           String(requestId)
         }`
       },
       sql.withTransaction,
-      PersistenceError.refail
+      PersistenceError.refail,
+      withTracerDisabled
     ),
 
     requestIdForPrimaryKey: (primaryKey) =>
@@ -437,7 +450,8 @@ export const make = Effect.fnUntraced(function*(options?: {
           )
         ),
         Effect.provideService(SqlClient.SafeIntegers, true),
-        PersistenceError.refail
+        PersistenceError.refail,
+        withTracerDisabled
       ),
 
     repliesFor: (requestIds) =>
@@ -500,7 +514,7 @@ export const make = Effect.fnUntraced(function*(options?: {
     ),
 
     unprocessedMessagesById(ids, now) {
-      const idArr = Array.from(ids, (id) => String(id))
+      const idArr = ids.map((id) => String(id))
       return sql<MessageRow & ReplyJoinRow>`
         SELECT m.*, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
@@ -590,7 +604,6 @@ export const layer: Layer.Layer<
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-  readonly replyPollInterval?: DurationInput | undefined
 }): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig> =>
   Layer.scoped(MessageStorage.MessageStorage, make(options)).pipe(
     Layer.provide(Snowflake.layerGenerator)
@@ -638,8 +651,7 @@ const migrations = (options?: {
               last_reply_id BIGINT,
               last_read DATETIME,
               deliver_at BIGINT,
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `,
         mysql: () =>
@@ -665,8 +677,7 @@ const migrations = (options?: {
               last_read DATETIME,
               deliver_at BIGINT,
               UNIQUE (id),
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `,
         pg: () =>
@@ -691,8 +702,7 @@ const migrations = (options?: {
               last_reply_id BIGINT,
               last_read TIMESTAMP,
               deliver_at BIGINT,
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `.pipe(Effect.ignore),
         orElse: () =>
@@ -717,8 +727,7 @@ const migrations = (options?: {
               last_reply_id INTEGER,
               last_read TEXT,
               deliver_at INTEGER,
-              UNIQUE (message_id),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (message_id)
             )
           `
       })
@@ -790,8 +799,7 @@ const migrations = (options?: {
               sequence INT,
               acked BIT NOT NULL DEFAULT 0,
               CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence)
             )
           `,
         mysql: () =>
@@ -806,8 +814,7 @@ const migrations = (options?: {
               acked BOOLEAN NOT NULL DEFAULT FALSE,
               UNIQUE (id),
               UNIQUE (request_id, kind),
-              UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (request_id, sequence)
             )
           `,
         pg: () =>
@@ -821,8 +828,7 @@ const migrations = (options?: {
               sequence INT,
               acked BOOLEAN NOT NULL DEFAULT FALSE,
               UNIQUE (request_id, kind),
-              UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (request_id, sequence)
             )
           `,
         orElse: () =>
@@ -836,8 +842,7 @@ const migrations = (options?: {
               sequence INTEGER,
               acked BOOLEAN NOT NULL DEFAULT FALSE,
               UNIQUE (request_id, kind),
-              UNIQUE (request_id, sequence),
-              FOREIGN KEY (request_id) REFERENCES ${messagesTableSql} (id) ON DELETE CASCADE
+              UNIQUE (request_id, sequence)
             )
           `
       })

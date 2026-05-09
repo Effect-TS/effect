@@ -1,3 +1,4 @@
+import type * as Arr from "../Array.js"
 import * as Cause from "../Cause.js"
 import * as Clock from "../Clock.js"
 import * as Context from "../Context.js"
@@ -24,6 +25,7 @@ import type * as Types from "../Types.js"
 import * as effect from "./core-effect.js"
 import * as core from "./core.js"
 import * as circular from "./effect/circular.js"
+import * as ExecutionStrategy from "./executionStrategy.js"
 import * as fiberRuntime from "./fiberRuntime.js"
 import * as circularManagedRuntime from "./managedRuntime/circular.js"
 import * as EffectOpCodes from "./opCodes/effect.js"
@@ -84,6 +86,7 @@ export type Primitive =
   | ProvideTo
   | ZipWith
   | ZipWithPar
+  | MergeAll
 
 /** @internal */
 export type Op<Tag extends string, Body = {}> = Layer.Layer<unknown, unknown, unknown> & Body & {
@@ -165,6 +168,13 @@ export interface ZipWithPar extends
     readonly first: Layer.Layer<unknown>
     readonly second: Layer.Layer<unknown>
     zipK(left: Context.Context<unknown>, right: Context.Context<unknown>): Context.Context<unknown>
+  }>
+{}
+
+/** @internal */
+export interface MergeAll extends
+  Op<OpCodes.OP_MERGE_ALL, {
+    readonly layers: Arr.NonEmptyReadonlyArray<Layer.Layer<unknown>>
   }>
 {}
 
@@ -444,15 +454,41 @@ const makeBuilder = <RIn, E, ROut>(
       )
     }
     case "ZipWith": {
-      return core.sync(() => (memoMap: Layer.MemoMap) =>
-        pipe(
-          memoMap.getOrElseMemoize(op.first, scope),
-          fiberRuntime.zipWithOptions(
-            memoMap.getOrElseMemoize(op.second, scope),
-            op.zipK,
-            { concurrent: true }
+      return core.gen(function*() {
+        const parallelScope = yield* core.scopeFork(scope, ExecutionStrategy.parallel)
+        const firstScope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
+        const secondScope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
+        return (memoMap: Layer.MemoMap) =>
+          pipe(
+            memoMap.getOrElseMemoize(op.first, firstScope),
+            fiberRuntime.zipWithOptions(
+              memoMap.getOrElseMemoize(op.second, secondScope),
+              op.zipK,
+              { concurrent: true }
+            )
           )
-        )
+      })
+    }
+    case "MergeAll": {
+      const layers = op.layers
+      return core.map(
+        core.scopeFork(scope, ExecutionStrategy.parallel),
+        (parallelScope) => (memoMap: Layer.MemoMap) => {
+          const contexts = new Array<Context.Context<any>>(layers.length)
+          return core.map(
+            fiberRuntime.forEachConcurrentDiscard(
+              layers,
+              core.fnUntraced(function*(layer, i) {
+                const scope = yield* core.scopeFork(parallelScope, ExecutionStrategy.sequential)
+                const context = yield* memoMap.getOrElseMemoize(layer, scope)
+                contexts[i] = context
+              }),
+              false,
+              false
+            ),
+            () => Context.mergeAll(...contexts)
+          )
+        }
       )
     }
   }
@@ -788,11 +824,10 @@ export const mergeAll = <
   { [k in keyof Layers]: Layer.Layer.Error<Layers[k]> }[number],
   { [k in keyof Layers]: Layer.Layer.Context<Layers[k]> }[number]
 > => {
-  let final = layers[0]
-  for (let i = 1; i < layers.length; i++) {
-    final = merge(final, layers[i])
-  }
-  return final as any
+  const mergeAll = Object.create(proto)
+  mergeAll._op_layer = OpCodes.OP_MERGE_ALL
+  mergeAll.layers = layers
+  return mergeAll as any
 }
 
 /** @internal */

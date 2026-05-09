@@ -18,7 +18,7 @@ import * as Order from "./Order.js"
 import * as Predicate from "./Predicate.js"
 import * as Record from "./Record.js"
 import * as Tuple from "./Tuple.js"
-import type { NoInfer } from "./Types.js"
+import type { NoInfer, TupleOf } from "./Types.js"
 
 /**
  * @category type lambdas
@@ -2135,9 +2135,14 @@ export const chunksOf: {
  * @since 3.13.2
  */
 export const window: {
-  (n: number): <A>(self: Iterable<A>) => Array<Array<A>>
-  <A>(self: Iterable<A>, n: number): Array<Array<A>>
-} = dual(2, <A>(self: Iterable<A>, n: number): Array<Array<A>> => {
+  <N extends number = number>(
+    n: N
+  ): <A>(self: Iterable<A>) => Array<TupleOf<N, A>>
+  <A, N extends number = number>(
+    self: Iterable<A>,
+    n: N
+  ): Array<TupleOf<N, A>>
+} = dual(2, <A, const N extends number>(self: Iterable<A>, n: N): Array<Array<A>> => {
   const input = fromIterable(self)
   if (n > 0 && isNonEmptyReadonlyArray(input)) {
     return Array.from(
@@ -2347,7 +2352,10 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
   const has = containsWith(isEquivalent)
   return dual(
     2,
-    (self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).filter((a) => has(that, a))
+    (self: Iterable<A>, that: Iterable<A>): Array<A> => {
+      const bs = fromIterable(that)
+      return fromIterable(self).filter((a) => has(bs, a))
+    }
   )
 }
 
@@ -2395,7 +2403,10 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
   const has = containsWith(isEquivalent)
   return dual(
     2,
-    (self: Iterable<A>, that: Iterable<A>): Array<A> => fromIterable(self).filter((a) => !has(that, a))
+    (self: Iterable<A>, that: Iterable<A>): Array<A> => {
+      const bs = fromIterable(that)
+      return fromIterable(self).filter((a) => !has(bs, a))
+    }
   )
 }
 
@@ -2476,9 +2487,8 @@ export declare namespace ReadonlyArray {
    * @since 2.0.0
    */
   export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
-    NonEmptyReadonlyArray<NonEmptyReadonlyArray<infer A>> ? NonEmptyArray<A>
-    : T extends ReadonlyArray<ReadonlyArray<infer A>> ? Array<A>
-    : never
+    NonEmptyReadonlyArray<NonEmptyReadonlyArray<any>> ? NonEmptyArray<T[number][number]>
+    : Array<T[number][number]>
 }
 
 /**
@@ -2538,7 +2548,9 @@ export const flatMap: {
  * @category sequencing
  * @since 2.0.0
  */
-export const flatten: <S extends ReadonlyArray<ReadonlyArray<any>>>(self: S) => ReadonlyArray.Flatten<S> = flatMap(
+export const flatten: <const S extends ReadonlyArray<ReadonlyArray<any>>>(
+  self: S
+) => ReadonlyArray.Flatten<S> = flatMap(
   identity
 ) as any
 
@@ -3363,7 +3375,7 @@ export const cartesian: {
  * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
- * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ * 5. Regular `Array` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
  *
  * **Example**
  *
@@ -3412,7 +3424,7 @@ export const Do: ReadonlyArray<{}> = of({})
  * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
- * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ * 5. Regular `Array` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
  *
  * **Example**
  *
@@ -3473,7 +3485,7 @@ export const bind: {
  * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
  * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
  * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
- * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+ * 5. Regular `Array` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
  *
  * **Example**
  *
@@ -3538,7 +3550,7 @@ export {
    * 2. Within the do simulation scope, you can use the `bind` function to define variables and bind them to `Array` values
    * 3. You can accumulate multiple `bind` statements to define multiple variables within the scope
    * 4. Inside the do simulation scope, you can also use the `let` function to define variables and bind them to simple values
-   * 5. Regular `Option` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
+   * 5. Regular `Array` functions like `map` and `filter` can still be used within the do simulation. These functions will receive the accumulated variables as arguments within the scope
    *
    * **Example**
    *

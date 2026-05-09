@@ -523,20 +523,39 @@ export const retry: {
  * @category error handling
  */
 export const retryTransient: {
-  <B, E, R1 = never>(
+  <
+    B,
+    E,
+    R1 = never,
+    const Mode extends "errors-only" | "response-only" | "both" = never,
+    Input = "errors-only" extends Mode ? E
+      : "response-only" extends Mode ? ClientResponse.HttpClientResponse
+      : ClientResponse.HttpClientResponse | E
+  >(
     options: {
+      readonly mode?: Mode | undefined
       readonly while?: Predicate.Predicate<NoInfer<E>>
-      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
-    } | Schedule.Schedule<B, NoInfer<E>, R1>
+    } | Schedule.Schedule<B, NoInfer<Input>, R1>
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E, R1 | R>
-  <E, R, B, R1 = never>(
+  <
+    E,
+    R,
+    B,
+    R1 = never,
+    const Mode extends "errors-only" | "response-only" | "both" = never,
+    Input = "errors-only" extends Mode ? E
+      : "response-only" extends Mode ? ClientResponse.HttpClientResponse
+      : ClientResponse.HttpClientResponse | E
+  >(
     self: HttpClient.With<E, R>,
     options: {
+      readonly mode?: Mode | undefined
       readonly while?: Predicate.Predicate<NoInfer<E>>
-      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
-    } | Schedule.Schedule<B, NoInfer<E>, R1>
+    } | Schedule.Schedule<B, NoInfer<Input>, R1>
   ): HttpClient.With<E, R1 | R>
 } = internal.retryTransient
 

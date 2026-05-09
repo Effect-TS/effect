@@ -23,25 +23,12 @@ export type ScalarThemeId =
   | "purple"
   | "solarized"
   | "bluePlanet"
-  | "deepSpace"
   | "saturn"
   | "kepler"
   | "mars"
+  | "deepSpace"
+  | "laserwave"
   | "none"
-
-/**
- * @since 1.0.0
- * @category model
- *
- * cdn: `https://cdn.jsdelivr.net/npm/@scalar/api-reference@${source.version}/dist/browser/standalone.min.js`
- */
-export type ScalarScriptSource =
-  | string
-  | { type: "default" }
-  | {
-    type: "cdn"
-    version?: "latest" | (string & {})
-  }
 
 /**
  * @see https://github.com/scalar/scalar/blob/main/documentation/configuration.md
@@ -55,9 +42,7 @@ export type ScalarConfig = {
   /** The layout to use for the references */
   layout?: "modern" | "classic"
   /** URL to a request proxy for the API client */
-  proxy?: string
-  /** Whether the spec input should show */
-  isEditable?: boolean
+  proxyUrl?: string
   /** Whether to show the sidebar */
   showSidebar?: boolean
   /**
@@ -66,12 +51,6 @@ export type ScalarConfig = {
    * Default: `false`
    */
   hideModels?: boolean
-  /**
-   * Whether to show the “Download OpenAPI Document” button
-   *
-   * Default: `false`
-   */
-  hideDownloadButton?: boolean
   /**
    * Whether to show the “Test Request” button
    *
@@ -124,25 +103,21 @@ export type ScalarConfig = {
 
 const makeHandler = (options: {
   readonly api: HttpApi.HttpApi.Any
-  readonly source?: ScalarScriptSource
+  readonly source: {
+    readonly _tag: "Cdn"
+    readonly version?: string | undefined
+  } | {
+    readonly _tag: "Inline"
+    readonly source: string
+  }
   readonly scalar?: ScalarConfig
 }) => {
   const spec = OpenApi.fromApi(options.api as any)
 
   const source = options?.source
-  const defaultScript = internal.javascript
-  const src: string | null = source
-    ? typeof source === "string"
-      ? source
-      : source.type === "cdn"
-      ? `https://cdn.jsdelivr.net/npm/@scalar/api-reference@${
-        source.version ?? "latest"
-      }/dist/browser/standalone.min.js`
-      : null
-    : null
 
   const scalarConfig = {
-    _integration: "http",
+    _integration: "html",
     ...options?.scalar
   }
 
@@ -173,9 +148,11 @@ const makeHandler = (options: {
       document.getElementById('api-reference').dataset.configuration = JSON.stringify(${Html.escapeJson(scalarConfig)})
     </script>
     ${
-    src
-      ? `<script src="${src}" crossorigin></script>`
-      : `<script>${defaultScript}</script>`
+    source._tag === "Cdn"
+      ? `<script src="${`https://cdn.jsdelivr.net/npm/@scalar/api-reference@${
+        source.version ?? "latest"
+      }/dist/browser/standalone.min.js`}" crossorigin></script>`
+      : `<script>${source.source}</script>`
   }
   </body>
 </html>`)
@@ -189,16 +166,42 @@ const makeHandler = (options: {
  */
 export const layer = (options?: {
   readonly path?: `/${string}` | undefined
-  readonly source?: ScalarScriptSource
   readonly scalar?: ScalarConfig
 }): Layer.Layer<never, never, Api> =>
-  Router.use((router) =>
-    Effect.gen(function*() {
-      const { api } = yield* Api
-      const handler = makeHandler({ ...options, api })
-      yield* router.get(options?.path ?? "/docs", handler)
+  Router.use(Effect.fnUntraced(function*(router) {
+    const { api } = yield* Api
+    const handler = makeHandler({
+      ...options,
+      api,
+      source: {
+        _tag: "Inline",
+        source: internal.javascript
+      }
     })
-  )
+    yield* router.get(options?.path ?? "/docs", handler)
+  }))
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerCdn = (options?: {
+  readonly path?: `/${string}` | undefined
+  readonly scalar?: ScalarConfig
+  readonly version?: string | undefined
+}): Layer.Layer<never, never, Api> =>
+  Router.use(Effect.fnUntraced(function*(router) {
+    const { api } = yield* Api
+    const handler = makeHandler({
+      ...options,
+      api,
+      source: {
+        _tag: "Cdn",
+        version: options?.version
+      }
+    })
+    yield* router.get(options?.path ?? "/docs", handler)
+  }))
 
 /**
  * @since 1.0.0
@@ -208,7 +211,6 @@ export const layerHttpLayerRouter: (
   options: {
     readonly api: HttpApi.HttpApi.Any
     readonly path: `/${string}`
-    readonly source?: ScalarScriptSource
     readonly scalar?: ScalarConfig
   }
 ) => Layer.Layer<
@@ -218,10 +220,47 @@ export const layerHttpLayerRouter: (
 > = Effect.fnUntraced(function*(options: {
   readonly api: HttpApi.HttpApi.Any
   readonly path: `/${string}`
-  readonly source?: ScalarScriptSource
   readonly scalar?: ScalarConfig
 }) {
   const router = yield* HttpLayerRouter.HttpRouter
-  const handler = makeHandler(options)
+  const handler = makeHandler({
+    ...options,
+    source: {
+      _tag: "Inline",
+      source: internal.javascript
+    }
+  })
+  yield* router.add("GET", options.path, handler)
+}, Layer.effectDiscard)
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerHttpLayerRouterCdn: (
+  options: {
+    readonly api: HttpApi.HttpApi.Any
+    readonly path: `/${string}`
+    readonly version?: string | undefined
+    readonly scalar?: ScalarConfig
+  }
+) => Layer.Layer<
+  never,
+  never,
+  HttpLayerRouter.HttpRouter
+> = Effect.fnUntraced(function*(options: {
+  readonly api: HttpApi.HttpApi.Any
+  readonly path: `/${string}`
+  readonly version?: string | undefined
+  readonly scalar?: ScalarConfig
+}) {
+  const router = yield* HttpLayerRouter.HttpRouter
+  const handler = makeHandler({
+    ...options,
+    source: {
+      _tag: "Cdn",
+      version: options?.version
+    }
+  })
   yield* router.add("GET", options.path, handler)
 }, Layer.effectDiscard)

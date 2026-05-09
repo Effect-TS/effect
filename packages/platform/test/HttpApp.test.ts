@@ -1,7 +1,7 @@
 import { HttpApp, HttpServerResponse } from "@effect/platform"
 import { describe, test } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, FiberRef, Runtime, Stream } from "effect"
+import { Context, Effect, FiberRef, Runtime, Schema, Stream } from "effect"
 import * as Layer from "effect/Layer"
 
 describe("Http/App", () => {
@@ -12,6 +12,44 @@ describe("Http/App", () => {
       deepStrictEqual(await response.json(), {
         foo: "bar"
       })
+    })
+
+    test("json preserves content-type", async () => {
+      const handler = HttpApp.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/json")
+    })
+
+    test("json supports contentType option", async () => {
+      const handler = HttpApp.toWebHandler(
+        HttpServerResponse.json({ foo: "bar" }, { contentType: "application/problem+json" })
+      )
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/problem+json")
+    })
+
+    test("json supports content-type header", async () => {
+      const handler = HttpApp.toWebHandler(
+        HttpServerResponse.json({ foo: "bar" }, { headers: { "content-type": "application/vnd.api+json" } })
+      )
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/vnd.api+json")
+    })
+
+    test("schemaJson supports contentType option", async () => {
+      const encode = HttpServerResponse.schemaJson(Schema.Struct({ foo: Schema.String }))
+      const handler = HttpApp.toWebHandler(encode({ foo: "bar" }, { contentType: "application/merge-patch+json" }))
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/merge-patch+json")
+    })
+
+    test("urlParams supports contentType option", async () => {
+      const handler = HttpApp.toWebHandler(
+        HttpServerResponse.urlParams({ foo: "bar" }, { contentType: "text/plain" })
+      )
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "text/plain")
+      strictEqual(await response.text(), "foo=bar")
     })
 
     test("cookies", async () => {
@@ -38,20 +76,22 @@ describe("Http/App", () => {
     })
 
     test("stream scope", async () => {
+      let order = 0
       let streamFinalized = 0
       let handlerFinalized = 0
       const handler = HttpApp.toWebHandler(Effect.gen(function*() {
         yield* Effect.addFinalizer(() =>
           Effect.sync(() => {
-            handlerFinalized = Date.now()
+            handlerFinalized = order
+            order += 1
           })
         )
         const stream = Stream.make("foo", "bar").pipe(
           Stream.encodeText,
           Stream.ensuring(Effect.sync(() => {
-            streamFinalized = Date.now()
-          })),
-          Stream.tap(() => Effect.sleep(50))
+            streamFinalized = order
+            order += 1
+          }))
         )
         return HttpServerResponse.stream(stream)
       }))
@@ -95,6 +135,117 @@ describe("Http/App", () => {
     const response = await handler(new Request("http://localhost:3000/"), Env.context({ foo: "baz" }))
     deepStrictEqual(await response.json(), {
       foo: "baz"
+    })
+  })
+
+  describe("fromWebHandler", () => {
+    test("basic GET request", async () => {
+      const webHandler = async (request: Request) => {
+        return new Response(`Hello from ${request.url}`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" }
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/hello"))
+      strictEqual(response.status, 200)
+      strictEqual(await response.text(), "Hello from http://localhost:3000/hello")
+    })
+
+    test("POST with JSON body", async () => {
+      const webHandler = async (request: Request) => {
+        const body = await request.json()
+        return Response.json({ received: body })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(
+        new Request("http://localhost:3000/", {
+          method: "POST",
+          body: JSON.stringify({ message: "hello" }),
+          headers: { "Content-Type": "application/json" }
+        })
+      )
+      deepStrictEqual(await response.json(), {
+        received: { message: "hello" }
+      })
+    })
+
+    test("preserves request headers", async () => {
+      const webHandler = async (request: Request) => {
+        return Response.json({
+          authorization: request.headers.get("Authorization"),
+          custom: request.headers.get("X-Custom-Header")
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(
+        new Request("http://localhost:3000/", {
+          headers: {
+            "Authorization": "Bearer token123",
+            "X-Custom-Header": "custom-value"
+          }
+        })
+      )
+      deepStrictEqual(await response.json(), {
+        authorization: "Bearer token123",
+        custom: "custom-value"
+      })
+    })
+
+    test("preserves response status and headers", async () => {
+      const webHandler = async (_request: Request) => {
+        return new Response("Not Found", {
+          status: 404,
+          statusText: "Not Found",
+          headers: {
+            "X-Error-Code": "RESOURCE_NOT_FOUND",
+            "Content-Type": "text/plain"
+          }
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/missing"))
+      strictEqual(response.status, 404)
+      strictEqual(response.headers.get("X-Error-Code"), "RESOURCE_NOT_FOUND")
+      strictEqual(await response.text(), "Not Found")
+    })
+
+    test("round-trip with toWebHandler", async () => {
+      // Create an Effect app, convert to web handler, then back to Effect app
+      const originalApp = HttpServerResponse.json({ source: "effect" })
+      const webHandler = HttpApp.toWebHandler(originalApp)
+      const wrappedApp = HttpApp.fromWebHandler(webHandler)
+      const finalHandler = HttpApp.toWebHandler(wrappedApp)
+
+      const response = await finalHandler(new Request("http://localhost:3000/"))
+      deepStrictEqual(await response.json(), { source: "effect" })
+    })
+
+    test("preserves response content-type header", async () => {
+      const webHandler = async (_request: Request) => {
+        return Response.json({ message: "hello" })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "application/json")
+      deepStrictEqual(await response.json(), { message: "hello" })
+    })
+
+    test("preserves custom content-type header", async () => {
+      const webHandler = async (_request: Request) => {
+        return new Response("<html></html>", {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        })
+      }
+      const app = HttpApp.fromWebHandler(webHandler)
+      const handler = HttpApp.toWebHandler(app)
+      const response = await handler(new Request("http://localhost:3000/"))
+      strictEqual(response.headers.get("Content-Type"), "text/html; charset=utf-8")
     })
   })
 })

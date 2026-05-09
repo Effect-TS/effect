@@ -2,6 +2,7 @@
  * @since 3.10.0
  */
 import * as Arr from "./Array.js"
+import * as Inspectable from "./Inspectable.js"
 import * as errors_ from "./internal/schema/errors.js"
 import * as util_ from "./internal/schema/util.js"
 import * as Option from "./Option.js"
@@ -43,7 +44,7 @@ const toString = getMatcher((a) => String(a))
 
 const stringify = getMatcher((a) => JSON.stringify(a))
 
-const formatUnknown = getMatcher(util_.formatUnknown)
+const formatUnknown = getMatcher(Inspectable.formatUnknown)
 
 /**
  * @since 3.10.0
@@ -142,7 +143,7 @@ export const match: AST.Match<Pretty<any>> = {
           continue
         }
         output.push(
-          `${util_.formatPropertyKey(name)}: ${propertySignaturesTypes[i](input[name])}`
+          `${Inspectable.formatPropertyKey(name)}: ${propertySignaturesTypes[i](input[name])}`
         )
       }
       // ---------------------------------------------
@@ -156,7 +157,7 @@ export const match: AST.Match<Pretty<any>> = {
             if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
               continue
             }
-            output.push(`${util_.formatPropertyKey(key)}: ${type(input[key])}`)
+            output.push(`${Inspectable.formatPropertyKey(key)}: ${type(input[key])}`)
           }
         }
       }

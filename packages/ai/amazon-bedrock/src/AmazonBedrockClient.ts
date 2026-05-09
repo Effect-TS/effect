@@ -1,10 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as AiInput from "@effect/ai/AiInput"
-import * as AiResponse from "@effect/ai/AiResponse"
+import * as AiError from "@effect/ai/AiError"
 import * as Headers from "@effect/platform/Headers"
-import type * as HttpBody from "@effect/platform/HttpBody"
+import * as HttpBody from "@effect/platform/HttpBody"
 import * as HttpClient from "@effect/platform/HttpClient"
 import * as HttpClientError from "@effect/platform/HttpClientError"
 import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
@@ -14,70 +13,52 @@ import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/ConfigError"
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import type { ParseError } from "effect/ParseResult"
-import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
+import type * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import type { Mutable } from "effect/Types"
 import { AmazonBedrockConfig } from "./AmazonBedrockConfig.js"
-import type { ProviderMetadata } from "./AmazonBedrockLanguageModel.js"
 import type { ConverseRequest } from "./AmazonBedrockSchema.js"
-import { ConverseResponse, ConverseStreamResponse } from "./AmazonBedrockSchema.js"
+import { ConverseResponse, ConverseResponseStreamEvent } from "./AmazonBedrockSchema.js"
 import * as EventStreamEncoding from "./EventStreamEncoding.js"
-import * as InternalUtilities from "./internal/utilities.js"
-
-const constDisableValidation = { disableValidation: true } as const
 
 /**
  * @since 1.0.0
- * @category tags
+ * @category Context
  */
 export class AmazonBedrockClient extends Context.Tag(
   "@effect/ai-amazon-bedrock/AmazonBedrockClient"
-)<AmazonBedrockClient, AmazonBedrockClient.Service>() {}
+)<AmazonBedrockClient, Service>() {}
 
 /**
  * @since 1.0.0
+ * @category Models
  */
-export declare namespace AmazonBedrockClient {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Service {
-    readonly client: Client
-    readonly streamRequest: (request: typeof ConverseRequest.Encoded) => Stream.Stream<
-      ConverseStreamResponse,
-      HttpClientError.HttpClientError | ParseError
-    >
-    readonly stream: (request: typeof ConverseRequest.Encoded) => Stream.Stream<
-      AiResponse.AiResponse,
-      HttpClientError.HttpClientError | ParseError
-    >
-  }
+export interface Service {
+  readonly client: Client
 
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface Client {
-    readonly converse: (
-      options: typeof ConverseRequest.Encoded
-    ) => Effect.Effect<typeof ConverseResponse.Type, HttpClientError.HttpClientError | ParseError>
-    readonly converseStream: (
-      options: typeof ConverseRequest.Encoded
-    ) => Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError | ParseError>
-  }
+  readonly streamRequest: <A, I, R>(
+    request: HttpClientRequest.HttpClientRequest,
+    schema: Schema.Schema<A, I, R>
+  ) => Stream.Stream<A, AiError.AiError, R>
+
+  readonly converse: (options: {
+    readonly params?: { "anthropic-beta"?: string | undefined } | undefined
+    readonly payload: typeof ConverseRequest.Encoded
+  }) => Effect.Effect<ConverseResponse, AiError.AiError>
+
+  readonly converseStream: (options: {
+    readonly params?: { "anthropic-beta"?: string | undefined } | undefined
+    readonly payload: typeof ConverseRequest.Encoded
+  }) => Stream.Stream<ConverseResponseStreamEvent, AiError.AiError>
 }
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category Constructors
  */
 export const make = (options: {
   readonly apiUrl?: string | undefined
@@ -123,6 +104,8 @@ export const make = (options: {
       options.transformClient ? options.transformClient : identity
     )
 
+    const httpClientOk = HttpClient.filterStatusOk(httpClient)
+
     const client = makeClient(httpClient, {
       transformClient: (client) =>
         AmazonBedrockConfig.getOrUndefined.pipe(
@@ -130,154 +113,86 @@ export const make = (options: {
         )
     })
 
-    const streamRequest = (request: typeof ConverseRequest.Encoded) =>
-      client.converseStream(request).pipe(
-        Effect.map((response) => response.stream),
-        Stream.unwrap,
-        Stream.pipeThroughChannel(EventStreamEncoding.makeChannel(ConverseStreamResponse))
-      )
-
-    const stream = (request: typeof ConverseRequest.Encoded) =>
-      Stream.suspend(() => {
-        const toolCalls = {} as Record<number, RawToolCall>
-        let reasoningText: string | undefined = undefined
-        let usage: AiResponse.Usage = {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          reasoningTokens: 0,
-          cacheReadInputTokens: 0,
-          cacheWriteInputTokens: 0
-        }
-        const metadata: Mutable<ProviderMetadata.Service> = {} as any
-        return streamRequest(request).pipe(
-          Stream.filterMap((response) => {
-            const parts: Array<AiResponse.Part> = []
-
-            if (Predicate.isNotUndefined(response.metadata)) {
-              usage = {
-                inputTokens: response.metadata.usage.inputTokens,
-                outputTokens: response.metadata.usage.outputTokens,
-                totalTokens: response.metadata.usage.totalTokens,
-                reasoningTokens: 0,
-                cacheReadInputTokens: response.metadata.usage.cacheReadInputTokens ?? 0,
-                cacheWriteInputTokens: response.metadata.usage.cacheWriteInputTokens ?? 0
-              }
-              metadata.metrics = response.metadata.metrics
-              if (Predicate.isNotUndefined(response.metadata.trace)) {
-                metadata.trace = response.metadata.trace
-              }
-              if (Predicate.isNotUndefined(response.metadata.performanceConfig)) {
-                metadata.performanceConfig = response.metadata.performanceConfig
-              }
-            }
-
-            if (Predicate.isNotUndefined(response.messageStart)) {
-              parts.push(
-                new AiResponse.MetadataPart({
-                  model: request.modelId
-                }, constDisableValidation)
-              )
-            }
-
-            if (Predicate.isNotUndefined(response.contentBlockStart)) {
-              const index = response.contentBlockStart.contentBlockIndex
-              const toolUse = response.contentBlockStart.start.toolUse
-              toolCalls[index] = {
-                id: toolUse.toolUseId,
-                name: toolUse.name,
-                params: ""
-              }
-            }
-
-            if (Predicate.isNotUndefined(response.contentBlockDelta)) {
-              const delta = response.contentBlockDelta.delta
-
-              if ("text" in delta) {
-                parts.push(
-                  new AiResponse.TextPart({
-                    text: delta.text
-                  }, constDisableValidation)
-                )
-              }
-
-              if ("reasoningContent" in delta) {
-                if ("text" in delta.reasoningContent) {
-                  reasoningText = delta.reasoningContent.text
-                }
-                if ("signature" in delta.reasoningContent) {
-                  if (Predicate.isNotUndefined(reasoningText)) {
-                    parts.push(
-                      new AiResponse.ReasoningPart({
-                        reasoningText,
-                        signature: delta.reasoningContent.signature
-                      }, constDisableValidation)
-                    )
-                  } else {
-                    throw new Error(
-                      "[BUG]: AmazonBedrockClient.stream - no reasoning text " +
-                        `found for signature: ${delta.reasoningContent.signature} ` +
-                        "- please report an issue at https://github.com/Effect-TS/effect/issues"
-                    )
-                  }
-                }
-                if ("redactedContent" in delta.reasoningContent) {
-                  const decoder = new TextDecoder()
-                  parts.push(
-                    new AiResponse.RedactedReasoningPart({
-                      redactedText: decoder.decode(delta.reasoningContent.redactedContent)
-                    }, constDisableValidation)
-                  )
-                }
-              }
-
-              if ("toolUse" in delta) {
-                const index = response.contentBlockDelta.contentBlockIndex
-                const tool = toolCalls[index]
-                const toolDelta = delta.toolUse.input
-                if (Predicate.isNotUndefined(tool)) {
-                  tool.params += toolDelta
-                }
-              }
-            }
-
-            if (Predicate.isNotUndefined(response.contentBlockStop)) {
-              const index = response.contentBlockStop.contentBlockIndex
-              const tool = toolCalls[index]
-              if (Predicate.isNotUndefined(tool)) {
-                try {
-                  const params = JSON.parse(tool.params)
-                  parts.push(
-                    new AiResponse.ToolCallPart({
-                      id: AiInput.ToolCallId.make(tool.id, constDisableValidation),
-                      name: tool.name,
-                      params
-                    }, constDisableValidation)
-                  )
-                  delete toolCalls[index]
-                  // eslint-disable-next-line no-empty
-                } catch {}
-              }
-            }
-
-            if (Predicate.isNotUndefined(response.messageStop)) {
-              parts.push(
-                new AiResponse.FinishPart({
-                  usage,
-                  reason: InternalUtilities.resolveFinishReason(response.messageStop.stopReason),
-                  providerMetadata: { [InternalUtilities.ProviderMetadataKey]: metadata }
-                }, constDisableValidation)
-              )
-            }
-
-            return parts.length === 0
-              ? Option.none()
-              : Option.some(AiResponse.AiResponse.make({ parts }, constDisableValidation))
+    const converse: (options: {
+      readonly params?: { "anthropic-beta"?: string | undefined } | undefined
+      readonly payload: typeof ConverseRequest.Encoded
+    }) => Effect.Effect<ConverseResponse, AiError.AiError> = Effect.fnUntraced(
+      function*(request) {
+        return yield* client.converse(request).pipe(
+          Effect.catchTags({
+            RequestError: (error) =>
+              AiError.HttpRequestError.fromRequestError({
+                module: "AmazonBedrockClient",
+                method: "converse",
+                error
+              }),
+            ResponseError: (error) =>
+              AiError.HttpResponseError.fromResponseError({
+                module: "AmazonBedrockClient",
+                method: "converse",
+                error
+              }),
+            ParseError: (error) =>
+              AiError.MalformedOutput.fromParseError({
+                module: "AmazonBedrockClient",
+                method: "converse",
+                error
+              })
           })
         )
-      })
+      }
+    )
 
-    return AmazonBedrockClient.of({ client, stream, streamRequest })
+    const streamRequest = <A, I, R>(
+      request: HttpClientRequest.HttpClientRequest,
+      schema: Schema.Schema<A, I, R>
+    ): Stream.Stream<A, AiError.AiError, R> =>
+      httpClientOk.execute(request).pipe(
+        Effect.map((r) => r.stream),
+        Stream.unwrapScoped,
+        Stream.pipeThroughChannel(EventStreamEncoding.makeChannel(schema)),
+        Stream.catchTags({
+          RequestError: (error) =>
+            AiError.HttpRequestError.fromRequestError({
+              module: "AmazonBedrockClient",
+              method: "streamRequest",
+              error
+            }),
+          ResponseError: (error) =>
+            AiError.HttpResponseError.fromResponseError({
+              module: "AmazonBedrockClient",
+              method: "streamRequest",
+              error
+            }),
+          ParseError: (error) =>
+            AiError.MalformedOutput.fromParseError({
+              module: "AmazonBedrockClient",
+              method: "streamRequest",
+              error
+            })
+        })
+      )
+
+    const converseStream = (options: {
+      readonly params?: { "anthropic-beta"?: string | undefined } | undefined
+      readonly payload: typeof ConverseRequest.Encoded
+    }): Stream.Stream<ConverseResponseStreamEvent, AiError.AiError> => {
+      const { modelId, ...body } = options.payload
+      const request = HttpClientRequest.post(`/model/${modelId}/converse-stream`, {
+        headers: Headers.fromInput({
+          "anthropic-beta": options.params?.["anthropic-beta"]
+        }),
+        body: HttpBody.unsafeJson(body)
+      })
+      return streamRequest(request, ConverseResponseStreamEvent)
+    }
+
+    return AmazonBedrockClient.of({
+      client,
+      streamRequest,
+      converse,
+      converseStream
+    })
   })
 
 /**
@@ -318,72 +233,68 @@ export const layerConfig = (
   )
 }
 
+// =============================================================================
+// Client
+// =============================================================================
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export interface Client {
+  readonly converse: (options: {
+    readonly params?: { "anthropic-beta"?: string | undefined }
+    readonly payload: typeof ConverseRequest.Encoded
+  }) => Effect.Effect<typeof ConverseResponse.Type, HttpClientError.HttpClientError | ParseError>
+}
+
 const makeClient = (
   httpClient: HttpClient.HttpClient,
   options: {
     readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
   }
-): AmazonBedrockClient.Client => {
-  const unexpectedStatus = (
-    request: HttpClientRequest.HttpClientRequest,
-    response: HttpClientResponse.HttpClientResponse
-  ) =>
+): Client => {
+  const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
-      Effect.orElseSucceed(response.text, () => "Unexpected status code"),
+      Effect.orElseSucceed(response.json, () => "Unexpected status code"),
       (description) =>
         Effect.fail(
           new HttpClientError.ResponseError({
-            request,
+            request: response.request,
             response,
             reason: "StatusCode",
-            description
+            description: typeof description === "string" ? description : JSON.stringify(description)
           })
         )
     )
-  const applyClientTransform = (client: HttpClient.HttpClient): Effect.Effect<HttpClient.HttpClient> =>
-    options.transformClient ? options.transformClient(client) : Effect.succeed(client)
+  const withResponse: <A, E>(
+    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E>
+  ) => (
+    request: HttpClientRequest.HttpClientRequest
+  ) => Effect.Effect<any, any> = options.transformClient
+    ? (f) => (request) =>
+      Effect.flatMap(
+        Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
+        f
+      )
+    : (f) => (request) => Effect.flatMap(httpClient.execute(request), f)
+  const decodeSuccess =
+    <A, I, R>(schema: Schema.Schema<A, I, R>) => (response: HttpClientResponse.HttpClientResponse) =>
+      HttpClientResponse.schemaBodyJson(schema)(response)
   return {
-    converse: ({ modelId, ...payload }) =>
-      HttpClientRequest.make("POST")(`/model/${modelId}/converse`).pipe(
-        (request) => Effect.orDie(HttpClientRequest.bodyJson(request, payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.matchStatus({
-                "200": (response) => HttpClientResponse.schemaBodyJson(ConverseResponse)(response),
-                orElse: (response) => unexpectedStatus(request, response)
-              })
-            ))
-        )
-      ),
-    converseStream: ({ modelId, ...payload }) =>
-      HttpClientRequest.make("POST")(`/model/${modelId}/converse-stream`).pipe(
-        (request) => Effect.orDie(HttpClientRequest.bodyJson(request, payload)),
-        Effect.flatMap((request) =>
-          Effect.flatMap(applyClientTransform(httpClient), (httpClient) =>
-            Effect.flatMap(
-              httpClient.execute(request),
-              HttpClientResponse.filterStatusOk
-            ))
-        )
+    converse: ({ params, payload: { modelId, ...payload } }) =>
+      HttpClientRequest.post(`/model/${modelId}/converse`).pipe(
+        HttpClientRequest.setHeaders({
+          "anthropic-beta": params?.["anthropic-beta"] ?? undefined
+        }),
+        HttpClientRequest.bodyUnsafeJson(payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConverseResponse),
+          orElse: unexpectedStatus
+        }))
       )
   }
 }
-
-/**
- * @since 1.0.0
- * @category models
- */
-export class StreamChunk extends Data.Class<{
-  readonly parts: Array<StreamChunkPart>
-}> {}
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type StreamChunkPart = any /* ContentPart | ToolCallPart | UsagePart */
 
 const prepareBody = (body: HttpBody.HttpBody): string => {
   switch (body._tag) {
@@ -402,10 +313,4 @@ const prepareBody = (body: HttpBody.HttpBody): string => {
     }
   }
   throw new Error("Unsupported HttpBody: " + body._tag)
-}
-
-type RawToolCall = {
-  readonly id: string
-  readonly name: string
-  params: string
 }

@@ -1260,6 +1260,9 @@ describe("Array", () => {
     deepStrictEqual(pipe([1, 2], intersectionWith([3, 4])), [])
     deepStrictEqual(pipe([1, 2], intersectionWith([2, 3])), [2])
     deepStrictEqual(pipe([1, 2], intersectionWith([1, 2])), [1, 2])
+    deepStrictEqual(pipe([1, 2], intersectionWith([3, 4][Symbol.iterator]())), [])
+    deepStrictEqual(pipe([1, 2], intersectionWith([2, 3][Symbol.iterator]())), [2])
+    deepStrictEqual(pipe([1, 2], intersectionWith([1, 2][Symbol.iterator]())), [1, 2])
   })
 
   it("differenceWith", () => {
@@ -1267,6 +1270,9 @@ describe("Array", () => {
     deepStrictEqual(pipe([1, 2], differenceWith([3, 4])), [1, 2])
     deepStrictEqual(pipe([1, 2], differenceWith([2, 3])), [1])
     deepStrictEqual(pipe([1, 2], differenceWith([1, 2])), [])
+    deepStrictEqual(pipe([1, 2], differenceWith([3, 4][Symbol.iterator]())), [1, 2])
+    deepStrictEqual(pipe([1, 2], differenceWith([2, 3][Symbol.iterator]())), [1])
+    deepStrictEqual(pipe([1, 2], differenceWith([1, 2][Symbol.iterator]())), [])
   })
 
   it("empty", () => {

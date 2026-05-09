@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type * as Rpc from "@effect/rpc/Rpc"
+import * as Headers from "@effect/platform/Headers"
+import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
 import * as RpcGroup from "@effect/rpc/RpcGroup"
 import * as RpcServer from "@effect/rpc/RpcServer"
@@ -23,19 +24,16 @@ import * as Predicate from "effect/Predicate"
 import type * as Schedule from "effect/Schedule"
 import { Scope } from "effect/Scope"
 import type * as Stream from "effect/Stream"
-import type {
-  AlreadyProcessingMessage,
-  EntityNotManagedByRunner,
-  MailboxFull,
-  PersistenceError
-} from "./ClusterError.js"
+import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.js"
 import { ShardGroup } from "./ClusterSchema.js"
+import * as ClusterSchema from "./ClusterSchema.js"
 import { EntityAddress } from "./EntityAddress.js"
 import type { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
 import * as Envelope from "./Envelope.js"
 import { hashString } from "./internal/hash.js"
 import { ResourceMap } from "./internal/resourceMap.js"
+import * as Message from "./Message.js"
 import type * as Reply from "./Reply.js"
 import { RunnerAddress } from "./RunnerAddress.js"
 import * as ShardId from "./ShardId.js"
@@ -113,7 +111,7 @@ export interface Entity<
       entityId: string
     ) => RpcClient.RpcClient.From<
       Rpcs,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotManagedByRunner
+      MailboxFull | AlreadyProcessingMessage | PersistenceError
     >,
     never,
     Sharding
@@ -201,7 +199,7 @@ export type Any = Entity<string, Rpc.Any>
 export type HandlersFrom<Rpc extends Rpc.Any> = {
   readonly [Current in Rpc as Current["_tag"]]: (
     envelope: Request<Current>
-  ) => Rpc.ResultFrom<Current, any> | Rpc.Fork<Rpc.ResultFrom<Current, any>>
+  ) => Rpc.ResultFrom<Current, any> | Rpc.Wrapper<Rpc.ResultFrom<Current, any>>
 }
 
 /**
@@ -270,7 +268,7 @@ const Proto = {
           options
         )
       ),
-      Layer.effectDiscard
+      Layer.scopedDiscard
     )
   },
   of: identity,
@@ -589,3 +587,67 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
 
   return (entityId: string) => map.get(entityId)
 })
+
+/**
+ * @since 1.0.0
+ * @category Keep alive
+ */
+export const keepAlive: (
+  enabled: boolean
+) => Effect.Effect<
+  void,
+  never,
+  Sharding | CurrentAddress
+> = Effect.fnUntraced(function*(enabled: boolean) {
+  const olatch = yield* Effect.serviceOption(KeepAliveLatch)
+  if (olatch._tag === "None") return
+  if (!enabled) {
+    yield* olatch.value.open
+    return
+  }
+  const sharding = yield* shardingTag
+  const address = yield* CurrentAddress
+  const requestId = yield* sharding.getSnowflake
+  const span = yield* Effect.orDie(Effect.currentSpan)
+  olatch.value.unsafeClose()
+  yield* Effect.orDie(sharding.sendOutgoing(
+    new Message.OutgoingRequest({
+      rpc: KeepAliveRpc,
+      context: Context.empty() as any,
+      envelope: Envelope.makeRequest({
+        requestId,
+        address,
+        tag: KeepAliveRpc._tag,
+        payload: void 0,
+        headers: Headers.empty,
+        traceId: span.traceId,
+        spanId: span.spanId,
+        sampled: span.sampled
+      }),
+      lastReceivedReply: Option.none(),
+      respond: () => Effect.void
+    }),
+    true
+  ))
+}, (effect, enabled) =>
+  Effect.withSpan(
+    effect,
+    "Entity/keepAlive",
+    { attributes: { enabled }, captureStackTrace: false }
+  ))
+
+/**
+ * @since 1.0.0
+ * @category Keep alive
+ */
+export const KeepAliveRpc = Rpc.make("Cluster/Entity/keepAlive")
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, true)
+
+/**
+ * @since 1.0.0
+ * @category Keep alive
+ */
+export class KeepAliveLatch extends Context.Tag(
+  "effect/cluster/Entity/KeepAliveLatch"
+)<KeepAliveLatch, Effect.Latch>() {}

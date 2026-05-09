@@ -100,20 +100,34 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) =>
-        Effect.try({
-          try: () => (db.query(sql).all(...(params as any)) ?? []) as Array<any>,
-          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+        Effect.withFiberRuntime<Array<any>, SqlError>((fiber) => {
+          const useSafeIntegers = Context.get(fiber.currentContext, Client.SafeIntegers)
+          try {
+            const statement = db.query(sql)
+            // @ts-ignore bun-types missing safeIntegers method, fixed in https://github.com/oven-sh/bun/pull/26627
+            statement.safeIntegers(useSafeIntegers)
+            return Effect.succeed((statement.all(...(params as any)) ?? []) as Array<any>)
+          } catch (cause) {
+            return Effect.fail(new SqlError({ cause, message: "Failed to execute statement" }))
+          }
         })
 
       const runValues = (
         sql: string,
-        params: ReadonlyArray<Statement.Primitive> = []
+        params: ReadonlyArray<unknown> = []
       ) =>
-        Effect.try({
-          try: () => (db.query(sql).values(...(params as any)) ?? []) as Array<any>,
-          catch: (cause) => new SqlError({ cause, message: "Failed to execute statement" })
+        Effect.withFiberRuntime<Array<any>, SqlError>((fiber) => {
+          const useSafeIntegers = Context.get(fiber.currentContext, Client.SafeIntegers)
+          try {
+            const statement = db.query(sql)
+            // @ts-ignore bun-types missing safeIntegers method, fixed in https://github.com/oven-sh/bun/pull/26627
+            statement.safeIntegers(useSafeIntegers)
+            return Effect.succeed((statement.values(...(params as any)) ?? []) as Array<any>)
+          } catch (cause) {
+            return Effect.fail(new SqlError({ cause, message: "Failed to execute statement" }))
+          }
         })
 
       return identity<SqliteConnection>({

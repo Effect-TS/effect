@@ -3,7 +3,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import { constFalse, dual } from "effect/Function"
+import { constFalse, dual, flow, identity } from "effect/Function"
 import { globalValue } from "effect/GlobalValue"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
@@ -744,41 +744,74 @@ export const retry: {
 
 /** @internal */
 export const retryTransient: {
-  <B, E, R1 = never>(
+  <
+    B,
+    E,
+    R1 = never,
+    const Mode extends "errors-only" | "response-only" | "both" = never,
+    Input = "errors-only" extends Mode ? E
+      : "response-only" extends Mode ? ClientResponse.HttpClientResponse
+      : ClientResponse.HttpClientResponse | E
+  >(
     options: {
+      readonly mode?: Mode | undefined
       readonly while?: Predicate.Predicate<NoInfer<E>>
-      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
-    } | Schedule.Schedule<B, NoInfer<E>, R1>
+    } | Schedule.Schedule<B, NoInfer<Input>, R1>
   ): <R>(self: Client.HttpClient.With<E, R>) => Client.HttpClient.With<E, R1 | R>
-  <E, R, B, R1 = never>(
+  <
+    E,
+    R,
+    B,
+    R1 = never,
+    const Mode extends "errors-only" | "response-only" | "both" = never,
+    Input = "errors-only" extends Mode ? E
+      : "response-only" extends Mode ? ClientResponse.HttpClientResponse
+      : ClientResponse.HttpClientResponse | E
+  >(
     self: Client.HttpClient.With<E, R>,
     options: {
+      readonly mode?: Mode | undefined
       readonly while?: Predicate.Predicate<NoInfer<E>>
-      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, R1>
       readonly times?: number
-    } | Schedule.Schedule<B, NoInfer<E>, R1>
+    } | Schedule.Schedule<B, NoInfer<Input>, R1>
   ): Client.HttpClient.With<E, R1 | R>
 } = dual(
   2,
   <E extends E0, E0, R, B, R1 = never>(
     self: Client.HttpClient.With<E, R>,
     options: {
+      readonly mode?: "errors-only" | "response-only" | "both" | undefined
       readonly while?: Predicate.Predicate<NoInfer<E>>
-      readonly schedule?: Schedule.Schedule<B, NoInfer<E>, R1>
+      readonly schedule?: Schedule.Schedule<B, ClientResponse.HttpClientResponse | NoInfer<E>, R1>
       readonly times?: number
-    } | Schedule.Schedule<B, NoInfer<E>, R1>
-  ): Client.HttpClient.With<E, R | R1> =>
-    transformResponse(
+    } | Schedule.Schedule<B, ClientResponse.HttpClientResponse | NoInfer<E>, R1>
+  ): Client.HttpClient.With<E, R | R1> => {
+    const isOnlySchedule = Schedule.ScheduleTypeId in options
+    const mode = isOnlySchedule ? "both" : options.mode ?? "both"
+    const schedule = isOnlySchedule ? options : options.schedule
+    const passthroughSchedule = schedule && Schedule.passthrough(schedule)
+    const times = isOnlySchedule ? undefined : options.times
+    return transformResponse(
       self,
-      Effect.retry({
-        while: Schedule.ScheduleTypeId in options || options.while === undefined
-          ? isTransientError
-          : Predicate.or(isTransientError, options.while),
-        schedule: Schedule.ScheduleTypeId in options ? options : options.schedule,
-        times: Schedule.ScheduleTypeId in options ? undefined : options.times
-      })
+      flow(
+        mode === "errors-only" ? identity : Effect.repeat({
+          schedule: passthroughSchedule,
+          times,
+          while: isTransientResponse
+        }),
+        mode === "response-only" ? identity : Effect.retry({
+          while: isOnlySchedule || options.while === undefined
+            ? isTransientError
+            : Predicate.or(isTransientError, options.while),
+          schedule,
+          times
+        })
+      )
     )
+  }
 )
 
 const isTransientError = (error: unknown) =>
@@ -787,7 +820,15 @@ const isTransientError = (error: unknown) =>
 const isTransientHttpError = (error: unknown) =>
   Error.isHttpClientError(error) &&
   ((error._tag === "RequestError" && error.reason === "Transport") ||
-    (error._tag === "ResponseError" && error.response.status >= 429))
+    (error._tag === "ResponseError" && isTransientResponse(error.response)))
+
+const isTransientResponse = (response: ClientResponse.HttpClientResponse) =>
+  response.status === 408 ||
+  response.status === 429 ||
+  response.status === 500 ||
+  response.status === 502 ||
+  response.status === 503 ||
+  response.status === 504
 
 /** @internal */
 export const tap = dual<

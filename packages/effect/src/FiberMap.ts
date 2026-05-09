@@ -484,16 +484,20 @@ const runImpl = <K, A, E, R, XE extends E, XA extends A>(
     readonly propagateInterruption?: boolean | undefined
   }
 ) =>
-  Effect.fiberIdWith((fiberId) => {
+  Effect.withFiberRuntime((parent) => {
     if (self.state._tag === "Closed") {
       return Effect.interrupt
     } else if (options?.onlyIfMissing === true && unsafeHas(self, key)) {
       return Effect.sync(constInterruptedFiber)
     }
-    return Effect.tap(
-      Effect.forkDaemon(effect),
-      (fiber) => unsafeSet(self, key, fiber, { ...options, interruptAs: fiberId })
-    )
+    const runtime = Runtime.make<R>({
+      context: parent.currentContext as any,
+      fiberRefs: parent.getFiberRefs(),
+      runtimeFlags: Runtime.defaultRuntime.runtimeFlags
+    })
+    const fiber = Runtime.runFork(runtime)(effect)
+    unsafeSet(self, key, fiber, { ...options, interruptAs: parent.id() })
+    return Effect.succeed(fiber)
   })
 
 /**

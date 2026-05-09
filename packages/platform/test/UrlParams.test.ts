@@ -117,6 +117,109 @@ describe("UrlParams", () => {
     })
   })
 
+  describe("getAll", () => {
+    const params = UrlParams.fromInput({ foo: ["a", "b"], bar: "c" })
+
+    it("returns every value for the provided key", () => {
+      deepStrictEqual(UrlParams.getAll(params, "foo"), ["a", "b"])
+    })
+
+    it("returns an empty array when the key is missing", () => {
+      deepStrictEqual(UrlParams.getAll(params, "missing"), [])
+    })
+  })
+
+  describe("getFirst", () => {
+    const params = UrlParams.fromInput({ foo: ["a", "b"] })
+
+    it("returns the first value wrapped in Option", () => {
+      deepStrictEqual(UrlParams.getFirst(params, "foo"), Option.some("a"))
+    })
+
+    it("returns none when the key is missing", () => {
+      deepStrictEqual(UrlParams.getFirst(params, "missing"), Option.none())
+    })
+  })
+
+  describe("getLast", () => {
+    const params = UrlParams.fromInput({ foo: ["a", "b"] })
+
+    it("returns the last value wrapped in Option", () => {
+      deepStrictEqual(UrlParams.getLast(params, "foo"), Option.some("b"))
+    })
+
+    it("returns none when the key is missing", () => {
+      deepStrictEqual(UrlParams.getLast(params, "missing"), Option.none())
+    })
+  })
+
+  describe("setAll", () => {
+    it("overwrites provided keys while preserving others", () => {
+      const prev = UrlParams.fromInput({
+        baz: "c",
+        foo: "d"
+      })
+      const next = UrlParams.fromInput({
+        foo: "a",
+        bar: "b"
+      })
+
+      deepStrictEqual(
+        UrlParams.toRecord(UrlParams.setAll(prev, next)),
+        {
+          baz: "c",
+          foo: "a",
+          bar: "b"
+        }
+      )
+    })
+  })
+
+  describe("set", () => {
+    it("overwrites only the targeted key", () => {
+      const params = UrlParams.fromInput({ foo: "d", baz: "c" })
+      deepStrictEqual(
+        UrlParams.toRecord(UrlParams.set(params, "foo", "a")),
+        { baz: "c", foo: "a" }
+      )
+    })
+  })
+
+  describe("append", () => {
+    it("preserves existing entries and appends a new pair", () => {
+      const params = UrlParams.fromInput({ foo: "a" })
+      const appended = UrlParams.append(params, "foo", "b")
+      deepStrictEqual(UrlParams.getAll(appended, "foo"), ["a", "b"])
+    })
+  })
+
+  describe("appendAll", () => {
+    it("appends all entries while keeping order", () => {
+      const params = UrlParams.fromInput({ foo: "a" })
+      const appended = UrlParams.appendAll(params, {
+        foo: "b",
+        bar: "c"
+      })
+      deepStrictEqual(
+        UrlParams.toRecord(appended),
+        { foo: ["a", "b"], bar: "c" }
+      )
+    })
+  })
+
+  describe("remove", () => {
+    it("removes every instance of the provided key", () => {
+      const params = UrlParams.fromInput({
+        foo: ["a", "b"],
+        bar: "c"
+      })
+      deepStrictEqual(
+        UrlParams.toRecord(UrlParams.remove(params, "foo")),
+        { bar: "c" }
+      )
+    })
+  })
+
   describe("schemaStruct", () => {
     it.effect("works when empty", () =>
       Effect.gen(function*() {

@@ -1,5 +1,127 @@
 # @effect/experimental
 
+## 0.60.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/platform@0.96.0
+
+## 0.59.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/platform@0.95.0
+
+## 0.58.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+
+## 0.57.11
+
+### Patch Changes
+
+- [#5864](https://github.com/Effect-TS/effect/pull/5864) [`ebe2e52`](https://github.com/Effect-TS/effect/commit/ebe2e5278420d4b2bf30113a3b0a5ed68382d870) Thanks @mattiamanzati! - Ensure Devtools Tracer does not cut off span options
+
+- Updated dependencies [[`3f9bbfe`](https://github.com/Effect-TS/effect/commit/3f9bbfe9ef78303ecc6817b68ec9671f4d42d249)]:
+  - effect@3.19.9
+
+## 0.57.10
+
+### Patch Changes
+
+- [#5847](https://github.com/Effect-TS/effect/pull/5847) [`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1) Thanks @tim-smart! - ensure PersistedQueue memory driver removes items
+
+## 0.57.9
+
+### Patch Changes
+
+- [#5837](https://github.com/Effect-TS/effect/pull/5837) [`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9) Thanks @tim-smart! - support idempotent offers to PersistedQueue
+
+## 0.57.8
+
+### Patch Changes
+
+- [#5829](https://github.com/Effect-TS/effect/pull/5829) [`7b2cd37`](https://github.com/Effect-TS/effect/commit/7b2cd374cbc8b7a2e800926082febf54173c9e49) Thanks @tim-smart! - reset redis staging area on a schedule for PersistedQueue
+
+## 0.57.7
+
+### Patch Changes
+
+- [#5820](https://github.com/Effect-TS/effect/pull/5820) [`c379c45`](https://github.com/Effect-TS/effect/commit/c379c45777cea3ec8c985d55f597902813bd3ae2) Thanks @tim-smart! - ensure redis PersistedQueue removes stale pending items on reset
+
+- Updated dependencies [[`f03b8e5`](https://github.com/Effect-TS/effect/commit/f03b8e55f12019cc855a1306e9cbfc7611a9e281)]:
+  - effect@3.19.8
+
+## 0.57.6
+
+### Patch Changes
+
+- [#5816](https://github.com/Effect-TS/effect/pull/5816) [`a9206ce`](https://github.com/Effect-TS/effect/commit/a9206ceee64daf3b12a778b60ee2bfdede748c57) Thanks @tim-smart! - add dynamic batch size to PersistedQueue based on pending takers
+
+## 0.57.5
+
+### Patch Changes
+
+- [#5808](https://github.com/Effect-TS/effect/pull/5808) [`7b23d9a`](https://github.com/Effect-TS/effect/commit/7b23d9a812d5c100d9d9af16bd50251ea2f91b4b) Thanks @tim-smart! - add PersistedQueue module
+
+## 0.57.4
+
+### Patch Changes
+
+- [#5773](https://github.com/Effect-TS/effect/pull/5773) [`9283499`](https://github.com/Effect-TS/effect/commit/9283499a1c1e6caa9cc9090c8419e8d49b575cd8) Thanks @tim-smart! - add RateLimiter helpers `makeWithRateLimiter` and `makeSleep`
+
+## 0.57.3
+
+### Patch Changes
+
+- [#5763](https://github.com/Effect-TS/effect/pull/5763) [`1df657e`](https://github.com/Effect-TS/effect/commit/1df657e4688f602262d854947c15634849f2ba98) Thanks @tim-smart! - fix RateLimiter fixed window alogrithim
+
+## 0.57.2
+
+### Patch Changes
+
+- [#5761](https://github.com/Effect-TS/effect/pull/5761) [`1deeb6a`](https://github.com/Effect-TS/effect/commit/1deeb6a58cde29e99f57c56d9adcdcda7ac610d0) Thanks @tim-smart! - fix partial window calulation for fixed window rate limiter
+
+- Updated dependencies [[`e144f02`](https://github.com/Effect-TS/effect/commit/e144f02c93258f0bb37bd10ee9849f2836914e2f)]:
+  - @effect/platform@0.93.3
+
+## 0.57.1
+
+### Patch Changes
+
+- [#5731](https://github.com/Effect-TS/effect/pull/5731) [`796a3b5`](https://github.com/Effect-TS/effect/commit/796a3b5aa3f6e0bd85583cc59f39bc059403345a) Thanks @tim-smart! - add persisted RateLimiter to @effect/experimental
+
+## 0.57.0
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform@0.93.0
+
+## 0.56.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+
+## 0.55.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+
 ## 0.54.6
 
 ### Patch Changes

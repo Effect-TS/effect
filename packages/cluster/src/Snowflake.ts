@@ -162,7 +162,7 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
         // reset sequence if we're in a new millisecond
         sequence = 0
         sequenceAt = now
-      } else if (sequence >= 1024) {
+      } else if (sequence >= 4096) {
         // if we've hit the max sequence for this millisecond, go to the next
         // millisecond
         sequenceAt++

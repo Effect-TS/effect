@@ -1,0 +1,142 @@
+diff --git a/packages/ai/openrouter/src/Generated.ts b/packages/ai/openrouter/src/Generated.ts
+index 92a756c..837d7dd 100644
+--- a/packages/ai/openrouter/src/Generated.ts
++++ b/packages/ai/openrouter/src/Generated.ts
+@@ -10,6 +10,10 @@ import * as Effect from "effect/Effect"
+ import type { ParseError } from "effect/ParseResult"
+ import * as S from "effect/Schema"
+ 
++export class CacheControlEphemeral extends S.Class<CacheControlEphemeral>("CacheControlEphemeral")({
++  "type": S.Literal("ephemeral")
++}) {}
++
+ export class OpenResponsesReasoningFormat extends S.Literal(
+   "unknown",
+   "openai-responses-v1",
+@@ -51,6 +55,70 @@ export class OpenResponsesReasoning extends S.Class<OpenResponsesReasoning>("Ope
+   )
+ }) {}
+ 
++export class ReasoningDetailSummary extends S.Class<ReasoningDetailSummary>("ReasoningDetailSummary")({
++  id: S.optionalWith(S.String, { nullable: true }),
++  type: S.Literal("reasoning.summary"),
++  index: S.optional(S.Number),
++  format: S.optionalWith(OpenResponsesReasoningFormat, { nullable: true }),
++  summary: S.String
++}) {}
++
++export class ReasoningDetailEncrypted extends S.Class<ReasoningDetailEncrypted>("ReasoningDetailEncrypted")({
++  id: S.optionalWith(S.String, { nullable: true }),
++  type: S.Literal("reasoning.encrypted"),
++  index: S.optional(S.Number),
++  format: S.optionalWith(OpenResponsesReasoningFormat, { nullable: true }),
++  data: S.String
++}) {}
++
++export class ReasoningDetailText extends S.Class<ReasoningDetailText>("ReasoningDetailText")({
++  id: S.optionalWith(S.String, { nullable: true }),
++  type: S.Literal("reasoning.text"),
++  index: S.optional(S.Number),
++  format: S.optionalWith(OpenResponsesReasoningFormat, { nullable: true }),
++  text: S.optionalWith(S.String, { nullable: true }),
++  signature: S.optionalWith(S.String, { nullable: true })
++}) {}
++
++export class ReasoningDetail extends S.Union(
++  ReasoningDetailSummary,
++  ReasoningDetailEncrypted,
++  ReasoningDetailText
++) {}
++
++export class FileAnnotationDetail extends S.Class<FileAnnotationDetail>("FileAnnotationDetail")({
++  "type": S.Literal("file"),
++  "file": S.Struct({
++    "hash": S.String,
++    "name": S.optionalWith(S.String, { nullable: true }),
++    "content": S.Array(S.Union(
++      S.Struct({
++        "type": S.Literal("text"),
++        "text": S.String
++      }),
++      S.Struct({
++        "type": S.Literal("image_url"),
++        "image_url": S.Struct({
++          "url": S.String
++        })
++      })
++    ))
++  })
++}) {}
++
++export class URLCitationAnnotationDetail extends S.Class<URLCitationAnnotationDetail>("URLCitationAnnotationDetail")({
++  "type": S.Literal("url_citation"),
++  "url_citation": S.Struct({
++    "end_index": S.Number,
++    "start_index": S.Number,
++    "title": S.String,
++    "url": S.String,
++    "content": S.optionalWith(S.String, { nullable: true })
++  })
++}) {}
++
++export class AnnotationDetail extends S.Union(FileAnnotationDetail, URLCitationAnnotationDetail) {}
++
+ export class OpenResponsesEasyInputMessageType extends S.Literal("message") {}
+ 
+ export class OpenResponsesEasyInputMessageRoleEnum extends S.Literal("developer") {}
+@@ -4637,7 +4705,7 @@ export class AssistantMessage extends S.Class<AssistantMessage>("AssistantMessag
+   "tool_calls": S.optionalWith(S.Array(ChatMessageToolCall), { nullable: true }),
+   "refusal": S.optionalWith(S.String, { nullable: true }),
+   "reasoning": S.optionalWith(S.String, { nullable: true }),
+-  "reasoning_details": S.optionalWith(S.Array(Schema2), { nullable: true }),
++  "reasoning_details": S.optionalWith(S.Array(ReasoningDetail), { nullable: true }),
+   "images": S.optionalWith(
+     S.Array(S.Struct({
+       "image_url": S.Struct({
+@@ -4645,7 +4713,8 @@ export class AssistantMessage extends S.Class<AssistantMessage>("AssistantMessag
+       })
+     })),
+     { nullable: true }
+-  )
++  ),
++  "annotations": S.optionalWith(S.Array(AnnotationDetail), { nullable: true })
+ }) {}
+ 
+ export class ToolResponseMessage extends S.Class<ToolResponseMessage>("ToolResponseMessage")({
+@@ -4873,15 +4942,15 @@ export class ChatMessageTokenLogprob extends S.Class<ChatMessageTokenLogprob>("C
+ }) {}
+ 
+ export class ChatMessageTokenLogprobs extends S.Class<ChatMessageTokenLogprobs>("ChatMessageTokenLogprobs")({
+-  "content": S.NullOr(S.Array(ChatMessageTokenLogprob)),
+-  "refusal": S.NullOr(S.Array(ChatMessageTokenLogprob))
++  "content": S.optionalWith(S.Array(ChatMessageTokenLogprob), { nullable: true }),
++  "refusal": S.optionalWith(S.Array(ChatMessageTokenLogprob), { nullable: true })
+ }) {}
+ 
+ export class ChatResponseChoice extends S.Class<ChatResponseChoice>("ChatResponseChoice")({
+   "finish_reason": S.NullOr(ChatCompletionFinishReason),
+   "index": S.Number,
+   "message": AssistantMessage,
+-  "logprobs": S.optionalWith(ChatMessageTokenLogprobs, { nullable: true })
++  "logprobs": S.optionalWith(ChatMessageTokenLogprobs, { nullable: true }),
+ }) {}
+ 
+ export class ChatGenerationTokenUsage extends S.Class<ChatGenerationTokenUsage>("ChatGenerationTokenUsage")({
+@@ -4905,11 +4974,16 @@ export class ChatGenerationTokenUsage extends S.Class<ChatGenerationTokenUsage>(
+       "video_tokens": S.optionalWith(S.Number, { nullable: true })
+     }),
+     { nullable: true }
+-  )
++  ),
++  "cost": S.optionalWith(S.Number, { nullable: true }),
++  "cost_details": S.optionalWith(S.Struct({ upstream_inference_cost: S.optionalWith(S.Number, { nullable: true }) }), {
++    nullable: true
++  })
+ }) {}
+ 
+ export class ChatResponse extends S.Class<ChatResponse>("ChatResponse")({
+   "id": S.String,
++  "provider": S.optionalWith(S.String, { nullable: true }),
+   "choices": S.Array(ChatResponseChoice),
+   "created": S.Number,
+   "model": S.String,

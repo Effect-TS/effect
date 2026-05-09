@@ -1,5 +1,176 @@
 # @effect/platform-bun
 
+## 0.89.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/cluster@0.58.0
+  - @effect/platform@0.96.0
+  - @effect/platform-node-shared@0.59.0
+  - @effect/rpc@0.75.0
+  - @effect/sql@0.51.0
+
+## 0.88.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/cluster@0.57.0
+  - @effect/platform@0.95.0
+  - @effect/platform-node-shared@0.58.0
+  - @effect/rpc@0.74.0
+  - @effect/sql@0.50.0
+
+## 0.87.1
+
+### Patch Changes
+
+- [#5977](https://github.com/Effect-TS/effect/pull/5977) [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7) Thanks @scotttrinh! - Added `rows` and `isTTY` properties to `Terminal`
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+  - @effect/platform-node-shared@0.57.1
+  - @effect/platform@0.94.2
+
+## 0.87.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/cluster@0.56.0
+  - @effect/platform-node-shared@0.57.0
+  - @effect/rpc@0.73.0
+  - @effect/sql@0.49.0
+
+## 0.86.0
+
+### Patch Changes
+
+- Updated dependencies [[`811852a`](https://github.com/Effect-TS/effect/commit/811852a61868136bb7b3367450f02e5a8fb8a3f9)]:
+  - @effect/sql@0.48.6
+  - @effect/cluster@0.55.0
+  - @effect/platform-node-shared@0.56.0
+
+## 0.85.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @effect/cluster@0.54.0
+  - @effect/platform-node-shared@0.55.0
+
+## 0.84.0
+
+### Patch Changes
+
+- Updated dependencies [[`794c790`](https://github.com/Effect-TS/effect/commit/794c790d736f62784bff800fda5a656026d93749), [`079975c`](https://github.com/Effect-TS/effect/commit/079975c69d80c62461da5c51fe89e02c44dfa2ea), [`62f7636`](https://github.com/Effect-TS/effect/commit/62f76361ee01ed816687774c5302e7f8c5ff6a42)]:
+  - @effect/rpc@0.72.2
+  - effect@3.19.5
+  - @effect/cluster@0.53.0
+  - @effect/platform-node-shared@0.54.0
+
+## 0.83.0
+
+### Patch Changes
+
+- Updated dependencies [[`571025c`](https://github.com/Effect-TS/effect/commit/571025ceaff6ef432a61bf65735a5a0f45118313), [`d43577b`](https://github.com/Effect-TS/effect/commit/d43577be59ae510812287b1cbffe6da15c040452)]:
+  - @effect/cluster@0.52.0
+  - @effect/sql@0.48.0
+  - @effect/rpc@0.72.1
+  - @effect/platform-node-shared@0.53.0
+
+## 0.82.0
+
+### Minor Changes
+
+- [#5606](https://github.com/Effect-TS/effect/pull/5606) [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433) Thanks @tim-smart! - backport @effect/cluster from effect v4
+
+  @effect/cluster no longer requires a Shard Manager, and instead relies on the
+  `RunnerStorage` service to track runner state.
+
+  To migrate, remove any Shard Manager deployments and use the updated layers in
+  `@effect/platform-node` or `@effect/platform-bun`.
+
+  # Breaking Changes
+  - `ShardManager` module has been removed
+  - `EntityNotManagedByRunner` error has been removed
+  - Shard locks now use database advisory locks, which requires stable sessions
+    for database connections. This means load balancers or proxies that rotate
+    connections may cause issues.
+  - `@effect/platform-node/NodeClusterSocketRunner` is now
+    `@effect/cluster/NodeClusterSocket`
+  - `@effect/platform-node/NodeClusterHttpRunner` is now
+    `@effect/cluster/NodeClusterHttp`
+  - `@effect/platform-bun/BunClusterSocketRunner` is now
+    `@effect/cluster/BunClusterSocket`
+  - `@effect/platform-bun/BunClusterHttpRunner` is now
+    `@effect/cluster/BunClusterHttp`
+
+  # New Features
+  - `RunnerHealth.layerK8s` has been added, which uses the Kubernetes API to track
+    runner health and liveness. To use it, you will need a service account with
+    permissions to read pod information.
+
+### Patch Changes
+
+- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
+  - effect@3.19.0
+  - @effect/platform-node-shared@0.52.0
+  - @effect/cluster@0.51.0
+  - @effect/rpc@0.72.0
+  - @effect/platform@0.93.0
+  - @effect/sql@0.47.0
+
+## 0.81.1
+
+### Patch Changes
+
+- [#5602](https://github.com/Effect-TS/effect/pull/5602) [`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf) Thanks @tim-smart! - guard against race conditions in NodeSocketServer
+
+- Updated dependencies [[`64b764b`](https://github.com/Effect-TS/effect/commit/64b764b3207eb13cacb13da31343aaf425e966bf)]:
+  - @effect/cluster@0.50.3
+  - @effect/platform-node-shared@0.51.3
+
+## 0.81.0
+
+### Patch Changes
+
+- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2)]:
+  - effect@3.18.0
+  - @effect/platform@0.92.0
+  - @effect/cluster@0.50.0
+  - @effect/platform-node-shared@0.51.0
+  - @effect/rpc@0.71.0
+  - @effect/sql@0.46.0
+
+## 0.80.0
+
+### Patch Changes
+
+- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
+  - @effect/platform@0.91.0
+  - @effect/rpc@0.70.0
+  - @effect/cluster@0.49.0
+  - @effect/platform-node-shared@0.50.0
+  - @effect/sql@0.45.0
+
+## 0.79.1
+
+### Patch Changes
+
+- [#5517](https://github.com/Effect-TS/effect/pull/5517) [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8) Thanks @tim-smart! - add onOpen option to Socket.run
+
+- Updated dependencies [[`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8), [`de07e58`](https://github.com/Effect-TS/effect/commit/de07e5805496b80226ba6a5efc2b4c05e1aba4b8)]:
+  - @effect/platform-node-shared@0.49.2
+  - @effect/cluster@0.48.10
+  - @effect/platform@0.90.10
+  - @effect/rpc@0.69.3
+
 ## 0.79.0
 
 ### Patch Changes

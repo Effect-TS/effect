@@ -13,7 +13,8 @@ import * as S from "effect/Schema"
 export class ListOperationsParams extends S.Struct({
   "filter": S.optionalWith(S.String, { nullable: true }),
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
+  "pageToken": S.optionalWith(S.String, { nullable: true }),
+  "returnPartialSuccess": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 /**
@@ -95,19 +96,28 @@ export class ListOperationsResponse extends S.Class<ListOperationsResponse>("Lis
   /**
    * The standard List next-page token.
    */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+  "nextPageToken": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Unordered list. Unreachable resources. Populated when the request sets
+   * `ListOperationsRequest.return_partial_success` and reads across
+   * collections. For example, when attempting to list all resources across all
+   * supported locations.
+   */
+  "unreachable": S.optionalWith(S.Array(S.String), { nullable: true })
 }) {}
 
 export class ListOperationsByParams extends S.Struct({
   "filter": S.optionalWith(S.String, { nullable: true }),
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
+  "pageToken": S.optionalWith(S.String, { nullable: true }),
+  "returnPartialSuccess": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 export class ListOperationsByModelParams extends S.Struct({
   "filter": S.optionalWith(S.String, { nullable: true }),
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
+  "pageToken": S.optionalWith(S.String, { nullable: true }),
+  "returnPartialSuccess": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 /**
@@ -157,13 +167,54 @@ export class FunctionCall extends S.Class<FunctionCall>("FunctionCall")({
   /**
    * Required. The name of the function to call.
    * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * length of 64.
    */
   "name": S.String,
   /**
    * Optional. The function parameters and values in JSON object format.
    */
   "args": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * Raw media bytes for function response.
+ *
+ * Text should not be sent as raw bytes, use the 'FunctionResponse.response'
+ * field.
+ */
+export class FunctionResponseBlob extends S.Class<FunctionResponseBlob>("FunctionResponseBlob")({
+  /**
+   * The IANA standard MIME type of the source data.
+   * Examples:
+   *   - image/png
+   *   - image/jpeg
+   * If an unsupported MIME type is provided, an error will be returned. For a
+   * complete list of supported types, see [Supported file
+   * formats](https://ai.google.dev/gemini-api/docs/prompting_with_media#supported_file_formats).
+   */
+  "mimeType": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Raw bytes for media formats.
+   */
+  "data": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A datatype containing media that is part of a `FunctionResponse` message.
+ *
+ * A `FunctionResponsePart` consists of data which has an associated datatype. A
+ * `FunctionResponsePart` can only contain one of the accepted types in
+ * `FunctionResponsePart.data`.
+ *
+ * A `FunctionResponsePart` must have a fixed IANA MIME type identifying the
+ * type and subtype of the media if the `inline_data` field is filled with raw
+ * bytes.
+ */
+export class FunctionResponsePart extends S.Class<FunctionResponsePart>("FunctionResponsePart")({
+  /**
+   * Inline media bytes.
+   */
+  "inlineData": S.optionalWith(FunctionResponseBlob, { nullable: true })
 }) {}
 
 /**
@@ -191,13 +242,22 @@ export class FunctionResponse extends S.Class<FunctionResponse>("FunctionRespons
   /**
    * Required. The name of the function to call.
    * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * length of 64.
    */
   "name": S.String,
   /**
    * Required. The function response in JSON object format.
+   * Callers can use any keys of their choice that fit the function's syntax
+   * to return the function output, e.g. "output", "result", etc.
+   * In particular, if the function call failed to execute, the response can
+   * have an "error" key to return error details to the model.
    */
   "response": S.Record({ key: S.String, value: S.Unknown }),
+  /**
+   * Optional. Ordered `Parts` that constitute a function response. Parts may have
+   * different IANA MIME types.
+   */
+  "parts": S.optionalWith(S.Array(FunctionResponsePart), { nullable: true }),
   /**
    * Optional. Signals that function call continues, and more responses will be
    * returned, turning the function call into a generator.
@@ -300,6 +360,21 @@ export class VideoMetadata extends S.Class<VideoMetadata>("VideoMetadata")({
   "fps": S.optionalWith(S.Number, { nullable: true })
 }) {}
 
+export class MediaResolutionLevel extends S.Literal(
+  "MEDIA_RESOLUTION_UNSPECIFIED",
+  "MEDIA_RESOLUTION_LOW",
+  "MEDIA_RESOLUTION_MEDIUM",
+  "MEDIA_RESOLUTION_HIGH",
+  "MEDIA_RESOLUTION_ULTRA_HIGH"
+) {}
+
+/**
+ * Media resolution for the input media.
+ */
+export class MediaResolution extends S.Class<MediaResolution>("MediaResolution")({
+  "level": S.optionalWith(MediaResolutionLevel, { nullable: true })
+}) {}
+
 /**
  * A datatype containing media that is part of a multi-part `Content` message.
  *
@@ -356,7 +431,18 @@ export class Part extends S.Class<Part>("Part")({
    * Optional. An opaque signature for the thought so it can be reused in subsequent
    * requests.
    */
-  "thoughtSignature": S.optionalWith(S.String, { nullable: true })
+  "thoughtSignature": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Custom metadata associated with the Part.
+   * Agents using genai.Part as content representation may need to keep track
+   * of the additional information. For example it can be name of a file/source
+   * from which the Part originates or a way to multiplex multiple Part streams.
+   */
+  "partMetadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * Optional. Media resolution for the input media.
+   */
+  "mediaResolution": S.optionalWith(MediaResolution, { nullable: true })
 }) {}
 
 /**
@@ -472,7 +558,7 @@ const schemaFields = {
 }
 
 /**
- * The `Schema` object allows the definition of input and output data types.
+ * The \`Schema\` object allows the definition of input and output data types.
  * These types can be objects, but also primitives and arrays.
  * Represents a select subset of an [OpenAPI 3.0 schema
  * object](https://spec.openapis.org/oas/v3.0.3#schema).
@@ -490,7 +576,7 @@ export interface SchemaEncoded extends S.Struct.Encoded<typeof schemaFields> {
 }
 
 /**
- * The `Schema` object allows the definition of input and output data types.
+ * The \`Schema\` object allows the definition of input and output data types.
  * These types can be objects, but also primitives and arrays.
  * Represents a select subset of an [OpenAPI 3.0 schema
  * object](https://spec.openapis.org/oas/v3.0.3#schema).
@@ -520,8 +606,8 @@ export class FunctionDeclarationBehavior extends S.Literal("UNSPECIFIED", "BLOCK
 export class FunctionDeclaration extends S.Class<FunctionDeclaration>("FunctionDeclaration")({
   /**
    * Required. The name of the function.
-   * Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum
-   * length of 63.
+   * Must be a-z, A-Z, 0-9, or contain underscores, colons, dots, and dashes,
+   * with a maximum length of 64.
    */
   "name": S.String,
   /**
@@ -626,9 +712,110 @@ export class GoogleSearch extends S.Class<GoogleSearch>("GoogleSearch")({
 }) {}
 
 /**
+ * Required. The environment being operated.
+ */
+export class ComputerUseEnvironment extends S.Literal("ENVIRONMENT_UNSPECIFIED", "ENVIRONMENT_BROWSER") {}
+
+/**
+ * Computer Use tool type.
+ */
+export class ComputerUse extends S.Class<ComputerUse>("ComputerUse")({
+  /**
+   * Required. The environment being operated.
+   */
+  "environment": ComputerUseEnvironment,
+  /**
+   * Optional. By default, predefined functions are included in the final model
+   * call.
+   * Some of them can be explicitly excluded from being automatically
+   * included. This can serve two purposes:
+   * 1. Using a more restricted / different action space.
+   * 2. Improving the definitions / instructions of predefined functions.
+   */
+  "excludedPredefinedFunctions": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+/**
  * Tool to support URL context retrieval.
  */
 export class UrlContext extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+/**
+ * The FileSearch tool that retrieves knowledge from Semantic Retrieval corpora.
+ * Files are imported to Semantic Retrieval corpora using the ImportFile API.
+ */
+export class FileSearch extends S.Class<FileSearch>("FileSearch")({
+  /**
+   * Required. The names of the file_search_stores to retrieve from.
+   * Example: `fileSearchStores/my-file-search-store-123`
+   */
+  "fileSearchStoreNames": S.Array(S.String),
+  /**
+   * Optional. The number of semantic retrieval chunks to retrieve.
+   */
+  "topK": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. Metadata filter to apply to the semantic retrieval documents and chunks.
+   */
+  "metadataFilter": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A transport that can stream HTTP requests and responses.
+ * Next ID: 6
+ */
+export class StreamableHttpTransport extends S.Class<StreamableHttpTransport>("StreamableHttpTransport")({
+  /**
+   * The full URL for the MCPServer endpoint.
+   * Example: "https://api.example.com/mcp"
+   */
+  "url": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional: Fields for authentication headers, timeouts, etc., if needed.
+   */
+  "headers": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * HTTP timeout for regular operations.
+   */
+  "timeout": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Timeout for SSE read operations.
+   */
+  "sseReadTimeout": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Whether to close the client session when the transport closes.
+   */
+  "terminateOnClose": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+/**
+ * A MCPServer is a server that can be called by the model to perform actions.
+ * It is a server that implements the MCP protocol.
+ * Next ID: 5
+ */
+export class McpServer extends S.Class<McpServer>("McpServer")({
+  /**
+   * A transport that can stream HTTP requests and responses.
+   */
+  "streamableHttpTransport": S.optionalWith(StreamableHttpTransport, { nullable: true }),
+  /**
+   * The name of the MCPServer.
+   */
+  "name": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The GoogleMaps Tool that provides geospatial context for the user's query.
+ */
+export class GoogleMaps extends S.Class<GoogleMaps>("GoogleMaps")({
+  /**
+   * Optional. Whether to return a widget context token in the GroundingMetadata of the
+   * response. Developers can use the widget context token to render a Google
+   * Maps widget with geospatial context related to the places that the model
+   * references in the response.
+   */
+  "enableWidget": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
 
 /**
  * Tool details that the model may use to generate response.
@@ -636,6 +823,8 @@ export class UrlContext extends S.Record({ key: S.String, value: S.Unknown }) {}
  * A `Tool` is a piece of code that enables the system to interact with
  * external systems to perform an action, or set of actions, outside of
  * knowledge and scope of the model.
+ *
+ * Next ID: 14
  */
 export class Tool extends S.Class<Tool>("Tool")({
   /**
@@ -667,9 +856,29 @@ export class Tool extends S.Class<Tool>("Tool")({
    */
   "googleSearch": S.optionalWith(GoogleSearch, { nullable: true }),
   /**
+   * Optional. Tool to support the model interacting directly with the computer.
+   * If enabled, it automatically populates computer-use specific Function
+   * Declarations.
+   */
+  "computerUse": S.optionalWith(ComputerUse, { nullable: true }),
+  /**
    * Optional. Tool to support URL context retrieval.
    */
-  "urlContext": S.optionalWith(UrlContext, { nullable: true })
+  "urlContext": S.optionalWith(UrlContext, { nullable: true }),
+  /**
+   * Optional. FileSearch tool type.
+   * Tool to retrieve knowledge from Semantic Retrieval corpora.
+   */
+  "fileSearch": S.optionalWith(FileSearch, { nullable: true }),
+  /**
+   * Optional. MCP Servers to connect to.
+   */
+  "mcpServers": S.optionalWith(S.Array(McpServer), { nullable: true }),
+  /**
+   * Optional. Tool that allows grounding the model's response with geospatial context
+   * related to the user's query.
+   */
+  "googleMaps": S.optionalWith(GoogleMaps, { nullable: true })
 }) {}
 
 /**
@@ -691,11 +900,44 @@ export class FunctionCallingConfig extends S.Class<FunctionCallingConfig>("Funct
    * Optional. A set of function names that, when provided, limits the functions the model
    * will call.
    *
-   * This should only be set when the Mode is ANY. Function names
-   * should match [FunctionDeclaration.name]. With mode set to ANY, model will
-   * predict a function call from the set of function names provided.
+   * This should only be set when the Mode is ANY or VALIDATED. Function names
+   * should match [FunctionDeclaration.name]. When set, model will
+   * predict a function call from only allowed function names.
    */
   "allowedFunctionNames": S.optionalWith(S.Array(S.String), { nullable: true })
+}) {}
+
+/**
+ * An object that represents a latitude/longitude pair. This is expressed as a
+ * pair of doubles to represent degrees latitude and degrees longitude. Unless
+ * specified otherwise, this object must conform to the
+ * WGS84 standard. Values must be within normalized ranges.
+ */
+export class LatLng extends S.Class<LatLng>("LatLng")({
+  /**
+   * The latitude in degrees. It must be in the range [-90.0, +90.0].
+   */
+  "latitude": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * The longitude in degrees. It must be in the range [-180.0, +180.0].
+   */
+  "longitude": S.optionalWith(S.Number, { nullable: true })
+}) {}
+
+/**
+ * Retrieval config.
+ */
+export class RetrievalConfig extends S.Class<RetrievalConfig>("RetrievalConfig")({
+  /**
+   * Optional. The location of the user.
+   */
+  "latLng": S.optionalWith(LatLng, { nullable: true }),
+  /**
+   * Optional. The language code of the user.
+   * Language code for content. Use language tags defined by
+   * [BCP47](https://www.rfc-editor.org/rfc/bcp/bcp47.txt).
+   */
+  "languageCode": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -706,7 +948,11 @@ export class ToolConfig extends S.Class<ToolConfig>("ToolConfig")({
   /**
    * Optional. Function calling config.
    */
-  "functionCallingConfig": S.optionalWith(FunctionCallingConfig, { nullable: true })
+  "functionCallingConfig": S.optionalWith(FunctionCallingConfig, { nullable: true }),
+  /**
+   * Optional. Retrieval config.
+   */
+  "retrievalConfig": S.optionalWith(RetrievalConfig, { nullable: true })
 }) {}
 
 export class HarmCategory extends S.Literal(
@@ -822,6 +1068,15 @@ export class SpeechConfig extends S.Class<SpeechConfig>("SpeechConfig")({
 }) {}
 
 /**
+ * Optional. Controls the maximum depth of the model's internal reasoning process before
+ * it produces a response. If not specified, the default is HIGH. Recommended
+ * for Gemini 3 or later models. Use with earlier models results in an error.
+ */
+export class ThinkingConfigThinkingLevel
+  extends S.Literal("THINKING_LEVEL_UNSPECIFIED", "MINIMAL", "LOW", "MEDIUM", "HIGH")
+{}
+
+/**
  * Config for thinking features.
  */
 export class ThinkingConfig extends S.Class<ThinkingConfig>("ThinkingConfig")({
@@ -833,7 +1088,32 @@ export class ThinkingConfig extends S.Class<ThinkingConfig>("ThinkingConfig")({
   /**
    * The number of thoughts tokens that the model should generate.
    */
-  "thinkingBudget": S.optionalWith(S.Int, { nullable: true })
+  "thinkingBudget": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Optional. Controls the maximum depth of the model's internal reasoning process before
+   * it produces a response. If not specified, the default is HIGH. Recommended
+   * for Gemini 3 or later models. Use with earlier models results in an error.
+   */
+  "thinkingLevel": S.optionalWith(ThinkingConfigThinkingLevel, { nullable: true })
+}) {}
+
+/**
+ * Config for image generation features.
+ */
+export class ImageConfig extends S.Class<ImageConfig>("ImageConfig")({
+  /**
+   * Optional. The aspect ratio of the image to generate. Supported aspect ratios: 1:1,
+   * 2:3, 3:2, 3:4, 4:3, 9:16, 16:9, 21:9.
+   *
+   * If not specified, the model will choose a default aspect ratio based on any
+   * reference images provided.
+   */
+  "aspectRatio": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Specifies the size of generated images. Supported values are `1K`, `2K`,
+   * `4K`. If not specified, the model will use default value `1K`.
+   */
+  "imageSize": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -977,7 +1257,7 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
   /**
    * Optional. Only valid if response_logprobs=True.
    * This sets the number of top logprobs to return at each decoding step in the
-   * Candidate.logprobs_result.
+   * Candidate.logprobs_result. The number must be in the range of [0, 20].
    */
   "logprobs": S.optionalWith(S.Int, { nullable: true }),
   /**
@@ -1009,6 +1289,12 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
    */
   "thinkingConfig": S.optionalWith(ThinkingConfig, { nullable: true }),
   /**
+   * Optional. Config for image generation.
+   * An error will be returned if this field is set for models that don't
+   * support these config options.
+   */
+  "imageConfig": S.optionalWith(ImageConfig, { nullable: true }),
+  /**
    * Optional. If specified, the media resolution specified will be used.
    */
   "mediaResolution": S.optionalWith(GenerationConfigMediaResolution, { nullable: true })
@@ -1016,7 +1302,6 @@ export class GenerationConfig extends S.Class<GenerationConfig>("GenerationConfi
 
 /**
  * Request to generate a completion from the model.
- * NEXT ID: 14
  */
 export class GenerateContentRequest extends S.Class<GenerateContentRequest>("GenerateContentRequest")({
   /**
@@ -1107,7 +1392,14 @@ export class CandidateFinishReason extends S.Literal(
   "PROHIBITED_CONTENT",
   "SPII",
   "MALFORMED_FUNCTION_CALL",
-  "IMAGE_SAFETY"
+  "IMAGE_SAFETY",
+  "IMAGE_PROHIBITED_CONTENT",
+  "IMAGE_OTHER",
+  "NO_IMAGE",
+  "IMAGE_RECITATION",
+  "UNEXPECTED_TOOL_CALL",
+  "TOO_MANY_TOOL_CALLS",
+  "MISSING_THOUGHT_SIGNATURE"
 ) {}
 
 /**
@@ -1268,61 +1560,162 @@ export class Web extends S.Class<Web>("Web")({
 }) {}
 
 /**
+ * Chunk from context retrieved by the file search tool.
+ */
+export class RetrievedContext extends S.Class<RetrievedContext>("RetrievedContext")({
+  /**
+   * Optional. URI reference of the semantic retrieval document.
+   */
+  "uri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Title of the document.
+   */
+  "title": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Text of the chunk.
+   */
+  "text": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. Name of the `FileSearchStore` containing the document.
+   * Example: `fileSearchStores/123`
+   */
+  "fileSearchStore": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Encapsulates a snippet of a user review that answers a question about
+ * the features of a specific place in Google Maps.
+ */
+export class ReviewSnippet extends S.Class<ReviewSnippet>("ReviewSnippet")({
+  /**
+   * The ID of the review snippet.
+   */
+  "reviewId": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * A link that corresponds to the user review on Google Maps.
+   */
+  "googleMapsUri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Title of the review.
+   */
+  "title": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Collection of sources that provide answers about the features of a given
+ * place in Google Maps. Each PlaceAnswerSources message corresponds to a
+ * specific place in Google Maps. The Google Maps tool used these sources in
+ * order to answer questions about features of the place (e.g: "does Bar Foo
+ * have Wifi" or "is Foo Bar wheelchair accessible?"). Currently we only
+ * support review snippets as sources.
+ */
+export class PlaceAnswerSources extends S.Class<PlaceAnswerSources>("PlaceAnswerSources")({
+  /**
+   * Snippets of reviews that are used to generate answers about the
+   * features of a given place in Google Maps.
+   */
+  "reviewSnippets": S.optionalWith(S.Array(ReviewSnippet), { nullable: true })
+}) {}
+
+/**
+ * A grounding chunk from Google Maps. A Maps chunk corresponds to a single
+ * place.
+ */
+export class Maps extends S.Class<Maps>("Maps")({
+  /**
+   * URI reference of the place.
+   */
+  "uri": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Title of the place.
+   */
+  "title": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Text description of the place answer.
+   */
+  "text": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * This ID of the place, in `places/{place_id}` format. A user can use this
+   * ID to look up that place.
+   */
+  "placeId": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Sources that provide answers about the features of a given place in
+   * Google Maps.
+   */
+  "placeAnswerSources": S.optionalWith(PlaceAnswerSources, { nullable: true })
+}) {}
+
+/**
  * Grounding chunk.
  */
 export class GroundingChunk extends S.Class<GroundingChunk>("GroundingChunk")({
   /**
    * Grounding chunk from the web.
    */
-  "web": S.optionalWith(Web, { nullable: true })
+  "web": S.optionalWith(Web, { nullable: true }),
+  /**
+   * Optional. Grounding chunk from context retrieved by the file search tool.
+   */
+  "retrievedContext": S.optionalWith(RetrievedContext, { nullable: true }),
+  /**
+   * Optional. Grounding chunk from Google Maps.
+   */
+  "maps": S.optionalWith(Maps, { nullable: true })
 }) {}
 
 /**
  * Segment of the content.
  */
-export class Segment extends S.Class<Segment>("Segment")({
-  /**
-   * Output only. The index of a Part object within its parent Content object.
-   */
-  "partIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. Start index in the given Part, measured in bytes. Offset from the start of
-   * the Part, inclusive, starting at zero.
-   */
-  "startIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. End index in the given Part, measured in bytes. Offset from the start of
-   * the Part, exclusive, starting at zero.
-   */
-  "endIndex": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Output only. The text corresponding to the segment from the response.
-   */
-  "text": S.optionalWith(S.String, { nullable: true })
-}) {}
+export class GoogleAiGenerativelanguageV1BetaSegment
+  extends S.Class<GoogleAiGenerativelanguageV1BetaSegment>("GoogleAiGenerativelanguageV1BetaSegment")({
+    /**
+     * The index of a Part object within its parent Content object.
+     */
+    "partIndex": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * Start index in the given Part, measured in bytes. Offset from the start of
+     * the Part, inclusive, starting at zero.
+     */
+    "startIndex": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * End index in the given Part, measured in bytes. Offset from the start of
+     * the Part, exclusive, starting at zero.
+     */
+    "endIndex": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * The text corresponding to the segment from the response.
+     */
+    "text": S.optionalWith(S.String, { nullable: true })
+  })
+{}
 
 /**
  * Grounding support.
  */
-export class GroundingSupport extends S.Class<GroundingSupport>("GroundingSupport")({
-  /**
-   * Segment of the content this support belongs to.
-   */
-  "segment": S.optionalWith(Segment, { nullable: true }),
-  /**
-   * A list of indices (into 'grounding_chunk') specifying the
-   * citations associated with the claim. For instance [1,3,4] means
-   * that grounding_chunk[1], grounding_chunk[3],
-   * grounding_chunk[4] are the retrieved content attributed to the claim.
-   */
-  "groundingChunkIndices": S.optionalWith(S.Array(S.Int), { nullable: true }),
-  /**
-   * Confidence score of the support references. Ranges from 0 to 1. 1 is the
-   * most confident. This list must have the same size as the
-   * grounding_chunk_indices.
-   */
-  "confidenceScores": S.optionalWith(S.Array(S.Number), { nullable: true })
-}) {}
+export class GoogleAiGenerativelanguageV1BetaGroundingSupport
+  extends S.Class<GoogleAiGenerativelanguageV1BetaGroundingSupport>("GoogleAiGenerativelanguageV1BetaGroundingSupport")(
+    {
+      /**
+       * Segment of the content this support belongs to.
+       */
+      "segment": S.optionalWith(GoogleAiGenerativelanguageV1BetaSegment, { nullable: true }),
+      /**
+       * Optional. A list of indices (into 'grounding_chunk') specifying the
+       * citations associated with the claim. For instance [1,3,4] means
+       * that grounding_chunk[1], grounding_chunk[3],
+       * grounding_chunk[4] are the retrieved content attributed to the claim.
+       */
+      "groundingChunkIndices": S.optionalWith(S.Array(S.Int), { nullable: true }),
+      /**
+       * Optional. Confidence score of the support references. Ranges from 0 to 1. 1 is the
+       * most confident. This list must have the same size as the
+       * grounding_chunk_indices.
+       */
+      "confidenceScores": S.optionalWith(S.Array(S.Number), { nullable: true })
+    }
+  )
+{}
 
 /**
  * Metadata related to retrieval in the grounding flow.
@@ -1353,7 +1746,7 @@ export class GroundingMetadata extends S.Class<GroundingMetadata>("GroundingMeta
   /**
    * List of grounding support.
    */
-  "groundingSupports": S.optionalWith(S.Array(GroundingSupport), { nullable: true }),
+  "groundingSupports": S.optionalWith(S.Array(GoogleAiGenerativelanguageV1BetaGroundingSupport), { nullable: true }),
   /**
    * Metadata related to retrieval in the grounding flow.
    */
@@ -1361,7 +1754,13 @@ export class GroundingMetadata extends S.Class<GroundingMetadata>("GroundingMeta
   /**
    * Web search queries for the following-up web search.
    */
-  "webSearchQueries": S.optionalWith(S.Array(S.String), { nullable: true })
+  "webSearchQueries": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Optional. Resource name of the Google Maps widget context token that can be used
+   * with the PlacesContextElement widget in order to render contextual data.
+   * Only populated in the case that grounding with Google Maps is enabled.
+   */
+  "googleMapsWidgetContextToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -1397,6 +1796,10 @@ export class TopCandidates extends S.Class<TopCandidates>("TopCandidates")({
  */
 export class LogprobsResult extends S.Class<LogprobsResult>("LogprobsResult")({
   /**
+   * Sum of log probabilities for all tokens.
+   */
+  "logProbabilitySum": S.optionalWith(S.Number, { nullable: true }),
+  /**
    * Length = total number of decoding steps.
    */
   "topCandidates": S.optionalWith(S.Array(TopCandidates), { nullable: true }),
@@ -1410,9 +1813,13 @@ export class LogprobsResult extends S.Class<LogprobsResult>("LogprobsResult")({
 /**
  * Status of the url retrieval.
  */
-export class UrlMetadataUrlRetrievalStatus
-  extends S.Literal("URL_RETRIEVAL_STATUS_UNSPECIFIED", "URL_RETRIEVAL_STATUS_SUCCESS", "URL_RETRIEVAL_STATUS_ERROR")
-{}
+export class UrlMetadataUrlRetrievalStatus extends S.Literal(
+  "URL_RETRIEVAL_STATUS_UNSPECIFIED",
+  "URL_RETRIEVAL_STATUS_SUCCESS",
+  "URL_RETRIEVAL_STATUS_ERROR",
+  "URL_RETRIEVAL_STATUS_PAYWALL",
+  "URL_RETRIEVAL_STATUS_UNSAFE"
+) {}
 
 /**
  * Context of the a single url retrieval.
@@ -1456,6 +1863,11 @@ export class Candidate extends S.Class<Candidate>("Candidate")({
    * If empty, the model has not stopped generating tokens.
    */
   "finishReason": S.optionalWith(CandidateFinishReason, { nullable: true }),
+  /**
+   * Optional. Output only. Details the reason why the model stopped generating tokens.
+   * This is populated only when `finish_reason` is set.
+   */
+  "finishMessage": S.optionalWith(S.String, { nullable: true }),
   /**
    * List of ratings for the safety of a response candidate.
    *
@@ -1525,7 +1937,9 @@ export class PromptFeedback extends S.Class<PromptFeedback>("PromptFeedback")({
   "safetyRatings": S.optionalWith(S.Array(SafetyRating), { nullable: true })
 }) {}
 
-export class Modality extends S.Literal("MODALITY_UNSPECIFIED", "TEXT", "IMAGE", "VIDEO", "AUDIO", "DOCUMENT") {}
+export class GenerativeLanguageModality
+  extends S.Literal("MODALITY_UNSPECIFIED", "TEXT", "IMAGE", "VIDEO", "AUDIO", "DOCUMENT")
+{}
 
 /**
  * Represents token counting info for a single modality.
@@ -1534,7 +1948,7 @@ export class ModalityTokenCount extends S.Class<ModalityTokenCount>("ModalityTok
   /**
    * The modality associated with this token count.
    */
-  "modality": S.optionalWith(Modality, { nullable: true }),
+  "modality": S.optionalWith(GenerativeLanguageModality, { nullable: true }),
   /**
    * Number of tokens.
    */
@@ -1918,9 +2332,15 @@ export class EmbedContentRequest extends S.Class<EmbedContentRequest>("EmbedCont
  */
 export class ContentEmbedding extends S.Class<ContentEmbedding>("ContentEmbedding")({
   /**
-   * The embedding values.
+   * The embedding values. This is for 3P users only and will not be populated
+   * for 1P calls.
    */
-  "values": S.optionalWith(S.Array(S.Number), { nullable: true })
+  "values": S.optionalWith(S.Array(S.Number), { nullable: true }),
+  /**
+   * This field stores the soft tokens tensor frame shape
+   * (e.g. [1, 1, 256, 2048]).
+   */
+  "shape": S.optionalWith(S.Array(S.Int), { nullable: true })
 }) {}
 
 /**
@@ -2003,6 +2423,463 @@ export class CountTokensResponse extends S.Class<CountTokensResponse>("CountToke
    * Output only. List of modalities that were processed in the cached content.
    */
   "cacheTokensDetails": S.optionalWith(S.Array(ModalityTokenCount), { nullable: true })
+}) {}
+
+/**
+ * The request to be processed in the batch.
+ */
+export class InlinedRequest extends S.Class<InlinedRequest>("InlinedRequest")({
+  /**
+   * Required. The request to be processed in the batch.
+   */
+  "request": GenerateContentRequest,
+  /**
+   * Optional. The metadata to be associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The requests to be processed in the batch if provided as part of the
+ * batch creation request.
+ */
+export class InlinedRequests extends S.Class<InlinedRequests>("InlinedRequests")({
+  /**
+   * Required. The requests to be processed in the batch.
+   */
+  "requests": S.Array(InlinedRequest)
+}) {}
+
+/**
+ * Configures the input to the batch request.
+ */
+export class InputConfig extends S.Class<InputConfig>("InputConfig")({
+  /**
+   * The name of the `File` containing the input requests.
+   */
+  "fileName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The requests to be processed in the batch.
+   */
+  "requests": S.optionalWith(InlinedRequests, { nullable: true })
+}) {}
+
+/**
+ * The response to a single request in the batch.
+ */
+export class InlinedResponse extends S.Class<InlinedResponse>("InlinedResponse")({
+  /**
+   * Output only. The error encountered while processing the request.
+   */
+  "error": S.optionalWith(Status, { nullable: true }),
+  /**
+   * Output only. The response to the request.
+   */
+  "response": S.optionalWith(GenerateContentResponse, { nullable: true }),
+  /**
+   * Output only. The metadata associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The responses to the requests in the batch.
+ */
+export class InlinedResponses extends S.Class<InlinedResponses>("InlinedResponses")({
+  /**
+   * Output only. The responses to the requests in the batch.
+   */
+  "inlinedResponses": S.optionalWith(S.Array(InlinedResponse), { nullable: true })
+}) {}
+
+/**
+ * The output of a batch request. This is returned in the
+ * `BatchGenerateContentResponse` or the `GenerateContentBatch.output` field.
+ */
+export class GenerateContentBatchOutput extends S.Class<GenerateContentBatchOutput>("GenerateContentBatchOutput")({
+  /**
+   * Output only. The file ID of the file containing the responses.
+   * The file will be a JSONL file with a single response per line.
+   * The responses will be `GenerateContentResponse` messages formatted as
+   * JSON.
+   * The responses will be written in the same order as the input requests.
+   */
+  "responsesFile": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The responses to the requests in the batch. Returned when the batch was
+   * built using inlined requests. The responses will be in the same order as
+   * the input requests.
+   */
+  "inlinedResponses": S.optionalWith(InlinedResponses, { nullable: true })
+}) {}
+
+/**
+ * Stats about the batch.
+ */
+export class BatchStats extends S.Class<BatchStats>("BatchStats")({
+  /**
+   * Output only. The number of requests in the batch.
+   */
+  "requestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that were successfully processed.
+   */
+  "successfulRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that failed to be processed.
+   */
+  "failedRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that are still pending processing.
+   */
+  "pendingRequestCount": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class BatchState extends S.Literal(
+  "BATCH_STATE_UNSPECIFIED",
+  "BATCH_STATE_PENDING",
+  "BATCH_STATE_RUNNING",
+  "BATCH_STATE_SUCCEEDED",
+  "BATCH_STATE_FAILED",
+  "BATCH_STATE_CANCELLED",
+  "BATCH_STATE_EXPIRED"
+) {}
+
+/**
+ * A resource representing a batch of `GenerateContent` requests.
+ */
+export class GenerateContentBatch extends S.Class<GenerateContentBatch>("GenerateContentBatch")({
+  /**
+   * Required. The name of the `Model` to use for generating the completion.
+   *
+   * Format: `models/{model}`.
+   */
+  "model": S.String,
+  /**
+   * Output only. Identifier. Resource name of the batch.
+   *
+   * Format: `batches/{batch_id}`.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The user-defined name of this batch.
+   */
+  "displayName": S.String,
+  /**
+   * Required. Input configuration of the instances on which batch processing
+   * are performed.
+   */
+  "inputConfig": InputConfig,
+  /**
+   * Output only. The output of the batch request.
+   */
+  "output": S.optionalWith(GenerateContentBatchOutput, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch processing completed.
+   */
+  "endTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Stats about the batch.
+   */
+  "batchStats": S.optionalWith(BatchStats, { nullable: true }),
+  /**
+   * Output only. The state of the batch.
+   */
+  "state": S.optionalWith(BatchState, { nullable: true }),
+  /**
+   * Optional. The priority of the batch. Batches with a higher priority value will be
+   * processed before batches with a lower priority value. Negative values are
+   * allowed. Default is 0.
+   */
+  "priority": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Request for a `BatchGenerateContent` operation.
+ */
+export class BatchGenerateContentRequest extends S.Class<BatchGenerateContentRequest>("BatchGenerateContentRequest")({
+  /**
+   * Required. The batch to create.
+   */
+  "batch": GenerateContentBatch
+}) {}
+
+/**
+ * Response for a `BatchGenerateContent` operation.
+ */
+export class BatchGenerateContentResponse
+  extends S.Class<BatchGenerateContentResponse>("BatchGenerateContentResponse")({
+    /**
+     * Output only. The output of the batch request.
+     */
+    "output": S.optionalWith(GenerateContentBatchOutput, { nullable: true })
+  })
+{}
+
+/**
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
+ */
+export class BatchGenerateContentOperation
+  extends S.Class<BatchGenerateContentOperation>("BatchGenerateContentOperation")({
+    "metadata": S.optionalWith(GenerateContentBatch, { nullable: true }),
+    "response": S.optionalWith(BatchGenerateContentResponse, { nullable: true }),
+    /**
+     * The server-assigned name, which is only unique within the same service that
+     * originally returns it. If you use the default HTTP mapping, the
+     * `name` should be a resource name ending with `operations/{unique_id}`.
+     */
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * If the value is `false`, it means the operation is still in progress.
+     * If `true`, the operation is completed, and either `error` or `response` is
+     * available.
+     */
+    "done": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * The error result of the operation in case of failure or cancellation.
+     */
+    "error": S.optionalWith(Status, { nullable: true })
+  })
+{}
+
+/**
+ * The request to be processed in the batch.
+ */
+export class InlinedEmbedContentRequest extends S.Class<InlinedEmbedContentRequest>("InlinedEmbedContentRequest")({
+  /**
+   * Required. The request to be processed in the batch.
+   */
+  "request": EmbedContentRequest,
+  /**
+   * Optional. The metadata to be associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The requests to be processed in the batch if provided as part of the
+ * batch creation request.
+ */
+export class InlinedEmbedContentRequests extends S.Class<InlinedEmbedContentRequests>("InlinedEmbedContentRequests")({
+  /**
+   * Required. The requests to be processed in the batch.
+   */
+  "requests": S.Array(InlinedEmbedContentRequest)
+}) {}
+
+/**
+ * Configures the input to the batch request.
+ */
+export class InputEmbedContentConfig extends S.Class<InputEmbedContentConfig>("InputEmbedContentConfig")({
+  /**
+   * The name of the `File` containing the input requests.
+   */
+  "fileName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The requests to be processed in the batch.
+   */
+  "requests": S.optionalWith(InlinedEmbedContentRequests, { nullable: true })
+}) {}
+
+/**
+ * The response to a single request in the batch.
+ */
+export class InlinedEmbedContentResponse extends S.Class<InlinedEmbedContentResponse>("InlinedEmbedContentResponse")({
+  /**
+   * Output only. The error encountered while processing the request.
+   */
+  "error": S.optionalWith(Status, { nullable: true }),
+  /**
+   * Output only. The response to the request.
+   */
+  "response": S.optionalWith(EmbedContentResponse, { nullable: true }),
+  /**
+   * Output only. The metadata associated with the request.
+   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * The responses to the requests in the batch.
+ */
+export class InlinedEmbedContentResponses
+  extends S.Class<InlinedEmbedContentResponses>("InlinedEmbedContentResponses")({
+    /**
+     * Output only. The responses to the requests in the batch.
+     */
+    "inlinedResponses": S.optionalWith(S.Array(InlinedEmbedContentResponse), { nullable: true })
+  })
+{}
+
+/**
+ * The output of a batch request. This is returned in the
+ * `AsyncBatchEmbedContentResponse` or the `EmbedContentBatch.output` field.
+ */
+export class EmbedContentBatchOutput extends S.Class<EmbedContentBatchOutput>("EmbedContentBatchOutput")({
+  /**
+   * Output only. The file ID of the file containing the responses.
+   * The file will be a JSONL file with a single response per line.
+   * The responses will be `EmbedContentResponse` messages formatted as JSON.
+   * The responses will be written in the same order as the input requests.
+   */
+  "responsesFile": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The responses to the requests in the batch. Returned when the batch was
+   * built using inlined requests. The responses will be in the same order as
+   * the input requests.
+   */
+  "inlinedResponses": S.optionalWith(InlinedEmbedContentResponses, { nullable: true })
+}) {}
+
+/**
+ * Stats about the batch.
+ */
+export class EmbedContentBatchStats extends S.Class<EmbedContentBatchStats>("EmbedContentBatchStats")({
+  /**
+   * Output only. The number of requests in the batch.
+   */
+  "requestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that were successfully processed.
+   */
+  "successfulRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that failed to be processed.
+   */
+  "failedRequestCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of requests that are still pending processing.
+   */
+  "pendingRequestCount": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A resource representing a batch of `EmbedContent` requests.
+ */
+export class EmbedContentBatch extends S.Class<EmbedContentBatch>("EmbedContentBatch")({
+  /**
+   * Required. The name of the `Model` to use for generating the completion.
+   *
+   * Format: `models/{model}`.
+   */
+  "model": S.String,
+  /**
+   * Output only. Identifier. Resource name of the batch.
+   *
+   * Format: `batches/{batch_id}`.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Required. The user-defined name of this batch.
+   */
+  "displayName": S.String,
+  /**
+   * Required. Input configuration of the instances on which batch processing
+   * are performed.
+   */
+  "inputConfig": InputEmbedContentConfig,
+  /**
+   * Output only. The output of the batch request.
+   */
+  "output": S.optionalWith(EmbedContentBatchOutput, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch processing completed.
+   */
+  "endTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The time at which the batch was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Stats about the batch.
+   */
+  "batchStats": S.optionalWith(EmbedContentBatchStats, { nullable: true }),
+  /**
+   * Output only. The state of the batch.
+   */
+  "state": S.optionalWith(BatchState, { nullable: true }),
+  /**
+   * Optional. The priority of the batch. Batches with a higher priority value will be
+   * processed before batches with a lower priority value. Negative values are
+   * allowed. Default is 0.
+   */
+  "priority": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Request for an `AsyncBatchEmbedContent` operation.
+ */
+export class AsyncBatchEmbedContentRequest
+  extends S.Class<AsyncBatchEmbedContentRequest>("AsyncBatchEmbedContentRequest")({
+    /**
+     * Required. The batch to create.
+     */
+    "batch": EmbedContentBatch
+  })
+{}
+
+/**
+ * Response for a `BatchGenerateContent` operation.
+ */
+export class AsyncBatchEmbedContentResponse
+  extends S.Class<AsyncBatchEmbedContentResponse>("AsyncBatchEmbedContentResponse")({
+    /**
+     * Output only. The output of the batch request.
+     */
+    "output": S.optionalWith(EmbedContentBatchOutput, { nullable: true })
+  })
+{}
+
+/**
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
+ */
+export class AsyncBatchEmbedContentOperation
+  extends S.Class<AsyncBatchEmbedContentOperation>("AsyncBatchEmbedContentOperation")({
+    "metadata": S.optionalWith(EmbedContentBatch, { nullable: true }),
+    "response": S.optionalWith(AsyncBatchEmbedContentResponse, { nullable: true }),
+    /**
+     * The server-assigned name, which is only unique within the same service that
+     * originally returns it. If you use the default HTTP mapping, the
+     * `name` should be a resource name ending with `operations/{unique_id}`.
+     */
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * If the value is `false`, it means the operation is still in progress.
+     * If `true`, the operation is completed, and either `error` or `response` is
+     * available.
+     */
+    "done": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * The error result of the operation in case of failure or cancellation.
+     */
+    "error": S.optionalWith(Status, { nullable: true })
+  })
+{}
+
+export class UpdateGenerateContentBatchParams extends S.Struct({
+  "updateMask": S.optionalWith(S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$"))), {
+    nullable: true
+  })
+}) {}
+
+export class UpdateEmbedContentBatchParams extends S.Struct({
+  "updateMask": S.optionalWith(S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$"))), {
+    nullable: true
+  })
 }) {}
 
 export class ListCachedContentsParams extends S.Struct({
@@ -2347,7 +3224,7 @@ export class FileState extends S.Literal("STATE_UNSPECIFIED", "PROCESSING", "ACT
 /**
  * Source of the File.
  */
-export class FileSource extends S.Literal("SOURCE_UNSPECIFIED", "UPLOADED", "GENERATED") {}
+export class FileSource extends S.Literal("SOURCE_UNSPECIFIED", "UPLOADED", "GENERATED", "REGISTERED") {}
 
 /**
  * A file uploaded to the API.
@@ -3086,20 +3963,22 @@ export class Media extends S.Class<Media>("Media")({
 /**
  * Veo response.
  */
-export class GenerateVideoResponse extends S.Class<GenerateVideoResponse>("GenerateVideoResponse")({
-  /**
-   * The generated samples.
-   */
-  "generatedSamples": S.optionalWith(S.Array(Media), { nullable: true }),
-  /**
-   * Returns if any videos were filtered due to RAI policies.
-   */
-  "raiMediaFilteredCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Returns rai failure reasons if any.
-   */
-  "raiMediaFilteredReasons": S.optionalWith(S.Array(S.String), { nullable: true })
-}) {}
+export class PredictLongRunningGeneratedVideoResponse
+  extends S.Class<PredictLongRunningGeneratedVideoResponse>("PredictLongRunningGeneratedVideoResponse")({
+    /**
+     * The generated samples.
+     */
+    "generatedSamples": S.optionalWith(S.Array(Media), { nullable: true }),
+    /**
+     * Returns if any videos were filtered due to RAI policies.
+     */
+    "raiMediaFilteredCount": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * Returns rai failure reasons if any.
+     */
+    "raiMediaFilteredReasons": S.optionalWith(S.Array(S.String), { nullable: true })
+  })
+{}
 
 /**
  * Response message for [PredictionService.PredictLongRunning]
@@ -3108,7 +3987,7 @@ export class PredictLongRunningResponse extends S.Class<PredictLongRunningRespon
   /**
    * The response of the video generation prediction.
    */
-  "generateVideoResponse": S.optionalWith(GenerateVideoResponse, { nullable: true })
+  "generateVideoResponse": S.optionalWith(PredictLongRunningGeneratedVideoResponse, { nullable: true })
 }) {}
 
 /**
@@ -3136,6 +4015,79 @@ export class PredictLongRunningOperation extends S.Class<PredictLongRunningOpera
   "error": S.optionalWith(Status, { nullable: true })
 }) {}
 
+export class ListFileSearchStoresParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A `FileSearchStore` is a collection of `Document`s.
+ */
+export class FileSearchStore extends S.Class<FileSearchStore>("FileSearchStore")({
+  /**
+   * Output only. Immutable. Identifier. The `FileSearchStore` resource name. It is an ID (name excluding the
+   * "fileSearchStores/" prefix) that can contain up to 40 characters that are
+   * lowercase alphanumeric or dashes
+   * (-). It is output only. The unique name will be derived from
+   * `display_name` along with a 12 character random suffix. Example:
+   * `fileSearchStores/my-awesome-file-search-store-123a456b789c`
+   * If `display_name` is not provided, the name will be randomly generated.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional. The human-readable display name for the `FileSearchStore`. The display name
+   * must be no more than 512 characters in length, including spaces. Example:
+   * "Docs on Semantic Retriever"
+   */
+  "displayName": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `FileSearchStore` was created.
+   */
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The Timestamp of when the `FileSearchStore` was last updated.
+   */
+  "updateTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of documents in the `FileSearchStore` that are active and ready
+   * for retrieval.
+   */
+  "activeDocumentsCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of documents in the `FileSearchStore` that are being processed.
+   */
+  "pendingDocumentsCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The number of documents in the `FileSearchStore` that have failed
+   * processing.
+   */
+  "failedDocumentsCount": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The size of raw bytes ingested into the `FileSearchStore`. This is the
+   * total size of all the documents in the `FileSearchStore`.
+   */
+  "sizeBytes": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Response from `ListFileSearchStores` containing a paginated list of
+ * `FileSearchStores`. The results are sorted by ascending
+ * `file_search_store.create_time`.
+ */
+export class ListFileSearchStoresResponse
+  extends S.Class<ListFileSearchStoresResponse>("ListFileSearchStoresResponse")({
+    /**
+     * The returned rag_stores.
+     */
+    "fileSearchStores": S.optionalWith(S.Array(FileSearchStore), { nullable: true }),
+    /**
+     * A token, which can be sent as `page_token` to retrieve the next page.
+     * If this field is omitted, there are no more pages.
+     */
+    "nextPageToken": S.optionalWith(S.String, { nullable: true })
+  })
+{}
+
 export class ListCorporaParams extends S.Struct({
   "pageSize": S.optionalWith(S.Int, { nullable: true }),
   "pageToken": S.optionalWith(S.String, { nullable: true })
@@ -3143,11 +4095,11 @@ export class ListCorporaParams extends S.Struct({
 
 /**
  * A `Corpus` is a collection of `Document`s.
- * A project can create up to 5 corpora.
+ * A project can create up to 10 corpora.
  */
 export class Corpus extends S.Class<Corpus>("Corpus")({
   /**
-   * Immutable. Identifier. The `Corpus` resource name. The ID (name excluding the "corpora/" prefix)
+   * Output only. Immutable. Identifier. The `Corpus` resource name. The ID (name excluding the "corpora/" prefix)
    * can contain up to 40 characters that are lowercase alphanumeric or dashes
    * (-). The ID cannot start or end with a dash. If the name is empty on
    * create, a unique name will be derived from `display_name` along with a 12
@@ -3187,75 +4139,12 @@ export class ListCorporaResponse extends S.Class<ListCorporaResponse>("ListCorpo
   "nextPageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class DeleteCorpusParams extends S.Struct({
+export class DeleteFileSearchStoreParams extends S.Struct({
   "force": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
-export class UpdateCorpusParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
-}) {}
-
-/**
- * Request for querying a `Corpus`.
- */
-export class QueryCorpusRequest extends S.Class<QueryCorpusRequest>("QueryCorpusRequest")({
-  /**
-   * Required. Query string to perform semantic search.
-   */
-  "query": S.String,
-  /**
-   * Optional. Filter for `Chunk` and `Document` metadata. Each `MetadataFilter` object
-   * should correspond to a unique key. Multiple `MetadataFilter` objects are
-   * joined by logical "AND"s.
-   *
-   * Example query at document level:
-   * (year >= 2020 OR year < 2010) AND (genre = drama OR genre = action)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "document.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
-   *                 {int_value = 2010, operation = LESS}]},
-   *  {key = "document.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
-   *                 {int_value = 2010, operation = LESS}]},
-   *  {key = "document.custom_metadata.genre"
-   *   conditions = [{string_value = "drama", operation = EQUAL},
-   *                 {string_value = "action", operation = EQUAL}]}]
-   *
-   * Example query at chunk level for a numeric range of values:
-   * (year > 2015 AND year <= 2020)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2015, operation = GREATER}]},
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = LESS_EQUAL}]}]
-   *
-   * Note: "AND"s for the same key are only supported for numeric values. String
-   * values only support "OR"s for the same key.
-   */
-  "metadataFilters": S.optionalWith(S.Array(MetadataFilter), { nullable: true }),
-  /**
-   * Optional. The maximum number of `Chunk`s to return.
-   * The service may return fewer `Chunk`s.
-   *
-   * If unspecified, at most 10 `Chunk`s will be returned.
-   * The maximum specified result count is 100.
-   */
-  "resultsCount": S.optionalWith(S.Int, { nullable: true })
-}) {}
-
-/**
- * Extracted data that represents the `Chunk` content.
- */
-export class ChunkData extends S.Class<ChunkData>("ChunkData")({
-  /**
-   * The `Chunk` content as a string.
-   * The maximum number of tokens per chunk is 2043.
-   */
-  "stringValue": S.optionalWith(S.String, { nullable: true })
+export class DeleteCorpusParams extends S.Struct({
+  "force": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 /**
@@ -3291,92 +4180,21 @@ export class CustomMetadata extends S.Class<CustomMetadata>("CustomMetadata")({
 }) {}
 
 /**
- * Output only. Current state of the `Chunk`.
+ * Output only. Current state of the `Document`.
  */
-export class ChunkState
-  extends S.Literal("STATE_UNSPECIFIED", "STATE_PENDING_PROCESSING", "STATE_ACTIVE", "STATE_FAILED")
-{}
-
-/**
- * A `Chunk` is a subpart of a `Document` that is treated as an independent unit
- * for the purposes of vector representation and storage.
- * A `Corpus` can have a maximum of 1 million `Chunk`s.
- */
-export class Chunk extends S.Class<Chunk>("Chunk")({
-  /**
-   * Immutable. Identifier. The `Chunk` resource name. The ID (name excluding the
-   * "corpora/ * /documents/ * /chunks/" prefix) can contain up to 40 characters
-   * that are lowercase alphanumeric or dashes (-). The ID cannot start or end
-   * with a dash. If the name is empty on create, a random 12-character unique
-   * ID will be generated.
-   * Example: `corpora/{corpus_id}/documents/{document_id}/chunks/123a456b789c`
-   */
-  "name": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Required. The content for the `Chunk`, such as the text string.
-   * The maximum number of tokens per chunk is 2043.
-   */
-  "data": ChunkData,
-  /**
-   * Optional. User provided custom metadata stored as key-value pairs.
-   * The maximum number of `CustomMetadata` per chunk is 20.
-   */
-  "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true }),
-  /**
-   * Output only. The Timestamp of when the `Chunk` was created.
-   */
-  "createTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. The Timestamp of when the `Chunk` was last updated.
-   */
-  "updateTime": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Output only. Current state of the `Chunk`.
-   */
-  "state": S.optionalWith(ChunkState, { nullable: true })
-}) {}
-
-/**
- * The information for a chunk relevant to a query.
- */
-export class RelevantChunk extends S.Class<RelevantChunk>("RelevantChunk")({
-  /**
-   * `Chunk` relevance to the query.
-   */
-  "chunkRelevanceScore": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * `Chunk` associated with the query.
-   */
-  "chunk": S.optionalWith(Chunk, { nullable: true })
-}) {}
-
-/**
- * Response from `QueryCorpus` containing a list of relevant chunks.
- */
-export class QueryCorpusResponse extends S.Class<QueryCorpusResponse>("QueryCorpusResponse")({
-  /**
-   * The relevant chunks.
-   */
-  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
-}) {}
-
-export class ListDocumentsParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
-}) {}
+export class DocumentState extends S.Literal("STATE_UNSPECIFIED", "STATE_PENDING", "STATE_ACTIVE", "STATE_FAILED") {}
 
 /**
  * A `Document` is a collection of `Chunk`s.
- * A `Corpus` can have a maximum of 10,000 `Document`s.
  */
 export class Document extends S.Class<Document>("Document")({
   /**
    * Immutable. Identifier. The `Document` resource name. The ID (name excluding the
-   * "corpora/ * /documents/" prefix) can contain up to 40 characters that are
-   * lowercase alphanumeric or dashes (-). The ID cannot start or end with a
-   * dash. If the name is empty on create, a unique name will be derived from
-   * `display_name` along with a 12 character random suffix.
-   * Example: `corpora/{corpus_id}/documents/my-awesome-doc-123a456b789c`
+   * "fileSearchStores/ * /documents/" prefix) can contain up to 40 characters
+   * that are lowercase alphanumeric or dashes (-). The ID cannot start or end
+   * with a dash. If the name is empty on create, a unique name will be derived
+   * from `display_name` along with a 12 character random suffix. Example:
+   * `fileSearchStores/{file_search_store_id}/documents/my-awesome-doc-123a456b789c`
    */
   "name": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -3397,7 +4215,28 @@ export class Document extends S.Class<Document>("Document")({
   /**
    * Output only. The Timestamp of when the `Document` was created.
    */
-  "createTime": S.optionalWith(S.String, { nullable: true })
+  "createTime": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. Current state of the `Document`.
+   */
+  "state": S.optionalWith(DocumentState, { nullable: true }),
+  /**
+   * Output only. The size of raw bytes ingested into the Document.
+   */
+  "sizeBytes": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Output only. The mime type of the Document.
+   */
+  "mimeType": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class DeleteDocumentParams extends S.Struct({
+  "force": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class ListDocumentsParams extends S.Struct({
+  "pageSize": S.optionalWith(S.Int, { nullable: true }),
+  "pageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
@@ -3416,193 +4255,191 @@ export class ListDocumentsResponse extends S.Class<ListDocumentsResponse>("ListD
   "nextPageToken": S.optionalWith(S.String, { nullable: true })
 }) {}
 
-export class DeleteDocumentParams extends S.Struct({
-  "force": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
-
-export class UpdateDocumentParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
+/**
+ * Configuration for a white space chunking algorithm [white space delimited].
+ */
+export class WhiteSpaceConfig extends S.Class<WhiteSpaceConfig>("WhiteSpaceConfig")({
+  /**
+   * Maximum number of tokens per chunk.
+   * Tokens are defined as words for this chunking algorithm.
+   * Note: we are defining tokens as words split by whitespace as opposed to
+   * the output of a tokenizer. The context window of the latest gemini
+   * embedding model as of 2025-04-17 is currently 8192 tokens. We assume that
+   * the average word is 5 characters. Therefore, we set the upper limit to
+   * 2**9, which is 512 words, or 2560 tokens, assuming worst case a
+   * character per token. This is a conservative estimate meant to prevent
+   * context window overflow.
+   */
+  "maxTokensPerChunk": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Maximum number of overlapping tokens between two adjacent chunks.
+   */
+  "maxOverlapTokens": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
 /**
- * Request for querying a `Document`.
+ * Parameters for telling the service how to chunk the file.
+ * inspired by
+ * google3/cloud/ai/platform/extension/lib/retrieval/config/chunker_config.proto
  */
-export class QueryDocumentRequest extends S.Class<QueryDocumentRequest>("QueryDocumentRequest")({
+export class ChunkingConfig extends S.Class<ChunkingConfig>("ChunkingConfig")({
   /**
-   * Required. Query string to perform semantic search.
+   * White space chunking configuration.
    */
-  "query": S.String,
-  /**
-   * Optional. The maximum number of `Chunk`s to return.
-   * The service may return fewer `Chunk`s.
-   *
-   * If unspecified, at most 10 `Chunk`s will be returned.
-   * The maximum specified result count is 100.
-   */
-  "resultsCount": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Optional. Filter for `Chunk` metadata. Each `MetadataFilter` object should
-   * correspond to a unique key. Multiple `MetadataFilter` objects are joined by
-   * logical "AND"s.
-   *
-   * Note: `Document`-level filtering is not supported for this request because
-   * a `Document` name is already specified.
-   *
-   * Example query:
-   * (year >= 2020 OR year < 2010) AND (genre = drama OR genre = action)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = GREATER_EQUAL},
-   *                 {int_value = 2010, operation = LESS}},
-   *  {key = "chunk.custom_metadata.genre"
-   *   conditions = [{string_value = "drama", operation = EQUAL},
-   *                 {string_value = "action", operation = EQUAL}}]
-   *
-   * Example query for a numeric range of values:
-   * (year > 2015 AND year <= 2020)
-   *
-   * `MetadataFilter` object list:
-   *  metadata_filters = [
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2015, operation = GREATER}]},
-   *  {key = "chunk.custom_metadata.year"
-   *   conditions = [{int_value = 2020, operation = LESS_EQUAL}]}]
-   *
-   * Note: "AND"s for the same key are only supported for numeric values. String
-   * values only support "OR"s for the same key.
-   */
-  "metadataFilters": S.optionalWith(S.Array(MetadataFilter), { nullable: true })
+  "whiteSpaceConfig": S.optionalWith(WhiteSpaceConfig, { nullable: true })
 }) {}
 
 /**
- * Response from `QueryDocument` containing a list of relevant chunks.
+ * Request for `ImportFile` to import a File API file with a `FileSearchStore`.
+ * LINT.IfChange(ImportFileRequest)
  */
-export class QueryDocumentResponse extends S.Class<QueryDocumentResponse>("QueryDocumentResponse")({
+export class ImportFileRequest extends S.Class<ImportFileRequest>("ImportFileRequest")({
   /**
-   * The returned relevant chunks.
+   * Required. The name of the `File` to import.
+   * Example: `files/abc-123`
    */
-  "relevantChunks": S.optionalWith(S.Array(RelevantChunk), { nullable: true })
-}) {}
-
-export class ListChunksParams extends S.Struct({
-  "pageSize": S.optionalWith(S.Int, { nullable: true }),
-  "pageToken": S.optionalWith(S.String, { nullable: true })
+  "fileName": S.String,
+  /**
+   * Custom metadata to be associated with the file.
+   */
+  "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true }),
+  /**
+   * Optional. Config for telling the service how to chunk the file.
+   * If not provided, the service will use default parameters.
+   */
+  "chunkingConfig": S.optionalWith(ChunkingConfig, { nullable: true })
 }) {}
 
 /**
- * Response from `ListChunks` containing a paginated list of `Chunk`s.
- * The `Chunk`s are sorted by ascending `chunk.create_time`.
+ * Metadata for LongRunning ImportFile Operations.
  */
-export class ListChunksResponse extends S.Class<ListChunksResponse>("ListChunksResponse")({
+export class ImportFileMetadata extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+/**
+ * Response for `ImportFile` to import a File API file with a `FileSearchStore`.
+ */
+export class ImportFileResponse extends S.Class<ImportFileResponse>("ImportFileResponse")({
   /**
-   * The returned `Chunk`s.
+   * The name of the `FileSearchStore` containing `Document`s.
+   * Example: `fileSearchStores/my-file-search-store-123`
    */
-  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true }),
+  "parent": S.optionalWith(S.String, { nullable: true }),
   /**
-   * A token, which can be sent as `page_token` to retrieve the next page.
-   * If this field is omitted, there are no more pages.
+   * Immutable. Identifier. The identifier for the `Document` imported.
+   * Example:
+   * `fileSearchStores/my-file-search-store-123/documents/my-awesome-doc-123a456b789c`
    */
-  "nextPageToken": S.optionalWith(S.String, { nullable: true })
+  "documentName": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 /**
- * Request to create a `Chunk`.
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
  */
-export class CreateChunkRequest extends S.Class<CreateChunkRequest>("CreateChunkRequest")({
+export class ImportFileOperation extends S.Class<ImportFileOperation>("ImportFileOperation")({
+  "metadata": S.optionalWith(ImportFileMetadata, { nullable: true }),
+  "response": S.optionalWith(ImportFileResponse, { nullable: true }),
   /**
-   * Required. The name of the `Document` where this `Chunk` will be created.
-   * Example: `corpora/my-corpus-123/documents/the-doc-abc`
+   * The server-assigned name, which is only unique within the same service that
+   * originally returns it. If you use the default HTTP mapping, the
+   * `name` should be a resource name ending with `operations/{unique_id}`.
    */
-  "parent": S.String,
+  "name": S.optionalWith(S.String, { nullable: true }),
   /**
-   * Required. The `Chunk` to create.
+   * If the value is `false`, it means the operation is still in progress.
+   * If `true`, the operation is completed, and either `error` or `response` is
+   * available.
    */
-  "chunk": Chunk
+  "done": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * The error result of the operation in case of failure or cancellation.
+   */
+  "error": S.optionalWith(Status, { nullable: true })
 }) {}
 
 /**
- * Request to batch create `Chunk`s.
+ * Request for `UploadToFileSearchStore`.
  */
-export class BatchCreateChunksRequest extends S.Class<BatchCreateChunksRequest>("BatchCreateChunksRequest")({
-  /**
-   * Required. The request messages specifying the `Chunk`s to create.
-   * A maximum of 100 `Chunk`s can be created in a batch.
-   */
-  "requests": S.Array(CreateChunkRequest)
-}) {}
+export class UploadToFileSearchStoreRequest
+  extends S.Class<UploadToFileSearchStoreRequest>("UploadToFileSearchStoreRequest")({
+    /**
+     * Optional. Display name of the created document.
+     */
+    "displayName": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Custom metadata to be associated with the data.
+     */
+    "customMetadata": S.optionalWith(S.Array(CustomMetadata), { nullable: true }),
+    /**
+     * Optional. Config for telling the service how to chunk the data.
+     * If not provided, the service will use default parameters.
+     */
+    "chunkingConfig": S.optionalWith(ChunkingConfig, { nullable: true }),
+    /**
+     * Optional. MIME type of the data. If not provided, it will be inferred from the
+     * uploaded content.
+     */
+    "mimeType": S.optionalWith(S.String, { nullable: true })
+  })
+{}
 
 /**
- * Response from `BatchCreateChunks` containing a list of created `Chunk`s.
+ * Metadata for LongRunning UploadToFileSearchStore Operations.
  */
-export class BatchCreateChunksResponse extends S.Class<BatchCreateChunksResponse>("BatchCreateChunksResponse")({
-  /**
-   * `Chunk`s created.
-   */
-  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true })
-}) {}
-
-export class UpdateChunkParams extends S.Struct({
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
-}) {}
+export class UploadToFileSearchStoreMetadata extends S.Record({ key: S.String, value: S.Unknown }) {}
 
 /**
- * Request to update a `Chunk`.
+ * Response from UploadToFileSearchStore.
  */
-export class UpdateChunkRequest extends S.Class<UpdateChunkRequest>("UpdateChunkRequest")({
-  /**
-   * Required. The `Chunk` to update.
-   */
-  "chunk": Chunk,
-  /**
-   * Required. The list of fields to update.
-   * Currently, this only supports updating `custom_metadata` and `data`.
-   */
-  "updateMask": S.String.pipe(S.pattern(new RegExp("^(\\s*[^,\\s.]+(\\s*[,.]\\s*[^,\\s.]+)*)?$")))
-}) {}
+export class UploadToFileSearchStoreResponse
+  extends S.Class<UploadToFileSearchStoreResponse>("UploadToFileSearchStoreResponse")({
+    /**
+     * The name of the `FileSearchStore` containing `Document`s.
+     * Example: `fileSearchStores/my-file-search-store-123`
+     */
+    "parent": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Immutable. Identifier. The identifier for the `Document` imported.
+     * Example: `fileSearchStores/my-file-search-store-123a456b789c`
+     */
+    "documentName": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * MIME type of the file.
+     */
+    "mimeType": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Size of the file in bytes.
+     */
+    "sizeBytes": S.optionalWith(S.String, { nullable: true })
+  })
+{}
 
 /**
- * Request to batch update `Chunk`s.
+ * This resource represents a long-running operation that is the result of a
+ * network API call.
  */
-export class BatchUpdateChunksRequest extends S.Class<BatchUpdateChunksRequest>("BatchUpdateChunksRequest")({
-  /**
-   * Required. The request messages specifying the `Chunk`s to update.
-   * A maximum of 100 `Chunk`s can be updated in a batch.
-   */
-  "requests": S.Array(UpdateChunkRequest)
-}) {}
-
-/**
- * Response from `BatchUpdateChunks` containing a list of updated `Chunk`s.
- */
-export class BatchUpdateChunksResponse extends S.Class<BatchUpdateChunksResponse>("BatchUpdateChunksResponse")({
-  /**
-   * `Chunk`s updated.
-   */
-  "chunks": S.optionalWith(S.Array(Chunk), { nullable: true })
-}) {}
-
-/**
- * Request to delete a `Chunk`.
- */
-export class DeleteChunkRequest extends S.Class<DeleteChunkRequest>("DeleteChunkRequest")({
-  /**
-   * Required. The resource name of the `Chunk` to delete.
-   * Example: `corpora/my-corpus-123/documents/the-doc-abc/chunks/some-chunk`
-   */
-  "name": S.String
-}) {}
-
-/**
- * Request to batch delete `Chunk`s.
- */
-export class BatchDeleteChunksRequest extends S.Class<BatchDeleteChunksRequest>("BatchDeleteChunksRequest")({
-  /**
-   * Required. The request messages specifying the `Chunk`s to delete.
-   */
-  "requests": S.Array(DeleteChunkRequest)
-}) {}
+export class UploadToFileSearchStoreOperation
+  extends S.Class<UploadToFileSearchStoreOperation>("UploadToFileSearchStoreOperation")({
+    "metadata": S.optionalWith(UploadToFileSearchStoreMetadata, { nullable: true }),
+    "response": S.optionalWith(UploadToFileSearchStoreResponse, { nullable: true }),
+    /**
+     * The server-assigned name, which is only unique within the same service that
+     * originally returns it. If you use the default HTTP mapping, the
+     * `name` should be a resource name ending with `operations/{unique_id}`.
+     */
+    "name": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * If the value is `false`, it means the operation is still in progress.
+     * If `true`, the operation is completed, and either `error` or `response` is
+     * available.
+     */
+    "done": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * The error result of the operation in case of failure or cancellation.
+     */
+    "error": S.optionalWith(Status, { nullable: true })
+  })
+{}
 
 /**
  * Text given to the model as a prompt.
@@ -3908,7 +4745,8 @@ export const make = (
         HttpClientRequest.setUrlParams({
           "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
+          "pageToken": options?.["pageToken"] as any,
+          "returnPartialSuccess": options?.["returnPartialSuccess"] as any
         }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ListOperationsResponse),
@@ -3920,7 +4758,8 @@ export const make = (
         HttpClientRequest.setUrlParams({
           "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
+          "pageToken": options?.["pageToken"] as any,
+          "returnPartialSuccess": options?.["returnPartialSuccess"] as any
         }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ListOperationsResponse),
@@ -3932,7 +4771,8 @@ export const make = (
         HttpClientRequest.setUrlParams({
           "filter": options?.["filter"] as any,
           "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
+          "pageToken": options?.["pageToken"] as any,
+          "returnPartialSuccess": options?.["returnPartialSuccess"] as any
         }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ListOperationsResponse),
@@ -3969,6 +4809,27 @@ export const make = (
       ),
     "GetOperationByModelAndOperation": (model, operation) =>
       HttpClientRequest.get(`/v1beta/models/${model}/operations/${operation}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetOperationByCorpusAndOperation": (corpus, operation) =>
+      HttpClientRequest.get(`/v1beta/corpora/${corpus}/operations/${operation}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetOperationByFileSearchStoreAndOperation": (fileSearchStore, operation) =>
+      HttpClientRequest.get(`/v1beta/fileSearchStores/${fileSearchStore}/operations/${operation}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Operation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetOperationByFileSearchStoresIdAndOperationsId": (fileSearchStoresId, operationsId) =>
+      HttpClientRequest.get(`/v1beta/fileSearchStores/${fileSearchStoresId}/upload/operations/${operationsId}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Operation),
           orElse: unexpectedStatus
@@ -4058,6 +4919,56 @@ export const make = (
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(CountTokensResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchGenerateContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:batchGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchGenerateContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "BatchGenerateContentByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:batchGenerateContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(BatchGenerateContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "AsyncBatchEmbedContent": (model, options) =>
+      HttpClientRequest.post(`/v1beta/models/${model}:asyncBatchEmbedContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(AsyncBatchEmbedContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "AsyncBatchEmbedContentByTunedModel": (tunedModel, options) =>
+      HttpClientRequest.post(`/v1beta/tunedModels/${tunedModel}:asyncBatchEmbedContent`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(AsyncBatchEmbedContentOperation),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdateGenerateContentBatch": (generateContentBatch, options) =>
+      HttpClientRequest.patch(`/v1beta/batches/${generateContentBatch}:updateGenerateContentBatch`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GenerateContentBatch),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "UpdateEmbedContentBatch": (generateContentBatch, options) =>
+      HttpClientRequest.patch(`/v1beta/batches/${generateContentBatch}:updateEmbedContentBatch`).pipe(
+        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(EmbedContentBatch),
           orElse: unexpectedStatus
         }))
       ),
@@ -4347,6 +5258,25 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "ListFileSearchStores": (options) =>
+      HttpClientRequest.get(`/v1beta/fileSearchStores`).pipe(
+        HttpClientRequest.setUrlParams({
+          "pageSize": options?.["pageSize"] as any,
+          "pageToken": options?.["pageToken"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ListFileSearchStoresResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateFileSearchStore": (options) =>
+      HttpClientRequest.post(`/v1beta/fileSearchStores`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FileSearchStore),
+          orElse: unexpectedStatus
+        }))
+      ),
     "ListCorpora": (options) =>
       HttpClientRequest.get(`/v1beta/corpora`).pipe(
         HttpClientRequest.setUrlParams({
@@ -4366,6 +5296,21 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "GetFileSearchStore": (fileSearchStore) =>
+      HttpClientRequest.get(`/v1beta/fileSearchStores/${fileSearchStore}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FileSearchStore),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteFileSearchStore": (fileSearchStore, options) =>
+      HttpClientRequest.del(`/v1beta/fileSearchStores/${fileSearchStore}`).pipe(
+        HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Empty),
+          orElse: unexpectedStatus
+        }))
+      ),
     "GetCorpus": (corpus) =>
       HttpClientRequest.get(`/v1beta/corpora/${corpus}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
@@ -4381,25 +5326,23 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
-    "UpdateCorpus": (corpus, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
+    "GetDocument": (fileSearchStore, document) =>
+      HttpClientRequest.get(`/v1beta/fileSearchStores/${fileSearchStore}/documents/${document}`).pipe(
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Corpus),
+          "2xx": decodeSuccess(Document),
           orElse: unexpectedStatus
         }))
       ),
-    "QueryCorpus": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}:query`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+    "DeleteDocument": (fileSearchStore, document, options) =>
+      HttpClientRequest.del(`/v1beta/fileSearchStores/${fileSearchStore}/documents/${document}`).pipe(
+        HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(QueryCorpusResponse),
+          "2xx": decodeSuccess(Empty),
           orElse: unexpectedStatus
         }))
       ),
-    "ListDocuments": (corpus, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents`).pipe(
+    "ListDocuments": (fileSearchStore, options) =>
+      HttpClientRequest.get(`/v1beta/fileSearchStores/${fileSearchStore}/documents`).pipe(
         HttpClientRequest.setUrlParams({
           "pageSize": options?.["pageSize"] as any,
           "pageToken": options?.["pageToken"] as any
@@ -4409,109 +5352,19 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
-    "CreateDocument": (corpus, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents`).pipe(
+    "ImportFile": (fileSearchStore, options) =>
+      HttpClientRequest.post(`/v1beta/fileSearchStores/${fileSearchStore}:importFile`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Document),
+          "2xx": decodeSuccess(ImportFileOperation),
           orElse: unexpectedStatus
         }))
       ),
-    "GetDocument": (corpus, document) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Document),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeleteDocument": (corpus, document, options) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
-        HttpClientRequest.setUrlParams({ "force": options?.["force"] as any }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdateDocument": (corpus, document, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Document),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "QueryDocument": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}:query`).pipe(
+    "UploadToFileSearchStore": (fileSearchStore, options) =>
+      HttpClientRequest.post(`/v1beta/fileSearchStores/${fileSearchStore}:uploadToFileSearchStore`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(QueryDocumentResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "ListChunks": (corpus, document, options) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
-        HttpClientRequest.setUrlParams({
-          "pageSize": options?.["pageSize"] as any,
-          "pageToken": options?.["pageToken"] as any
-        }),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(ListChunksResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "CreateChunk": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Chunk),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchCreateChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchCreate`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(BatchCreateChunksResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "GetChunk": (corpus, document, chunk) =>
-      HttpClientRequest.get(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Chunk),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "DeleteChunk": (corpus, document, chunk) =>
-      HttpClientRequest.del(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "UpdateChunk": (corpus, document, chunk, options) =>
-      HttpClientRequest.patch(`/v1beta/corpora/${corpus}/documents/${document}/chunks/${chunk}`).pipe(
-        HttpClientRequest.setUrlParams({ "updateMask": options.params?.["updateMask"] as any }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Chunk),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchUpdateChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchUpdate`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(BatchUpdateChunksResponse),
-          orElse: unexpectedStatus
-        }))
-      ),
-    "BatchDeleteChunks": (corpus, document, options) =>
-      HttpClientRequest.post(`/v1beta/corpora/${corpus}/documents/${document}/chunks:batchDelete`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
-        withResponse(HttpClientResponse.matchStatus({
-          "2xx": decodeSuccess(Empty),
+          "2xx": decodeSuccess(UploadToFileSearchStoreOperation),
           orElse: unexpectedStatus
         }))
       ),
@@ -4626,6 +5479,33 @@ export interface Client {
   readonly "GetOperationByModelAndOperation": (
     model: string,
     operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
+   */
+  readonly "GetOperationByCorpusAndOperation": (
+    corpus: string,
+    operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
+   */
+  readonly "GetOperationByFileSearchStoreAndOperation": (
+    fileSearchStore: string,
+    operation: string
+  ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets the latest state of a long-running operation.  Clients can use this
+   * method to poll the operation result at intervals as recommended by the API
+   * service.
+   */
+  readonly "GetOperationByFileSearchStoresIdAndOperationsId": (
+    fileSearchStoresId: string,
+    operationsId: string
   ) => Effect.Effect<typeof Operation.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Starts asynchronous cancellation on a long-running operation.  The server
@@ -4743,6 +5623,58 @@ export interface Client {
     model: string,
     options: typeof CountTokensRequest.Encoded
   ) => Effect.Effect<typeof CountTokensResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `GenerateContent` requests for batch processing.
+   */
+  readonly "BatchGenerateContent": (
+    model: string,
+    options: typeof BatchGenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof BatchGenerateContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `GenerateContent` requests for batch processing.
+   */
+  readonly "BatchGenerateContentByTunedModel": (
+    tunedModel: string,
+    options: typeof BatchGenerateContentRequest.Encoded
+  ) => Effect.Effect<typeof BatchGenerateContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `EmbedContent` requests for batch processing.
+   * We have a `BatchEmbedContents` handler in `GenerativeService`, but it was
+   * synchronized. So we name this one to be `Async` to avoid confusion.
+   */
+  readonly "AsyncBatchEmbedContent": (
+    model: string,
+    options: typeof AsyncBatchEmbedContentRequest.Encoded
+  ) => Effect.Effect<typeof AsyncBatchEmbedContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Enqueues a batch of `EmbedContent` requests for batch processing.
+   * We have a `BatchEmbedContents` handler in `GenerativeService`, but it was
+   * synchronized. So we name this one to be `Async` to avoid confusion.
+   */
+  readonly "AsyncBatchEmbedContentByTunedModel": (
+    tunedModel: string,
+    options: typeof AsyncBatchEmbedContentRequest.Encoded
+  ) => Effect.Effect<typeof AsyncBatchEmbedContentOperation.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates a batch of GenerateContent requests for batch processing.
+   */
+  readonly "UpdateGenerateContentBatch": (
+    generateContentBatch: string,
+    options: {
+      readonly params?: typeof UpdateGenerateContentBatchParams.Encoded | undefined
+      readonly payload: typeof GenerateContentBatch.Encoded
+    }
+  ) => Effect.Effect<typeof GenerateContentBatch.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates a batch of EmbedContent requests for batch processing.
+   */
+  readonly "UpdateEmbedContentBatch": (
+    generateContentBatch: string,
+    options: {
+      readonly params?: typeof UpdateEmbedContentBatchParams.Encoded | undefined
+      readonly payload: typeof EmbedContentBatch.Encoded
+    }
+  ) => Effect.Effect<typeof EmbedContentBatch.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Lists CachedContents.
    */
@@ -4991,6 +5923,18 @@ export interface Client {
     options: typeof PredictLongRunningRequest.Encoded
   ) => Effect.Effect<typeof PredictLongRunningOperation.Type, HttpClientError.HttpClientError | ParseError>
   /**
+   * Lists all `FileSearchStores` owned by the user.
+   */
+  readonly "ListFileSearchStores": (
+    options?: typeof ListFileSearchStoresParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListFileSearchStoresResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates an empty `FileSearchStore`.
+   */
+  readonly "CreateFileSearchStore": (
+    options: typeof FileSearchStore.Encoded
+  ) => Effect.Effect<typeof FileSearchStore.Type, HttpClientError.HttpClientError | ParseError>
+  /**
    * Lists all `Corpora` owned by the user.
    */
   readonly "ListCorpora": (
@@ -5002,6 +5946,19 @@ export interface Client {
   readonly "CreateCorpus": (
     options: typeof Corpus.Encoded
   ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Gets information about a specific `FileSearchStore`.
+   */
+  readonly "GetFileSearchStore": (
+    fileSearchStore: string
+  ) => Effect.Effect<typeof FileSearchStore.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes a `FileSearchStore`.
+   */
+  readonly "DeleteFileSearchStore": (
+    fileSearchStore: string,
+    options?: typeof DeleteFileSearchStoreParams.Encoded | undefined
+  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Gets information about a specific `Corpus`.
    */
@@ -5016,129 +5973,42 @@ export interface Client {
     options?: typeof DeleteCorpusParams.Encoded | undefined
   ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Updates a `Corpus`.
-   */
-  readonly "UpdateCorpus": (
-    corpus: string,
-    options: { readonly params: typeof UpdateCorpusParams.Encoded; readonly payload: typeof Corpus.Encoded }
-  ) => Effect.Effect<typeof Corpus.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Performs semantic search over a `Corpus`.
-   */
-  readonly "QueryCorpus": (
-    corpus: string,
-    options: typeof QueryCorpusRequest.Encoded
-  ) => Effect.Effect<typeof QueryCorpusResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Lists all `Document`s in a `Corpus`.
-   */
-  readonly "ListDocuments": (
-    corpus: string,
-    options?: typeof ListDocumentsParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListDocumentsResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates an empty `Document`.
-   */
-  readonly "CreateDocument": (
-    corpus: string,
-    options: typeof Document.Encoded
-  ) => Effect.Effect<typeof Document.Type, HttpClientError.HttpClientError | ParseError>
-  /**
    * Gets information about a specific `Document`.
    */
   readonly "GetDocument": (
-    corpus: string,
+    fileSearchStore: string,
     document: string
   ) => Effect.Effect<typeof Document.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Deletes a `Document`.
    */
   readonly "DeleteDocument": (
-    corpus: string,
+    fileSearchStore: string,
     document: string,
     options?: typeof DeleteDocumentParams.Encoded | undefined
   ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Updates a `Document`.
+   * Lists all `Document`s in a `Corpus`.
    */
-  readonly "UpdateDocument": (
-    corpus: string,
-    document: string,
-    options: { readonly params: typeof UpdateDocumentParams.Encoded; readonly payload: typeof Document.Encoded }
-  ) => Effect.Effect<typeof Document.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "ListDocuments": (
+    fileSearchStore: string,
+    options?: typeof ListDocumentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ListDocumentsResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Performs semantic search over a `Document`.
+   * Imports a `File` from File Service to a `FileSearchStore`.
    */
-  readonly "QueryDocument": (
-    corpus: string,
-    document: string,
-    options: typeof QueryDocumentRequest.Encoded
-  ) => Effect.Effect<typeof QueryDocumentResponse.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "ImportFile": (
+    fileSearchStore: string,
+    options: typeof ImportFileRequest.Encoded
+  ) => Effect.Effect<typeof ImportFileOperation.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Lists all `Chunk`s in a `Document`.
+   * Uploads data to a FileSearchStore, preprocesses and chunks before storing
+   * it in a FileSearchStore Document.
    */
-  readonly "ListChunks": (
-    corpus: string,
-    document: string,
-    options?: typeof ListChunksParams.Encoded | undefined
-  ) => Effect.Effect<typeof ListChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Creates a `Chunk`.
-   */
-  readonly "CreateChunk": (
-    corpus: string,
-    document: string,
-    options: typeof Chunk.Encoded
-  ) => Effect.Effect<typeof Chunk.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Batch create `Chunk`s.
-   */
-  readonly "BatchCreateChunks": (
-    corpus: string,
-    document: string,
-    options: typeof BatchCreateChunksRequest.Encoded
-  ) => Effect.Effect<typeof BatchCreateChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Gets information about a specific `Chunk`.
-   */
-  readonly "GetChunk": (
-    corpus: string,
-    document: string,
-    chunk: string
-  ) => Effect.Effect<typeof Chunk.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Deletes a `Chunk`.
-   */
-  readonly "DeleteChunk": (
-    corpus: string,
-    document: string,
-    chunk: string
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Updates a `Chunk`.
-   */
-  readonly "UpdateChunk": (
-    corpus: string,
-    document: string,
-    chunk: string,
-    options: { readonly params: typeof UpdateChunkParams.Encoded; readonly payload: typeof Chunk.Encoded }
-  ) => Effect.Effect<typeof Chunk.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Batch update `Chunk`s.
-   */
-  readonly "BatchUpdateChunks": (
-    corpus: string,
-    document: string,
-    options: typeof BatchUpdateChunksRequest.Encoded
-  ) => Effect.Effect<typeof BatchUpdateChunksResponse.Type, HttpClientError.HttpClientError | ParseError>
-  /**
-   * Batch delete `Chunk`s.
-   */
-  readonly "BatchDeleteChunks": (
-    corpus: string,
-    document: string,
-    options: typeof BatchDeleteChunksRequest.Encoded
-  ) => Effect.Effect<typeof Empty.Type, HttpClientError.HttpClientError | ParseError>
+  readonly "UploadToFileSearchStore": (
+    fileSearchStore: string,
+    options: typeof UploadToFileSearchStoreRequest.Encoded
+  ) => Effect.Effect<typeof UploadToFileSearchStoreOperation.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Generates a response from the model given an input message.
    */

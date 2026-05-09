@@ -49,7 +49,7 @@ export class FileSearchRanker extends S.Literal("auto", "default_2024_08_21") {}
 /**
  * The ranking options for the file search. If not specified, the file search tool will use the `auto` ranker and a score_threshold of 0.
  *
- * See the [file search tool documentation](/docs/assistants/tools/file-search#customizing-file-search-settings) for more information.
+ * See the [file search tool documentation](https://platform.openai.com/docs/assistants/tools/file-search#customizing-file-search-settings) for more information.
  */
 export class FileSearchRankingOptions extends S.Class<FileSearchRankingOptions>("FileSearchRankingOptions")({
   "ranker": S.optionalWith(FileSearchRanker, { nullable: true }),
@@ -72,7 +72,7 @@ export class AssistantToolsFileSearch extends S.Class<AssistantToolsFileSearch>(
       /**
        * The maximum number of results the file search tool should output. The default is 20 for `gpt-4*` models and 5 for `gpt-3.5-turbo`. This number should be between 1 and 50 inclusive.
        *
-       * Note that the file search tool may output fewer than `max_num_results` results. See the [file search tool documentation](/docs/assistants/tools/file-search#customizing-file-search-settings) for more information.
+       * Note that the file search tool may output fewer than `max_num_results` results. See the [file search tool documentation](https://platform.openai.com/docs/assistants/tools/file-search#customizing-file-search-settings) for more information.
        */
       "max_num_results": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50)), {
         nullable: true
@@ -89,7 +89,7 @@ export class AssistantToolsFileSearch extends S.Class<AssistantToolsFileSearch>(
 export class AssistantToolsFunctionType extends S.Literal("function") {}
 
 /**
- * The parameters the functions accepts, described as a JSON Schema object. See the [guide](/docs/guides/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
+ * The parameters the functions accepts, described as a JSON Schema object. See the [guide](https://platform.openai.com/docs/guides/function-calling) for examples, and the [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for documentation about the format.
  *
  * Omitting `parameters` defines a function with an empty parameter list.
  */
@@ -105,10 +105,7 @@ export class FunctionObject extends S.Class<FunctionObject>("FunctionObject")({
    */
   "name": S.String,
   "parameters": S.optionalWith(FunctionParameters, { nullable: true }),
-  /**
-   * Whether to enable strict schema adherence when generating the function call. If set to true, the model will follow the exact schema defined in the `parameters` field. Only a subset of JSON Schema is supported when `strict` is `true`. Learn more about Structured Outputs in the [function calling guide](docs/guides/function-calling).
-   */
-  "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+  "strict": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 export class AssistantToolsFunction extends S.Class<AssistantToolsFunction>("AssistantToolsFunction")({
@@ -119,15 +116,20 @@ export class AssistantToolsFunction extends S.Class<AssistantToolsFunction>("Ass
   "function": FunctionObject
 }) {}
 
-/**
- * Set of 16 key-value pairs that can be attached to an object. This can be
- * useful for storing additional information about the object in a structured
- * format, and querying for objects via API or the dashboard.
- *
- * Keys are strings with a maximum length of 64 characters. Values are strings
- * with a maximum length of 512 characters.
- */
-export class Metadata extends S.Record({ key: S.String, value: S.Unknown }) {}
+export class AssistantTool extends S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction) {}
+
+export class Metadata extends S.Union(
+  /**
+   * Set of 16 key-value pairs that can be attached to an object. This can be
+   * useful for storing additional information about the object in a structured
+   * format, and querying for objects via API or the dashboard.
+   *
+   * Keys are strings with a maximum length of 64 characters. Values are strings
+   * with a maximum length of 512 characters.
+   */
+  S.Record({ key: S.String, value: S.Unknown }),
+  S.Null
+) {}
 
 /**
  * `auto` is the default value
@@ -180,7 +182,7 @@ export class ResponseFormatJsonSchemaSchema extends S.Record({ key: S.String, va
 
 /**
  * JSON Schema response format. Used to generate structured JSON responses.
- * Learn more about [Structured Outputs](/docs/guides/structured-outputs).
+ * Learn more about [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs).
  */
 export class ResponseFormatJsonSchema extends S.Class<ResponseFormatJsonSchema>("ResponseFormatJsonSchema")({
   /**
@@ -202,21 +204,14 @@ export class ResponseFormatJsonSchema extends S.Class<ResponseFormatJsonSchema>(
      */
     "name": S.String,
     "schema": S.optionalWith(ResponseFormatJsonSchemaSchema, { nullable: true }),
-    /**
-     * Whether to enable strict schema adherence when generating the output.
-     * If set to true, the model will always follow the exact schema defined
-     * in the `schema` field. Only a subset of JSON Schema is supported when
-     * `strict` is `true`. To learn more, read the [Structured Outputs
-     * guide](/docs/guides/structured-outputs).
-     */
-    "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+    "strict": S.optionalWith(S.Boolean, { nullable: true })
   })
 }) {}
 
 /**
- * Specifies the format that the model must output. Compatible with [GPT-4o](/docs/models#gpt-4o), [GPT-4 Turbo](/docs/models#gpt-4-turbo-and-gpt-4), and all GPT-3.5 Turbo models since `gpt-3.5-turbo-1106`.
+ * Specifies the format that the model must output. Compatible with [GPT-4o](https://platform.openai.com/docs/models#gpt-4o), [GPT-4 Turbo](https://platform.openai.com/docs/models#gpt-4-turbo-and-gpt-4), and all GPT-3.5 Turbo models since `gpt-3.5-turbo-1106`.
  *
- * Setting to `{ "type": "json_schema", "json_schema": {...} }` enables Structured Outputs which ensures the model will match your supplied JSON schema. Learn more in the [Structured Outputs guide](/docs/guides/structured-outputs).
+ * Setting to `{ "type": "json_schema", "json_schema": {...} }` enables Structured Outputs which ensures the model will match your supplied JSON schema. Learn more in the [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs).
  *
  * Setting to `{ "type": "json_object" }` enables JSON mode, which ensures the message the model generates is valid JSON.
  *
@@ -248,36 +243,26 @@ export class AssistantObject extends S.Class<AssistantObject>("AssistantObject")
    * The Unix timestamp (in seconds) for when the assistant was created.
    */
   "created_at": S.Int,
-  /**
-   * The name of the assistant. The maximum length is 256 characters.
-   */
   "name": S.NullOr(S.String.pipe(S.maxLength(256))),
-  /**
-   * The description of the assistant. The maximum length is 512 characters.
-   */
   "description": S.NullOr(S.String.pipe(S.maxLength(512))),
   /**
-   * ID of the model to use. You can use the [List models](/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](/docs/models) for descriptions of them.
+   * ID of the model to use. You can use the [List models](https://platform.openai.com/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](https://platform.openai.com/docs/models) for descriptions of them.
    */
   "model": S.String,
-  /**
-   * The system instructions that the assistant uses. The maximum length is 256,000 characters.
-   */
   "instructions": S.NullOr(S.String.pipe(S.maxLength(256000))),
   /**
    * A list of tool enabled on the assistant. There can be a maximum of 128 tools per assistant. Tools can be of types `code_interpreter`, `file_search`, or `function`.
    */
-  "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128))
-    .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
-  /**
-   * A set of resources that are used by the assistant's tools. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
-   */
+  "tools": S.Array(AssistantTool).pipe(S.maxItems(128)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => [] as const)
+  ),
   "tool_resources": S.optionalWith(
     S.Struct({
       "code_interpreter": S.optionalWith(
         S.Struct({
           /**
-           * A list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter`` tool. There can be a maximum of 20 files associated with the tool.
+           * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter`` tool. There can be a maximum of 20 files associated with the tool.
            */
           "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
             nullable: true,
@@ -289,7 +274,7 @@ export class AssistantObject extends S.Class<AssistantObject>("AssistantObject")
       "file_search": S.optionalWith(
         S.Struct({
           /**
-           * The ID of the [vector store](/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
+           * The ID of the [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
            */
           "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
         }),
@@ -298,23 +283,9 @@ export class AssistantObject extends S.Class<AssistantObject>("AssistantObject")
     }),
     { nullable: true }
   ),
-  "metadata": S.NullOr(Metadata),
-  /**
-   * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-   */
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
-   *
-   * We generally recommend altering this or temperature but not both.
-   */
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), { nullable: true }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
 
@@ -327,6 +298,12 @@ export class ListAssistantsResponse extends S.Class<ListAssistantsResponse>("Lis
 }) {}
 
 export class AssistantSupportedModels extends S.Literal(
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-5-2025-08-07",
+  "gpt-5-mini-2025-08-07",
+  "gpt-5-nano-2025-08-07",
   "gpt-4.1",
   "gpt-4.1-mini",
   "gpt-4.1-nano",
@@ -366,53 +343,53 @@ export class AssistantSupportedModels extends S.Literal(
 ) {}
 
 /**
- * **o-series models only**
- *
  * Constrains effort on reasoning for
  * [reasoning models](https://platform.openai.com/docs/guides/reasoning).
- * Currently supported values are `low`, `medium`, and `high`. Reducing
+ * Currently supported values are `none`, `minimal`, `low`, `medium`, and `high`. Reducing
  * reasoning effort can result in faster responses and fewer tokens used
  * on reasoning in a response.
+ *
+ * - `gpt-5.1` defaults to `none`, which does not perform reasoning. The supported reasoning values for `gpt-5.1` are `none`, `low`, `medium`, and `high`. Tool calls are supported for all reasoning values in gpt-5.1.
+ * - All models before `gpt-5.1` default to `medium` reasoning effort, and do not support `none`.
+ * - The `gpt-5-pro` model defaults to (and only supports) `high` reasoning effort.
  */
-export class ReasoningEffort extends S.Literal("minimal", "low", "medium", "high") {}
+export class ReasoningEffortEnum extends S.Literal("none", "minimal", "low", "medium", "high") {}
+
+export class ReasoningEffort extends S.Union(
+  /**
+   * Constrains effort on reasoning for
+   * [reasoning models](https://platform.openai.com/docs/guides/reasoning).
+   * Currently supported values are `none`, `minimal`, `low`, `medium`, and `high`. Reducing
+   * reasoning effort can result in faster responses and fewer tokens used
+   * on reasoning in a response.
+   *
+   * - `gpt-5.1` defaults to `none`, which does not perform reasoning. The supported reasoning values for `gpt-5.1` are `none`, `low`, `medium`, and `high`. Tool calls are supported for all reasoning values in gpt-5.1.
+   * - All models before `gpt-5.1` default to `medium` reasoning effort, and do not support `none`.
+   * - The `gpt-5-pro` model defaults to (and only supports) `high` reasoning effort.
+   */
+  ReasoningEffortEnum,
+  S.Null
+) {}
 
 export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("CreateAssistantRequest")({
   /**
-   * ID of the model to use. You can use the [List models](/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](/docs/models) for descriptions of them.
+   * ID of the model to use. You can use the [List models](https://platform.openai.com/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](https://platform.openai.com/docs/models) for descriptions of them.
    */
   "model": S.Union(S.String, AssistantSupportedModels),
-  /**
-   * The name of the assistant. The maximum length is 256 characters.
-   */
   "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
-  /**
-   * The description of the assistant. The maximum length is 512 characters.
-   */
   "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
-  /**
-   * The system instructions that the assistant uses. The maximum length is 256,000 characters.
-   */
   "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
+  "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true }),
   /**
    * A list of tool enabled on the assistant. There can be a maximum of 128 tools per assistant. Tools can be of types `code_interpreter`, `file_search`, or `function`.
    */
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
-    {
-      nullable: true,
-      default: () => [] as const
-    }
-  ),
-  /**
-   * A set of resources that are used by the assistant's tools. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
-   */
+  "tools": S.optionalWith(S.Array(AssistantTool).pipe(S.maxItems(128)), { nullable: true, default: () => [] as const }),
   "tool_resources": S.optionalWith(
     S.Struct({
       "code_interpreter": S.optionalWith(
         S.Struct({
           /**
-           * A list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
+           * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
            */
           "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
             nullable: true,
@@ -424,23 +401,23 @@ export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("Cre
       "file_search": S.optionalWith(
         S.Struct({
           /**
-           * The [vector store](/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
+           * The [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
            */
           "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true }),
           /**
-           * A helper to create a [vector store](/docs/api-reference/vector-stores/object) with file_ids and attach it to this assistant. There can be a maximum of 1 vector store attached to the assistant.
+           * A helper to create a [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) with file_ids and attach it to this assistant. There can be a maximum of 1 vector store attached to the assistant.
            */
           "vector_stores": S.optionalWith(
             S.Array(S.Struct({
               /**
-               * A list of [file](/docs/api-reference/files) IDs to add to the vector store. There can be a maximum of 10000 files in a vector store.
+               * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs to add to the vector store. There can be a maximum of 10000 files in a vector store.
                */
               "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(10000)), { nullable: true }),
               /**
                * The chunking strategy used to chunk the file(s). If not set, will use the `auto` strategy.
                */
               "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-              "metadata": S.optionalWith(Metadata, { nullable: true })
+              "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
             })).pipe(S.maxItems(1)),
             { nullable: true }
           )
@@ -450,63 +427,31 @@ export class CreateAssistantRequest extends S.Class<CreateAssistantRequest>("Cre
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
-  /**
-   * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-   */
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
-   *
-   * We generally recommend altering this or temperature but not both.
-   */
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), { nullable: true }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
 
 export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("ModifyAssistantRequest")({
   /**
-   * ID of the model to use. You can use the [List models](/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](/docs/models) for descriptions of them.
+   * ID of the model to use. You can use the [List models](https://platform.openai.com/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](https://platform.openai.com/docs/models) for descriptions of them.
    */
   "model": S.optionalWith(S.Union(S.String, AssistantSupportedModels), { nullable: true }),
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
-  /**
-   * The name of the assistant. The maximum length is 256 characters.
-   */
+  "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true }),
   "name": S.optionalWith(S.String.pipe(S.maxLength(256)), { nullable: true }),
-  /**
-   * The description of the assistant. The maximum length is 512 characters.
-   */
   "description": S.optionalWith(S.String.pipe(S.maxLength(512)), { nullable: true }),
-  /**
-   * The system instructions that the assistant uses. The maximum length is 256,000 characters.
-   */
   "instructions": S.optionalWith(S.String.pipe(S.maxLength(256000)), { nullable: true }),
   /**
    * A list of tool enabled on the assistant. There can be a maximum of 128 tools per assistant. Tools can be of types `code_interpreter`, `file_search`, or `function`.
    */
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(128)),
-    {
-      nullable: true,
-      default: () => [] as const
-    }
-  ),
-  /**
-   * A set of resources that are used by the assistant's tools. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
-   */
+  "tools": S.optionalWith(S.Array(AssistantTool).pipe(S.maxItems(128)), { nullable: true, default: () => [] as const }),
   "tool_resources": S.optionalWith(
     S.Struct({
       "code_interpreter": S.optionalWith(
         S.Struct({
           /**
-           * Overrides the list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
+           * Overrides the list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
            */
           "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
             nullable: true,
@@ -518,7 +463,7 @@ export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("Mod
       "file_search": S.optionalWith(
         S.Struct({
           /**
-           * Overrides the [vector store](/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
+           * Overrides the [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
            */
           "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
         }),
@@ -527,23 +472,9 @@ export class ModifyAssistantRequest extends S.Class<ModifyAssistantRequest>("Mod
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
-  /**
-   * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-   */
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
-   *
-   * We generally recommend altering this or temperature but not both.
-   */
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), { nullable: true }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   "response_format": S.optionalWith(AssistantsApiResponseFormatOption, { nullable: true })
 }) {}
 
@@ -558,7 +489,7 @@ export class DeleteAssistantResponse extends S.Class<DeleteAssistantResponse>("D
 export class CreateSpeechRequestModelEnum extends S.Literal("tts-1", "tts-1-hd", "gpt-4o-mini-tts") {}
 
 export class VoiceIdsSharedEnum
-  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer", "verse")
+  extends S.Literal("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar")
 {}
 
 export class VoiceIdsShared extends S.Union(S.String, VoiceIdsSharedEnum) {}
@@ -568,9 +499,14 @@ export class VoiceIdsShared extends S.Union(S.String, VoiceIdsSharedEnum) {}
  */
 export class CreateSpeechRequestResponseFormat extends S.Literal("mp3", "opus", "aac", "flac", "wav", "pcm") {}
 
+/**
+ * The format to stream the audio in. Supported formats are `sse` and `audio`. `sse` is not supported for `tts-1` or `tts-1-hd`.
+ */
+export class CreateSpeechRequestStreamFormat extends S.Literal("sse", "audio") {}
+
 export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpeechRequest")({
   /**
-   * One of the available [TTS models](/docs/models#tts): `tts-1`, `tts-1-hd` or `gpt-4o-mini-tts`.
+   * One of the available [TTS models](https://platform.openai.com/docs/models#tts): `tts-1`, `tts-1-hd` or `gpt-4o-mini-tts`.
    */
   "model": S.Union(S.String, CreateSpeechRequestModelEnum),
   /**
@@ -582,7 +518,7 @@ export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpe
    */
   "instructions": S.optionalWith(S.String.pipe(S.maxLength(4096)), { nullable: true }),
   /**
-   * The voice to use when generating the audio. Supported voices are `alloy`, `ash`, `ballad`, `coral`, `echo`, `fable`, `onyx`, `nova`, `sage`, `shimmer`, and `verse`. Previews of the voices are available in the [Text to speech guide](/docs/guides/text-to-speech#voice-options).
+   * The voice to use when generating the audio. Supported voices are `alloy`, `ash`, `ballad`, `coral`, `echo`, `fable`, `onyx`, `nova`, `sage`, `shimmer`, and `verse`. Previews of the voices are available in the [Text to speech guide](https://platform.openai.com/docs/guides/text-to-speech#voice-options).
    */
   "voice": VoiceIdsShared,
   /**
@@ -598,19 +534,71 @@ export class CreateSpeechRequest extends S.Class<CreateSpeechRequest>("CreateSpe
   "speed": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0.25), S.lessThanOrEqualTo(4)), {
     nullable: true,
     default: () => 1 as const
-  })
+  }),
+  /**
+   * The format to stream the audio in. Supported formats are `sse` and `audio`. `sse` is not supported for `tts-1` or `tts-1-hd`.
+   */
+  "stream_format": S.optionalWith(CreateSpeechRequestStreamFormat, { nullable: true, default: () => "audio" as const })
 }) {}
 
 export class CreateTranscriptionRequestModelEnum
-  extends S.Literal("whisper-1", "gpt-4o-transcribe", "gpt-4o-mini-transcribe")
+  extends S.Literal("whisper-1", "gpt-4o-transcribe", "gpt-4o-mini-transcribe", "gpt-4o-transcribe-diarize")
 {}
 
 /**
- * The format of the output, in one of these options: `json`, `text`, `srt`, `verbose_json`, or `vtt`. For `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`, the only supported format is `json`.
+ * The format of the output, in one of these options: `json`, `text`, `srt`, `verbose_json`, `vtt`, or `diarized_json`. For `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`, the only supported format is `json`. For `gpt-4o-transcribe-diarize`, the supported formats are `json`, `text`, and `diarized_json`, with `diarized_json` required to receive speaker annotations.
  */
-export class AudioResponseFormat extends S.Literal("json", "text", "srt", "verbose_json", "vtt") {}
+export class AudioResponseFormat extends S.Literal("json", "text", "srt", "verbose_json", "vtt", "diarized_json") {}
 
 export class TranscriptionInclude extends S.Literal("logprobs") {}
+
+/**
+ * Automatically set chunking parameters based on the audio. Must be set to `"auto"`.
+ */
+export class TranscriptionChunkingStrategyEnum extends S.Literal("auto") {}
+
+/**
+ * Must be set to `server_vad` to enable manual chunking using server side VAD.
+ */
+export class VadConfigType extends S.Literal("server_vad") {}
+
+export class VadConfig extends S.Class<VadConfig>("VadConfig")({
+  /**
+   * Must be set to `server_vad` to enable manual chunking using server side VAD.
+   */
+  "type": VadConfigType,
+  /**
+   * Amount of audio to include before the VAD detected speech (in
+   * milliseconds).
+   */
+  "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true, default: () => 300 as const }),
+  /**
+   * Duration of silence to detect speech stop (in milliseconds).
+   * With shorter values the model will respond more quickly,
+   * but may jump in on short pauses from the user.
+   */
+  "silence_duration_ms": S.optionalWith(S.Int, { nullable: true, default: () => 200 as const }),
+  /**
+   * Sensitivity threshold (0.0 to 1.0) for voice activity detection. A
+   * higher threshold will require louder audio to activate the model, and
+   * thus might perform better in noisy environments.
+   */
+  "threshold": S.optionalWith(S.Number, { nullable: true, default: () => 0.5 as const })
+}) {}
+
+export class TranscriptionChunkingStrategy extends S.Union(
+  /**
+   * Controls how the audio is cut into chunks. When set to `"auto"`, the server first normalizes loudness and then uses voice activity detection (VAD) to choose boundaries. `server_vad` object can be provided to tweak VAD detection parameters manually. If unset, the audio is transcribed as a single block. Required when using `gpt-4o-transcribe-diarize` for inputs longer than 30 seconds.
+   */
+  S.Union(
+    /**
+     * Automatically set chunking parameters based on the audio. Must be set to `"auto"`.
+     */
+    S.Literal("auto"),
+    VadConfig
+  ),
+  S.Null
+) {}
 
 export class CreateTranscriptionRequest extends S.Class<CreateTranscriptionRequest>("CreateTranscriptionRequest")({
   /**
@@ -618,7 +606,7 @@ export class CreateTranscriptionRequest extends S.Class<CreateTranscriptionReque
    */
   "file": S.instanceOf(globalThis.Blob),
   /**
-   * ID of the model to use. The options are `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, and `whisper-1` (which is powered by our open source Whisper V2 model).
+   * ID of the model to use. The options are `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1` (which is powered by our open source Whisper V2 model), and `gpt-4o-transcribe-diarize`.
    */
   "model": S.Union(S.String, CreateTranscriptionRequestModelEnum),
   /**
@@ -626,7 +614,7 @@ export class CreateTranscriptionRequest extends S.Class<CreateTranscriptionReque
    */
   "language": S.optionalWith(S.String, { nullable: true }),
   /**
-   * An optional text to guide the model's style or continue a previous audio segment. The [prompt](/docs/guides/speech-to-text#prompting) should match the audio language.
+   * An optional text to guide the model's style or continue a previous audio segment. The [prompt](https://platform.openai.com/docs/guides/speech-to-text#prompting) should match the audio language. This field is not supported when using `gpt-4o-transcribe-diarize`.
    */
   "prompt": S.optionalWith(S.String, { nullable: true }),
   "response_format": S.optionalWith(AudioResponseFormat, { nullable: true, default: () => "json" as const }),
@@ -639,25 +627,98 @@ export class CreateTranscriptionRequest extends S.Class<CreateTranscriptionReque
    * `logprobs` will return the log probabilities of the tokens in the
    * response to understand the model's confidence in the transcription.
    * `logprobs` only works with response_format set to `json` and only with
-   * the models `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`.
+   * the models `gpt-4o-transcribe` and `gpt-4o-mini-transcribe`. This field is not supported when using `gpt-4o-transcribe-diarize`.
    */
-  "include[]": S.optionalWith(S.Array(TranscriptionInclude), { nullable: true }),
+  "include": S.optionalWith(S.Array(TranscriptionInclude), { nullable: true }),
   /**
    * The timestamp granularities to populate for this transcription. `response_format` must be set `verbose_json` to use timestamp granularities. Either or both of these options are supported: `word`, or `segment`. Note: There is no additional latency for segment timestamps, but generating word timestamps incurs additional latency.
+   * This option is not available for `gpt-4o-transcribe-diarize`.
    */
-  "timestamp_granularities[]": S.optionalWith(S.Array(S.Literal("word", "segment")), {
+  "timestamp_granularities": S.optionalWith(S.Array(S.Literal("word", "segment")), {
     nullable: true,
     default: () => ["segment"] as const
   }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  "chunking_strategy": S.optionalWith(
+    S.Union(
+      /**
+       * Automatically set chunking parameters based on the audio. Must be set to `"auto"`.
+       */
+      S.Literal("auto"),
+      VadConfig
+    ),
+    { nullable: true }
+  ),
   /**
-   * If set to true, the model response data will be streamed to the client
-   * as it is generated using [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format).
-   * See the [Streaming section of the Speech-to-Text guide](/docs/guides/speech-to-text?lang=curl#streaming-transcriptions)
-   * for more information.
-   *
-   * Note: Streaming is not supported for the `whisper-1` model and will be ignored.
+   * Optional list of speaker names that correspond to the audio samples provided in `known_speaker_references[]`. Each entry should be a short identifier (for example `customer` or `agent`). Up to 4 speakers are supported.
    */
-  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
+  "known_speaker_names": S.optionalWith(S.Array(S.String).pipe(S.maxItems(4)), { nullable: true }),
+  /**
+   * Optional list of audio samples (as [data URLs](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URLs)) that contain known speaker references matching `known_speaker_names[]`. Each sample must be between 2 and 10 seconds, and can use any of the same input audio formats supported by `file`.
+   */
+  "known_speaker_references": S.optionalWith(S.Array(S.String).pipe(S.maxItems(4)), { nullable: true })
+}) {}
+
+/**
+ * The type of the usage object. Always `tokens` for this variant.
+ */
+export class TranscriptTextUsageTokensType extends S.Literal("tokens") {}
+
+/**
+ * Usage statistics for models billed by token usage.
+ */
+export class TranscriptTextUsageTokens extends S.Class<TranscriptTextUsageTokens>("TranscriptTextUsageTokens")({
+  /**
+   * The type of the usage object. Always `tokens` for this variant.
+   */
+  "type": TranscriptTextUsageTokensType,
+  /**
+   * Number of input tokens billed for this request.
+   */
+  "input_tokens": S.Int,
+  /**
+   * Details about the input tokens billed for this request.
+   */
+  "input_token_details": S.optionalWith(
+    S.Struct({
+      /**
+       * Number of text tokens billed for this request.
+       */
+      "text_tokens": S.optionalWith(S.Int, { nullable: true }),
+      /**
+       * Number of audio tokens billed for this request.
+       */
+      "audio_tokens": S.optionalWith(S.Int, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * Number of output tokens generated.
+   */
+  "output_tokens": S.Int,
+  /**
+   * Total number of tokens used (input + output).
+   */
+  "total_tokens": S.Int
+}) {}
+
+/**
+ * The type of the usage object. Always `duration` for this variant.
+ */
+export class TranscriptTextUsageDurationType extends S.Literal("duration") {}
+
+/**
+ * Usage statistics for models billed by audio input duration.
+ */
+export class TranscriptTextUsageDuration extends S.Class<TranscriptTextUsageDuration>("TranscriptTextUsageDuration")({
+  /**
+   * The type of the usage object. Always `duration` for this variant.
+   */
+  "type": TranscriptTextUsageDurationType,
+  /**
+   * Duration of the input audio in seconds.
+   */
+  "seconds": S.Number
 }) {}
 
 /**
@@ -688,7 +749,81 @@ export class CreateTranscriptionResponseJson
         "bytes": S.optionalWith(S.Array(S.Number), { nullable: true })
       })),
       { nullable: true }
-    )
+    ),
+    /**
+     * Token usage statistics for the request.
+     */
+    "usage": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  })
+{}
+
+/**
+ * The type of task that was run. Always `transcribe`.
+ */
+export class CreateTranscriptionResponseDiarizedJsonTask extends S.Literal("transcribe") {}
+
+/**
+ * The type of the segment. Always `transcript.text.segment`.
+ */
+export class TranscriptionDiarizedSegmentType extends S.Literal("transcript.text.segment") {}
+
+/**
+ * A segment of diarized transcript text with speaker metadata.
+ */
+export class TranscriptionDiarizedSegment
+  extends S.Class<TranscriptionDiarizedSegment>("TranscriptionDiarizedSegment")({
+    /**
+     * The type of the segment. Always `transcript.text.segment`.
+     */
+    "type": TranscriptionDiarizedSegmentType,
+    /**
+     * Unique identifier for the segment.
+     */
+    "id": S.String,
+    /**
+     * Start timestamp of the segment in seconds.
+     */
+    "start": S.Number,
+    /**
+     * End timestamp of the segment in seconds.
+     */
+    "end": S.Number,
+    /**
+     * Transcript text for this segment.
+     */
+    "text": S.String,
+    /**
+     * Speaker label for this segment. When known speakers are provided, the label matches `known_speaker_names[]`. Otherwise speakers are labeled sequentially using capital letters (`A`, `B`, ...).
+     */
+    "speaker": S.String
+  })
+{}
+
+/**
+ * Represents a diarized transcription response returned by the model, including the combined transcript and speaker-segment annotations.
+ */
+export class CreateTranscriptionResponseDiarizedJson
+  extends S.Class<CreateTranscriptionResponseDiarizedJson>("CreateTranscriptionResponseDiarizedJson")({
+    /**
+     * The type of task that was run. Always `transcribe`.
+     */
+    "task": CreateTranscriptionResponseDiarizedJsonTask,
+    /**
+     * Duration of the input audio in seconds.
+     */
+    "duration": S.Number,
+    /**
+     * The concatenated transcript text for the entire audio input.
+     */
+    "text": S.String,
+    /**
+     * Segments of the transcript annotated with timestamps and speaker labels.
+     */
+    "segments": S.Array(TranscriptionDiarizedSegment),
+    /**
+     * Token or duration usage statistics for the request.
+     */
+    "usage": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
   })
 {}
 
@@ -774,13 +909,16 @@ export class CreateTranscriptionResponseVerboseJson
     /**
      * Segments of the transcribed text and their corresponding details.
      */
-    "segments": S.optionalWith(S.Array(TranscriptionSegment), { nullable: true })
+    "segments": S.optionalWith(S.Array(TranscriptionSegment), { nullable: true }),
+    "usage": S.optionalWith(TranscriptTextUsageDuration, { nullable: true })
   })
 {}
 
-export class CreateTranscription200
-  extends S.Union(CreateTranscriptionResponseVerboseJson, CreateTranscriptionResponseJson)
-{}
+export class CreateTranscription200 extends S.Union(
+  CreateTranscriptionResponseVerboseJson,
+  CreateTranscriptionResponseDiarizedJson,
+  CreateTranscriptionResponseJson
+) {}
 
 export class CreateTranslationRequestModelEnum extends S.Literal("whisper-1") {}
 
@@ -799,7 +937,7 @@ export class CreateTranslationRequest extends S.Class<CreateTranslationRequest>(
    */
   "model": S.Union(S.String, CreateTranslationRequestModelEnum),
   /**
-   * An optional text to guide the model's style or continue a previous audio segment. The [prompt](/docs/guides/speech-to-text#prompting) should be in English.
+   * An optional text to guide the model's style or continue a previous audio segment. The [prompt](https://platform.openai.com/docs/guides/speech-to-text#prompting) should be in English.
    */
   "prompt": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -856,6 +994,19 @@ export class ListBatchesParams extends S.Struct({
  */
 export class BatchObject extends S.Literal("batch") {}
 
+export class BatchError extends S.Class<BatchError>("BatchError")({
+  /**
+   * An error code identifying the error type.
+   */
+  "code": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * A human-readable message providing more details about the error.
+   */
+  "message": S.optionalWith(S.String, { nullable: true }),
+  "param": S.optionalWith(S.String, { nullable: true }),
+  "line": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
 /**
  * The current status of the batch.
  */
@@ -870,6 +1021,24 @@ export class BatchStatus extends S.Literal(
   "cancelled"
 ) {}
 
+/**
+ * The request counts for different statuses within the batch.
+ */
+export class BatchRequestCounts extends S.Class<BatchRequestCounts>("BatchRequestCounts")({
+  /**
+   * Total number of requests in the batch.
+   */
+  "total": S.Int,
+  /**
+   * Number of requests that have been completed successfully.
+   */
+  "completed": S.Int,
+  /**
+   * Number of requests that have failed.
+   */
+  "failed": S.Int
+}) {}
+
 export class Batch extends S.Class<Batch>("Batch")({
   "id": S.String,
   /**
@@ -880,33 +1049,20 @@ export class Batch extends S.Class<Batch>("Batch")({
    * The OpenAI API endpoint used by the batch.
    */
   "endpoint": S.String,
+  /**
+   * Model ID used to process the batch, like `gpt-5-2025-08-07`. OpenAI
+   * offers a wide range of models with different capabilities, performance
+   * characteristics, and price points. Refer to the [model
+   * guide](https://platform.openai.com/docs/models) to browse and compare available models.
+   */
+  "model": S.optionalWith(S.String, { nullable: true }),
   "errors": S.optionalWith(
     S.Struct({
       /**
        * The object type, which is always `list`.
        */
       "object": S.optionalWith(S.String, { nullable: true }),
-      "data": S.optionalWith(
-        S.Array(S.Struct({
-          /**
-           * An error code identifying the error type.
-           */
-          "code": S.optionalWith(S.String, { nullable: true }),
-          /**
-           * A human-readable message providing more details about the error.
-           */
-          "message": S.optionalWith(S.String, { nullable: true }),
-          /**
-           * The name of the parameter that caused the error, if applicable.
-           */
-          "param": S.optionalWith(S.String, { nullable: true }),
-          /**
-           * The line number of the input file where the error occurred, if applicable.
-           */
-          "line": S.optionalWith(S.Int, { nullable: true })
-        })),
-        { nullable: true }
-      )
+      "data": S.optionalWith(S.Array(BatchError), { nullable: true })
     }),
     { nullable: true }
   ),
@@ -966,27 +1122,49 @@ export class Batch extends S.Class<Batch>("Batch")({
    * The Unix timestamp (in seconds) for when the batch was cancelled.
    */
   "cancelled_at": S.optionalWith(S.Int, { nullable: true }),
+  "request_counts": S.optionalWith(BatchRequestCounts, { nullable: true }),
   /**
-   * The request counts for different statuses within the batch.
+   * Represents token usage details including input tokens, output tokens, a
+   * breakdown of output tokens, and the total tokens used. Only populated on
+   * batches created after September 7, 2025.
    */
-  "request_counts": S.optionalWith(
+  "usage": S.optionalWith(
     S.Struct({
       /**
-       * Total number of requests in the batch.
+       * The number of input tokens.
        */
-      "total": S.Int,
+      "input_tokens": S.Int,
       /**
-       * Number of requests that have been completed successfully.
+       * A detailed breakdown of the input tokens.
        */
-      "completed": S.Int,
+      "input_tokens_details": S.Struct({
+        /**
+         * The number of tokens that were retrieved from the cache. [More on
+         * prompt caching](https://platform.openai.com/docs/guides/prompt-caching).
+         */
+        "cached_tokens": S.Int
+      }),
       /**
-       * Number of requests that have failed.
+       * The number of output tokens.
        */
-      "failed": S.Int
+      "output_tokens": S.Int,
+      /**
+       * A detailed breakdown of the output tokens.
+       */
+      "output_tokens_details": S.Struct({
+        /**
+         * The number of reasoning tokens.
+         */
+        "reasoning_tokens": S.Int
+      }),
+      /**
+       * The total number of tokens used.
+       */
+      "total_tokens": S.Int
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListBatchesResponseObject extends S.Literal("list") {}
@@ -1000,10 +1178,10 @@ export class ListBatchesResponse extends S.Class<ListBatchesResponse>("ListBatch
 }) {}
 
 /**
- * The endpoint to be used for all requests in the batch. Currently `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, and `/v1/completions` are supported. Note that `/v1/embeddings` batches are also restricted to a maximum of 50,000 embedding inputs across all requests in the batch.
+ * The endpoint to be used for all requests in the batch. Currently `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/completions`, and `/v1/moderations` are supported. Note that `/v1/embeddings` batches are also restricted to a maximum of 50,000 embedding inputs across all requests in the batch.
  */
 export class CreateBatchRequestEndpoint
-  extends S.Literal("/v1/responses", "/v1/chat/completions", "/v1/embeddings", "/v1/completions")
+  extends S.Literal("/v1/responses", "/v1/chat/completions", "/v1/embeddings", "/v1/completions", "/v1/moderations")
 {}
 
 /**
@@ -1011,31 +1189,51 @@ export class CreateBatchRequestEndpoint
  */
 export class CreateBatchRequestCompletionWindow extends S.Literal("24h") {}
 
+/**
+ * Anchor timestamp after which the expiration policy applies. Supported anchors: `created_at`. Note that the anchor is the file creation time, not the time the batch is created.
+ */
+export class BatchFileExpirationAfterAnchor extends S.Literal("created_at") {}
+
+/**
+ * The expiration policy for the output and/or error file that are generated for a batch.
+ */
+export class BatchFileExpirationAfter extends S.Class<BatchFileExpirationAfter>("BatchFileExpirationAfter")({
+  /**
+   * Anchor timestamp after which the expiration policy applies. Supported anchors: `created_at`. Note that the anchor is the file creation time, not the time the batch is created.
+   */
+  "anchor": BatchFileExpirationAfterAnchor,
+  /**
+   * The number of seconds after the anchor time that the file will expire. Must be between 3600 (1 hour) and 2592000 (30 days).
+   */
+  "seconds": S.Int.pipe(S.greaterThanOrEqualTo(3600), S.lessThanOrEqualTo(2592000))
+}) {}
+
 export class CreateBatchRequest extends S.Class<CreateBatchRequest>("CreateBatchRequest")({
   /**
    * The ID of an uploaded file that contains requests for the new batch.
    *
-   * See [upload file](/docs/api-reference/files/create) for how to upload a file.
+   * See [upload file](https://platform.openai.com/docs/api-reference/files/create) for how to upload a file.
    *
-   * Your input file must be formatted as a [JSONL file](/docs/api-reference/batch/request-input), and must be uploaded with the purpose `batch`. The file can contain up to 50,000 requests, and can be up to 200 MB in size.
+   * Your input file must be formatted as a [JSONL file](https://platform.openai.com/docs/api-reference/batch/request-input), and must be uploaded with the purpose `batch`. The file can contain up to 50,000 requests, and can be up to 200 MB in size.
    */
   "input_file_id": S.String,
   /**
-   * The endpoint to be used for all requests in the batch. Currently `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, and `/v1/completions` are supported. Note that `/v1/embeddings` batches are also restricted to a maximum of 50,000 embedding inputs across all requests in the batch.
+   * The endpoint to be used for all requests in the batch. Currently `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/completions`, and `/v1/moderations` are supported. Note that `/v1/embeddings` batches are also restricted to a maximum of 50,000 embedding inputs across all requests in the batch.
    */
   "endpoint": CreateBatchRequestEndpoint,
   /**
    * The time frame within which the batch should be processed. Currently only `24h` is supported.
    */
   "completion_window": CreateBatchRequestCompletionWindow,
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "output_expires_after": S.optionalWith(BatchFileExpirationAfter, { nullable: true })
 }) {}
 
 export class ListChatCompletionsParamsOrder extends S.Literal("asc", "desc") {}
 
 export class ListChatCompletionsParams extends S.Struct({
   "model": S.optionalWith(S.String, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   "after": S.optionalWith(S.String, { nullable: true }),
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "order": S.optionalWith(ListChatCompletionsParamsOrder, { nullable: true, default: () => "asc" as const })
@@ -1051,6 +1249,9 @@ export class ChatCompletionListObject extends S.Literal("list") {}
  */
 export class ChatCompletionMessageToolCallType extends S.Literal("function") {}
 
+/**
+ * A call to a function tool created by the model.
+ */
 export class ChatCompletionMessageToolCall
   extends S.Class<ChatCompletionMessageToolCall>("ChatCompletionMessageToolCall")({
     /**
@@ -1078,9 +1279,45 @@ export class ChatCompletionMessageToolCall
 {}
 
 /**
+ * The type of the tool. Always `custom`.
+ */
+export class ChatCompletionMessageCustomToolCallType extends S.Literal("custom") {}
+
+/**
+ * A call to a custom tool created by the model.
+ */
+export class ChatCompletionMessageCustomToolCall
+  extends S.Class<ChatCompletionMessageCustomToolCall>("ChatCompletionMessageCustomToolCall")({
+    /**
+     * The ID of the tool call.
+     */
+    "id": S.String,
+    /**
+     * The type of the tool. Always `custom`.
+     */
+    "type": ChatCompletionMessageCustomToolCallType,
+    /**
+     * The custom tool that the model called.
+     */
+    "custom": S.Struct({
+      /**
+       * The name of the custom tool to call.
+       */
+      "name": S.String,
+      /**
+       * The input for the custom tool call generated by the model.
+       */
+      "input": S.String
+    })
+  })
+{}
+
+/**
  * The tool calls generated by the model, such as function calls.
  */
-export class ChatCompletionMessageToolCalls extends S.Array(ChatCompletionMessageToolCall) {}
+export class ChatCompletionMessageToolCalls
+  extends S.Array(S.Union(ChatCompletionMessageToolCall, ChatCompletionMessageCustomToolCall))
+{}
 
 /**
  * The role of the author of this message.
@@ -1092,18 +1329,12 @@ export class ChatCompletionResponseMessageRole extends S.Literal("assistant") {}
  */
 export class ChatCompletionResponseMessage
   extends S.Class<ChatCompletionResponseMessage>("ChatCompletionResponseMessage")({
-    /**
-     * The contents of the message.
-     */
     "content": S.NullOr(S.String),
-    /**
-     * The refusal message generated by the model.
-     */
     "refusal": S.NullOr(S.String),
     "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
     /**
      * Annotations for the message, when applicable, as when using the
-     * [web search tool](/docs/guides/tools-web-search?api-mode=chat).
+     * [web search tool](https://platform.openai.com/docs/guides/tools-web-search?api-mode=chat).
      */
     "annotations": S.optionalWith(
       S.Array(S.Struct({
@@ -1155,10 +1386,6 @@ export class ChatCompletionResponseMessage
       }),
       { nullable: true }
     ),
-    /**
-     * If the audio output modality is requested, this object contains data
-     * about the audio response from the model. [Learn more](/docs/guides/audio).
-     */
     "audio": S.optionalWith(
       S.Struct({
         /**
@@ -1195,9 +1422,6 @@ export class ChatCompletionTokenLogprob extends S.Class<ChatCompletionTokenLogpr
    * The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0` is used to signify that the token is very unlikely.
    */
   "logprob": S.Number,
-  /**
-   * A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token.
-   */
   "bytes": S.NullOr(S.Array(S.Int)),
   /**
    * List of the most likely tokens and their log probability, at this token position. In rare cases, there may be fewer than the number of requested `top_logprobs` returned.
@@ -1211,25 +1435,34 @@ export class ChatCompletionTokenLogprob extends S.Class<ChatCompletionTokenLogpr
      * The log probability of this token, if it is within the top 20 most likely tokens. Otherwise, the value `-9999.0` is used to signify that the token is very unlikely.
      */
     "logprob": S.Number,
-    /**
-     * A list of integers representing the UTF-8 bytes representation of the token. Useful in instances where characters are represented by multiple tokens and their byte representations must be combined to generate the correct text representation. Can be `null` if there is no bytes representation for the token.
-     */
     "bytes": S.NullOr(S.Array(S.Int))
   }))
 }) {}
 
 /**
- * Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service:
- *   - If set to 'auto', and the Project is Scale tier enabled, the system
- *     will utilize scale tier credits until they are exhausted.
- *   - If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee.
- *   - If set to 'default', the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee.
- *   - If set to 'flex', the request will be processed with the Flex Processing service tier. [Learn more](/docs/guides/flex-processing).
+ * Specifies the processing type used for serving the request.
+ *   - If set to 'auto', then the request will be processed with the service tier configured in the Project settings. Unless otherwise configured, the Project will use 'default'.
+ *   - If set to 'default', then the request will be processed with the standard pricing and performance for the selected model.
+ *   - If set to '[flex](https://platform.openai.com/docs/guides/flex-processing)' or '[priority](https://openai.com/api-priority-processing/)', then the request will be processed with the corresponding service tier.
  *   - When not set, the default behavior is 'auto'.
  *
- *   When this parameter is set, the response body will include the `service_tier` utilized.
+ *   When the `service_tier` parameter is set, the response body will include the `service_tier` value based on the processing mode actually used to serve the request. This response value may be different from the value set in the parameter.
  */
-export class ServiceTier extends S.Literal("auto", "default", "flex", "scale") {}
+export class ServiceTierEnum extends S.Literal("auto", "default", "flex", "scale", "priority") {}
+
+export class ServiceTier extends S.Union(
+  /**
+   * Specifies the processing type used for serving the request.
+   *   - If set to 'auto', then the request will be processed with the service tier configured in the Project settings. Unless otherwise configured, the Project will use 'default'.
+   *   - If set to 'default', then the request will be processed with the standard pricing and performance for the selected model.
+   *   - If set to '[flex](https://platform.openai.com/docs/guides/flex-processing)' or '[priority](https://openai.com/api-priority-processing/)', then the request will be processed with the corresponding service tier.
+   *   - When not set, the default behavior is 'auto'.
+   *
+   *   When the `service_tier` parameter is set, the response body will include the `service_tier` value based on the processing mode actually used to serve the request. This response value may be different from the value set in the parameter.
+   */
+  ServiceTierEnum,
+  S.Null
+) {}
 
 /**
  * The object type, which is always `chat.completion`.
@@ -1324,19 +1557,10 @@ export class CreateChatCompletionResponse
        */
       "index": S.Int,
       "message": ChatCompletionResponseMessage,
-      /**
-       * Log probability information for the choice.
-       */
-      "logprobs": S.optional(S.NullOr(S.Struct({
-        /**
-         * A list of message content tokens with log probability information.
-         */
+      "logprobs": S.NullOr(S.Struct({
         "content": S.NullOr(S.Array(ChatCompletionTokenLogprob)),
-        /**
-         * A list of message refusal tokens with log probability information.
-         */
         "refusal": S.NullOr(S.Array(ChatCompletionTokenLogprob))
-      })))
+      }))
     })),
     /**
      * The Unix timestamp (in seconds) of when the chat completion was created.
@@ -1346,7 +1570,7 @@ export class CreateChatCompletionResponse
      * The model used for the chat completion.
      */
     "model": S.String,
-    "service_tier": S.optionalWith(ServiceTier, { nullable: true, default: () => "auto" as const }),
+    "service_tier": S.optionalWith(S.Literal("auto", "default", "flex", "scale", "priority"), { nullable: true }),
     /**
      * This fingerprint represents the backend configuration that the model runs with.
      *
@@ -1393,7 +1617,7 @@ export class ChatCompletionList extends S.Class<ChatCompletionList>("ChatComplet
 export class ChatCompletionRequestMessageContentPartTextType extends S.Literal("text") {}
 
 /**
- * Learn about [text inputs](/docs/guides/text-generation).
+ * Learn about [text inputs](https://platform.openai.com/docs/guides/text-generation).
  */
 export class ChatCompletionRequestMessageContentPartText
   extends S.Class<ChatCompletionRequestMessageContentPartText>("ChatCompletionRequestMessageContentPartText")({
@@ -1488,12 +1712,12 @@ export class ChatCompletionRequestSystemMessage
 export class ChatCompletionRequestMessageContentPartImageType extends S.Literal("image_url") {}
 
 /**
- * Specifies the detail level of the image. Learn more in the [Vision guide](/docs/guides/vision#low-or-high-fidelity-image-understanding).
+ * Specifies the detail level of the image. Learn more in the [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
  */
 export class ChatCompletionRequestMessageContentPartImageImageUrlDetail extends S.Literal("auto", "low", "high") {}
 
 /**
- * Learn about [image inputs](/docs/guides/vision).
+ * Learn about [image inputs](https://platform.openai.com/docs/guides/vision).
  */
 export class ChatCompletionRequestMessageContentPartImage
   extends S.Class<ChatCompletionRequestMessageContentPartImage>("ChatCompletionRequestMessageContentPartImage")({
@@ -1507,7 +1731,7 @@ export class ChatCompletionRequestMessageContentPartImage
        */
       "url": S.String,
       /**
-       * Specifies the detail level of the image. Learn more in the [Vision guide](/docs/guides/vision#low-or-high-fidelity-image-understanding).
+       * Specifies the detail level of the image. Learn more in the [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
        */
       "detail": S.optionalWith(ChatCompletionRequestMessageContentPartImageImageUrlDetail, {
         nullable: true,
@@ -1528,7 +1752,7 @@ export class ChatCompletionRequestMessageContentPartAudioType extends S.Literal(
 export class ChatCompletionRequestMessageContentPartAudioInputAudioFormat extends S.Literal("wav", "mp3") {}
 
 /**
- * Learn about [audio inputs](/docs/guides/audio).
+ * Learn about [audio inputs](https://platform.openai.com/docs/guides/audio).
  */
 export class ChatCompletionRequestMessageContentPartAudio
   extends S.Class<ChatCompletionRequestMessageContentPartAudio>("ChatCompletionRequestMessageContentPartAudio")({
@@ -1555,7 +1779,7 @@ export class ChatCompletionRequestMessageContentPartAudio
 export class ChatCompletionRequestMessageContentPartFileType extends S.Literal("file") {}
 
 /**
- * Learn about [file inputs](/docs/guides/text) for text generation.
+ * Learn about [file inputs](https://platform.openai.com/docs/guides/text) for text generation.
  */
 export class ChatCompletionRequestMessageContentPartFile
   extends S.Class<ChatCompletionRequestMessageContentPartFile>("ChatCompletionRequestMessageContentPartFile")({
@@ -1609,7 +1833,7 @@ export class ChatCompletionRequestUserMessage
        */
       S.String,
       /**
-       * An array of content parts with a defined type. Supported options differ based on the [model](/docs/models) being used to generate the response. Can contain text, image, or audio inputs.
+       * An array of content parts with a defined type. Supported options differ based on the [model](https://platform.openai.com/docs/models) being used to generate the response. Can contain text, image, or audio inputs.
        */
       S.NonEmptyArray(ChatCompletionRequestUserMessageContentPart).pipe(S.minItems(1))
     ),
@@ -1656,9 +1880,6 @@ export class ChatCompletionRequestAssistantMessageRole extends S.Literal("assist
  */
 export class ChatCompletionRequestAssistantMessage
   extends S.Class<ChatCompletionRequestAssistantMessage>("ChatCompletionRequestAssistantMessage")({
-    /**
-     * The contents of the assistant message. Required unless `tool_calls` or `function_call` is specified.
-     */
     "content": S.optionalWith(
       S.Union(
         /**
@@ -1672,9 +1893,6 @@ export class ChatCompletionRequestAssistantMessage
       ),
       { nullable: true }
     ),
-    /**
-     * The refusal message by the assistant.
-     */
     "refusal": S.optionalWith(S.String, { nullable: true }),
     /**
      * The role of the messages author, in this case `assistant`.
@@ -1684,10 +1902,6 @@ export class ChatCompletionRequestAssistantMessage
      * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
      */
     "name": S.optionalWith(S.String, { nullable: true }),
-    /**
-     * Data about a previous audio response from the model.
-     * [Learn more](/docs/guides/audio).
-     */
     "audio": S.optionalWith(
       S.Struct({
         /**
@@ -1698,9 +1912,6 @@ export class ChatCompletionRequestAssistantMessage
       { nullable: true }
     ),
     "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
-    /**
-     * Deprecated and replaced by `tool_calls`. The name and arguments of a function that should be called, as generated by the model.
-     */
     "function_call": S.optionalWith(
       S.Struct({
         /**
@@ -1761,9 +1972,6 @@ export class ChatCompletionRequestFunctionMessage
      * The role of the messages author, in this case `function`.
      */
     "role": ChatCompletionRequestFunctionMessageRole,
-    /**
-     * The contents of the function message.
-     */
     "content": S.NullOr(S.String),
     /**
      * The name of the function to call.
@@ -1781,7 +1989,19 @@ export class ChatCompletionRequestMessage extends S.Union(
   ChatCompletionRequestFunctionMessage
 ) {}
 
-export class ModelIdsSharedEnum extends S.Literal(
+export class ChatModel extends S.Literal(
+  "gpt-5.1",
+  "gpt-5.1-2025-11-13",
+  "gpt-5.1-codex",
+  "gpt-5.1-mini",
+  "gpt-5.1-chat-latest",
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-5-2025-08-07",
+  "gpt-5-mini-2025-08-07",
+  "gpt-5-nano-2025-08-07",
+  "gpt-5-chat-latest",
   "gpt-4.1",
   "gpt-4.1-mini",
   "gpt-4.1-nano",
@@ -1807,6 +2027,7 @@ export class ModelIdsSharedEnum extends S.Literal(
   "gpt-4o-audio-preview",
   "gpt-4o-audio-preview-2024-10-01",
   "gpt-4o-audio-preview-2024-12-17",
+  "gpt-4o-audio-preview-2025-06-03",
   "gpt-4o-mini-audio-preview",
   "gpt-4o-mini-audio-preview-2024-12-17",
   "gpt-4o-search-preview",
@@ -1814,6 +2035,7 @@ export class ModelIdsSharedEnum extends S.Literal(
   "gpt-4o-search-preview-2025-03-11",
   "gpt-4o-mini-search-preview-2025-03-11",
   "chatgpt-4o-latest",
+  "codex-mini-latest",
   "gpt-4o-mini",
   "gpt-4o-mini-2024-07-18",
   "gpt-4-turbo",
@@ -1837,21 +2059,41 @@ export class ModelIdsSharedEnum extends S.Literal(
   "gpt-3.5-turbo-16k-0613"
 ) {}
 
-export class ModelIdsShared extends S.Union(S.String, ModelIdsSharedEnum) {}
+export class ModelIdsShared extends S.Union(S.String, ChatModel) {}
+
+export class ResponseModalities extends S.Union(
+  /**
+   * Output types that you would like the model to generate.
+   * Most models are capable of generating text, which is the default:
+   *
+   * `["text"]`
+   *
+   * The `gpt-4o-audio-preview` model can also be used to
+   * [generate audio](https://platform.openai.com/docs/guides/audio). To request that this model generate
+   * both text and audio responses, you can use:
+   *
+   * `["text", "audio"]`
+   */
+  S.Array(S.Literal("text", "audio")),
+  S.Null
+) {}
 
 /**
- * Output types that you would like the model to generate.
- * Most models are capable of generating text, which is the default:
- *
- * `["text"]`
- *
- * The `gpt-4o-audio-preview` model can also be used to
- * [generate audio](/docs/guides/audio). To request that this model generate
- * both text and audio responses, you can use:
- *
- * `["text", "audio"]`
+ * Constrains the verbosity of the model's response. Lower values will result in
+ * more concise responses, while higher values will result in more verbose responses.
+ * Currently supported values are `low`, `medium`, and `high`.
  */
-export class ResponseModalities extends S.Array(S.Literal("text", "audio")) {}
+export class VerbosityEnum extends S.Literal("low", "medium", "high") {}
+
+export class Verbosity extends S.Union(
+  /**
+   * Constrains the verbosity of the model's response. Lower values will result in
+   * more concise responses, while higher values will result in more verbose responses.
+   * Currently supported values are `low`, `medium`, and `high`.
+   */
+  VerbosityEnum,
+  S.Null
+) {}
 
 /**
  * The type of location approximation. Always `approximate`.
@@ -1933,34 +2175,50 @@ export class PredictionContent extends S.Class<PredictionContent>("PredictionCon
      */
     S.String,
     /**
-     * An array of content parts with a defined type. Supported options differ based on the [model](/docs/models) being used to generate the response. Can contain text inputs.
+     * An array of content parts with a defined type. Supported options differ based on the [model](https://platform.openai.com/docs/models) being used to generate the response. Can contain text inputs.
      */
     S.NonEmptyArray(ChatCompletionRequestMessageContentPartText).pipe(S.minItems(1))
   )
 }) {}
 
-/**
- * Options for streaming response. Only set this when you set `stream: true`.
- */
-export class ChatCompletionStreamOptions extends S.Class<ChatCompletionStreamOptions>("ChatCompletionStreamOptions")({
+export class ChatCompletionStreamOptions extends S.Union(
   /**
-   * If set, an additional chunk will be streamed before the `data: [DONE]`
-   * message. The `usage` field on this chunk shows the token usage statistics
-   * for the entire request, and the `choices` field will always be an empty
-   * array.
-   *
-   * All other chunks will also include a `usage` field, but with a null
-   * value. **NOTE:** If the stream is interrupted, you may not receive the
-   * final usage chunk which contains the total token usage for the request.
+   * Options for streaming response. Only set this when you set `stream: true`.
    */
-  "include_usage": S.optionalWith(S.Boolean, { nullable: true })
-}) {}
+  S.Struct({
+    /**
+     * If set, an additional chunk will be streamed before the `data: [DONE]`
+     * message. The `usage` field on this chunk shows the token usage statistics
+     * for the entire request, and the `choices` field will always be an empty
+     * array.
+     *
+     * All other chunks will also include a `usage` field, but with a null
+     * value. **NOTE:** If the stream is interrupted, you may not receive the
+     * final usage chunk which contains the total token usage for the request.
+     */
+    "include_usage": S.optionalWith(S.Boolean, { nullable: true }),
+    /**
+     * When true, stream obfuscation will be enabled. Stream obfuscation adds
+     * random characters to an `obfuscation` field on streaming delta events to
+     * normalize payload sizes as a mitigation to certain side-channel attacks.
+     * These obfuscation fields are included by default, but add a small amount
+     * of overhead to the data stream. You can set `include_obfuscation` to
+     * false to optimize for bandwidth if you trust the network links between
+     * your application and the OpenAI API.
+     */
+    "include_obfuscation": S.optionalWith(S.Boolean, { nullable: true })
+  }),
+  S.Null
+) {}
 
 /**
  * The type of the tool. Currently, only `function` is supported.
  */
 export class ChatCompletionToolType extends S.Literal("function") {}
 
+/**
+ * A function tool that can be used to generate a response.
+ */
 export class ChatCompletionTool extends S.Class<ChatCompletionTool>("ChatCompletionTool")({
   /**
    * The type of the tool. Currently, only `function` is supported.
@@ -1970,12 +2228,144 @@ export class ChatCompletionTool extends S.Class<ChatCompletionTool>("ChatComplet
 }) {}
 
 /**
+ * The type of the custom tool. Always `custom`.
+ */
+export class CustomToolChatCompletionsType extends S.Literal("custom") {}
+
+/**
+ * Grammar format. Always `grammar`.
+ */
+export class CustomToolChatCompletionsCustomFormatEnumType extends S.Literal("grammar") {}
+
+/**
+ * The syntax of the grammar definition. One of `lark` or `regex`.
+ */
+export class CustomToolChatCompletionsCustomFormatEnumGrammarSyntax extends S.Literal("lark", "regex") {}
+
+/**
+ * A custom tool that processes input using a specified format.
+ */
+export class CustomToolChatCompletions extends S.Class<CustomToolChatCompletions>("CustomToolChatCompletions")({
+  /**
+   * The type of the custom tool. Always `custom`.
+   */
+  "type": CustomToolChatCompletionsType,
+  /**
+   * Properties of the custom tool.
+   */
+  "custom": S.Struct({
+    /**
+     * The name of the custom tool, used to identify it in tool calls.
+     */
+    "name": S.String,
+    /**
+     * Optional description of the custom tool, used to provide more context.
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The input format for the custom tool. Default is unconstrained text.
+     */
+    "format": S.optionalWith(
+      S.Union(
+        /**
+         * Unconstrained free-form text.
+         */
+        S.Struct({
+          /**
+           * Unconstrained text format. Always `text`.
+           */
+          "type": CustomToolChatCompletionsCustomFormatEnumType
+        }),
+        /**
+         * A grammar defined by the user.
+         */
+        S.Struct({
+          /**
+           * Grammar format. Always `grammar`.
+           */
+          "type": CustomToolChatCompletionsCustomFormatEnumType,
+          /**
+           * Your chosen grammar.
+           */
+          "grammar": S.Struct({
+            /**
+             * The grammar definition.
+             */
+            "definition": S.String,
+            /**
+             * The syntax of the grammar definition. One of `lark` or `regex`.
+             */
+            "syntax": CustomToolChatCompletionsCustomFormatEnumGrammarSyntax
+          })
+        })
+      ),
+      { nullable: true }
+    )
+  })
+}) {}
+
+/**
  * `none` means the model will not call any tool and instead generates a message. `auto` means the model can pick between generating a message or calling one or more tools. `required` means the model must call one or more tools.
  */
 export class ChatCompletionToolChoiceOptionEnum extends S.Literal("none", "auto", "required") {}
 
 /**
- * The type of the tool. Currently, only `function` is supported.
+ * Allowed tool configuration type. Always `allowed_tools`.
+ */
+export class ChatCompletionAllowedToolsChoiceType extends S.Literal("allowed_tools") {}
+
+/**
+ * Constrains the tools available to the model to a pre-defined set.
+ *
+ * `auto` allows the model to pick from among the allowed tools and generate a
+ * message.
+ *
+ * `required` requires the model to call one or more of the allowed tools.
+ */
+export class ChatCompletionAllowedToolsMode extends S.Literal("auto", "required") {}
+
+/**
+ * Constrains the tools available to the model to a pre-defined set.
+ */
+export class ChatCompletionAllowedTools extends S.Class<ChatCompletionAllowedTools>("ChatCompletionAllowedTools")({
+  /**
+   * Constrains the tools available to the model to a pre-defined set.
+   *
+   * `auto` allows the model to pick from among the allowed tools and generate a
+   * message.
+   *
+   * `required` requires the model to call one or more of the allowed tools.
+   */
+  "mode": ChatCompletionAllowedToolsMode,
+  /**
+   * A list of tool definitions that the model should be allowed to call.
+   *
+   * For the Chat Completions API, the list of tool definitions might look like:
+   * ```json
+   * [
+   *   { "type": "function", "function": { "name": "get_weather" } },
+   *   { "type": "function", "function": { "name": "get_time" } }
+   * ]
+   * ```
+   */
+  "tools": S.Array(S.Record({ key: S.String, value: S.Unknown }))
+}) {}
+
+/**
+ * Constrains the tools available to the model to a pre-defined set.
+ */
+export class ChatCompletionAllowedToolsChoice
+  extends S.Class<ChatCompletionAllowedToolsChoice>("ChatCompletionAllowedToolsChoice")({
+    /**
+     * Allowed tool configuration type. Always `allowed_tools`.
+     */
+    "type": ChatCompletionAllowedToolsChoiceType,
+    "allowed_tools": ChatCompletionAllowedTools
+  })
+{}
+
+/**
+ * For function calling, the type is always `function`.
  */
 export class ChatCompletionNamedToolChoiceType extends S.Literal("function") {}
 
@@ -1985,12 +2375,35 @@ export class ChatCompletionNamedToolChoiceType extends S.Literal("function") {}
 export class ChatCompletionNamedToolChoice
   extends S.Class<ChatCompletionNamedToolChoice>("ChatCompletionNamedToolChoice")({
     /**
-     * The type of the tool. Currently, only `function` is supported.
+     * For function calling, the type is always `function`.
      */
     "type": ChatCompletionNamedToolChoiceType,
     "function": S.Struct({
       /**
        * The name of the function to call.
+       */
+      "name": S.String
+    })
+  })
+{}
+
+/**
+ * For custom tool calling, the type is always `custom`.
+ */
+export class ChatCompletionNamedToolChoiceCustomType extends S.Literal("custom") {}
+
+/**
+ * Specifies a tool the model should use. Use to force the model to call a specific custom tool.
+ */
+export class ChatCompletionNamedToolChoiceCustom
+  extends S.Class<ChatCompletionNamedToolChoiceCustom>("ChatCompletionNamedToolChoiceCustom")({
+    /**
+     * For custom tool calling, the type is always `custom`.
+     */
+    "type": ChatCompletionNamedToolChoiceCustomType,
+    "custom": S.Struct({
+      /**
+       * The name of the custom tool to call.
        */
       "name": S.String
     })
@@ -2011,11 +2424,13 @@ export class ChatCompletionToolChoiceOption extends S.Union(
    * `none` means the model will not call any tool and instead generates a message. `auto` means the model can pick between generating a message or calling one or more tools. `required` means the model must call one or more tools.
    */
   ChatCompletionToolChoiceOptionEnum,
-  ChatCompletionNamedToolChoice
+  ChatCompletionAllowedToolsChoice,
+  ChatCompletionNamedToolChoice,
+  ChatCompletionNamedToolChoiceCustom
 ) {}
 
 /**
- * Whether to enable [parallel function calling](/docs/guides/function-calling#configuring-parallel-function-calling) during tool use.
+ * Whether to enable [parallel function calling](https://platform.openai.com/docs/guides/function-calling#configuring-parallel-function-calling) during tool use.
  */
 export class ParallelToolCalls extends S.Boolean {}
 
@@ -2048,31 +2463,31 @@ export class ChatCompletionFunctions extends S.Class<ChatCompletionFunctions>("C
   "parameters": S.optionalWith(FunctionParameters, { nullable: true })
 }) {}
 
+/**
+ * The retention policy for the prompt cache. Set to `24h` to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. [Learn more](https://platform.openai.com/docs/guides/prompt-caching#prompt-cache-retention).
+ */
+export class CreateChatCompletionRequestPromptCacheRetentionEnum extends S.Literal("in_memory", "24h") {}
+
 export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
   /**
    * A list of messages comprising the conversation so far. Depending on the
-   * [model](/docs/models) you use, different message types (modalities) are
-   * supported, like [text](/docs/guides/text-generation),
-   * [images](/docs/guides/vision), and [audio](/docs/guides/audio).
+   * [model](https://platform.openai.com/docs/models) you use, different message types (modalities) are
+   * supported, like [text](https://platform.openai.com/docs/guides/text-generation),
+   * [images](https://platform.openai.com/docs/guides/vision), and [audio](https://platform.openai.com/docs/guides/audio).
    */
   "messages": S.NonEmptyArray(ChatCompletionRequestMessage).pipe(S.minItems(1)),
   /**
    * Model ID used to generate the response, like `gpt-4o` or `o3`. OpenAI
    * offers a wide range of models with different capabilities, performance
-   * characteristics, and price points. Refer to the [model guide](/docs/models)
+   * characteristics, and price points. Refer to the [model guide](https://platform.openai.com/docs/models)
    * to browse and compare available models.
    */
   "model": ModelIdsShared,
-  "modalities": S.optionalWith(ResponseModalities, { nullable: true }),
+  "modalities": S.optionalWith(S.Array(S.Literal("text", "audio")), { nullable: true }),
+  "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true }),
+  "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true }),
   /**
-   * Constrains the verbosity of the model's response. Lower values will result
-   * in more concise responseswhile higher values will result in more verbose
-   * responses.
-   */
-  "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true, default: () => "medium" as const }),
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
-  /**
-   * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
+   * An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and [reasoning tokens](https://platform.openai.com/docs/guides/reasoning).
    */
   "max_completion_tokens": S.optionalWith(S.Int, { nullable: true }),
   /**
@@ -2095,7 +2510,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   }),
   /**
    * This tool searches the web for relevant results to use in a response.
-   * Learn more about the [web search tool](/docs/guides/tools-web-search?api-mode=chat).
+   * Learn more about the [web search tool](https://platform.openai.com/docs/guides/tools-web-search?api-mode=chat).
    */
   "web_search_options": S.optionalWith(
     S.Struct({
@@ -2116,11 +2531,6 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     }),
     { nullable: true }
   ),
-  /**
-   * An integer between 0 and 20 specifying the number of most likely tokens to
-   * return at each token position, each with an associated log probability.
-   * `logprobs` must be set to `true` if this parameter is used.
-   */
   "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
   /**
    * An object specifying the format that the model must output.
@@ -2128,7 +2538,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
    * Setting to `{ "type": "json_schema", "json_schema": {...} }` enables
    * Structured Outputs which ensures the model will match your supplied JSON
    * schema. Learn more in the [Structured Outputs
-   * guide](/docs/guides/structured-outputs).
+   * guide](https://platform.openai.com/docs/guides/structured-outputs).
    *
    * Setting to `{ "type": "json_object" }` enables the older JSON mode, which
    * ensures the message the model generates is valid JSON. Using `json_schema`
@@ -2139,7 +2549,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   }),
   /**
    * Parameters for audio output. Required when audio output is requested with
-   * `modalities: ["audio"]`. [Learn more](/docs/guides/audio).
+   * `modalities: ["audio"]`. [Learn more](https://platform.openai.com/docs/guides/audio).
    */
   "audio": S.optionalWith(
     S.Struct({
@@ -2158,19 +2568,21 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   ),
   /**
    * Whether or not to store the output of this chat completion request for
-   * use in our [model distillation](/docs/guides/distillation) or
-   * [evals](/docs/guides/evals) products.
+   * use in our [model distillation](https://platform.openai.com/docs/guides/distillation) or
+   * [evals](https://platform.openai.com/docs/guides/evals) products.
+   *
+   * Supports text and image inputs. Note: image inputs over 8MB will be dropped.
    */
   "store": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
   /**
    * If set to true, the model response data will be streamed to the client
    * as it is generated using [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format).
-   * See the [Streaming section below](/docs/api-reference/chat/streaming)
-   * for more information, along with the [streaming responses](/docs/guides/streaming-responses)
+   * See the [Streaming section below](https://platform.openai.com/docs/api-reference/chat/streaming)
+   * for more information, along with the [streaming responses](https://platform.openai.com/docs/guides/streaming-responses)
    * guide for more information on how to handle the streaming events.
    */
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stop": S.optionalWith(S.NullOr(StopConfiguration), { default: () => null }),
+  "stop": S.optionalWith(StopConfiguration, { nullable: true }),
   /**
    * Modify the likelihood of specified tokens appearing in the completion.
    *
@@ -2194,7 +2606,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
    * [costs](https://openai.com/api/pricing/) for text generated via API.
    *
    * This value is now deprecated in favor of `max_completion_tokens`, and is
-   * not compatible with [o-series models](/docs/guides/reasoning).
+   * not compatible with [o-series models](https://platform.openai.com/docs/guides/reasoning).
    */
   "max_tokens": S.optionalWith(S.Int, { nullable: true }),
   /**
@@ -2205,7 +2617,7 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     default: () => 1 as const
   }),
   /**
-   * Configuration for a [Predicted Output](/docs/guides/predicted-outputs),
+   * Configuration for a [Predicted Output](https://platform.openai.com/docs/guides/predicted-outputs),
    * which can greatly improve response times when large parts of the model
    * response are known ahead of time. This is most common when you are
    * regenerating a file with only minor changes to most of the content.
@@ -2220,11 +2632,38 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
     S.Int.pipe(S.greaterThanOrEqualTo(-9223372036854776000), S.lessThanOrEqualTo(9223372036854776000)),
     { nullable: true }
   ),
-  "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { default: () => null }),
+  "stream_options": S.optionalWith(
+    S.Struct({
+      /**
+       * If set, an additional chunk will be streamed before the `data: [DONE]`
+       * message. The `usage` field on this chunk shows the token usage statistics
+       * for the entire request, and the `choices` field will always be an empty
+       * array.
+       *
+       * All other chunks will also include a `usage` field, but with a null
+       * value. **NOTE:** If the stream is interrupted, you may not receive the
+       * final usage chunk which contains the total token usage for the request.
+       */
+      "include_usage": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * When true, stream obfuscation will be enabled. Stream obfuscation adds
+       * random characters to an `obfuscation` field on streaming delta events to
+       * normalize payload sizes as a mitigation to certain side-channel attacks.
+       * These obfuscation fields are included by default, but add a small amount
+       * of overhead to the data stream. You can set `include_obfuscation` to
+       * false to optimize for bandwidth if you trust the network links between
+       * your application and the OpenAI API.
+       */
+      "include_obfuscation": S.optionalWith(S.Boolean, { nullable: true })
+    }),
+    { nullable: true }
+  ),
   /**
-   * A list of tools the model may call. Currently, only functions are supported as a tool. Use this to provide a list of functions the model may generate JSON inputs for. A max of 128 functions are supported.
+   * A list of tools the model may call. You can provide either
+   * [custom tools](https://platform.openai.com/docs/guides/function-calling#custom-tools) or
+   * [function tools](https://platform.openai.com/docs/guides/function-calling).
    */
-  "tools": S.optionalWith(S.Array(ChatCompletionTool), { nullable: true }),
+  "tools": S.optionalWith(S.Array(S.Union(ChatCompletionTool, CustomToolChatCompletions)), { nullable: true }),
   "tool_choice": S.optionalWith(ChatCompletionToolChoiceOption, { nullable: true }),
   "parallel_tool_calls": S.optionalWith(ParallelToolCalls, { nullable: true, default: () => true as const }),
   /**
@@ -2262,36 +2701,30 @@ export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionReq
   "functions": S.optionalWith(S.NonEmptyArray(ChatCompletionFunctions).pipe(S.minItems(1), S.maxItems(128)), {
     nullable: true
   }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), { nullable: true }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   /**
-   * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-   * We generally recommend altering this or `top_p` but not both.
-   */
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * An alternative to sampling with temperature, called nucleus sampling,
-   * where the model considers the results of the tokens with top_p probability
-   * mass. So 0.1 means only the tokens comprising the top 10% probability mass
-   * are considered.
-   *
-   * We generally recommend altering this or `temperature` but not both.
-   */
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * This field is being replaced by `safety_identifier` and `prompt_cache_key`. Use `prompt_cache_key` instead to maintain caching optimizations.
+   * A stable identifier for your end-users.
+   * Used to boost cache hit rates by better bucketing similar requests and  to help OpenAI detect and prevent abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
    */
   "user": S.optionalWith(S.String, { nullable: true }),
-  "service_tier": S.optionalWith(ServiceTier, { nullable: true, default: () => "auto" as const })
+  /**
+   * A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies.
+   * The IDs should be a string that uniquely identifies each user. We recommend hashing their username or email address, in order to avoid sending us any identifying information. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
+   */
+  "safety_identifier": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Used by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces the `user` field. [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
+   */
+  "prompt_cache_key": S.optionalWith(S.String, { nullable: true }),
+  "service_tier": S.optionalWith(S.Literal("auto", "default", "flex", "scale", "priority"), { nullable: true }),
+  "prompt_cache_retention": S.optionalWith(CreateChatCompletionRequestPromptCacheRetentionEnum, { nullable: true })
 }) {}
 
 export class UpdateChatCompletionRequest extends S.Class<UpdateChatCompletionRequest>("UpdateChatCompletionRequest")({
-  "metadata": S.NullOr(Metadata)
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
 
 /**
@@ -2343,18 +2776,16 @@ export class ChatCompletionMessageList extends S.Class<ChatCompletionMessageList
      * The identifier of the chat message.
      */
     "id": S.String,
-    /**
-     * The contents of the message.
-     */
+    "content_parts": S.optionalWith(
+      S.Array(S.Union(ChatCompletionRequestMessageContentPartText, ChatCompletionRequestMessageContentPartImage)),
+      { nullable: true }
+    ),
     "content": S.NullOr(S.String),
-    /**
-     * The refusal message generated by the model.
-     */
     "refusal": S.NullOr(S.String),
     "tool_calls": S.optionalWith(ChatCompletionMessageToolCalls, { nullable: true }),
     /**
      * Annotations for the message, when applicable, as when using the
-     * [web search tool](/docs/guides/tools-web-search?api-mode=chat).
+     * [web search tool](https://platform.openai.com/docs/guides/tools-web-search?api-mode=chat).
      */
     "annotations": S.optionalWith(
       S.Array(S.Struct({
@@ -2406,10 +2837,6 @@ export class ChatCompletionMessageList extends S.Class<ChatCompletionMessageList
       }),
       { nullable: true }
     ),
-    /**
-     * If the audio output modality is requested, this object contains data
-     * about the audio response from the model. [Learn more](/docs/guides/audio).
-     */
     "audio": S.optionalWith(
       S.Struct({
         /**
@@ -2455,7 +2882,7 @@ export class CreateCompletionRequestModelEnum
 
 export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("CreateCompletionRequest")({
   /**
-   * ID of the model to use. You can use the [List models](/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](/docs/models) for descriptions of them.
+   * ID of the model to use. You can use the [List models](https://platform.openai.com/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](https://platform.openai.com/docs/models) for descriptions of them.
    */
   "model": S.Union(S.String, CreateCompletionRequestModelEnum),
   /**
@@ -2470,7 +2897,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
       S.NonEmptyArray(S.Int).pipe(S.minItems(1)),
       S.NonEmptyArray(S.NonEmptyArray(S.Int).pipe(S.minItems(1))).pipe(S.minItems(1))
     )
-  ).pipe(S.propertySignature, S.withConstructorDefault(() => "<|endoftext|>" as const)),
+  ),
   /**
    * Generates `best_of` completions server-side and returns the "best" (the one with the highest log probability per token). Results cannot be streamed.
    *
@@ -2489,7 +2916,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
   /**
    * Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
    *
-   * [See more information about frequency and presence penalties.](/docs/guides/text-generation)
+   * [See more information about frequency and presence penalties.](https://platform.openai.com/docs/guides/text-generation)
    */
   "frequency_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -2529,7 +2956,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
   /**
    * Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
    *
-   * [See more information about frequency and presence penalties.](/docs/guides/text-generation)
+   * [See more information about frequency and presence penalties.](https://platform.openai.com/docs/guides/text-generation)
    */
   "presence_penalty": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(-2), S.lessThanOrEqualTo(2)), {
     nullable: true,
@@ -2541,12 +2968,37 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
    * Determinism is not guaranteed, and you should refer to the `system_fingerprint` response parameter to monitor changes in the backend.
    */
   "seed": S.optionalWith(S.Int, { nullable: true }),
-  "stop": S.optionalWith(S.NullOr(StopConfiguration), { default: () => null }),
+  "stop": S.optionalWith(StopConfiguration, { nullable: true }),
   /**
    * Whether to stream back partial progress. If set, tokens will be sent as data-only [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) as they become available, with the stream terminated by a `data: [DONE]` message. [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions).
    */
   "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  "stream_options": S.optionalWith(S.NullOr(ChatCompletionStreamOptions), { default: () => null }),
+  "stream_options": S.optionalWith(
+    S.Struct({
+      /**
+       * If set, an additional chunk will be streamed before the `data: [DONE]`
+       * message. The `usage` field on this chunk shows the token usage statistics
+       * for the entire request, and the `choices` field will always be an empty
+       * array.
+       *
+       * All other chunks will also include a `usage` field, but with a null
+       * value. **NOTE:** If the stream is interrupted, you may not receive the
+       * final usage chunk which contains the total token usage for the request.
+       */
+      "include_usage": S.optionalWith(S.Boolean, { nullable: true }),
+      /**
+       * When true, stream obfuscation will be enabled. Stream obfuscation adds
+       * random characters to an `obfuscation` field on streaming delta events to
+       * normalize payload sizes as a mitigation to certain side-channel attacks.
+       * These obfuscation fields are included by default, but add a small amount
+       * of overhead to the data stream. You can set `include_obfuscation` to
+       * false to optimize for bandwidth if you trust the network links between
+       * your application and the OpenAI API.
+       */
+      "include_obfuscation": S.optionalWith(S.Boolean, { nullable: true })
+    }),
+    { nullable: true }
+  ),
   /**
    * The suffix that comes after a completion of inserted text.
    *
@@ -2572,7 +3024,7 @@ export class CreateCompletionRequest extends S.Class<CreateCompletionRequest>("C
     default: () => 1 as const
   }),
   /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).
    */
   "user": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -2630,6 +3082,2734 @@ export class CreateCompletionResponse extends S.Class<CreateCompletionResponse>(
   "usage": S.optionalWith(CompletionUsage, { nullable: true })
 }) {}
 
+export class ListContainersParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListContainersParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(ListContainersParamsOrder, { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The reference point for the expiration.
+ */
+export class ContainerResourceExpiresAfterAnchor extends S.Literal("last_active_at") {}
+
+export class ContainerResource extends S.Class<ContainerResource>("ContainerResource")({
+  /**
+   * Unique identifier for the container.
+   */
+  "id": S.String,
+  /**
+   * The type of this object.
+   */
+  "object": S.String,
+  /**
+   * Name of the container.
+   */
+  "name": S.String,
+  /**
+   * Unix timestamp (in seconds) when the container was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Status of the container (e.g., active, deleted).
+   */
+  "status": S.String,
+  /**
+   * The container will expire after this time period.
+   * The anchor is the reference point for the expiration.
+   * The minutes is the number of minutes after the anchor before the container expires.
+   */
+  "expires_after": S.optionalWith(
+    S.Struct({
+      /**
+       * The reference point for the expiration.
+       */
+      "anchor": S.optionalWith(ContainerResourceExpiresAfterAnchor, { nullable: true }),
+      /**
+       * The number of minutes after the anchor before the container expires.
+       */
+      "minutes": S.optionalWith(S.Int, { nullable: true })
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class ContainerListResource extends S.Class<ContainerListResource>("ContainerListResource")({
+  /**
+   * The type of object returned, must be 'list'.
+   */
+  "object": S.Literal("list"),
+  /**
+   * A list of containers.
+   */
+  "data": S.Array(ContainerResource),
+  /**
+   * The ID of the first container in the list.
+   */
+  "first_id": S.String,
+  /**
+   * The ID of the last container in the list.
+   */
+  "last_id": S.String,
+  /**
+   * Whether there are more containers available.
+   */
+  "has_more": S.Boolean
+}) {}
+
+/**
+ * Time anchor for the expiration time. Currently only 'last_active_at' is supported.
+ */
+export class CreateContainerBodyExpiresAfterAnchor extends S.Literal("last_active_at") {}
+
+export class CreateContainerBody extends S.Class<CreateContainerBody>("CreateContainerBody")({
+  /**
+   * Name of the container to create.
+   */
+  "name": S.String,
+  /**
+   * IDs of files to copy to the container.
+   */
+  "file_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Container expiration time in seconds relative to the 'anchor' time.
+   */
+  "expires_after": S.optionalWith(
+    S.Struct({
+      /**
+       * Time anchor for the expiration time. Currently only 'last_active_at' is supported.
+       */
+      "anchor": CreateContainerBodyExpiresAfterAnchor,
+      "minutes": S.Int
+    }),
+    { nullable: true }
+  )
+}) {}
+
+export class ListContainerFilesParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListContainerFilesParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(ListContainerFilesParamsOrder, { nullable: true, default: () => "desc" as const }),
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class ContainerFileResource extends S.Class<ContainerFileResource>("ContainerFileResource")({
+  /**
+   * Unique identifier for the file.
+   */
+  "id": S.String,
+  /**
+   * The type of this object (`container.file`).
+   */
+  "object": S.Literal("container.file"),
+  /**
+   * The container this file belongs to.
+   */
+  "container_id": S.String,
+  /**
+   * Unix timestamp (in seconds) when the file was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Size of the file in bytes.
+   */
+  "bytes": S.Int,
+  /**
+   * Path of the file in the container.
+   */
+  "path": S.String,
+  /**
+   * Source of the file (e.g., `user`, `assistant`).
+   */
+  "source": S.String
+}) {}
+
+export class ContainerFileListResource extends S.Class<ContainerFileListResource>("ContainerFileListResource")({
+  /**
+   * The type of object returned, must be 'list'.
+   */
+  "object": S.Literal("list"),
+  /**
+   * A list of container files.
+   */
+  "data": S.Array(ContainerFileResource),
+  /**
+   * The ID of the first file in the list.
+   */
+  "first_id": S.String,
+  /**
+   * The ID of the last file in the list.
+   */
+  "last_id": S.String,
+  /**
+   * Whether there are more files available.
+   */
+  "has_more": S.Boolean
+}) {}
+
+export class CreateContainerFileBody extends S.Class<CreateContainerFileBody>("CreateContainerFileBody")({
+  /**
+   * Name of the file to create.
+   */
+  "file_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The File object (not file name) to be uploaded.
+   */
+  "file": S.optionalWith(S.instanceOf(globalThis.Blob), { nullable: true })
+}) {}
+
+export class ListConversationItemsParamsOrder extends S.Literal("asc", "desc") {}
+
+/**
+ * Specify additional output data to include in the model response. Currently supported values are:
+ * - `web_search_call.action.sources`: Include the sources of the web search tool call.
+ * - `code_interpreter_call.outputs`: Includes the outputs of python code execution in code interpreter tool call items.
+ * - `computer_call_output.output.image_url`: Include image urls from the computer call output.
+ * - `file_search_call.results`: Include the search results of the file search tool call.
+ * - `message.input_image.image_url`: Include image urls from the input message.
+ * - `message.output_text.logprobs`: Include logprobs with assistant messages.
+ * - `reasoning.encrypted_content`: Includes an encrypted version of reasoning tokens in reasoning item outputs. This enables reasoning items to be used in multi-turn conversations when using the Responses API statelessly (like when the `store` parameter is set to `false`, or when an organization is enrolled in the zero data retention program).
+ */
+export class IncludeEnum extends S.Literal(
+  "file_search_call.results",
+  "web_search_call.results",
+  "web_search_call.action.sources",
+  "message.input_image.image_url",
+  "computer_call_output.output.image_url",
+  "code_interpreter_call.outputs",
+  "reasoning.encrypted_content",
+  "message.output_text.logprobs"
+) {}
+
+export class ListConversationItemsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
+  "order": S.optionalWith(ListConversationItemsParamsOrder, { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "include": S.optionalWith(S.Array(IncludeEnum), { nullable: true })
+}) {}
+
+/**
+ * The type of the message. Always set to `message`.
+ */
+export class MessageType extends S.Literal("message") {}
+
+export class MessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+export class MessageRole
+  extends S.Literal("unknown", "user", "assistant", "system", "critic", "discriminator", "developer", "tool")
+{}
+
+/**
+ * The type of the input item. Always `input_text`.
+ */
+export class InputTextContentType extends S.Literal("input_text") {}
+
+/**
+ * A text input to the model.
+ */
+export class InputTextContent extends S.Class<InputTextContent>("InputTextContent")({
+  /**
+   * The type of the input item. Always `input_text`.
+   */
+  "type": InputTextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_text" as const)),
+  /**
+   * The text input to the model.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * The type of the output text. Always `output_text`.
+ */
+export class OutputTextContentType extends S.Literal("output_text") {}
+
+/**
+ * The type of the file citation. Always `file_citation`.
+ */
+export class FileCitationBodyType extends S.Literal("file_citation") {}
+
+/**
+ * A citation to a file.
+ */
+export class FileCitationBody extends S.Class<FileCitationBody>("FileCitationBody")({
+  /**
+   * The type of the file citation. Always `file_citation`.
+   */
+  "type": FileCitationBodyType.pipe(S.propertySignature, S.withConstructorDefault(() => "file_citation" as const)),
+  /**
+   * The ID of the file.
+   */
+  "file_id": S.String,
+  /**
+   * The index of the file in the list of files.
+   */
+  "index": S.Int,
+  /**
+   * The filename of the file cited.
+   */
+  "filename": S.String
+}) {}
+
+/**
+ * The type of the URL citation. Always `url_citation`.
+ */
+export class UrlCitationBodyType extends S.Literal("url_citation") {}
+
+/**
+ * A citation for a web resource used to generate a model response.
+ */
+export class UrlCitationBody extends S.Class<UrlCitationBody>("UrlCitationBody")({
+  /**
+   * The type of the URL citation. Always `url_citation`.
+   */
+  "type": UrlCitationBodyType.pipe(S.propertySignature, S.withConstructorDefault(() => "url_citation" as const)),
+  /**
+   * The URL of the web resource.
+   */
+  "url": S.String,
+  /**
+   * The index of the first character of the URL citation in the message.
+   */
+  "start_index": S.Int,
+  /**
+   * The index of the last character of the URL citation in the message.
+   */
+  "end_index": S.Int,
+  /**
+   * The title of the web resource.
+   */
+  "title": S.String
+}) {}
+
+/**
+ * The type of the container file citation. Always `container_file_citation`.
+ */
+export class ContainerFileCitationBodyType extends S.Literal("container_file_citation") {}
+
+/**
+ * A citation for a container file used to generate a model response.
+ */
+export class ContainerFileCitationBody extends S.Class<ContainerFileCitationBody>("ContainerFileCitationBody")({
+  /**
+   * The type of the container file citation. Always `container_file_citation`.
+   */
+  "type": ContainerFileCitationBodyType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "container_file_citation" as const)
+  ),
+  /**
+   * The ID of the container file.
+   */
+  "container_id": S.String,
+  /**
+   * The ID of the file.
+   */
+  "file_id": S.String,
+  /**
+   * The index of the first character of the container file citation in the message.
+   */
+  "start_index": S.Int,
+  /**
+   * The index of the last character of the container file citation in the message.
+   */
+  "end_index": S.Int,
+  /**
+   * The filename of the container file cited.
+   */
+  "filename": S.String
+}) {}
+
+/**
+ * The type of the file path. Always `file_path`.
+ */
+export class FilePathType extends S.Literal("file_path") {}
+
+/**
+ * A path to a file.
+ */
+export class FilePath extends S.Class<FilePath>("FilePath")({
+  /**
+   * The type of the file path. Always `file_path`.
+   */
+  "type": FilePathType,
+  /**
+   * The ID of the file.
+   */
+  "file_id": S.String,
+  /**
+   * The index of the file in the list of files.
+   */
+  "index": S.Int
+}) {}
+
+export class Annotation extends S.Union(FileCitationBody, UrlCitationBody, ContainerFileCitationBody, FilePath) {}
+
+/**
+ * The top log probability of a token.
+ */
+export class TopLogProb extends S.Class<TopLogProb>("TopLogProb")({
+  "token": S.String,
+  "logprob": S.Number,
+  "bytes": S.Array(S.Int)
+}) {}
+
+/**
+ * The log probability of a token.
+ */
+export class LogProb extends S.Class<LogProb>("LogProb")({
+  "token": S.String,
+  "logprob": S.Number,
+  "bytes": S.Array(S.Int),
+  "top_logprobs": S.Array(TopLogProb)
+}) {}
+
+/**
+ * A text output from the model.
+ */
+export class OutputTextContent extends S.Class<OutputTextContent>("OutputTextContent")({
+  /**
+   * The type of the output text. Always `output_text`.
+   */
+  "type": OutputTextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "output_text" as const)),
+  /**
+   * The text output from the model.
+   */
+  "text": S.String,
+  /**
+   * The annotations of the text output.
+   */
+  "annotations": S.Array(Annotation),
+  "logprobs": S.optionalWith(S.Array(LogProb), { nullable: true })
+}) {}
+
+export class TextContentType extends S.Literal("text") {}
+
+/**
+ * A text content.
+ */
+export class TextContent extends S.Class<TextContent>("TextContent")({
+  "type": TextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "text" as const)),
+  "text": S.String
+}) {}
+
+/**
+ * The type of the object. Always `summary_text`.
+ */
+export class SummaryTextContentType extends S.Literal("summary_text") {}
+
+/**
+ * A summary text from the model.
+ */
+export class SummaryTextContent extends S.Class<SummaryTextContent>("SummaryTextContent")({
+  /**
+   * The type of the object. Always `summary_text`.
+   */
+  "type": SummaryTextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "summary_text" as const)),
+  /**
+   * A summary of the reasoning output from the model so far.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * The type of the reasoning text. Always `reasoning_text`.
+ */
+export class ReasoningTextContentType extends S.Literal("reasoning_text") {}
+
+/**
+ * Reasoning text from the model.
+ */
+export class ReasoningTextContent extends S.Class<ReasoningTextContent>("ReasoningTextContent")({
+  /**
+   * The type of the reasoning text. Always `reasoning_text`.
+   */
+  "type": ReasoningTextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "reasoning_text" as const)),
+  /**
+   * The reasoning text from the model.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * The type of the refusal. Always `refusal`.
+ */
+export class RefusalContentType extends S.Literal("refusal") {}
+
+/**
+ * A refusal from the model.
+ */
+export class RefusalContent extends S.Class<RefusalContent>("RefusalContent")({
+  /**
+   * The type of the refusal. Always `refusal`.
+   */
+  "type": RefusalContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "refusal" as const)),
+  /**
+   * The refusal explanation from the model.
+   */
+  "refusal": S.String
+}) {}
+
+/**
+ * The type of the input item. Always `input_image`.
+ */
+export class InputImageContentType extends S.Literal("input_image") {}
+
+export class ImageDetail extends S.Literal("low", "high", "auto") {}
+
+/**
+ * An image input to the model. Learn about [image inputs](https://platform.openai.com/docs/guides/vision).
+ */
+export class InputImageContent extends S.Class<InputImageContent>("InputImageContent")({
+  /**
+   * The type of the input item. Always `input_image`.
+   */
+  "type": InputImageContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_image" as const)),
+  "image_url": S.optionalWith(S.String, { nullable: true }),
+  "file_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
+   */
+  "detail": ImageDetail
+}) {}
+
+/**
+ * Specifies the event type. For a computer screenshot, this property is always set to `computer_screenshot`.
+ */
+export class ComputerScreenshotContentType extends S.Literal("computer_screenshot") {}
+
+/**
+ * A screenshot of a computer.
+ */
+export class ComputerScreenshotContent extends S.Class<ComputerScreenshotContent>("ComputerScreenshotContent")({
+  /**
+   * Specifies the event type. For a computer screenshot, this property is always set to `computer_screenshot`.
+   */
+  "type": ComputerScreenshotContentType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_screenshot" as const)
+  ),
+  "image_url": S.NullOr(S.String),
+  "file_id": S.NullOr(S.String)
+}) {}
+
+/**
+ * The type of the input item. Always `input_file`.
+ */
+export class InputFileContentType extends S.Literal("input_file") {}
+
+/**
+ * A file input to the model.
+ */
+export class InputFileContent extends S.Class<InputFileContent>("InputFileContent")({
+  /**
+   * The type of the input item. Always `input_file`.
+   */
+  "type": InputFileContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_file" as const)),
+  "file_id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The name of the file to be sent to the model.
+   */
+  "filename": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The URL of the file to be sent to the model.
+   */
+  "file_url": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The content of the file to be sent to the model.
+   */
+  "file_data": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * A message to or from the model.
+ */
+export class Message extends S.Class<Message>("Message")({
+  /**
+   * The type of the message. Always set to `message`.
+   */
+  "type": MessageType.pipe(S.propertySignature, S.withConstructorDefault(() => "message" as const)),
+  /**
+   * The unique ID of the message.
+   */
+  "id": S.String,
+  /**
+   * The status of item. One of `in_progress`, `completed`, or `incomplete`. Populated when items are returned via API.
+   */
+  "status": MessageStatus,
+  /**
+   * The role of the message. One of `unknown`, `user`, `assistant`, `system`, `critic`, `discriminator`, `developer`, or `tool`.
+   */
+  "role": MessageRole,
+  /**
+   * The content of the message
+   */
+  "content": S.Array(
+    S.Union(
+      InputTextContent,
+      OutputTextContent,
+      TextContent,
+      SummaryTextContent,
+      ReasoningTextContent,
+      RefusalContent,
+      InputImageContent,
+      ComputerScreenshotContent,
+      InputFileContent
+    )
+  )
+}) {}
+
+/**
+ * The type of the function tool call. Always `function_call`.
+ */
+export class FunctionToolCallResourceType extends S.Literal("function_call") {}
+
+/**
+ * The status of the item. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when items are returned via API.
+ */
+export class FunctionToolCallResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A tool call to run a function. See the
+ * [function calling guide](https://platform.openai.com/docs/guides/function-calling) for more information.
+ */
+export class FunctionToolCallResource extends S.Class<FunctionToolCallResource>("FunctionToolCallResource")({
+  /**
+   * The unique ID of the function tool call.
+   */
+  "id": S.String,
+  /**
+   * The type of the function tool call. Always `function_call`.
+   */
+  "type": FunctionToolCallResourceType,
+  /**
+   * The unique ID of the function tool call generated by the model.
+   */
+  "call_id": S.String,
+  /**
+   * The name of the function to run.
+   */
+  "name": S.String,
+  /**
+   * A JSON string of the arguments to pass to the function.
+   */
+  "arguments": S.String,
+  /**
+   * The status of the item. One of `in_progress`, `completed`, or
+   * `incomplete`. Populated when items are returned via API.
+   */
+  "status": S.optionalWith(FunctionToolCallResourceStatus, { nullable: true })
+}) {}
+
+/**
+ * The type of the function tool call output. Always `function_call_output`.
+ */
+export class FunctionToolCallOutputResourceType extends S.Literal("function_call_output") {}
+
+export class FunctionAndCustomToolCallOutput extends S.Union(InputTextContent, InputImageContent, InputFileContent) {}
+
+/**
+ * The status of the item. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when items are returned via API.
+ */
+export class FunctionToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * The output of a function tool call.
+ */
+export class FunctionToolCallOutputResource
+  extends S.Class<FunctionToolCallOutputResource>("FunctionToolCallOutputResource")({
+    /**
+     * The unique ID of the function tool call output. Populated when this item
+     * is returned via API.
+     */
+    "id": S.String,
+    /**
+     * The type of the function tool call output. Always `function_call_output`.
+     */
+    "type": FunctionToolCallOutputResourceType,
+    /**
+     * The unique ID of the function tool call generated by the model.
+     */
+    "call_id": S.String,
+    /**
+     * The output from the function call generated by your code.
+     * Can be a string or an list of output content.
+     */
+    "output": S.Union(
+      /**
+       * A string of the output of the function call.
+       */
+      S.String,
+      /**
+       * Text, image, or file output of the function call.
+       */
+      S.Array(FunctionAndCustomToolCallOutput)
+    ),
+    /**
+     * The status of the item. One of `in_progress`, `completed`, or
+     * `incomplete`. Populated when items are returned via API.
+     */
+    "status": S.optionalWith(FunctionToolCallOutputResourceStatus, { nullable: true })
+  })
+{}
+
+/**
+ * The type of the file search tool call. Always `file_search_call`.
+ */
+export class FileSearchToolCallType extends S.Literal("file_search_call") {}
+
+/**
+ * The status of the file search tool call. One of `in_progress`,
+ * `searching`, `incomplete` or `failed`,
+ */
+export class FileSearchToolCallStatus
+  extends S.Literal("in_progress", "searching", "completed", "incomplete", "failed")
+{}
+
+export class VectorStoreFileAttributes extends S.Union(
+  /**
+   * Set of 16 key-value pairs that can be attached to an object. This can be
+   * useful for storing additional information about the object in a structured
+   * format, and querying for objects via API or the dashboard. Keys are strings
+   * with a maximum length of 64 characters. Values are strings with a maximum
+   * length of 512 characters, booleans, or numbers.
+   */
+  S.Record({ key: S.String, value: S.Unknown }),
+  S.Null
+) {}
+
+/**
+ * The results of a file search tool call. See the
+ * [file search guide](https://platform.openai.com/docs/guides/tools-file-search) for more information.
+ */
+export class FileSearchToolCall extends S.Class<FileSearchToolCall>("FileSearchToolCall")({
+  /**
+   * The unique ID of the file search tool call.
+   */
+  "id": S.String,
+  /**
+   * The type of the file search tool call. Always `file_search_call`.
+   */
+  "type": FileSearchToolCallType,
+  /**
+   * The status of the file search tool call. One of `in_progress`,
+   * `searching`, `incomplete` or `failed`,
+   */
+  "status": FileSearchToolCallStatus,
+  /**
+   * The queries used to search for files.
+   */
+  "queries": S.Array(S.String),
+  "results": S.optionalWith(
+    S.Array(S.Struct({
+      /**
+       * The unique ID of the file.
+       */
+      "file_id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The text that was retrieved from the file.
+       */
+      "text": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The name of the file.
+       */
+      "filename": S.optionalWith(S.String, { nullable: true }),
+      "attributes": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+      /**
+       * The relevance score of the file - a value between 0 and 1.
+       */
+      "score": S.optionalWith(S.Number, { nullable: true })
+    })),
+    { nullable: true }
+  )
+}) {}
+
+/**
+ * The type of the web search tool call. Always `web_search_call`.
+ */
+export class WebSearchToolCallType extends S.Literal("web_search_call") {}
+
+/**
+ * The status of the web search tool call.
+ */
+export class WebSearchToolCallStatus extends S.Literal("in_progress", "searching", "completed", "failed") {}
+
+/**
+ * The action type.
+ */
+export class WebSearchActionSearchType extends S.Literal("search") {}
+
+/**
+ * Action type "search" - Performs a web search query.
+ */
+export class WebSearchActionSearch extends S.Class<WebSearchActionSearch>("WebSearchActionSearch")({
+  /**
+   * The action type.
+   */
+  "type": WebSearchActionSearchType,
+  /**
+   * The search query.
+   */
+  "query": S.String,
+  /**
+   * The sources used in the search.
+   */
+  "sources": S.optionalWith(
+    S.Array(S.Struct({
+      /**
+       * The type of source. Always `url`.
+       */
+      "type": S.Literal("url"),
+      /**
+       * The URL of the source.
+       */
+      "url": S.String
+    })),
+    { nullable: true }
+  )
+}) {}
+
+/**
+ * The action type.
+ */
+export class WebSearchActionOpenPageType extends S.Literal("open_page") {}
+
+/**
+ * Action type "open_page" - Opens a specific URL from search results.
+ */
+export class WebSearchActionOpenPage extends S.Class<WebSearchActionOpenPage>("WebSearchActionOpenPage")({
+  /**
+   * The action type.
+   */
+  "type": WebSearchActionOpenPageType,
+  /**
+   * The URL opened by the model.
+   */
+  "url": S.String
+}) {}
+
+/**
+ * The action type.
+ */
+export class WebSearchActionFindType extends S.Literal("find") {}
+
+/**
+ * Action type "find": Searches for a pattern within a loaded page.
+ */
+export class WebSearchActionFind extends S.Class<WebSearchActionFind>("WebSearchActionFind")({
+  /**
+   * The action type.
+   */
+  "type": WebSearchActionFindType,
+  /**
+   * The URL of the page searched for the pattern.
+   */
+  "url": S.String,
+  /**
+   * The pattern or text to search for within the page.
+   */
+  "pattern": S.String
+}) {}
+
+/**
+ * The results of a web search tool call. See the
+ * [web search guide](https://platform.openai.com/docs/guides/tools-web-search) for more information.
+ */
+export class WebSearchToolCall extends S.Class<WebSearchToolCall>("WebSearchToolCall")({
+  /**
+   * The unique ID of the web search tool call.
+   */
+  "id": S.String,
+  /**
+   * The type of the web search tool call. Always `web_search_call`.
+   */
+  "type": WebSearchToolCallType,
+  /**
+   * The status of the web search tool call.
+   */
+  "status": WebSearchToolCallStatus,
+  /**
+   * An object describing the specific action taken in this web search call.
+   * Includes details on how the model used the web (search, open_page, find).
+   */
+  "action": S.Record({ key: S.String, value: S.Unknown })
+}) {}
+
+/**
+ * The type of the image generation call. Always `image_generation_call`.
+ */
+export class ImageGenToolCallType extends S.Literal("image_generation_call") {}
+
+/**
+ * The status of the image generation call.
+ */
+export class ImageGenToolCallStatus extends S.Literal("in_progress", "completed", "generating", "failed") {}
+
+/**
+ * An image generation request made by the model.
+ */
+export class ImageGenToolCall extends S.Class<ImageGenToolCall>("ImageGenToolCall")({
+  /**
+   * The type of the image generation call. Always `image_generation_call`.
+   */
+  "type": ImageGenToolCallType,
+  /**
+   * The unique ID of the image generation call.
+   */
+  "id": S.String,
+  /**
+   * The status of the image generation call.
+   */
+  "status": ImageGenToolCallStatus,
+  "result": S.NullOr(S.String)
+}) {}
+
+/**
+ * The type of the computer call. Always `computer_call`.
+ */
+export class ComputerToolCallType extends S.Literal("computer_call") {}
+
+/**
+ * Specifies the event type. For a click action, this property is always `click`.
+ */
+export class ClickParamType extends S.Literal("click") {}
+
+export class ClickButtonType extends S.Literal("left", "right", "wheel", "back", "forward") {}
+
+/**
+ * A click action.
+ */
+export class ClickParam extends S.Class<ClickParam>("ClickParam")({
+  /**
+   * Specifies the event type. For a click action, this property is always `click`.
+   */
+  "type": ClickParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "click" as const)),
+  /**
+   * Indicates which mouse button was pressed during the click. One of `left`, `right`, `wheel`, `back`, or `forward`.
+   */
+  "button": ClickButtonType,
+  /**
+   * The x-coordinate where the click occurred.
+   */
+  "x": S.Int,
+  /**
+   * The y-coordinate where the click occurred.
+   */
+  "y": S.Int
+}) {}
+
+/**
+ * Specifies the event type. For a double click action, this property is always set to `double_click`.
+ */
+export class DoubleClickActionType extends S.Literal("double_click") {}
+
+/**
+ * A double click action.
+ */
+export class DoubleClickAction extends S.Class<DoubleClickAction>("DoubleClickAction")({
+  /**
+   * Specifies the event type. For a double click action, this property is always set to `double_click`.
+   */
+  "type": DoubleClickActionType.pipe(S.propertySignature, S.withConstructorDefault(() => "double_click" as const)),
+  /**
+   * The x-coordinate where the double click occurred.
+   */
+  "x": S.Int,
+  /**
+   * The y-coordinate where the double click occurred.
+   */
+  "y": S.Int
+}) {}
+
+/**
+ * Specifies the event type. For a drag action, this property is
+ * always set to `drag`.
+ */
+export class DragType extends S.Literal("drag") {}
+
+/**
+ * An x/y coordinate pair, e.g. `{ x: 100, y: 200 }`.
+ */
+export class DragPoint extends S.Class<DragPoint>("DragPoint")({
+  /**
+   * The x-coordinate.
+   */
+  "x": S.Int,
+  /**
+   * The y-coordinate.
+   */
+  "y": S.Int
+}) {}
+
+/**
+ * A drag action.
+ */
+export class Drag extends S.Class<Drag>("Drag")({
+  /**
+   * Specifies the event type. For a drag action, this property is
+   * always set to `drag`.
+   */
+  "type": DragType.pipe(S.propertySignature, S.withConstructorDefault(() => "drag" as const)),
+  /**
+   * An array of coordinates representing the path of the drag action. Coordinates will appear as an array
+   * of objects, eg
+   * ```
+   * [
+   *   { x: 100, y: 200 },
+   *   { x: 200, y: 300 }
+   * ]
+   * ```
+   */
+  "path": S.Array(DragPoint)
+}) {}
+
+/**
+ * Specifies the event type. For a keypress action, this property is always set to `keypress`.
+ */
+export class KeyPressActionType extends S.Literal("keypress") {}
+
+/**
+ * A collection of keypresses the model would like to perform.
+ */
+export class KeyPressAction extends S.Class<KeyPressAction>("KeyPressAction")({
+  /**
+   * Specifies the event type. For a keypress action, this property is always set to `keypress`.
+   */
+  "type": KeyPressActionType.pipe(S.propertySignature, S.withConstructorDefault(() => "keypress" as const)),
+  /**
+   * The combination of keys the model is requesting to be pressed. This is an array of strings, each representing a key.
+   */
+  "keys": S.Array(S.String)
+}) {}
+
+/**
+ * Specifies the event type. For a move action, this property is
+ * always set to `move`.
+ */
+export class MoveType extends S.Literal("move") {}
+
+/**
+ * A mouse move action.
+ */
+export class Move extends S.Class<Move>("Move")({
+  /**
+   * Specifies the event type. For a move action, this property is
+   * always set to `move`.
+   */
+  "type": MoveType.pipe(S.propertySignature, S.withConstructorDefault(() => "move" as const)),
+  /**
+   * The x-coordinate to move to.
+   */
+  "x": S.Int,
+  /**
+   * The y-coordinate to move to.
+   */
+  "y": S.Int
+}) {}
+
+/**
+ * Specifies the event type. For a screenshot action, this property is
+ * always set to `screenshot`.
+ */
+export class ScreenshotType extends S.Literal("screenshot") {}
+
+/**
+ * A screenshot action.
+ */
+export class Screenshot extends S.Class<Screenshot>("Screenshot")({
+  /**
+   * Specifies the event type. For a screenshot action, this property is
+   * always set to `screenshot`.
+   */
+  "type": ScreenshotType.pipe(S.propertySignature, S.withConstructorDefault(() => "screenshot" as const))
+}) {}
+
+/**
+ * Specifies the event type. For a scroll action, this property is
+ * always set to `scroll`.
+ */
+export class ScrollType extends S.Literal("scroll") {}
+
+/**
+ * A scroll action.
+ */
+export class Scroll extends S.Class<Scroll>("Scroll")({
+  /**
+   * Specifies the event type. For a scroll action, this property is
+   * always set to `scroll`.
+   */
+  "type": ScrollType.pipe(S.propertySignature, S.withConstructorDefault(() => "scroll" as const)),
+  /**
+   * The x-coordinate where the scroll occurred.
+   */
+  "x": S.Int,
+  /**
+   * The y-coordinate where the scroll occurred.
+   */
+  "y": S.Int,
+  /**
+   * The horizontal scroll distance.
+   */
+  "scroll_x": S.Int,
+  /**
+   * The vertical scroll distance.
+   */
+  "scroll_y": S.Int
+}) {}
+
+/**
+ * Specifies the event type. For a type action, this property is
+ * always set to `type`.
+ */
+export class TypeType extends S.Literal("type") {}
+
+/**
+ * An action to type in text.
+ */
+export class Type extends S.Class<Type>("Type")({
+  /**
+   * Specifies the event type. For a type action, this property is
+   * always set to `type`.
+   */
+  "type": TypeType.pipe(S.propertySignature, S.withConstructorDefault(() => "type" as const)),
+  /**
+   * The text to type.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * Specifies the event type. For a wait action, this property is
+ * always set to `wait`.
+ */
+export class WaitType extends S.Literal("wait") {}
+
+/**
+ * A wait action.
+ */
+export class Wait extends S.Class<Wait>("Wait")({
+  /**
+   * Specifies the event type. For a wait action, this property is
+   * always set to `wait`.
+   */
+  "type": WaitType.pipe(S.propertySignature, S.withConstructorDefault(() => "wait" as const))
+}) {}
+
+export class ComputerAction
+  extends S.Union(ClickParam, DoubleClickAction, Drag, KeyPressAction, Move, Screenshot, Scroll, Type, Wait)
+{}
+
+/**
+ * A pending safety check for the computer call.
+ */
+export class ComputerCallSafetyCheckParam
+  extends S.Class<ComputerCallSafetyCheckParam>("ComputerCallSafetyCheckParam")({
+    /**
+     * The ID of the pending safety check.
+     */
+    "id": S.String,
+    "code": S.optionalWith(S.String, { nullable: true }),
+    "message": S.optionalWith(S.String, { nullable: true })
+  })
+{}
+
+/**
+ * The status of the item. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when items are returned via API.
+ */
+export class ComputerToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A tool call to a computer use tool. See the
+ * [computer use guide](https://platform.openai.com/docs/guides/tools-computer-use) for more information.
+ */
+export class ComputerToolCall extends S.Class<ComputerToolCall>("ComputerToolCall")({
+  /**
+   * The type of the computer call. Always `computer_call`.
+   */
+  "type": ComputerToolCallType.pipe(S.propertySignature, S.withConstructorDefault(() => "computer_call" as const)),
+  /**
+   * The unique ID of the computer call.
+   */
+  "id": S.String,
+  /**
+   * An identifier used when responding to the tool call with output.
+   */
+  "call_id": S.String,
+  "action": ComputerAction,
+  /**
+   * The pending safety checks for the computer call.
+   */
+  "pending_safety_checks": S.Array(ComputerCallSafetyCheckParam),
+  /**
+   * The status of the item. One of `in_progress`, `completed`, or
+   * `incomplete`. Populated when items are returned via API.
+   */
+  "status": ComputerToolCallStatus
+}) {}
+
+/**
+ * The type of the computer tool call output. Always `computer_call_output`.
+ */
+export class ComputerToolCallOutputResourceType extends S.Literal("computer_call_output") {}
+
+/**
+ * Specifies the event type. For a computer screenshot, this property is
+ * always set to `computer_screenshot`.
+ */
+export class ComputerScreenshotImageType extends S.Literal("computer_screenshot") {}
+
+/**
+ * A computer screenshot image used with the computer use tool.
+ */
+export class ComputerScreenshotImage extends S.Class<ComputerScreenshotImage>("ComputerScreenshotImage")({
+  /**
+   * Specifies the event type. For a computer screenshot, this property is
+   * always set to `computer_screenshot`.
+   */
+  "type": ComputerScreenshotImageType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_screenshot" as const)
+  ),
+  /**
+   * The URL of the screenshot image.
+   */
+  "image_url": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The identifier of an uploaded file that contains the screenshot.
+   */
+  "file_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The status of the message input. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when input items are returned via API.
+ */
+export class ComputerToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * The output of a computer tool call.
+ */
+export class ComputerToolCallOutputResource
+  extends S.Class<ComputerToolCallOutputResource>("ComputerToolCallOutputResource")({
+    /**
+     * The ID of the computer tool call output.
+     */
+    "id": S.String,
+    /**
+     * The type of the computer tool call output. Always `computer_call_output`.
+     */
+    "type": ComputerToolCallOutputResourceType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "computer_call_output" as const)
+    ),
+    /**
+     * The ID of the computer tool call that produced the output.
+     */
+    "call_id": S.String,
+    /**
+     * The safety checks reported by the API that have been acknowledged by the
+     * developer.
+     */
+    "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerCallSafetyCheckParam), { nullable: true }),
+    "output": ComputerScreenshotImage,
+    /**
+     * The status of the message input. One of `in_progress`, `completed`, or
+     * `incomplete`. Populated when input items are returned via API.
+     */
+    "status": S.optionalWith(ComputerToolCallOutputResourceStatus, { nullable: true })
+  })
+{}
+
+/**
+ * The type of the object. Always `reasoning`.
+ */
+export class ReasoningItemType extends S.Literal("reasoning") {}
+
+/**
+ * The type of the object. Always `summary_text`.
+ */
+export class SummaryType extends S.Literal("summary_text") {}
+
+/**
+ * A summary text from the model.
+ */
+export class Summary extends S.Class<Summary>("Summary")({
+  /**
+   * The type of the object. Always `summary_text`.
+   */
+  "type": SummaryType.pipe(S.propertySignature, S.withConstructorDefault(() => "summary_text" as const)),
+  /**
+   * A summary of the reasoning output from the model so far.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * The status of the item. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when items are returned via API.
+ */
+export class ReasoningItemStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A description of the chain of thought used by a reasoning model while generating
+ * a response. Be sure to include these items in your `input` to the Responses API
+ * for subsequent turns of a conversation if you are manually
+ * [managing context](https://platform.openai.com/docs/guides/conversation-state).
+ */
+export class ReasoningItem extends S.Class<ReasoningItem>("ReasoningItem")({
+  /**
+   * The type of the object. Always `reasoning`.
+   */
+  "type": ReasoningItemType,
+  /**
+   * The unique identifier of the reasoning content.
+   */
+  "id": S.String,
+  "encrypted_content": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Reasoning summary content.
+   */
+  "summary": S.Array(Summary),
+  /**
+   * Reasoning text content.
+   */
+  "content": S.optionalWith(S.Array(ReasoningTextContent), { nullable: true }),
+  /**
+   * The status of the item. One of `in_progress`, `completed`, or
+   * `incomplete`. Populated when items are returned via API.
+   */
+  "status": S.optionalWith(ReasoningItemStatus, { nullable: true })
+}) {}
+
+/**
+ * The type of the code interpreter tool call. Always `code_interpreter_call`.
+ */
+export class CodeInterpreterToolCallType extends S.Literal("code_interpreter_call") {}
+
+/**
+ * The status of the code interpreter tool call. Valid values are `in_progress`, `completed`, `incomplete`, `interpreting`, and `failed`.
+ */
+export class CodeInterpreterToolCallStatus
+  extends S.Literal("in_progress", "completed", "incomplete", "interpreting", "failed")
+{}
+
+/**
+ * The type of the output. Always `logs`.
+ */
+export class CodeInterpreterOutputLogsType extends S.Literal("logs") {}
+
+/**
+ * The logs output from the code interpreter.
+ */
+export class CodeInterpreterOutputLogs extends S.Class<CodeInterpreterOutputLogs>("CodeInterpreterOutputLogs")({
+  /**
+   * The type of the output. Always `logs`.
+   */
+  "type": CodeInterpreterOutputLogsType.pipe(S.propertySignature, S.withConstructorDefault(() => "logs" as const)),
+  /**
+   * The logs output from the code interpreter.
+   */
+  "logs": S.String
+}) {}
+
+/**
+ * The type of the output. Always `image`.
+ */
+export class CodeInterpreterOutputImageType extends S.Literal("image") {}
+
+/**
+ * The image output from the code interpreter.
+ */
+export class CodeInterpreterOutputImage extends S.Class<CodeInterpreterOutputImage>("CodeInterpreterOutputImage")({
+  /**
+   * The type of the output. Always `image`.
+   */
+  "type": CodeInterpreterOutputImageType.pipe(S.propertySignature, S.withConstructorDefault(() => "image" as const)),
+  /**
+   * The URL of the image output from the code interpreter.
+   */
+  "url": S.String
+}) {}
+
+/**
+ * A tool call to run code.
+ */
+export class CodeInterpreterToolCall extends S.Class<CodeInterpreterToolCall>("CodeInterpreterToolCall")({
+  /**
+   * The type of the code interpreter tool call. Always `code_interpreter_call`.
+   */
+  "type": CodeInterpreterToolCallType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "code_interpreter_call" as const)
+  ),
+  /**
+   * The unique ID of the code interpreter tool call.
+   */
+  "id": S.String,
+  /**
+   * The status of the code interpreter tool call. Valid values are `in_progress`, `completed`, `incomplete`, `interpreting`, and `failed`.
+   */
+  "status": CodeInterpreterToolCallStatus,
+  /**
+   * The ID of the container used to run the code.
+   */
+  "container_id": S.String,
+  "code": S.NullOr(S.String),
+  "outputs": S.NullOr(S.Array(S.Union(CodeInterpreterOutputLogs, CodeInterpreterOutputImage)))
+}) {}
+
+/**
+ * The type of the local shell call. Always `local_shell_call`.
+ */
+export class LocalShellToolCallType extends S.Literal("local_shell_call") {}
+
+/**
+ * The type of the local shell action. Always `exec`.
+ */
+export class LocalShellExecActionType extends S.Literal("exec") {}
+
+/**
+ * Execute a shell command on the server.
+ */
+export class LocalShellExecAction extends S.Class<LocalShellExecAction>("LocalShellExecAction")({
+  /**
+   * The type of the local shell action. Always `exec`.
+   */
+  "type": LocalShellExecActionType.pipe(S.propertySignature, S.withConstructorDefault(() => "exec" as const)),
+  /**
+   * The command to run.
+   */
+  "command": S.Array(S.String),
+  "timeout_ms": S.optionalWith(S.Int, { nullable: true }),
+  "working_directory": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Environment variables to set for the command.
+   */
+  "env": S.Record({ key: S.String, value: S.Unknown }),
+  "user": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The status of the local shell call.
+ */
+export class LocalShellToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A tool call to run a command on the local shell.
+ */
+export class LocalShellToolCall extends S.Class<LocalShellToolCall>("LocalShellToolCall")({
+  /**
+   * The type of the local shell call. Always `local_shell_call`.
+   */
+  "type": LocalShellToolCallType,
+  /**
+   * The unique ID of the local shell call.
+   */
+  "id": S.String,
+  /**
+   * The unique ID of the local shell tool call generated by the model.
+   */
+  "call_id": S.String,
+  "action": LocalShellExecAction,
+  /**
+   * The status of the local shell call.
+   */
+  "status": LocalShellToolCallStatus
+}) {}
+
+/**
+ * The type of the local shell tool call output. Always `local_shell_call_output`.
+ */
+export class LocalShellToolCallOutputType extends S.Literal("local_shell_call_output") {}
+
+/**
+ * The status of the item. One of `in_progress`, `completed`, or `incomplete`.
+ */
+export class LocalShellToolCallOutputStatusEnum extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * The output of a local shell tool call.
+ */
+export class LocalShellToolCallOutput extends S.Class<LocalShellToolCallOutput>("LocalShellToolCallOutput")({
+  /**
+   * The type of the local shell tool call output. Always `local_shell_call_output`.
+   */
+  "type": LocalShellToolCallOutputType,
+  /**
+   * The unique ID of the local shell tool call generated by the model.
+   */
+  "id": S.String,
+  /**
+   * A JSON string of the output of the local shell tool call.
+   */
+  "output": S.String,
+  "status": S.optionalWith(LocalShellToolCallOutputStatusEnum, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `shell_call`.
+ */
+export class FunctionShellCallType extends S.Literal("shell_call") {}
+
+/**
+ * Execute a shell command.
+ */
+export class FunctionShellAction extends S.Class<FunctionShellAction>("FunctionShellAction")({
+  "commands": S.Array(S.String),
+  "timeout_ms": S.NullOr(S.Int),
+  "max_output_length": S.NullOr(S.Int)
+}) {}
+
+export class LocalShellCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A tool call that executes one or more shell commands in a managed environment.
+ */
+export class FunctionShellCall extends S.Class<FunctionShellCall>("FunctionShellCall")({
+  /**
+   * The type of the item. Always `shell_call`.
+   */
+  "type": FunctionShellCallType.pipe(S.propertySignature, S.withConstructorDefault(() => "shell_call" as const)),
+  /**
+   * The unique ID of the function shell tool call. Populated when this item is returned via API.
+   */
+  "id": S.String,
+  /**
+   * The unique ID of the function shell tool call generated by the model.
+   */
+  "call_id": S.String,
+  /**
+   * The shell commands and limits that describe how to run the tool call.
+   */
+  "action": FunctionShellAction,
+  /**
+   * The status of the shell call. One of `in_progress`, `completed`, or `incomplete`.
+   */
+  "status": LocalShellCallStatus,
+  /**
+   * The ID of the entity that created this tool call.
+   */
+  "created_by": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the shell call output. Always `shell_call_output`.
+ */
+export class FunctionShellCallOutputType extends S.Literal("shell_call_output") {}
+
+/**
+ * The outcome type. Always `timeout`.
+ */
+export class FunctionShellCallOutputTimeoutOutcomeType extends S.Literal("timeout") {}
+
+/**
+ * Indicates that the function shell call exceeded its configured time limit.
+ */
+export class FunctionShellCallOutputTimeoutOutcome
+  extends S.Class<FunctionShellCallOutputTimeoutOutcome>("FunctionShellCallOutputTimeoutOutcome")({
+    /**
+     * The outcome type. Always `timeout`.
+     */
+    "type": FunctionShellCallOutputTimeoutOutcomeType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "timeout" as const)
+    )
+  })
+{}
+
+/**
+ * The outcome type. Always `exit`.
+ */
+export class FunctionShellCallOutputExitOutcomeType extends S.Literal("exit") {}
+
+/**
+ * Indicates that the shell commands finished and returned an exit code.
+ */
+export class FunctionShellCallOutputExitOutcome
+  extends S.Class<FunctionShellCallOutputExitOutcome>("FunctionShellCallOutputExitOutcome")({
+    /**
+     * The outcome type. Always `exit`.
+     */
+    "type": FunctionShellCallOutputExitOutcomeType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "exit" as const)
+    ),
+    /**
+     * Exit code from the shell process.
+     */
+    "exit_code": S.Int
+  })
+{}
+
+/**
+ * The content of a shell call output.
+ */
+export class FunctionShellCallOutputContent
+  extends S.Class<FunctionShellCallOutputContent>("FunctionShellCallOutputContent")({
+    "stdout": S.String,
+    "stderr": S.String,
+    /**
+     * Represents either an exit outcome (with an exit code) or a timeout outcome for a shell call output chunk.
+     */
+    "outcome": S.Union(FunctionShellCallOutputTimeoutOutcome, FunctionShellCallOutputExitOutcome),
+    "created_by": S.optionalWith(S.String, { nullable: true })
+  })
+{}
+
+/**
+ * The output of a shell tool call.
+ */
+export class FunctionShellCallOutput extends S.Class<FunctionShellCallOutput>("FunctionShellCallOutput")({
+  /**
+   * The type of the shell call output. Always `shell_call_output`.
+   */
+  "type": FunctionShellCallOutputType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "shell_call_output" as const)
+  ),
+  /**
+   * The unique ID of the shell call output. Populated when this item is returned via API.
+   */
+  "id": S.String,
+  /**
+   * The unique ID of the shell tool call generated by the model.
+   */
+  "call_id": S.String,
+  /**
+   * An array of shell call output contents
+   */
+  "output": S.Array(FunctionShellCallOutputContent),
+  "max_output_length": S.NullOr(S.Int),
+  "created_by": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `apply_patch_call`.
+ */
+export class ApplyPatchToolCallType extends S.Literal("apply_patch_call") {}
+
+export class ApplyPatchCallStatus extends S.Literal("in_progress", "completed") {}
+
+/**
+ * Create a new file with the provided diff.
+ */
+export class ApplyPatchCreateFileOperationType extends S.Literal("create_file") {}
+
+/**
+ * Instruction describing how to create a file via the apply_patch tool.
+ */
+export class ApplyPatchCreateFileOperation
+  extends S.Class<ApplyPatchCreateFileOperation>("ApplyPatchCreateFileOperation")({
+    /**
+     * Create a new file with the provided diff.
+     */
+    "type": ApplyPatchCreateFileOperationType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "create_file" as const)
+    ),
+    /**
+     * Path of the file to create.
+     */
+    "path": S.String,
+    /**
+     * Diff to apply.
+     */
+    "diff": S.String
+  })
+{}
+
+/**
+ * Delete the specified file.
+ */
+export class ApplyPatchDeleteFileOperationType extends S.Literal("delete_file") {}
+
+/**
+ * Instruction describing how to delete a file via the apply_patch tool.
+ */
+export class ApplyPatchDeleteFileOperation
+  extends S.Class<ApplyPatchDeleteFileOperation>("ApplyPatchDeleteFileOperation")({
+    /**
+     * Delete the specified file.
+     */
+    "type": ApplyPatchDeleteFileOperationType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "delete_file" as const)
+    ),
+    /**
+     * Path of the file to delete.
+     */
+    "path": S.String
+  })
+{}
+
+/**
+ * Update an existing file with the provided diff.
+ */
+export class ApplyPatchUpdateFileOperationType extends S.Literal("update_file") {}
+
+/**
+ * Instruction describing how to update a file via the apply_patch tool.
+ */
+export class ApplyPatchUpdateFileOperation
+  extends S.Class<ApplyPatchUpdateFileOperation>("ApplyPatchUpdateFileOperation")({
+    /**
+     * Update an existing file with the provided diff.
+     */
+    "type": ApplyPatchUpdateFileOperationType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "update_file" as const)
+    ),
+    /**
+     * Path of the file to update.
+     */
+    "path": S.String,
+    /**
+     * Diff to apply.
+     */
+    "diff": S.String
+  })
+{}
+
+/**
+ * A tool call that applies file diffs by creating, deleting, or updating files.
+ */
+export class ApplyPatchToolCall extends S.Class<ApplyPatchToolCall>("ApplyPatchToolCall")({
+  /**
+   * The type of the item. Always `apply_patch_call`.
+   */
+  "type": ApplyPatchToolCallType.pipe(S.propertySignature, S.withConstructorDefault(() => "apply_patch_call" as const)),
+  /**
+   * The unique ID of the apply patch tool call. Populated when this item is returned via API.
+   */
+  "id": S.String,
+  /**
+   * The unique ID of the apply patch tool call generated by the model.
+   */
+  "call_id": S.String,
+  /**
+   * The status of the apply patch tool call. One of `in_progress` or `completed`.
+   */
+  "status": ApplyPatchCallStatus,
+  /**
+   * One of the create_file, delete_file, or update_file operations applied via apply_patch.
+   */
+  "operation": S.Union(ApplyPatchCreateFileOperation, ApplyPatchDeleteFileOperation, ApplyPatchUpdateFileOperation),
+  /**
+   * The ID of the entity that created this tool call.
+   */
+  "created_by": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `apply_patch_call_output`.
+ */
+export class ApplyPatchToolCallOutputType extends S.Literal("apply_patch_call_output") {}
+
+export class ApplyPatchCallOutputStatus extends S.Literal("completed", "failed") {}
+
+/**
+ * The output emitted by an apply patch tool call.
+ */
+export class ApplyPatchToolCallOutput extends S.Class<ApplyPatchToolCallOutput>("ApplyPatchToolCallOutput")({
+  /**
+   * The type of the item. Always `apply_patch_call_output`.
+   */
+  "type": ApplyPatchToolCallOutputType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "apply_patch_call_output" as const)
+  ),
+  /**
+   * The unique ID of the apply patch tool call output. Populated when this item is returned via API.
+   */
+  "id": S.String,
+  /**
+   * The unique ID of the apply patch tool call generated by the model.
+   */
+  "call_id": S.String,
+  /**
+   * The status of the apply patch tool call output. One of `completed` or `failed`.
+   */
+  "status": ApplyPatchCallOutputStatus,
+  "output": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The ID of the entity that created this tool call output.
+   */
+  "created_by": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `mcp_list_tools`.
+ */
+export class MCPListToolsType extends S.Literal("mcp_list_tools") {}
+
+/**
+ * A tool available on an MCP server.
+ */
+export class MCPListToolsTool extends S.Class<MCPListToolsTool>("MCPListToolsTool")({
+  /**
+   * The name of the tool.
+   */
+  "name": S.String,
+  "description": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The JSON schema describing the tool's input.
+   */
+  "input_schema": S.Record({ key: S.String, value: S.Unknown }),
+  "annotations": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * A list of tools available on an MCP server.
+ */
+export class MCPListTools extends S.Class<MCPListTools>("MCPListTools")({
+  /**
+   * The type of the item. Always `mcp_list_tools`.
+   */
+  "type": MCPListToolsType,
+  /**
+   * The unique ID of the list.
+   */
+  "id": S.String,
+  /**
+   * The label of the MCP server.
+   */
+  "server_label": S.String,
+  /**
+   * The tools available on the server.
+   */
+  "tools": S.Array(MCPListToolsTool),
+  "error": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `mcp_approval_request`.
+ */
+export class MCPApprovalRequestType extends S.Literal("mcp_approval_request") {}
+
+/**
+ * A request for human approval of a tool invocation.
+ */
+export class MCPApprovalRequest extends S.Class<MCPApprovalRequest>("MCPApprovalRequest")({
+  /**
+   * The type of the item. Always `mcp_approval_request`.
+   */
+  "type": MCPApprovalRequestType,
+  /**
+   * The unique ID of the approval request.
+   */
+  "id": S.String,
+  /**
+   * The label of the MCP server making the request.
+   */
+  "server_label": S.String,
+  /**
+   * The name of the tool to run.
+   */
+  "name": S.String,
+  /**
+   * A JSON string of arguments for the tool.
+   */
+  "arguments": S.String
+}) {}
+
+/**
+ * The type of the item. Always `mcp_approval_response`.
+ */
+export class MCPApprovalResponseResourceType extends S.Literal("mcp_approval_response") {}
+
+/**
+ * A response to an MCP approval request.
+ */
+export class MCPApprovalResponseResource extends S.Class<MCPApprovalResponseResource>("MCPApprovalResponseResource")({
+  /**
+   * The type of the item. Always `mcp_approval_response`.
+   */
+  "type": MCPApprovalResponseResourceType,
+  /**
+   * The unique ID of the approval response
+   */
+  "id": S.String,
+  /**
+   * The ID of the approval request being answered.
+   */
+  "approval_request_id": S.String,
+  /**
+   * Whether the request was approved.
+   */
+  "approve": S.Boolean,
+  "reason": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `mcp_call`.
+ */
+export class MCPToolCallType extends S.Literal("mcp_call") {}
+
+export class MCPToolCallStatus extends S.Literal("in_progress", "completed", "incomplete", "calling", "failed") {}
+
+/**
+ * An invocation of a tool on an MCP server.
+ */
+export class MCPToolCall extends S.Class<MCPToolCall>("MCPToolCall")({
+  /**
+   * The type of the item. Always `mcp_call`.
+   */
+  "type": MCPToolCallType,
+  /**
+   * The unique ID of the tool call.
+   */
+  "id": S.String,
+  /**
+   * The label of the MCP server running the tool.
+   */
+  "server_label": S.String,
+  /**
+   * The name of the tool that was run.
+   */
+  "name": S.String,
+  /**
+   * A JSON string of the arguments passed to the tool.
+   */
+  "arguments": S.String,
+  "output": S.optionalWith(S.String, { nullable: true }),
+  "error": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The status of the tool call. One of `in_progress`, `completed`, `incomplete`, `calling`, or `failed`.
+   */
+  "status": S.optionalWith(MCPToolCallStatus, { nullable: true }),
+  "approval_request_id": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The type of the custom tool call. Always `custom_tool_call`.
+ */
+export class CustomToolCallType extends S.Literal("custom_tool_call") {}
+
+/**
+ * A call to a custom tool created by the model.
+ */
+export class CustomToolCall extends S.Class<CustomToolCall>("CustomToolCall")({
+  /**
+   * The type of the custom tool call. Always `custom_tool_call`.
+   */
+  "type": CustomToolCallType,
+  /**
+   * The unique ID of the custom tool call in the OpenAI platform.
+   */
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * An identifier used to map this custom tool call to a tool call output.
+   */
+  "call_id": S.String,
+  /**
+   * The name of the custom tool being called.
+   */
+  "name": S.String,
+  /**
+   * The input for the custom tool call generated by the model.
+   */
+  "input": S.String
+}) {}
+
+/**
+ * The type of the custom tool call output. Always `custom_tool_call_output`.
+ */
+export class CustomToolCallOutputType extends S.Literal("custom_tool_call_output") {}
+
+/**
+ * The output of a custom tool call from your code, being sent back to the model.
+ */
+export class CustomToolCallOutput extends S.Class<CustomToolCallOutput>("CustomToolCallOutput")({
+  /**
+   * The type of the custom tool call output. Always `custom_tool_call_output`.
+   */
+  "type": CustomToolCallOutputType,
+  /**
+   * The unique ID of the custom tool call output in the OpenAI platform.
+   */
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The call ID, used to map this custom tool call output to a custom tool call.
+   */
+  "call_id": S.String,
+  /**
+   * The output from the custom tool call generated by your code.
+   * Can be a string or an list of output content.
+   */
+  "output": S.Union(
+    /**
+     * A string of the output of the custom tool call.
+     */
+    S.String,
+    /**
+     * Text, image, or file output of the custom tool call.
+     */
+    S.Array(FunctionAndCustomToolCallOutput)
+  )
+}) {}
+
+/**
+ * A single item within a conversation. The set of possible types are the same as the `output` type of a [Response object](https://platform.openai.com/docs/api-reference/responses/object#responses/object-output).
+ */
+export class ConversationItem extends S.Union(
+  Message,
+  FunctionToolCallResource,
+  FunctionToolCallOutputResource,
+  FileSearchToolCall,
+  WebSearchToolCall,
+  ImageGenToolCall,
+  ComputerToolCall,
+  ComputerToolCallOutputResource,
+  ReasoningItem,
+  CodeInterpreterToolCall,
+  LocalShellToolCall,
+  LocalShellToolCallOutput,
+  FunctionShellCall,
+  FunctionShellCallOutput,
+  ApplyPatchToolCall,
+  ApplyPatchToolCallOutput,
+  MCPListTools,
+  MCPApprovalRequest,
+  MCPApprovalResponseResource,
+  MCPToolCall,
+  CustomToolCall,
+  CustomToolCallOutput
+) {}
+
+/**
+ * A list of Conversation items.
+ */
+export class ConversationItemList extends S.Class<ConversationItemList>("ConversationItemList")({
+  /**
+   * The type of object returned, must be `list`.
+   */
+  "object": S.Literal("list"),
+  /**
+   * A list of conversation items.
+   */
+  "data": S.Array(ConversationItem),
+  /**
+   * Whether there are more items available.
+   */
+  "has_more": S.Boolean,
+  /**
+   * The ID of the first item in the list.
+   */
+  "first_id": S.String,
+  /**
+   * The ID of the last item in the list.
+   */
+  "last_id": S.String
+}) {}
+
+export class CreateConversationItemsParams extends S.Struct({
+  "include": S.optionalWith(S.Array(IncludeEnum), { nullable: true })
+}) {}
+
+/**
+ * The role of the message input. One of `user`, `assistant`, `system`, or
+ * `developer`.
+ */
+export class EasyInputMessageRole extends S.Literal("user", "assistant", "system", "developer") {}
+
+export class InputContent extends S.Union(InputTextContent, InputImageContent, InputFileContent) {}
+
+/**
+ * A list of one or many input items to the model, containing different content
+ * types.
+ */
+export class InputMessageContentList extends S.Array(InputContent) {}
+
+/**
+ * The type of the message input. Always `message`.
+ */
+export class EasyInputMessageType extends S.Literal("message") {}
+
+/**
+ * A message input to the model with a role indicating instruction following
+ * hierarchy. Instructions given with the `developer` or `system` role take
+ * precedence over instructions given with the `user` role. Messages with the
+ * `assistant` role are presumed to have been generated by the model in previous
+ * interactions.
+ */
+export class EasyInputMessage extends S.Class<EasyInputMessage>("EasyInputMessage")({
+  /**
+   * The role of the message input. One of `user`, `assistant`, `system`, or
+   * `developer`.
+   */
+  "role": EasyInputMessageRole,
+  /**
+   * Text, image, or audio input to the model, used to generate a response.
+   * Can also contain previous assistant responses.
+   */
+  "content": S.Union(
+    /**
+     * A text input to the model.
+     */
+    S.String,
+    InputMessageContentList
+  ),
+  /**
+   * The type of the message input. Always `message`.
+   */
+  "type": S.optionalWith(EasyInputMessageType, { nullable: true })
+}) {}
+
+/**
+ * The type of the message input. Always set to `message`.
+ */
+export class InputMessageType extends S.Literal("message") {}
+
+/**
+ * The role of the message input. One of `user`, `system`, or `developer`.
+ */
+export class InputMessageRole extends S.Literal("user", "system", "developer") {}
+
+/**
+ * The status of item. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when items are returned via API.
+ */
+export class InputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A message input to the model with a role indicating instruction following
+ * hierarchy. Instructions given with the `developer` or `system` role take
+ * precedence over instructions given with the `user` role.
+ */
+export class InputMessage extends S.Class<InputMessage>("InputMessage")({
+  /**
+   * The type of the message input. Always set to `message`.
+   */
+  "type": S.optionalWith(InputMessageType, { nullable: true }),
+  /**
+   * The role of the message input. One of `user`, `system`, or `developer`.
+   */
+  "role": InputMessageRole,
+  /**
+   * The status of item. One of `in_progress`, `completed`, or
+   * `incomplete`. Populated when items are returned via API.
+   */
+  "status": S.optionalWith(InputMessageStatus, { nullable: true }),
+  "content": InputMessageContentList
+}) {}
+
+/**
+ * The type of the output message. Always `message`.
+ */
+export class OutputMessageType extends S.Literal("message") {}
+
+/**
+ * The role of the output message. Always `assistant`.
+ */
+export class OutputMessageRole extends S.Literal("assistant") {}
+
+export class OutputMessageContent extends S.Union(OutputTextContent, RefusalContent) {}
+
+/**
+ * The status of the message input. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when input items are returned via API.
+ */
+export class OutputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * An output message from the model.
+ */
+export class OutputMessage extends S.Class<OutputMessage>("OutputMessage")({
+  /**
+   * The unique ID of the output message.
+   */
+  "id": S.String,
+  /**
+   * The type of the output message. Always `message`.
+   */
+  "type": OutputMessageType,
+  /**
+   * The role of the output message. Always `assistant`.
+   */
+  "role": OutputMessageRole,
+  /**
+   * The content of the output message.
+   */
+  "content": S.Array(OutputMessageContent),
+  /**
+   * The status of the message input. One of `in_progress`, `completed`, or
+   * `incomplete`. Populated when input items are returned via API.
+   */
+  "status": OutputMessageStatus
+}) {}
+
+/**
+ * The type of the computer tool call output. Always `computer_call_output`.
+ */
+export class ComputerCallOutputItemParamType extends S.Literal("computer_call_output") {}
+
+export class FunctionCallItemStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * The output of a computer tool call.
+ */
+export class ComputerCallOutputItemParam extends S.Class<ComputerCallOutputItemParam>("ComputerCallOutputItemParam")({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The ID of the computer tool call that produced the output.
+   */
+  "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+  /**
+   * The type of the computer tool call output. Always `computer_call_output`.
+   */
+  "type": ComputerCallOutputItemParamType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_call_output" as const)
+  ),
+  "output": ComputerScreenshotImage,
+  "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerCallSafetyCheckParam), { nullable: true }),
+  "status": S.optionalWith(FunctionCallItemStatus, { nullable: true })
+}) {}
+
+/**
+ * The type of the function tool call. Always `function_call`.
+ */
+export class FunctionToolCallType extends S.Literal("function_call") {}
+
+/**
+ * The status of the item. One of `in_progress`, `completed`, or
+ * `incomplete`. Populated when items are returned via API.
+ */
+export class FunctionToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A tool call to run a function. See the
+ * [function calling guide](https://platform.openai.com/docs/guides/function-calling) for more information.
+ */
+export class FunctionToolCall extends S.Class<FunctionToolCall>("FunctionToolCall")({
+  /**
+   * The unique ID of the function tool call.
+   */
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The type of the function tool call. Always `function_call`.
+   */
+  "type": FunctionToolCallType,
+  /**
+   * The unique ID of the function tool call generated by the model.
+   */
+  "call_id": S.String,
+  /**
+   * The name of the function to run.
+   */
+  "name": S.String,
+  /**
+   * A JSON string of the arguments to pass to the function.
+   */
+  "arguments": S.String,
+  /**
+   * The status of the item. One of `in_progress`, `completed`, or
+   * `incomplete`. Populated when items are returned via API.
+   */
+  "status": S.optionalWith(FunctionToolCallStatus, { nullable: true })
+}) {}
+
+/**
+ * The type of the function tool call output. Always `function_call_output`.
+ */
+export class FunctionCallOutputItemParamType extends S.Literal("function_call_output") {}
+
+/**
+ * The type of the input item. Always `input_text`.
+ */
+export class InputTextContentParamType extends S.Literal("input_text") {}
+
+/**
+ * A text input to the model.
+ */
+export class InputTextContentParam extends S.Class<InputTextContentParam>("InputTextContentParam")({
+  /**
+   * The type of the input item. Always `input_text`.
+   */
+  "type": InputTextContentParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_text" as const)),
+  /**
+   * The text input to the model.
+   */
+  "text": S.String.pipe(S.maxLength(10485760))
+}) {}
+
+/**
+ * The type of the input item. Always `input_image`.
+ */
+export class InputImageContentParamAutoParamType extends S.Literal("input_image") {}
+
+export class DetailEnum extends S.Literal("low", "high", "auto") {}
+
+/**
+ * An image input to the model. Learn about [image inputs](https://platform.openai.com/docs/guides/vision)
+ */
+export class InputImageContentParamAutoParam
+  extends S.Class<InputImageContentParamAutoParam>("InputImageContentParamAutoParam")({
+    /**
+     * The type of the input item. Always `input_image`.
+     */
+    "type": InputImageContentParamAutoParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "input_image" as const)
+    ),
+    "image_url": S.optionalWith(S.String.pipe(S.maxLength(20971520)), { nullable: true }),
+    "file_id": S.optionalWith(S.String, { nullable: true }),
+    "detail": S.optionalWith(DetailEnum, { nullable: true })
+  })
+{}
+
+/**
+ * The type of the input item. Always `input_file`.
+ */
+export class InputFileContentParamType extends S.Literal("input_file") {}
+
+/**
+ * A file input to the model.
+ */
+export class InputFileContentParam extends S.Class<InputFileContentParam>("InputFileContentParam")({
+  /**
+   * The type of the input item. Always `input_file`.
+   */
+  "type": InputFileContentParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_file" as const)),
+  "file_id": S.optionalWith(S.String, { nullable: true }),
+  "filename": S.optionalWith(S.String, { nullable: true }),
+  "file_data": S.optionalWith(S.String.pipe(S.maxLength(33554432)), { nullable: true }),
+  "file_url": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The output of a function tool call.
+ */
+export class FunctionCallOutputItemParam extends S.Class<FunctionCallOutputItemParam>("FunctionCallOutputItemParam")({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The unique ID of the function tool call generated by the model.
+   */
+  "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+  /**
+   * The type of the function tool call output. Always `function_call_output`.
+   */
+  "type": FunctionCallOutputItemParamType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "function_call_output" as const)
+  ),
+  /**
+   * Text, image, or file output of the function tool call.
+   */
+  "output": S.Union(
+    /**
+     * A JSON string of the output of the function tool call.
+     */
+    S.String.pipe(S.maxLength(10485760)),
+    S.Array(S.Union(InputTextContentParam, InputImageContentParamAutoParam, InputFileContentParam))
+  ),
+  "status": S.optionalWith(FunctionCallItemStatus, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `function_shell_call`.
+ */
+export class FunctionShellCallItemParamType extends S.Literal("shell_call") {}
+
+/**
+ * Commands and limits describing how to run the function shell tool call.
+ */
+export class FunctionShellActionParam extends S.Class<FunctionShellActionParam>("FunctionShellActionParam")({
+  /**
+   * Ordered shell commands for the execution environment to run.
+   */
+  "commands": S.Array(S.String),
+  "timeout_ms": S.optionalWith(S.Int, { nullable: true }),
+  "max_output_length": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+/**
+ * Status values reported for function shell tool calls.
+ */
+export class FunctionShellCallItemStatus extends S.Literal("in_progress", "completed", "incomplete") {}
+
+/**
+ * A tool representing a request to execute one or more shell commands.
+ */
+export class FunctionShellCallItemParam extends S.Class<FunctionShellCallItemParam>("FunctionShellCallItemParam")({
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The unique ID of the function shell tool call generated by the model.
+   */
+  "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+  /**
+   * The type of the item. Always `function_shell_call`.
+   */
+  "type": FunctionShellCallItemParamType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "shell_call" as const)
+  ),
+  /**
+   * The shell commands and limits that describe how to run the tool call.
+   */
+  "action": FunctionShellActionParam,
+  "status": S.optionalWith(FunctionShellCallItemStatus, { nullable: true })
+}) {}
+
+/**
+ * The type of the item. Always `function_shell_call_output`.
+ */
+export class FunctionShellCallOutputItemParamType extends S.Literal("shell_call_output") {}
+
+/**
+ * The outcome type. Always `timeout`.
+ */
+export class FunctionShellCallOutputTimeoutOutcomeParamType extends S.Literal("timeout") {}
+
+/**
+ * Indicates that the function shell call exceeded its configured time limit.
+ */
+export class FunctionShellCallOutputTimeoutOutcomeParam
+  extends S.Class<FunctionShellCallOutputTimeoutOutcomeParam>("FunctionShellCallOutputTimeoutOutcomeParam")({
+    /**
+     * The outcome type. Always `timeout`.
+     */
+    "type": FunctionShellCallOutputTimeoutOutcomeParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "timeout" as const)
+    )
+  })
+{}
+
+/**
+ * The outcome type. Always `exit`.
+ */
+export class FunctionShellCallOutputExitOutcomeParamType extends S.Literal("exit") {}
+
+/**
+ * Indicates that the shell commands finished and returned an exit code.
+ */
+export class FunctionShellCallOutputExitOutcomeParam
+  extends S.Class<FunctionShellCallOutputExitOutcomeParam>("FunctionShellCallOutputExitOutcomeParam")({
+    /**
+     * The outcome type. Always `exit`.
+     */
+    "type": FunctionShellCallOutputExitOutcomeParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "exit" as const)
+    ),
+    /**
+     * The exit code returned by the shell process.
+     */
+    "exit_code": S.Int
+  })
+{}
+
+/**
+ * The exit or timeout outcome associated with this chunk.
+ */
+export class FunctionShellCallOutputOutcomeParam
+  extends S.Union(FunctionShellCallOutputTimeoutOutcomeParam, FunctionShellCallOutputExitOutcomeParam)
+{}
+
+/**
+ * Captured stdout and stderr for a portion of a function shell tool call output.
+ */
+export class FunctionShellCallOutputContentParam
+  extends S.Class<FunctionShellCallOutputContentParam>("FunctionShellCallOutputContentParam")({
+    /**
+     * Captured stdout output for this chunk of the shell call.
+     */
+    "stdout": S.String.pipe(S.maxLength(10485760)),
+    /**
+     * Captured stderr output for this chunk of the shell call.
+     */
+    "stderr": S.String.pipe(S.maxLength(10485760)),
+    /**
+     * The exit or timeout outcome associated with this chunk.
+     */
+    "outcome": FunctionShellCallOutputOutcomeParam
+  })
+{}
+
+/**
+ * The streamed output items emitted by a function shell tool call.
+ */
+export class FunctionShellCallOutputItemParam
+  extends S.Class<FunctionShellCallOutputItemParam>("FunctionShellCallOutputItemParam")({
+    "id": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The unique ID of the function shell tool call generated by the model.
+     */
+    "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+    /**
+     * The type of the item. Always `function_shell_call_output`.
+     */
+    "type": FunctionShellCallOutputItemParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "shell_call_output" as const)
+    ),
+    /**
+     * Captured chunks of stdout and stderr output, along with their associated outcomes.
+     */
+    "output": S.Array(FunctionShellCallOutputContentParam),
+    "max_output_length": S.optionalWith(S.Int, { nullable: true })
+  })
+{}
+
+/**
+ * The type of the item. Always `apply_patch_call`.
+ */
+export class ApplyPatchToolCallItemParamType extends S.Literal("apply_patch_call") {}
+
+/**
+ * Status values reported for apply_patch tool calls.
+ */
+export class ApplyPatchCallStatusParam extends S.Literal("in_progress", "completed") {}
+
+/**
+ * The operation type. Always `create_file`.
+ */
+export class ApplyPatchCreateFileOperationParamType extends S.Literal("create_file") {}
+
+/**
+ * Instruction for creating a new file via the apply_patch tool.
+ */
+export class ApplyPatchCreateFileOperationParam
+  extends S.Class<ApplyPatchCreateFileOperationParam>("ApplyPatchCreateFileOperationParam")({
+    /**
+     * The operation type. Always `create_file`.
+     */
+    "type": ApplyPatchCreateFileOperationParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "create_file" as const)
+    ),
+    /**
+     * Path of the file to create relative to the workspace root.
+     */
+    "path": S.String.pipe(S.minLength(1)),
+    /**
+     * Unified diff content to apply when creating the file.
+     */
+    "diff": S.String.pipe(S.maxLength(10485760))
+  })
+{}
+
+/**
+ * The operation type. Always `delete_file`.
+ */
+export class ApplyPatchDeleteFileOperationParamType extends S.Literal("delete_file") {}
+
+/**
+ * Instruction for deleting an existing file via the apply_patch tool.
+ */
+export class ApplyPatchDeleteFileOperationParam
+  extends S.Class<ApplyPatchDeleteFileOperationParam>("ApplyPatchDeleteFileOperationParam")({
+    /**
+     * The operation type. Always `delete_file`.
+     */
+    "type": ApplyPatchDeleteFileOperationParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "delete_file" as const)
+    ),
+    /**
+     * Path of the file to delete relative to the workspace root.
+     */
+    "path": S.String.pipe(S.minLength(1))
+  })
+{}
+
+/**
+ * The operation type. Always `update_file`.
+ */
+export class ApplyPatchUpdateFileOperationParamType extends S.Literal("update_file") {}
+
+/**
+ * Instruction for updating an existing file via the apply_patch tool.
+ */
+export class ApplyPatchUpdateFileOperationParam
+  extends S.Class<ApplyPatchUpdateFileOperationParam>("ApplyPatchUpdateFileOperationParam")({
+    /**
+     * The operation type. Always `update_file`.
+     */
+    "type": ApplyPatchUpdateFileOperationParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "update_file" as const)
+    ),
+    /**
+     * Path of the file to update relative to the workspace root.
+     */
+    "path": S.String.pipe(S.minLength(1)),
+    /**
+     * Unified diff content to apply to the existing file.
+     */
+    "diff": S.String.pipe(S.maxLength(10485760))
+  })
+{}
+
+/**
+ * One of the create_file, delete_file, or update_file operations supplied to the apply_patch tool.
+ */
+export class ApplyPatchOperationParam extends S.Union(
+  ApplyPatchCreateFileOperationParam,
+  ApplyPatchDeleteFileOperationParam,
+  ApplyPatchUpdateFileOperationParam
+) {}
+
+/**
+ * A tool call representing a request to create, delete, or update files using diff patches.
+ */
+export class ApplyPatchToolCallItemParam extends S.Class<ApplyPatchToolCallItemParam>("ApplyPatchToolCallItemParam")({
+  /**
+   * The type of the item. Always `apply_patch_call`.
+   */
+  "type": ApplyPatchToolCallItemParamType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "apply_patch_call" as const)
+  ),
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The unique ID of the apply patch tool call generated by the model.
+   */
+  "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+  /**
+   * The status of the apply patch tool call. One of `in_progress` or `completed`.
+   */
+  "status": ApplyPatchCallStatusParam,
+  /**
+   * The specific create, delete, or update instruction for the apply_patch tool call.
+   */
+  "operation": ApplyPatchOperationParam
+}) {}
+
+/**
+ * The type of the item. Always `apply_patch_call_output`.
+ */
+export class ApplyPatchToolCallOutputItemParamType extends S.Literal("apply_patch_call_output") {}
+
+/**
+ * Outcome values reported for apply_patch tool call outputs.
+ */
+export class ApplyPatchCallOutputStatusParam extends S.Literal("completed", "failed") {}
+
+/**
+ * The streamed output emitted by an apply patch tool call.
+ */
+export class ApplyPatchToolCallOutputItemParam
+  extends S.Class<ApplyPatchToolCallOutputItemParam>("ApplyPatchToolCallOutputItemParam")({
+    /**
+     * The type of the item. Always `apply_patch_call_output`.
+     */
+    "type": ApplyPatchToolCallOutputItemParamType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "apply_patch_call_output" as const)
+    ),
+    "id": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The unique ID of the apply patch tool call generated by the model.
+     */
+    "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
+    /**
+     * The status of the apply patch tool call output. One of `completed` or `failed`.
+     */
+    "status": ApplyPatchCallOutputStatusParam,
+    "output": S.optionalWith(S.String.pipe(S.maxLength(10485760)), { nullable: true })
+  })
+{}
+
+/**
+ * The type of the item. Always `mcp_approval_response`.
+ */
+export class MCPApprovalResponseType extends S.Literal("mcp_approval_response") {}
+
+/**
+ * A response to an MCP approval request.
+ */
+export class MCPApprovalResponse extends S.Class<MCPApprovalResponse>("MCPApprovalResponse")({
+  /**
+   * The type of the item. Always `mcp_approval_response`.
+   */
+  "type": MCPApprovalResponseType,
+  "id": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The ID of the approval request being answered.
+   */
+  "approval_request_id": S.String,
+  /**
+   * Whether the request was approved.
+   */
+  "approve": S.Boolean,
+  "reason": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Content item used to generate a response.
+ */
+export class Item extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+/**
+ * The type of item to reference. Always `item_reference`.
+ */
+export class ItemReferenceParamTypeEnum extends S.Literal("item_reference") {}
+
+/**
+ * An internal identifier for an item to reference.
+ */
+export class ItemReferenceParam extends S.Class<ItemReferenceParam>("ItemReferenceParam")({
+  "type": S.optionalWith(ItemReferenceParamTypeEnum, { nullable: true }),
+  /**
+   * The ID of the item to reference.
+   */
+  "id": S.String
+}) {}
+
+export class InputItem extends S.Union(
+  EasyInputMessage,
+  /**
+   * An item representing part of the context for the response to be
+   * generated by the model. Can contain text, images, and audio inputs,
+   * as well as previous assistant responses and tool call outputs.
+   */
+  S.Record({ key: S.String, value: S.Unknown }),
+  ItemReferenceParam
+) {}
+
+export class CreateConversationItemsRequest
+  extends S.Class<CreateConversationItemsRequest>("CreateConversationItemsRequest")({
+    /**
+     * The items to add to the conversation. You may add up to 20 items at a time.
+     */
+    "items": S.Array(InputItem).pipe(S.maxItems(20))
+  })
+{}
+
+export class GetConversationItemParams extends S.Struct({
+  "include": S.optionalWith(S.Array(IncludeEnum), { nullable: true })
+}) {}
+
+/**
+ * The object type, which is always `conversation`.
+ */
+export class ConversationResourceObject extends S.Literal("conversation") {}
+
+export class ConversationResource extends S.Class<ConversationResource>("ConversationResource")({
+  /**
+   * The unique ID of the conversation.
+   */
+  "id": S.String,
+  /**
+   * The object type, which is always `conversation`.
+   */
+  "object": ConversationResourceObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "conversation" as const)
+  ),
+  /**
+   * The time at which the conversation was created, measured in seconds since the Unix epoch.
+   */
+  "created_at": S.Int
+}) {}
+
 export class CreateEmbeddingRequestModelEnum
   extends S.Literal("text-embedding-ada-002", "text-embedding-3-small", "text-embedding-3-large")
 {}
@@ -2641,7 +5821,7 @@ export class CreateEmbeddingRequestEncodingFormat extends S.Literal("float", "ba
 
 export class CreateEmbeddingRequest extends S.Class<CreateEmbeddingRequest>("CreateEmbeddingRequest")({
   /**
-   * Input text to embed, encoded as a string or array of tokens. To embed multiple inputs in a single request, pass an array of strings or array of token arrays. The input must not exceed the max input tokens for the model (8192 tokens for `text-embedding-ada-002`), cannot be an empty string, and any array must be 2048 dimensions or less. [Example Python code](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken) for counting tokens. Some models may also impose a limit on total number of tokens summed across inputs.
+   * Input text to embed, encoded as a string or array of tokens. To embed multiple inputs in a single request, pass an array of strings or array of token arrays. The input must not exceed the max input tokens for the model (8192 tokens for all embedding models), cannot be an empty string, and any array must be 2048 dimensions or less. [Example Python code](https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken) for counting tokens. In addition to the per-input token limit, all embedding  models enforce a maximum of 300,000 tokens summed across all inputs in a  single request.
    */
   "input": S.Union(
     /**
@@ -2662,7 +5842,7 @@ export class CreateEmbeddingRequest extends S.Class<CreateEmbeddingRequest>("Cre
     S.NonEmptyArray(S.NonEmptyArray(S.Int).pipe(S.minItems(1))).pipe(S.minItems(1), S.maxItems(2048))
   ),
   /**
-   * ID of the model to use. You can use the [List models](/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](/docs/models) for descriptions of them.
+   * ID of the model to use. You can use the [List models](https://platform.openai.com/docs/api-reference/models/list) API to see all of your available models, or see our [Model overview](https://platform.openai.com/docs/models) for descriptions of them.
    */
   "model": S.Union(S.String, CreateEmbeddingRequestModelEnum),
   /**
@@ -2677,7 +5857,7 @@ export class CreateEmbeddingRequest extends S.Class<CreateEmbeddingRequest>("Cre
    */
   "dimensions": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true }),
   /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).
    */
   "user": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -2696,7 +5876,7 @@ export class Embedding extends S.Class<Embedding>("Embedding")({
    */
   "index": S.Int,
   /**
-   * The embedding vector, which is a list of floats. The length of vector depends on the model as listed in the [embedding guide](/docs/guides/embeddings).
+   * The embedding vector, which is a list of floats. The length of vector depends on the model as listed in the [embedding guide](https://platform.openai.com/docs/guides/embeddings).
    */
   "embedding": S.Array(S.Number),
   /**
@@ -2783,15 +5963,36 @@ export class EvalCustomDataSourceConfig extends S.Class<EvalCustomDataSourceConf
 }) {}
 
 /**
+ * The type of data source. Always `logs`.
+ */
+export class EvalLogsDataSourceConfigType extends S.Literal("logs") {}
+
+/**
+ * A LogsDataSourceConfig which specifies the metadata property of your logs query.
+ * This is usually metadata like `usecase=chatbot` or `prompt-version=v2`, etc.
+ * The schema returned by this data source config is used to defined what variables are available in your evals.
+ * `item` and `sample` are both defined when using this data source config.
+ */
+export class EvalLogsDataSourceConfig extends S.Class<EvalLogsDataSourceConfig>("EvalLogsDataSourceConfig")({
+  /**
+   * The type of data source. Always `logs`.
+   */
+  "type": EvalLogsDataSourceConfigType.pipe(S.propertySignature, S.withConstructorDefault(() => "logs" as const)),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * The json schema for the run data source items.
+   * Learn how to build JSON schemas [here](https://json-schema.org/).
+   */
+  "schema": S.Record({ key: S.String, value: S.Unknown })
+}) {}
+
+/**
  * The type of data source. Always `stored_completions`.
  */
 export class EvalStoredCompletionsDataSourceConfigType extends S.Literal("stored_completions") {}
 
 /**
- * A StoredCompletionsDataSourceConfig which specifies the metadata property of your stored completions query.
- * This is usually metadata like `usecase=chatbot` or `prompt-version=v2`, etc.
- * The schema returned by this data source config is used to defined what variables are available in your evals.
- * `item` and `sample` are both defined when using this data source config.
+ * Deprecated in favor of LogsDataSourceConfig.
  */
 export class EvalStoredCompletionsDataSourceConfig
   extends S.Class<EvalStoredCompletionsDataSourceConfig>("EvalStoredCompletionsDataSourceConfig")({
@@ -2802,7 +6003,7 @@ export class EvalStoredCompletionsDataSourceConfig
       S.propertySignature,
       S.withConstructorDefault(() => "stored_completions" as const)
     ),
-    "metadata": S.optionalWith(Metadata, { nullable: true }),
+    "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
     /**
      * The json schema for the run data source items.
      * Learn how to build JSON schemas [here](https://json-schema.org/).
@@ -2814,7 +6015,7 @@ export class EvalStoredCompletionsDataSourceConfig
 /**
  * The object type, which is always `label_model`.
  */
-export class EvalLabelModelGraderType extends S.Literal("label_model") {}
+export class EvalGraderLabelModelType extends S.Literal("label_model") {}
 
 /**
  * The role of the message input. One of `user`, `assistant`, `system`, or
@@ -2823,28 +6024,41 @@ export class EvalLabelModelGraderType extends S.Literal("label_model") {}
 export class EvalItemRole extends S.Literal("user", "assistant", "system", "developer") {}
 
 /**
- * The type of the input item. Always `input_text`.
+ * The type of the image input. Always `input_image`.
  */
-export class InputTextContentType extends S.Literal("input_text") {}
+export class EvalItemContentEnumType extends S.Literal("input_image") {}
 
 /**
- * A text input to the model.
+ * The type of the input item. Always `input_audio`.
  */
-export class InputTextContent extends S.Class<InputTextContent>("InputTextContent")({
+export class InputAudioType extends S.Literal("input_audio") {}
+
+/**
+ * The format of the audio data. Currently supported formats are `mp3` and
+ * `wav`.
+ */
+export class InputAudioInputAudioFormat extends S.Literal("mp3", "wav") {}
+
+/**
+ * An audio input to the model.
+ */
+export class InputAudio extends S.Class<InputAudio>("InputAudio")({
   /**
-   * The type of the input item. Always `input_text`.
+   * The type of the input item. Always `input_audio`.
    */
-  "type": InputTextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_text" as const)),
-  /**
-   * The text input to the model.
-   */
-  "text": S.String
+  "type": InputAudioType,
+  "input_audio": S.Struct({
+    /**
+     * Base64-encoded audio data.
+     */
+    "data": S.String,
+    /**
+     * The format of the audio data. Currently supported formats are `mp3` and
+     * `wav`.
+     */
+    "format": InputAudioInputAudioFormat
+  })
 }) {}
-
-/**
- * The type of the output text. Always `output_text`.
- */
-export class EvalItemContentEnumType extends S.Literal("output_text") {}
 
 /**
  * The type of the message input. Always `message`.
@@ -2865,7 +6079,7 @@ export class EvalItem extends S.Class<EvalItem>("EvalItem")({
    */
   "role": EvalItemRole,
   /**
-   * Text inputs to the model - can contain template strings.
+   * Inputs to the model - can contain template strings.
    */
   "content": S.Union(
     /**
@@ -2885,7 +6099,25 @@ export class EvalItem extends S.Class<EvalItem>("EvalItem")({
        * The text output from the model.
        */
       "text": S.String
-    })
+    }),
+    /**
+     * An image input to the model.
+     */
+    S.Struct({
+      /**
+       * The type of the image input. Always `input_image`.
+       */
+      "type": EvalItemContentEnumType,
+      /**
+       * The URL of the image input.
+       */
+      "image_url": S.String,
+      /**
+       * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
+       */
+      "detail": S.optionalWith(S.String, { nullable: true })
+    }),
+    InputAudio
   ),
   /**
    * The type of the message input. Always `message`.
@@ -2897,11 +6129,11 @@ export class EvalItem extends S.Class<EvalItem>("EvalItem")({
  * A LabelModelGrader object which uses a model to assign labels to each item
  * in the evaluation.
  */
-export class EvalLabelModelGrader extends S.Class<EvalLabelModelGrader>("EvalLabelModelGrader")({
+export class EvalGraderLabelModel extends S.Class<EvalGraderLabelModel>("EvalGraderLabelModel")({
   /**
    * The object type, which is always `label_model`.
    */
-  "type": EvalLabelModelGraderType,
+  "type": EvalGraderLabelModelType,
   /**
    * The name of the grader.
    */
@@ -2924,21 +6156,21 @@ export class EvalLabelModelGrader extends S.Class<EvalLabelModelGrader>("EvalLab
 /**
  * The object type, which is always `string_check`.
  */
-export class EvalStringCheckGraderType extends S.Literal("string_check") {}
+export class EvalGraderStringCheckType extends S.Literal("string_check") {}
 
 /**
  * The string check operation to perform. One of `eq`, `ne`, `like`, or `ilike`.
  */
-export class EvalStringCheckGraderOperation extends S.Literal("eq", "ne", "like", "ilike") {}
+export class EvalGraderStringCheckOperation extends S.Literal("eq", "ne", "like", "ilike") {}
 
 /**
  * A StringCheckGrader object that performs a string comparison between input and reference using a specified operation.
  */
-export class EvalStringCheckGrader extends S.Class<EvalStringCheckGrader>("EvalStringCheckGrader")({
+export class EvalGraderStringCheck extends S.Class<EvalGraderStringCheck>("EvalGraderStringCheck")({
   /**
    * The object type, which is always `string_check`.
    */
-  "type": EvalStringCheckGraderType,
+  "type": EvalGraderStringCheckType,
   /**
    * The name of the grader.
    */
@@ -2954,18 +6186,21 @@ export class EvalStringCheckGrader extends S.Class<EvalStringCheckGrader>("EvalS
   /**
    * The string check operation to perform. One of `eq`, `ne`, `like`, or `ilike`.
    */
-  "operation": EvalStringCheckGraderOperation
+  "operation": EvalGraderStringCheckOperation
 }) {}
 
 /**
  * The type of grader.
  */
-export class EvalTextSimilarityGraderType extends S.Literal("text_similarity") {}
+export class EvalGraderTextSimilarityType extends S.Literal("text_similarity") {}
 
 /**
- * The evaluation metric to use. One of `fuzzy_match`, `bleu`, `gleu`, `meteor`, `rouge_1`, `rouge_2`, `rouge_3`, `rouge_4`, `rouge_5`, or `rouge_l`.
+ * The evaluation metric to use. One of `cosine`, `fuzzy_match`, `bleu`,
+ * `gleu`, `meteor`, `rouge_1`, `rouge_2`, `rouge_3`, `rouge_4`, `rouge_5`,
+ * or `rouge_l`.
  */
-export class EvalTextSimilarityGraderEvaluationMetric extends S.Literal(
+export class EvalGraderTextSimilarityEvaluationMetric extends S.Literal(
+  "cosine",
   "fuzzy_match",
   "bleu",
   "gleu",
@@ -2981,18 +6216,22 @@ export class EvalTextSimilarityGraderEvaluationMetric extends S.Literal(
 /**
  * A TextSimilarityGrader object which grades text based on similarity metrics.
  */
-export class EvalTextSimilarityGrader extends S.Class<EvalTextSimilarityGrader>("EvalTextSimilarityGrader")({
+export class EvalGraderTextSimilarity extends S.Class<EvalGraderTextSimilarity>("EvalGraderTextSimilarity")({
+  /**
+   * The threshold for the score.
+   */
+  "pass_threshold": S.Number,
   /**
    * The type of grader.
    */
-  "type": EvalTextSimilarityGraderType.pipe(
+  "type": EvalGraderTextSimilarityType.pipe(
     S.propertySignature,
     S.withConstructorDefault(() => "text_similarity" as const)
   ),
   /**
    * The name of the grader.
    */
-  "name": S.optionalWith(S.String, { nullable: true }),
+  "name": S.String,
   /**
    * The text being graded.
    */
@@ -3002,28 +6241,30 @@ export class EvalTextSimilarityGrader extends S.Class<EvalTextSimilarityGrader>(
    */
   "reference": S.String,
   /**
-   * A float score where a value greater than or equal indicates a passing grade.
+   * The evaluation metric to use. One of `cosine`, `fuzzy_match`, `bleu`,
+   * `gleu`, `meteor`, `rouge_1`, `rouge_2`, `rouge_3`, `rouge_4`, `rouge_5`,
+   * or `rouge_l`.
    */
-  "pass_threshold": S.Number,
-  /**
-   * The evaluation metric to use. One of `fuzzy_match`, `bleu`, `gleu`, `meteor`, `rouge_1`, `rouge_2`, `rouge_3`, `rouge_4`, `rouge_5`, or `rouge_l`.
-   */
-  "evaluation_metric": EvalTextSimilarityGraderEvaluationMetric
+  "evaluation_metric": EvalGraderTextSimilarityEvaluationMetric
 }) {}
 
 /**
  * The object type, which is always `python`.
  */
-export class EvalPythonGraderType extends S.Literal("python") {}
+export class EvalGraderPythonType extends S.Literal("python") {}
 
 /**
  * A PythonGrader object that runs a python script on the input.
  */
-export class EvalPythonGrader extends S.Class<EvalPythonGrader>("EvalPythonGrader")({
+export class EvalGraderPython extends S.Class<EvalGraderPython>("EvalGraderPython")({
+  /**
+   * The threshold for the score.
+   */
+  "pass_threshold": S.optionalWith(S.Number, { nullable: true }),
   /**
    * The object type, which is always `python`.
    */
-  "type": EvalPythonGraderType,
+  "type": EvalGraderPythonType,
   /**
    * The name of the grader.
    */
@@ -3033,10 +6274,6 @@ export class EvalPythonGrader extends S.Class<EvalPythonGrader>("EvalPythonGrade
    */
   "source": S.String,
   /**
-   * The threshold for the score.
-   */
-  "pass_threshold": S.optionalWith(S.Number, { nullable: true }),
-  /**
    * The image tag to use for the python script.
    */
   "image_tag": S.optionalWith(S.String, { nullable: true })
@@ -3045,16 +6282,20 @@ export class EvalPythonGrader extends S.Class<EvalPythonGrader>("EvalPythonGrade
 /**
  * The object type, which is always `score_model`.
  */
-export class EvalScoreModelGraderType extends S.Literal("score_model") {}
+export class EvalGraderScoreModelType extends S.Literal("score_model") {}
 
 /**
  * A ScoreModelGrader object that uses a model to assign a score to the input.
  */
-export class EvalScoreModelGrader extends S.Class<EvalScoreModelGrader>("EvalScoreModelGrader")({
+export class EvalGraderScoreModel extends S.Class<EvalGraderScoreModel>("EvalGraderScoreModel")({
+  /**
+   * The threshold for the score.
+   */
+  "pass_threshold": S.optionalWith(S.Number, { nullable: true }),
   /**
    * The object type, which is always `score_model`.
    */
-  "type": EvalScoreModelGraderType,
+  "type": EvalGraderScoreModelType,
   /**
    * The name of the grader.
    */
@@ -3066,15 +6307,20 @@ export class EvalScoreModelGrader extends S.Class<EvalScoreModelGrader>("EvalSco
   /**
    * The sampling parameters for the model.
    */
-  "sampling_params": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "sampling_params": S.optionalWith(
+    S.Struct({
+      "seed": S.optionalWith(S.Int, { nullable: true }),
+      "top_p": S.optionalWith(S.Number, { nullable: true }),
+      "temperature": S.optionalWith(S.Number, { nullable: true }),
+      "max_completions_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true }),
+      "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true })
+    }),
+    { nullable: true }
+  ),
   /**
    * The input text. This may include template strings.
    */
   "input": S.Array(EvalItem),
-  /**
-   * The threshold for the score.
-   */
-  "pass_threshold": S.optionalWith(S.Number, { nullable: true }),
   /**
    * The range of the score. Defaults to `[0, 1]`.
    */
@@ -3087,7 +6333,7 @@ export class EvalScoreModelGrader extends S.Class<EvalScoreModelGrader>("EvalSco
  * Like:
  *  - Improve the quality of my chatbot
  *  - See how well my chatbot handles customer support
- *  - Check if o3-mini is better at my usecase than gpt-4o
+ *  - Check if o4-mini is better at my usecase than gpt-4o
  */
 export class Eval extends S.Class<Eval>("Eval")({
   /**
@@ -3111,18 +6357,18 @@ export class Eval extends S.Class<Eval>("Eval")({
    */
   "testing_criteria": S.Array(
     S.Union(
-      EvalLabelModelGrader,
-      EvalStringCheckGrader,
-      EvalTextSimilarityGrader,
-      EvalPythonGrader,
-      EvalScoreModelGrader
+      EvalGraderLabelModel,
+      EvalGraderStringCheck,
+      EvalGraderTextSimilarity,
+      EvalGraderPython,
+      EvalGraderScoreModel
     )
   ),
   /**
    * The Unix timestamp (in seconds) for when the eval was created.
    */
   "created_at": S.Int,
-  "metadata": S.NullOr(Metadata)
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
 
 /**
@@ -3188,7 +6434,7 @@ export class CreateEvalCustomDataSourceConfig
 export class CreateEvalLogsDataSourceConfigType extends S.Literal("logs") {}
 
 /**
- * A data source config which specifies the metadata property of your stored completions query.
+ * A data source config which specifies the metadata property of your logs query.
  * This is usually metadata like `usecase=chatbot` or `prompt-version=v2`, etc.
  */
 export class CreateEvalLogsDataSourceConfig
@@ -3208,12 +6454,36 @@ export class CreateEvalLogsDataSourceConfig
 {}
 
 /**
+ * The type of data source. Always `stored_completions`.
+ */
+export class CreateEvalStoredCompletionsDataSourceConfigType extends S.Literal("stored_completions") {}
+
+/**
+ * Deprecated in favor of LogsDataSourceConfig.
+ */
+export class CreateEvalStoredCompletionsDataSourceConfig
+  extends S.Class<CreateEvalStoredCompletionsDataSourceConfig>("CreateEvalStoredCompletionsDataSourceConfig")({
+    /**
+     * The type of data source. Always `stored_completions`.
+     */
+    "type": CreateEvalStoredCompletionsDataSourceConfigType.pipe(
+      S.propertySignature,
+      S.withConstructorDefault(() => "stored_completions" as const)
+    ),
+    /**
+     * Metadata filters for the stored completions data source.
+     */
+    "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  })
+{}
+
+/**
  * The object type, which is always `label_model`.
  */
 export class CreateEvalLabelModelGraderType extends S.Literal("label_model") {}
 
 /**
- * A chat message that makes up the prompt or context. May include variable references to the "item" namespace, ie {{item.name}}.
+ * A chat message that makes up the prompt or context. May include variable references to the `item` namespace, ie {{item.name}}.
  */
 export class CreateEvalItem extends S.Record({ key: S.String, value: S.Unknown }) {}
 
@@ -3235,7 +6505,7 @@ export class CreateEvalLabelModelGrader extends S.Class<CreateEvalLabelModelGrad
    */
   "model": S.String,
   /**
-   * A list of chat messages forming the prompt or context. May include variable references to the "item" namespace, ie {{item.name}}.
+   * A list of chat messages forming the prompt or context. May include variable references to the `item` namespace, ie {{item.name}}.
    */
   "input": S.Array(CreateEvalItem),
   /**
@@ -3253,21 +6523,21 @@ export class CreateEvalRequest extends S.Class<CreateEvalRequest>("CreateEvalReq
    * The name of the evaluation.
    */
   "name": S.optionalWith(S.String, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   /**
-   * The configuration for the data source used for the evaluation runs.
+   * The configuration for the data source used for the evaluation runs. Dictates the schema of the data used in the evaluation.
    */
   "data_source_config": S.Record({ key: S.String, value: S.Unknown }),
   /**
-   * A list of graders for all eval runs in this group.
+   * A list of graders for all eval runs in this group. Graders can reference variables in the data source using double curly braces notation, like `{{item.variable_name}}`. To reference the model's output, use the `sample` namespace (ie, `{{sample.output_text}}`).
    */
   "testing_criteria": S.Array(
     S.Union(
       CreateEvalLabelModelGrader,
-      EvalStringCheckGrader,
-      EvalTextSimilarityGrader,
-      EvalPythonGrader,
-      EvalScoreModelGrader
+      EvalGraderStringCheck,
+      EvalGraderTextSimilarity,
+      EvalGraderPython,
+      EvalGraderScoreModel
     )
   )
 }) {}
@@ -3277,7 +6547,7 @@ export class UpdateEvalRequest extends S.Class<UpdateEvalRequest>("UpdateEvalReq
    * Rename the evaluation.
    */
   "name": S.optionalWith(S.String, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class DeleteEval200 extends S.Struct({
@@ -3369,6 +6639,9 @@ export class CreateEvalJsonlRunDataSource
       S.propertySignature,
       S.withConstructorDefault(() => "jsonl" as const)
     ),
+    /**
+     * Determines what populates the `item` namespace in the data source.
+     */
     "source": S.Union(EvalJsonlFileContentSource, EvalJsonlFileIdSource)
   })
 {}
@@ -3382,105 +6655,6 @@ export class CreateEvalCompletionsRunDataSourceType extends S.Literal("completio
  * The type of input messages. Always `item_reference`.
  */
 export class CreateEvalCompletionsRunDataSourceInputMessagesEnumType extends S.Literal("item_reference") {}
-
-/**
- * The role of the message input. One of `user`, `assistant`, `system`, or
- * `developer`.
- */
-export class EasyInputMessageRole extends S.Literal("user", "assistant", "system", "developer") {}
-
-/**
- * The type of the input item. Always `input_image`.
- */
-export class InputImageContentType extends S.Literal("input_image") {}
-
-/**
- * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
- */
-export class InputImageContentDetail extends S.Literal("low", "high", "auto") {}
-
-/**
- * An image input to the model. Learn about [image inputs](/docs/guides/vision).
- */
-export class InputImageContent extends S.Class<InputImageContent>("InputImageContent")({
-  /**
-   * The type of the input item. Always `input_image`.
-   */
-  "type": InputImageContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_image" as const)),
-  "image_url": S.optionalWith(S.String, { nullable: true }),
-  "file_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
-   */
-  "detail": InputImageContentDetail
-}) {}
-
-/**
- * The type of the input item. Always `input_file`.
- */
-export class InputFileContentType extends S.Literal("input_file") {}
-
-/**
- * A file input to the model.
- */
-export class InputFileContent extends S.Class<InputFileContent>("InputFileContent")({
-  /**
-   * The type of the input item. Always `input_file`.
-   */
-  "type": InputFileContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_file" as const)),
-  "file_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The name of the file to be sent to the model.
-   */
-  "filename": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The content of the file to be sent to the model.
-   */
-  "file_data": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-export class InputContent extends S.Union(InputTextContent, InputImageContent, InputFileContent) {}
-
-/**
- * A list of one or many input items to the model, containing different content
- * types.
- */
-export class InputMessageContentList extends S.Array(InputContent) {}
-
-/**
- * The type of the message input. Always `message`.
- */
-export class EasyInputMessageType extends S.Literal("message") {}
-
-/**
- * A message input to the model with a role indicating instruction following
- * hierarchy. Instructions given with the `developer` or `system` role take
- * precedence over instructions given with the `user` role. Messages with the
- * `assistant` role are presumed to have been generated by the model in previous
- * interactions.
- */
-export class EasyInputMessage extends S.Class<EasyInputMessage>("EasyInputMessage")({
-  /**
-   * The role of the message input. One of `user`, `assistant`, `system`, or
-   * `developer`.
-   */
-  "role": EasyInputMessageRole,
-  /**
-   * Text, image, or audio input to the model, used to generate a response.
-   * Can also contain previous assistant responses.
-   */
-  "content": S.Union(
-    /**
-     * A text input to the model.
-     */
-    S.String,
-    InputMessageContentList
-  ),
-  /**
-   * The type of the message input. Always `message`.
-   */
-  "type": S.optionalWith(EasyInputMessageType, { nullable: true })
-}) {}
 
 /**
  * The type of source. Always `stored_completions`.
@@ -3498,22 +6672,10 @@ export class EvalStoredCompletionsSource extends S.Class<EvalStoredCompletionsSo
     S.propertySignature,
     S.withConstructorDefault(() => "stored_completions" as const)
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
-  /**
-   * An optional model to filter by (e.g., 'gpt-4o').
-   */
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   "model": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * An optional Unix timestamp to filter items created after this time.
-   */
   "created_after": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * An optional Unix timestamp to filter items created before this time.
-   */
   "created_before": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * An optional maximum number of items to return.
-   */
   "limit": S.optionalWith(S.Int, { nullable: true })
 }) {}
 
@@ -3529,6 +6691,9 @@ export class CreateEvalCompletionsRunDataSource
       S.propertySignature,
       S.withConstructorDefault(() => "completions" as const)
     ),
+    /**
+     * Used when sampling from a model. Dictates the structure of the messages passed into the model. Can either be a reference to a prebuilt trajectory (ie, `item.input_trajectory`), or a template with variable references to the `item` namespace.
+     */
     "input_messages": S.optionalWith(
       S.Union(
         S.Struct({
@@ -3537,7 +6702,7 @@ export class CreateEvalCompletionsRunDataSource
            */
           "type": CreateEvalCompletionsRunDataSourceInputMessagesEnumType,
           /**
-           * A list of chat messages forming the prompt or context. May include variable references to the "item" namespace, ie {{item.name}}.
+           * A list of chat messages forming the prompt or context. May include variable references to the `item` namespace, ie {{item.name}}.
            */
           "template": S.Array(S.Union(EasyInputMessage, EvalItem))
         }),
@@ -3547,7 +6712,7 @@ export class CreateEvalCompletionsRunDataSource
            */
           "type": CreateEvalCompletionsRunDataSourceInputMessagesEnumType,
           /**
-           * A reference to a variable in the "item" namespace. Ie, "item.name"
+           * A reference to a variable in the `item` namespace. Ie, "item.input_trajectory"
            */
           "item_reference": S.String
         })
@@ -3556,6 +6721,7 @@ export class CreateEvalCompletionsRunDataSource
     ),
     "sampling_params": S.optionalWith(
       S.Struct({
+        "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true }),
         /**
          * A higher temperature increases randomness in the outputs.
          */
@@ -3571,7 +6737,27 @@ export class CreateEvalCompletionsRunDataSource
         /**
          * A seed value to initialize the randomness, during sampling.
          */
-        "seed": S.optionalWith(S.Int, { nullable: true, default: () => 42 as const })
+        "seed": S.optionalWith(S.Int, { nullable: true, default: () => 42 as const }),
+        /**
+         * An object specifying the format that the model must output.
+         *
+         * Setting to `{ "type": "json_schema", "json_schema": {...} }` enables
+         * Structured Outputs which ensures the model will match your supplied JSON
+         * schema. Learn more in the [Structured Outputs
+         * guide](https://platform.openai.com/docs/guides/structured-outputs).
+         *
+         * Setting to `{ "type": "json_object" }` enables the older JSON mode, which
+         * ensures the message the model generates is valid JSON. Using `json_schema`
+         * is preferred for models that support it.
+         */
+        "response_format": S.optionalWith(
+          S.Union(ResponseFormatText, ResponseFormatJsonSchema, ResponseFormatJsonObject),
+          { nullable: true }
+        ),
+        /**
+         * A list of tools the model may call. Currently, only functions are supported as a tool. Use this to provide a list of functions the model may generate JSON inputs for. A max of 128 functions are supported.
+         */
+        "tools": S.optionalWith(S.Array(ChatCompletionTool), { nullable: true })
       }),
       { nullable: true }
     ),
@@ -3579,19 +6765,783 @@ export class CreateEvalCompletionsRunDataSource
      * The name of the model to use for generating completions (e.g. "o3-mini").
      */
     "model": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Determines what populates the `item` namespace in this run's data source.
+     */
     "source": S.Union(EvalJsonlFileContentSource, EvalJsonlFileIdSource, EvalStoredCompletionsSource)
   })
 {}
 
 /**
- * The type of run data source. Always `completions`.
+ * The type of run data source. Always `responses`.
  */
-export class CreateEvalResponsesRunDataSourceType extends S.Literal("completions") {}
+export class CreateEvalResponsesRunDataSourceType extends S.Literal("responses") {}
 
 /**
  * The type of input messages. Always `item_reference`.
  */
 export class CreateEvalResponsesRunDataSourceInputMessagesEnumType extends S.Literal("item_reference") {}
+
+/**
+ * The type of the function tool. Always `function`.
+ */
+export class FunctionToolType extends S.Literal("function") {}
+
+/**
+ * Defines a function in your own code the model can choose to call. Learn more about [function calling](https://platform.openai.com/docs/guides/function-calling).
+ */
+export class FunctionTool extends S.Class<FunctionTool>("FunctionTool")({
+  /**
+   * The type of the function tool. Always `function`.
+   */
+  "type": FunctionToolType.pipe(S.propertySignature, S.withConstructorDefault(() => "function" as const)),
+  /**
+   * The name of the function to call.
+   */
+  "name": S.String,
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "parameters": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "strict": S.NullOr(S.Boolean)
+}) {}
+
+/**
+ * The type of the file search tool. Always `file_search`.
+ */
+export class FileSearchToolType extends S.Literal("file_search") {}
+
+export class RankerVersionType extends S.Literal("auto", "default-2024-11-15") {}
+
+export class HybridSearchOptions extends S.Class<HybridSearchOptions>("HybridSearchOptions")({
+  /**
+   * The weight of the embedding in the reciprocal ranking fusion.
+   */
+  "embedding_weight": S.Number,
+  /**
+   * The weight of the text in the reciprocal ranking fusion.
+   */
+  "text_weight": S.Number
+}) {}
+
+export class RankingOptions extends S.Class<RankingOptions>("RankingOptions")({
+  /**
+   * The ranker to use for the file search.
+   */
+  "ranker": S.optionalWith(RankerVersionType, { nullable: true }),
+  /**
+   * The score threshold for the file search, a number between 0 and 1. Numbers closer to 1 will attempt to return only the most relevant results, but may return fewer results.
+   */
+  "score_threshold": S.optionalWith(S.Number, { nullable: true }),
+  /**
+   * Weights that control how reciprocal rank fusion balances semantic embedding matches versus sparse keyword matches when hybrid search is enabled.
+   */
+  "hybrid_search": S.optionalWith(HybridSearchOptions, { nullable: true })
+}) {}
+
+/**
+ * Specifies the comparison operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`.
+ * - `eq`: equals
+ * - `ne`: not equal
+ * - `gt`: greater than
+ * - `gte`: greater than or equal
+ * - `lt`: less than
+ * - `lte`: less than or equal
+ * - `in`: in
+ * - `nin`: not in
+ */
+export class ComparisonFilterType extends S.Literal("eq", "ne", "gt", "gte", "lt", "lte") {}
+
+export class ComparisonFilterValueItems extends S.Union(S.String, S.Number) {}
+
+/**
+ * A filter used to compare a specified attribute key to a given value using a defined comparison operation.
+ */
+export class ComparisonFilter extends S.Class<ComparisonFilter>("ComparisonFilter")({
+  /**
+   * Specifies the comparison operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `nin`.
+   * - `eq`: equals
+   * - `ne`: not equal
+   * - `gt`: greater than
+   * - `gte`: greater than or equal
+   * - `lt`: less than
+   * - `lte`: less than or equal
+   * - `in`: in
+   * - `nin`: not in
+   */
+  "type": ComparisonFilterType.pipe(S.propertySignature, S.withConstructorDefault(() => "eq" as const)),
+  /**
+   * The key to compare against the value.
+   */
+  "key": S.String,
+  /**
+   * The value to compare against the attribute key; supports string, number, or boolean types.
+   */
+  "value": S.Union(S.String, S.Number, S.Boolean, S.Array(ComparisonFilterValueItems))
+}) {}
+
+/**
+ * Type of operation: `and` or `or`.
+ */
+export class CompoundFilterType extends S.Literal("and", "or") {}
+
+/**
+ * Combine multiple filters using `and` or `or`.
+ */
+export class CompoundFilter extends S.Class<CompoundFilter>("CompoundFilter")({
+  /**
+   * Type of operation: `and` or `or`.
+   */
+  "type": CompoundFilterType,
+  /**
+   * Array of filters to combine. Items can be `ComparisonFilter` or `CompoundFilter`.
+   */
+  "filters": S.Array(ComparisonFilter)
+}) {}
+
+export class Filters extends S.Union(ComparisonFilter, CompoundFilter) {}
+
+/**
+ * A tool that searches for relevant content from uploaded files. Learn more about the [file search tool](https://platform.openai.com/docs/guides/tools-file-search).
+ */
+export class FileSearchTool extends S.Class<FileSearchTool>("FileSearchTool")({
+  /**
+   * The type of the file search tool. Always `file_search`.
+   */
+  "type": FileSearchToolType.pipe(S.propertySignature, S.withConstructorDefault(() => "file_search" as const)),
+  /**
+   * The IDs of the vector stores to search.
+   */
+  "vector_store_ids": S.Array(S.String),
+  /**
+   * The maximum number of results to return. This number should be between 1 and 50 inclusive.
+   */
+  "max_num_results": S.optionalWith(S.Int, { nullable: true }),
+  /**
+   * Ranking options for search.
+   */
+  "ranking_options": S.optionalWith(RankingOptions, { nullable: true }),
+  "filters": S.optionalWith(Filters, { nullable: true })
+}) {}
+
+/**
+ * The type of the computer use tool. Always `computer_use_preview`.
+ */
+export class ComputerUsePreviewToolType extends S.Literal("computer_use_preview") {}
+
+export class ComputerEnvironment extends S.Literal("windows", "mac", "linux", "ubuntu", "browser") {}
+
+/**
+ * A tool that controls a virtual computer. Learn more about the [computer tool](https://platform.openai.com/docs/guides/tools-computer-use).
+ */
+export class ComputerUsePreviewTool extends S.Class<ComputerUsePreviewTool>("ComputerUsePreviewTool")({
+  /**
+   * The type of the computer use tool. Always `computer_use_preview`.
+   */
+  "type": ComputerUsePreviewToolType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "computer_use_preview" as const)
+  ),
+  /**
+   * The type of computer environment to control.
+   */
+  "environment": ComputerEnvironment,
+  /**
+   * The width of the computer display.
+   */
+  "display_width": S.Int,
+  /**
+   * The height of the computer display.
+   */
+  "display_height": S.Int
+}) {}
+
+/**
+ * The type of the web search tool. One of `web_search` or `web_search_2025_08_26`.
+ */
+export class WebSearchToolType extends S.Literal("web_search", "web_search_2025_08_26") {}
+
+/**
+ * The type of location approximation. Always `approximate`.
+ */
+export class WebSearchApproximateLocationEnumType extends S.Literal("approximate") {}
+
+export class WebSearchApproximateLocation extends S.Union(
+  /**
+   * The approximate location of the user.
+   */
+  S.Struct({
+    /**
+     * The type of location approximation. Always `approximate`.
+     */
+    "type": S.optionalWith(WebSearchApproximateLocationEnumType, {
+      nullable: true,
+      default: () => "approximate" as const
+    }),
+    "country": S.optionalWith(S.String, { nullable: true }),
+    "region": S.optionalWith(S.String, { nullable: true }),
+    "city": S.optionalWith(S.String, { nullable: true }),
+    "timezone": S.optionalWith(S.String, { nullable: true })
+  }),
+  S.Null
+) {}
+
+/**
+ * High level guidance for the amount of context window space to use for the search. One of `low`, `medium`, or `high`. `medium` is the default.
+ */
+export class WebSearchToolSearchContextSize extends S.Literal("low", "medium", "high") {}
+
+/**
+ * Search the Internet for sources related to the prompt. Learn more about the
+ * [web search tool](https://platform.openai.com/docs/guides/tools-web-search).
+ */
+export class WebSearchTool extends S.Class<WebSearchTool>("WebSearchTool")({
+  /**
+   * The type of the web search tool. One of `web_search` or `web_search_2025_08_26`.
+   */
+  "type": WebSearchToolType.pipe(S.propertySignature, S.withConstructorDefault(() => "web_search" as const)),
+  "filters": S.optionalWith(
+    S.Struct({
+      "allowed_domains": S.optionalWith(S.Array(S.String), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  "user_location": S.optionalWith(
+    S.Struct({
+      /**
+       * The type of location approximation. Always `approximate`.
+       */
+      "type": S.optionalWith(S.Literal("approximate"), { nullable: true, default: () => "approximate" as const }),
+      "country": S.optionalWith(S.String, { nullable: true }),
+      "region": S.optionalWith(S.String, { nullable: true }),
+      "city": S.optionalWith(S.String, { nullable: true }),
+      "timezone": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * High level guidance for the amount of context window space to use for the search. One of `low`, `medium`, or `high`. `medium` is the default.
+   */
+  "search_context_size": S.optionalWith(WebSearchToolSearchContextSize, {
+    nullable: true,
+    default: () => "medium" as const
+  })
+}) {}
+
+/**
+ * The type of the MCP tool. Always `mcp`.
+ */
+export class MCPToolType extends S.Literal("mcp") {}
+
+/**
+ * Identifier for service connectors, like those available in ChatGPT. One of
+ * `server_url` or `connector_id` must be provided. Learn more about service
+ * connectors [here](https://platform.openai.com/docs/guides/tools-remote-mcp#connectors).
+ *
+ * Currently supported `connector_id` values are:
+ *
+ * - Dropbox: `connector_dropbox`
+ * - Gmail: `connector_gmail`
+ * - Google Calendar: `connector_googlecalendar`
+ * - Google Drive: `connector_googledrive`
+ * - Microsoft Teams: `connector_microsoftteams`
+ * - Outlook Calendar: `connector_outlookcalendar`
+ * - Outlook Email: `connector_outlookemail`
+ * - SharePoint: `connector_sharepoint`
+ */
+export class MCPToolConnectorId extends S.Literal(
+  "connector_dropbox",
+  "connector_gmail",
+  "connector_googlecalendar",
+  "connector_googledrive",
+  "connector_microsoftteams",
+  "connector_outlookcalendar",
+  "connector_outlookemail",
+  "connector_sharepoint"
+) {}
+
+/**
+ * A filter object to specify which tools are allowed.
+ */
+export class MCPToolFilter extends S.Class<MCPToolFilter>("MCPToolFilter")({
+  /**
+   * List of allowed tool names.
+   */
+  "tool_names": S.optionalWith(S.Array(S.String), { nullable: true }),
+  /**
+   * Indicates whether or not a tool modifies data or is read-only. If an
+   * MCP server is [annotated with `readOnlyHint`](https://modelcontextprotocol.io/specification/2025-06-18/schema#toolannotations-readonlyhint),
+   * it will match this filter.
+   */
+  "read_only": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+/**
+ * Specify a single approval policy for all tools. One of `always` or
+ * `never`. When set to `always`, all tools will require approval. When
+ * set to `never`, all tools will not require approval.
+ */
+export class MCPToolRequireApprovalEnum extends S.Literal("always", "never") {}
+
+/**
+ * Give the model access to additional tools via remote Model Context Protocol
+ * (MCP) servers. [Learn more about MCP](https://platform.openai.com/docs/guides/tools-remote-mcp).
+ */
+export class MCPTool extends S.Class<MCPTool>("MCPTool")({
+  /**
+   * The type of the MCP tool. Always `mcp`.
+   */
+  "type": MCPToolType,
+  /**
+   * A label for this MCP server, used to identify it in tool calls.
+   */
+  "server_label": S.String,
+  /**
+   * The URL for the MCP server. One of `server_url` or `connector_id` must be
+   * provided.
+   */
+  "server_url": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Identifier for service connectors, like those available in ChatGPT. One of
+   * `server_url` or `connector_id` must be provided. Learn more about service
+   * connectors [here](https://platform.openai.com/docs/guides/tools-remote-mcp#connectors).
+   *
+   * Currently supported `connector_id` values are:
+   *
+   * - Dropbox: `connector_dropbox`
+   * - Gmail: `connector_gmail`
+   * - Google Calendar: `connector_googlecalendar`
+   * - Google Drive: `connector_googledrive`
+   * - Microsoft Teams: `connector_microsoftteams`
+   * - Outlook Calendar: `connector_outlookcalendar`
+   * - Outlook Email: `connector_outlookemail`
+   * - SharePoint: `connector_sharepoint`
+   */
+  "connector_id": S.optionalWith(MCPToolConnectorId, { nullable: true }),
+  /**
+   * An OAuth access token that can be used with a remote MCP server, either
+   * with a custom MCP server URL or a service connector. Your application
+   * must handle the OAuth authorization flow and provide the token here.
+   */
+  "authorization": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Optional description of the MCP server, used to provide more context.
+   */
+  "server_description": S.optionalWith(S.String, { nullable: true }),
+  "headers": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "allowed_tools": S.optionalWith(
+    S.Union(
+      /**
+       * A string array of allowed tool names
+       */
+      S.Array(S.String),
+      MCPToolFilter
+    ),
+    { nullable: true }
+  ),
+  "require_approval": S.optionalWith(
+    S.Union(
+      /**
+       * Specify which of the MCP server's tools require approval. Can be
+       * `always`, `never`, or a filter object associated with tools
+       * that require approval.
+       */
+      S.Struct({
+        "always": S.optionalWith(MCPToolFilter, { nullable: true }),
+        "never": S.optionalWith(MCPToolFilter, { nullable: true })
+      }),
+      /**
+       * Specify a single approval policy for all tools. One of `always` or
+       * `never`. When set to `always`, all tools will require approval. When
+       * set to `never`, all tools will not require approval.
+       */
+      MCPToolRequireApprovalEnum
+    ),
+    { nullable: true }
+  )
+}) {}
+
+/**
+ * The type of the code interpreter tool. Always `code_interpreter`.
+ */
+export class CodeInterpreterToolType extends S.Literal("code_interpreter") {}
+
+/**
+ * Always `auto`.
+ */
+export class CodeInterpreterContainerAutoType extends S.Literal("auto") {}
+
+export class ContainerMemoryLimit extends S.Literal("1g", "4g", "16g", "64g") {}
+
+/**
+ * Configuration for a code interpreter container. Optionally specify the IDs of the files to run the code on.
+ */
+export class CodeInterpreterContainerAuto
+  extends S.Class<CodeInterpreterContainerAuto>("CodeInterpreterContainerAuto")({
+    /**
+     * Always `auto`.
+     */
+    "type": CodeInterpreterContainerAutoType.pipe(S.propertySignature, S.withConstructorDefault(() => "auto" as const)),
+    /**
+     * An optional list of uploaded files to make available to your code.
+     */
+    "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(50)), { nullable: true }),
+    "memory_limit": S.optionalWith(ContainerMemoryLimit, { nullable: true })
+  })
+{}
+
+/**
+ * A tool that runs Python code to help generate a response to a prompt.
+ */
+export class CodeInterpreterTool extends S.Class<CodeInterpreterTool>("CodeInterpreterTool")({
+  /**
+   * The type of the code interpreter tool. Always `code_interpreter`.
+   */
+  "type": CodeInterpreterToolType,
+  /**
+   * The code interpreter container. Can be a container ID or an object that
+   * specifies uploaded file IDs to make available to your code.
+   */
+  "container": S.Union(
+    /**
+     * The container ID.
+     */
+    S.String,
+    CodeInterpreterContainerAuto
+  )
+}) {}
+
+/**
+ * The type of the image generation tool. Always `image_generation`.
+ */
+export class ImageGenToolType extends S.Literal("image_generation") {}
+
+/**
+ * The image generation model to use. Default: `gpt-image-1`.
+ */
+export class ImageGenToolModel extends S.Literal("gpt-image-1", "gpt-image-1-mini") {}
+
+/**
+ * The quality of the generated image. One of `low`, `medium`, `high`,
+ * or `auto`. Default: `auto`.
+ */
+export class ImageGenToolQuality extends S.Literal("low", "medium", "high", "auto") {}
+
+/**
+ * The size of the generated image. One of `1024x1024`, `1024x1536`,
+ * `1536x1024`, or `auto`. Default: `auto`.
+ */
+export class ImageGenToolSize extends S.Literal("1024x1024", "1024x1536", "1536x1024", "auto") {}
+
+/**
+ * The output format of the generated image. One of `png`, `webp`, or
+ * `jpeg`. Default: `png`.
+ */
+export class ImageGenToolOutputFormat extends S.Literal("png", "webp", "jpeg") {}
+
+/**
+ * Moderation level for the generated image. Default: `auto`.
+ */
+export class ImageGenToolModeration extends S.Literal("auto", "low") {}
+
+/**
+ * Background type for the generated image. One of `transparent`,
+ * `opaque`, or `auto`. Default: `auto`.
+ */
+export class ImageGenToolBackground extends S.Literal("transparent", "opaque", "auto") {}
+
+/**
+ * Control how much effort the model will exert to match the style and features, especially facial features, of input images. This parameter is only supported for `gpt-image-1`. Unsupported for `gpt-image-1-mini`. Supports `high` and `low`. Defaults to `low`.
+ */
+export class InputFidelity extends S.Literal("high", "low") {}
+
+/**
+ * A tool that generates images using a model like `gpt-image-1`.
+ */
+export class ImageGenTool extends S.Class<ImageGenTool>("ImageGenTool")({
+  /**
+   * The type of the image generation tool. Always `image_generation`.
+   */
+  "type": ImageGenToolType,
+  /**
+   * The image generation model to use. Default: `gpt-image-1`.
+   */
+  "model": S.optionalWith(ImageGenToolModel, { nullable: true, default: () => "gpt-image-1" as const }),
+  /**
+   * The quality of the generated image. One of `low`, `medium`, `high`,
+   * or `auto`. Default: `auto`.
+   */
+  "quality": S.optionalWith(ImageGenToolQuality, { nullable: true, default: () => "auto" as const }),
+  /**
+   * The size of the generated image. One of `1024x1024`, `1024x1536`,
+   * `1536x1024`, or `auto`. Default: `auto`.
+   */
+  "size": S.optionalWith(ImageGenToolSize, { nullable: true, default: () => "auto" as const }),
+  /**
+   * The output format of the generated image. One of `png`, `webp`, or
+   * `jpeg`. Default: `png`.
+   */
+  "output_format": S.optionalWith(ImageGenToolOutputFormat, { nullable: true, default: () => "png" as const }),
+  /**
+   * Compression level for the output image. Default: 100.
+   */
+  "output_compression": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(100)), {
+    nullable: true,
+    default: () => 100 as const
+  }),
+  /**
+   * Moderation level for the generated image. Default: `auto`.
+   */
+  "moderation": S.optionalWith(ImageGenToolModeration, { nullable: true, default: () => "auto" as const }),
+  /**
+   * Background type for the generated image. One of `transparent`,
+   * `opaque`, or `auto`. Default: `auto`.
+   */
+  "background": S.optionalWith(ImageGenToolBackground, { nullable: true, default: () => "auto" as const }),
+  "input_fidelity": S.optionalWith(InputFidelity, { nullable: true }),
+  /**
+   * Optional mask for inpainting. Contains `image_url`
+   * (string, optional) and `file_id` (string, optional).
+   */
+  "input_image_mask": S.optionalWith(
+    S.Struct({
+      /**
+       * Base64-encoded mask image.
+       */
+      "image_url": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * File ID for the mask image.
+       */
+      "file_id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * Number of partial images to generate in streaming mode, from 0 (default value) to 3.
+   */
+  "partial_images": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(3)), {
+    nullable: true,
+    default: () => 0 as const
+  })
+}) {}
+
+/**
+ * The type of the local shell tool. Always `local_shell`.
+ */
+export class LocalShellToolParamType extends S.Literal("local_shell") {}
+
+/**
+ * A tool that allows the model to execute shell commands in a local environment.
+ */
+export class LocalShellToolParam extends S.Class<LocalShellToolParam>("LocalShellToolParam")({
+  /**
+   * The type of the local shell tool. Always `local_shell`.
+   */
+  "type": LocalShellToolParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "local_shell" as const))
+}) {}
+
+/**
+ * The type of the shell tool. Always `shell`.
+ */
+export class FunctionShellToolParamType extends S.Literal("shell") {}
+
+/**
+ * A tool that allows the model to execute shell commands.
+ */
+export class FunctionShellToolParam extends S.Class<FunctionShellToolParam>("FunctionShellToolParam")({
+  /**
+   * The type of the shell tool. Always `shell`.
+   */
+  "type": FunctionShellToolParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "shell" as const))
+}) {}
+
+/**
+ * The type of the custom tool. Always `custom`.
+ */
+export class CustomToolParamType extends S.Literal("custom") {}
+
+/**
+ * Unconstrained text format. Always `text`.
+ */
+export class CustomTextFormatParamType extends S.Literal("text") {}
+
+/**
+ * Unconstrained free-form text.
+ */
+export class CustomTextFormatParam extends S.Class<CustomTextFormatParam>("CustomTextFormatParam")({
+  /**
+   * Unconstrained text format. Always `text`.
+   */
+  "type": CustomTextFormatParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "text" as const))
+}) {}
+
+/**
+ * Grammar format. Always `grammar`.
+ */
+export class CustomGrammarFormatParamType extends S.Literal("grammar") {}
+
+export class GrammarSyntax1 extends S.Literal("lark", "regex") {}
+
+/**
+ * A grammar defined by the user.
+ */
+export class CustomGrammarFormatParam extends S.Class<CustomGrammarFormatParam>("CustomGrammarFormatParam")({
+  /**
+   * Grammar format. Always `grammar`.
+   */
+  "type": CustomGrammarFormatParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "grammar" as const)),
+  /**
+   * The syntax of the grammar definition. One of `lark` or `regex`.
+   */
+  "syntax": GrammarSyntax1,
+  /**
+   * The grammar definition.
+   */
+  "definition": S.String
+}) {}
+
+/**
+ * A custom tool that processes input using a specified format. Learn more about   [custom tools](https://platform.openai.com/docs/guides/function-calling#custom-tools)
+ */
+export class CustomToolParam extends S.Class<CustomToolParam>("CustomToolParam")({
+  /**
+   * The type of the custom tool. Always `custom`.
+   */
+  "type": CustomToolParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "custom" as const)),
+  /**
+   * The name of the custom tool, used to identify it in tool calls.
+   */
+  "name": S.String,
+  /**
+   * Optional description of the custom tool, used to provide more context.
+   */
+  "description": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The input format for the custom tool. Default is unconstrained text.
+   */
+  "format": S.optionalWith(S.Union(CustomTextFormatParam, CustomGrammarFormatParam), { nullable: true })
+}) {}
+
+/**
+ * The type of the web search tool. One of `web_search_preview` or `web_search_preview_2025_03_11`.
+ */
+export class WebSearchPreviewToolType extends S.Literal("web_search_preview", "web_search_preview_2025_03_11") {}
+
+/**
+ * The type of location approximation. Always `approximate`.
+ */
+export class ApproximateLocationType extends S.Literal("approximate") {}
+
+export class ApproximateLocation extends S.Class<ApproximateLocation>("ApproximateLocation")({
+  /**
+   * The type of location approximation. Always `approximate`.
+   */
+  "type": ApproximateLocationType.pipe(S.propertySignature, S.withConstructorDefault(() => "approximate" as const)),
+  "country": S.optionalWith(S.String, { nullable: true }),
+  "region": S.optionalWith(S.String, { nullable: true }),
+  "city": S.optionalWith(S.String, { nullable: true }),
+  "timezone": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class SearchContextSize extends S.Literal("low", "medium", "high") {}
+
+/**
+ * This tool searches the web for relevant results to use in a response. Learn more about the [web search tool](https://platform.openai.com/docs/guides/tools-web-search).
+ */
+export class WebSearchPreviewTool extends S.Class<WebSearchPreviewTool>("WebSearchPreviewTool")({
+  /**
+   * The type of the web search tool. One of `web_search_preview` or `web_search_preview_2025_03_11`.
+   */
+  "type": WebSearchPreviewToolType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "web_search_preview" as const)
+  ),
+  "user_location": S.optionalWith(ApproximateLocation, { nullable: true }),
+  /**
+   * High level guidance for the amount of context window space to use for the search. One of `low`, `medium`, or `high`. `medium` is the default.
+   */
+  "search_context_size": S.optionalWith(SearchContextSize, { nullable: true })
+}) {}
+
+/**
+ * The type of the tool. Always `apply_patch`.
+ */
+export class ApplyPatchToolParamType extends S.Literal("apply_patch") {}
+
+/**
+ * Allows the assistant to create, delete, or update files using unified diffs.
+ */
+export class ApplyPatchToolParam extends S.Class<ApplyPatchToolParam>("ApplyPatchToolParam")({
+  /**
+   * The type of the tool. Always `apply_patch`.
+   */
+  "type": ApplyPatchToolParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "apply_patch" as const))
+}) {}
+
+/**
+ * A tool that can be used to generate a response.
+ */
+export class Tool extends S.Union(
+  FunctionTool,
+  FileSearchTool,
+  ComputerUsePreviewTool,
+  WebSearchTool,
+  MCPTool,
+  CodeInterpreterTool,
+  ImageGenTool,
+  LocalShellToolParam,
+  FunctionShellToolParam,
+  CustomToolParam,
+  WebSearchPreviewTool,
+  ApplyPatchToolParam
+) {}
+
+/**
+ * The type of response format being defined. Always `json_schema`.
+ */
+export class TextResponseFormatJsonSchemaType extends S.Literal("json_schema") {}
+
+/**
+ * JSON Schema response format. Used to generate structured JSON responses.
+ * Learn more about [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs).
+ */
+export class TextResponseFormatJsonSchema
+  extends S.Class<TextResponseFormatJsonSchema>("TextResponseFormatJsonSchema")({
+    /**
+     * The type of response format being defined. Always `json_schema`.
+     */
+    "type": TextResponseFormatJsonSchemaType,
+    /**
+     * A description of what the response format is for, used by the model to
+     * determine how to respond in the format.
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The name of the response format. Must be a-z, A-Z, 0-9, or contain
+     * underscores and dashes, with a maximum length of 64.
+     */
+    "name": S.String,
+    "schema": ResponseFormatJsonSchemaSchema,
+    "strict": S.optionalWith(S.Boolean, { nullable: true })
+  })
+{}
+
+/**
+ * An object specifying the format that the model must output.
+ *
+ * Configuring `{ "type": "json_schema" }` enables Structured Outputs,
+ * which ensures the model will match your supplied JSON schema. Learn more in the
+ * [Structured Outputs guide](https://platform.openai.com/docs/guides/structured-outputs).
+ *
+ * The default format is `{ "type": "text" }` with no additional options.
+ *
+ * **Not recommended for gpt-4o and newer models:**
+ *
+ * Setting to `{ "type": "json_object" }` enables the older JSON mode, which
+ * ensures the message the model generates is valid JSON. Using `json_schema`
+ * is preferred for models that support it.
+ */
+export class TextResponseFormatConfiguration
+  extends S.Union(ResponseFormatText, TextResponseFormatJsonSchema, ResponseFormatJsonObject)
+{}
 
 /**
  * The type of run data source. Always `responses`.
@@ -3606,50 +7556,16 @@ export class EvalResponsesSource extends S.Class<EvalResponsesSource>("EvalRespo
    * The type of run data source. Always `responses`.
    */
   "type": EvalResponsesSourceType,
-  /**
-   * Metadata filter for the responses. This is a query parameter used to select responses.
-   */
   "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  /**
-   * The name of the model to find responses for. This is a query parameter used to select responses.
-   */
   "model": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Optional search string for instructions. This is a query parameter used to select responses.
-   */
   "instructions_search": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Only include items created after this timestamp (inclusive). This is a query parameter used to select responses.
-   */
   "created_after": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
-  /**
-   * Only include items created before this timestamp (inclusive). This is a query parameter used to select responses.
-   */
   "created_before": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
-  /**
-   * Whether the response has tool calls. This is a query parameter used to select responses.
-   */
-  "has_tool_calls": S.optionalWith(S.Boolean, { nullable: true }),
-  /**
-   * Optional reasoning effort parameter. This is a query parameter used to select responses.
-   */
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
-  /**
-   * Sampling temperature. This is a query parameter used to select responses.
-   */
+  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true }),
   "temperature": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * Nucleus sampling parameter. This is a query parameter used to select responses.
-   */
   "top_p": S.optionalWith(S.Number, { nullable: true }),
-  /**
-   * List of user identifiers. This is a query parameter used to select responses.
-   */
   "users": S.optionalWith(S.Array(S.String), { nullable: true }),
-  /**
-   * Whether to allow parallel tool calls. This is a query parameter used to select responses.
-   */
-  "allow_parallel_tool_calls": S.optionalWith(S.Boolean, { nullable: true })
+  "tools": S.optionalWith(S.Array(S.String), { nullable: true })
 }) {}
 
 /**
@@ -3658,12 +7574,15 @@ export class EvalResponsesSource extends S.Class<EvalResponsesSource>("EvalRespo
 export class CreateEvalResponsesRunDataSource
   extends S.Class<CreateEvalResponsesRunDataSource>("CreateEvalResponsesRunDataSource")({
     /**
-     * The type of run data source. Always `completions`.
+     * The type of run data source. Always `responses`.
      */
     "type": CreateEvalResponsesRunDataSourceType.pipe(
       S.propertySignature,
-      S.withConstructorDefault(() => "completions" as const)
+      S.withConstructorDefault(() => "responses" as const)
     ),
+    /**
+     * Used when sampling from a model. Dictates the structure of the messages passed into the model. Can either be a reference to a prebuilt trajectory (ie, `item.input_trajectory`), or a template with variable references to the `item` namespace.
+     */
     "input_messages": S.optionalWith(
       S.Union(
         S.Struct({
@@ -3672,7 +7591,7 @@ export class CreateEvalResponsesRunDataSource
            */
           "type": CreateEvalResponsesRunDataSourceInputMessagesEnumType,
           /**
-           * A list of chat messages forming the prompt or context. May include variable references to the "item" namespace, ie {{item.name}}.
+           * A list of chat messages forming the prompt or context. May include variable references to the `item` namespace, ie {{item.name}}.
            */
           "template": S.Array(S.Union(
             S.Struct({
@@ -3694,7 +7613,7 @@ export class CreateEvalResponsesRunDataSource
            */
           "type": CreateEvalResponsesRunDataSourceInputMessagesEnumType,
           /**
-           * A reference to a variable in the "item" namespace. Ie, "item.name"
+           * A reference to a variable in the `item` namespace. Ie, "item.name"
            */
           "item_reference": S.String
         })
@@ -3703,6 +7622,7 @@ export class CreateEvalResponsesRunDataSource
     ),
     "sampling_params": S.optionalWith(
       S.Struct({
+        "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true }),
         /**
          * A higher temperature increases randomness in the outputs.
          */
@@ -3718,7 +7638,34 @@ export class CreateEvalResponsesRunDataSource
         /**
          * A seed value to initialize the randomness, during sampling.
          */
-        "seed": S.optionalWith(S.Int, { nullable: true, default: () => 42 as const })
+        "seed": S.optionalWith(S.Int, { nullable: true, default: () => 42 as const }),
+        /**
+         * An array of tools the model may call while generating a response. You
+         * can specify which tool to use by setting the `tool_choice` parameter.
+         *
+         * The two categories of tools you can provide the model are:
+         *
+         * - **Built-in tools**: Tools that are provided by OpenAI that extend the
+         *   model's capabilities, like [web search](https://platform.openai.com/docs/guides/tools-web-search)
+         *   or [file search](https://platform.openai.com/docs/guides/tools-file-search). Learn more about
+         *   [built-in tools](https://platform.openai.com/docs/guides/tools).
+         * - **Function calls (custom tools)**: Functions that are defined by you,
+         *   enabling the model to call your own code. Learn more about
+         *   [function calling](https://platform.openai.com/docs/guides/function-calling).
+         */
+        "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+        /**
+         * Configuration options for a text response from the model. Can be plain
+         * text or structured JSON data. Learn more:
+         * - [Text inputs and outputs](https://platform.openai.com/docs/guides/text)
+         * - [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
+         */
+        "text": S.optionalWith(
+          S.Struct({
+            "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
+          }),
+          { nullable: true }
+        )
       }),
       { nullable: true }
     ),
@@ -3726,6 +7673,9 @@ export class CreateEvalResponsesRunDataSource
      * The name of the model to use for generating completions (e.g. "o3-mini").
      */
     "model": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Determines what populates the `item` namespace in this run's data source.
+     */
     "source": S.Union(EvalJsonlFileContentSource, EvalJsonlFileIdSource, EvalResponsesSource)
   })
 {}
@@ -3851,7 +7801,7 @@ export class EvalRun extends S.Class<EvalRun>("EvalRun")({
    * Information about the run's data source.
    */
   "data_source": S.Record({ key: S.String, value: S.Unknown }),
-  "metadata": S.NullOr(Metadata),
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
   "error": EvalApiError
 }) {}
 
@@ -3886,7 +7836,7 @@ export class CreateEvalRunRequest extends S.Class<CreateEvalRunRequest>("CreateE
    * The name of the run.
    */
   "name": S.optionalWith(S.String, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   /**
    * Details about the run's data source.
    */
@@ -3919,6 +7869,32 @@ export class EvalRunOutputItemListObject extends S.Literal("list") {}
  * The type of the object. Always "eval.run.output_item".
  */
 export class EvalRunOutputItemObject extends S.Literal("eval.run.output_item") {}
+
+/**
+ * A single grader result for an evaluation run output item.
+ */
+export class EvalRunOutputItemResult extends S.Class<EvalRunOutputItemResult>("EvalRunOutputItemResult")({
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  /**
+   * The grader type (for example, "string-check-grader").
+   */
+  "type": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The numeric score produced by the grader.
+   */
+  "score": S.Number,
+  /**
+   * Whether the grader considered the output a pass.
+   */
+  "passed": S.Boolean,
+  /**
+   * Optional sample or intermediate data produced by the grader.
+   */
+  "sample": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
 
 /**
  * A schema representing an evaluation run output item.
@@ -3960,9 +7936,9 @@ export class EvalRunOutputItem extends S.Class<EvalRunOutputItem>("EvalRunOutput
    */
   "datasource_item": S.Record({ key: S.String, value: S.Unknown }),
   /**
-   * A list of results from the evaluation run.
+   * A list of grader results for this output item.
    */
-  "results": S.Array(S.Record({ key: S.String, value: S.Unknown })),
+  "results": S.Array(EvalRunOutputItemResult),
   /**
    * A sample containing the input and output of the evaluation run.
    */
@@ -4083,7 +8059,7 @@ export class ListFilesParams extends S.Struct({
 export class OpenAIFileObject extends S.Literal("file") {}
 
 /**
- * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results` and `vision`.
+ * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results`, `vision`, and `user_data`.
  */
 export class OpenAIFilePurpose extends S.Literal(
   "assistants",
@@ -4092,7 +8068,8 @@ export class OpenAIFilePurpose extends S.Literal(
   "batch_output",
   "fine-tune",
   "fine-tune-results",
-  "vision"
+  "vision",
+  "user_data"
 ) {}
 
 /**
@@ -4129,7 +8106,7 @@ export class OpenAIFile extends S.Class<OpenAIFile>("OpenAIFile")({
    */
   "object": OpenAIFileObject,
   /**
-   * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results` and `vision`.
+   * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results`, `vision`, and `user_data`.
    */
   "purpose": OpenAIFilePurpose,
   /**
@@ -4153,19 +8130,34 @@ export class ListFilesResponse extends S.Class<ListFilesResponse>("ListFilesResp
 /**
  * The intended purpose of the uploaded file. One of: - `assistants`: Used in the Assistants API - `batch`: Used in the Batch API - `fine-tune`: Used for fine-tuning - `vision`: Images used for vision fine-tuning - `user_data`: Flexible file type for any purpose - `evals`: Used for eval data sets
  */
-export class CreateFileRequestPurpose
-  extends S.Literal("assistants", "batch", "fine-tune", "vision", "user_data", "evals")
-{}
+export class FilePurpose extends S.Literal("assistants", "batch", "fine-tune", "vision", "user_data", "evals") {}
+
+/**
+ * Anchor timestamp after which the expiration policy applies. Supported anchors: `created_at`.
+ */
+export class FileExpirationAfterAnchor extends S.Literal("created_at") {}
+
+/**
+ * The expiration policy for a file. By default, files with `purpose=batch` expire after 30 days and all other files are persisted until they are manually deleted.
+ */
+export class FileExpirationAfter extends S.Class<FileExpirationAfter>("FileExpirationAfter")({
+  /**
+   * Anchor timestamp after which the expiration policy applies. Supported anchors: `created_at`.
+   */
+  "anchor": FileExpirationAfterAnchor,
+  /**
+   * The number of seconds after the anchor time that the file will expire. Must be between 3600 (1 hour) and 2592000 (30 days).
+   */
+  "seconds": S.Int.pipe(S.greaterThanOrEqualTo(3600), S.lessThanOrEqualTo(2592000))
+}) {}
 
 export class CreateFileRequest extends S.Class<CreateFileRequest>("CreateFileRequest")({
   /**
    * The File object (not file name) to be uploaded.
    */
   "file": S.instanceOf(globalThis.Blob),
-  /**
-   * The intended purpose of the uploaded file. One of: - `assistants`: Used in the Assistants API - `batch`: Used in the Batch API - `fine-tune`: Used for fine-tuning - `vision`: Images used for vision fine-tuning - `user_data`: Flexible file type for any purpose - `evals`: Used for eval data sets
-   */
-  "purpose": CreateFileRequestPurpose
+  "purpose": FilePurpose,
+  "expires_after": S.optionalWith(FileExpirationAfter, { nullable: true })
 }) {}
 
 export class DeleteFileResponseObject extends S.Literal("file") {}
@@ -4177,6 +8169,288 @@ export class DeleteFileResponse extends S.Class<DeleteFileResponse>("DeleteFileR
 }) {}
 
 export class DownloadFile200 extends S.String {}
+
+/**
+ * The object type, which is always `string_check`.
+ */
+export class GraderStringCheckType extends S.Literal("string_check") {}
+
+/**
+ * The string check operation to perform. One of `eq`, `ne`, `like`, or `ilike`.
+ */
+export class GraderStringCheckOperation extends S.Literal("eq", "ne", "like", "ilike") {}
+
+/**
+ * A StringCheckGrader object that performs a string comparison between input and reference using a specified operation.
+ */
+export class GraderStringCheck extends S.Class<GraderStringCheck>("GraderStringCheck")({
+  /**
+   * The object type, which is always `string_check`.
+   */
+  "type": GraderStringCheckType,
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  /**
+   * The input text. This may include template strings.
+   */
+  "input": S.String,
+  /**
+   * The reference text. This may include template strings.
+   */
+  "reference": S.String,
+  /**
+   * The string check operation to perform. One of `eq`, `ne`, `like`, or `ilike`.
+   */
+  "operation": GraderStringCheckOperation
+}) {}
+
+/**
+ * The type of grader.
+ */
+export class GraderTextSimilarityType extends S.Literal("text_similarity") {}
+
+/**
+ * The evaluation metric to use. One of `cosine`, `fuzzy_match`, `bleu`,
+ * `gleu`, `meteor`, `rouge_1`, `rouge_2`, `rouge_3`, `rouge_4`, `rouge_5`,
+ * or `rouge_l`.
+ */
+export class GraderTextSimilarityEvaluationMetric extends S.Literal(
+  "cosine",
+  "fuzzy_match",
+  "bleu",
+  "gleu",
+  "meteor",
+  "rouge_1",
+  "rouge_2",
+  "rouge_3",
+  "rouge_4",
+  "rouge_5",
+  "rouge_l"
+) {}
+
+/**
+ * A TextSimilarityGrader object which grades text based on similarity metrics.
+ */
+export class GraderTextSimilarity extends S.Class<GraderTextSimilarity>("GraderTextSimilarity")({
+  /**
+   * The type of grader.
+   */
+  "type": GraderTextSimilarityType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "text_similarity" as const)
+  ),
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  /**
+   * The text being graded.
+   */
+  "input": S.String,
+  /**
+   * The text being graded against.
+   */
+  "reference": S.String,
+  /**
+   * The evaluation metric to use. One of `cosine`, `fuzzy_match`, `bleu`,
+   * `gleu`, `meteor`, `rouge_1`, `rouge_2`, `rouge_3`, `rouge_4`, `rouge_5`,
+   * or `rouge_l`.
+   */
+  "evaluation_metric": GraderTextSimilarityEvaluationMetric
+}) {}
+
+/**
+ * The object type, which is always `python`.
+ */
+export class GraderPythonType extends S.Literal("python") {}
+
+/**
+ * A PythonGrader object that runs a python script on the input.
+ */
+export class GraderPython extends S.Class<GraderPython>("GraderPython")({
+  /**
+   * The object type, which is always `python`.
+   */
+  "type": GraderPythonType,
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  /**
+   * The source code of the python script.
+   */
+  "source": S.String,
+  /**
+   * The image tag to use for the python script.
+   */
+  "image_tag": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The object type, which is always `score_model`.
+ */
+export class GraderScoreModelType extends S.Literal("score_model") {}
+
+/**
+ * A ScoreModelGrader object that uses a model to assign a score to the input.
+ */
+export class GraderScoreModel extends S.Class<GraderScoreModel>("GraderScoreModel")({
+  /**
+   * The object type, which is always `score_model`.
+   */
+  "type": GraderScoreModelType,
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  /**
+   * The model to use for the evaluation.
+   */
+  "model": S.String,
+  /**
+   * The sampling parameters for the model.
+   */
+  "sampling_params": S.optionalWith(
+    S.Struct({
+      "seed": S.optionalWith(S.Int, { nullable: true }),
+      "top_p": S.optionalWith(S.Number, { nullable: true }),
+      "temperature": S.optionalWith(S.Number, { nullable: true }),
+      "max_completions_tokens": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true }),
+      "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The input text. This may include template strings.
+   */
+  "input": S.Array(EvalItem),
+  /**
+   * The range of the score. Defaults to `[0, 1]`.
+   */
+  "range": S.optionalWith(S.Array(S.Number), { nullable: true })
+}) {}
+
+/**
+ * The object type, which is always `multi`.
+ */
+export class GraderMultiType extends S.Literal("multi") {}
+
+/**
+ * The object type, which is always `label_model`.
+ */
+export class GraderLabelModelType extends S.Literal("label_model") {}
+
+/**
+ * A LabelModelGrader object which uses a model to assign labels to each item
+ * in the evaluation.
+ */
+export class GraderLabelModel extends S.Class<GraderLabelModel>("GraderLabelModel")({
+  /**
+   * The object type, which is always `label_model`.
+   */
+  "type": GraderLabelModelType,
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  /**
+   * The model to use for the evaluation. Must support structured outputs.
+   */
+  "model": S.String,
+  "input": S.Array(EvalItem),
+  /**
+   * The labels to assign to each item in the evaluation.
+   */
+  "labels": S.Array(S.String),
+  /**
+   * The labels that indicate a passing result. Must be a subset of labels.
+   */
+  "passing_labels": S.Array(S.String)
+}) {}
+
+/**
+ * A MultiGrader object combines the output of multiple graders to produce a single score.
+ */
+export class GraderMulti extends S.Class<GraderMulti>("GraderMulti")({
+  /**
+   * The object type, which is always `multi`.
+   */
+  "type": GraderMultiType.pipe(S.propertySignature, S.withConstructorDefault(() => "multi" as const)),
+  /**
+   * The name of the grader.
+   */
+  "name": S.String,
+  "graders": S.Union(GraderStringCheck, GraderTextSimilarity, GraderPython, GraderScoreModel, GraderLabelModel),
+  /**
+   * A formula to calculate the output based on grader results.
+   */
+  "calculate_output": S.String
+}) {}
+
+export class RunGraderRequest extends S.Class<RunGraderRequest>("RunGraderRequest")({
+  /**
+   * The grader used for the fine-tuning job.
+   */
+  "grader": S.Record({ key: S.String, value: S.Unknown }),
+  /**
+   * The dataset item provided to the grader. This will be used to populate
+   * the `item` namespace. See [the guide](https://platform.openai.com/docs/guides/graders) for more details.
+   */
+  "item": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * The model sample to be evaluated. This value will be used to populate
+   * the `sample` namespace. See [the guide](https://platform.openai.com/docs/guides/graders) for more details.
+   * The `output_json` variable will be populated if the model sample is a
+   * valid JSON string.
+   */
+  "model_sample": S.String
+}) {}
+
+export class RunGraderResponse extends S.Class<RunGraderResponse>("RunGraderResponse")({
+  "reward": S.Number,
+  "metadata": S.Struct({
+    "name": S.String,
+    "type": S.String,
+    "errors": S.Struct({
+      "formula_parse_error": S.Boolean,
+      "sample_parse_error": S.Boolean,
+      "truncated_observation_error": S.Boolean,
+      "unresponsive_reward_error": S.Boolean,
+      "invalid_variable_error": S.Boolean,
+      "other_error": S.Boolean,
+      "python_grader_server_error": S.Boolean,
+      "python_grader_server_error_type": S.NullOr(S.String),
+      "python_grader_runtime_error": S.Boolean,
+      "python_grader_runtime_error_details": S.NullOr(S.String),
+      "model_grader_server_error": S.Boolean,
+      "model_grader_refusal_error": S.Boolean,
+      "model_grader_parse_error": S.Boolean,
+      "model_grader_server_error_details": S.NullOr(S.String)
+    }),
+    "execution_time": S.Number,
+    "scores": S.Record({ key: S.String, value: S.Unknown }),
+    "token_usage": S.NullOr(S.Int),
+    "sampled_model_name": S.NullOr(S.String)
+  }),
+  "sub_rewards": S.Record({ key: S.String, value: S.Unknown }),
+  "model_grader_token_usage_per_model": S.Record({ key: S.String, value: S.Unknown })
+}) {}
+
+export class ValidateGraderRequest extends S.Class<ValidateGraderRequest>("ValidateGraderRequest")({
+  /**
+   * The grader used for the fine-tuning job.
+   */
+  "grader": S.Record({ key: S.String, value: S.Unknown })
+}) {}
+
+export class ValidateGraderResponse extends S.Class<ValidateGraderResponse>("ValidateGraderResponse")({
+  /**
+   * The grader used for the fine-tuning job.
+   */
+  "grader": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
 
 export class ListFineTuningCheckpointPermissionsParamsOrder extends S.Literal("ascending", "descending") {}
 
@@ -4306,14 +8580,7 @@ export class FineTuningIntegration extends S.Class<FineTuningIntegration>("FineT
      * The name of the project that the new run will be created under.
      */
     "project": S.String,
-    /**
-     * A display name to set for the run. If not set, we will use the Job ID as the name.
-     */
     "name": S.optionalWith(S.String, { nullable: true }),
-    /**
-     * The entity to use for the run. This allows you to set the team or username of the WandB user that you would
-     * like associated with the run. If not set, the default entity for the registered WandB API key is used.
-     */
     "entity": S.optionalWith(S.String, { nullable: true }),
     /**
      * A list of tags to be attached to the newly created run. These tags are passed through directly to WandB. Some
@@ -4324,120 +8591,213 @@ export class FineTuningIntegration extends S.Class<FineTuningIntegration>("FineT
 }) {}
 
 /**
- * The type of method. Is either `supervised` or `dpo`.
+ * The type of method. Is either `supervised`, `dpo`, or `reinforcement`.
  */
-export class FineTuneMethodType extends S.Literal("supervised", "dpo") {}
+export class FineTuneMethodType extends S.Literal("supervised", "dpo", "reinforcement") {}
 
-export class FineTuneSupervisedMethodHyperparametersBatchSizeEnum extends S.Literal("auto") {}
+export class FineTuneSupervisedHyperparametersBatchSizeEnum extends S.Literal("auto") {}
 
-export class FineTuneSupervisedMethodHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
+export class FineTuneSupervisedHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
 
-export class FineTuneSupervisedMethodHyperparametersNEpochsEnum extends S.Literal("auto") {}
+export class FineTuneSupervisedHyperparametersNEpochsEnum extends S.Literal("auto") {}
+
+/**
+ * The hyperparameters used for the fine-tuning job.
+ */
+export class FineTuneSupervisedHyperparameters
+  extends S.Class<FineTuneSupervisedHyperparameters>("FineTuneSupervisedHyperparameters")({
+    /**
+     * Number of examples in each batch. A larger batch size means that model parameters are updated less frequently, but with lower variance.
+     */
+    "batch_size": S.optionalWith(
+      S.Union(
+        FineTuneSupervisedHyperparametersBatchSizeEnum,
+        S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
+      ),
+      { nullable: true, default: () => "auto" as const }
+    ),
+    /**
+     * Scaling factor for the learning rate. A smaller learning rate may be useful to avoid overfitting.
+     */
+    "learning_rate_multiplier": S.optionalWith(
+      S.Union(FineTuneSupervisedHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
+      { nullable: true }
+    ),
+    /**
+     * The number of epochs to train the model for. An epoch refers to one full cycle through the training dataset.
+     */
+    "n_epochs": S.optionalWith(
+      S.Union(
+        FineTuneSupervisedHyperparametersNEpochsEnum,
+        S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
+      ),
+      { nullable: true, default: () => "auto" as const }
+    )
+  })
+{}
 
 /**
  * Configuration for the supervised fine-tuning method.
  */
 export class FineTuneSupervisedMethod extends S.Class<FineTuneSupervisedMethod>("FineTuneSupervisedMethod")({
-  /**
-   * The hyperparameters used for the fine-tuning job.
-   */
-  "hyperparameters": S.optionalWith(
-    S.Struct({
-      /**
-       * Number of examples in each batch. A larger batch size means that model parameters are updated less frequently, but with lower variance.
-       */
-      "batch_size": S.optionalWith(
-        S.Union(
-          FineTuneSupervisedMethodHyperparametersBatchSizeEnum,
-          S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
-        ),
-        { nullable: true, default: () => "auto" as const }
-      ),
-      /**
-       * Scaling factor for the learning rate. A smaller learning rate may be useful to avoid overfitting.
-       */
-      "learning_rate_multiplier": S.optionalWith(
-        S.Union(FineTuneSupervisedMethodHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
-        {
-          nullable: true,
-          default: () => "auto" as const
-        }
-      ),
-      /**
-       * The number of epochs to train the model for. An epoch refers to one full cycle through the training dataset.
-       */
-      "n_epochs": S.optionalWith(
-        S.Union(
-          FineTuneSupervisedMethodHyperparametersNEpochsEnum,
-          S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
-        ),
-        { nullable: true, default: () => "auto" as const }
-      )
-    }),
-    { nullable: true }
-  )
+  "hyperparameters": S.optionalWith(FineTuneSupervisedHyperparameters, { nullable: true })
 }) {}
 
-export class FineTuneDPOMethodHyperparametersBetaEnum extends S.Literal("auto") {}
+export class FineTuneDPOHyperparametersBetaEnum extends S.Literal("auto") {}
 
-export class FineTuneDPOMethodHyperparametersBatchSizeEnum extends S.Literal("auto") {}
+export class FineTuneDPOHyperparametersBatchSizeEnum extends S.Literal("auto") {}
 
-export class FineTuneDPOMethodHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
+export class FineTuneDPOHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
 
-export class FineTuneDPOMethodHyperparametersNEpochsEnum extends S.Literal("auto") {}
+export class FineTuneDPOHyperparametersNEpochsEnum extends S.Literal("auto") {}
+
+/**
+ * The hyperparameters used for the DPO fine-tuning job.
+ */
+export class FineTuneDPOHyperparameters extends S.Class<FineTuneDPOHyperparameters>("FineTuneDPOHyperparameters")({
+  /**
+   * The beta value for the DPO method. A higher beta value will increase the weight of the penalty between the policy and reference model.
+   */
+  "beta": S.optionalWith(
+    S.Union(FineTuneDPOHyperparametersBetaEnum, S.Number.pipe(S.greaterThan(0), S.lessThanOrEqualTo(2))),
+    { nullable: true }
+  ),
+  /**
+   * Number of examples in each batch. A larger batch size means that model parameters are updated less frequently, but with lower variance.
+   */
+  "batch_size": S.optionalWith(
+    S.Union(FineTuneDPOHyperparametersBatchSizeEnum, S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))),
+    {
+      nullable: true,
+      default: () => "auto" as const
+    }
+  ),
+  /**
+   * Scaling factor for the learning rate. A smaller learning rate may be useful to avoid overfitting.
+   */
+  "learning_rate_multiplier": S.optionalWith(
+    S.Union(FineTuneDPOHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
+    { nullable: true }
+  ),
+  /**
+   * The number of epochs to train the model for. An epoch refers to one full cycle through the training dataset.
+   */
+  "n_epochs": S.optionalWith(
+    S.Union(FineTuneDPOHyperparametersNEpochsEnum, S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))),
+    {
+      nullable: true,
+      default: () => "auto" as const
+    }
+  )
+}) {}
 
 /**
  * Configuration for the DPO fine-tuning method.
  */
 export class FineTuneDPOMethod extends S.Class<FineTuneDPOMethod>("FineTuneDPOMethod")({
-  /**
-   * The hyperparameters used for the fine-tuning job.
-   */
-  "hyperparameters": S.optionalWith(
-    S.Struct({
-      /**
-       * The beta value for the DPO method. A higher beta value will increase the weight of the penalty between the policy and reference model.
-       */
-      "beta": S.optionalWith(
-        S.Union(FineTuneDPOMethodHyperparametersBetaEnum, S.Number.pipe(S.greaterThan(0), S.lessThanOrEqualTo(2))),
-        {
-          nullable: true,
-          default: () => "auto" as const
-        }
+  "hyperparameters": S.optionalWith(FineTuneDPOHyperparameters, { nullable: true })
+}) {}
+
+export class FineTuneReinforcementHyperparametersBatchSizeEnum extends S.Literal("auto") {}
+
+export class FineTuneReinforcementHyperparametersLearningRateMultiplierEnum extends S.Literal("auto") {}
+
+export class FineTuneReinforcementHyperparametersNEpochsEnum extends S.Literal("auto") {}
+
+/**
+ * Level of reasoning effort.
+ */
+export class FineTuneReinforcementHyperparametersReasoningEffort
+  extends S.Literal("default", "low", "medium", "high")
+{}
+
+export class FineTuneReinforcementHyperparametersComputeMultiplierEnum extends S.Literal("auto") {}
+
+export class FineTuneReinforcementHyperparametersEvalIntervalEnum extends S.Literal("auto") {}
+
+export class FineTuneReinforcementHyperparametersEvalSamplesEnum extends S.Literal("auto") {}
+
+/**
+ * The hyperparameters used for the reinforcement fine-tuning job.
+ */
+export class FineTuneReinforcementHyperparameters
+  extends S.Class<FineTuneReinforcementHyperparameters>("FineTuneReinforcementHyperparameters")({
+    /**
+     * Number of examples in each batch. A larger batch size means that model parameters are updated less frequently, but with lower variance.
+     */
+    "batch_size": S.optionalWith(
+      S.Union(
+        FineTuneReinforcementHyperparametersBatchSizeEnum,
+        S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
       ),
-      /**
-       * Number of examples in each batch. A larger batch size means that model parameters are updated less frequently, but with lower variance.
-       */
-      "batch_size": S.optionalWith(
-        S.Union(
-          FineTuneDPOMethodHyperparametersBatchSizeEnum,
-          S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
-        ),
-        { nullable: true, default: () => "auto" as const }
+      { nullable: true, default: () => "auto" as const }
+    ),
+    /**
+     * Scaling factor for the learning rate. A smaller learning rate may be useful to avoid overfitting.
+     */
+    "learning_rate_multiplier": S.optionalWith(
+      S.Union(FineTuneReinforcementHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
+      { nullable: true }
+    ),
+    /**
+     * The number of epochs to train the model for. An epoch refers to one full cycle through the training dataset.
+     */
+    "n_epochs": S.optionalWith(
+      S.Union(
+        FineTuneReinforcementHyperparametersNEpochsEnum,
+        S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
       ),
-      /**
-       * Scaling factor for the learning rate. A smaller learning rate may be useful to avoid overfitting.
-       */
-      "learning_rate_multiplier": S.optionalWith(
-        S.Union(FineTuneDPOMethodHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
-        {
-          nullable: true,
-          default: () => "auto" as const
-        }
-      ),
-      /**
-       * The number of epochs to train the model for. An epoch refers to one full cycle through the training dataset.
-       */
-      "n_epochs": S.optionalWith(
-        S.Union(
-          FineTuneDPOMethodHyperparametersNEpochsEnum,
-          S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(50))
-        ),
-        { nullable: true, default: () => "auto" as const }
-      )
+      { nullable: true, default: () => "auto" as const }
+    ),
+    /**
+     * Level of reasoning effort.
+     */
+    "reasoning_effort": S.optionalWith(FineTuneReinforcementHyperparametersReasoningEffort, {
+      nullable: true,
+      default: () => "default" as const
     }),
-    { nullable: true }
-  )
+    /**
+     * Multiplier on amount of compute used for exploring search space during training.
+     */
+    "compute_multiplier": S.optionalWith(
+      S.Union(
+        FineTuneReinforcementHyperparametersComputeMultiplierEnum,
+        S.Number.pipe(S.greaterThan(0.00001), S.lessThanOrEqualTo(10))
+      ),
+      { nullable: true }
+    ),
+    /**
+     * The number of training steps between evaluation runs.
+     */
+    "eval_interval": S.optionalWith(
+      S.Union(FineTuneReinforcementHyperparametersEvalIntervalEnum, S.Int.pipe(S.greaterThanOrEqualTo(1))),
+      {
+        nullable: true,
+        default: () => "auto" as const
+      }
+    ),
+    /**
+     * Number of evaluation samples to generate per training step.
+     */
+    "eval_samples": S.optionalWith(
+      S.Union(FineTuneReinforcementHyperparametersEvalSamplesEnum, S.Int.pipe(S.greaterThanOrEqualTo(1))),
+      {
+        nullable: true,
+        default: () => "auto" as const
+      }
+    )
+  })
+{}
+
+/**
+ * Configuration for the reinforcement fine-tuning method.
+ */
+export class FineTuneReinforcementMethod extends S.Class<FineTuneReinforcementMethod>("FineTuneReinforcementMethod")({
+  /**
+   * The grader used for the fine-tuning job.
+   */
+  "grader": S.Record({ key: S.String, value: S.Unknown }),
+  "hyperparameters": S.optionalWith(FineTuneReinforcementHyperparameters, { nullable: true })
 }) {}
 
 /**
@@ -4445,11 +8805,12 @@ export class FineTuneDPOMethod extends S.Class<FineTuneDPOMethod>("FineTuneDPOMe
  */
 export class FineTuneMethod extends S.Class<FineTuneMethod>("FineTuneMethod")({
   /**
-   * The type of method. Is either `supervised` or `dpo`.
+   * The type of method. Is either `supervised`, `dpo`, or `reinforcement`.
    */
-  "type": S.optionalWith(FineTuneMethodType, { nullable: true }),
+  "type": FineTuneMethodType,
   "supervised": S.optionalWith(FineTuneSupervisedMethod, { nullable: true }),
-  "dpo": S.optionalWith(FineTuneDPOMethod, { nullable: true })
+  "dpo": S.optionalWith(FineTuneDPOMethod, { nullable: true }),
+  "reinforcement": S.optionalWith(FineTuneReinforcementMethod, { nullable: true })
 }) {}
 
 /**
@@ -4464,9 +8825,6 @@ export class FineTuningJob extends S.Class<FineTuningJob>("FineTuningJob")({
    * The Unix timestamp (in seconds) for when the fine-tuning job was created.
    */
   "created_at": S.Int,
-  /**
-   * For fine-tuning jobs that have `failed`, this will contain more information on the cause of the failure.
-   */
   "error": S.NullOr(S.Struct({
     /**
      * A machine-readable error code.
@@ -4476,33 +8834,20 @@ export class FineTuningJob extends S.Class<FineTuningJob>("FineTuningJob")({
      * A human-readable error message.
      */
     "message": S.String,
-    /**
-     * The parameter that was invalid, usually `training_file` or `validation_file`. This field will be null if the failure was not parameter-specific.
-     */
     "param": S.NullOr(S.String)
   })),
-  /**
-   * The name of the fine-tuned model that is being created. The value will be null if the fine-tuning job is still running.
-   */
   "fine_tuned_model": S.NullOr(S.String),
-  /**
-   * The Unix timestamp (in seconds) for when the fine-tuning job was finished. The value will be null if the fine-tuning job is still running.
-   */
   "finished_at": S.NullOr(S.Int),
   /**
    * The hyperparameters used for the fine-tuning job. This value will only be returned when running `supervised` jobs.
    */
   "hyperparameters": S.Struct({
-    /**
-     * Number of examples in each batch. A larger batch size means that model parameters
-     * are updated less frequently, but with lower variance.
-     */
     "batch_size": S.optionalWith(
       S.Union(
         FineTuningJobHyperparametersBatchSizeEnum,
         S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(256))
       ),
-      { nullable: true, default: () => "auto" as const }
+      { nullable: true }
     ),
     /**
      * Scaling factor for the learning rate. A smaller learning rate may be useful to avoid
@@ -4510,10 +8855,7 @@ export class FineTuningJob extends S.Class<FineTuningJob>("FineTuningJob")({
      */
     "learning_rate_multiplier": S.optionalWith(
       S.Union(FineTuningJobHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
-      {
-        nullable: true,
-        default: () => "auto" as const
-      }
+      { nullable: true }
     ),
     /**
      * The number of epochs to train the model for. An epoch refers to one full cycle
@@ -4540,39 +8882,27 @@ export class FineTuningJob extends S.Class<FineTuningJob>("FineTuningJob")({
    */
   "organization_id": S.String,
   /**
-   * The compiled results file ID(s) for the fine-tuning job. You can retrieve the results with the [Files API](/docs/api-reference/files/retrieve-contents).
+   * The compiled results file ID(s) for the fine-tuning job. You can retrieve the results with the [Files API](https://platform.openai.com/docs/api-reference/files/retrieve-contents).
    */
   "result_files": S.Array(S.String),
   /**
    * The current status of the fine-tuning job, which can be either `validating_files`, `queued`, `running`, `succeeded`, `failed`, or `cancelled`.
    */
   "status": FineTuningJobStatus,
-  /**
-   * The total number of billable tokens processed by this fine-tuning job. The value will be null if the fine-tuning job is still running.
-   */
   "trained_tokens": S.NullOr(S.Int),
   /**
-   * The file ID used for training. You can retrieve the training data with the [Files API](/docs/api-reference/files/retrieve-contents).
+   * The file ID used for training. You can retrieve the training data with the [Files API](https://platform.openai.com/docs/api-reference/files/retrieve-contents).
    */
   "training_file": S.String,
-  /**
-   * The file ID used for validation. You can retrieve the validation results with the [Files API](/docs/api-reference/files/retrieve-contents).
-   */
   "validation_file": S.NullOr(S.String),
-  /**
-   * A list of integrations to enable for this fine-tuning job.
-   */
   "integrations": S.optionalWith(S.Array(FineTuningIntegration).pipe(S.maxItems(5)), { nullable: true }),
   /**
    * The seed used for the fine-tuning job.
    */
   "seed": S.Int,
-  /**
-   * The Unix timestamp (in seconds) for when the fine-tuning job is estimated to finish. The value will be null if the fine-tuning job is not running.
-   */
   "estimated_finish": S.optionalWith(S.Int, { nullable: true }),
   "method": S.optionalWith(FineTuneMethod, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListPaginatedFineTuningJobsResponseObject extends S.Literal("list") {}
@@ -4598,19 +8928,19 @@ export class CreateFineTuningJobRequestHyperparametersNEpochsEnum extends S.Lite
 export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobRequest>("CreateFineTuningJobRequest")({
   /**
    * The name of the model to fine-tune. You can select one of the
-   * [supported models](/docs/guides/fine-tuning#which-models-can-be-fine-tuned).
+   * [supported models](https://platform.openai.com/docs/guides/fine-tuning#which-models-can-be-fine-tuned).
    */
   "model": S.Union(S.String, CreateFineTuningJobRequestModelEnum),
   /**
    * The ID of an uploaded file that contains training data.
    *
-   * See [upload file](/docs/api-reference/files/create) for how to upload a file.
+   * See [upload file](https://platform.openai.com/docs/api-reference/files/create) for how to upload a file.
    *
    * Your dataset must be formatted as a JSONL file. Additionally, you must upload your file with the purpose `fine-tune`.
    *
-   * The contents of the file should differ depending on if the model uses the [chat](/docs/api-reference/fine-tuning/chat-input), [completions](/docs/api-reference/fine-tuning/completions-input) format, or if the fine-tuning method uses the [preference](/docs/api-reference/fine-tuning/preference-input) format.
+   * The contents of the file should differ depending on if the model uses the [chat](https://platform.openai.com/docs/api-reference/fine-tuning/chat-input), [completions](https://platform.openai.com/docs/api-reference/fine-tuning/completions-input) format, or if the fine-tuning method uses the [preference](https://platform.openai.com/docs/api-reference/fine-tuning/preference-input) format.
    *
-   * See the [fine-tuning guide](/docs/guides/fine-tuning) for more details.
+   * See the [fine-tuning guide](https://platform.openai.com/docs/guides/model-optimization) for more details.
    */
   "training_file": S.String,
   /**
@@ -4636,10 +8966,7 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
        */
       "learning_rate_multiplier": S.optionalWith(
         S.Union(CreateFineTuningJobRequestHyperparametersLearningRateMultiplierEnum, S.Number.pipe(S.greaterThan(0))),
-        {
-          nullable: true,
-          default: () => "auto" as const
-        }
+        { nullable: true }
       ),
       /**
        * The number of epochs to train the model for. An epoch refers to one full cycle
@@ -4671,7 +8998,7 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
    *
    * Your dataset must be formatted as a JSONL file. You must upload your file with the purpose `fine-tune`.
    *
-   * See the [fine-tuning guide](/docs/guides/fine-tuning) for more details.
+   * See the [fine-tuning guide](https://platform.openai.com/docs/guides/model-optimization) for more details.
    */
   "validation_file": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -4717,7 +9044,7 @@ export class CreateFineTuningJobRequest extends S.Class<CreateFineTuningJobReque
    */
   "seed": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2147483647)), { nullable: true }),
   "method": S.optionalWith(FineTuneMethod, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListFineTuningJobCheckpointsParams extends S.Struct({
@@ -4848,7 +9175,18 @@ export class ListFineTuningJobEventsResponse
   })
 {}
 
-export class CreateImageEditRequestModelEnum extends S.Literal("dall-e-2", "gpt-image-1") {}
+/**
+ * Allows to set transparency for the background of the generated image(s).
+ * This parameter is only supported for `gpt-image-1`. Must be one of
+ * `transparent`, `opaque` or `auto` (default value). When `auto` is used, the
+ * model will automatically determine the best background for the image.
+ *
+ * If `transparent`, the output format needs to support transparency, so it
+ * should be set to either `png` (default value) or `webp`.
+ */
+export class CreateImageEditRequestBackground extends S.Literal("transparent", "opaque", "auto") {}
+
+export class CreateImageEditRequestModelEnum extends S.Literal("dall-e-2", "gpt-image-1", "gpt-image-1-mini") {}
 
 /**
  * The size of the generated images. Must be one of `1024x1024`, `1536x1024` (landscape), `1024x1536` (portrait), or `auto` (default value) for `gpt-image-1`, and one of `256x256`, `512x512`, or `1024x1024` for `dall-e-2`.
@@ -4863,6 +9201,26 @@ export class CreateImageEditRequestSize
 export class CreateImageEditRequestResponseFormat extends S.Literal("url", "b64_json") {}
 
 /**
+ * The format in which the generated images are returned. This parameter is
+ * only supported for `gpt-image-1`. Must be one of `png`, `jpeg`, or `webp`.
+ * The default value is `png`.
+ */
+export class CreateImageEditRequestOutputFormat extends S.Literal("png", "jpeg", "webp") {}
+
+export class PartialImages extends S.Union(
+  /**
+   * The number of partial images to generate. This parameter is used for
+   * streaming responses that return partial images. Value must be between 0 and 3.
+   * When set to 0, the response will be a single image sent in one streaming event.
+   *
+   * Note that the final image may be sent before the full number of partial images
+   * are generated if the full image is generated more quickly.
+   */
+  S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(3)),
+  S.Null
+) {}
+
+/**
  * The quality of the image that will be generated. `high`, `medium` and `low` are only supported for `gpt-image-1`. `dall-e-2` only supports `standard` quality. Defaults to `auto`.
  */
 export class CreateImageEditRequestQuality extends S.Literal("standard", "low", "medium", "high", "auto") {}
@@ -4872,7 +9230,7 @@ export class CreateImageEditRequest extends S.Class<CreateImageEditRequest>("Cre
    * The image(s) to edit. Must be a supported image file or an array of images.
    *
    * For `gpt-image-1`, each image should be a `png`, `webp`, or `jpg` file less
-   * than 25MB. You can provide up to 16 images.
+   * than 50MB. You can provide up to 16 images.
    *
    * For `dall-e-2`, you can only provide one image, and it should be a square
    * `png` file less than 4MB.
@@ -4887,12 +9245,19 @@ export class CreateImageEditRequest extends S.Class<CreateImageEditRequest>("Cre
    */
   "mask": S.optionalWith(S.instanceOf(globalThis.Blob), { nullable: true }),
   /**
+   * Allows to set transparency for the background of the generated image(s).
+   * This parameter is only supported for `gpt-image-1`. Must be one of
+   * `transparent`, `opaque` or `auto` (default value). When `auto` is used, the
+   * model will automatically determine the best background for the image.
+   *
+   * If `transparent`, the output format needs to support transparency, so it
+   * should be set to either `png` (default value) or `webp`.
+   */
+  "background": S.optionalWith(CreateImageEditRequestBackground, { nullable: true, default: () => "auto" as const }),
+  /**
    * The model to use for image generation. Only `dall-e-2` and `gpt-image-1` are supported. Defaults to `dall-e-2` unless a parameter specific to `gpt-image-1` is used.
    */
-  "model": S.optionalWith(S.Union(S.String, CreateImageEditRequestModelEnum), {
-    nullable: true,
-    default: () => "dall-e-2" as const
-  }),
+  "model": S.optionalWith(S.Union(S.String, CreateImageEditRequestModelEnum), { nullable: true }),
   /**
    * The number of images to generate. Must be between 1 and 10.
    */
@@ -4912,9 +9277,31 @@ export class CreateImageEditRequest extends S.Class<CreateImageEditRequest>("Cre
     default: () => "url" as const
   }),
   /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * The format in which the generated images are returned. This parameter is
+   * only supported for `gpt-image-1`. Must be one of `png`, `jpeg`, or `webp`.
+   * The default value is `png`.
+   */
+  "output_format": S.optionalWith(CreateImageEditRequestOutputFormat, {
+    nullable: true,
+    default: () => "png" as const
+  }),
+  /**
+   * The compression level (0-100%) for the generated images. This parameter
+   * is only supported for `gpt-image-1` with the `webp` or `jpeg` output
+   * formats, and defaults to 100.
+   */
+  "output_compression": S.optionalWith(S.Int, { nullable: true, default: () => 100 as const }),
+  /**
+   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).
    */
   "user": S.optionalWith(S.String, { nullable: true }),
+  "input_fidelity": S.optionalWith(InputFidelity, { nullable: true }),
+  /**
+   * Edit the image in streaming mode. Defaults to `false`. See the
+   * [Image generation guide](https://platform.openai.com/docs/guides/image-generation) for more information.
+   */
+  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "partial_images": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(3)), { nullable: true }),
   /**
    * The quality of the image that will be generated. `high`, `medium` and `low` are only supported for `gpt-image-1`. `dall-e-2` only supports `standard` quality. Defaults to `auto`.
    */
@@ -4940,6 +9327,59 @@ export class Image extends S.Class<Image>("Image")({
 }) {}
 
 /**
+ * The background parameter used for the image generation. Either `transparent` or `opaque`.
+ */
+export class ImagesResponseBackground extends S.Literal("transparent", "opaque") {}
+
+/**
+ * The output format of the image generation. Either `png`, `webp`, or `jpeg`.
+ */
+export class ImagesResponseOutputFormat extends S.Literal("png", "webp", "jpeg") {}
+
+/**
+ * The size of the image generated. Either `1024x1024`, `1024x1536`, or `1536x1024`.
+ */
+export class ImagesResponseSize extends S.Literal("1024x1024", "1024x1536", "1536x1024") {}
+
+/**
+ * The quality of the image generated. Either `low`, `medium`, or `high`.
+ */
+export class ImagesResponseQuality extends S.Literal("low", "medium", "high") {}
+
+/**
+ * The input tokens detailed information for the image generation.
+ */
+export class ImageGenInputUsageDetails extends S.Class<ImageGenInputUsageDetails>("ImageGenInputUsageDetails")({
+  /**
+   * The number of text tokens in the input prompt.
+   */
+  "text_tokens": S.Int,
+  /**
+   * The number of image tokens in the input prompt.
+   */
+  "image_tokens": S.Int
+}) {}
+
+/**
+ * For `gpt-image-1` only, the token usage information for the image generation.
+ */
+export class ImageGenUsage extends S.Class<ImageGenUsage>("ImageGenUsage")({
+  /**
+   * The number of tokens (images and text) in the input prompt.
+   */
+  "input_tokens": S.Int,
+  /**
+   * The total number of tokens (images and text) used for the image generation.
+   */
+  "total_tokens": S.Int,
+  /**
+   * The number of output tokens generated by the model.
+   */
+  "output_tokens": S.Int,
+  "input_tokens_details": ImageGenInputUsageDetails
+}) {}
+
+/**
  * The response from the image generation endpoint.
  */
 export class ImagesResponse extends S.Class<ImagesResponse>("ImagesResponse")({
@@ -4952,41 +9392,25 @@ export class ImagesResponse extends S.Class<ImagesResponse>("ImagesResponse")({
    */
   "data": S.optionalWith(S.Array(Image), { nullable: true }),
   /**
-   * For `gpt-image-1` only, the token usage information for the image generation.
+   * The background parameter used for the image generation. Either `transparent` or `opaque`.
    */
-  "usage": S.optionalWith(
-    S.Struct({
-      /**
-       * The total number of tokens (images and text) used for the image generation.
-       */
-      "total_tokens": S.Int,
-      /**
-       * The number of tokens (images and text) in the input prompt.
-       */
-      "input_tokens": S.Int,
-      /**
-       * The number of image tokens in the output image.
-       */
-      "output_tokens": S.Int,
-      /**
-       * The input tokens detailed information for the image generation.
-       */
-      "input_tokens_details": S.Struct({
-        /**
-         * The number of text tokens in the input prompt.
-         */
-        "text_tokens": S.Int,
-        /**
-         * The number of image tokens in the input prompt.
-         */
-        "image_tokens": S.Int
-      })
-    }),
-    { nullable: true }
-  )
+  "background": S.optionalWith(ImagesResponseBackground, { nullable: true }),
+  /**
+   * The output format of the image generation. Either `png`, `webp`, or `jpeg`.
+   */
+  "output_format": S.optionalWith(ImagesResponseOutputFormat, { nullable: true }),
+  /**
+   * The size of the image generated. Either `1024x1024`, `1024x1536`, or `1536x1024`.
+   */
+  "size": S.optionalWith(ImagesResponseSize, { nullable: true }),
+  /**
+   * The quality of the image generated. Either `low`, `medium`, or `high`.
+   */
+  "quality": S.optionalWith(ImagesResponseQuality, { nullable: true }),
+  "usage": S.optionalWith(ImageGenUsage, { nullable: true })
 }) {}
 
-export class CreateImageRequestModelEnum extends S.Literal("dall-e-2", "dall-e-3", "gpt-image-1") {}
+export class CreateImageRequestModelEnum extends S.Literal("dall-e-2", "dall-e-3", "gpt-image-1", "gpt-image-1-mini") {}
 
 /**
  * The quality of the image that will be generated.
@@ -5044,10 +9468,7 @@ export class CreateImageRequest extends S.Class<CreateImageRequest>("CreateImage
   /**
    * The model to use for image generation. One of `dall-e-2`, `dall-e-3`, or `gpt-image-1`. Defaults to `dall-e-2` unless a parameter specific to `gpt-image-1` is used.
    */
-  "model": S.optionalWith(S.Union(S.String, CreateImageRequestModelEnum), {
-    nullable: true,
-    default: () => "dall-e-2" as const
-  }),
+  "model": S.optionalWith(S.Union(S.String, CreateImageRequestModelEnum), { nullable: true }),
   /**
    * The number of images to generate. Must be between 1 and 10. For `dall-e-3`, only `n=1` is supported.
    */
@@ -5080,6 +9501,13 @@ export class CreateImageRequest extends S.Class<CreateImageRequest>("CreateImage
    */
   "output_compression": S.optionalWith(S.Int, { nullable: true, default: () => 100 as const }),
   /**
+   * Generate the image in streaming mode. Defaults to `false`. See the
+   * [Image generation guide](https://platform.openai.com/docs/guides/image-generation) for more information.
+   * This parameter is only supported for `gpt-image-1`.
+   */
+  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
+  "partial_images": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(3)), { nullable: true }),
+  /**
    * The size of the generated images. Must be one of `1024x1024`, `1536x1024` (landscape), `1024x1536` (portrait), or `auto` (default value) for `gpt-image-1`, one of `256x256`, `512x512`, or `1024x1024` for `dall-e-2`, and one of `1024x1024`, `1792x1024`, or `1024x1792` for `dall-e-3`.
    */
   "size": S.optionalWith(CreateImageRequestSize, { nullable: true, default: () => "auto" as const }),
@@ -5102,7 +9530,7 @@ export class CreateImageRequest extends S.Class<CreateImageRequest>("CreateImage
    */
   "style": S.optionalWith(CreateImageRequestStyle, { nullable: true, default: () => "vivid" as const }),
   /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).
    */
   "user": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -5127,10 +9555,7 @@ export class CreateImageVariationRequest extends S.Class<CreateImageVariationReq
   /**
    * The model to use for image generation. Only `dall-e-2` is supported at this time.
    */
-  "model": S.optionalWith(S.Union(S.String, CreateImageVariationRequestModelEnum), {
-    nullable: true,
-    default: () => "dall-e-2" as const
-  }),
+  "model": S.optionalWith(S.Union(S.String, CreateImageVariationRequestModelEnum), { nullable: true }),
   /**
    * The number of images to generate. Must be between 1 and 10.
    */
@@ -5150,7 +9575,7 @@ export class CreateImageVariationRequest extends S.Class<CreateImageVariationReq
    */
   "size": S.optionalWith(CreateImageVariationRequestSize, { nullable: true, default: () => "1024x1024" as const }),
   /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#end-user-ids).
    */
   "user": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -5195,6 +9620,49 @@ export class DeleteModelResponse extends S.Class<DeleteModelResponse>("DeleteMod
   "object": S.String
 }) {}
 
+/**
+ * Always `image_url`.
+ */
+export class ModerationImageURLInputType extends S.Literal("image_url") {}
+
+/**
+ * An object describing an image to classify.
+ */
+export class ModerationImageURLInput extends S.Class<ModerationImageURLInput>("ModerationImageURLInput")({
+  /**
+   * Always `image_url`.
+   */
+  "type": ModerationImageURLInputType,
+  /**
+   * Contains either an image URL or a data URL for a base64 encoded image.
+   */
+  "image_url": S.Struct({
+    /**
+     * Either a URL of the image or the base64 encoded image data.
+     */
+    "url": S.String
+  })
+}) {}
+
+/**
+ * Always `text`.
+ */
+export class ModerationTextInputType extends S.Literal("text") {}
+
+/**
+ * An object describing text to classify.
+ */
+export class ModerationTextInput extends S.Class<ModerationTextInput>("ModerationTextInput")({
+  /**
+   * Always `text`.
+   */
+  "type": ModerationTextInputType,
+  /**
+   * A string of text to classify.
+   */
+  "text": S.String
+}) {}
+
 export class CreateModerationRequestModelEnum extends S.Literal(
   "omni-moderation-latest",
   "omni-moderation-2024-09-26",
@@ -5219,49 +9687,14 @@ export class CreateModerationRequest extends S.Class<CreateModerationRequest>("C
     /**
      * An array of multi-modal inputs to the moderation model.
      */
-    S.Array(S.Union(
-      /**
-       * An object describing an image to classify.
-       */
-      S.Struct({
-        /**
-         * Always `image_url`.
-         */
-        "type": S.Literal("image_url"),
-        /**
-         * Contains either an image URL or a data URL for a base64 encoded image.
-         */
-        "image_url": S.Struct({
-          /**
-           * Either a URL of the image or the base64 encoded image data.
-           */
-          "url": S.String
-        })
-      }),
-      /**
-       * An object describing text to classify.
-       */
-      S.Struct({
-        /**
-         * Always `text`.
-         */
-        "type": S.Literal("text"),
-        /**
-         * A string of text to classify.
-         */
-        "text": S.String
-      })
-    ))
+    S.Array(S.Union(ModerationImageURLInput, ModerationTextInput))
   ),
   /**
    * The content moderation model you would like to use. Learn more in
-   * [the moderation guide](/docs/guides/moderation), and learn about
-   * available models [here](/docs/models#moderation).
+   * [the moderation guide](https://platform.openai.com/docs/guides/moderation), and learn about
+   * available models [here](https://platform.openai.com/docs/models#moderation).
    */
-  "model": S.optionalWith(S.Union(S.String, CreateModerationRequestModelEnum), {
-    nullable: true,
-    default: () => "omni-moderation-latest" as const
-  })
+  "model": S.optionalWith(S.Union(S.String, CreateModerationRequestModelEnum), { nullable: true })
 }) {}
 
 /**
@@ -5304,13 +9737,7 @@ export class CreateModerationResponse extends S.Class<CreateModerationResponse>(
        * Harassment content that also includes violence or serious harm towards any target.
        */
       "harassment/threatening": S.Boolean,
-      /**
-       * Content that includes instructions or advice that facilitate the planning or execution of wrongdoing, or that gives advice or instruction on how to commit illicit acts. For example, "how to shoplift" would fit this category.
-       */
       "illicit": S.NullOr(S.Boolean),
-      /**
-       * Content that includes instructions or advice that facilitate the planning or execution of wrongdoing that also includes violence, or that gives advice or instruction on the procurement of any weapon.
-       */
       "illicit/violent": S.NullOr(S.Boolean),
       /**
        * Content that promotes, encourages, or depicts acts of self-harm, such as suicide, cutting, and eating disorders.
@@ -5506,9 +9933,6 @@ export class AdminApiKey extends S.Class<AdminApiKey>("AdminApiKey")({
    * The Unix timestamp (in seconds) of when the API key was created
    */
   "created_at": S.Int,
-  /**
-   * The Unix timestamp (in seconds) of when the API key was last used
-   */
   "last_used_at": S.NullOr(S.Int),
   "owner": S.Struct({
     /**
@@ -5563,11 +9987,26 @@ export class AuditLogEventType extends S.Literal(
   "api_key.created",
   "api_key.updated",
   "api_key.deleted",
-  "checkpoint_permission.created",
-  "checkpoint_permission.deleted",
+  "certificate.created",
+  "certificate.updated",
+  "certificate.deleted",
+  "certificates.activated",
+  "certificates.deactivated",
+  "checkpoint.permission.created",
+  "checkpoint.permission.deleted",
+  "external_key.registered",
+  "external_key.removed",
+  "group.created",
+  "group.updated",
+  "group.deleted",
   "invite.sent",
   "invite.accepted",
   "invite.deleted",
+  "ip_allowlist.created",
+  "ip_allowlist.updated",
+  "ip_allowlist.deleted",
+  "ip_allowlist.config.activated",
+  "ip_allowlist.config.deactivated",
   "login.succeeded",
   "login.failed",
   "logout.succeeded",
@@ -5576,11 +10015,20 @@ export class AuditLogEventType extends S.Literal(
   "project.created",
   "project.updated",
   "project.archived",
+  "project.deleted",
+  "rate_limit.updated",
+  "rate_limit.deleted",
+  "resource.deleted",
+  "role.created",
+  "role.updated",
+  "role.deleted",
+  "role.assignment.created",
+  "role.assignment.deleted",
+  "scim.enabled",
+  "scim.disabled",
   "service_account.created",
   "service_account.updated",
   "service_account.deleted",
-  "rate_limit.updated",
-  "rate_limit.deleted",
   "user.added",
   "user.updated",
   "user.deleted"
@@ -5702,7 +10150,7 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
    */
   "effective_at": S.Int,
   /**
-   * The project that the action was scoped to. Absent for actions not scoped to projects.
+   * The project that the action was scoped to. Absent for actions not scoped to projects. Note that any admin actions taken via Admin API keys are associated with the default project.
    */
   "project": S.optionalWith(
     S.Struct({
@@ -5781,7 +10229,7 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
   /**
    * The project and fine-tuned model checkpoint that the checkpoint permission was created for.
    */
-  "checkpoint_permission.created": S.optionalWith(
+  "checkpoint.permission.created": S.optionalWith(
     S.Struct({
       /**
        * The ID of the checkpoint permission.
@@ -5809,10 +10257,122 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
   /**
    * The details for events with this `type`.
    */
-  "checkpoint_permission.deleted": S.optionalWith(
+  "checkpoint.permission.deleted": S.optionalWith(
     S.Struct({
       /**
        * The ID of the checkpoint permission.
+       */
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "external_key.registered": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the external key configuration.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The configuration for the external key.
+       */
+      "data": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "external_key.removed": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the external key configuration.
+       */
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "group.created": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the group.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * Information about the created group.
+       */
+      "data": S.optionalWith(
+        S.Struct({
+          /**
+           * The group name.
+           */
+          "group_name": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "group.updated": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the group.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The payload used to update the group.
+       */
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          /**
+           * The updated group name.
+           */
+          "group_name": S.optionalWith(S.String, { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "group.deleted": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the group.
+       */
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "scim.enabled": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the SCIM was enabled for.
+       */
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "scim.disabled": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the SCIM was disabled for.
        */
       "id": S.optionalWith(S.String, { nullable: true })
     }),
@@ -5873,6 +10433,114 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
   /**
    * The details for events with this `type`.
    */
+  "ip_allowlist.created": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the IP allowlist configuration.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The name of the IP allowlist configuration.
+       */
+      "name": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The IP addresses or CIDR ranges included in the configuration.
+       */
+      "allowed_ips": S.optionalWith(S.Array(S.String), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "ip_allowlist.updated": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the IP allowlist configuration.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The updated set of IP addresses or CIDR ranges in the configuration.
+       */
+      "allowed_ips": S.optionalWith(S.Array(S.String), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "ip_allowlist.deleted": S.optionalWith(
+    S.Struct({
+      /**
+       * The ID of the IP allowlist configuration.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The name of the IP allowlist configuration.
+       */
+      "name": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The IP addresses or CIDR ranges that were in the configuration.
+       */
+      "allowed_ips": S.optionalWith(S.Array(S.String), { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "ip_allowlist.config.activated": S.optionalWith(
+    S.Struct({
+      /**
+       * The configurations that were activated.
+       */
+      "configs": S.optionalWith(
+        S.Array(S.Struct({
+          /**
+           * The ID of the IP allowlist configuration.
+           */
+          "id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The name of the IP allowlist configuration.
+           */
+          "name": S.optionalWith(S.String, { nullable: true })
+        })),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "ip_allowlist.config.deactivated": S.optionalWith(
+    S.Struct({
+      /**
+       * The configurations that were deactivated.
+       */
+      "configs": S.optionalWith(
+        S.Array(S.Struct({
+          /**
+           * The ID of the IP allowlist configuration.
+           */
+          "id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The name of the IP allowlist configuration.
+           */
+          "name": S.optionalWith(S.String, { nullable: true })
+        })),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  /**
+   * This event has no additional fields beyond the standard audit log attributes.
+   */
+  "login.succeeded": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * The details for events with this `type`.
+   */
   "login.failed": S.optionalWith(
     S.Struct({
       /**
@@ -5886,6 +10554,10 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
     }),
     { nullable: true }
   ),
+  /**
+   * This event has no additional fields beyond the standard audit log attributes.
+   */
+  "logout.succeeded": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   /**
    * The details for events with this `type`.
    */
@@ -5928,19 +10600,22 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
            * The organization name.
            */
           "name": S.optionalWith(S.String, { nullable: true }),
-          "settings": S.optionalWith(
-            S.Struct({
-              /**
-               * Visibility of the threads page which shows messages created with the Assistants API and Playground. One of `ANY_ROLE`, `OWNERS`, or `NONE`.
-               */
-              "threads_ui_visibility": S.optionalWith(S.String, { nullable: true }),
-              /**
-               * Visibility of the usage dashboard which shows activity and costs for your organization. One of `ANY_ROLE` or `OWNERS`.
-               */
-              "usage_dashboard_visibility": S.optionalWith(S.String, { nullable: true })
-            }),
-            { nullable: true }
-          )
+          /**
+           * Visibility of the threads page which shows messages created with the Assistants API and Playground. One of `ANY_ROLE`, `OWNERS`, or `NONE`.
+           */
+          "threads_ui_visibility": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * Visibility of the usage dashboard which shows activity and costs for your organization. One of `ANY_ROLE` or `OWNERS`.
+           */
+          "usage_dashboard_visibility": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * How your organization logs data from supported API calls. One of `disabled`, `enabled_per_call`, `enabled_for_all_projects`, or `enabled_for_selected_projects`
+           */
+          "api_call_logging": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The list of project ids if api_call_logging is set to `enabled_for_selected_projects`
+           */
+          "api_call_logging_project_ids": S.optionalWith(S.String, { nullable: true })
         }),
         { nullable: true }
       )
@@ -6014,6 +10689,18 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
   /**
    * The details for events with this `type`.
    */
+  "project.deleted": S.optionalWith(
+    S.Struct({
+      /**
+       * The project ID.
+       */
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
   "rate_limit.updated": S.optionalWith(
     S.Struct({
       /**
@@ -6064,6 +10751,150 @@ export class AuditLog extends S.Class<AuditLog>("AuditLog")({
        * The rate limit ID
        */
       "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "role.created": S.optionalWith(
+    S.Struct({
+      /**
+       * The role ID.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The name of the role.
+       */
+      "role_name": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The permissions granted by the role.
+       */
+      "permissions": S.optionalWith(S.Array(S.String), { nullable: true }),
+      /**
+       * The type of resource the role belongs to.
+       */
+      "resource_type": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The resource the role is scoped to.
+       */
+      "resource_id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "role.updated": S.optionalWith(
+    S.Struct({
+      /**
+       * The role ID.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The payload used to update the role.
+       */
+      "changes_requested": S.optionalWith(
+        S.Struct({
+          /**
+           * The updated role name, when provided.
+           */
+          "role_name": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The resource the role is scoped to.
+           */
+          "resource_id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The type of resource the role belongs to.
+           */
+          "resource_type": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The permissions added to the role.
+           */
+          "permissions_added": S.optionalWith(S.Array(S.String), { nullable: true }),
+          /**
+           * The permissions removed from the role.
+           */
+          "permissions_removed": S.optionalWith(S.Array(S.String), { nullable: true }),
+          /**
+           * The updated role description, when provided.
+           */
+          "description": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * Additional metadata stored on the role.
+           */
+          "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+        }),
+        { nullable: true }
+      )
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "role.deleted": S.optionalWith(
+    S.Struct({
+      /**
+       * The role ID.
+       */
+      "id": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "role.assignment.created": S.optionalWith(
+    S.Struct({
+      /**
+       * The identifier of the role assignment.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The principal (user or group) that received the role.
+       */
+      "principal_id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The type of principal (user or group) that received the role.
+       */
+      "principal_type": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The resource the role assignment is scoped to.
+       */
+      "resource_id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The type of resource the role assignment is scoped to.
+       */
+      "resource_type": S.optionalWith(S.String, { nullable: true })
+    }),
+    { nullable: true }
+  ),
+  /**
+   * The details for events with this `type`.
+   */
+  "role.assignment.deleted": S.optionalWith(
+    S.Struct({
+      /**
+       * The identifier of the role assignment.
+       */
+      "id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The principal (user or group) that had the role removed.
+       */
+      "principal_id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The type of principal (user or group) that had the role removed.
+       */
+      "principal_type": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The resource the role assignment was scoped to.
+       */
+      "resource_id": S.optionalWith(S.String, { nullable: true }),
+      /**
+       * The type of resource the role assignment was scoped to.
+       */
+      "resource_type": S.optionalWith(S.String, { nullable: true })
     }),
     { nullable: true }
   ),
@@ -6390,16 +11221,11 @@ export class ModifyCertificateRequest extends S.Class<ModifyCertificateRequest>(
   "name": S.String
 }) {}
 
-/**
- * The object type, must be `certificate.deleted`.
- */
-export class DeleteCertificateResponseObject extends S.Literal("certificate.deleted") {}
-
 export class DeleteCertificateResponse extends S.Class<DeleteCertificateResponse>("DeleteCertificateResponse")({
   /**
    * The object type, must be `certificate.deleted`.
    */
-  "object": DeleteCertificateResponseObject,
+  "object": S.Literal("certificate.deleted"),
   /**
    * The ID of the certificate that was deleted.
    */
@@ -6453,26 +11279,12 @@ export class UsageCompletionsResult extends S.Class<UsageCompletionsResult>("Usa
    * The count of requests made to the model.
    */
   "num_model_requests": S.Int,
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=user_id`, this field provides the user ID of the grouped usage result.
-   */
   "user_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=api_key_id`, this field provides the API key ID of the grouped usage result.
-   */
   "api_key_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=model`, this field provides the model name of the grouped usage result.
-   */
   "model": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=batch`, this field tells whether the grouped usage result is batch or not.
-   */
-  "batch": S.optionalWith(S.Boolean, { nullable: true })
+  "batch": S.optionalWith(S.Boolean, { nullable: true }),
+  "service_tier": S.optionalWith(S.String, { nullable: true })
 }) {}
 
 export class UsageEmbeddingsResultObject extends S.Literal("organization.usage.embeddings.result") {}
@@ -6490,21 +11302,9 @@ export class UsageEmbeddingsResult extends S.Class<UsageEmbeddingsResult>("Usage
    * The count of requests made to the model.
    */
   "num_model_requests": S.Int,
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=user_id`, this field provides the user ID of the grouped usage result.
-   */
   "user_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=api_key_id`, this field provides the API key ID of the grouped usage result.
-   */
   "api_key_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=model`, this field provides the model name of the grouped usage result.
-   */
   "model": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -6523,21 +11323,9 @@ export class UsageModerationsResult extends S.Class<UsageModerationsResult>("Usa
    * The count of requests made to the model.
    */
   "num_model_requests": S.Int,
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=user_id`, this field provides the user ID of the grouped usage result.
-   */
   "user_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=api_key_id`, this field provides the API key ID of the grouped usage result.
-   */
   "api_key_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=model`, this field provides the model name of the grouped usage result.
-   */
   "model": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -6556,29 +11344,11 @@ export class UsageImagesResult extends S.Class<UsageImagesResult>("UsageImagesRe
    * The count of requests made to the model.
    */
   "num_model_requests": S.Int,
-  /**
-   * When `group_by=source`, this field provides the source of the grouped usage result, possible values are `image.generation`, `image.edit`, `image.variation`.
-   */
   "source": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=size`, this field provides the image size of the grouped usage result.
-   */
   "size": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=user_id`, this field provides the user ID of the grouped usage result.
-   */
   "user_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=api_key_id`, this field provides the API key ID of the grouped usage result.
-   */
   "api_key_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=model`, this field provides the model name of the grouped usage result.
-   */
   "model": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -6597,21 +11367,9 @@ export class UsageAudioSpeechesResult extends S.Class<UsageAudioSpeechesResult>(
    * The count of requests made to the model.
    */
   "num_model_requests": S.Int,
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=user_id`, this field provides the user ID of the grouped usage result.
-   */
   "user_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=api_key_id`, this field provides the API key ID of the grouped usage result.
-   */
   "api_key_id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=model`, this field provides the model name of the grouped usage result.
-   */
   "model": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -6631,21 +11389,9 @@ export class UsageAudioTranscriptionsResult
      * The count of requests made to the model.
      */
     "num_model_requests": S.Int,
-    /**
-     * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-     */
     "project_id": S.optionalWith(S.String, { nullable: true }),
-    /**
-     * When `group_by=user_id`, this field provides the user ID of the grouped usage result.
-     */
     "user_id": S.optionalWith(S.String, { nullable: true }),
-    /**
-     * When `group_by=api_key_id`, this field provides the API key ID of the grouped usage result.
-     */
     "api_key_id": S.optionalWith(S.String, { nullable: true }),
-    /**
-     * When `group_by=model`, this field provides the model name of the grouped usage result.
-     */
     "model": S.optionalWith(S.String, { nullable: true })
   })
 {}
@@ -6661,9 +11407,6 @@ export class UsageVectorStoresResult extends S.Class<UsageVectorStoresResult>("U
    * The vector stores usage in bytes.
    */
   "usage_bytes": S.Int,
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -6681,9 +11424,6 @@ export class UsageCodeInterpreterSessionsResult
      * The number of code interpreter sessions.
      */
     "num_sessions": S.optionalWith(S.Int, { nullable: true }),
-    /**
-     * When `group_by=project_id`, this field provides the project ID of the grouped usage result.
-     */
     "project_id": S.optionalWith(S.String, { nullable: true })
   })
 {}
@@ -6711,13 +11451,7 @@ export class CostsResult extends S.Class<CostsResult>("CostsResult")({
     }),
     { nullable: true }
   ),
-  /**
-   * When `group_by=line_item`, this field provides the line item of the grouped costs result.
-   */
   "line_item": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * When `group_by=project_id`, this field provides the project ID of the grouped costs result.
-   */
   "project_id": S.optionalWith(S.String, { nullable: true })
 }) {}
 
@@ -6745,6 +11479,461 @@ export class UsageResponse extends S.Class<UsageResponse>("UsageResponse")({
   "data": S.Array(UsageTimeBucket),
   "has_more": S.Boolean,
   "next_page": S.String
+}) {}
+
+export class ListGroupsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListGroupsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 100 as const
+  }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListGroupsParamsOrder, { nullable: true, default: () => "asc" as const })
+}) {}
+
+/**
+ * Always `list`.
+ */
+export class GroupListResourceObject extends S.Literal("list") {}
+
+/**
+ * Details about an organization group.
+ */
+export class GroupResponse extends S.Class<GroupResponse>("GroupResponse")({
+  /**
+   * Identifier for the group.
+   */
+  "id": S.String,
+  /**
+   * Display name of the group.
+   */
+  "name": S.String,
+  /**
+   * Unix timestamp (in seconds) when the group was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Whether the group is managed through SCIM and controlled by your identity provider.
+   */
+  "is_scim_managed": S.Boolean
+}) {}
+
+/**
+ * Paginated list of organization groups.
+ */
+export class GroupListResource extends S.Class<GroupListResource>("GroupListResource")({
+  /**
+   * Always `list`.
+   */
+  "object": GroupListResourceObject,
+  /**
+   * Groups returned in the current page.
+   */
+  "data": S.Array(GroupResponse),
+  /**
+   * Whether additional groups are available when paginating.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Cursor to fetch the next page of results, or `null` if there are no more results.
+   */
+  "next": S.NullOr(S.String)
+}) {}
+
+/**
+ * Request payload for creating a new group in the organization.
+ */
+export class CreateGroupBody extends S.Class<CreateGroupBody>("CreateGroupBody")({
+  /**
+   * Human readable name for the group.
+   */
+  "name": S.String.pipe(S.minLength(1), S.maxLength(255))
+}) {}
+
+/**
+ * Request payload for updating the details of an existing group.
+ */
+export class UpdateGroupBody extends S.Class<UpdateGroupBody>("UpdateGroupBody")({
+  /**
+   * New display name for the group.
+   */
+  "name": S.String.pipe(S.minLength(1), S.maxLength(255))
+}) {}
+
+/**
+ * Response returned after updating a group.
+ */
+export class GroupResourceWithSuccess extends S.Class<GroupResourceWithSuccess>("GroupResourceWithSuccess")({
+  /**
+   * Identifier for the group.
+   */
+  "id": S.String,
+  /**
+   * Updated display name for the group.
+   */
+  "name": S.String,
+  /**
+   * Unix timestamp (in seconds) when the group was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Whether the group is managed through SCIM and controlled by your identity provider.
+   */
+  "is_scim_managed": S.Boolean
+}) {}
+
+/**
+ * Always `group.deleted`.
+ */
+export class GroupDeletedResourceObject extends S.Literal("group.deleted") {}
+
+/**
+ * Confirmation payload returned after deleting a group.
+ */
+export class GroupDeletedResource extends S.Class<GroupDeletedResource>("GroupDeletedResource")({
+  /**
+   * Always `group.deleted`.
+   */
+  "object": GroupDeletedResourceObject,
+  /**
+   * Identifier of the deleted group.
+   */
+  "id": S.String,
+  /**
+   * Whether the group was deleted.
+   */
+  "deleted": S.Boolean
+}) {}
+
+export class ListGroupRoleAssignmentsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListGroupRoleAssignmentsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListGroupRoleAssignmentsParamsOrder, { nullable: true })
+}) {}
+
+/**
+ * Always `list`.
+ */
+export class RoleListResourceObject extends S.Literal("list") {}
+
+/**
+ * Detailed information about a role assignment entry returned when listing assignments.
+ */
+export class AssignedRoleDetails extends S.Class<AssignedRoleDetails>("AssignedRoleDetails")({
+  /**
+   * Identifier for the role.
+   */
+  "id": S.String,
+  /**
+   * Name of the role.
+   */
+  "name": S.String,
+  /**
+   * Permissions associated with the role.
+   */
+  "permissions": S.Array(S.String),
+  /**
+   * Resource type the role applies to.
+   */
+  "resource_type": S.String,
+  /**
+   * Whether the role is predefined by OpenAI.
+   */
+  "predefined_role": S.Boolean,
+  /**
+   * Description of the role.
+   */
+  "description": S.NullOr(S.String),
+  /**
+   * When the role was created.
+   */
+  "created_at": S.NullOr(S.Int),
+  /**
+   * When the role was last updated.
+   */
+  "updated_at": S.NullOr(S.Int),
+  /**
+   * Identifier of the actor who created the role.
+   */
+  "created_by": S.NullOr(S.String),
+  /**
+   * User details for the actor that created the role, when available.
+   */
+  "created_by_user_obj": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  /**
+   * Arbitrary metadata stored on the role.
+   */
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
+}) {}
+
+/**
+ * Paginated list of roles assigned to a principal.
+ */
+export class RoleListResource extends S.Class<RoleListResource>("RoleListResource")({
+  /**
+   * Always `list`.
+   */
+  "object": RoleListResourceObject,
+  /**
+   * Role assignments returned in the current page.
+   */
+  "data": S.Array(AssignedRoleDetails),
+  /**
+   * Whether additional assignments are available when paginating.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Cursor to fetch the next page of results, or `null` when there are no more assignments.
+   */
+  "next": S.NullOr(S.String)
+}) {}
+
+/**
+ * Request payload for assigning a role to a group or user.
+ */
+export class PublicAssignOrganizationGroupRoleBody
+  extends S.Class<PublicAssignOrganizationGroupRoleBody>("PublicAssignOrganizationGroupRoleBody")({
+    /**
+     * Identifier of the role to assign.
+     */
+    "role_id": S.String
+  })
+{}
+
+/**
+ * Always `group.role`.
+ */
+export class GroupRoleAssignmentObject extends S.Literal("group.role") {}
+
+/**
+ * Always `group`.
+ */
+export class GroupObject extends S.Literal("group") {}
+
+/**
+ * Summary information about a group returned in role assignment responses.
+ */
+export class Group extends S.Class<Group>("Group")({
+  /**
+   * Always `group`.
+   */
+  "object": GroupObject,
+  /**
+   * Identifier for the group.
+   */
+  "id": S.String,
+  /**
+   * Display name of the group.
+   */
+  "name": S.String,
+  /**
+   * Unix timestamp (in seconds) when the group was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Whether the group is managed through SCIM.
+   */
+  "scim_managed": S.Boolean
+}) {}
+
+/**
+ * Always `role`.
+ */
+export class RoleObject extends S.Literal("role") {}
+
+/**
+ * Details about a role that can be assigned through the public Roles API.
+ */
+export class Role extends S.Class<Role>("Role")({
+  /**
+   * Always `role`.
+   */
+  "object": RoleObject,
+  /**
+   * Identifier for the role.
+   */
+  "id": S.String,
+  /**
+   * Unique name for the role.
+   */
+  "name": S.String,
+  /**
+   * Optional description of the role.
+   */
+  "description": S.NullOr(S.String),
+  /**
+   * Permissions granted by the role.
+   */
+  "permissions": S.Array(S.String),
+  /**
+   * Resource type the role is bound to (for example `api.organization` or `api.project`).
+   */
+  "resource_type": S.String,
+  /**
+   * Whether the role is predefined and managed by OpenAI.
+   */
+  "predefined_role": S.Boolean
+}) {}
+
+/**
+ * Role assignment linking a group to a role.
+ */
+export class GroupRoleAssignment extends S.Class<GroupRoleAssignment>("GroupRoleAssignment")({
+  /**
+   * Always `group.role`.
+   */
+  "object": GroupRoleAssignmentObject,
+  "group": Group,
+  "role": Role
+}) {}
+
+/**
+ * Confirmation payload returned after unassigning a role.
+ */
+export class DeletedRoleAssignmentResource
+  extends S.Class<DeletedRoleAssignmentResource>("DeletedRoleAssignmentResource")({
+    /**
+     * Identifier for the deleted assignment, such as `group.role.deleted` or `user.role.deleted`.
+     */
+    "object": S.String,
+    /**
+     * Whether the assignment was removed.
+     */
+    "deleted": S.Boolean
+  })
+{}
+
+export class ListGroupUsersParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListGroupUsersParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 100 as const
+  }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListGroupUsersParamsOrder, { nullable: true, default: () => "desc" as const })
+}) {}
+
+/**
+ * Always `list`.
+ */
+export class UserListResourceObject extends S.Literal("list") {}
+
+/**
+ * The object type, which is always `organization.user`
+ */
+export class UserObject extends S.Literal("organization.user") {}
+
+/**
+ * `owner` or `reader`
+ */
+export class UserRole extends S.Literal("owner", "reader") {}
+
+/**
+ * Represents an individual `user` within an organization.
+ */
+export class User extends S.Class<User>("User")({
+  /**
+   * The object type, which is always `organization.user`
+   */
+  "object": UserObject,
+  /**
+   * The identifier, which can be referenced in API endpoints
+   */
+  "id": S.String,
+  /**
+   * The name of the user
+   */
+  "name": S.String,
+  /**
+   * The email address of the user
+   */
+  "email": S.String,
+  /**
+   * `owner` or `reader`
+   */
+  "role": UserRole,
+  /**
+   * The Unix timestamp (in seconds) of when the user was added.
+   */
+  "added_at": S.Int
+}) {}
+
+/**
+ * Paginated list of user objects returned when inspecting group membership.
+ */
+export class UserListResource extends S.Class<UserListResource>("UserListResource")({
+  /**
+   * Always `list`.
+   */
+  "object": UserListResourceObject,
+  /**
+   * Users in the current page.
+   */
+  "data": S.Array(User),
+  /**
+   * Whether more users are available when paginating.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Cursor to fetch the next page of results, or `null` when no further users are available.
+   */
+  "next": S.NullOr(S.String)
+}) {}
+
+/**
+ * Request payload for adding a user to a group.
+ */
+export class CreateGroupUserBody extends S.Class<CreateGroupUserBody>("CreateGroupUserBody")({
+  /**
+   * Identifier of the user to add to the group.
+   */
+  "user_id": S.String
+}) {}
+
+/**
+ * Always `group.user`.
+ */
+export class GroupUserAssignmentObject extends S.Literal("group.user") {}
+
+/**
+ * Confirmation payload returned after adding a user to a group.
+ */
+export class GroupUserAssignment extends S.Class<GroupUserAssignment>("GroupUserAssignment")({
+  /**
+   * Always `group.user`.
+   */
+  "object": GroupUserAssignmentObject,
+  /**
+   * Identifier of the user that was added.
+   */
+  "user_id": S.String,
+  /**
+   * Identifier of the group the user was added to.
+   */
+  "group_id": S.String
+}) {}
+
+/**
+ * Always `group.user.deleted`.
+ */
+export class GroupUserDeletedResourceObject extends S.Literal("group.user.deleted") {}
+
+/**
+ * Confirmation payload returned after removing a user from a group.
+ */
+export class GroupUserDeletedResource extends S.Class<GroupUserDeletedResource>("GroupUserDeletedResource")({
+  /**
+   * Always `group.user.deleted`.
+   */
+  "object": GroupUserDeletedResourceObject,
+  /**
+   * Whether the group membership was removed.
+   */
+  "deleted": S.Boolean
 }) {}
 
 export class ListInvitesParams extends S.Struct({
@@ -6930,9 +12119,6 @@ export class Project extends S.Class<Project>("Project")({
    * The Unix timestamp (in seconds) of when the project was created.
    */
   "created_at": S.Int,
-  /**
-   * The Unix timestamp (in seconds) of when the project was archived or `null`.
-   */
   "archived_at": S.optionalWith(S.Int, { nullable: true }),
   /**
    * `active` or `archived`
@@ -6948,11 +12134,20 @@ export class ProjectListResponse extends S.Class<ProjectListResponse>("ProjectLi
   "has_more": S.Boolean
 }) {}
 
+/**
+ * Create the project with the specified data residency region. Your organization must have access to Data residency functionality in order to use. See [data residency controls](https://platform.openai.com/docs/guides/your-data#data-residency-controls) to review the functionality and limitations of setting this field.
+ */
+export class ProjectCreateRequestGeography extends S.Literal("US", "EU", "JP", "IN", "KR", "CA", "AU", "SG") {}
+
 export class ProjectCreateRequest extends S.Class<ProjectCreateRequest>("ProjectCreateRequest")({
   /**
    * The friendly name of the project, this name appears in reports.
    */
-  "name": S.String
+  "name": S.String,
+  /**
+   * Create the project with the specified data residency region. Your organization must have access to Data residency functionality in order to use. See [data residency controls](https://platform.openai.com/docs/guides/your-data#data-residency-controls) to review the functionality and limitations of setting this field.
+   */
+  "geography": S.optionalWith(ProjectCreateRequestGeography, { nullable: true })
 }) {}
 
 export class ProjectUpdateRequest extends S.Class<ProjectUpdateRequest>("ProjectUpdateRequest")({
@@ -7119,6 +12314,108 @@ export class ListProjectCertificatesParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "after": S.optionalWith(S.String, { nullable: true }),
   "order": S.optionalWith(ListProjectCertificatesParamsOrder, { nullable: true, default: () => "desc" as const })
+}) {}
+
+export class ListProjectGroupsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListProjectGroupsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(100)), {
+    nullable: true,
+    default: () => 20 as const
+  }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListProjectGroupsParamsOrder, { nullable: true, default: () => "asc" as const })
+}) {}
+
+/**
+ * Always `list`.
+ */
+export class ProjectGroupListResourceObject extends S.Literal("list") {}
+
+/**
+ * Always `project.group`.
+ */
+export class ProjectGroupObject extends S.Literal("project.group") {}
+
+/**
+ * Details about a group's membership in a project.
+ */
+export class ProjectGroup extends S.Class<ProjectGroup>("ProjectGroup")({
+  /**
+   * Always `project.group`.
+   */
+  "object": ProjectGroupObject,
+  /**
+   * Identifier of the project.
+   */
+  "project_id": S.String,
+  /**
+   * Identifier of the group that has access to the project.
+   */
+  "group_id": S.String,
+  /**
+   * Display name of the group.
+   */
+  "group_name": S.String,
+  /**
+   * Unix timestamp (in seconds) when the group was granted project access.
+   */
+  "created_at": S.Int
+}) {}
+
+/**
+ * Paginated list of groups that have access to a project.
+ */
+export class ProjectGroupListResource extends S.Class<ProjectGroupListResource>("ProjectGroupListResource")({
+  /**
+   * Always `list`.
+   */
+  "object": ProjectGroupListResourceObject,
+  /**
+   * Project group memberships returned in the current page.
+   */
+  "data": S.Array(ProjectGroup),
+  /**
+   * Whether additional project group memberships are available.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Cursor to fetch the next page of results, or `null` when there are no more results.
+   */
+  "next": S.NullOr(S.String)
+}) {}
+
+/**
+ * Request payload for granting a group access to a project.
+ */
+export class InviteProjectGroupBody extends S.Class<InviteProjectGroupBody>("InviteProjectGroupBody")({
+  /**
+   * Identifier of the group to add to the project.
+   */
+  "group_id": S.String,
+  /**
+   * Identifier of the project role to grant to the group.
+   */
+  "role": S.String
+}) {}
+
+/**
+ * Always `project.group.deleted`.
+ */
+export class ProjectGroupDeletedResourceObject extends S.Literal("project.group.deleted") {}
+
+/**
+ * Confirmation payload returned after removing a group from a project.
+ */
+export class ProjectGroupDeletedResource extends S.Class<ProjectGroupDeletedResource>("ProjectGroupDeletedResource")({
+  /**
+   * Always `project.group.deleted`.
+   */
+  "object": ProjectGroupDeletedResourceObject,
+  /**
+   * Whether the group membership in the project was removed.
+   */
+  "deleted": S.Boolean
 }) {}
 
 export class ListProjectRateLimitsParams extends S.Struct({
@@ -7339,6 +12636,107 @@ export class ProjectUserDeleteResponse extends S.Class<ProjectUserDeleteResponse
   "deleted": S.Boolean
 }) {}
 
+export class ListRolesParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListRolesParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 1000 as const
+  }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListRolesParamsOrder, { nullable: true, default: () => "asc" as const })
+}) {}
+
+/**
+ * Always `list`.
+ */
+export class PublicRoleListResourceObject extends S.Literal("list") {}
+
+/**
+ * Paginated list of roles available on an organization or project.
+ */
+export class PublicRoleListResource extends S.Class<PublicRoleListResource>("PublicRoleListResource")({
+  /**
+   * Always `list`.
+   */
+  "object": PublicRoleListResourceObject,
+  /**
+   * Roles returned in the current page.
+   */
+  "data": S.Array(Role),
+  /**
+   * Whether more roles are available when paginating.
+   */
+  "has_more": S.Boolean,
+  /**
+   * Cursor to fetch the next page of results, or `null` when there are no additional roles.
+   */
+  "next": S.NullOr(S.String)
+}) {}
+
+/**
+ * Request payload for creating a custom role.
+ */
+export class PublicCreateOrganizationRoleBody
+  extends S.Class<PublicCreateOrganizationRoleBody>("PublicCreateOrganizationRoleBody")({
+    /**
+     * Unique name for the role.
+     */
+    "role_name": S.String,
+    /**
+     * Permissions to grant to the role.
+     */
+    "permissions": S.Array(S.String),
+    /**
+     * Optional description of the role.
+     */
+    "description": S.optionalWith(S.String, { nullable: true })
+  })
+{}
+
+/**
+ * Request payload for updating an existing role.
+ */
+export class PublicUpdateOrganizationRoleBody
+  extends S.Class<PublicUpdateOrganizationRoleBody>("PublicUpdateOrganizationRoleBody")({
+    /**
+     * Updated set of permissions for the role.
+     */
+    "permissions": S.optionalWith(S.Array(S.String), { nullable: true }),
+    /**
+     * New description for the role.
+     */
+    "description": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * New name for the role.
+     */
+    "role_name": S.optionalWith(S.String, { nullable: true })
+  })
+{}
+
+/**
+ * Always `role.deleted`.
+ */
+export class RoleDeletedResourceObject extends S.Literal("role.deleted") {}
+
+/**
+ * Confirmation payload returned after deleting a role.
+ */
+export class RoleDeletedResource extends S.Class<RoleDeletedResource>("RoleDeletedResource")({
+  /**
+   * Always `role.deleted`.
+   */
+  "object": RoleDeletedResourceObject,
+  /**
+   * Identifier of the deleted role.
+   */
+  "id": S.String,
+  /**
+   * Whether the role was deleted.
+   */
+  "deleted": S.Boolean
+}) {}
+
 export class UsageAudioSpeechesParamsBucketWidth extends S.Literal("1m", "1h", "1d") {}
 
 export class UsageAudioSpeechesParams extends S.Struct({
@@ -7398,9 +12796,10 @@ export class UsageCompletionsParams extends S.Struct({
   "api_key_ids": S.optionalWith(S.Array(S.String), { nullable: true }),
   "models": S.optionalWith(S.Array(S.String), { nullable: true }),
   "batch": S.optionalWith(S.Boolean, { nullable: true }),
-  "group_by": S.optionalWith(S.Array(S.Literal("project_id", "user_id", "api_key_id", "model", "batch")), {
-    nullable: true
-  }),
+  "group_by": S.optionalWith(
+    S.Array(S.Literal("project_id", "user_id", "api_key_id", "model", "batch", "service_tier")),
+    { nullable: true }
+  ),
   "limit": S.optionalWith(S.Int, { nullable: true }),
   "page": S.optionalWith(S.String, { nullable: true })
 }) {}
@@ -7478,46 +12877,6 @@ export class ListUsersParams extends S.Struct({
 
 export class UserListResponseObject extends S.Literal("list") {}
 
-/**
- * The object type, which is always `organization.user`
- */
-export class UserObject extends S.Literal("organization.user") {}
-
-/**
- * `owner` or `reader`
- */
-export class UserRole extends S.Literal("owner", "reader") {}
-
-/**
- * Represents an individual `user` within an organization.
- */
-export class User extends S.Class<User>("User")({
-  /**
-   * The object type, which is always `organization.user`
-   */
-  "object": UserObject,
-  /**
-   * The identifier, which can be referenced in API endpoints
-   */
-  "id": S.String,
-  /**
-   * The name of the user
-   */
-  "name": S.String,
-  /**
-   * The email address of the user
-   */
-  "email": S.String,
-  /**
-   * `owner` or `reader`
-   */
-  "role": UserRole,
-  /**
-   * The Unix timestamp (in seconds) of when the user was added.
-   */
-  "added_at": S.Int
-}) {}
-
 export class UserListResponse extends S.Class<UserListResponse>("UserListResponse")({
   "object": UserListResponseObject,
   "data": S.Array(User),
@@ -7546,231 +12905,1241 @@ export class UserDeleteResponse extends S.Class<UserDeleteResponse>("UserDeleteR
   "deleted": S.Boolean
 }) {}
 
+export class ListUserRoleAssignmentsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListUserRoleAssignmentsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListUserRoleAssignmentsParamsOrder, { nullable: true })
+}) {}
+
 /**
- * The Realtime model used for this session.
+ * Always `user.role`.
  */
-export class RealtimeSessionCreateRequestModel extends S.Literal(
+export class UserRoleAssignmentObject extends S.Literal("user.role") {}
+
+/**
+ * Role assignment linking a user to a role.
+ */
+export class UserRoleAssignment extends S.Class<UserRoleAssignment>("UserRoleAssignment")({
+  /**
+   * Always `user.role`.
+   */
+  "object": UserRoleAssignmentObject,
+  "user": User,
+  "role": Role
+}) {}
+
+export class ListProjectGroupRoleAssignmentsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListProjectGroupRoleAssignmentsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListProjectGroupRoleAssignmentsParamsOrder, { nullable: true })
+}) {}
+
+export class ListProjectRolesParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListProjectRolesParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
+    nullable: true,
+    default: () => 1000 as const
+  }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListProjectRolesParamsOrder, { nullable: true, default: () => "asc" as const })
+}) {}
+
+export class ListProjectUserRoleAssignmentsParamsOrder extends S.Literal("asc", "desc") {}
+
+export class ListProjectUserRoleAssignmentsParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), { nullable: true }),
+  "after": S.optionalWith(S.String, { nullable: true }),
+  "order": S.optionalWith(ListProjectUserRoleAssignmentsParamsOrder, { nullable: true })
+}) {}
+
+/**
+ * The type of session to create. Always `realtime` for the Realtime API.
+ */
+export class RealtimeSessionCreateRequestGAType extends S.Literal("realtime") {}
+
+export class RealtimeSessionCreateRequestGAModelEnum extends S.Literal(
+  "gpt-realtime",
+  "gpt-realtime-2025-08-28",
   "gpt-4o-realtime-preview",
   "gpt-4o-realtime-preview-2024-10-01",
   "gpt-4o-realtime-preview-2024-12-17",
+  "gpt-4o-realtime-preview-2025-06-03",
   "gpt-4o-mini-realtime-preview",
-  "gpt-4o-mini-realtime-preview-2024-12-17"
+  "gpt-4o-mini-realtime-preview-2024-12-17",
+  "gpt-realtime-mini",
+  "gpt-realtime-mini-2025-10-06",
+  "gpt-audio-mini",
+  "gpt-audio-mini-2025-10-06"
 ) {}
 
 /**
- * The format of input audio. Options are `pcm16`, `g711_ulaw`, or `g711_alaw`.
- * For `pcm16`, input audio must be 16-bit PCM at a 24kHz sample rate,
- * single channel (mono), and little-endian byte order.
+ * The audio format. Always `audio/pcma`.
  */
-export class RealtimeSessionCreateRequestInputAudioFormat extends S.Literal("pcm16", "g711_ulaw", "g711_alaw") {}
+export class RealtimeAudioFormatsEnumType extends S.Literal("audio/pcma") {}
 
 /**
- * The format of output audio. Options are `pcm16`, `g711_ulaw`, or `g711_alaw`.
- * For `pcm16`, output audio is sampled at a rate of 24kHz.
+ * The sample rate of the audio. Always `24000`.
  */
-export class RealtimeSessionCreateRequestOutputAudioFormat extends S.Literal("pcm16", "g711_ulaw", "g711_alaw") {}
+export class RealtimeAudioFormatsEnumRate extends S.Literal(24000) {}
+
+export class RealtimeAudioFormats extends S.Union(
+  /**
+   * The PCM audio format. Only a 24kHz sample rate is supported.
+   */
+  S.Struct({
+    /**
+     * The audio format. Always `audio/pcm`.
+     */
+    "type": S.optionalWith(RealtimeAudioFormatsEnumType, { nullable: true }),
+    /**
+     * The sample rate of the audio. Always `24000`.
+     */
+    "rate": S.optionalWith(RealtimeAudioFormatsEnumRate, { nullable: true })
+  }),
+  /**
+   * The G.711 μ-law format.
+   */
+  S.Struct({
+    /**
+     * The audio format. Always `audio/pcmu`.
+     */
+    "type": S.optionalWith(RealtimeAudioFormatsEnumType, { nullable: true })
+  }),
+  /**
+   * The G.711 A-law format.
+   */
+  S.Struct({
+    /**
+     * The audio format. Always `audio/pcma`.
+     */
+    "type": S.optionalWith(RealtimeAudioFormatsEnumType, { nullable: true })
+  })
+) {}
 
 /**
- * Type of turn detection.
+ * The model to use for transcription. Current options are `whisper-1`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, and `gpt-4o-transcribe-diarize`. Use `gpt-4o-transcribe-diarize` when you need diarization with speaker labels.
  */
-export class RealtimeSessionCreateRequestTurnDetectionType extends S.Literal("server_vad", "semantic_vad") {}
+export class AudioTranscriptionModel
+  extends S.Literal("whisper-1", "gpt-4o-mini-transcribe", "gpt-4o-transcribe", "gpt-4o-transcribe-diarize")
+{}
 
-/**
- * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`.
- */
-export class RealtimeSessionCreateRequestTurnDetectionEagerness extends S.Literal("low", "medium", "high", "auto") {}
+export class AudioTranscription extends S.Class<AudioTranscription>("AudioTranscription")({
+  /**
+   * The model to use for transcription. Current options are `whisper-1`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, and `gpt-4o-transcribe-diarize`. Use `gpt-4o-transcribe-diarize` when you need diarization with speaker labels.
+   */
+  "model": S.optionalWith(AudioTranscriptionModel, { nullable: true }),
+  /**
+   * The language of the input audio. Supplying the input language in
+   * [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `en`) format
+   * will improve accuracy and latency.
+   */
+  "language": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * An optional text to guide the model's style or continue a previous audio
+   * segment.
+   * For `whisper-1`, the [prompt is a list of keywords](https://platform.openai.com/docs/guides/speech-to-text#prompting).
+   * For `gpt-4o-transcribe` models (excluding `gpt-4o-transcribe-diarize`), the prompt is a free text string, for example "expect words related to technology".
+   */
+  "prompt": S.optionalWith(S.String, { nullable: true })
+}) {}
 
 /**
  * Type of noise reduction. `near_field` is for close-talking microphones such as headphones, `far_field` is for far-field microphones such as laptop or conference room microphones.
  */
-export class RealtimeSessionCreateRequestInputAudioNoiseReductionType extends S.Literal("near_field", "far_field") {}
+export class NoiseReductionType extends S.Literal("near_field", "far_field") {}
 
-export class RealtimeSessionCreateRequestMaxResponseOutputTokensEnum extends S.Literal("inf") {}
+/**
+ * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`. `low`, `medium`, and `high` have max timeouts of 8s, 4s, and 2s respectively.
+ */
+export class RealtimeTurnDetectionEnumEagerness extends S.Literal("low", "medium", "high", "auto") {}
+
+export class RealtimeTurnDetection extends S.Union(
+  /**
+   * Configuration for turn detection, ether Server VAD or Semantic VAD. This can be set to `null` to turn off, in which case the client must manually trigger model response.
+   *
+   * Server VAD means that the model will detect the start and end of speech based on audio volume and respond at the end of user speech.
+   *
+   * Semantic VAD is more advanced and uses a turn detection model (in conjunction with VAD) to semantically estimate whether the user has finished speaking, then dynamically sets a timeout based on this probability. For example, if user audio trails off with "uhhm", the model will score a low probability of turn end and wait longer for the user to continue speaking. This can be useful for more natural conversations, but may have a higher latency.
+   */
+  S.Union(
+    /**
+     * Server-side voice activity detection (VAD) which flips on when user speech is detected and off after a period of silence.
+     */
+    S.Struct({
+      /**
+       * Type of turn detection, `server_vad` to turn on simple Server VAD.
+       */
+      "type": S.Literal("server_vad").pipe(S.propertySignature, S.withConstructorDefault(() => "server_vad" as const)),
+      /**
+       * Used only for `server_vad` mode. Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+       * higher threshold will require louder audio to activate the model, and
+       * thus might perform better in noisy environments.
+       */
+      "threshold": S.optionalWith(S.Number, { nullable: true }),
+      /**
+       * Used only for `server_vad` mode. Amount of audio to include before the VAD detected speech (in
+       * milliseconds). Defaults to 300ms.
+       */
+      "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+      /**
+       * Used only for `server_vad` mode. Duration of silence to detect speech stop (in milliseconds). Defaults
+       * to 500ms. With shorter values the model will respond more quickly,
+       * but may jump in on short pauses from the user.
+       */
+      "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
+      /**
+       * Whether or not to automatically generate a response when a VAD stop event occurs.
+       */
+      "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+      /**
+       * Whether or not to automatically interrupt any ongoing response with output to the default
+       * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+       */
+      "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+      "idle_timeout_ms": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(5000), S.lessThanOrEqualTo(30000)), {
+        nullable: true
+      })
+    }),
+    /**
+     * Server-side semantic turn detection which uses a model to determine when the user has finished speaking.
+     */
+    S.Struct({
+      /**
+       * Type of turn detection, `semantic_vad` to turn on Semantic VAD.
+       */
+      "type": S.Literal("semantic_vad"),
+      /**
+       * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`. `low`, `medium`, and `high` have max timeouts of 8s, 4s, and 2s respectively.
+       */
+      "eagerness": S.optionalWith(S.Literal("low", "medium", "high", "auto"), {
+        nullable: true,
+        default: () => "auto" as const
+      }),
+      /**
+       * Whether or not to automatically generate a response when a VAD stop event occurs.
+       */
+      "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+      /**
+       * Whether or not to automatically interrupt any ongoing response with output to the default
+       * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+       */
+      "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+    })
+  ),
+  S.Null
+) {}
+
+/**
+ * Enables tracing and sets default values for tracing configuration options. Always `auto`.
+ */
+export class RealtimeSessionCreateRequestGATracingEnum extends S.Literal("auto") {}
+
+/**
+ * The type of the tool, i.e. `function`.
+ */
+export class RealtimeFunctionToolType extends S.Literal("function") {}
+
+export class RealtimeFunctionTool extends S.Class<RealtimeFunctionTool>("RealtimeFunctionTool")({
+  /**
+   * The type of the tool, i.e. `function`.
+   */
+  "type": S.optionalWith(RealtimeFunctionToolType, { nullable: true }),
+  /**
+   * The name of the function.
+   */
+  "name": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * The description of the function, including guidance on when and how
+   * to call it, and guidance about what to tell the user when calling
+   * (if anything).
+   */
+  "description": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Parameters of the function in JSON Schema.
+   */
+  "parameters": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+}) {}
+
+/**
+ * Controls which (if any) tool is called by the model.
+ *
+ * `none` means the model will not call any tool and instead generates a message.
+ *
+ * `auto` means the model can pick between generating a message or calling one or
+ * more tools.
+ *
+ * `required` means the model must call one or more tools.
+ */
+export class ToolChoiceOptions extends S.Literal("none", "auto", "required") {}
+
+/**
+ * For function calling, the type is always `function`.
+ */
+export class ToolChoiceFunctionType extends S.Literal("function") {}
+
+/**
+ * Use this option to force the model to call a specific function.
+ */
+export class ToolChoiceFunction extends S.Class<ToolChoiceFunction>("ToolChoiceFunction")({
+  /**
+   * For function calling, the type is always `function`.
+   */
+  "type": ToolChoiceFunctionType,
+  /**
+   * The name of the function to call.
+   */
+  "name": S.String
+}) {}
+
+/**
+ * For MCP tools, the type is always `mcp`.
+ */
+export class ToolChoiceMCPType extends S.Literal("mcp") {}
+
+/**
+ * Use this option to force the model to call a specific tool on a remote MCP server.
+ */
+export class ToolChoiceMCP extends S.Class<ToolChoiceMCP>("ToolChoiceMCP")({
+  /**
+   * For MCP tools, the type is always `mcp`.
+   */
+  "type": ToolChoiceMCPType,
+  /**
+   * The label of the MCP server to use.
+   */
+  "server_label": S.String,
+  "name": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+export class RealtimeSessionCreateRequestGAMaxOutputTokensEnum extends S.Literal("inf") {}
+
+/**
+ * The truncation strategy to use for the session. `auto` is the default truncation strategy. `disabled` will disable truncation and emit errors when the conversation exceeds the input token limit.
+ */
+export class RealtimeTruncationEnum extends S.Literal("auto", "disabled") {}
+
+/**
+ * Use retention ratio truncation.
+ */
+export class RealtimeTruncationEnumType extends S.Literal("retention_ratio") {}
+
+/**
+ * When the number of tokens in a conversation exceeds the model's input token limit, the conversation be truncated, meaning messages (starting from the oldest) will not be included in the model's context. A 32k context model with 4,096 max output tokens can only include 28,224 tokens in the context before truncation occurs.
+ * Clients can configure truncation behavior to truncate with a lower max token limit, which is an effective way to control token usage and cost.
+ * Truncation will reduce the number of cached tokens on the next turn (busting the cache), since messages are dropped from the beginning of the context. However, clients can also configure truncation to retain messages up to a fraction of the maximum context size, which will reduce the need for future truncations and thus improve the cache rate.
+ * Truncation can be disabled entirely, which means the server will never truncate but would instead return an error if the conversation exceeds the model's input token limit.
+ */
+export class RealtimeTruncation extends S.Union(
+  /**
+   * The truncation strategy to use for the session. `auto` is the default truncation strategy. `disabled` will disable truncation and emit errors when the conversation exceeds the input token limit.
+   */
+  RealtimeTruncationEnum,
+  /**
+   * Retain a fraction of the conversation tokens when the conversation exceeds the input token limit. This allows you to amortize truncations across multiple turns, which can help improve cached token usage.
+   */
+  S.Struct({
+    /**
+     * Use retention ratio truncation.
+     */
+    "type": RealtimeTruncationEnumType,
+    /**
+     * Fraction of post-instruction conversation tokens to retain (`0.0` - `1.0`) when the conversation exceeds the input token limit. Setting this to `0.8` means that messages will be dropped until 80% of the maximum allowed tokens are used. This helps reduce the frequency of truncations and improve cache rates.
+     */
+    "retention_ratio": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)),
+    /**
+     * Optional custom token limits for this truncation strategy. If not provided, the model's default token limits will be used.
+     */
+    "token_limits": S.optionalWith(
+      S.Struct({
+        /**
+         * Maximum tokens allowed in the conversation after instructions (which including tool definitions). For example, setting this to 5,000 would mean that truncation would occur when the conversation exceeds 5,000 tokens after instructions. This cannot be higher than the model's context window size minus the maximum output tokens.
+         */
+        "post_instructions": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true })
+      }),
+      { nullable: true }
+    )
+  })
+) {}
+
+export class ResponsePromptVariables extends S.Union(
+  /**
+   * Optional map of values to substitute in for variables in your
+   * prompt. The substitution values can either be strings, or other
+   * Response input types like images or files.
+   */
+  S.Record({ key: S.String, value: S.Unknown }),
+  S.Null
+) {}
+
+export class Prompt extends S.Union(
+  /**
+   * Reference to a prompt template and its variables.
+   * [Learn more](https://platform.openai.com/docs/guides/text?api-mode=responses#reusable-prompts).
+   */
+  S.Struct({
+    /**
+     * The unique identifier of the prompt template to use.
+     */
+    "id": S.String,
+    "version": S.optionalWith(S.String, { nullable: true }),
+    "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  }),
+  S.Null
+) {}
 
 /**
  * Realtime session object configuration.
  */
-export class RealtimeSessionCreateRequest
-  extends S.Class<RealtimeSessionCreateRequest>("RealtimeSessionCreateRequest")({
+export class RealtimeSessionCreateRequestGA
+  extends S.Class<RealtimeSessionCreateRequestGA>("RealtimeSessionCreateRequestGA")({
+    /**
+     * The type of session to create. Always `realtime` for the Realtime API.
+     */
+    "type": RealtimeSessionCreateRequestGAType,
+    /**
+     * The set of modalities the model can respond with. It defaults to `["audio"]`, indicating
+     * that the model will respond with audio plus a transcript. `["text"]` can be used to make
+     * the model respond with text only. It is not possible to request both `text` and `audio` at the same time.
+     */
+    "output_modalities": S.optionalWith(S.Array(S.Literal("text", "audio")), {
+      nullable: true,
+      default: () => ["audio"] as const
+    }),
     /**
      * The Realtime model used for this session.
      */
-    "model": S.optionalWith(RealtimeSessionCreateRequestModel, { nullable: true }),
+    "model": S.optionalWith(S.Union(S.String, RealtimeSessionCreateRequestGAModelEnum), { nullable: true }),
     /**
-     * The default system instructions (i.e. system message) prepended to model  calls. This field allows the client to guide the model on desired  responses. The model can be instructed on response content and format,  (e.g. "be extremely succinct", "act friendly", "here are examples of good  responses") and on audio behavior (e.g. "talk quickly", "inject emotion  into your voice", "laugh frequently"). The instructions are not guaranteed  to be followed by the model, but they provide guidance to the model on the desired behavior.
+     * The default system instructions (i.e. system message) prepended to model calls. This field allows the client to guide the model on desired responses. The model can be instructed on response content and format, (e.g. "be extremely succinct", "act friendly", "here are examples of good responses") and on audio behavior (e.g. "talk quickly", "inject emotion into your voice", "laugh frequently"). The instructions are not guaranteed to be followed by the model, but they provide guidance to the model on the desired behavior.
      *
-     * Note that the server sets default instructions which will be used if this  field is not set and are visible in the `session.created` event at the  start of the session.
+     * Note that the server sets default instructions which will be used if this field is not set and are visible in the `session.created` event at the start of the session.
      */
     "instructions": S.optionalWith(S.String, { nullable: true }),
     /**
-     * The voice the model uses to respond. Voice cannot be changed during the
-     * session once the model has responded with audio at least once. Current
-     * voice options are `alloy`, `ash`, `ballad`, `coral`, `echo`, `fable`,
-     * `onyx`, `nova`, `sage`, `shimmer`, and `verse`.
+     * Configuration for input and output audio.
      */
-    "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
-    /**
-     * The format of input audio. Options are `pcm16`, `g711_ulaw`, or `g711_alaw`.
-     * For `pcm16`, input audio must be 16-bit PCM at a 24kHz sample rate,
-     * single channel (mono), and little-endian byte order.
-     */
-    "input_audio_format": S.optionalWith(RealtimeSessionCreateRequestInputAudioFormat, {
-      nullable: true,
-      default: () => "pcm16" as const
-    }),
-    /**
-     * The format of output audio. Options are `pcm16`, `g711_ulaw`, or `g711_alaw`.
-     * For `pcm16`, output audio is sampled at a rate of 24kHz.
-     */
-    "output_audio_format": S.optionalWith(RealtimeSessionCreateRequestOutputAudioFormat, {
-      nullable: true,
-      default: () => "pcm16" as const
-    }),
-    /**
-     * Configuration for input audio transcription, defaults to off and can be  set to `null` to turn off once on. Input audio transcription is not native to the model, since the model consumes audio directly. Transcription runs  asynchronously through [the /audio/transcriptions endpoint](https://platform.openai.com/docs/api-reference/audio/createTranscription) and should be treated as guidance of input audio content rather than precisely what the model heard. The client can optionally set the language and prompt for transcription, these offer additional guidance to the transcription service.
-     */
-    "input_audio_transcription": S.optionalWith(
+    "audio": S.optionalWith(
       S.Struct({
-        /**
-         * The model to use for transcription, current options are `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, and `whisper-1`.
-         */
-        "model": S.optionalWith(S.String, { nullable: true }),
-        /**
-         * The language of the input audio. Supplying the input language in
-         * [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `en`) format
-         * will improve accuracy and latency.
-         */
-        "language": S.optionalWith(S.String, { nullable: true }),
-        /**
-         * An optional text to guide the model's style or continue a previous audio
-         * segment.
-         * For `whisper-1`, the [prompt is a list of keywords](/docs/guides/speech-to-text#prompting).
-         * For `gpt-4o-transcribe` models, the prompt is a free text string, for example "expect words related to technology".
-         */
-        "prompt": S.optionalWith(S.String, { nullable: true })
+        "input": S.optionalWith(
+          S.Struct({
+            /**
+             * The format of the input audio.
+             */
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * Configuration for input audio transcription, defaults to off and can be set to `null` to turn off once on. Input audio transcription is not native to the model, since the model consumes audio directly. Transcription runs asynchronously through [the /audio/transcriptions endpoint](https://platform.openai.com/docs/api-reference/audio/createTranscription) and should be treated as guidance of input audio content rather than precisely what the model heard. The client can optionally set the language and prompt for transcription, these offer additional guidance to the transcription service.
+             */
+            "transcription": S.optionalWith(AudioTranscription, { nullable: true }),
+            /**
+             * Configuration for input audio noise reduction. This can be set to `null` to turn off.
+             * Noise reduction filters audio added to the input audio buffer before it is sent to VAD and the model.
+             * Filtering the audio can improve VAD and turn detection accuracy (reducing false positives) and model performance by improving perception of the input audio.
+             */
+            "noise_reduction": S.optionalWith(
+              S.Struct({
+                "type": S.optionalWith(NoiseReductionType, { nullable: true })
+              }),
+              { nullable: true }
+            ),
+            "turn_detection": S.optionalWith(
+              S.Union(
+                /**
+                 * Server-side voice activity detection (VAD) which flips on when user speech is detected and off after a period of silence.
+                 */
+                S.Struct({
+                  /**
+                   * Type of turn detection, `server_vad` to turn on simple Server VAD.
+                   */
+                  "type": S.Literal("server_vad").pipe(
+                    S.propertySignature,
+                    S.withConstructorDefault(() => "server_vad" as const)
+                  ),
+                  /**
+                   * Used only for `server_vad` mode. Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+                   * higher threshold will require louder audio to activate the model, and
+                   * thus might perform better in noisy environments.
+                   */
+                  "threshold": S.optionalWith(S.Number, { nullable: true }),
+                  /**
+                   * Used only for `server_vad` mode. Amount of audio to include before the VAD detected speech (in
+                   * milliseconds). Defaults to 300ms.
+                   */
+                  "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+                  /**
+                   * Used only for `server_vad` mode. Duration of silence to detect speech stop (in milliseconds). Defaults
+                   * to 500ms. With shorter values the model will respond more quickly,
+                   * but may jump in on short pauses from the user.
+                   */
+                  "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
+                  /**
+                   * Whether or not to automatically generate a response when a VAD stop event occurs.
+                   */
+                  "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  /**
+                   * Whether or not to automatically interrupt any ongoing response with output to the default
+                   * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+                   */
+                  "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  "idle_timeout_ms": S.optionalWith(
+                    S.Int.pipe(S.greaterThanOrEqualTo(5000), S.lessThanOrEqualTo(30000)),
+                    { nullable: true }
+                  )
+                }),
+                /**
+                 * Server-side semantic turn detection which uses a model to determine when the user has finished speaking.
+                 */
+                S.Struct({
+                  /**
+                   * Type of turn detection, `semantic_vad` to turn on Semantic VAD.
+                   */
+                  "type": S.Literal("semantic_vad"),
+                  /**
+                   * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`. `low`, `medium`, and `high` have max timeouts of 8s, 4s, and 2s respectively.
+                   */
+                  "eagerness": S.optionalWith(S.Literal("low", "medium", "high", "auto"), {
+                    nullable: true,
+                    default: () => "auto" as const
+                  }),
+                  /**
+                   * Whether or not to automatically generate a response when a VAD stop event occurs.
+                   */
+                  "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  /**
+                   * Whether or not to automatically interrupt any ongoing response with output to the default
+                   * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+                   */
+                  "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+                })
+              ),
+              { nullable: true }
+            )
+          }),
+          { nullable: true }
+        ),
+        "output": S.optionalWith(
+          S.Struct({
+            /**
+             * The format of the output audio.
+             */
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * The voice the model uses to respond. Voice cannot be changed during the
+             * session once the model has responded with audio at least once. Current
+             * voice options are `alloy`, `ash`, `ballad`, `coral`, `echo`, `sage`,
+             * `shimmer`, `verse`, `marin`, and `cedar`. We recommend `marin` and `cedar` for
+             * best quality.
+             */
+            "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
+            /**
+             * The speed of the model's spoken response as a multiple of the original speed.
+             * 1.0 is the default speed. 0.25 is the minimum speed. 1.5 is the maximum speed. This value can only be changed in between model turns, not while a response is in progress.
+             *
+             * This parameter is a post-processing adjustment to the audio after it is generated, it's
+             * also possible to prompt the model to speak faster or slower.
+             */
+            "speed": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0.25), S.lessThanOrEqualTo(1.5)), {
+              nullable: true,
+              default: () => 1 as const
+            })
+          }),
+          { nullable: true }
+        )
       }),
       { nullable: true }
     ),
     /**
-     * Configuration for turn detection, ether Server VAD or Semantic VAD. This can be set to `null` to turn off, in which case the client must manually trigger model response.
-     * Server VAD means that the model will detect the start and end of speech based on audio volume and respond at the end of user speech.
-     * Semantic VAD is more advanced and uses a turn detection model (in conjuction with VAD) to semantically estimate whether the user has finished speaking, then dynamically sets a timeout based on this probability. For example, if user audio trails off with "uhhm", the model will score a low probability of turn end and wait longer for the user to continue speaking. This can be useful for more natural conversations, but may have a higher latency.
+     * Additional fields to include in server outputs.
+     *
+     * `item.input_audio_transcription.logprobs`: Include logprobs for input audio transcription.
      */
-    "turn_detection": S.optionalWith(
-      S.Struct({
+    "include": S.optionalWith(S.Array(S.Literal("item.input_audio_transcription.logprobs")), { nullable: true }),
+    /**
+     * Realtime API can write session traces to the [Traces Dashboard](/logs?api=traces). Set to null to disable tracing. Once
+     * tracing is enabled for a session, the configuration cannot be modified.
+     *
+     * `auto` will create a trace for the session with default values for the
+     * workflow name, group id, and metadata.
+     */
+    "tracing": S.optionalWith(
+      S.Union(
         /**
-         * Type of turn detection.
+         * Enables tracing and sets default values for tracing configuration options. Always `auto`.
          */
-        "type": S.optionalWith(RealtimeSessionCreateRequestTurnDetectionType, {
-          nullable: true,
-          default: () => "server_vad" as const
-        }),
+        RealtimeSessionCreateRequestGATracingEnum,
         /**
-         * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`.
+         * Granular configuration for tracing.
          */
-        "eagerness": S.optionalWith(RealtimeSessionCreateRequestTurnDetectionEagerness, {
-          nullable: true,
-          default: () => "auto" as const
-        }),
-        /**
-         * Used only for `server_vad` mode. Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
-         * higher threshold will require louder audio to activate the model, and
-         * thus might perform better in noisy environments.
-         */
-        "threshold": S.optionalWith(S.Number, { nullable: true }),
-        /**
-         * Used only for `server_vad` mode. Amount of audio to include before the VAD detected speech (in
-         * milliseconds). Defaults to 300ms.
-         */
-        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
-        /**
-         * Used only for `server_vad` mode. Duration of silence to detect speech stop (in milliseconds). Defaults
-         * to 500ms. With shorter values the model will respond more quickly,
-         * but may jump in on short pauses from the user.
-         */
-        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
-        /**
-         * Whether or not to automatically generate a response when a VAD stop event occurs.
-         */
-        "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
-        /**
-         * Whether or not to automatically interrupt any ongoing response with output to the default
-         * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
-         */
-        "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
-      }),
+        S.Struct({
+          /**
+           * The name of the workflow to attach to this trace. This is used to
+           * name the trace in the Traces Dashboard.
+           */
+          "workflow_name": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The group id to attach to this trace to enable filtering and
+           * grouping in the Traces Dashboard.
+           */
+          "group_id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The arbitrary metadata to attach to this trace to enable
+           * filtering in the Traces Dashboard.
+           */
+          "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+        })
+      ),
       { nullable: true }
     ),
     /**
-     * Configuration for input audio noise reduction. This can be set to `null` to turn off.
-     * Noise reduction filters audio added to the input audio buffer before it is sent to VAD and the model.
-     * Filtering the audio can improve VAD and turn detection accuracy (reducing false positives) and model performance by improving perception of the input audio.
+     * Tools available to the model.
      */
-    "input_audio_noise_reduction": S.optionalWith(
-      S.NullOr(S.Struct({
-        /**
-         * Type of noise reduction. `near_field` is for close-talking microphones such as headphones, `far_field` is for far-field microphones such as laptop or conference room microphones.
-         */
-        "type": S.optionalWith(RealtimeSessionCreateRequestInputAudioNoiseReductionType, { nullable: true })
-      })),
-      { default: () => null }
-    ),
+    "tools": S.optionalWith(S.Array(S.Union(RealtimeFunctionTool, MCPTool)), { nullable: true }),
     /**
-     * Tools (functions) available to the model.
+     * How the model chooses tools. Provide one of the string modes or force a specific
+     * function/MCP tool.
      */
-    "tools": S.optionalWith(
-      S.Array(S.Struct({
-        /**
-         * The type of the tool, i.e. `function`.
-         */
-        "type": S.optionalWith(S.Literal("function"), { nullable: true }),
-        /**
-         * The name of the function.
-         */
-        "name": S.optionalWith(S.String, { nullable: true }),
-        /**
-         * The description of the function, including guidance on when and how
-         * to call it, and guidance about what to tell the user when calling
-         * (if anything).
-         */
-        "description": S.optionalWith(S.String, { nullable: true }),
-        /**
-         * Parameters of the function in JSON Schema.
-         */
-        "parameters": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
-      })),
-      { nullable: true }
-    ),
-    /**
-     * How the model chooses tools. Options are `auto`, `none`, `required`, or
-     * specify a function.
-     */
-    "tool_choice": S.optionalWith(S.String, { nullable: true, default: () => "auto" as const }),
-    /**
-     * Sampling temperature for the model, limited to [0.6, 1.2]. For audio models a temperature of 0.8 is highly recommended for best performance.
-     */
-    "temperature": S.optionalWith(S.Number, { nullable: true, default: () => 0.8 as const }),
+    "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceFunction, ToolChoiceMCP), {
+      nullable: true,
+      default: () => "auto" as const
+    }),
     /**
      * Maximum number of output tokens for a single assistant response,
      * inclusive of tool calls. Provide an integer between 1 and 4096 to
      * limit output tokens, or `inf` for the maximum available tokens for a
      * given model. Defaults to `inf`.
      */
-    "max_response_output_tokens": S.optionalWith(
-      S.Union(S.Int, RealtimeSessionCreateRequestMaxResponseOutputTokensEnum),
+    "max_output_tokens": S.optionalWith(S.Union(S.Int, RealtimeSessionCreateRequestGAMaxOutputTokensEnum), {
+      nullable: true
+    }),
+    "truncation": S.optionalWith(RealtimeTruncation, { nullable: true }),
+    "prompt": S.optionalWith(
+      S.Struct({
+        /**
+         * The unique identifier of the prompt template to use.
+         */
+        "id": S.String,
+        "version": S.optionalWith(S.String, { nullable: true }),
+        "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+      }),
       { nullable: true }
     )
   })
 {}
 
-export class RealtimeSessionCreateResponseMaxResponseOutputTokensEnum extends S.Literal("inf") {}
+/**
+ * Parameters required to initiate a realtime call and receive the SDP answer
+ * needed to complete a WebRTC peer connection. Provide an SDP offer generated
+ * by your client and optionally configure the session that will answer the call.
+ */
+export class RealtimeCallCreateRequest extends S.Class<RealtimeCallCreateRequest>("RealtimeCallCreateRequest")({
+  /**
+   * WebRTC Session Description Protocol (SDP) offer generated by the caller.
+   */
+  "sdp": S.String,
+  /**
+   * Optional session configuration to apply before the realtime session is
+   * created. Use the same parameters you would send in a [`create client secret`](https://platform.openai.com/docs/api-reference/realtime-sessions/create-realtime-client-secret)
+   * request.
+   */
+  "session": S.optionalWith(RealtimeSessionCreateRequestGA, { nullable: true })
+}) {}
 
 /**
- * A new Realtime session configuration, with an ephermeral key. Default TTL
+ * Parameters required to transfer a SIP call to a new destination using the
+ * Realtime API.
+ */
+export class RealtimeCallReferRequest extends S.Class<RealtimeCallReferRequest>("RealtimeCallReferRequest")({
+  /**
+   * URI that should appear in the SIP Refer-To header. Supports values like
+   * `tel:+14155550123` or `sip:agent@example.com`.
+   */
+  "target_uri": S.String
+}) {}
+
+/**
+ * Parameters used to decline an incoming SIP call handled by the Realtime API.
+ */
+export class RealtimeCallRejectRequest extends S.Class<RealtimeCallRejectRequest>("RealtimeCallRejectRequest")({
+  /**
+   * SIP response code to send back to the caller. Defaults to `603` (Decline)
+   * when omitted.
+   */
+  "status_code": S.optionalWith(S.Int, { nullable: true })
+}) {}
+
+/**
+ * The anchor point for the client secret expiration, meaning that `seconds` will be added to the `created_at` time of the client secret to produce an expiration timestamp. Only `created_at` is currently supported.
+ */
+export class RealtimeCreateClientSecretRequestExpiresAfterAnchor extends S.Literal("created_at") {}
+
+/**
+ * The type of session to create. Always `transcription` for transcription sessions.
+ */
+export class RealtimeTranscriptionSessionCreateRequestGAType extends S.Literal("transcription") {}
+
+/**
+ * Realtime transcription session object configuration.
+ */
+export class RealtimeTranscriptionSessionCreateRequestGA
+  extends S.Class<RealtimeTranscriptionSessionCreateRequestGA>("RealtimeTranscriptionSessionCreateRequestGA")({
+    /**
+     * The type of session to create. Always `transcription` for transcription sessions.
+     */
+    "type": RealtimeTranscriptionSessionCreateRequestGAType,
+    /**
+     * Configuration for input and output audio.
+     */
+    "audio": S.optionalWith(
+      S.Struct({
+        "input": S.optionalWith(
+          S.Struct({
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * Configuration for input audio transcription, defaults to off and can be set to `null` to turn off once on. Input audio transcription is not native to the model, since the model consumes audio directly. Transcription runs asynchronously through [the /audio/transcriptions endpoint](https://platform.openai.com/docs/api-reference/audio/createTranscription) and should be treated as guidance of input audio content rather than precisely what the model heard. The client can optionally set the language and prompt for transcription, these offer additional guidance to the transcription service.
+             */
+            "transcription": S.optionalWith(AudioTranscription, { nullable: true }),
+            /**
+             * Configuration for input audio noise reduction. This can be set to `null` to turn off.
+             * Noise reduction filters audio added to the input audio buffer before it is sent to VAD and the model.
+             * Filtering the audio can improve VAD and turn detection accuracy (reducing false positives) and model performance by improving perception of the input audio.
+             */
+            "noise_reduction": S.optionalWith(
+              S.Struct({
+                "type": S.optionalWith(NoiseReductionType, { nullable: true })
+              }),
+              { nullable: true }
+            ),
+            "turn_detection": S.optionalWith(
+              S.Union(
+                /**
+                 * Server-side voice activity detection (VAD) which flips on when user speech is detected and off after a period of silence.
+                 */
+                S.Struct({
+                  /**
+                   * Type of turn detection, `server_vad` to turn on simple Server VAD.
+                   */
+                  "type": S.Literal("server_vad").pipe(
+                    S.propertySignature,
+                    S.withConstructorDefault(() => "server_vad" as const)
+                  ),
+                  /**
+                   * Used only for `server_vad` mode. Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+                   * higher threshold will require louder audio to activate the model, and
+                   * thus might perform better in noisy environments.
+                   */
+                  "threshold": S.optionalWith(S.Number, { nullable: true }),
+                  /**
+                   * Used only for `server_vad` mode. Amount of audio to include before the VAD detected speech (in
+                   * milliseconds). Defaults to 300ms.
+                   */
+                  "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+                  /**
+                   * Used only for `server_vad` mode. Duration of silence to detect speech stop (in milliseconds). Defaults
+                   * to 500ms. With shorter values the model will respond more quickly,
+                   * but may jump in on short pauses from the user.
+                   */
+                  "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
+                  /**
+                   * Whether or not to automatically generate a response when a VAD stop event occurs.
+                   */
+                  "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  /**
+                   * Whether or not to automatically interrupt any ongoing response with output to the default
+                   * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+                   */
+                  "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  "idle_timeout_ms": S.optionalWith(
+                    S.Int.pipe(S.greaterThanOrEqualTo(5000), S.lessThanOrEqualTo(30000)),
+                    { nullable: true }
+                  )
+                }),
+                /**
+                 * Server-side semantic turn detection which uses a model to determine when the user has finished speaking.
+                 */
+                S.Struct({
+                  /**
+                   * Type of turn detection, `semantic_vad` to turn on Semantic VAD.
+                   */
+                  "type": S.Literal("semantic_vad"),
+                  /**
+                   * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`. `low`, `medium`, and `high` have max timeouts of 8s, 4s, and 2s respectively.
+                   */
+                  "eagerness": S.optionalWith(S.Literal("low", "medium", "high", "auto"), {
+                    nullable: true,
+                    default: () => "auto" as const
+                  }),
+                  /**
+                   * Whether or not to automatically generate a response when a VAD stop event occurs.
+                   */
+                  "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  /**
+                   * Whether or not to automatically interrupt any ongoing response with output to the default
+                   * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+                   */
+                  "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+                })
+              ),
+              { nullable: true }
+            )
+          }),
+          { nullable: true }
+        )
+      }),
+      { nullable: true }
+    ),
+    /**
+     * Additional fields to include in server outputs.
+     *
+     * `item.input_audio_transcription.logprobs`: Include logprobs for input audio transcription.
+     */
+    "include": S.optionalWith(S.Array(S.Literal("item.input_audio_transcription.logprobs")), { nullable: true })
+  })
+{}
+
+/**
+ * Create a session and client secret for the Realtime API. The request can specify
+ * either a realtime or a transcription session configuration.
+ * [Learn more about the Realtime API](https://platform.openai.com/docs/guides/realtime).
+ */
+export class RealtimeCreateClientSecretRequest
+  extends S.Class<RealtimeCreateClientSecretRequest>("RealtimeCreateClientSecretRequest")({
+    /**
+     * Configuration for the client secret expiration. Expiration refers to the time after which
+     * a client secret will no longer be valid for creating sessions. The session itself may
+     * continue after that time once started. A secret can be used to create multiple sessions
+     * until it expires.
+     */
+    "expires_after": S.optionalWith(
+      S.Struct({
+        /**
+         * The anchor point for the client secret expiration, meaning that `seconds` will be added to the `created_at` time of the client secret to produce an expiration timestamp. Only `created_at` is currently supported.
+         */
+        "anchor": S.optionalWith(RealtimeCreateClientSecretRequestExpiresAfterAnchor, {
+          nullable: true,
+          default: () => "created_at" as const
+        }),
+        /**
+         * The number of seconds from the anchor point to the expiration. Select a value between `10` and `7200` (2 hours). This default to 600 seconds (10 minutes) if not specified.
+         */
+        "seconds": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(10), S.lessThanOrEqualTo(7200)), {
+          nullable: true,
+          default: () => 600 as const
+        })
+      }),
+      { nullable: true }
+    ),
+    /**
+     * Session configuration to use for the client secret. Choose either a realtime
+     * session or a transcription session.
+     */
+    "session": S.optionalWith(S.Union(RealtimeSessionCreateRequestGA, RealtimeTranscriptionSessionCreateRequestGA), {
+      nullable: true
+    })
+  })
+{}
+
+/**
+ * The type of session to create. Always `realtime` for the Realtime API.
+ */
+export class RealtimeSessionCreateResponseGAType extends S.Literal("realtime") {}
+
+export class RealtimeSessionCreateResponseGAModelEnum extends S.Literal(
+  "gpt-realtime",
+  "gpt-realtime-2025-08-28",
+  "gpt-4o-realtime-preview",
+  "gpt-4o-realtime-preview-2024-10-01",
+  "gpt-4o-realtime-preview-2024-12-17",
+  "gpt-4o-realtime-preview-2025-06-03",
+  "gpt-4o-mini-realtime-preview",
+  "gpt-4o-mini-realtime-preview-2024-12-17",
+  "gpt-realtime-mini",
+  "gpt-realtime-mini-2025-10-06",
+  "gpt-audio-mini",
+  "gpt-audio-mini-2025-10-06"
+) {}
+
+/**
+ * Enables tracing and sets default values for tracing configuration options. Always `auto`.
+ */
+export class RealtimeSessionCreateResponseGATracingEnum extends S.Literal("auto") {}
+
+export class RealtimeSessionCreateResponseGAMaxOutputTokensEnum extends S.Literal("inf") {}
+
+/**
+ * A new Realtime session configuration, with an ephemeral key. Default TTL
  * for keys is one minute.
  */
-export class RealtimeSessionCreateResponse
-  extends S.Class<RealtimeSessionCreateResponse>("RealtimeSessionCreateResponse")({
+export class RealtimeSessionCreateResponseGA
+  extends S.Class<RealtimeSessionCreateResponseGA>("RealtimeSessionCreateResponseGA")({
+    /**
+     * Ephemeral key returned by the API.
+     */
+    "client_secret": S.Struct({
+      /**
+       * Ephemeral key usable in client environments to authenticate connections to the Realtime API. Use this in client-side environments rather than a standard API token, which should only be used server-side.
+       */
+      "value": S.String,
+      /**
+       * Timestamp for when the token expires. Currently, all tokens expire
+       * after one minute.
+       */
+      "expires_at": S.Int
+    }),
+    /**
+     * The type of session to create. Always `realtime` for the Realtime API.
+     */
+    "type": RealtimeSessionCreateResponseGAType,
+    /**
+     * The set of modalities the model can respond with. It defaults to `["audio"]`, indicating
+     * that the model will respond with audio plus a transcript. `["text"]` can be used to make
+     * the model respond with text only. It is not possible to request both `text` and `audio` at the same time.
+     */
+    "output_modalities": S.optionalWith(S.Array(S.Literal("text", "audio")), {
+      nullable: true,
+      default: () => ["audio"] as const
+    }),
+    /**
+     * The Realtime model used for this session.
+     */
+    "model": S.optionalWith(S.Union(S.String, RealtimeSessionCreateResponseGAModelEnum), { nullable: true }),
+    /**
+     * The default system instructions (i.e. system message) prepended to model calls. This field allows the client to guide the model on desired responses. The model can be instructed on response content and format, (e.g. "be extremely succinct", "act friendly", "here are examples of good responses") and on audio behavior (e.g. "talk quickly", "inject emotion into your voice", "laugh frequently"). The instructions are not guaranteed to be followed by the model, but they provide guidance to the model on the desired behavior.
+     *
+     * Note that the server sets default instructions which will be used if this field is not set and are visible in the `session.created` event at the start of the session.
+     */
+    "instructions": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Configuration for input and output audio.
+     */
+    "audio": S.optionalWith(
+      S.Struct({
+        "input": S.optionalWith(
+          S.Struct({
+            /**
+             * The format of the input audio.
+             */
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * Configuration for input audio transcription, defaults to off and can be set to `null` to turn off once on. Input audio transcription is not native to the model, since the model consumes audio directly. Transcription runs asynchronously through [the /audio/transcriptions endpoint](https://platform.openai.com/docs/api-reference/audio/createTranscription) and should be treated as guidance of input audio content rather than precisely what the model heard. The client can optionally set the language and prompt for transcription, these offer additional guidance to the transcription service.
+             */
+            "transcription": S.optionalWith(AudioTranscription, { nullable: true }),
+            /**
+             * Configuration for input audio noise reduction. This can be set to `null` to turn off.
+             * Noise reduction filters audio added to the input audio buffer before it is sent to VAD and the model.
+             * Filtering the audio can improve VAD and turn detection accuracy (reducing false positives) and model performance by improving perception of the input audio.
+             */
+            "noise_reduction": S.optionalWith(
+              S.Struct({
+                "type": S.optionalWith(NoiseReductionType, { nullable: true })
+              }),
+              { nullable: true }
+            ),
+            "turn_detection": S.optionalWith(
+              S.Union(
+                /**
+                 * Server-side voice activity detection (VAD) which flips on when user speech is detected and off after a period of silence.
+                 */
+                S.Struct({
+                  /**
+                   * Type of turn detection, `server_vad` to turn on simple Server VAD.
+                   */
+                  "type": S.Literal("server_vad").pipe(
+                    S.propertySignature,
+                    S.withConstructorDefault(() => "server_vad" as const)
+                  ),
+                  /**
+                   * Used only for `server_vad` mode. Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+                   * higher threshold will require louder audio to activate the model, and
+                   * thus might perform better in noisy environments.
+                   */
+                  "threshold": S.optionalWith(S.Number, { nullable: true }),
+                  /**
+                   * Used only for `server_vad` mode. Amount of audio to include before the VAD detected speech (in
+                   * milliseconds). Defaults to 300ms.
+                   */
+                  "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+                  /**
+                   * Used only for `server_vad` mode. Duration of silence to detect speech stop (in milliseconds). Defaults
+                   * to 500ms. With shorter values the model will respond more quickly,
+                   * but may jump in on short pauses from the user.
+                   */
+                  "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
+                  /**
+                   * Whether or not to automatically generate a response when a VAD stop event occurs.
+                   */
+                  "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  /**
+                   * Whether or not to automatically interrupt any ongoing response with output to the default
+                   * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+                   */
+                  "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  "idle_timeout_ms": S.optionalWith(
+                    S.Int.pipe(S.greaterThanOrEqualTo(5000), S.lessThanOrEqualTo(30000)),
+                    { nullable: true }
+                  )
+                }),
+                /**
+                 * Server-side semantic turn detection which uses a model to determine when the user has finished speaking.
+                 */
+                S.Struct({
+                  /**
+                   * Type of turn detection, `semantic_vad` to turn on Semantic VAD.
+                   */
+                  "type": S.Literal("semantic_vad"),
+                  /**
+                   * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`. `low`, `medium`, and `high` have max timeouts of 8s, 4s, and 2s respectively.
+                   */
+                  "eagerness": S.optionalWith(S.Literal("low", "medium", "high", "auto"), {
+                    nullable: true,
+                    default: () => "auto" as const
+                  }),
+                  /**
+                   * Whether or not to automatically generate a response when a VAD stop event occurs.
+                   */
+                  "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
+                  /**
+                   * Whether or not to automatically interrupt any ongoing response with output to the default
+                   * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs.
+                   */
+                  "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
+                })
+              ),
+              { nullable: true }
+            )
+          }),
+          { nullable: true }
+        ),
+        "output": S.optionalWith(
+          S.Struct({
+            /**
+             * The format of the output audio.
+             */
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * The voice the model uses to respond. Voice cannot be changed during the
+             * session once the model has responded with audio at least once. Current
+             * voice options are `alloy`, `ash`, `ballad`, `coral`, `echo`, `sage`,
+             * `shimmer`, `verse`, `marin`, and `cedar`. We recommend `marin` and `cedar` for
+             * best quality.
+             */
+            "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
+            /**
+             * The speed of the model's spoken response as a multiple of the original speed.
+             * 1.0 is the default speed. 0.25 is the minimum speed. 1.5 is the maximum speed. This value can only be changed in between model turns, not while a response is in progress.
+             *
+             * This parameter is a post-processing adjustment to the audio after it is generated, it's
+             * also possible to prompt the model to speak faster or slower.
+             */
+            "speed": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0.25), S.lessThanOrEqualTo(1.5)), {
+              nullable: true,
+              default: () => 1 as const
+            })
+          }),
+          { nullable: true }
+        )
+      }),
+      { nullable: true }
+    ),
+    /**
+     * Additional fields to include in server outputs.
+     *
+     * `item.input_audio_transcription.logprobs`: Include logprobs for input audio transcription.
+     */
+    "include": S.optionalWith(S.Array(S.Literal("item.input_audio_transcription.logprobs")), { nullable: true }),
+    "tracing": S.optionalWith(
+      S.Union(
+        /**
+         * Enables tracing and sets default values for tracing configuration options. Always `auto`.
+         */
+        RealtimeSessionCreateResponseGATracingEnum,
+        /**
+         * Granular configuration for tracing.
+         */
+        S.Struct({
+          /**
+           * The name of the workflow to attach to this trace. This is used to
+           * name the trace in the Traces Dashboard.
+           */
+          "workflow_name": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The group id to attach to this trace to enable filtering and
+           * grouping in the Traces Dashboard.
+           */
+          "group_id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The arbitrary metadata to attach to this trace to enable
+           * filtering in the Traces Dashboard.
+           */
+          "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+        })
+      ),
+      { nullable: true }
+    ),
+    /**
+     * Tools available to the model.
+     */
+    "tools": S.optionalWith(S.Array(S.Union(RealtimeFunctionTool, MCPTool)), { nullable: true }),
+    /**
+     * How the model chooses tools. Provide one of the string modes or force a specific
+     * function/MCP tool.
+     */
+    "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceFunction, ToolChoiceMCP), {
+      nullable: true,
+      default: () => "auto" as const
+    }),
+    /**
+     * Maximum number of output tokens for a single assistant response,
+     * inclusive of tool calls. Provide an integer between 1 and 4096 to
+     * limit output tokens, or `inf` for the maximum available tokens for a
+     * given model. Defaults to `inf`.
+     */
+    "max_output_tokens": S.optionalWith(S.Union(S.Int, RealtimeSessionCreateResponseGAMaxOutputTokensEnum), {
+      nullable: true
+    }),
+    "truncation": S.optionalWith(RealtimeTruncation, { nullable: true }),
+    "prompt": S.optionalWith(
+      S.Struct({
+        /**
+         * The unique identifier of the prompt template to use.
+         */
+        "id": S.String,
+        "version": S.optionalWith(S.String, { nullable: true }),
+        "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+      }),
+      { nullable: true }
+    )
+  })
+{}
+
+/**
+ * The type of session. Always `transcription` for transcription sessions.
+ */
+export class RealtimeTranscriptionSessionCreateResponseGAType extends S.Literal("transcription") {}
+
+/**
+ * A Realtime transcription session configuration object.
+ */
+export class RealtimeTranscriptionSessionCreateResponseGA
+  extends S.Class<RealtimeTranscriptionSessionCreateResponseGA>("RealtimeTranscriptionSessionCreateResponseGA")({
+    /**
+     * The type of session. Always `transcription` for transcription sessions.
+     */
+    "type": RealtimeTranscriptionSessionCreateResponseGAType,
+    /**
+     * Unique identifier for the session that looks like `sess_1234567890abcdef`.
+     */
+    "id": S.String,
+    /**
+     * The object type. Always `realtime.transcription_session`.
+     */
+    "object": S.String,
+    /**
+     * Expiration timestamp for the session, in seconds since epoch.
+     */
+    "expires_at": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * Additional fields to include in server outputs.
+     * - `item.input_audio_transcription.logprobs`: Include logprobs for input audio transcription.
+     */
+    "include": S.optionalWith(S.Array(S.Literal("item.input_audio_transcription.logprobs")), { nullable: true }),
+    /**
+     * Configuration for input audio for the session.
+     */
+    "audio": S.optionalWith(
+      S.Struct({
+        "input": S.optionalWith(
+          S.Struct({
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * Configuration of the transcription model.
+             */
+            "transcription": S.optionalWith(AudioTranscription, { nullable: true }),
+            /**
+             * Configuration for input audio noise reduction.
+             */
+            "noise_reduction": S.optionalWith(
+              S.Struct({
+                "type": S.optionalWith(NoiseReductionType, { nullable: true })
+              }),
+              { nullable: true }
+            ),
+            /**
+             * Configuration for turn detection. Can be set to `null` to turn off. Server
+             * VAD means that the model will detect the start and end of speech based on
+             * audio volume and respond at the end of user speech.
+             */
+            "turn_detection": S.optionalWith(
+              S.Struct({
+                /**
+                 * Type of turn detection, only `server_vad` is currently supported.
+                 */
+                "type": S.optionalWith(S.String, { nullable: true }),
+                /**
+                 * Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+                 * higher threshold will require louder audio to activate the model, and
+                 * thus might perform better in noisy environments.
+                 */
+                "threshold": S.optionalWith(S.Number, { nullable: true }),
+                /**
+                 * Amount of audio to include before the VAD detected speech (in
+                 * milliseconds). Defaults to 300ms.
+                 */
+                "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+                /**
+                 * Duration of silence to detect speech stop (in milliseconds). Defaults
+                 * to 500ms. With shorter values the model will respond more quickly,
+                 * but may jump in on short pauses from the user.
+                 */
+                "silence_duration_ms": S.optionalWith(S.Int, { nullable: true })
+              }),
+              { nullable: true }
+            )
+          }),
+          { nullable: true }
+        )
+      }),
+      { nullable: true }
+    )
+  })
+{}
+
+/**
+ * Response from creating a session and client secret for the Realtime API.
+ */
+export class RealtimeCreateClientSecretResponse
+  extends S.Class<RealtimeCreateClientSecretResponse>("RealtimeCreateClientSecretResponse")({
+    /**
+     * The generated client secret value.
+     */
+    "value": S.String,
+    /**
+     * Expiration timestamp for the client secret, in seconds since epoch.
+     */
+    "expires_at": S.Int,
+    /**
+     * The session configuration for either a realtime or transcription session.
+     */
+    "session": S.Union(RealtimeSessionCreateResponseGA, RealtimeTranscriptionSessionCreateResponseGA)
+  })
+{}
+
+/**
+ * Default tracing mode for the session.
+ */
+export class RealtimeSessionCreateRequestTracingEnum extends S.Literal("auto") {}
+
+export class RealtimeSessionCreateRequestMaxResponseOutputTokensEnum extends S.Literal("inf") {}
+
+/**
+ * A new Realtime session configuration, with an ephemeral key. Default TTL
+ * for keys is one minute.
+ */
+export class RealtimeSessionCreateRequest
+  extends S.Class<RealtimeSessionCreateRequest>("RealtimeSessionCreateRequest")({
     /**
      * Ephemeral key returned by the API.
      */
@@ -7788,25 +14157,15 @@ export class RealtimeSessionCreateResponse
       "expires_at": S.Int
     }),
     /**
-     * The default system instructions (i.e. system message) prepended to model
-     * calls. This field allows the client to guide the model on desired
-     * responses. The model can be instructed on response content and format,
-     * (e.g. "be extremely succinct", "act friendly", "here are examples of good
-     * responses") and on audio behavior (e.g. "talk quickly", "inject emotion
-     * into your voice", "laugh frequently"). The instructions are not guaranteed
-     * to be followed by the model, but they provide guidance to the model on the
-     * desired behavior.
-     *
-     * Note that the server sets default instructions which will be used if this
-     * field is not set and are visible in the `session.created` event at the
-     * start of the session.
+     * The default system instructions (i.e. system message) prepended to model calls. This field allows the client to guide the model on desired responses. The model can be instructed on response content and format, (e.g. "be extremely succinct", "act friendly", "here are examples of good responses") and on audio behavior (e.g. "talk quickly", "inject emotion into your voice", "laugh frequently"). The instructions are not guaranteed to be followed by the model, but they provide guidance to the model on the desired behavior.
+     * Note that the server sets default instructions which will be used if this field is not set and are visible in the `session.created` event at the start of the session.
      */
     "instructions": S.optionalWith(S.String, { nullable: true }),
     /**
      * The voice the model uses to respond. Voice cannot be changed during the
      * session once the model has responded with audio at least once. Current
-     * voice options are `alloy`, `ash`, `ballad`, `coral`, `echo` `sage`,
-     * `shimmer` and `verse`.
+     * voice options are `alloy`, `ash`, `ballad`, `coral`, `echo`, `sage`,
+     * `shimmer`, and `verse`.
      */
     "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
     /**
@@ -7821,17 +14180,61 @@ export class RealtimeSessionCreateResponse
      * Configuration for input audio transcription, defaults to off and can be
      * set to `null` to turn off once on. Input audio transcription is not native
      * to the model, since the model consumes audio directly. Transcription runs
-     * asynchronously through Whisper and should be treated as rough guidance
+     * asynchronously and should be treated as rough guidance
      * rather than the representation understood by the model.
      */
     "input_audio_transcription": S.optionalWith(
       S.Struct({
         /**
-         * The model to use for transcription, `whisper-1` is the only currently
-         * supported model.
+         * The model to use for transcription.
          */
         "model": S.optionalWith(S.String, { nullable: true })
       }),
+      { nullable: true }
+    ),
+    /**
+     * The speed of the model's spoken response. 1.0 is the default speed. 0.25 is
+     * the minimum speed. 1.5 is the maximum speed. This value can only be changed
+     * in between model turns, not while a response is in progress.
+     */
+    "speed": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0.25), S.lessThanOrEqualTo(1.5)), {
+      nullable: true,
+      default: () => 1 as const
+    }),
+    /**
+     * Configuration options for tracing. Set to null to disable tracing. Once
+     * tracing is enabled for a session, the configuration cannot be modified.
+     *
+     * `auto` will create a trace for the session with default values for the
+     * workflow name, group id, and metadata.
+     */
+    "tracing": S.optionalWith(
+      S.Union(
+        /**
+         * Default tracing mode for the session.
+         */
+        RealtimeSessionCreateRequestTracingEnum,
+        /**
+         * Granular configuration for tracing.
+         */
+        S.Struct({
+          /**
+           * The name of the workflow to attach to this trace. This is used to
+           * name the trace in the traces dashboard.
+           */
+          "workflow_name": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The group id to attach to this trace to enable filtering and
+           * grouping in the traces dashboard.
+           */
+          "group_id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The arbitrary metadata to attach to this trace to enable
+           * filtering in the traces dashboard.
+           */
+          "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+        })
+      ),
       { nullable: true }
     ),
     /**
@@ -7907,11 +14310,214 @@ export class RealtimeSessionCreateResponse
      * given model. Defaults to `inf`.
      */
     "max_response_output_tokens": S.optionalWith(
-      S.Union(S.Int, RealtimeSessionCreateResponseMaxResponseOutputTokensEnum),
+      S.Union(S.Int, RealtimeSessionCreateRequestMaxResponseOutputTokensEnum),
+      { nullable: true }
+    ),
+    "truncation": S.optionalWith(RealtimeTruncation, { nullable: true }),
+    "prompt": S.optionalWith(
+      S.Struct({
+        /**
+         * The unique identifier of the prompt template to use.
+         */
+        "id": S.String,
+        "version": S.optionalWith(S.String, { nullable: true }),
+        "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+      }),
       { nullable: true }
     )
   })
 {}
+
+/**
+ * Default tracing mode for the session.
+ */
+export class RealtimeSessionCreateResponseTracingEnum extends S.Literal("auto") {}
+
+export class RealtimeSessionCreateResponseMaxOutputTokensEnum extends S.Literal("inf") {}
+
+/**
+ * A Realtime session configuration object.
+ */
+export class RealtimeSessionCreateResponse
+  extends S.Class<RealtimeSessionCreateResponse>("RealtimeSessionCreateResponse")({
+    /**
+     * Unique identifier for the session that looks like `sess_1234567890abcdef`.
+     */
+    "id": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The object type. Always `realtime.session`.
+     */
+    "object": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Expiration timestamp for the session, in seconds since epoch.
+     */
+    "expires_at": S.optionalWith(S.Int, { nullable: true }),
+    /**
+     * Additional fields to include in server outputs.
+     * - `item.input_audio_transcription.logprobs`: Include logprobs for input audio transcription.
+     */
+    "include": S.optionalWith(S.Array(S.Literal("item.input_audio_transcription.logprobs")), { nullable: true }),
+    /**
+     * The Realtime model used for this session.
+     */
+    "model": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * The default system instructions (i.e. system message) prepended to model
+     * calls. This field allows the client to guide the model on desired
+     * responses. The model can be instructed on response content and format,
+     * (e.g. "be extremely succinct", "act friendly", "here are examples of good
+     * responses") and on audio behavior (e.g. "talk quickly", "inject emotion
+     * into your voice", "laugh frequently"). The instructions are not guaranteed
+     * to be followed by the model, but they provide guidance to the model on the
+     * desired behavior.
+     *
+     * Note that the server sets default instructions which will be used if this
+     * field is not set and are visible in the `session.created` event at the
+     * start of the session.
+     */
+    "instructions": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Configuration for input and output audio for the session.
+     */
+    "audio": S.optionalWith(
+      S.Struct({
+        "input": S.optionalWith(
+          S.Struct({
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            /**
+             * Configuration for input audio transcription.
+             */
+            "transcription": S.optionalWith(AudioTranscription, { nullable: true }),
+            /**
+             * Configuration for input audio noise reduction.
+             */
+            "noise_reduction": S.optionalWith(
+              S.Struct({
+                "type": S.optionalWith(NoiseReductionType, { nullable: true })
+              }),
+              { nullable: true }
+            ),
+            /**
+             * Configuration for turn detection.
+             */
+            "turn_detection": S.optionalWith(
+              S.Struct({
+                /**
+                 * Type of turn detection, only `server_vad` is currently supported.
+                 */
+                "type": S.optionalWith(S.String, { nullable: true }),
+                "threshold": S.optionalWith(S.Number, { nullable: true }),
+                "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+                "silence_duration_ms": S.optionalWith(S.Int, { nullable: true })
+              }),
+              { nullable: true }
+            )
+          }),
+          { nullable: true }
+        ),
+        "output": S.optionalWith(
+          S.Struct({
+            "format": S.optionalWith(RealtimeAudioFormats, { nullable: true }),
+            "voice": S.optionalWith(VoiceIdsShared, { nullable: true }),
+            "speed": S.optionalWith(S.Number, { nullable: true })
+          }),
+          { nullable: true }
+        )
+      }),
+      { nullable: true }
+    ),
+    /**
+     * Configuration options for tracing. Set to null to disable tracing. Once
+     * tracing is enabled for a session, the configuration cannot be modified.
+     *
+     * `auto` will create a trace for the session with default values for the
+     * workflow name, group id, and metadata.
+     */
+    "tracing": S.optionalWith(
+      S.Union(
+        /**
+         * Default tracing mode for the session.
+         */
+        RealtimeSessionCreateResponseTracingEnum,
+        /**
+         * Granular configuration for tracing.
+         */
+        S.Struct({
+          /**
+           * The name of the workflow to attach to this trace. This is used to
+           * name the trace in the traces dashboard.
+           */
+          "workflow_name": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The group id to attach to this trace to enable filtering and
+           * grouping in the traces dashboard.
+           */
+          "group_id": S.optionalWith(S.String, { nullable: true }),
+          /**
+           * The arbitrary metadata to attach to this trace to enable
+           * filtering in the traces dashboard.
+           */
+          "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+        })
+      ),
+      { nullable: true }
+    ),
+    /**
+     * Configuration for turn detection. Can be set to `null` to turn off. Server
+     * VAD means that the model will detect the start and end of speech based on
+     * audio volume and respond at the end of user speech.
+     */
+    "turn_detection": S.optionalWith(
+      S.Struct({
+        /**
+         * Type of turn detection, only `server_vad` is currently supported.
+         */
+        "type": S.optionalWith(S.String, { nullable: true }),
+        /**
+         * Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+         * higher threshold will require louder audio to activate the model, and
+         * thus might perform better in noisy environments.
+         */
+        "threshold": S.optionalWith(S.Number, { nullable: true }),
+        /**
+         * Amount of audio to include before the VAD detected speech (in
+         * milliseconds). Defaults to 300ms.
+         */
+        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+        /**
+         * Duration of silence to detect speech stop (in milliseconds). Defaults
+         * to 500ms. With shorter values the model will respond more quickly,
+         * but may jump in on short pauses from the user.
+         */
+        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    /**
+     * Tools (functions) available to the model.
+     */
+    "tools": S.optionalWith(S.Array(RealtimeFunctionTool), { nullable: true }),
+    /**
+     * How the model chooses tools. Options are `auto`, `none`, `required`, or
+     * specify a function.
+     */
+    "tool_choice": S.optionalWith(S.String, { nullable: true }),
+    /**
+     * Maximum number of output tokens for a single assistant response,
+     * inclusive of tool calls. Provide an integer between 1 and 4096 to
+     * limit output tokens, or `inf` for the maximum available tokens for a
+     * given model. Defaults to `inf`.
+     */
+    "max_output_tokens": S.optionalWith(S.Union(S.Int, RealtimeSessionCreateResponseMaxOutputTokensEnum), {
+      nullable: true
+    })
+  })
+{}
+
+/**
+ * Type of turn detection. Only `server_vad` is currently supported for transcription sessions.
+ */
+export class RealtimeTranscriptionSessionCreateRequestTurnDetectionType extends S.Literal("server_vad") {}
 
 /**
  * The format of input audio. Options are `pcm16`, `g711_ulaw`, or `g711_alaw`.
@@ -7923,38 +14529,50 @@ export class RealtimeTranscriptionSessionCreateRequestInputAudioFormat
 {}
 
 /**
- * The model to use for transcription, current options are `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, and `whisper-1`.
- */
-export class RealtimeTranscriptionSessionCreateRequestInputAudioTranscriptionModel
-  extends S.Literal("gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1")
-{}
-
-/**
- * Type of turn detection.
- */
-export class RealtimeTranscriptionSessionCreateRequestTurnDetectionType
-  extends S.Literal("server_vad", "semantic_vad")
-{}
-
-/**
- * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`.
- */
-export class RealtimeTranscriptionSessionCreateRequestTurnDetectionEagerness
-  extends S.Literal("low", "medium", "high", "auto")
-{}
-
-/**
- * Type of noise reduction. `near_field` is for close-talking microphones such as headphones, `far_field` is for far-field microphones such as laptop or conference room microphones.
- */
-export class RealtimeTranscriptionSessionCreateRequestInputAudioNoiseReductionType
-  extends S.Literal("near_field", "far_field")
-{}
-
-/**
  * Realtime transcription session object configuration.
  */
 export class RealtimeTranscriptionSessionCreateRequest
   extends S.Class<RealtimeTranscriptionSessionCreateRequest>("RealtimeTranscriptionSessionCreateRequest")({
+    /**
+     * Configuration for turn detection. Can be set to `null` to turn off. Server VAD means that the model will detect the start and end of speech based on audio volume and respond at the end of user speech.
+     */
+    "turn_detection": S.optionalWith(
+      S.Struct({
+        /**
+         * Type of turn detection. Only `server_vad` is currently supported for transcription sessions.
+         */
+        "type": S.optionalWith(RealtimeTranscriptionSessionCreateRequestTurnDetectionType, { nullable: true }),
+        /**
+         * Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
+         * higher threshold will require louder audio to activate the model, and
+         * thus might perform better in noisy environments.
+         */
+        "threshold": S.optionalWith(S.Number, { nullable: true }),
+        /**
+         * Amount of audio to include before the VAD detected speech (in
+         * milliseconds). Defaults to 300ms.
+         */
+        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
+        /**
+         * Duration of silence to detect speech stop (in milliseconds). Defaults
+         * to 500ms. With shorter values the model will respond more quickly,
+         * but may jump in on short pauses from the user.
+         */
+        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true })
+      }),
+      { nullable: true }
+    ),
+    /**
+     * Configuration for input audio noise reduction. This can be set to `null` to turn off.
+     * Noise reduction filters audio added to the input audio buffer before it is sent to VAD and the model.
+     * Filtering the audio can improve VAD and turn detection accuracy (reducing false positives) and model performance by improving perception of the input audio.
+     */
+    "input_audio_noise_reduction": S.optionalWith(
+      S.Struct({
+        "type": S.optionalWith(NoiseReductionType, { nullable: true })
+      }),
+      { nullable: true }
+    ),
     /**
      * The format of input audio. Options are `pcm16`, `g711_ulaw`, or `g711_alaw`.
      * For `pcm16`, input audio must be 16-bit PCM at a 24kHz sample rate,
@@ -7967,116 +14585,20 @@ export class RealtimeTranscriptionSessionCreateRequest
     /**
      * Configuration for input audio transcription. The client can optionally set the language and prompt for transcription, these offer additional guidance to the transcription service.
      */
-    "input_audio_transcription": S.optionalWith(
-      S.Struct({
-        /**
-         * The model to use for transcription, current options are `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, and `whisper-1`.
-         */
-        "model": S.optionalWith(RealtimeTranscriptionSessionCreateRequestInputAudioTranscriptionModel, {
-          nullable: true
-        }),
-        /**
-         * The language of the input audio. Supplying the input language in
-         * [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `en`) format
-         * will improve accuracy and latency.
-         */
-        "language": S.optionalWith(S.String, { nullable: true }),
-        /**
-         * An optional text to guide the model's style or continue a previous audio
-         * segment.
-         * For `whisper-1`, the [prompt is a list of keywords](/docs/guides/speech-to-text#prompting).
-         * For `gpt-4o-transcribe` models, the prompt is a free text string, for example "expect words related to technology".
-         */
-        "prompt": S.optionalWith(S.String, { nullable: true })
-      }),
-      { nullable: true }
-    ),
-    /**
-     * Configuration for turn detection, ether Server VAD or Semantic VAD. This can be set to `null` to turn off, in which case the client must manually trigger model response.
-     * Server VAD means that the model will detect the start and end of speech based on audio volume and respond at the end of user speech.
-     * Semantic VAD is more advanced and uses a turn detection model (in conjuction with VAD) to semantically estimate whether the user has finished speaking, then dynamically sets a timeout based on this probability. For example, if user audio trails off with "uhhm", the model will score a low probability of turn end and wait longer for the user to continue speaking. This can be useful for more natural conversations, but may have a higher latency.
-     */
-    "turn_detection": S.optionalWith(
-      S.Struct({
-        /**
-         * Type of turn detection.
-         */
-        "type": S.optionalWith(RealtimeTranscriptionSessionCreateRequestTurnDetectionType, {
-          nullable: true,
-          default: () => "server_vad" as const
-        }),
-        /**
-         * Used only for `semantic_vad` mode. The eagerness of the model to respond. `low` will wait longer for the user to continue speaking, `high` will respond more quickly. `auto` is the default and is equivalent to `medium`.
-         */
-        "eagerness": S.optionalWith(RealtimeTranscriptionSessionCreateRequestTurnDetectionEagerness, {
-          nullable: true,
-          default: () => "auto" as const
-        }),
-        /**
-         * Used only for `server_vad` mode. Activation threshold for VAD (0.0 to 1.0), this defaults to 0.5. A
-         * higher threshold will require louder audio to activate the model, and
-         * thus might perform better in noisy environments.
-         */
-        "threshold": S.optionalWith(S.Number, { nullable: true }),
-        /**
-         * Used only for `server_vad` mode. Amount of audio to include before the VAD detected speech (in
-         * milliseconds). Defaults to 300ms.
-         */
-        "prefix_padding_ms": S.optionalWith(S.Int, { nullable: true }),
-        /**
-         * Used only for `server_vad` mode. Duration of silence to detect speech stop (in milliseconds). Defaults
-         * to 500ms. With shorter values the model will respond more quickly,
-         * but may jump in on short pauses from the user.
-         */
-        "silence_duration_ms": S.optionalWith(S.Int, { nullable: true }),
-        /**
-         * Whether or not to automatically generate a response when a VAD stop event occurs. Not available for transcription sessions.
-         */
-        "create_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
-        /**
-         * Whether or not to automatically interrupt any ongoing response with output to the default
-         * conversation (i.e. `conversation` of `auto`) when a VAD start event occurs. Not available for transcription sessions.
-         */
-        "interrupt_response": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const })
-      }),
-      { nullable: true }
-    ),
-    /**
-     * Configuration for input audio noise reduction. This can be set to `null` to turn off.
-     * Noise reduction filters audio added to the input audio buffer before it is sent to VAD and the model.
-     * Filtering the audio can improve VAD and turn detection accuracy (reducing false positives) and model performance by improving perception of the input audio.
-     */
-    "input_audio_noise_reduction": S.optionalWith(
-      S.NullOr(S.Struct({
-        /**
-         * Type of noise reduction. `near_field` is for close-talking microphones such as headphones, `far_field` is for far-field microphones such as laptop or conference room microphones.
-         */
-        "type": S.optionalWith(RealtimeTranscriptionSessionCreateRequestInputAudioNoiseReductionType, {
-          nullable: true
-        })
-      })),
-      { default: () => null }
-    ),
+    "input_audio_transcription": S.optionalWith(AudioTranscription, { nullable: true }),
     /**
      * The set of items to include in the transcription. Current available items are:
-     * - `item.input_audio_transcription.logprobs`
+     * `item.input_audio_transcription.logprobs`
      */
-    "include": S.optionalWith(S.Array(S.String), { nullable: true })
+    "include": S.optionalWith(S.Array(S.Literal("item.input_audio_transcription.logprobs")), { nullable: true })
   })
-{}
-
-/**
- * The model to use for transcription. Can be `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
- */
-export class RealtimeTranscriptionSessionCreateResponseInputAudioTranscriptionModel
-  extends S.Literal("gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1")
 {}
 
 /**
  * A new Realtime transcription session configuration.
  *
  * When a session is created on the server via REST API, the session object
- * also contains an ephemeral key. Default TTL for keys is one minute. This
+ * also contains an ephemeral key. Default TTL for keys is 10 minutes. This
  * property is not present when a session is updated via the WebSocket API.
  */
 export class RealtimeTranscriptionSessionCreateResponse
@@ -8105,29 +14627,7 @@ export class RealtimeTranscriptionSessionCreateResponse
     /**
      * Configuration of the transcription model.
      */
-    "input_audio_transcription": S.optionalWith(
-      S.Struct({
-        /**
-         * The model to use for transcription. Can be `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
-         */
-        "model": S.optionalWith(RealtimeTranscriptionSessionCreateResponseInputAudioTranscriptionModel, {
-          nullable: true
-        }),
-        /**
-         * The language of the input audio. Supplying the input language in
-         * [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) (e.g. `en`) format
-         * will improve accuracy and latency.
-         */
-        "language": S.optionalWith(S.String, { nullable: true }),
-        /**
-         * An optional text to guide the model's style or continue a previous audio
-         * segment. The [prompt](/docs/guides/speech-to-text#prompting) should match
-         * the audio language.
-         */
-        "prompt": S.optionalWith(S.String, { nullable: true })
-      }),
-      { nullable: true }
-    ),
+    "input_audio_transcription": S.optionalWith(AudioTranscription, { nullable: true }),
     /**
      * Configuration for turn detection. Can be set to `null` to turn off. Server
      * VAD means that the model will detect the start and end of speech based on
@@ -8163,848 +14663,84 @@ export class RealtimeTranscriptionSessionCreateResponse
 {}
 
 /**
- * The type of the message input. Always set to `message`.
+ * Text, image, or file inputs to the model, used to generate a response.
+ *
+ * Learn more:
+ * - [Text inputs and outputs](https://platform.openai.com/docs/guides/text)
+ * - [Image inputs](https://platform.openai.com/docs/guides/images)
+ * - [File inputs](https://platform.openai.com/docs/guides/pdf-files)
+ * - [Conversation state](https://platform.openai.com/docs/guides/conversation-state)
+ * - [Function calling](https://platform.openai.com/docs/guides/function-calling)
  */
-export class InputMessageType extends S.Literal("message") {}
+export class InputParam extends S.Union(
+  /**
+   * A text input to the model, equivalent to a text input with the
+   * `user` role.
+   */
+  S.String,
+  /**
+   * A list of one or many input items to the model, containing
+   * different content types.
+   */
+  S.Array(InputItem)
+) {}
 
-/**
- * The role of the message input. One of `user`, `system`, or `developer`.
- */
-export class InputMessageRole extends S.Literal("user", "system", "developer") {}
-
-/**
- * The status of item. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when items are returned via API.
- */
-export class InputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * A message input to the model with a role indicating instruction following
- * hierarchy. Instructions given with the `developer` or `system` role take
- * precedence over instructions given with the `user` role.
- */
-export class InputMessage extends S.Class<InputMessage>("InputMessage")({
+export class ResponseStreamOptions extends S.Union(
   /**
-   * The type of the message input. Always set to `message`.
+   * Options for streaming responses. Only set this when you set `stream: true`.
    */
-  "type": S.optionalWith(InputMessageType, { nullable: true }),
-  /**
-   * The role of the message input. One of `user`, `system`, or `developer`.
-   */
-  "role": InputMessageRole,
-  /**
-   * The status of item. One of `in_progress`, `completed`, or
-   * `incomplete`. Populated when items are returned via API.
-   */
-  "status": S.optionalWith(InputMessageStatus, { nullable: true }),
-  "content": InputMessageContentList
-}) {}
-
-/**
- * The type of the output message. Always `message`.
- */
-export class OutputMessageType extends S.Literal("message") {}
-
-/**
- * The role of the output message. Always `assistant`.
- */
-export class OutputMessageRole extends S.Literal("assistant") {}
-
-/**
- * The type of the output text. Always `output_text`.
- */
-export class OutputTextContentType extends S.Literal("output_text") {}
-
-/**
- * The type of the file citation. Always `file_citation`.
- */
-export class FileCitationBodyType extends S.Literal("file_citation") {}
-
-/**
- * A citation to a file.
- */
-export class FileCitationBody extends S.Class<FileCitationBody>("FileCitationBody")({
-  /**
-   * The type of the file citation. Always `file_citation`.
-   */
-  "type": FileCitationBodyType.pipe(S.propertySignature, S.withConstructorDefault(() => "file_citation" as const)),
-  /**
-   * The ID of the file.
-   */
-  "file_id": S.String,
-  /**
-   * The index of the file in the list of files.
-   */
-  "index": S.Int
-}) {}
-
-/**
- * The type of the URL citation. Always `url_citation`.
- */
-export class UrlCitationBodyType extends S.Literal("url_citation") {}
-
-/**
- * A citation for a web resource used to generate a model response.
- */
-export class UrlCitationBody extends S.Class<UrlCitationBody>("UrlCitationBody")({
-  /**
-   * The type of the URL citation. Always `url_citation`.
-   */
-  "type": UrlCitationBodyType.pipe(S.propertySignature, S.withConstructorDefault(() => "url_citation" as const)),
-  /**
-   * The URL of the web resource.
-   */
-  "url": S.String,
-  /**
-   * The index of the first character of the URL citation in the message.
-   */
-  "start_index": S.Int,
-  /**
-   * The index of the last character of the URL citation in the message.
-   */
-  "end_index": S.Int,
-  /**
-   * The title of the web resource.
-   */
-  "title": S.String
-}) {}
-
-/**
- * The type of the file path. Always `file_path`.
- */
-export class FilePathType extends S.Literal("file_path") {}
-
-/**
- * A path to a file.
- */
-export class FilePath extends S.Class<FilePath>("FilePath")({
-  /**
-   * The type of the file path. Always `file_path`.
-   */
-  "type": FilePathType,
-  /**
-   * The ID of the file.
-   */
-  "file_id": S.String,
-  /**
-   * The index of the file in the list of files.
-   */
-  "index": S.Int
-}) {}
-
-export class Annotation extends S.Union(FileCitationBody, UrlCitationBody, FilePath) {}
-
-/**
- * A text output from the model.
- */
-export class OutputTextContent extends S.Class<OutputTextContent>("OutputTextContent")({
-  /**
-   * The type of the output text. Always `output_text`.
-   */
-  "type": OutputTextContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "output_text" as const)),
-  /**
-   * The text output from the model.
-   */
-  "text": S.String,
-  /**
-   * The annotations of the text output.
-   */
-  "annotations": S.Array(Annotation)
-}) {}
-
-/**
- * The type of the refusal. Always `refusal`.
- */
-export class RefusalContentType extends S.Literal("refusal") {}
-
-/**
- * A refusal from the model.
- */
-export class RefusalContent extends S.Class<RefusalContent>("RefusalContent")({
-  /**
-   * The type of the refusal. Always `refusal`.
-   */
-  "type": RefusalContentType.pipe(S.propertySignature, S.withConstructorDefault(() => "refusal" as const)),
-  /**
-   * The refusal explanationfrom the model.
-   */
-  "refusal": S.String
-}) {}
-
-export class OutputContent extends S.Union(OutputTextContent, RefusalContent) {}
-
-/**
- * The status of the message input. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when input items are returned via API.
- */
-export class OutputMessageStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * An output message from the model.
- */
-export class OutputMessage extends S.Class<OutputMessage>("OutputMessage")({
-  /**
-   * The unique ID of the output message.
-   */
-  "id": S.String,
-  /**
-   * The type of the output message. Always `message`.
-   */
-  "type": OutputMessageType,
-  /**
-   * The role of the output message. Always `assistant`.
-   */
-  "role": OutputMessageRole,
-  /**
-   * The content of the output message.
-   */
-  "content": S.Array(OutputContent),
-  /**
-   * The status of the message input. One of `in_progress`, `completed`, or
-   * `incomplete`. Populated when input items are returned via API.
-   */
-  "status": OutputMessageStatus
-}) {}
-
-/**
- * The type of the file search tool call. Always `file_search_call`.
- */
-export class FileSearchToolCallType extends S.Literal("file_search_call") {}
-
-/**
- * The status of the file search tool call. One of `in_progress`,
- * `searching`, `incomplete` or `failed`,
- */
-export class FileSearchToolCallStatus
-  extends S.Literal("in_progress", "searching", "completed", "incomplete", "failed")
-{}
-
-/**
- * Set of 16 key-value pairs that can be attached to an object. This can be
- * useful for storing additional information about the object in a structured
- * format, and querying for objects via API or the dashboard. Keys are strings
- * with a maximum length of 64 characters. Values are strings with a maximum
- * length of 512 characters, booleans, or numbers.
- */
-export class VectorStoreFileAttributes extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-/**
- * The results of a file search tool call. See the
- * [file search guide](/docs/guides/tools-file-search) for more information.
- */
-export class FileSearchToolCall extends S.Class<FileSearchToolCall>("FileSearchToolCall")({
-  /**
-   * The unique ID of the file search tool call.
-   */
-  "id": S.String,
-  /**
-   * The type of the file search tool call. Always `file_search_call`.
-   */
-  "type": FileSearchToolCallType,
-  /**
-   * The status of the file search tool call. One of `in_progress`,
-   * `searching`, `incomplete` or `failed`,
-   */
-  "status": FileSearchToolCallStatus,
-  /**
-   * The queries used to search for files.
-   */
-  "queries": S.Array(S.String),
-  /**
-   * The results of the file search tool call.
-   */
-  "results": S.optionalWith(
-    S.Array(S.Struct({
-      /**
-       * The unique ID of the file.
-       */
-      "file_id": S.optionalWith(S.String, { nullable: true }),
-      /**
-       * The text that was retrieved from the file.
-       */
-      "text": S.optionalWith(S.String, { nullable: true }),
-      /**
-       * The name of the file.
-       */
-      "filename": S.optionalWith(S.String, { nullable: true }),
-      "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true }),
-      /**
-       * The relevance score of the file - a value between 0 and 1.
-       */
-      "score": S.optionalWith(S.Number, { nullable: true })
-    })),
-    { nullable: true }
-  )
-}) {}
-
-/**
- * The type of the computer call. Always `computer_call`.
- */
-export class ComputerToolCallType extends S.Literal("computer_call") {}
-
-/**
- * Specifies the event type. For a click action, this property is
- * always set to `click`.
- */
-export class ClickType extends S.Literal("click") {}
-
-/**
- * Indicates which mouse button was pressed during the click. One of `left`, `right`, `wheel`, `back`, or `forward`.
- */
-export class ClickButton extends S.Literal("left", "right", "wheel", "back", "forward") {}
-
-/**
- * A click action.
- */
-export class Click extends S.Class<Click>("Click")({
-  /**
-   * Specifies the event type. For a click action, this property is
-   * always set to `click`.
-   */
-  "type": ClickType.pipe(S.propertySignature, S.withConstructorDefault(() => "click" as const)),
-  /**
-   * Indicates which mouse button was pressed during the click. One of `left`, `right`, `wheel`, `back`, or `forward`.
-   */
-  "button": ClickButton,
-  /**
-   * The x-coordinate where the click occurred.
-   */
-  "x": S.Int,
-  /**
-   * The y-coordinate where the click occurred.
-   */
-  "y": S.Int
-}) {}
-
-/**
- * Specifies the event type. For a double click action, this property is
- * always set to `double_click`.
- */
-export class DoubleClickType extends S.Literal("double_click") {}
-
-/**
- * A double click action.
- */
-export class DoubleClick extends S.Class<DoubleClick>("DoubleClick")({
-  /**
-   * Specifies the event type. For a double click action, this property is
-   * always set to `double_click`.
-   */
-  "type": DoubleClickType.pipe(S.propertySignature, S.withConstructorDefault(() => "double_click" as const)),
-  /**
-   * The x-coordinate where the double click occurred.
-   */
-  "x": S.Int,
-  /**
-   * The y-coordinate where the double click occurred.
-   */
-  "y": S.Int
-}) {}
-
-/**
- * Specifies the event type. For a drag action, this property is
- * always set to `drag`.
- */
-export class DragType extends S.Literal("drag") {}
-
-/**
- * An x/y coordinate pair, e.g. `{ x: 100, y: 200 }`.
- */
-export class Coordinate extends S.Class<Coordinate>("Coordinate")({
-  /**
-   * The x-coordinate.
-   */
-  "x": S.Int,
-  /**
-   * The y-coordinate.
-   */
-  "y": S.Int
-}) {}
-
-/**
- * A drag action.
- */
-export class Drag extends S.Class<Drag>("Drag")({
-  /**
-   * Specifies the event type. For a drag action, this property is
-   * always set to `drag`.
-   */
-  "type": DragType.pipe(S.propertySignature, S.withConstructorDefault(() => "drag" as const)),
-  /**
-   * An array of coordinates representing the path of the drag action. Coordinates will appear as an array
-   * of objects, eg
-   * ```
-   * [
-   *   { x: 100, y: 200 },
-   *   { x: 200, y: 300 }
-   * ]
-   * ```
-   */
-  "path": S.Array(Coordinate)
-}) {}
-
-/**
- * Specifies the event type. For a keypress action, this property is
- * always set to `keypress`.
- */
-export class KeyPressType extends S.Literal("keypress") {}
-
-/**
- * A collection of keypresses the model would like to perform.
- */
-export class KeyPress extends S.Class<KeyPress>("KeyPress")({
-  /**
-   * Specifies the event type. For a keypress action, this property is
-   * always set to `keypress`.
-   */
-  "type": KeyPressType.pipe(S.propertySignature, S.withConstructorDefault(() => "keypress" as const)),
-  /**
-   * The combination of keys the model is requesting to be pressed. This is an
-   * array of strings, each representing a key.
-   */
-  "keys": S.Array(S.String)
-}) {}
-
-/**
- * Specifies the event type. For a move action, this property is
- * always set to `move`.
- */
-export class MoveType extends S.Literal("move") {}
-
-/**
- * A mouse move action.
- */
-export class Move extends S.Class<Move>("Move")({
-  /**
-   * Specifies the event type. For a move action, this property is
-   * always set to `move`.
-   */
-  "type": MoveType.pipe(S.propertySignature, S.withConstructorDefault(() => "move" as const)),
-  /**
-   * The x-coordinate to move to.
-   */
-  "x": S.Int,
-  /**
-   * The y-coordinate to move to.
-   */
-  "y": S.Int
-}) {}
-
-/**
- * Specifies the event type. For a screenshot action, this property is
- * always set to `screenshot`.
- */
-export class ScreenshotType extends S.Literal("screenshot") {}
-
-/**
- * A screenshot action.
- */
-export class Screenshot extends S.Class<Screenshot>("Screenshot")({
-  /**
-   * Specifies the event type. For a screenshot action, this property is
-   * always set to `screenshot`.
-   */
-  "type": ScreenshotType.pipe(S.propertySignature, S.withConstructorDefault(() => "screenshot" as const))
-}) {}
-
-/**
- * Specifies the event type. For a scroll action, this property is
- * always set to `scroll`.
- */
-export class ScrollType extends S.Literal("scroll") {}
-
-/**
- * A scroll action.
- */
-export class Scroll extends S.Class<Scroll>("Scroll")({
-  /**
-   * Specifies the event type. For a scroll action, this property is
-   * always set to `scroll`.
-   */
-  "type": ScrollType.pipe(S.propertySignature, S.withConstructorDefault(() => "scroll" as const)),
-  /**
-   * The x-coordinate where the scroll occurred.
-   */
-  "x": S.Int,
-  /**
-   * The y-coordinate where the scroll occurred.
-   */
-  "y": S.Int,
-  /**
-   * The horizontal scroll distance.
-   */
-  "scroll_x": S.Int,
-  /**
-   * The vertical scroll distance.
-   */
-  "scroll_y": S.Int
-}) {}
-
-/**
- * Specifies the event type. For a type action, this property is
- * always set to `type`.
- */
-export class TypeType extends S.Literal("type") {}
-
-/**
- * An action to type in text.
- */
-export class Type extends S.Class<Type>("Type")({
-  /**
-   * Specifies the event type. For a type action, this property is
-   * always set to `type`.
-   */
-  "type": TypeType.pipe(S.propertySignature, S.withConstructorDefault(() => "type" as const)),
-  /**
-   * The text to type.
-   */
-  "text": S.String
-}) {}
-
-/**
- * Specifies the event type. For a wait action, this property is
- * always set to `wait`.
- */
-export class WaitType extends S.Literal("wait") {}
-
-/**
- * A wait action.
- */
-export class Wait extends S.Class<Wait>("Wait")({
-  /**
-   * Specifies the event type. For a wait action, this property is
-   * always set to `wait`.
-   */
-  "type": WaitType.pipe(S.propertySignature, S.withConstructorDefault(() => "wait" as const))
-}) {}
-
-export class ComputerAction extends S.Union(Click, DoubleClick, Drag, KeyPress, Move, Screenshot, Scroll, Type, Wait) {}
-
-/**
- * A pending safety check for the computer call.
- */
-export class ComputerToolCallSafetyCheck extends S.Class<ComputerToolCallSafetyCheck>("ComputerToolCallSafetyCheck")({
-  /**
-   * The ID of the pending safety check.
-   */
-  "id": S.String,
-  /**
-   * The type of the pending safety check.
-   */
-  "code": S.String,
-  /**
-   * Details about the pending safety check.
-   */
-  "message": S.String
-}) {}
-
-/**
- * The status of the item. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when items are returned via API.
- */
-export class ComputerToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * A tool call to a computer use tool. See the
- * [computer use guide](/docs/guides/tools-computer-use) for more information.
- */
-export class ComputerToolCall extends S.Class<ComputerToolCall>("ComputerToolCall")({
-  /**
-   * The type of the computer call. Always `computer_call`.
-   */
-  "type": ComputerToolCallType.pipe(S.propertySignature, S.withConstructorDefault(() => "computer_call" as const)),
-  /**
-   * The unique ID of the computer call.
-   */
-  "id": S.String,
-  /**
-   * An identifier used when responding to the tool call with output.
-   */
-  "call_id": S.String,
-  "action": ComputerAction,
-  /**
-   * The pending safety checks for the computer call.
-   */
-  "pending_safety_checks": S.Array(ComputerToolCallSafetyCheck),
-  /**
-   * The status of the item. One of `in_progress`, `completed`, or
-   * `incomplete`. Populated when items are returned via API.
-   */
-  "status": ComputerToolCallStatus
-}) {}
-
-/**
- * The type of the computer tool call output. Always `computer_call_output`.
- */
-export class ComputerCallOutputItemParamType extends S.Literal("computer_call_output") {}
-
-/**
- * Specifies the event type. For a computer screenshot, this property is
- * always set to `computer_screenshot`.
- */
-export class ComputerScreenshotImageType extends S.Literal("computer_screenshot") {}
-
-/**
- * A computer screenshot image used with the computer use tool.
- */
-export class ComputerScreenshotImage extends S.Class<ComputerScreenshotImage>("ComputerScreenshotImage")({
-  /**
-   * Specifies the event type. For a computer screenshot, this property is
-   * always set to `computer_screenshot`.
-   */
-  "type": ComputerScreenshotImageType.pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => "computer_screenshot" as const)
-  ),
-  /**
-   * The URL of the screenshot image.
-   */
-  "image_url": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The identifier of an uploaded file that contains the screenshot.
-   */
-  "file_id": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * A pending safety check for the computer call.
- */
-export class ComputerCallSafetyCheckParam
-  extends S.Class<ComputerCallSafetyCheckParam>("ComputerCallSafetyCheckParam")({
+  S.Struct({
     /**
-     * The ID of the pending safety check.
+     * When true, stream obfuscation will be enabled. Stream obfuscation adds
+     * random characters to an `obfuscation` field on streaming delta events to
+     * normalize payload sizes as a mitigation to certain side-channel attacks.
+     * These obfuscation fields are included by default, but add a small amount
+     * of overhead to the data stream. You can set `include_obfuscation` to
+     * false to optimize for bandwidth if you trust the network links between
+     * your application and the OpenAI API.
      */
-    "id": S.String,
-    "code": S.optionalWith(S.String, { nullable: true }),
-    "message": S.optionalWith(S.String, { nullable: true })
-  })
-{}
+    "include_obfuscation": S.optionalWith(S.Boolean, { nullable: true })
+  }),
+  S.Null
+) {}
 
 /**
- * The status of the message input. One of `in_progress`, `completed`, or `incomplete`. Populated when input items are returned via API.
+ * The conversation that this response belongs to.
  */
-export class ComputerCallOutputItemParamStatusEnum extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * The output of a computer tool call.
- */
-export class ComputerCallOutputItemParam extends S.Class<ComputerCallOutputItemParam>("ComputerCallOutputItemParam")({
-  "id": S.optionalWith(S.String, { nullable: true }),
+export class ConversationParam2 extends S.Class<ConversationParam2>("ConversationParam2")({
   /**
-   * The ID of the computer tool call that produced the output.
-   */
-  "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
-  /**
-   * The type of the computer tool call output. Always `computer_call_output`.
-   */
-  "type": ComputerCallOutputItemParamType.pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => "computer_call_output" as const)
-  ),
-  "output": ComputerScreenshotImage,
-  "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerCallSafetyCheckParam), { nullable: true }),
-  "status": S.optionalWith(ComputerCallOutputItemParamStatusEnum, { nullable: true })
-}) {}
-
-/**
- * The type of the web search tool call. Always `web_search_call`.
- */
-export class WebSearchToolCallType extends S.Literal("web_search_call") {}
-
-/**
- * The status of the web search tool call.
- */
-export class WebSearchToolCallStatus extends S.Literal("in_progress", "searching", "completed", "failed") {}
-
-/**
- * The results of a web search tool call. See the
- * [web search guide](/docs/guides/tools-web-search) for more information.
- */
-export class WebSearchToolCall extends S.Class<WebSearchToolCall>("WebSearchToolCall")({
-  /**
-   * The unique ID of the web search tool call.
-   */
-  "id": S.String,
-  /**
-   * The type of the web search tool call. Always `web_search_call`.
-   */
-  "type": WebSearchToolCallType,
-  /**
-   * The status of the web search tool call.
-   */
-  "status": WebSearchToolCallStatus
-}) {}
-
-/**
- * The type of the function tool call. Always `function_call`.
- */
-export class FunctionToolCallType extends S.Literal("function_call") {}
-
-/**
- * The status of the item. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when items are returned via API.
- */
-export class FunctionToolCallStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * A tool call to run a function. See the
- * [function calling guide](/docs/guides/function-calling) for more information.
- */
-export class FunctionToolCall extends S.Class<FunctionToolCall>("FunctionToolCall")({
-  /**
-   * The unique ID of the function tool call.
-   */
-  "id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The type of the function tool call. Always `function_call`.
-   */
-  "type": FunctionToolCallType,
-  /**
-   * The unique ID of the function tool call generated by the model.
-   */
-  "call_id": S.String,
-  /**
-   * The name of the function to run.
-   */
-  "name": S.String,
-  /**
-   * A JSON string of the arguments to pass to the function.
-   */
-  "arguments": S.String,
-  /**
-   * The status of the item. One of `in_progress`, `completed`, or
-   * `incomplete`. Populated when items are returned via API.
-   */
-  "status": S.optionalWith(FunctionToolCallStatus, { nullable: true })
-}) {}
-
-/**
- * The type of the function tool call output. Always `function_call_output`.
- */
-export class FunctionCallOutputItemParamType extends S.Literal("function_call_output") {}
-
-/**
- * The status of the item. One of `in_progress`, `completed`, or `incomplete`. Populated when items are returned via API.
- */
-export class FunctionCallOutputItemParamStatusEnum extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * The output of a function tool call.
- */
-export class FunctionCallOutputItemParam extends S.Class<FunctionCallOutputItemParam>("FunctionCallOutputItemParam")({
-  "id": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * The unique ID of the function tool call generated by the model.
-   */
-  "call_id": S.String.pipe(S.minLength(1), S.maxLength(64)),
-  /**
-   * The type of the function tool call output. Always `function_call_output`.
-   */
-  "type": FunctionCallOutputItemParamType.pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => "function_call_output" as const)
-  ),
-  /**
-   * A JSON string of the output of the function tool call.
-   */
-  "output": S.String.pipe(S.maxLength(10485760)),
-  "status": S.optionalWith(FunctionCallOutputItemParamStatusEnum, { nullable: true })
-}) {}
-
-/**
- * The type of the object. Always `reasoning`.
- */
-export class ReasoningItemType extends S.Literal("reasoning") {}
-
-/**
- * The status of the item. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when items are returned via API.
- */
-export class ReasoningItemStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * A description of the chain of thought used by a reasoning model while generating
- * a response.
- */
-export class ReasoningItem extends S.Class<ReasoningItem>("ReasoningItem")({
-  /**
-   * The type of the object. Always `reasoning`.
-   */
-  "type": ReasoningItemType,
-  /**
-   * The unique identifier of the reasoning content.
-   */
-  "id": S.String,
-  /**
-   * Reasoning text contents.
-   */
-  "summary": S.Array(S.Struct({
-    /**
-     * The type of the object. Always `summary_text`.
-     */
-    "type": S.Literal("summary_text"),
-    /**
-     * A short summary of the reasoning used by the model when generating
-     * the response.
-     */
-    "text": S.String
-  })),
-  /**
-   * The status of the item. One of `in_progress`, `completed`, or
-   * `incomplete`. Populated when items are returned via API.
-   */
-  "status": S.optionalWith(ReasoningItemStatus, { nullable: true })
-}) {}
-
-/**
- * Content item used to generate a response.
- */
-export class Item extends S.Record({ key: S.String, value: S.Unknown }) {}
-
-/**
- * The type of item to reference. Always `item_reference`.
- */
-export class ItemReferenceParamTypeEnum extends S.Literal("item_reference") {}
-
-/**
- * An internal identifier for an item to reference.
- */
-export class ItemReferenceParam extends S.Class<ItemReferenceParam>("ItemReferenceParam")({
-  "type": S.optionalWith(ItemReferenceParamTypeEnum, { nullable: true }),
-  /**
-   * The ID of the item to reference.
+   * The unique ID of the conversation.
    */
   "id": S.String
 }) {}
 
-export class InputItem extends S.Union(
-  EasyInputMessage,
-  /**
-   * An item representing part of the context for the response to be
-   * generated by the model. Can contain text, images, and audio inputs,
-   * as well as previous assistant responses and tool call outputs.
-   */
-  S.Record({ key: S.String, value: S.Unknown }),
-  ItemReferenceParam
-) {}
-
 /**
- * Specify additional output data to include in the model response. Currently
- * supported values are:
- * - `file_search_call.results`: Include the search results of
- *   the file search tool call.
- * - `message.input_image.image_url`: Include image urls from the input message.
- * - `computer_call_output.output.image_url`: Include image urls from the computer call output.
+ * The conversation that this response belongs to. Items from this conversation are prepended to `input_items` for this response request.
+ * Input items and output items from this response are automatically added to this conversation after this response completes.
  */
-export class Includable extends S.Literal(
-  "file_search_call.results",
-  "message.input_image.image_url",
-  "computer_call_output.output.image_url"
+export class ConversationParam extends S.Union(
+  /**
+   * The unique ID of the conversation.
+   */
+  S.String,
+  ConversationParam2
 ) {}
 
-export class ModelIdsResponsesEnum
-  extends S.Literal("o1-pro", "o1-pro-2025-03-19", "computer-use-preview", "computer-use-preview-2025-03-11")
-{}
+export class ModelIdsResponsesEnum extends S.Literal(
+  "o1-pro",
+  "o1-pro-2025-03-19",
+  "o3-pro",
+  "o3-pro-2025-06-10",
+  "o3-deep-research",
+  "o3-deep-research-2025-06-26",
+  "o4-mini-deep-research",
+  "o4-mini-deep-research-2025-06-26",
+  "computer-use-preview",
+  "computer-use-preview-2025-03-11",
+  "gpt-5-codex",
+  "gpt-5-pro",
+  "gpt-5-pro-2025-10-06"
+) {}
 
 export class ModelIdsResponses extends S.Union(ModelIdsShared, ModelIdsResponsesEnum) {}
 
@@ -9012,8 +14748,10 @@ export class ModelIdsResponses extends S.Union(ModelIdsShared, ModelIdsResponses
  * A summary of the reasoning performed by the model. This can be
  * useful for debugging and understanding the model's reasoning process.
  * One of `auto`, `concise`, or `detailed`.
+ *
+ * `concise` is only supported for `computer-use-preview` models.
  */
-export class ReasoningSummary extends S.Literal("auto", "concise", "detailed") {}
+export class ReasoningSummaryEnum extends S.Literal("auto", "concise", "detailed") {}
 
 /**
  * **Deprecated:** use `summary` instead.
@@ -9022,506 +14760,288 @@ export class ReasoningSummary extends S.Literal("auto", "concise", "detailed") {
  * useful for debugging and understanding the model's reasoning process.
  * One of `auto`, `concise`, or `detailed`.
  */
-export class ReasoningGenerateSummary extends S.Literal("auto", "concise", "detailed") {}
+export class ReasoningGenerateSummaryEnum extends S.Literal("auto", "concise", "detailed") {}
 
 /**
- * **o-series models only**
+ * **gpt-5 and o-series models only**
  *
  * Configuration options for
  * [reasoning models](https://platform.openai.com/docs/guides/reasoning).
  */
 export class Reasoning extends S.Class<Reasoning>("Reasoning")({
-  "effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
+  "effort": S.optionalWith(ReasoningEffortEnum, { nullable: true }),
+  "summary": S.optionalWith(ReasoningSummaryEnum, { nullable: true }),
+  "generate_summary": S.optionalWith(ReasoningGenerateSummaryEnum, { nullable: true })
+}) {}
+
+/**
+ * Configuration options for a text response from the model. Can be plain
+ * text or structured JSON data. Learn more:
+ * - [Text inputs and outputs](https://platform.openai.com/docs/guides/text)
+ * - [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
+ */
+export class ResponseTextParam extends S.Class<ResponseTextParam>("ResponseTextParam")({
+  "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true }),
+  "verbosity": S.optionalWith(S.Literal("low", "medium", "high"), { nullable: true })
+}) {}
+
+/**
+ * An array of tools the model may call while generating a response. You
+ * can specify which tool to use by setting the `tool_choice` parameter.
+ *
+ * We support the following categories of tools:
+ * - **Built-in tools**: Tools that are provided by OpenAI that extend the
+ *   model's capabilities, like [web search](https://platform.openai.com/docs/guides/tools-web-search)
+ *   or [file search](https://platform.openai.com/docs/guides/tools-file-search). Learn more about
+ *   [built-in tools](https://platform.openai.com/docs/guides/tools).
+ * - **MCP Tools**: Integrations with third-party systems via custom MCP servers
+ *   or predefined connectors such as Google Drive and SharePoint. Learn more about
+ *   [MCP Tools](https://platform.openai.com/docs/guides/tools-connectors-mcp).
+ * - **Function calls (custom tools)**: Functions that are defined by you,
+ *   enabling the model to call your own code with strongly typed arguments
+ *   and outputs. Learn more about
+ *   [function calling](https://platform.openai.com/docs/guides/function-calling). You can also use
+ *   custom tools to call your own code.
+ */
+export class ToolsArray extends S.Array(Tool) {}
+
+/**
+ * Allowed tool configuration type. Always `allowed_tools`.
+ */
+export class ToolChoiceAllowedType extends S.Literal("allowed_tools") {}
+
+/**
+ * Constrains the tools available to the model to a pre-defined set.
+ *
+ * `auto` allows the model to pick from among the allowed tools and generate a
+ * message.
+ *
+ * `required` requires the model to call one or more of the allowed tools.
+ */
+export class ToolChoiceAllowedMode extends S.Literal("auto", "required") {}
+
+/**
+ * Constrains the tools available to the model to a pre-defined set.
+ */
+export class ToolChoiceAllowed extends S.Class<ToolChoiceAllowed>("ToolChoiceAllowed")({
   /**
-   * A summary of the reasoning performed by the model. This can be
-   * useful for debugging and understanding the model's reasoning process.
-   * One of `auto`, `concise`, or `detailed`.
+   * Allowed tool configuration type. Always `allowed_tools`.
    */
-  "summary": S.optionalWith(ReasoningSummary, { nullable: true }),
+  "type": ToolChoiceAllowedType,
   /**
-   * **Deprecated:** use `summary` instead.
+   * Constrains the tools available to the model to a pre-defined set.
    *
-   * A summary of the reasoning performed by the model. This can be
-   * useful for debugging and understanding the model's reasoning process.
-   * One of `auto`, `concise`, or `detailed`.
+   * `auto` allows the model to pick from among the allowed tools and generate a
+   * message.
+   *
+   * `required` requires the model to call one or more of the allowed tools.
    */
-  "generate_summary": S.optionalWith(ReasoningGenerateSummary, { nullable: true })
+  "mode": ToolChoiceAllowedMode,
+  /**
+   * A list of tool definitions that the model should be allowed to call.
+   *
+   * For the Responses API, the list of tool definitions might look like:
+   * ```json
+   * [
+   *   { "type": "function", "name": "get_weather" },
+   *   { "type": "mcp", "server_label": "deepwiki" },
+   *   { "type": "image_generation" }
+   * ]
+   * ```
+   */
+  "tools": S.Array(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
-
-/**
- * The type of response format being defined. Always `json_schema`.
- */
-export class TextResponseFormatJsonSchemaType extends S.Literal("json_schema") {}
-
-/**
- * JSON Schema response format. Used to generate structured JSON responses.
- * Learn more about [Structured Outputs](/docs/guides/structured-outputs).
- */
-export class TextResponseFormatJsonSchema
-  extends S.Class<TextResponseFormatJsonSchema>("TextResponseFormatJsonSchema")({
-    /**
-     * The type of response format being defined. Always `json_schema`.
-     */
-    "type": TextResponseFormatJsonSchemaType,
-    /**
-     * A description of what the response format is for, used by the model to
-     * determine how to respond in the format.
-     */
-    "description": S.optionalWith(S.String, { nullable: true }),
-    /**
-     * The name of the response format. Must be a-z, A-Z, 0-9, or contain
-     * underscores and dashes, with a maximum length of 64.
-     */
-    "name": S.String,
-    "schema": ResponseFormatJsonSchemaSchema,
-    /**
-     * Whether to enable strict schema adherence when generating the output.
-     * If set to true, the model will always follow the exact schema defined
-     * in the `schema` field. Only a subset of JSON Schema is supported when
-     * `strict` is `true`. To learn more, read the [Structured Outputs
-     * guide](/docs/guides/structured-outputs).
-     */
-    "strict": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const })
-  })
-{}
-
-/**
- * An object specifying the format that the model must output.
- *
- * Configuring `{ "type": "json_schema" }` enables Structured Outputs,
- * which ensures the model will match your supplied JSON schema. Learn more in the
- * [Structured Outputs guide](/docs/guides/structured-outputs).
- *
- * The default format is `{ "type": "text" }` with no additional options.
- *
- * **Not recommended for gpt-4o and newer models:**
- *
- * Setting to `{ "type": "json_object" }` enables the older JSON mode, which
- * ensures the message the model generates is valid JSON. Using `json_schema`
- * is preferred for models that support it.
- */
-export class TextResponseFormatConfiguration
-  extends S.Union(ResponseFormatText, TextResponseFormatJsonSchema, ResponseFormatJsonObject)
-{}
-
-/**
- * The type of the file search tool. Always `file_search`.
- */
-export class FileSearchToolType extends S.Literal("file_search") {}
-
-/**
- * The ranker to use for the file search.
- */
-export class RankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
-
-export class RankingOptions extends S.Class<RankingOptions>("RankingOptions")({
-  /**
-   * The ranker to use for the file search.
-   */
-  "ranker": S.optionalWith(RankingOptionsRanker, { nullable: true }),
-  /**
-   * The score threshold for the file search, a number between 0 and 1. Numbers closer to 1 will attempt to return only the most relevant results, but may return fewer results.
-   */
-  "score_threshold": S.optionalWith(S.Number, { nullable: true })
-}) {}
-
-/**
- * Specifies the comparison operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
- * - `eq`: equals
- * - `ne`: not equal
- * - `gt`: greater than
- * - `gte`: greater than or equal
- * - `lt`: less than
- * - `lte`: less than or equal
- */
-export class ComparisonFilterType extends S.Literal("eq", "ne", "gt", "gte", "lt", "lte") {}
-
-/**
- * A filter used to compare a specified attribute key to a given value using a defined comparison operation.
- */
-export class ComparisonFilter extends S.Class<ComparisonFilter>("ComparisonFilter")({
-  /**
-   * Specifies the comparison operator: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
-   * - `eq`: equals
-   * - `ne`: not equal
-   * - `gt`: greater than
-   * - `gte`: greater than or equal
-   * - `lt`: less than
-   * - `lte`: less than or equal
-   */
-  "type": ComparisonFilterType.pipe(S.propertySignature, S.withConstructorDefault(() => "eq" as const)),
-  /**
-   * The key to compare against the value.
-   */
-  "key": S.String,
-  /**
-   * The value to compare against the attribute key; supports string, number, or boolean types.
-   */
-  "value": S.Union(S.String, S.Number, S.Boolean)
-}) {}
-
-/**
- * Type of operation: `and` or `or`.
- */
-export class CompoundFilterType extends S.Literal("and", "or") {}
-
-/**
- * Combine multiple filters using `and` or `or`.
- */
-export class CompoundFilter extends S.Class<CompoundFilter>("CompoundFilter")({
-  /**
-   * Type of operation: `and` or `or`.
-   */
-  "type": CompoundFilterType,
-  /**
-   * Array of filters to combine. Items can be `ComparisonFilter` or `CompoundFilter`.
-   */
-  "filters": S.Array(ComparisonFilter)
-}) {}
-
-export class Filters extends S.Union(ComparisonFilter, CompoundFilter) {}
-
-/**
- * A tool that searches for relevant content from uploaded files. Learn more about the [file search tool](https://platform.openai.com/docs/guides/tools-file-search).
- */
-export class FileSearchTool extends S.Class<FileSearchTool>("FileSearchTool")({
-  /**
-   * The type of the file search tool. Always `file_search`.
-   */
-  "type": FileSearchToolType.pipe(S.propertySignature, S.withConstructorDefault(() => "file_search" as const)),
-  /**
-   * The IDs of the vector stores to search.
-   */
-  "vector_store_ids": S.Array(S.String),
-  /**
-   * The maximum number of results to return. This number should be between 1 and 50 inclusive.
-   */
-  "max_num_results": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Ranking options for search.
-   */
-  "ranking_options": S.optionalWith(RankingOptions, { nullable: true }),
-  "filters": S.optionalWith(Filters, { nullable: true })
-}) {}
-
-/**
- * The type of the function tool. Always `function`.
- */
-export class FunctionToolType extends S.Literal("function") {}
-
-/**
- * Defines a function in your own code the model can choose to call. Learn more about [function calling](https://platform.openai.com/docs/guides/function-calling).
- */
-export class FunctionTool extends S.Class<FunctionTool>("FunctionTool")({
-  /**
-   * The type of the function tool. Always `function`.
-   */
-  "type": FunctionToolType.pipe(S.propertySignature, S.withConstructorDefault(() => "function" as const)),
-  /**
-   * The name of the function to call.
-   */
-  "name": S.String,
-  "description": S.optionalWith(S.String, { nullable: true }),
-  "parameters": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
-  "strict": S.NullOr(S.Boolean)
-}) {}
-
-/**
- * The type of the web search tool. One of `web_search_preview` or `web_search_preview_2025_03_11`.
- */
-export class WebSearchPreviewToolType extends S.Literal("web_search_preview", "web_search_preview_2025_03_11") {}
-
-/**
- * The type of location approximation. Always `approximate`.
- */
-export class ApproximateLocationType extends S.Literal("approximate") {}
-
-export class ApproximateLocation extends S.Class<ApproximateLocation>("ApproximateLocation")({
-  /**
-   * The type of location approximation. Always `approximate`.
-   */
-  "type": ApproximateLocationType.pipe(S.propertySignature, S.withConstructorDefault(() => "approximate" as const)),
-  "country": S.optionalWith(S.String, { nullable: true }),
-  "region": S.optionalWith(S.String, { nullable: true }),
-  "city": S.optionalWith(S.String, { nullable: true }),
-  "timezone": S.optionalWith(S.String, { nullable: true })
-}) {}
-
-/**
- * High level guidance for the amount of context window space to use for the search. One of `low`, `medium`, or `high`. `medium` is the default.
- */
-export class WebSearchPreviewToolSearchContextSize extends S.Literal("low", "medium", "high") {}
-
-/**
- * This tool searches the web for relevant results to use in a response. Learn more about the [web search tool](https://platform.openai.com/docs/guides/tools-web-search).
- */
-export class WebSearchPreviewTool extends S.Class<WebSearchPreviewTool>("WebSearchPreviewTool")({
-  /**
-   * The type of the web search tool. One of `web_search_preview` or `web_search_preview_2025_03_11`.
-   */
-  "type": WebSearchPreviewToolType.pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => "web_search_preview" as const)
-  ),
-  "user_location": S.optionalWith(ApproximateLocation, { nullable: true }),
-  /**
-   * High level guidance for the amount of context window space to use for the search. One of `low`, `medium`, or `high`. `medium` is the default.
-   */
-  "search_context_size": S.optionalWith(WebSearchPreviewToolSearchContextSize, { nullable: true })
-}) {}
-
-/**
- * The type of the computer use tool. Always `computer_use_preview`.
- */
-export class ComputerUsePreviewToolType extends S.Literal("computer_use_preview") {}
-
-/**
- * The type of computer environment to control.
- */
-export class ComputerUsePreviewToolEnvironment extends S.Literal("windows", "mac", "linux", "ubuntu", "browser") {}
-
-/**
- * A tool that controls a virtual computer. Learn more about the [computer tool](https://platform.openai.com/docs/guides/tools-computer-use).
- */
-export class ComputerUsePreviewTool extends S.Class<ComputerUsePreviewTool>("ComputerUsePreviewTool")({
-  /**
-   * The type of the computer use tool. Always `computer_use_preview`.
-   */
-  "type": ComputerUsePreviewToolType.pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => "computer_use_preview" as const)
-  ),
-  /**
-   * The type of computer environment to control.
-   */
-  "environment": ComputerUsePreviewToolEnvironment,
-  /**
-   * The width of the computer display.
-   */
-  "display_width": S.Int,
-  /**
-   * The height of the computer display.
-   */
-  "display_height": S.Int
-}) {}
-
-export class Tool extends S.Union(FileSearchTool, FunctionTool, WebSearchPreviewTool, ComputerUsePreviewTool) {}
-
-/**
- * Controls which (if any) tool is called by the model.
- *
- * `none` means the model will not call any tool and instead generates a message.
- *
- * `auto` means the model can pick between generating a message or calling one or
- * more tools.
- *
- * `required` means the model must call one or more tools.
- */
-export class ToolChoiceOptions extends S.Literal("none", "auto", "required") {}
 
 /**
  * The type of hosted tool the model should to use. Learn more about
- * [built-in tools](/docs/guides/tools).
+ * [built-in tools](https://platform.openai.com/docs/guides/tools).
  *
  * Allowed values are:
  * - `file_search`
  * - `web_search_preview`
  * - `computer_use_preview`
+ * - `code_interpreter`
+ * - `image_generation`
  */
-export class ToolChoiceTypesType
-  extends S.Literal("file_search", "web_search_preview", "computer_use_preview", "web_search_preview_2025_03_11")
-{}
+export class ToolChoiceTypesType extends S.Literal(
+  "file_search",
+  "web_search_preview",
+  "computer_use_preview",
+  "web_search_preview_2025_03_11",
+  "image_generation",
+  "code_interpreter"
+) {}
 
 /**
  * Indicates that the model should use a built-in tool to generate a response.
- * [Learn more about built-in tools](/docs/guides/tools).
+ * [Learn more about built-in tools](https://platform.openai.com/docs/guides/tools).
  */
 export class ToolChoiceTypes extends S.Class<ToolChoiceTypes>("ToolChoiceTypes")({
   /**
    * The type of hosted tool the model should to use. Learn more about
-   * [built-in tools](/docs/guides/tools).
+   * [built-in tools](https://platform.openai.com/docs/guides/tools).
    *
    * Allowed values are:
    * - `file_search`
    * - `web_search_preview`
    * - `computer_use_preview`
+   * - `code_interpreter`
+   * - `image_generation`
    */
   "type": ToolChoiceTypesType
 }) {}
 
 /**
- * For function calling, the type is always `function`.
+ * For custom tool calling, the type is always `custom`.
  */
-export class ToolChoiceFunctionType extends S.Literal("function") {}
+export class ToolChoiceCustomType extends S.Literal("custom") {}
 
 /**
- * Use this option to force the model to call a specific function.
+ * Use this option to force the model to call a specific custom tool.
  */
-export class ToolChoiceFunction extends S.Class<ToolChoiceFunction>("ToolChoiceFunction")({
+export class ToolChoiceCustom extends S.Class<ToolChoiceCustom>("ToolChoiceCustom")({
   /**
-   * For function calling, the type is always `function`.
+   * For custom tool calling, the type is always `custom`.
    */
-  "type": ToolChoiceFunctionType,
+  "type": ToolChoiceCustomType,
   /**
-   * The name of the function to call.
+   * The name of the custom tool to call.
    */
   "name": S.String
 }) {}
 
 /**
+ * The tool to call. Always `apply_patch`.
+ */
+export class SpecificApplyPatchParamType extends S.Literal("apply_patch") {}
+
+/**
+ * Forces the model to call the apply_patch tool when executing a tool call.
+ */
+export class SpecificApplyPatchParam extends S.Class<SpecificApplyPatchParam>("SpecificApplyPatchParam")({
+  /**
+   * The tool to call. Always `apply_patch`.
+   */
+  "type": SpecificApplyPatchParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "apply_patch" as const))
+}) {}
+
+/**
+ * The tool to call. Always `shell`.
+ */
+export class SpecificFunctionShellParamType extends S.Literal("shell") {}
+
+/**
+ * Forces the model to call the function shell tool when a tool call is required.
+ */
+export class SpecificFunctionShellParam extends S.Class<SpecificFunctionShellParam>("SpecificFunctionShellParam")({
+  /**
+   * The tool to call. Always `shell`.
+   */
+  "type": SpecificFunctionShellParamType.pipe(S.propertySignature, S.withConstructorDefault(() => "shell" as const))
+}) {}
+
+/**
+ * How the model should select which tool (or tools) to use when generating
+ * a response. See the `tools` parameter to see how to specify which tools
+ * the model can call.
+ */
+export class ToolChoiceParam extends S.Union(
+  ToolChoiceOptions,
+  ToolChoiceAllowed,
+  ToolChoiceTypes,
+  ToolChoiceFunction,
+  ToolChoiceMCP,
+  ToolChoiceCustom,
+  SpecificApplyPatchParam,
+  SpecificFunctionShellParam
+) {}
+
+/**
  * The truncation strategy to use for the model response.
- * - `auto`: If the context of this response and previous ones exceeds
+ * - `auto`: If the input to this Response exceeds
  *   the model's context window size, the model will truncate the
- *   response to fit the context window by dropping input items in the
- *   middle of the conversation.
- * - `disabled` (default): If a model response will exceed the context window
+ *   response to fit the context window by dropping items from the beginning of the conversation.
+ * - `disabled` (default): If the input size will exceed the context window
  *   size for a model, the request will fail with a 400 error.
  */
-export class CreateResponseTruncation extends S.Literal("auto", "disabled") {}
+export class CreateResponseTruncationEnum extends S.Literal("auto", "disabled") {}
+
+/**
+ * The retention policy for the prompt cache. Set to `24h` to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. [Learn more](https://platform.openai.com/docs/guides/prompt-caching#prompt-cache-retention).
+ */
+export class CreateResponsePromptCacheRetentionEnum extends S.Literal("in_memory", "24h") {}
 
 export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
-  /**
-   * Text, image, or file inputs to the model, used to generate a response.
-   *
-   * Learn more:
-   * - [Text inputs and outputs](/docs/guides/text)
-   * - [Image inputs](/docs/guides/images)
-   * - [File inputs](/docs/guides/pdf-files)
-   * - [Conversation state](/docs/guides/conversation-state)
-   * - [Function calling](/docs/guides/function-calling)
-   */
-  "input": S.Union(
-    /**
-     * A text input to the model, equivalent to a text input with the
-     * `user` role.
-     */
-    S.String,
-    /**
-     * A list of one or many input items to the model, containing
-     * different content types.
-     */
-    S.Array(InputItem)
+  "input": S.optionalWith(InputParam, { nullable: true }),
+  "include": S.optionalWith(S.Array(IncludeEnum), { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(S.Boolean, { nullable: true }),
+  "store": S.optionalWith(S.Boolean, { nullable: true }),
+  "instructions": S.optionalWith(S.String, { nullable: true }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  "stream_options": S.optionalWith(
+    S.Struct({
+      /**
+       * When true, stream obfuscation will be enabled. Stream obfuscation adds
+       * random characters to an `obfuscation` field on streaming delta events to
+       * normalize payload sizes as a mitigation to certain side-channel attacks.
+       * These obfuscation fields are included by default, but add a small amount
+       * of overhead to the data stream. You can set `include_obfuscation` to
+       * false to optimize for bandwidth if you trust the network links between
+       * your application and the OpenAI API.
+       */
+      "include_obfuscation": S.optionalWith(S.Boolean, { nullable: true })
+    }),
+    { nullable: true }
   ),
-  /**
-   * Specify additional output data to include in the model response. Currently
-   * supported values are:
-   * - `file_search_call.results`: Include the search results of
-   *   the file search tool call.
-   * - `message.input_image.image_url`: Include image urls from the input message.
-   * - `computer_call_output.output.image_url`: Include image urls from the computer call output.
-   */
-  "include": S.optionalWith(S.Array(Includable), { nullable: true }),
-  /**
-   * Whether to allow the model to run tool calls in parallel.
-   */
-  "parallel_tool_calls": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
-  /**
-   * Whether to store the generated model response for later retrieval via
-   * API.
-   */
-  "store": S.optionalWith(S.Boolean, { nullable: true, default: () => true as const }),
-  /**
-   * If set to true, the model response data will be streamed to the client
-   * as it is generated using [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format).
-   * See the [Streaming section below](/docs/api-reference/responses-streaming)
-   * for more information.
-   */
-  "stream": S.optionalWith(S.Boolean, { nullable: true, default: () => false as const }),
-  /**
-   * The unique ID of the previous response to the model. Use this to
-   * create multi-turn conversations. Learn more about
-   * [conversation state](/docs/guides/conversation-state).
-   */
+  "conversation": S.optionalWith(ConversationParam, { nullable: true }),
   "previous_response_id": S.optionalWith(S.String, { nullable: true }),
   /**
    * Model ID used to generate the response, like `gpt-4o` or `o3`. OpenAI
    * offers a wide range of models with different capabilities, performance
-   * characteristics, and price points. Refer to the [model guide](/docs/models)
+   * characteristics, and price points. Refer to the [model guide](https://platform.openai.com/docs/models)
    * to browse and compare available models.
    */
-  "model": ModelIdsResponses,
+  "model": S.optionalWith(ModelIdsResponses, { nullable: true }),
   "reasoning": S.optionalWith(Reasoning, { nullable: true }),
-  /**
-   * An upper bound for the number of tokens that can be generated for a response, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
-   */
+  "background": S.optionalWith(S.Boolean, { nullable: true }),
   "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Inserts a system (or developer) message as the first item in the model's context.
-   *
-   * When using along with `previous_response_id`, the instructions from a previous
-   * response will not be carried over to the next response. This makes it simple
-   * to swap out system (or developer) messages in new responses.
-   */
-  "instructions": S.optionalWith(S.String, { nullable: true }),
-  /**
-   * Configuration options for a text response from the model. Can be plain
-   * text or structured JSON data. Learn more:
-   * - [Text inputs and outputs](/docs/guides/text)
-   * - [Structured Outputs](/docs/guides/structured-outputs)
-   */
-  "text": S.optionalWith(
+  "max_tool_calls": S.optionalWith(S.Int, { nullable: true }),
+  "text": S.optionalWith(ResponseTextParam, { nullable: true }),
+  "tools": S.optionalWith(ToolsArray, { nullable: true }),
+  "tool_choice": S.optionalWith(ToolChoiceParam, { nullable: true }),
+  "prompt": S.optionalWith(
     S.Struct({
-      "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
+      /**
+       * The unique identifier of the prompt template to use.
+       */
+      "id": S.String,
+      "version": S.optionalWith(S.String, { nullable: true }),
+      "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
     }),
     { nullable: true }
   ),
+  "truncation": S.optionalWith(CreateResponseTruncationEnum, { nullable: true }),
+  "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), { nullable: true }),
+  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
   /**
-   * An array of tools the model may call while generating a response. You
-   * can specify which tool to use by setting the `tool_choice` parameter.
-   *
-   * The two categories of tools you can provide the model are:
-   *
-   * - **Built-in tools**: Tools that are provided by OpenAI that extend the
-   *   model's capabilities, like [web search](/docs/guides/tools-web-search)
-   *   or [file search](/docs/guides/tools-file-search). Learn more about
-   *   [built-in tools](/docs/guides/tools).
-   * - **Function calls (custom tools)**: Functions that are defined by you,
-   *   enabling the model to call your own code. Learn more about
-   *   [function calling](/docs/guides/function-calling).
-   */
-  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
-  /**
-   * How the model should select which tool (or tools) to use when generating
-   * a response. See the `tools` parameter to see how to specify which tools
-   * the model can call.
-   */
-  "tool_choice": S.optionalWith(S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction), { nullable: true }),
-  /**
-   * The truncation strategy to use for the model response.
-   * - `auto`: If the context of this response and previous ones exceeds
-   *   the model's context window size, the model will truncate the
-   *   response to fit the context window by dropping input items in the
-   *   middle of the conversation.
-   * - `disabled` (default): If a model response will exceed the context window
-   *   size for a model, the request will fail with a 400 error.
-   */
-  "truncation": S.optionalWith(CreateResponseTruncation, { nullable: true, default: () => "disabled" as const }),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
-  /**
-   * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-   * We generally recommend altering this or `top_p` but not both.
-   */
-  "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * An alternative to sampling with temperature, called nucleus sampling,
-   * where the model considers the results of the tokens with top_p probability
-   * mass. So 0.1 means only the tokens comprising the top 10% probability mass
-   * are considered.
-   *
-   * We generally recommend altering this or `temperature` but not both.
-   */
-  "top_p": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), {
-    nullable: true,
-    default: () => 1 as const
-  }),
-  /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * This field is being replaced by `safety_identifier` and `prompt_cache_key`. Use `prompt_cache_key` instead to maintain caching optimizations.
+   * A stable identifier for your end-users.
+   * Used to boost cache hit rates by better bucketing similar requests and  to help OpenAI detect and prevent abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
    */
   "user": S.optionalWith(S.String, { nullable: true }),
-  "service_tier": S.optionalWith(ServiceTier, { nullable: true, default: () => "auto" as const })
+  /**
+   * A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies.
+   * The IDs should be a string that uniquely identifies each user. We recommend hashing their username or email address, in order to avoid sending us any identifying information. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
+   */
+  "safety_identifier": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Used by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces the `user` field. [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
+   */
+  "prompt_cache_key": S.optionalWith(S.String, { nullable: true }),
+  "service_tier": S.optionalWith(S.Literal("auto", "default", "flex", "scale", "priority"), { nullable: true }),
+  "prompt_cache_retention": S.optionalWith(CreateResponsePromptCacheRetentionEnum, { nullable: true })
 }) {}
 
 /**
@@ -9531,9 +15051,11 @@ export class ResponseObject extends S.Literal("response") {}
 
 /**
  * The status of the response generation. One of `completed`, `failed`,
- * `in_progress`, or `incomplete`.
+ * `in_progress`, `cancelled`, `queued`, or `incomplete`.
  */
-export class ResponseStatus extends S.Literal("completed", "failed", "in_progress", "incomplete") {}
+export class ResponseStatus
+  extends S.Literal("completed", "failed", "in_progress", "cancelled", "queued", "incomplete")
+{}
 
 /**
  * The error code for the response.
@@ -9559,21 +15081,24 @@ export class ResponseErrorCode extends S.Literal(
   "image_file_not_found"
 ) {}
 
-/**
- * An error object returned when the model fails to generate a Response.
- */
-export class ResponseError extends S.Class<ResponseError>("ResponseError")({
-  "code": ResponseErrorCode,
+export class ResponseError extends S.Union(
   /**
-   * A human-readable description of the error.
+   * An error object returned when the model fails to generate a Response.
    */
-  "message": S.String
-}) {}
+  S.Struct({
+    "code": ResponseErrorCode,
+    /**
+     * A human-readable description of the error.
+     */
+    "message": S.String
+  }),
+  S.Null
+) {}
 
 /**
  * The reason why the response is incomplete.
  */
-export class ResponseIncompleteDetailsReason extends S.Literal("max_output_tokens", "content_filter") {}
+export class ResponseIncompleteDetailsEnumReason extends S.Literal("max_output_tokens", "content_filter") {}
 
 export class OutputItem extends S.Union(
   OutputMessage,
@@ -9581,7 +15106,18 @@ export class OutputItem extends S.Union(
   FunctionToolCall,
   WebSearchToolCall,
   ComputerToolCall,
-  ReasoningItem
+  ReasoningItem,
+  ImageGenToolCall,
+  CodeInterpreterToolCall,
+  LocalShellToolCall,
+  FunctionShellCall,
+  FunctionShellCallOutput,
+  ApplyPatchToolCall,
+  ApplyPatchToolCallOutput,
+  MCPToolCall,
+  MCPListTools,
+  MCPApprovalRequest,
+  CustomToolCall
 ) {}
 
 /**
@@ -9599,7 +15135,7 @@ export class ResponseUsage extends S.Class<ResponseUsage>("ResponseUsage")({
   "input_tokens_details": S.Struct({
     /**
      * The number of tokens that were retrieved from the cache.
-     * [More on prompt caching](/docs/guides/prompt-caching).
+     * [More on prompt caching](https://platform.openai.com/docs/guides/prompt-caching).
      */
     "cached_tokens": S.Int
   }),
@@ -9623,15 +15159,29 @@ export class ResponseUsage extends S.Class<ResponseUsage>("ResponseUsage")({
 }) {}
 
 /**
+ * The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation.
+ */
+export class Conversation2 extends S.Class<Conversation2>("Conversation2")({
+  /**
+   * The unique ID of the conversation.
+   */
+  "id": S.String
+}) {}
+
+/**
  * The truncation strategy to use for the model response.
- * - `auto`: If the context of this response and previous ones exceeds
+ * - `auto`: If the input to this Response exceeds
  *   the model's context window size, the model will truncate the
- *   response to fit the context window by dropping input items in the
- *   middle of the conversation.
- * - `disabled` (default): If a model response will exceed the context window
+ *   response to fit the context window by dropping items from the beginning of the conversation.
+ * - `disabled` (default): If the input size will exceed the context window
  *   size for a model, the request will fail with a 400 error.
  */
-export class ResponseTruncation extends S.Literal("auto", "disabled") {}
+export class ResponseTruncationEnum extends S.Literal("auto", "disabled") {}
+
+/**
+ * The retention policy for the prompt cache. Set to `24h` to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. [Learn more](https://platform.openai.com/docs/guides/prompt-caching#prompt-cache-retention).
+ */
+export class ResponsePromptCacheRetentionEnum extends S.Literal("in_memory", "24h") {}
 
 export class Response extends S.Class<Response>("Response")({
   /**
@@ -9644,22 +15194,25 @@ export class Response extends S.Class<Response>("Response")({
   "object": ResponseObject,
   /**
    * The status of the response generation. One of `completed`, `failed`,
-   * `in_progress`, or `incomplete`.
+   * `in_progress`, `cancelled`, `queued`, or `incomplete`.
    */
   "status": S.optionalWith(ResponseStatus, { nullable: true }),
   /**
    * Unix timestamp (in seconds) of when this Response was created.
    */
   "created_at": S.Number,
-  "error": S.NullOr(ResponseError),
-  /**
-   * Details about why the response is incomplete.
-   */
+  "error": S.NullOr(S.Struct({
+    "code": ResponseErrorCode,
+    /**
+     * A human-readable description of the error.
+     */
+    "message": S.String
+  })),
   "incomplete_details": S.NullOr(S.Struct({
     /**
      * The reason why the response is incomplete.
      */
-    "reason": S.optionalWith(ResponseIncompleteDetailsReason, { nullable: true })
+    "reason": S.optionalWith(S.Literal("max_output_tokens", "content_filter"), { nullable: true })
   })),
   /**
    * An array of content items generated by the model.
@@ -9672,116 +15225,80 @@ export class Response extends S.Class<Response>("Response")({
    *   supported in SDKs.
    */
   "output": S.Array(OutputItem),
-  /**
-   * SDK-only convenience property that contains the aggregated text output
-   * from all `output_text` items in the `output` array, if any are present.
-   * Supported in the Python and JavaScript SDKs.
-   */
+  "instructions": S.NullOr(S.Union(
+    /**
+     * A text input to the model, equivalent to a text input with the
+     * `developer` role.
+     */
+    S.String,
+    /**
+     * A list of one or many input items to the model, containing
+     * different content types.
+     */
+    S.Array(InputItem)
+  )),
   "output_text": S.optionalWith(S.String, { nullable: true }),
   "usage": S.optionalWith(ResponseUsage, { nullable: true }),
   /**
    * Whether to allow the model to run tool calls in parallel.
    */
   "parallel_tool_calls": S.Boolean.pipe(S.propertySignature, S.withConstructorDefault(() => true as const)),
-  /**
-   * The unique ID of the previous response to the model. Use this to
-   * create multi-turn conversations. Learn more about
-   * [conversation state](/docs/guides/conversation-state).
-   */
+  "conversation": S.optionalWith(Conversation2, { nullable: true }),
   "previous_response_id": S.optionalWith(S.String, { nullable: true }),
   /**
    * Model ID used to generate the response, like `gpt-4o` or `o3`. OpenAI
    * offers a wide range of models with different capabilities, performance
-   * characteristics, and price points. Refer to the [model guide](/docs/models)
+   * characteristics, and price points. Refer to the [model guide](https://platform.openai.com/docs/models)
    * to browse and compare available models.
    */
   "model": ModelIdsResponses,
   "reasoning": S.optionalWith(Reasoning, { nullable: true }),
-  /**
-   * An upper bound for the number of tokens that can be generated for a response, including visible output tokens and [reasoning tokens](/docs/guides/reasoning).
-   */
+  "background": S.optionalWith(S.Boolean, { nullable: true }),
   "max_output_tokens": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * Inserts a system (or developer) message as the first item in the model's context.
-   *
-   * When using along with `previous_response_id`, the instructions from a previous
-   * response will not be carried over to the next response. This makes it simple
-   * to swap out system (or developer) messages in new responses.
-   */
-  "instructions": S.NullOr(S.String),
-  /**
-   * Configuration options for a text response from the model. Can be plain
-   * text or structured JSON data. Learn more:
-   * - [Text inputs and outputs](/docs/guides/text)
-   * - [Structured Outputs](/docs/guides/structured-outputs)
-   */
-  "text": S.optionalWith(
+  "max_tool_calls": S.optionalWith(S.Int, { nullable: true }),
+  "text": S.optionalWith(ResponseTextParam, { nullable: true }),
+  "tools": ToolsArray,
+  "tool_choice": ToolChoiceParam,
+  "prompt": S.optionalWith(
     S.Struct({
-      "format": S.optionalWith(TextResponseFormatConfiguration, { nullable: true })
+      /**
+       * The unique identifier of the prompt template to use.
+       */
+      "id": S.String,
+      "version": S.optionalWith(S.String, { nullable: true }),
+      "variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
     }),
     { nullable: true }
   ),
+  "truncation": S.optionalWith(ResponseTruncationEnum, { nullable: true }),
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "top_logprobs": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(20)), { nullable: true }),
+  "temperature": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2))),
+  "top_p": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))),
   /**
-   * An array of tools the model may call while generating a response. You
-   * can specify which tool to use by setting the `tool_choice` parameter.
-   *
-   * The two categories of tools you can provide the model are:
-   *
-   * - **Built-in tools**: Tools that are provided by OpenAI that extend the
-   *   model's capabilities, like [web search](/docs/guides/tools-web-search)
-   *   or [file search](/docs/guides/tools-file-search). Learn more about
-   *   [built-in tools](/docs/guides/tools).
-   * - **Function calls (custom tools)**: Functions that are defined by you,
-   *   enabling the model to call your own code. Learn more about
-   *   [function calling](/docs/guides/function-calling).
-   */
-  "tools": S.Array(Tool),
-  /**
-   * How the model should select which tool (or tools) to use when generating
-   * a response. See the `tools` parameter to see how to specify which tools
-   * the model can call.
-   */
-  "tool_choice": S.Union(ToolChoiceOptions, ToolChoiceTypes, ToolChoiceFunction),
-  /**
-   * The truncation strategy to use for the model response.
-   * - `auto`: If the context of this response and previous ones exceeds
-   *   the model's context window size, the model will truncate the
-   *   response to fit the context window by dropping input items in the
-   *   middle of the conversation.
-   * - `disabled` (default): If a model response will exceed the context window
-   *   size for a model, the request will fail with a 400 error.
-   */
-  "truncation": S.optionalWith(ResponseTruncation, { nullable: true, default: () => "disabled" as const }),
-  "metadata": S.NullOr(Metadata),
-  /**
-   * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
-   * We generally recommend altering this or `top_p` but not both.
-   */
-  "temperature": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(2))).pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => 1 as const)
-  ),
-  /**
-   * An alternative to sampling with temperature, called nucleus sampling,
-   * where the model considers the results of the tokens with top_p probability
-   * mass. So 0.1 means only the tokens comprising the top 10% probability mass
-   * are considered.
-   *
-   * We generally recommend altering this or `temperature` but not both.
-   */
-  "top_p": S.NullOr(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1))).pipe(
-    S.propertySignature,
-    S.withConstructorDefault(() => 1 as const)
-  ),
-  /**
-   * A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse. [Learn more](/docs/guides/safety-best-practices#end-user-ids).
+   * This field is being replaced by `safety_identifier` and `prompt_cache_key`. Use `prompt_cache_key` instead to maintain caching optimizations.
+   * A stable identifier for your end-users.
+   * Used to boost cache hit rates by better bucketing similar requests and  to help OpenAI detect and prevent abuse. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
    */
   "user": S.optionalWith(S.String, { nullable: true }),
-  "service_tier": S.optionalWith(ServiceTier, { nullable: true, default: () => "auto" as const })
+  /**
+   * A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies.
+   * The IDs should be a string that uniquely identifies each user. We recommend hashing their username or email address, in order to avoid sending us any identifying information. [Learn more](https://platform.openai.com/docs/guides/safety-best-practices#safety-identifiers).
+   */
+  "safety_identifier": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Used by OpenAI to cache responses for similar requests to optimize your cache hit rates. Replaces the `user` field. [Learn more](https://platform.openai.com/docs/guides/prompt-caching).
+   */
+  "prompt_cache_key": S.optionalWith(S.String, { nullable: true }),
+  "service_tier": S.optionalWith(S.Literal("auto", "default", "flex", "scale", "priority"), { nullable: true }),
+  "prompt_cache_retention": S.optionalWith(ResponsePromptCacheRetentionEnum, { nullable: true })
 }) {}
 
 export class GetResponseParams extends S.Struct({
-  "include": S.optionalWith(S.Array(Includable), { nullable: true })
+  "include": S.optionalWith(S.Array(IncludeEnum), { nullable: true }),
+  "stream": S.optionalWith(S.Boolean, { nullable: true }),
+  "starting_after": S.optionalWith(S.Int, { nullable: true }),
+  "include_obfuscation": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 export class ListInputItemsParamsOrder extends S.Literal("asc", "desc") {}
@@ -9790,14 +15307,8 @@ export class ListInputItemsParams extends S.Struct({
   "limit": S.optionalWith(S.Int, { nullable: true, default: () => 20 as const }),
   "order": S.optionalWith(ListInputItemsParamsOrder, { nullable: true }),
   "after": S.optionalWith(S.String, { nullable: true }),
-  "before": S.optionalWith(S.String, { nullable: true }),
-  "include": S.optionalWith(S.Array(Includable), { nullable: true })
+  "include": S.optionalWith(S.Array(IncludeEnum), { nullable: true })
 }) {}
-
-/**
- * The type of object returned, must be `list`.
- */
-export class ResponseItemListObject extends S.Literal("list") {}
 
 /**
  * The type of the message input. Always set to `message`.
@@ -9842,135 +15353,6 @@ export class InputMessageResource extends S.Class<InputMessageResource>("InputMe
 }) {}
 
 /**
- * The type of the computer tool call output. Always `computer_call_output`.
- */
-export class ComputerToolCallOutputResourceType extends S.Literal("computer_call_output") {}
-
-/**
- * The status of the message input. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when input items are returned via API.
- */
-export class ComputerToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * The output of a computer tool call.
- */
-export class ComputerToolCallOutputResource
-  extends S.Class<ComputerToolCallOutputResource>("ComputerToolCallOutputResource")({
-    /**
-     * The ID of the computer tool call output.
-     */
-    "id": S.String,
-    /**
-     * The type of the computer tool call output. Always `computer_call_output`.
-     */
-    "type": ComputerToolCallOutputResourceType.pipe(
-      S.propertySignature,
-      S.withConstructorDefault(() => "computer_call_output" as const)
-    ),
-    /**
-     * The ID of the computer tool call that produced the output.
-     */
-    "call_id": S.String,
-    /**
-     * The safety checks reported by the API that have been acknowledged by the
-     * developer.
-     */
-    "acknowledged_safety_checks": S.optionalWith(S.Array(ComputerToolCallSafetyCheck), { nullable: true }),
-    "output": ComputerScreenshotImage,
-    /**
-     * The status of the message input. One of `in_progress`, `completed`, or
-     * `incomplete`. Populated when input items are returned via API.
-     */
-    "status": S.optionalWith(ComputerToolCallOutputResourceStatus, { nullable: true })
-  })
-{}
-
-/**
- * The type of the function tool call. Always `function_call`.
- */
-export class FunctionToolCallResourceType extends S.Literal("function_call") {}
-
-/**
- * The status of the item. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when items are returned via API.
- */
-export class FunctionToolCallResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * A tool call to run a function. See the
- * [function calling guide](/docs/guides/function-calling) for more information.
- */
-export class FunctionToolCallResource extends S.Class<FunctionToolCallResource>("FunctionToolCallResource")({
-  /**
-   * The unique ID of the function tool call.
-   */
-  "id": S.String,
-  /**
-   * The type of the function tool call. Always `function_call`.
-   */
-  "type": FunctionToolCallResourceType,
-  /**
-   * The unique ID of the function tool call generated by the model.
-   */
-  "call_id": S.String,
-  /**
-   * The name of the function to run.
-   */
-  "name": S.String,
-  /**
-   * A JSON string of the arguments to pass to the function.
-   */
-  "arguments": S.String,
-  /**
-   * The status of the item. One of `in_progress`, `completed`, or
-   * `incomplete`. Populated when items are returned via API.
-   */
-  "status": S.optionalWith(FunctionToolCallResourceStatus, { nullable: true })
-}) {}
-
-/**
- * The type of the function tool call output. Always `function_call_output`.
- */
-export class FunctionToolCallOutputResourceType extends S.Literal("function_call_output") {}
-
-/**
- * The status of the item. One of `in_progress`, `completed`, or
- * `incomplete`. Populated when items are returned via API.
- */
-export class FunctionToolCallOutputResourceStatus extends S.Literal("in_progress", "completed", "incomplete") {}
-
-/**
- * The output of a function tool call.
- */
-export class FunctionToolCallOutputResource
-  extends S.Class<FunctionToolCallOutputResource>("FunctionToolCallOutputResource")({
-    /**
-     * The unique ID of the function tool call output. Populated when this item
-     * is returned via API.
-     */
-    "id": S.String,
-    /**
-     * The type of the function tool call output. Always `function_call_output`.
-     */
-    "type": FunctionToolCallOutputResourceType,
-    /**
-     * The unique ID of the function tool call generated by the model.
-     */
-    "call_id": S.String,
-    /**
-     * A JSON string of the output of the function tool call.
-     */
-    "output": S.String,
-    /**
-     * The status of the item. One of `in_progress`, `completed`, or
-     * `incomplete`. Populated when items are returned via API.
-     */
-    "status": S.optionalWith(FunctionToolCallOutputResourceStatus, { nullable: true })
-  })
-{}
-
-/**
  * Content item used to generate a response.
  */
 export class ItemResource extends S.Union(
@@ -9981,7 +15363,19 @@ export class ItemResource extends S.Union(
   ComputerToolCallOutputResource,
   WebSearchToolCall,
   FunctionToolCallResource,
-  FunctionToolCallOutputResource
+  FunctionToolCallOutputResource,
+  ImageGenToolCall,
+  CodeInterpreterToolCall,
+  LocalShellToolCall,
+  LocalShellToolCallOutput,
+  FunctionShellCall,
+  FunctionShellCallOutput,
+  ApplyPatchToolCall,
+  ApplyPatchToolCallOutput,
+  MCPListTools,
+  MCPApprovalRequest,
+  MCPApprovalResponseResource,
+  MCPToolCall
 ) {}
 
 /**
@@ -9991,7 +15385,7 @@ export class ResponseItemList extends S.Class<ResponseItemList>("ResponseItemLis
   /**
    * The type of object returned, must be `list`.
    */
-  "object": ResponseItemListObject,
+  "object": S.Literal("list"),
   /**
    * A list of items used to generate this response.
    */
@@ -10028,7 +15422,7 @@ export class MessageContentImageFileObjectType extends S.Literal("image_file") {
 export class MessageContentImageFileObjectImageFileDetail extends S.Literal("auto", "low", "high") {}
 
 /**
- * References an image [File](/docs/api-reference/files) in the content of a message.
+ * References an image [File](https://platform.openai.com/docs/api-reference/files) in the content of a message.
  */
 export class MessageContentImageFileObject
   extends S.Class<MessageContentImageFileObject>("MessageContentImageFileObject")({
@@ -10038,7 +15432,7 @@ export class MessageContentImageFileObject
     "type": MessageContentImageFileObjectType,
     "image_file": S.Struct({
       /**
-       * The [File](/docs/api-reference/files) ID of the image in the message content. Set `purpose="vision"` when uploading the File if you need to later display the file content.
+       * The [File](https://platform.openai.com/docs/api-reference/files) ID of the image in the message content. Set `purpose="vision"` when uploading the File if you need to later display the file content.
        */
       "file_id": S.String,
       /**
@@ -10135,15 +15529,12 @@ export class CreateMessageRequest extends S.Class<CreateMessageRequest>("CreateM
      */
     S.String,
     /**
-     * An array of content parts with a defined type, each can be of type `text` or images can be passed with `image_url` or `image_file`. Image types are only supported on [Vision-compatible models](/docs/models).
+     * An array of content parts with a defined type, each can be of type `text` or images can be passed with `image_url` or `image_file`. Image types are only supported on [Vision-compatible models](https://platform.openai.com/docs/models).
      */
     S.NonEmptyArray(
       S.Union(MessageContentImageFileObject, MessageContentImageUrlObject, MessageRequestContentTextObject)
     ).pipe(S.minItems(1))
   ),
-  /**
-   * A list of files attached to the message, and the tools they should be added to.
-   */
   "attachments": S.optionalWith(
     S.Array(S.Struct({
       /**
@@ -10159,7 +15550,7 @@ export class CreateMessageRequest extends S.Class<CreateMessageRequest>("CreateM
     })),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 /**
@@ -10168,18 +15559,15 @@ export class CreateMessageRequest extends S.Class<CreateMessageRequest>("CreateM
  */
 export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThreadRequest")({
   /**
-   * A list of [messages](/docs/api-reference/messages) to start the thread with.
+   * A list of [messages](https://platform.openai.com/docs/api-reference/messages) to start the thread with.
    */
   "messages": S.optionalWith(S.Array(CreateMessageRequest), { nullable: true }),
-  /**
-   * A set of resources that are made available to the assistant's tools in this thread. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
-   */
   "tool_resources": S.optionalWith(
     S.Struct({
       "code_interpreter": S.optionalWith(
         S.Struct({
           /**
-           * A list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
+           * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
            */
           "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
             nullable: true,
@@ -10191,23 +15579,23 @@ export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThr
       "file_search": S.optionalWith(
         S.Struct({
           /**
-           * The [vector store](/docs/api-reference/vector-stores/object) attached to this thread. There can be a maximum of 1 vector store attached to the thread.
+           * The [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this thread. There can be a maximum of 1 vector store attached to the thread.
            */
           "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true }),
           /**
-           * A helper to create a [vector store](/docs/api-reference/vector-stores/object) with file_ids and attach it to this thread. There can be a maximum of 1 vector store attached to the thread.
+           * A helper to create a [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) with file_ids and attach it to this thread. There can be a maximum of 1 vector store attached to the thread.
            */
           "vector_stores": S.optionalWith(
             S.Array(S.Struct({
               /**
-               * A list of [file](/docs/api-reference/files) IDs to add to the vector store. There can be a maximum of 10000 files in a vector store.
+               * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs to add to the vector store. There can be a maximum of 10000 files in a vector store.
                */
               "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(10000)), { nullable: true }),
               /**
                * The chunking strategy used to chunk the file(s). If not set, will use the `auto` strategy.
                */
               "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-              "metadata": S.optionalWith(Metadata, { nullable: true })
+              "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
             })).pipe(S.maxItems(1)),
             { nullable: true }
           )
@@ -10217,7 +15605,7 @@ export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThr
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 /**
@@ -10226,7 +15614,7 @@ export class CreateThreadRequest extends S.Class<CreateThreadRequest>("CreateThr
 export class ThreadObjectObject extends S.Literal("thread") {}
 
 /**
- * Represents a thread that contains [messages](/docs/api-reference/messages).
+ * Represents a thread that contains [messages](https://platform.openai.com/docs/api-reference/messages).
  */
 export class ThreadObject extends S.Class<ThreadObject>("ThreadObject")({
   /**
@@ -10241,14 +15629,11 @@ export class ThreadObject extends S.Class<ThreadObject>("ThreadObject")({
    * The Unix timestamp (in seconds) for when the thread was created.
    */
   "created_at": S.Int,
-  /**
-   * A set of resources that are made available to the assistant's tools in this thread. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
-   */
   "tool_resources": S.NullOr(S.Struct({
     "code_interpreter": S.optionalWith(
       S.Struct({
         /**
-         * A list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
+         * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
          */
         "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
           nullable: true,
@@ -10260,17 +15645,23 @@ export class ThreadObject extends S.Class<ThreadObject>("ThreadObject")({
     "file_search": S.optionalWith(
       S.Struct({
         /**
-         * The [vector store](/docs/api-reference/vector-stores/object) attached to this thread. There can be a maximum of 1 vector store attached to the thread.
+         * The [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this thread. There can be a maximum of 1 vector store attached to the thread.
          */
         "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
       }),
       { nullable: true }
     )
   })),
-  "metadata": S.NullOr(Metadata)
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
 
 export class CreateThreadAndRunRequestModelEnum extends S.Literal(
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-5-2025-08-07",
+  "gpt-5-mini-2025-08-07",
+  "gpt-5-nano-2025-08-07",
   "gpt-4.1",
   "gpt-4.1-mini",
   "gpt-4.1-nano",
@@ -10311,16 +15702,13 @@ export class CreateThreadAndRunRequestModelEnum extends S.Literal(
 export class CreateThreadAndRunRequestTruncationStrategyEnumType extends S.Literal("auto", "last_messages") {}
 
 /**
- * Controls for how a thread will be truncated prior to the run. Use this to control the intial context window of the run.
+ * Controls for how a thread will be truncated prior to the run. Use this to control the initial context window of the run.
  */
 export class CreateThreadAndRunRequestTruncationStrategy extends S.Struct({
   /**
    * The truncation strategy to use for the thread. The default is `auto`. If set to `last_messages`, the thread will be truncated to the n most recent messages in the thread. When set to `auto`, messages in the middle of the thread will be dropped to fit the context length of the model, `max_prompt_tokens`.
    */
   "type": S.Literal("auto", "last_messages"),
-  /**
-   * The number of most recent messages from the thread when constructing the context for the run.
-   */
   "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
 }) {}
 
@@ -10370,12 +15758,12 @@ export class CreateThreadAndRunRequestToolChoice extends S.Union(
 
 export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest>("CreateThreadAndRunRequest")({
   /**
-   * The ID of the [assistant](/docs/api-reference/assistants) to use to execute this run.
+   * The ID of the [assistant](https://platform.openai.com/docs/api-reference/assistants) to use to execute this run.
    */
   "assistant_id": S.String,
   "thread": S.optionalWith(CreateThreadRequest, { nullable: true }),
   /**
-   * The ID of the [Model](/docs/api-reference/models) to be used to execute this run. If a value is provided here, it will override the model associated with the assistant. If not, the model associated with the assistant will be used.
+   * The ID of the [Model](https://platform.openai.com/docs/api-reference/models) to be used to execute this run. If a value is provided here, it will override the model associated with the assistant. If not, the model associated with the assistant will be used.
    */
   "model": S.optionalWith(S.Union(S.String, CreateThreadAndRunRequestModelEnum), { nullable: true }),
   /**
@@ -10385,10 +15773,7 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
   /**
    * Override the tools the assistant can use for this run. This is useful for modifying the behavior on a per-run basis.
    */
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20)),
-    { nullable: true }
-  ),
+  "tools": S.optionalWith(S.Array(AssistantTool).pipe(S.maxItems(20)), { nullable: true }),
   /**
    * A set of resources that are used by the assistant's tools. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
    */
@@ -10397,7 +15782,7 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
       "code_interpreter": S.optionalWith(
         S.Struct({
           /**
-           * A list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
+           * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
            */
           "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
             nullable: true,
@@ -10409,7 +15794,7 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
       "file_search": S.optionalWith(
         S.Struct({
           /**
-           * The ID of the [vector store](/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
+           * The ID of the [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
            */
           "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
         }),
@@ -10418,7 +15803,7 @@ export class CreateThreadAndRunRequest extends S.Class<CreateThreadAndRunRequest
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   /**
    * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
    */
@@ -10461,7 +15846,7 @@ export class RunObjectObject extends S.Literal("thread.run") {}
 /**
  * The status of the run, which can be either `queued`, `in_progress`, `requires_action`, `cancelling`, `cancelled`, `failed`, `completed`, `incomplete`, or `expired`.
  */
-export class RunObjectStatus extends S.Literal(
+export class RunStatus extends S.Literal(
   "queued",
   "in_progress",
   "requires_action",
@@ -10488,7 +15873,7 @@ export class RunToolCallObjectType extends S.Literal("function") {}
  */
 export class RunToolCallObject extends S.Class<RunToolCallObject>("RunToolCallObject")({
   /**
-   * The ID of the tool call. This ID must be referenced when you submit the tool outputs in using the [Submit tool outputs to run](/docs/api-reference/runs/submitToolOutputs) endpoint.
+   * The ID of the tool call. This ID must be referenced when you submit the tool outputs in using the [Submit tool outputs to run](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs) endpoint.
    */
   "id": S.String,
   /**
@@ -10520,23 +15905,26 @@ export class RunObjectLastErrorCode extends S.Literal("server_error", "rate_limi
  */
 export class RunObjectIncompleteDetailsReason extends S.Literal("max_completion_tokens", "max_prompt_tokens") {}
 
-/**
- * Usage statistics related to the run. This value will be `null` if the run is not in a terminal state (i.e. `in_progress`, `queued`, etc.).
- */
-export class RunCompletionUsage extends S.Class<RunCompletionUsage>("RunCompletionUsage")({
+export class RunCompletionUsage extends S.Union(
   /**
-   * Number of completion tokens used over the course of the run.
+   * Usage statistics related to the run. This value will be `null` if the run is not in a terminal state (i.e. `in_progress`, `queued`, etc.).
    */
-  "completion_tokens": S.Int,
-  /**
-   * Number of prompt tokens used over the course of the run.
-   */
-  "prompt_tokens": S.Int,
-  /**
-   * Total number of tokens used (prompt + completion).
-   */
-  "total_tokens": S.Int
-}) {}
+  S.Struct({
+    /**
+     * Number of completion tokens used over the course of the run.
+     */
+    "completion_tokens": S.Int,
+    /**
+     * Number of prompt tokens used over the course of the run.
+     */
+    "prompt_tokens": S.Int,
+    /**
+     * Total number of tokens used (prompt + completion).
+     */
+    "total_tokens": S.Int
+  }),
+  S.Null
+) {}
 
 /**
  * The truncation strategy to use for the thread. The default is `auto`. If set to `last_messages`, the thread will be truncated to the n most recent messages in the thread. When set to `auto`, messages in the middle of the thread will be dropped to fit the context length of the model, `max_prompt_tokens`.
@@ -10544,16 +15932,13 @@ export class RunCompletionUsage extends S.Class<RunCompletionUsage>("RunCompleti
 export class RunObjectTruncationStrategyEnumType extends S.Literal("auto", "last_messages") {}
 
 /**
- * Controls for how a thread will be truncated prior to the run. Use this to control the intial context window of the run.
+ * Controls for how a thread will be truncated prior to the run. Use this to control the initial context window of the run.
  */
 export class RunObjectTruncationStrategy extends S.Struct({
   /**
    * The truncation strategy to use for the thread. The default is `auto`. If set to `last_messages`, the thread will be truncated to the n most recent messages in the thread. When set to `auto`, messages in the middle of the thread will be dropped to fit the context length of the model, `max_prompt_tokens`.
    */
   "type": S.Literal("auto", "last_messages"),
-  /**
-   * The number of most recent messages from the thread when constructing the context for the run.
-   */
   "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
 }) {}
 
@@ -10578,7 +15963,7 @@ export class RunObjectToolChoice extends S.Union(
 ) {}
 
 /**
- * Represents an execution run on a [thread](/docs/api-reference/threads).
+ * Represents an execution run on a [thread](https://platform.openai.com/docs/api-reference/threads).
  */
 export class RunObject extends S.Class<RunObject>("RunObject")({
   /**
@@ -10594,17 +15979,14 @@ export class RunObject extends S.Class<RunObject>("RunObject")({
    */
   "created_at": S.Int,
   /**
-   * The ID of the [thread](/docs/api-reference/threads) that was executed on as a part of this run.
+   * The ID of the [thread](https://platform.openai.com/docs/api-reference/threads) that was executed on as a part of this run.
    */
   "thread_id": S.String,
   /**
-   * The ID of the [assistant](/docs/api-reference/assistants) used for execution of this run.
+   * The ID of the [assistant](https://platform.openai.com/docs/api-reference/assistants) used for execution of this run.
    */
   "assistant_id": S.String,
-  /**
-   * The status of the run, which can be either `queued`, `in_progress`, `requires_action`, `cancelling`, `cancelled`, `failed`, `completed`, `incomplete`, or `expired`.
-   */
-  "status": RunObjectStatus,
+  "status": RunStatus,
   /**
    * Details on the action required to continue the run. Will be `null` if no action is required.
    */
@@ -10666,20 +16048,35 @@ export class RunObject extends S.Class<RunObject>("RunObject")({
     "reason": S.optionalWith(RunObjectIncompleteDetailsReason, { nullable: true })
   })),
   /**
-   * The model that the [assistant](/docs/api-reference/assistants) used for this run.
+   * The model that the [assistant](https://platform.openai.com/docs/api-reference/assistants) used for this run.
    */
   "model": S.String,
   /**
-   * The instructions that the [assistant](/docs/api-reference/assistants) used for this run.
+   * The instructions that the [assistant](https://platform.openai.com/docs/api-reference/assistants) used for this run.
    */
   "instructions": S.String,
   /**
-   * The list of tools that the [assistant](/docs/api-reference/assistants) used for this run.
+   * The list of tools that the [assistant](https://platform.openai.com/docs/api-reference/assistants) used for this run.
    */
-  "tools": S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20))
-    .pipe(S.propertySignature, S.withConstructorDefault(() => [] as const)),
-  "metadata": S.NullOr(Metadata),
-  "usage": S.NullOr(RunCompletionUsage),
+  "tools": S.Array(AssistantTool).pipe(S.maxItems(20)).pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => [] as const)
+  ),
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "usage": S.NullOr(S.Struct({
+    /**
+     * Number of completion tokens used over the course of the run.
+     */
+    "completion_tokens": S.Int,
+    /**
+     * Number of prompt tokens used over the course of the run.
+     */
+    "prompt_tokens": S.Int,
+    /**
+     * Total number of tokens used (prompt + completion).
+     */
+    "total_tokens": S.Int
+  })),
   /**
    * The sampling temperature used for this run. If not set, defaults to 1.
    */
@@ -10703,15 +16100,12 @@ export class RunObject extends S.Class<RunObject>("RunObject")({
 }) {}
 
 export class ModifyThreadRequest extends S.Class<ModifyThreadRequest>("ModifyThreadRequest")({
-  /**
-   * A set of resources that are made available to the assistant's tools in this thread. The resources are specific to the type of tool. For example, the `code_interpreter` tool requires a list of file IDs, while the `file_search` tool requires a list of vector store IDs.
-   */
   "tool_resources": S.optionalWith(
     S.Struct({
       "code_interpreter": S.optionalWith(
         S.Struct({
           /**
-           * A list of [file](/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
+           * A list of [file](https://platform.openai.com/docs/api-reference/files) IDs made available to the `code_interpreter` tool. There can be a maximum of 20 files associated with the tool.
            */
           "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(20)), {
             nullable: true,
@@ -10723,7 +16117,7 @@ export class ModifyThreadRequest extends S.Class<ModifyThreadRequest>("ModifyThr
       "file_search": S.optionalWith(
         S.Struct({
           /**
-           * The [vector store](/docs/api-reference/vector-stores/object) attached to this thread. There can be a maximum of 1 vector store attached to the thread.
+           * The [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) attached to this thread. There can be a maximum of 1 vector store attached to the thread.
            */
           "vector_store_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(1)), { nullable: true })
         }),
@@ -10732,7 +16126,7 @@ export class ModifyThreadRequest extends S.Class<ModifyThreadRequest>("ModifyThr
     }),
     { nullable: true }
   ),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class DeleteThreadResponseObject extends S.Literal("thread.deleted") {}
@@ -10766,7 +16160,7 @@ export class MessageObjectStatus extends S.Literal("in_progress", "incomplete", 
 /**
  * The reason the message is incomplete.
  */
-export class MessageObjectIncompleteDetailsReason
+export class MessageObjectIncompleteDetailsEnumReason
   extends S.Literal("content_filter", "max_tokens", "run_cancelled", "run_expired", "run_failed")
 {}
 
@@ -10838,6 +16232,10 @@ export class MessageContentTextAnnotationsFilePathObject
   })
 {}
 
+export class TextAnnotation
+  extends S.Union(MessageContentTextAnnotationsFileCitationObject, MessageContentTextAnnotationsFilePathObject)
+{}
+
 /**
  * The text content that is part of a message.
  */
@@ -10851,9 +16249,7 @@ export class MessageContentTextObject extends S.Class<MessageContentTextObject>(
      * The data that makes up the text.
      */
     "value": S.String,
-    "annotations": S.Array(
-      S.Union(MessageContentTextAnnotationsFileCitationObject, MessageContentTextAnnotationsFilePathObject)
-    )
+    "annotations": S.Array(TextAnnotation)
   })
 }) {}
 
@@ -10873,8 +16269,15 @@ export class MessageContentRefusalObject extends S.Class<MessageContentRefusalOb
   "refusal": S.String
 }) {}
 
+export class MessageContent extends S.Union(
+  MessageContentImageFileObject,
+  MessageContentImageUrlObject,
+  MessageContentTextObject,
+  MessageContentRefusalObject
+) {}
+
 /**
- * Represents a message within a [thread](/docs/api-reference/threads).
+ * Represents a message within a [thread](https://platform.openai.com/docs/api-reference/threads).
  */
 export class MessageObject extends S.Class<MessageObject>("MessageObject")({
   /**
@@ -10890,29 +16293,20 @@ export class MessageObject extends S.Class<MessageObject>("MessageObject")({
    */
   "created_at": S.Int,
   /**
-   * The [thread](/docs/api-reference/threads) ID that this message belongs to.
+   * The [thread](https://platform.openai.com/docs/api-reference/threads) ID that this message belongs to.
    */
   "thread_id": S.String,
   /**
    * The status of the message, which can be either `in_progress`, `incomplete`, or `completed`.
    */
   "status": MessageObjectStatus,
-  /**
-   * On an incomplete message, details about why the message is incomplete.
-   */
   "incomplete_details": S.NullOr(S.Struct({
     /**
      * The reason the message is incomplete.
      */
-    "reason": MessageObjectIncompleteDetailsReason
+    "reason": S.Literal("content_filter", "max_tokens", "run_cancelled", "run_expired", "run_failed")
   })),
-  /**
-   * The Unix timestamp (in seconds) for when the message was completed.
-   */
   "completed_at": S.NullOr(S.Int),
-  /**
-   * The Unix timestamp (in seconds) for when the message was marked as incomplete.
-   */
   "incomplete_at": S.NullOr(S.Int),
   /**
    * The entity that produced the message. One of `user` or `assistant`.
@@ -10921,25 +16315,9 @@ export class MessageObject extends S.Class<MessageObject>("MessageObject")({
   /**
    * The content of the message in array of text and/or images.
    */
-  "content": S.Array(
-    S.Union(
-      MessageContentImageFileObject,
-      MessageContentImageUrlObject,
-      MessageContentTextObject,
-      MessageContentRefusalObject
-    )
-  ),
-  /**
-   * If applicable, the ID of the [assistant](/docs/api-reference/assistants) that authored this message.
-   */
+  "content": S.Array(MessageContent),
   "assistant_id": S.NullOr(S.String),
-  /**
-   * The ID of the [run](/docs/api-reference/runs) associated with the creation of this message. Value is `null` when messages are created manually using the create message or create thread endpoints.
-   */
   "run_id": S.NullOr(S.String),
-  /**
-   * A list of files attached to the message, and the tools they were added to.
-   */
   "attachments": S.NullOr(S.Array(S.Struct({
     /**
      * The ID of the file to attach to the message.
@@ -10950,7 +16328,7 @@ export class MessageObject extends S.Class<MessageObject>("MessageObject")({
      */
     "tools": S.optionalWith(S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearchTypeOnly)), { nullable: true })
   }))),
-  "metadata": S.NullOr(Metadata)
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
 
 export class ListMessagesResponse extends S.Class<ListMessagesResponse>("ListMessagesResponse")({
@@ -10962,7 +16340,7 @@ export class ListMessagesResponse extends S.Class<ListMessagesResponse>("ListMes
 }) {}
 
 export class ModifyMessageRequest extends S.Class<ModifyMessageRequest>("ModifyMessageRequest")({
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class DeleteMessageResponseObject extends S.Literal("thread.message.deleted") {}
@@ -11002,16 +16380,13 @@ export class CreateRunParams extends S.Struct({
 export class CreateRunRequestTruncationStrategyEnumType extends S.Literal("auto", "last_messages") {}
 
 /**
- * Controls for how a thread will be truncated prior to the run. Use this to control the intial context window of the run.
+ * Controls for how a thread will be truncated prior to the run. Use this to control the initial context window of the run.
  */
 export class CreateRunRequestTruncationStrategy extends S.Struct({
   /**
    * The truncation strategy to use for the thread. The default is `auto`. If set to `last_messages`, the thread will be truncated to the n most recent messages in the thread. When set to `auto`, messages in the middle of the thread will be dropped to fit the context length of the model, `max_prompt_tokens`.
    */
   "type": S.Literal("auto", "last_messages"),
-  /**
-   * The number of most recent messages from the thread when constructing the context for the run.
-   */
   "last_messages": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
 }) {}
 
@@ -11037,16 +16412,16 @@ export class CreateRunRequestToolChoice extends S.Union(
 
 export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunRequest")({
   /**
-   * The ID of the [assistant](/docs/api-reference/assistants) to use to execute this run.
+   * The ID of the [assistant](https://platform.openai.com/docs/api-reference/assistants) to use to execute this run.
    */
   "assistant_id": S.String,
   /**
-   * The ID of the [Model](/docs/api-reference/models) to be used to execute this run. If a value is provided here, it will override the model associated with the assistant. If not, the model associated with the assistant will be used.
+   * The ID of the [Model](https://platform.openai.com/docs/api-reference/models) to be used to execute this run. If a value is provided here, it will override the model associated with the assistant. If not, the model associated with the assistant will be used.
    */
   "model": S.optionalWith(S.Union(S.String, AssistantSupportedModels), { nullable: true }),
-  "reasoning_effort": S.optionalWith(ReasoningEffort, { nullable: true, default: () => "medium" as const }),
+  "reasoning_effort": S.optionalWith(S.Literal("none", "minimal", "low", "medium", "high"), { nullable: true }),
   /**
-   * Overrides the [instructions](/docs/api-reference/assistants/createAssistant) of the assistant. This is useful for modifying the behavior on a per-run basis.
+   * Overrides the [instructions](https://platform.openai.com/docs/api-reference/assistants/createAssistant) of the assistant. This is useful for modifying the behavior on a per-run basis.
    */
   "instructions": S.optionalWith(S.String, { nullable: true }),
   /**
@@ -11060,11 +16435,8 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
   /**
    * Override the tools the assistant can use for this run. This is useful for modifying the behavior on a per-run basis.
    */
-  "tools": S.optionalWith(
-    S.Array(S.Union(AssistantToolsCode, AssistantToolsFileSearch, AssistantToolsFunction)).pipe(S.maxItems(20)),
-    { nullable: true }
-  ),
-  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "tools": S.optionalWith(S.Array(AssistantTool).pipe(S.maxItems(20)), { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
   /**
    * What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
    */
@@ -11100,7 +16472,7 @@ export class CreateRunRequest extends S.Class<CreateRunRequest>("CreateRunReques
 }) {}
 
 export class ModifyRunRequest extends S.Class<ModifyRunRequest>("ModifyRunRequest")({
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListRunStepsParamsOrder extends S.Literal("asc", "desc") {}
@@ -11197,7 +16569,7 @@ export class RunStepDetailsToolCallsCodeOutputImageObject
     "type": RunStepDetailsToolCallsCodeOutputImageObjectType,
     "image": S.Struct({
       /**
-       * The [file](/docs/api-reference/files) ID of the image.
+       * The [file](https://platform.openai.com/docs/api-reference/files) ID of the image.
        */
       "file_id": S.String
     })
@@ -11339,13 +16711,16 @@ export class RunStepDetailsToolCallsFunctionObject
        * The arguments passed to the function.
        */
       "arguments": S.String,
-      /**
-       * The output of the function. This will be `null` if the outputs have not been [submitted](/docs/api-reference/runs/submitToolOutputs) yet.
-       */
       "output": S.NullOr(S.String)
     })
   })
 {}
+
+export class RunStepDetailsToolCall extends S.Union(
+  RunStepDetailsToolCallsCodeObject,
+  RunStepDetailsToolCallsFileSearchObject,
+  RunStepDetailsToolCallsFunctionObject
+) {}
 
 /**
  * Details of the tool call.
@@ -11359,38 +16734,35 @@ export class RunStepDetailsToolCallsObject
     /**
      * An array of tool calls the run step was involved in. These can be associated with one of three types of tools: `code_interpreter`, `file_search`, or `function`.
      */
-    "tool_calls": S.Array(
-      S.Union(
-        RunStepDetailsToolCallsCodeObject,
-        RunStepDetailsToolCallsFileSearchObject,
-        RunStepDetailsToolCallsFunctionObject
-      )
-    )
+    "tool_calls": S.Array(RunStepDetailsToolCall)
   })
 {}
 
 /**
  * One of `server_error` or `rate_limit_exceeded`.
  */
-export class RunStepObjectLastErrorCode extends S.Literal("server_error", "rate_limit_exceeded") {}
+export class RunStepObjectLastErrorEnumCode extends S.Literal("server_error", "rate_limit_exceeded") {}
 
-/**
- * Usage statistics related to the run step. This value will be `null` while the run step's status is `in_progress`.
- */
-export class RunStepCompletionUsage extends S.Class<RunStepCompletionUsage>("RunStepCompletionUsage")({
+export class RunStepCompletionUsage extends S.Union(
   /**
-   * Number of completion tokens used over the course of the run step.
+   * Usage statistics related to the run step. This value will be `null` while the run step's status is `in_progress`.
    */
-  "completion_tokens": S.Int,
-  /**
-   * Number of prompt tokens used over the course of the run step.
-   */
-  "prompt_tokens": S.Int,
-  /**
-   * Total number of tokens used (prompt + completion).
-   */
-  "total_tokens": S.Int
-}) {}
+  S.Struct({
+    /**
+     * Number of completion tokens used over the course of the run step.
+     */
+    "completion_tokens": S.Int,
+    /**
+     * Number of prompt tokens used over the course of the run step.
+     */
+    "prompt_tokens": S.Int,
+    /**
+     * Total number of tokens used (prompt + completion).
+     */
+    "total_tokens": S.Int
+  }),
+  S.Null
+) {}
 
 /**
  * Represents a step in execution of a run.
@@ -11409,15 +16781,15 @@ export class RunStepObject extends S.Class<RunStepObject>("RunStepObject")({
    */
   "created_at": S.Int,
   /**
-   * The ID of the [assistant](/docs/api-reference/assistants) associated with the run step.
+   * The ID of the [assistant](https://platform.openai.com/docs/api-reference/assistants) associated with the run step.
    */
   "assistant_id": S.String,
   /**
-   * The ID of the [thread](/docs/api-reference/threads) that was run.
+   * The ID of the [thread](https://platform.openai.com/docs/api-reference/threads) that was run.
    */
   "thread_id": S.String,
   /**
-   * The ID of the [run](/docs/api-reference/runs) that this run step is a part of.
+   * The ID of the [run](https://platform.openai.com/docs/api-reference/runs) that this run step is a part of.
    */
   "run_id": S.String,
   /**
@@ -11432,37 +16804,35 @@ export class RunStepObject extends S.Class<RunStepObject>("RunStepObject")({
    * The details of the run step.
    */
   "step_details": S.Record({ key: S.String, value: S.Unknown }),
-  /**
-   * The last error associated with this run step. Will be `null` if there are no errors.
-   */
   "last_error": S.NullOr(S.Struct({
     /**
      * One of `server_error` or `rate_limit_exceeded`.
      */
-    "code": RunStepObjectLastErrorCode,
+    "code": S.Literal("server_error", "rate_limit_exceeded"),
     /**
      * A human-readable description of the error.
      */
     "message": S.String
   })),
-  /**
-   * The Unix timestamp (in seconds) for when the run step expired. A step is considered expired if the parent run is expired.
-   */
   "expired_at": S.NullOr(S.Int),
-  /**
-   * The Unix timestamp (in seconds) for when the run step was cancelled.
-   */
   "cancelled_at": S.NullOr(S.Int),
-  /**
-   * The Unix timestamp (in seconds) for when the run step failed.
-   */
   "failed_at": S.NullOr(S.Int),
-  /**
-   * The Unix timestamp (in seconds) for when the run step completed.
-   */
   "completed_at": S.NullOr(S.Int),
-  "metadata": S.NullOr(Metadata),
-  "usage": S.NullOr(RunStepCompletionUsage)
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  "usage": S.NullOr(S.Struct({
+    /**
+     * Number of completion tokens used over the course of the run step.
+     */
+    "completion_tokens": S.Int,
+    /**
+     * Number of prompt tokens used over the course of the run step.
+     */
+    "prompt_tokens": S.Int,
+    /**
+     * Total number of tokens used (prompt + completion).
+     */
+    "total_tokens": S.Int
+  }))
 }) {}
 
 export class ListRunStepsResponse extends S.Class<ListRunStepsResponse>("ListRunStepsResponse")({
@@ -11493,16 +16863,13 @@ export class SubmitToolOutputsRunRequest extends S.Class<SubmitToolOutputsRunReq
      */
     "output": S.optionalWith(S.String, { nullable: true })
   })),
-  /**
-   * If `true`, returns a stream of events that happen during the Run as server-sent events, terminating when the Run enters a terminal state with a `data: [DONE]` message.
-   */
   "stream": S.optionalWith(S.Boolean, { nullable: true })
 }) {}
 
 /**
  * The intended purpose of the uploaded file.
  *
- * See the [documentation on File purposes](/docs/api-reference/files/create#files-create-purpose).
+ * See the [documentation on File purposes](https://platform.openai.com/docs/api-reference/files/create#files-create-purpose).
  */
 export class CreateUploadRequestPurpose extends S.Literal("assistants", "batch", "fine-tune", "vision") {}
 
@@ -11514,7 +16881,7 @@ export class CreateUploadRequest extends S.Class<CreateUploadRequest>("CreateUpl
   /**
    * The intended purpose of the uploaded file.
    *
-   * See the [documentation on File purposes](/docs/api-reference/files/create#files-create-purpose).
+   * See the [documentation on File purposes](https://platform.openai.com/docs/api-reference/files/create#files-create-purpose).
    */
   "purpose": CreateUploadRequestPurpose,
   /**
@@ -11526,7 +16893,8 @@ export class CreateUploadRequest extends S.Class<CreateUploadRequest>("CreateUpl
    *
    * This must fall within the supported MIME types for your file purpose. See the supported MIME types for assistants and vision.
    */
-  "mime_type": S.String
+  "mime_type": S.String,
+  "expires_after": S.optionalWith(FileExpirationAfter, { nullable: true })
 }) {}
 
 /**
@@ -11545,7 +16913,7 @@ export class UploadObject extends S.Literal("upload") {}
 export class UploadFileEnumObject extends S.Literal("file") {}
 
 /**
- * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results` and `vision`.
+ * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results`, `vision`, and `user_data`.
  */
 export class UploadFileEnumPurpose extends S.Literal(
   "assistants",
@@ -11554,7 +16922,8 @@ export class UploadFileEnumPurpose extends S.Literal(
   "batch_output",
   "fine-tune",
   "fine-tune-results",
-  "vision"
+  "vision",
+  "user_data"
 ) {}
 
 /**
@@ -11591,7 +16960,7 @@ export class UploadFile extends S.Struct({
    */
   "object": S.Literal("file"),
   /**
-   * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results` and `vision`.
+   * The intended purpose of the file. Supported values are `assistants`, `assistants_output`, `batch`, `batch_output`, `fine-tune`, `fine-tune-results`, `vision`, and `user_data`.
    */
   "purpose": S.Literal(
     "assistants",
@@ -11600,7 +16969,8 @@ export class UploadFile extends S.Struct({
     "batch_output",
     "fine-tune",
     "fine-tune-results",
-    "vision"
+    "vision",
+    "user_data"
   ),
   /**
    * Deprecated. The current status of the file, which can be either `uploaded`, `processed`, or `error`.
@@ -11633,7 +17003,7 @@ export class Upload extends S.Class<Upload>("Upload")({
    */
   "bytes": S.Int,
   /**
-   * The intended purpose of the file. [Please refer here](/docs/api-reference/files/object#files/object-purpose) for acceptable values.
+   * The intended purpose of the file. [Please refer here](https://platform.openai.com/docs/api-reference/files/object#files/object-purpose) for acceptable values.
    */
   "purpose": S.String,
   /**
@@ -11647,7 +17017,7 @@ export class Upload extends S.Class<Upload>("Upload")({
   /**
    * The object type, which is always "upload".
    */
-  "object": S.optionalWith(UploadObject, { nullable: true }),
+  "object": UploadObject,
   "file": S.optionalWith(UploadFile, { nullable: true })
 }) {}
 
@@ -11785,15 +17155,9 @@ export class VectorStoreObject extends S.Class<VectorStoreObject>("VectorStoreOb
    */
   "status": VectorStoreObjectStatus,
   "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
-  /**
-   * The Unix timestamp (in seconds) for when the vector store will expire.
-   */
   "expires_at": S.optionalWith(S.Int, { nullable: true }),
-  /**
-   * The Unix timestamp (in seconds) for when the vector store was last active.
-   */
   "last_active_at": S.NullOr(S.Int),
-  "metadata": S.NullOr(Metadata)
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
 }) {}
 
 export class ListVectorStoresResponse extends S.Class<ListVectorStoresResponse>("ListVectorStoresResponse")({
@@ -11852,21 +17216,27 @@ export class StaticChunkingStrategyRequestParam
   })
 {}
 
+/**
+ * The chunking strategy used to chunk the file(s). If not set, will use the `auto` strategy. Only applicable if `file_ids` is non-empty.
+ */
+export class ChunkingStrategyRequestParam extends S.Record({ key: S.String, value: S.Unknown }) {}
+
 export class CreateVectorStoreRequest extends S.Class<CreateVectorStoreRequest>("CreateVectorStoreRequest")({
   /**
-   * A list of [File](/docs/api-reference/files) IDs that the vector store should use. Useful for tools like `file_search` that can access files.
+   * A list of [File](https://platform.openai.com/docs/api-reference/files) IDs that the vector store should use. Useful for tools like `file_search` that can access files.
    */
   "file_ids": S.optionalWith(S.Array(S.String).pipe(S.maxItems(500)), { nullable: true }),
   /**
    * The name of the vector store.
    */
   "name": S.optionalWith(S.String, { nullable: true }),
-  "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
   /**
-   * The chunking strategy used to chunk the file(s). If not set, will use the `auto` strategy. Only applicable if `file_ids` is non-empty.
+   * A description for the vector store. Can be used to describe the vector store's purpose.
    */
-  "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "description": S.optionalWith(S.String, { nullable: true }),
+  "expires_after": S.optionalWith(VectorStoreExpirationAfter, { nullable: true }),
+  "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true }),
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 /**
@@ -11894,7 +17264,7 @@ export class UpdateVectorStoreRequest extends S.Class<UpdateVectorStoreRequest>(
    */
   "name": S.optionalWith(S.String, { nullable: true }),
   "expires_after": S.optionalWith(UpdateVectorStoreRequestExpiresAfter, { nullable: true }),
-  "metadata": S.optionalWith(Metadata, { nullable: true })
+  "metadata": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class DeleteVectorStoreResponseObject extends S.Literal("vector_store.deleted") {}
@@ -11905,19 +17275,31 @@ export class DeleteVectorStoreResponse extends S.Class<DeleteVectorStoreResponse
   "object": DeleteVectorStoreResponseObject
 }) {}
 
-/**
- * The chunking strategy used to chunk the file(s). If not set, will use the `auto` strategy.
- */
-export class ChunkingStrategyRequestParam extends S.Record({ key: S.String, value: S.Unknown }) {}
+export class CreateVectorStoreFileRequest
+  extends S.Class<CreateVectorStoreFileRequest>("CreateVectorStoreFileRequest")({
+    /**
+     * A [File](https://platform.openai.com/docs/api-reference/files) ID that the vector store should use. Useful for tools like `file_search` that can access files.
+     */
+    "file_id": S.String,
+    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true }),
+    "attributes": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
+  })
+{}
 
 export class CreateVectorStoreFileBatchRequest
   extends S.Class<CreateVectorStoreFileBatchRequest>("CreateVectorStoreFileBatchRequest")({
     /**
-     * A list of [File](/docs/api-reference/files) IDs that the vector store should use. Useful for tools like `file_search` that can access files.
+     * A list of [File](https://platform.openai.com/docs/api-reference/files) IDs that the vector store should use. Useful for tools like `file_search` that can access files.  If `attributes` or `chunking_strategy` are provided, they will be  applied to all files in the batch. Mutually exclusive with `files`.
      */
-    "file_ids": S.NonEmptyArray(S.String).pipe(S.minItems(1), S.maxItems(500)),
+    "file_ids": S.optionalWith(S.NonEmptyArray(S.String).pipe(S.minItems(1), S.maxItems(500)), { nullable: true }),
+    /**
+     * A list of objects that each include a `file_id` plus optional `attributes` or `chunking_strategy`. Use this when you need to override metadata for specific files. The global `attributes` or `chunking_strategy` will be ignored and must be specified for each file. Mutually exclusive with `file_ids`.
+     */
+    "files": S.optionalWith(S.NonEmptyArray(CreateVectorStoreFileRequest).pipe(S.minItems(1), S.maxItems(500)), {
+      nullable: true
+    }),
     "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true }),
-    "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true })
+    "attributes": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
   })
 {}
 
@@ -11948,7 +17330,7 @@ export class VectorStoreFileBatchObject extends S.Class<VectorStoreFileBatchObje
    */
   "created_at": S.Int,
   /**
-   * The ID of the [vector store](/docs/api-reference/vector-stores/object) that the [File](/docs/api-reference/files) is attached to.
+   * The ID of the [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) that the [File](https://platform.openai.com/docs/api-reference/files) is attached to.
    */
   "vector_store_id": S.String,
   /**
@@ -12004,9 +17386,11 @@ export class VectorStoreFileObjectObject extends S.Literal("vector_store.file") 
 export class VectorStoreFileObjectStatus extends S.Literal("in_progress", "completed", "cancelled", "failed") {}
 
 /**
- * One of `server_error` or `rate_limit_exceeded`.
+ * One of `server_error`, `unsupported_file`, or `invalid_file`.
  */
-export class VectorStoreFileObjectLastErrorCode extends S.Literal("server_error", "unsupported_file", "invalid_file") {}
+export class VectorStoreFileObjectLastErrorEnumCode
+  extends S.Literal("server_error", "unsupported_file", "invalid_file")
+{}
 
 /**
  * Always `static`.
@@ -12041,6 +17425,11 @@ export class OtherChunkingStrategyResponseParam
 {}
 
 /**
+ * The strategy used to chunk the file.
+ */
+export class ChunkingStrategyResponse extends S.Record({ key: S.String, value: S.Unknown }) {}
+
+/**
  * A list of files attached to a vector store.
  */
 export class VectorStoreFileObject extends S.Class<VectorStoreFileObject>("VectorStoreFileObject")({
@@ -12061,31 +17450,25 @@ export class VectorStoreFileObject extends S.Class<VectorStoreFileObject>("Vecto
    */
   "created_at": S.Int,
   /**
-   * The ID of the [vector store](/docs/api-reference/vector-stores/object) that the [File](/docs/api-reference/files) is attached to.
+   * The ID of the [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object) that the [File](https://platform.openai.com/docs/api-reference/files) is attached to.
    */
   "vector_store_id": S.String,
   /**
    * The status of the vector store file, which can be either `in_progress`, `completed`, `cancelled`, or `failed`. The status `completed` indicates that the vector store file is ready for use.
    */
   "status": VectorStoreFileObjectStatus,
-  /**
-   * The last error associated with this vector store file. Will be `null` if there are no errors.
-   */
   "last_error": S.NullOr(S.Struct({
     /**
-     * One of `server_error` or `rate_limit_exceeded`.
+     * One of `server_error`, `unsupported_file`, or `invalid_file`.
      */
-    "code": VectorStoreFileObjectLastErrorCode,
+    "code": S.Literal("server_error", "unsupported_file", "invalid_file"),
     /**
      * A human-readable description of the error.
      */
     "message": S.String
   })),
-  /**
-   * The strategy used to chunk the file.
-   */
-  "chunking_strategy": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
-  "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true })
+  "chunking_strategy": S.optionalWith(ChunkingStrategyResponse, { nullable: true }),
+  "attributes": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true })
 }) {}
 
 export class ListVectorStoreFilesResponse
@@ -12110,20 +17493,9 @@ export class ListVectorStoreFilesParams extends S.Struct({
   "filter": S.optionalWith(ListVectorStoreFilesParamsFilter, { nullable: true })
 }) {}
 
-export class CreateVectorStoreFileRequest
-  extends S.Class<CreateVectorStoreFileRequest>("CreateVectorStoreFileRequest")({
-    /**
-     * A [File](/docs/api-reference/files) ID that the vector store should use. Useful for tools like `file_search` that can access files.
-     */
-    "file_id": S.String,
-    "chunking_strategy": S.optionalWith(ChunkingStrategyRequestParam, { nullable: true }),
-    "attributes": S.optionalWith(VectorStoreFileAttributes, { nullable: true })
-  })
-{}
-
 export class UpdateVectorStoreFileAttributesRequest
   extends S.Class<UpdateVectorStoreFileAttributesRequest>("UpdateVectorStoreFileAttributesRequest")({
-    "attributes": S.NullOr(VectorStoreFileAttributes)
+    "attributes": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
   })
 {}
 
@@ -12168,14 +17540,14 @@ export class VectorStoreFileContentResponse
      * Indicates if there are more content pages to fetch.
      */
     "has_more": S.Boolean,
-    /**
-     * The token for the next page, if any.
-     */
     "next_page": S.NullOr(S.String)
   })
 {}
 
-export class VectorStoreSearchRequestRankingOptionsRanker extends S.Literal("auto", "default-2024-11-15") {}
+/**
+ * Enable re-ranking; set to `none` to disable, which can help reduce latency.
+ */
+export class VectorStoreSearchRequestRankingOptionsRanker extends S.Literal("none", "auto", "default-2024-11-15") {}
 
 export class VectorStoreSearchRequest extends S.Class<VectorStoreSearchRequest>("VectorStoreSearchRequest")({
   /**
@@ -12202,6 +17574,9 @@ export class VectorStoreSearchRequest extends S.Class<VectorStoreSearchRequest>(
    */
   "ranking_options": S.optionalWith(
     S.Struct({
+      /**
+       * Enable re-ranking; set to `none` to disable, which can help reduce latency.
+       */
       "ranker": S.optionalWith(VectorStoreSearchRequestRankingOptionsRanker, {
         nullable: true,
         default: () => "auto" as const
@@ -12251,7 +17626,7 @@ export class VectorStoreSearchResultItem extends S.Class<VectorStoreSearchResult
    * The similarity score for the result.
    */
   "score": S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)),
-  "attributes": S.NullOr(VectorStoreFileAttributes),
+  "attributes": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
   /**
    * Content chunks from the file.
    */
@@ -12273,12 +17648,1177 @@ export class VectorStoreSearchResultsPage
      * Indicates if there are more results to fetch.
      */
     "has_more": S.Boolean,
-    /**
-     * The token for the next page, if any.
-     */
     "next_page": S.NullOr(S.String)
   })
 {}
+
+export class CreateConversationBody extends S.Class<CreateConversationBody>("CreateConversationBody")({
+  "metadata": S.optionalWith(Metadata, { nullable: true }),
+  "items": S.optionalWith(S.Array(InputItem).pipe(S.maxItems(20)), { nullable: true })
+}) {}
+
+export class UpdateConversationBody extends S.Class<UpdateConversationBody>("UpdateConversationBody")({
+  /**
+   * Set of 16 key-value pairs that can be attached to an object. This can be         useful for storing additional information about the object in a structured         format, and querying for objects via API or the dashboard.
+   *         Keys are strings with a maximum length of 64 characters. Values are strings         with a maximum length of 512 characters.
+   */
+  "metadata": S.NullOr(S.Record({ key: S.String, value: S.Unknown }))
+}) {}
+
+export class DeletedConversationResourceObject extends S.Literal("conversation.deleted") {}
+
+export class DeletedConversationResource extends S.Class<DeletedConversationResource>("DeletedConversationResource")({
+  "object": DeletedConversationResourceObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "conversation.deleted" as const)
+  ),
+  "deleted": S.Boolean,
+  "id": S.String
+}) {}
+
+export class OrderEnum extends S.Literal("asc", "desc") {}
+
+export class ListVideosParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(100)), { nullable: true }),
+  "order": S.optionalWith(OrderEnum, { nullable: true }),
+  /**
+   * Identifier for the last item from the previous pagination request
+   */
+  "after": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * The object type, which is always `video`.
+ */
+export class VideoResourceObject extends S.Literal("video") {}
+
+export class VideoModel extends S.Literal("sora-2", "sora-2-pro") {}
+
+export class VideoStatus extends S.Literal("queued", "in_progress", "completed", "failed") {}
+
+export class VideoSize extends S.Literal("720x1280", "1280x720", "1024x1792", "1792x1024") {}
+
+export class VideoSeconds extends S.Literal("4", "8", "12") {}
+
+export class Error2 extends S.Class<Error2>("Error2")({
+  "code": S.String,
+  "message": S.String
+}) {}
+
+/**
+ * Structured information describing a generated video job.
+ */
+export class VideoResource extends S.Class<VideoResource>("VideoResource")({
+  /**
+   * Unique identifier for the video job.
+   */
+  "id": S.String,
+  /**
+   * The object type, which is always `video`.
+   */
+  "object": VideoResourceObject.pipe(S.propertySignature, S.withConstructorDefault(() => "video" as const)),
+  /**
+   * The video generation model that produced the job.
+   */
+  "model": VideoModel,
+  /**
+   * Current lifecycle status of the video job.
+   */
+  "status": VideoStatus,
+  /**
+   * Approximate completion percentage for the generation task.
+   */
+  "progress": S.Int,
+  /**
+   * Unix timestamp (seconds) for when the job was created.
+   */
+  "created_at": S.Int,
+  "completed_at": S.NullOr(S.Int),
+  "expires_at": S.NullOr(S.Int),
+  "prompt": S.NullOr(S.String),
+  /**
+   * The resolution of the generated video.
+   */
+  "size": VideoSize,
+  /**
+   * Duration of the generated clip in seconds.
+   */
+  "seconds": VideoSeconds,
+  "remixed_from_video_id": S.NullOr(S.String),
+  "error": S.NullOr(Error2)
+}) {}
+
+export class VideoListResource extends S.Class<VideoListResource>("VideoListResource")({
+  /**
+   * The type of object returned, must be `list`.
+   */
+  "object": S.Literal("list").pipe(S.propertySignature, S.withConstructorDefault(() => "list" as const)),
+  /**
+   * A list of items
+   */
+  "data": S.Array(VideoResource),
+  "first_id": S.NullOr(S.String),
+  "last_id": S.NullOr(S.String),
+  /**
+   * Whether there are more items available.
+   */
+  "has_more": S.Boolean
+}) {}
+
+/**
+ * Parameters for creating a new video generation job.
+ */
+export class CreateVideoBody extends S.Class<CreateVideoBody>("CreateVideoBody")({
+  /**
+   * The video generation model to use. Defaults to `sora-2`.
+   */
+  "model": S.optionalWith(VideoModel, { nullable: true }),
+  /**
+   * Text prompt that describes the video to generate.
+   */
+  "prompt": S.String.pipe(S.minLength(1), S.maxLength(32000)),
+  /**
+   * Optional image reference that guides generation.
+   */
+  "input_reference": S.optionalWith(S.instanceOf(globalThis.Blob), { nullable: true }),
+  /**
+   * Clip duration in seconds. Defaults to 4 seconds.
+   */
+  "seconds": S.optionalWith(VideoSeconds, { nullable: true }),
+  /**
+   * Output resolution formatted as width x height. Defaults to 720x1280.
+   */
+  "size": S.optionalWith(VideoSize, { nullable: true })
+}) {}
+
+/**
+ * The object type that signals the deletion response.
+ */
+export class DeletedVideoResourceObject extends S.Literal("video.deleted") {}
+
+/**
+ * Confirmation payload returned after deleting a video.
+ */
+export class DeletedVideoResource extends S.Class<DeletedVideoResource>("DeletedVideoResource")({
+  /**
+   * The object type that signals the deletion response.
+   */
+  "object": DeletedVideoResourceObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "video.deleted" as const)
+  ),
+  /**
+   * Indicates that the video resource was deleted.
+   */
+  "deleted": S.Boolean,
+  /**
+   * Identifier of the deleted video.
+   */
+  "id": S.String
+}) {}
+
+export class VideoContentVariant extends S.Literal("video", "thumbnail", "spritesheet") {}
+
+export class RetrieveVideoContentParams extends S.Struct({
+  "variant": S.optionalWith(VideoContentVariant, { nullable: true })
+}) {}
+
+export class RetrieveVideoContent200 extends S.String {}
+
+/**
+ * Parameters for remixing an existing generated video.
+ */
+export class CreateVideoRemixBody extends S.Class<CreateVideoRemixBody>("CreateVideoRemixBody")({
+  /**
+   * Updated text prompt that directs the remix generation.
+   */
+  "prompt": S.String.pipe(S.minLength(1), S.maxLength(32000))
+}) {}
+
+export class TruncationEnum extends S.Literal("auto", "disabled") {}
+
+export class TokenCountsBody extends S.Class<TokenCountsBody>("TokenCountsBody")({
+  "model": S.optionalWith(S.String, { nullable: true }),
+  "input": S.optionalWith(
+    S.Union(
+      /**
+       * A text input to the model, equivalent to a text input with the `user` role.
+       */
+      S.String.pipe(S.maxLength(10485760)),
+      S.Array(InputItem)
+    ),
+    { nullable: true }
+  ),
+  "previous_response_id": S.optionalWith(S.String, { nullable: true }),
+  "tools": S.optionalWith(S.Array(Tool), { nullable: true }),
+  "text": S.optionalWith(ResponseTextParam, { nullable: true }),
+  "reasoning": S.optionalWith(Reasoning, { nullable: true }),
+  /**
+   * The truncation strategy to use for the model response. - `auto`: If the input to this Response exceeds the model's context window size, the model will truncate the response to fit the context window by dropping items from the beginning of the conversation. - `disabled` (default): If the input size will exceed the context window size for a model, the request will fail with a 400 error.
+   */
+  "truncation": S.optionalWith(TruncationEnum, { nullable: true }),
+  "instructions": S.optionalWith(S.String, { nullable: true }),
+  "conversation": S.optionalWith(ConversationParam, { nullable: true }),
+  "tool_choice": S.optionalWith(ToolChoiceParam, { nullable: true }),
+  "parallel_tool_calls": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+export class TokenCountsResourceObject extends S.Literal("response.input_tokens") {}
+
+export class TokenCountsResource extends S.Class<TokenCountsResource>("TokenCountsResource")({
+  "object": TokenCountsResourceObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "response.input_tokens" as const)
+  ),
+  "input_tokens": S.Int
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.session`.
+ */
+export class ChatSessionResourceObject extends S.Literal("chatkit.session") {}
+
+/**
+ * Controls diagnostic tracing during the session.
+ */
+export class ChatkitWorkflowTracing extends S.Class<ChatkitWorkflowTracing>("ChatkitWorkflowTracing")({
+  /**
+   * Indicates whether tracing is enabled.
+   */
+  "enabled": S.Boolean
+}) {}
+
+/**
+ * Workflow metadata and state returned for the session.
+ */
+export class ChatkitWorkflow extends S.Class<ChatkitWorkflow>("ChatkitWorkflow")({
+  /**
+   * Identifier of the workflow backing the session.
+   */
+  "id": S.String,
+  "version": S.NullOr(S.String),
+  "state_variables": S.NullOr(S.Record({ key: S.String, value: S.Unknown })),
+  /**
+   * Tracing settings applied to the workflow.
+   */
+  "tracing": ChatkitWorkflowTracing
+}) {}
+
+/**
+ * Active per-minute request limit for the session.
+ */
+export class ChatSessionRateLimits extends S.Class<ChatSessionRateLimits>("ChatSessionRateLimits")({
+  /**
+   * Maximum allowed requests per one-minute window.
+   */
+  "max_requests_per_1_minute": S.Int
+}) {}
+
+export class ChatSessionStatus extends S.Literal("active", "expired", "cancelled") {}
+
+/**
+ * Automatic thread title preferences for the session.
+ */
+export class ChatSessionAutomaticThreadTitling
+  extends S.Class<ChatSessionAutomaticThreadTitling>("ChatSessionAutomaticThreadTitling")({
+    /**
+     * Whether automatic thread titling is enabled.
+     */
+    "enabled": S.Boolean
+  })
+{}
+
+/**
+ * Upload permissions and limits applied to the session.
+ */
+export class ChatSessionFileUpload extends S.Class<ChatSessionFileUpload>("ChatSessionFileUpload")({
+  /**
+   * Indicates if uploads are enabled for the session.
+   */
+  "enabled": S.Boolean,
+  "max_file_size": S.NullOr(S.Int),
+  "max_files": S.NullOr(S.Int)
+}) {}
+
+/**
+ * History retention preferences returned for the session.
+ */
+export class ChatSessionHistory extends S.Class<ChatSessionHistory>("ChatSessionHistory")({
+  /**
+   * Indicates if chat history is persisted for the session.
+   */
+  "enabled": S.Boolean,
+  "recent_threads": S.NullOr(S.Int)
+}) {}
+
+/**
+ * ChatKit configuration for the session.
+ */
+export class ChatSessionChatkitConfiguration
+  extends S.Class<ChatSessionChatkitConfiguration>("ChatSessionChatkitConfiguration")({
+    /**
+     * Automatic thread titling preferences.
+     */
+    "automatic_thread_titling": ChatSessionAutomaticThreadTitling,
+    /**
+     * Upload settings for the session.
+     */
+    "file_upload": ChatSessionFileUpload,
+    /**
+     * History retention configuration.
+     */
+    "history": ChatSessionHistory
+  })
+{}
+
+/**
+ * Represents a ChatKit session and its resolved configuration.
+ */
+export class ChatSessionResource extends S.Class<ChatSessionResource>("ChatSessionResource")({
+  /**
+   * Identifier for the ChatKit session.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.session`.
+   */
+  "object": ChatSessionResourceObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.session" as const)
+  ),
+  /**
+   * Unix timestamp (in seconds) for when the session expires.
+   */
+  "expires_at": S.Int,
+  /**
+   * Ephemeral client secret that authenticates session requests.
+   */
+  "client_secret": S.String,
+  /**
+   * Workflow metadata for the session.
+   */
+  "workflow": ChatkitWorkflow,
+  /**
+   * User identifier associated with the session.
+   */
+  "user": S.String,
+  /**
+   * Resolved rate limit values.
+   */
+  "rate_limits": ChatSessionRateLimits,
+  /**
+   * Convenience copy of the per-minute request limit.
+   */
+  "max_requests_per_1_minute": S.Int,
+  /**
+   * Current lifecycle state of the session.
+   */
+  "status": ChatSessionStatus,
+  /**
+   * Resolved ChatKit feature configuration for the session.
+   */
+  "chatkit_configuration": ChatSessionChatkitConfiguration
+}) {}
+
+/**
+ * Controls diagnostic tracing during the session.
+ */
+export class WorkflowTracingParam extends S.Class<WorkflowTracingParam>("WorkflowTracingParam")({
+  /**
+   * Whether tracing is enabled during the session. Defaults to true.
+   */
+  "enabled": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+/**
+ * Workflow reference and overrides applied to the chat session.
+ */
+export class WorkflowParam extends S.Class<WorkflowParam>("WorkflowParam")({
+  /**
+   * Identifier for the workflow invoked by the session.
+   */
+  "id": S.String,
+  /**
+   * Specific workflow version to run. Defaults to the latest deployed version.
+   */
+  "version": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * State variables forwarded to the workflow. Keys may be up to 64 characters, values must be primitive types, and the map defaults to an empty object.
+   */
+  "state_variables": S.optionalWith(S.Record({ key: S.String, value: S.Unknown }), { nullable: true }),
+  /**
+   * Optional tracing overrides for the workflow invocation. When omitted, tracing is enabled by default.
+   */
+  "tracing": S.optionalWith(WorkflowTracingParam, { nullable: true })
+}) {}
+
+/**
+ * Base timestamp used to calculate expiration. Currently fixed to `created_at`.
+ */
+export class ExpiresAfterParamAnchor extends S.Literal("created_at") {}
+
+/**
+ * Controls when the session expires relative to an anchor timestamp.
+ */
+export class ExpiresAfterParam extends S.Class<ExpiresAfterParam>("ExpiresAfterParam")({
+  /**
+   * Base timestamp used to calculate expiration. Currently fixed to `created_at`.
+   */
+  "anchor": ExpiresAfterParamAnchor.pipe(S.propertySignature, S.withConstructorDefault(() => "created_at" as const)),
+  /**
+   * Number of seconds after the anchor when the session expires.
+   */
+  "seconds": S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(600))
+}) {}
+
+/**
+ * Controls request rate limits for the session.
+ */
+export class RateLimitsParam extends S.Class<RateLimitsParam>("RateLimitsParam")({
+  /**
+   * Maximum number of requests allowed per minute for the session. Defaults to 10.
+   */
+  "max_requests_per_1_minute": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+}) {}
+
+/**
+ * Controls whether ChatKit automatically generates thread titles.
+ */
+export class AutomaticThreadTitlingParam extends S.Class<AutomaticThreadTitlingParam>("AutomaticThreadTitlingParam")({
+  /**
+   * Enable automatic thread title generation. Defaults to true.
+   */
+  "enabled": S.optionalWith(S.Boolean, { nullable: true })
+}) {}
+
+/**
+ * Controls whether users can upload files.
+ */
+export class FileUploadParam extends S.Class<FileUploadParam>("FileUploadParam")({
+  /**
+   * Enable uploads for this session. Defaults to false.
+   */
+  "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Maximum size in megabytes for each uploaded file. Defaults to 512 MB, which is the maximum allowable size.
+   */
+  "max_file_size": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1), S.lessThanOrEqualTo(512)), { nullable: true }),
+  /**
+   * Maximum number of files that can be uploaded to the session. Defaults to 10.
+   */
+  "max_files": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+}) {}
+
+/**
+ * Controls how much historical context is retained for the session.
+ */
+export class HistoryParam extends S.Class<HistoryParam>("HistoryParam")({
+  /**
+   * Enables chat users to access previous ChatKit threads. Defaults to true.
+   */
+  "enabled": S.optionalWith(S.Boolean, { nullable: true }),
+  /**
+   * Number of recent ChatKit threads users have access to. Defaults to unlimited when unset.
+   */
+  "recent_threads": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(1)), { nullable: true })
+}) {}
+
+/**
+ * Optional per-session configuration settings for ChatKit behavior.
+ */
+export class ChatkitConfigurationParam extends S.Class<ChatkitConfigurationParam>("ChatkitConfigurationParam")({
+  /**
+   * Configuration for automatic thread titling. When omitted, automatic thread titling is enabled by default.
+   */
+  "automatic_thread_titling": S.optionalWith(AutomaticThreadTitlingParam, { nullable: true }),
+  /**
+   * Configuration for upload enablement and limits. When omitted, uploads are disabled by default (max_files 10, max_file_size 512 MB).
+   */
+  "file_upload": S.optionalWith(FileUploadParam, { nullable: true }),
+  /**
+   * Configuration for chat history retention. When omitted, history is enabled by default with no limit on recent_threads (null).
+   */
+  "history": S.optionalWith(HistoryParam, { nullable: true })
+}) {}
+
+/**
+ * Parameters for provisioning a new ChatKit session.
+ */
+export class CreateChatSessionBody extends S.Class<CreateChatSessionBody>("CreateChatSessionBody")({
+  /**
+   * Workflow that powers the session.
+   */
+  "workflow": WorkflowParam,
+  /**
+   * A free-form string that identifies your end user; ensures this Session can access other objects that have the same `user` scope.
+   */
+  "user": S.String.pipe(S.minLength(1)),
+  /**
+   * Optional override for session expiration timing in seconds from creation. Defaults to 10 minutes.
+   */
+  "expires_after": S.optionalWith(ExpiresAfterParam, { nullable: true }),
+  /**
+   * Optional override for per-minute request limits. When omitted, defaults to 10.
+   */
+  "rate_limits": S.optionalWith(RateLimitsParam, { nullable: true }),
+  /**
+   * Optional overrides for ChatKit runtime configuration features
+   */
+  "chatkit_configuration": S.optionalWith(ChatkitConfigurationParam, { nullable: true })
+}) {}
+
+export class ListThreadItemsMethodParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(100)), { nullable: true }),
+  "order": S.optionalWith(OrderEnum, { nullable: true }),
+  /**
+   * List items created after this thread item ID. Defaults to null for the first page.
+   */
+  "after": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * List items created before this thread item ID. Defaults to null for the newest results.
+   */
+  "before": S.optionalWith(S.String, { nullable: true })
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread_item`.
+ */
+export class UserMessageItemObject extends S.Literal("chatkit.thread_item") {}
+
+export class UserMessageItemType extends S.Literal("chatkit.user_message") {}
+
+/**
+ * Type discriminator that is always `input_text`.
+ */
+export class UserMessageInputTextType extends S.Literal("input_text") {}
+
+/**
+ * Text block that a user contributed to the thread.
+ */
+export class UserMessageInputText extends S.Class<UserMessageInputText>("UserMessageInputText")({
+  /**
+   * Type discriminator that is always `input_text`.
+   */
+  "type": UserMessageInputTextType.pipe(S.propertySignature, S.withConstructorDefault(() => "input_text" as const)),
+  /**
+   * Plain-text content supplied by the user.
+   */
+  "text": S.String
+}) {}
+
+/**
+ * Type discriminator that is always `quoted_text`.
+ */
+export class UserMessageQuotedTextType extends S.Literal("quoted_text") {}
+
+/**
+ * Quoted snippet that the user referenced in their message.
+ */
+export class UserMessageQuotedText extends S.Class<UserMessageQuotedText>("UserMessageQuotedText")({
+  /**
+   * Type discriminator that is always `quoted_text`.
+   */
+  "type": UserMessageQuotedTextType.pipe(S.propertySignature, S.withConstructorDefault(() => "quoted_text" as const)),
+  /**
+   * Quoted text content.
+   */
+  "text": S.String
+}) {}
+
+export class AttachmentType extends S.Literal("image", "file") {}
+
+/**
+ * Attachment metadata included on thread items.
+ */
+export class Attachment extends S.Class<Attachment>("Attachment")({
+  /**
+   * Attachment discriminator.
+   */
+  "type": AttachmentType,
+  /**
+   * Identifier for the attachment.
+   */
+  "id": S.String,
+  /**
+   * Original display name for the attachment.
+   */
+  "name": S.String,
+  /**
+   * MIME type of the attachment.
+   */
+  "mime_type": S.String,
+  "preview_url": S.NullOr(S.String)
+}) {}
+
+/**
+ * Tool selection that the assistant should honor when executing the item.
+ */
+export class ToolChoice extends S.Class<ToolChoice>("ToolChoice")({
+  /**
+   * Identifier of the requested tool.
+   */
+  "id": S.String
+}) {}
+
+/**
+ * Model and tool overrides applied when generating the assistant response.
+ */
+export class InferenceOptions extends S.Class<InferenceOptions>("InferenceOptions")({
+  "tool_choice": S.NullOr(ToolChoice),
+  "model": S.NullOr(S.String)
+}) {}
+
+/**
+ * User-authored messages within a thread.
+ */
+export class UserMessageItem extends S.Class<UserMessageItem>("UserMessageItem")({
+  /**
+   * Identifier of the thread item.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread_item`.
+   */
+  "object": UserMessageItemObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.thread_item" as const)
+  ),
+  /**
+   * Unix timestamp (in seconds) for when the item was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Identifier of the parent thread.
+   */
+  "thread_id": S.String,
+  "type": UserMessageItemType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.user_message" as const)
+  ),
+  /**
+   * Ordered content elements supplied by the user.
+   */
+  "content": S.Array(S.Union(UserMessageInputText, UserMessageQuotedText)),
+  /**
+   * Attachments associated with the user message. Defaults to an empty list.
+   */
+  "attachments": S.Array(Attachment),
+  "inference_options": S.NullOr(InferenceOptions)
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread_item`.
+ */
+export class AssistantMessageItemObject extends S.Literal("chatkit.thread_item") {}
+
+/**
+ * Type discriminator that is always `chatkit.assistant_message`.
+ */
+export class AssistantMessageItemType extends S.Literal("chatkit.assistant_message") {}
+
+/**
+ * Type discriminator that is always `output_text`.
+ */
+export class ResponseOutputTextType extends S.Literal("output_text") {}
+
+/**
+ * Type discriminator that is always `file` for this annotation.
+ */
+export class FileAnnotationType extends S.Literal("file") {}
+
+/**
+ * Type discriminator that is always `file`.
+ */
+export class FileAnnotationSourceType extends S.Literal("file") {}
+
+/**
+ * Attachment source referenced by an annotation.
+ */
+export class FileAnnotationSource extends S.Class<FileAnnotationSource>("FileAnnotationSource")({
+  /**
+   * Type discriminator that is always `file`.
+   */
+  "type": FileAnnotationSourceType.pipe(S.propertySignature, S.withConstructorDefault(() => "file" as const)),
+  /**
+   * Filename referenced by the annotation.
+   */
+  "filename": S.String
+}) {}
+
+/**
+ * Annotation that references an uploaded file.
+ */
+export class FileAnnotation extends S.Class<FileAnnotation>("FileAnnotation")({
+  /**
+   * Type discriminator that is always `file` for this annotation.
+   */
+  "type": FileAnnotationType.pipe(S.propertySignature, S.withConstructorDefault(() => "file" as const)),
+  /**
+   * File attachment referenced by the annotation.
+   */
+  "source": FileAnnotationSource
+}) {}
+
+/**
+ * Type discriminator that is always `url` for this annotation.
+ */
+export class UrlAnnotationType extends S.Literal("url") {}
+
+/**
+ * Type discriminator that is always `url`.
+ */
+export class UrlAnnotationSourceType extends S.Literal("url") {}
+
+/**
+ * URL backing an annotation entry.
+ */
+export class UrlAnnotationSource extends S.Class<UrlAnnotationSource>("UrlAnnotationSource")({
+  /**
+   * Type discriminator that is always `url`.
+   */
+  "type": UrlAnnotationSourceType.pipe(S.propertySignature, S.withConstructorDefault(() => "url" as const)),
+  /**
+   * URL referenced by the annotation.
+   */
+  "url": S.String
+}) {}
+
+/**
+ * Annotation that references a URL.
+ */
+export class UrlAnnotation extends S.Class<UrlAnnotation>("UrlAnnotation")({
+  /**
+   * Type discriminator that is always `url` for this annotation.
+   */
+  "type": UrlAnnotationType.pipe(S.propertySignature, S.withConstructorDefault(() => "url" as const)),
+  /**
+   * URL referenced by the annotation.
+   */
+  "source": UrlAnnotationSource
+}) {}
+
+/**
+ * Assistant response text accompanied by optional annotations.
+ */
+export class ResponseOutputText extends S.Class<ResponseOutputText>("ResponseOutputText")({
+  /**
+   * Type discriminator that is always `output_text`.
+   */
+  "type": ResponseOutputTextType.pipe(S.propertySignature, S.withConstructorDefault(() => "output_text" as const)),
+  /**
+   * Assistant generated text.
+   */
+  "text": S.String,
+  /**
+   * Ordered list of annotations attached to the response text.
+   */
+  "annotations": S.Array(S.Union(FileAnnotation, UrlAnnotation))
+}) {}
+
+/**
+ * Assistant-authored message within a thread.
+ */
+export class AssistantMessageItem extends S.Class<AssistantMessageItem>("AssistantMessageItem")({
+  /**
+   * Identifier of the thread item.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread_item`.
+   */
+  "object": AssistantMessageItemObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.thread_item" as const)
+  ),
+  /**
+   * Unix timestamp (in seconds) for when the item was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Identifier of the parent thread.
+   */
+  "thread_id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.assistant_message`.
+   */
+  "type": AssistantMessageItemType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.assistant_message" as const)
+  ),
+  /**
+   * Ordered assistant response segments.
+   */
+  "content": S.Array(ResponseOutputText)
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread_item`.
+ */
+export class WidgetMessageItemObject extends S.Literal("chatkit.thread_item") {}
+
+/**
+ * Type discriminator that is always `chatkit.widget`.
+ */
+export class WidgetMessageItemType extends S.Literal("chatkit.widget") {}
+
+/**
+ * Thread item that renders a widget payload.
+ */
+export class WidgetMessageItem extends S.Class<WidgetMessageItem>("WidgetMessageItem")({
+  /**
+   * Identifier of the thread item.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread_item`.
+   */
+  "object": WidgetMessageItemObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.thread_item" as const)
+  ),
+  /**
+   * Unix timestamp (in seconds) for when the item was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Identifier of the parent thread.
+   */
+  "thread_id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.widget`.
+   */
+  "type": WidgetMessageItemType.pipe(S.propertySignature, S.withConstructorDefault(() => "chatkit.widget" as const)),
+  /**
+   * Serialized widget payload rendered in the UI.
+   */
+  "widget": S.String
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread_item`.
+ */
+export class ClientToolCallItemObject extends S.Literal("chatkit.thread_item") {}
+
+/**
+ * Type discriminator that is always `chatkit.client_tool_call`.
+ */
+export class ClientToolCallItemType extends S.Literal("chatkit.client_tool_call") {}
+
+export class ClientToolCallStatus extends S.Literal("in_progress", "completed") {}
+
+/**
+ * Record of a client side tool invocation initiated by the assistant.
+ */
+export class ClientToolCallItem extends S.Class<ClientToolCallItem>("ClientToolCallItem")({
+  /**
+   * Identifier of the thread item.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread_item`.
+   */
+  "object": ClientToolCallItemObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.thread_item" as const)
+  ),
+  /**
+   * Unix timestamp (in seconds) for when the item was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Identifier of the parent thread.
+   */
+  "thread_id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.client_tool_call`.
+   */
+  "type": ClientToolCallItemType.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.client_tool_call" as const)
+  ),
+  /**
+   * Execution status for the tool call.
+   */
+  "status": ClientToolCallStatus,
+  /**
+   * Identifier for the client tool call.
+   */
+  "call_id": S.String,
+  /**
+   * Tool name that was invoked.
+   */
+  "name": S.String,
+  /**
+   * JSON-encoded arguments that were sent to the tool.
+   */
+  "arguments": S.String,
+  "output": S.NullOr(S.String)
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread_item`.
+ */
+export class TaskItemObject extends S.Literal("chatkit.thread_item") {}
+
+/**
+ * Type discriminator that is always `chatkit.task`.
+ */
+export class TaskItemType extends S.Literal("chatkit.task") {}
+
+export class TaskType extends S.Literal("custom", "thought") {}
+
+/**
+ * Task emitted by the workflow to show progress and status updates.
+ */
+export class TaskItem extends S.Class<TaskItem>("TaskItem")({
+  /**
+   * Identifier of the thread item.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread_item`.
+   */
+  "object": TaskItemObject.pipe(S.propertySignature, S.withConstructorDefault(() => "chatkit.thread_item" as const)),
+  /**
+   * Unix timestamp (in seconds) for when the item was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Identifier of the parent thread.
+   */
+  "thread_id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.task`.
+   */
+  "type": TaskItemType.pipe(S.propertySignature, S.withConstructorDefault(() => "chatkit.task" as const)),
+  /**
+   * Subtype for the task.
+   */
+  "task_type": TaskType,
+  "heading": S.NullOr(S.String),
+  "summary": S.NullOr(S.String)
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread_item`.
+ */
+export class TaskGroupItemObject extends S.Literal("chatkit.thread_item") {}
+
+/**
+ * Type discriminator that is always `chatkit.task_group`.
+ */
+export class TaskGroupItemType extends S.Literal("chatkit.task_group") {}
+
+/**
+ * Task entry that appears within a TaskGroup.
+ */
+export class TaskGroupTask extends S.Class<TaskGroupTask>("TaskGroupTask")({
+  /**
+   * Subtype for the grouped task.
+   */
+  "type": TaskType,
+  "heading": S.NullOr(S.String),
+  "summary": S.NullOr(S.String)
+}) {}
+
+/**
+ * Collection of workflow tasks grouped together in the thread.
+ */
+export class TaskGroupItem extends S.Class<TaskGroupItem>("TaskGroupItem")({
+  /**
+   * Identifier of the thread item.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread_item`.
+   */
+  "object": TaskGroupItemObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.thread_item" as const)
+  ),
+  /**
+   * Unix timestamp (in seconds) for when the item was created.
+   */
+  "created_at": S.Int,
+  /**
+   * Identifier of the parent thread.
+   */
+  "thread_id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.task_group`.
+   */
+  "type": TaskGroupItemType.pipe(S.propertySignature, S.withConstructorDefault(() => "chatkit.task_group" as const)),
+  /**
+   * Tasks included in the group.
+   */
+  "tasks": S.Array(TaskGroupTask)
+}) {}
+
+export class ThreadItem
+  extends S.Union(UserMessageItem, AssistantMessageItem, WidgetMessageItem, ClientToolCallItem, TaskItem, TaskGroupItem)
+{}
+
+/**
+ * A paginated list of thread items rendered for the ChatKit API.
+ */
+export class ThreadItemListResource extends S.Class<ThreadItemListResource>("ThreadItemListResource")({
+  /**
+   * The type of object returned, must be `list`.
+   */
+  "object": S.Literal("list").pipe(S.propertySignature, S.withConstructorDefault(() => "list" as const)),
+  /**
+   * A list of items
+   */
+  "data": S.Array(ThreadItem),
+  "first_id": S.NullOr(S.String),
+  "last_id": S.NullOr(S.String),
+  /**
+   * Whether there are more items available.
+   */
+  "has_more": S.Boolean
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread`.
+ */
+export class ThreadResourceObject extends S.Literal("chatkit.thread") {}
+
+/**
+ * Status discriminator that is always `active`.
+ */
+export class ActiveStatusType extends S.Literal("active") {}
+
+/**
+ * Indicates that a thread is active.
+ */
+export class ActiveStatus extends S.Class<ActiveStatus>("ActiveStatus")({
+  /**
+   * Status discriminator that is always `active`.
+   */
+  "type": ActiveStatusType.pipe(S.propertySignature, S.withConstructorDefault(() => "active" as const))
+}) {}
+
+/**
+ * Status discriminator that is always `locked`.
+ */
+export class LockedStatusType extends S.Literal("locked") {}
+
+/**
+ * Indicates that a thread is locked and cannot accept new input.
+ */
+export class LockedStatus extends S.Class<LockedStatus>("LockedStatus")({
+  /**
+   * Status discriminator that is always `locked`.
+   */
+  "type": LockedStatusType.pipe(S.propertySignature, S.withConstructorDefault(() => "locked" as const)),
+  "reason": S.NullOr(S.String)
+}) {}
+
+/**
+ * Status discriminator that is always `closed`.
+ */
+export class ClosedStatusType extends S.Literal("closed") {}
+
+/**
+ * Indicates that a thread has been closed.
+ */
+export class ClosedStatus extends S.Class<ClosedStatus>("ClosedStatus")({
+  /**
+   * Status discriminator that is always `closed`.
+   */
+  "type": ClosedStatusType.pipe(S.propertySignature, S.withConstructorDefault(() => "closed" as const)),
+  "reason": S.NullOr(S.String)
+}) {}
+
+/**
+ * Represents a ChatKit thread and its current status.
+ */
+export class ThreadResource extends S.Class<ThreadResource>("ThreadResource")({
+  /**
+   * Identifier of the thread.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread`.
+   */
+  "object": ThreadResourceObject.pipe(S.propertySignature, S.withConstructorDefault(() => "chatkit.thread" as const)),
+  /**
+   * Unix timestamp (in seconds) for when the thread was created.
+   */
+  "created_at": S.Int,
+  "title": S.NullOr(S.String),
+  /**
+   * Current status for the thread. Defaults to `active` for newly created threads.
+   */
+  "status": S.Union(ActiveStatus, LockedStatus, ClosedStatus),
+  /**
+   * Free-form string that identifies your end user who owns the thread.
+   */
+  "user": S.String
+}) {}
+
+/**
+ * Type discriminator that is always `chatkit.thread.deleted`.
+ */
+export class DeletedThreadResourceObject extends S.Literal("chatkit.thread.deleted") {}
+
+/**
+ * Confirmation payload returned after deleting a thread.
+ */
+export class DeletedThreadResource extends S.Class<DeletedThreadResource>("DeletedThreadResource")({
+  /**
+   * Identifier of the deleted thread.
+   */
+  "id": S.String,
+  /**
+   * Type discriminator that is always `chatkit.thread.deleted`.
+   */
+  "object": DeletedThreadResourceObject.pipe(
+    S.propertySignature,
+    S.withConstructorDefault(() => "chatkit.thread.deleted" as const)
+  ),
+  /**
+   * Indicates that the thread has been deleted.
+   */
+  "deleted": S.Boolean
+}) {}
+
+export class ListThreadsMethodParams extends S.Struct({
+  "limit": S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(100)), { nullable: true }),
+  "order": S.optionalWith(OrderEnum, { nullable: true }),
+  /**
+   * List items created after this thread item ID. Defaults to null for the first page.
+   */
+  "after": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * List items created before this thread item ID. Defaults to null for the newest results.
+   */
+  "before": S.optionalWith(S.String, { nullable: true }),
+  /**
+   * Filter threads that belong to this user identifier. Defaults to null to return all users.
+   */
+  "user": S.optionalWith(S.String.pipe(S.minLength(1), S.maxLength(512)), { nullable: true })
+}) {}
+
+/**
+ * A paginated list of ChatKit threads.
+ */
+export class ThreadListResource extends S.Class<ThreadListResource>("ThreadListResource")({
+  /**
+   * The type of object returned, must be `list`.
+   */
+  "object": S.Literal("list").pipe(S.propertySignature, S.withConstructorDefault(() => "list" as const)),
+  /**
+   * A list of items
+   */
+  "data": S.Array(ThreadResource),
+  "first_id": S.NullOr(S.String),
+  "last_id": S.NullOr(S.String),
+  /**
+   * Whether there are more items available.
+   */
+  "has_more": S.Boolean
+}) {}
 
 export const make = (
   httpClient: HttpClient.HttpClient,
@@ -12481,6 +19021,118 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "ListContainers": (options) =>
+      HttpClientRequest.get(`/containers`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "order": options?.["order"] as any,
+          "after": options?.["after"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ContainerListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateContainer": (options) =>
+      HttpClientRequest.post(`/containers`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ContainerResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "RetrieveContainer": (containerId) =>
+      HttpClientRequest.get(`/containers/${containerId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ContainerResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteContainer": (containerId) =>
+      HttpClientRequest.del(`/containers/${containerId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListContainerFiles": (containerId, options) =>
+      HttpClientRequest.get(`/containers/${containerId}/files`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "order": options?.["order"] as any,
+          "after": options?.["after"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ContainerFileListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateContainerFile": (containerId, options) =>
+      HttpClientRequest.post(`/containers/${containerId}/files`).pipe(
+        HttpClientRequest.bodyFormDataRecord(options as any),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ContainerFileResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "RetrieveContainerFile": (containerId, fileId) =>
+      HttpClientRequest.get(`/containers/${containerId}/files/${fileId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ContainerFileResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteContainerFile": (containerId, fileId) =>
+      HttpClientRequest.del(`/containers/${containerId}/files/${fileId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "RetrieveContainerFileContent": (containerId, fileId) =>
+      HttpClientRequest.get(`/containers/${containerId}/files/${fileId}/content`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listConversationItems": (conversationId, options) =>
+      HttpClientRequest.get(`/conversations/${conversationId}/items`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "order": options?.["order"] as any,
+          "after": options?.["after"] as any,
+          "include": options?.["include"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationItemList),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createConversationItems": (conversationId, options) =>
+      HttpClientRequest.post(`/conversations/${conversationId}/items`).pipe(
+        HttpClientRequest.setUrlParams({ "include": options.params?.["include"] as any }),
+        HttpClientRequest.bodyUnsafeJson(options.payload),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationItemList),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "getConversationItem": (conversationId, itemId, options) =>
+      HttpClientRequest.get(`/conversations/${conversationId}/items/${itemId}`).pipe(
+        HttpClientRequest.setUrlParams({ "include": options?.["include"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationItem),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteConversationItem": (conversationId, itemId) =>
+      HttpClientRequest.del(`/conversations/${conversationId}/items/${itemId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationResource),
+          orElse: unexpectedStatus
+        }))
+      ),
     "createEmbedding": (options) =>
       HttpClientRequest.post(`/embeddings`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
@@ -12639,6 +19291,22 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "runGrader": (options) =>
+      HttpClientRequest.post(`/fine_tuning/alpha/graders/run`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RunGraderResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "validateGrader": (options) =>
+      HttpClientRequest.post(`/fine_tuning/alpha/graders/validate`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ValidateGraderResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
     "listFineTuningCheckpointPermissions": (fineTunedModelCheckpoint, options) =>
       HttpClientRequest.get(`/fine_tuning/checkpoints/${fineTunedModelCheckpoint}/permissions`).pipe(
         HttpClientRequest.setUrlParams({
@@ -12714,6 +19382,20 @@ export const make = (
         HttpClientRequest.setUrlParams({ "after": options?.["after"] as any, "limit": options?.["limit"] as any }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ListFineTuningJobEventsResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "pauseFineTuningJob": (fineTuningJobId) =>
+      HttpClientRequest.post(`/fine_tuning/jobs/${fineTuningJobId}/pause`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FineTuningJob),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "resumeFineTuningJob": (fineTuningJobId) =>
+      HttpClientRequest.post(`/fine_tuning/jobs/${fineTuningJobId}/resume`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(FineTuningJob),
           orElse: unexpectedStatus
         }))
       ),
@@ -12900,6 +19582,95 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "listGroups": (options) =>
+      HttpClientRequest.get(`/organization/groups`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createGroup": (options) =>
+      HttpClientRequest.post(`/organization/groups`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "updateGroup": (groupId, options) =>
+      HttpClientRequest.post(`/organization/groups/${groupId}`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupResourceWithSuccess),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteGroup": (groupId) =>
+      HttpClientRequest.del(`/organization/groups/${groupId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupDeletedResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listGroupRoleAssignments": (groupId, options) =>
+      HttpClientRequest.get(`/organization/groups/${groupId}/roles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RoleListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "assignGroupRole": (groupId, options) =>
+      HttpClientRequest.post(`/organization/groups/${groupId}/roles`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupRoleAssignment),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "unassignGroupRole": (groupId, roleId) =>
+      HttpClientRequest.del(`/organization/groups/${groupId}/roles/${roleId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedRoleAssignmentResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listGroupUsers": (groupId, options) =>
+      HttpClientRequest.get(`/organization/groups/${groupId}/users`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(UserListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "addGroupUser": (groupId, options) =>
+      HttpClientRequest.post(`/organization/groups/${groupId}/users`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupUserAssignment),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "removeGroupUser": (groupId, userId) =>
+      HttpClientRequest.del(`/organization/groups/${groupId}/users/${userId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupUserDeletedResource),
+          orElse: unexpectedStatus
+        }))
+      ),
     "listInvites": (options) =>
       HttpClientRequest.get(`/organization/invites`).pipe(
         HttpClientRequest.setUrlParams({ "limit": options?.["limit"] as any, "after": options?.["after"] as any }),
@@ -13024,6 +19795,33 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "listProjectGroups": (projectId, options) =>
+      HttpClientRequest.get(`/organization/projects/${projectId}/groups`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ProjectGroupListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "addProjectGroup": (projectId, options) =>
+      HttpClientRequest.post(`/organization/projects/${projectId}/groups`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ProjectGroup),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "removeProjectGroup": (projectId, groupId) =>
+      HttpClientRequest.del(`/organization/projects/${projectId}/groups/${groupId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ProjectGroupDeletedResource),
+          orElse: unexpectedStatus
+        }))
+      ),
     "listProjectRateLimits": (projectId, options) =>
       HttpClientRequest.get(`/organization/projects/${projectId}/rate_limits`).pipe(
         HttpClientRequest.setUrlParams({
@@ -13116,6 +19914,41 @@ export const make = (
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(ProjectUserDeleteResponse),
           "400": decodeError("ErrorResponse", ErrorResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listRoles": (options) =>
+      HttpClientRequest.get(`/organization/roles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(PublicRoleListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createRole": (options) =>
+      HttpClientRequest.post(`/organization/roles`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Role),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "updateRole": (roleId, options) =>
+      HttpClientRequest.post(`/organization/roles/${roleId}`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Role),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteRole": (roleId) =>
+      HttpClientRequest.del(`/organization/roles/${roleId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RoleDeletedResource),
           orElse: unexpectedStatus
         }))
       ),
@@ -13302,6 +20135,168 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "listUserRoleAssignments": (userId, options) =>
+      HttpClientRequest.get(`/organization/users/${userId}/roles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RoleListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "assignUserRole": (userId, options) =>
+      HttpClientRequest.post(`/organization/users/${userId}/roles`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(UserRoleAssignment),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "unassignUserRole": (userId, roleId) =>
+      HttpClientRequest.del(`/organization/users/${userId}/roles/${roleId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedRoleAssignmentResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listProjectGroupRoleAssignments": (projectId, groupId, options) =>
+      HttpClientRequest.get(`/projects/${projectId}/groups/${groupId}/roles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RoleListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "assignProjectGroupRole": (projectId, groupId, options) =>
+      HttpClientRequest.post(`/projects/${projectId}/groups/${groupId}/roles`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(GroupRoleAssignment),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "unassignProjectGroupRole": (projectId, groupId, roleId) =>
+      HttpClientRequest.del(`/projects/${projectId}/groups/${groupId}/roles/${roleId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedRoleAssignmentResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listProjectRoles": (projectId, options) =>
+      HttpClientRequest.get(`/projects/${projectId}/roles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(PublicRoleListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createProjectRole": (projectId, options) =>
+      HttpClientRequest.post(`/projects/${projectId}/roles`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Role),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "updateProjectRole": (projectId, roleId, options) =>
+      HttpClientRequest.post(`/projects/${projectId}/roles/${roleId}`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Role),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteProjectRole": (projectId, roleId) =>
+      HttpClientRequest.del(`/projects/${projectId}/roles/${roleId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RoleDeletedResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "listProjectUserRoleAssignments": (projectId, userId, options) =>
+      HttpClientRequest.get(`/projects/${projectId}/users/${userId}/roles`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "after": options?.["after"] as any,
+          "order": options?.["order"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RoleListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "assignProjectUserRole": (projectId, userId, options) =>
+      HttpClientRequest.post(`/projects/${projectId}/users/${userId}/roles`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(UserRoleAssignment),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "unassignProjectUserRole": (projectId, userId, roleId) =>
+      HttpClientRequest.del(`/projects/${projectId}/users/${userId}/roles/${roleId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedRoleAssignmentResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createRealtimeCall": (options) =>
+      HttpClientRequest.post(`/realtime/calls`).pipe(
+        HttpClientRequest.bodyFormDataRecord(options as any),
+        withResponse(HttpClientResponse.matchStatus({
+          orElse: unexpectedStatus
+        }))
+      ),
+    "acceptRealtimeCall": (callId, options) =>
+      HttpClientRequest.post(`/realtime/calls/${callId}/accept`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "hangupRealtimeCall": (callId) =>
+      HttpClientRequest.post(`/realtime/calls/${callId}/hangup`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "referRealtimeCall": (callId, options) =>
+      HttpClientRequest.post(`/realtime/calls/${callId}/refer`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "rejectRealtimeCall": (callId, options) =>
+      HttpClientRequest.post(`/realtime/calls/${callId}/reject`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "200": () => Effect.void,
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createRealtimeClientSecret": (options) =>
+      HttpClientRequest.post(`/realtime/client_secrets`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RealtimeCreateClientSecretResponse),
+          orElse: unexpectedStatus
+        }))
+      ),
     "createRealtimeSession": (options) =>
       HttpClientRequest.post(`/realtime/sessions`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
@@ -13328,7 +20323,12 @@ export const make = (
       ),
     "getResponse": (responseId, options) =>
       HttpClientRequest.get(`/responses/${responseId}`).pipe(
-        HttpClientRequest.setUrlParams({ "include": options?.["include"] as any }),
+        HttpClientRequest.setUrlParams({
+          "include": options?.["include"] as any,
+          "stream": options?.["stream"] as any,
+          "starting_after": options?.["starting_after"] as any,
+          "include_obfuscation": options?.["include_obfuscation"] as any
+        }),
         withResponse(HttpClientResponse.matchStatus({
           "2xx": decodeSuccess(Response),
           orElse: unexpectedStatus
@@ -13342,13 +20342,20 @@ export const make = (
           orElse: unexpectedStatus
         }))
       ),
+    "cancelResponse": (responseId) =>
+      HttpClientRequest.post(`/responses/${responseId}/cancel`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(Response),
+          "404": decodeError("Error", Error),
+          orElse: unexpectedStatus
+        }))
+      ),
     "listInputItems": (responseId, options) =>
       HttpClientRequest.get(`/responses/${responseId}/input_items`).pipe(
         HttpClientRequest.setUrlParams({
           "limit": options?.["limit"] as any,
           "order": options?.["order"] as any,
           "after": options?.["after"] as any,
-          "before": options?.["before"] as any,
           "include": options?.["include"] as any
         }),
         withResponse(HttpClientResponse.matchStatus({
@@ -13680,6 +20687,150 @@ export const make = (
           "2xx": decodeSuccess(VectorStoreSearchResultsPage),
           orElse: unexpectedStatus
         }))
+      ),
+    "createConversation": (options) =>
+      HttpClientRequest.post(`/conversations`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "getConversation": (conversationId) =>
+      HttpClientRequest.get(`/conversations/${conversationId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "updateConversation": (conversationId, options) =>
+      HttpClientRequest.post(`/conversations/${conversationId}`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ConversationResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "deleteConversation": (conversationId) =>
+      HttpClientRequest.del(`/conversations/${conversationId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedConversationResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListVideos": (options) =>
+      HttpClientRequest.get(`/videos`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "order": options?.["order"] as any,
+          "after": options?.["after"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(VideoListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "createVideo": (options) =>
+      HttpClientRequest.post(`/videos`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(VideoResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetVideo": (videoId) =>
+      HttpClientRequest.get(`/videos/${videoId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(VideoResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteVideo": (videoId) =>
+      HttpClientRequest.del(`/videos/${videoId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedVideoResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "RetrieveVideoContent": (videoId, options) =>
+      HttpClientRequest.get(`/videos/${videoId}/content`).pipe(
+        HttpClientRequest.setUrlParams({ "variant": options?.["variant"] as any }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(RetrieveVideoContent200),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateVideoRemix": (videoId, options) =>
+      HttpClientRequest.post(`/videos/${videoId}/remix`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(VideoResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "Getinputtokencounts": (options) =>
+      HttpClientRequest.post(`/responses/input_tokens`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(TokenCountsResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CancelChatSessionMethod": (sessionId) =>
+      HttpClientRequest.post(`/chatkit/sessions/${sessionId}/cancel`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ChatSessionResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "CreateChatSessionMethod": (options) =>
+      HttpClientRequest.post(`/chatkit/sessions`).pipe(
+        HttpClientRequest.bodyUnsafeJson(options),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ChatSessionResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListThreadItemsMethod": (threadId, options) =>
+      HttpClientRequest.get(`/chatkit/threads/${threadId}/items`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "order": options?.["order"] as any,
+          "after": options?.["after"] as any,
+          "before": options?.["before"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ThreadItemListResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "GetThreadMethod": (threadId) =>
+      HttpClientRequest.get(`/chatkit/threads/${threadId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ThreadResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "DeleteThreadMethod": (threadId) =>
+      HttpClientRequest.del(`/chatkit/threads/${threadId}`).pipe(
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(DeletedThreadResource),
+          orElse: unexpectedStatus
+        }))
+      ),
+    "ListThreadsMethod": (options) =>
+      HttpClientRequest.get(`/chatkit/threads`).pipe(
+        HttpClientRequest.setUrlParams({
+          "limit": options?.["limit"] as any,
+          "order": options?.["order"] as any,
+          "after": options?.["after"] as any,
+          "before": options?.["before"] as any,
+          "user": options?.["user"] as any
+        }),
+        withResponse(HttpClientResponse.matchStatus({
+          "2xx": decodeSuccess(ThreadListResource),
+          orElse: unexpectedStatus
+        }))
       )
   }
 }
@@ -13767,21 +20918,21 @@ export interface Client {
     options?: typeof ListChatCompletionsParams.Encoded | undefined
   ) => Effect.Effect<typeof ChatCompletionList.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * **Starting a new project?** We recommend trying [Responses](/docs/api-reference/responses)
+   * **Starting a new project?** We recommend trying [Responses](https://platform.openai.com/docs/api-reference/responses)
    * to take advantage of the latest OpenAI platform features. Compare
-   * [Chat Completions with Responses](/docs/guides/responses-vs-chat-completions?api-mode=responses).
+   * [Chat Completions with Responses](https://platform.openai.com/docs/guides/responses-vs-chat-completions?api-mode=responses).
    *
    * ---
    *
    * Creates a model response for the given chat conversation. Learn more in the
-   * [text generation](/docs/guides/text-generation), [vision](/docs/guides/vision),
-   * and [audio](/docs/guides/audio) guides.
+   * [text generation](https://platform.openai.com/docs/guides/text-generation), [vision](https://platform.openai.com/docs/guides/vision),
+   * and [audio](https://platform.openai.com/docs/guides/audio) guides.
    *
    * Parameter support can differ depending on the model used to generate the
    * response, particularly for newer reasoning models. Parameters that are only
    * supported for reasoning models are noted below. For the current state of
    * unsupported parameters in reasoning models,
-   * [refer to the reasoning guide](/docs/guides/reasoning).
+   * [refer to the reasoning guide](https://platform.openai.com/docs/guides/reasoning).
    */
   readonly "createChatCompletion": (
     options: typeof CreateChatCompletionRequest.Encoded
@@ -13825,6 +20976,97 @@ export interface Client {
     options: typeof CreateCompletionRequest.Encoded
   ) => Effect.Effect<typeof CreateCompletionResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
+   * List Containers
+   */
+  readonly "ListContainers": (
+    options?: typeof ListContainersParams.Encoded | undefined
+  ) => Effect.Effect<typeof ContainerListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create Container
+   */
+  readonly "CreateContainer": (
+    options: typeof CreateContainerBody.Encoded
+  ) => Effect.Effect<typeof ContainerResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Retrieve Container
+   */
+  readonly "RetrieveContainer": (
+    containerId: string
+  ) => Effect.Effect<typeof ContainerResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Delete Container
+   */
+  readonly "DeleteContainer": (containerId: string) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List Container files
+   */
+  readonly "ListContainerFiles": (
+    containerId: string,
+    options?: typeof ListContainerFilesParams.Encoded | undefined
+  ) => Effect.Effect<typeof ContainerFileListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a Container File
+   *
+   * You can send either a multipart/form-data request with the raw file content, or a JSON request with a file ID.
+   */
+  readonly "CreateContainerFile": (
+    containerId: string,
+    options: typeof CreateContainerFileBody.Encoded
+  ) => Effect.Effect<typeof ContainerFileResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Retrieve Container File
+   */
+  readonly "RetrieveContainerFile": (
+    containerId: string,
+    fileId: string
+  ) => Effect.Effect<typeof ContainerFileResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Delete Container File
+   */
+  readonly "DeleteContainerFile": (
+    containerId: string,
+    fileId: string
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Retrieve Container File Content
+   */
+  readonly "RetrieveContainerFileContent": (
+    containerId: string,
+    fileId: string
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List all items for a conversation with the given ID.
+   */
+  readonly "listConversationItems": (
+    conversationId: string,
+    options?: typeof ListConversationItemsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ConversationItemList.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create items in a conversation with the given ID.
+   */
+  readonly "createConversationItems": (
+    conversationId: string,
+    options: {
+      readonly params?: typeof CreateConversationItemsParams.Encoded | undefined
+      readonly payload: typeof CreateConversationItemsRequest.Encoded
+    }
+  ) => Effect.Effect<typeof ConversationItemList.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Get a single item from a conversation with the given IDs.
+   */
+  readonly "getConversationItem": (
+    conversationId: string,
+    itemId: string,
+    options?: typeof GetConversationItemParams.Encoded | undefined
+  ) => Effect.Effect<typeof ConversationItem.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Delete an item from a conversation with the given IDs.
+   */
+  readonly "deleteConversationItem": (
+    conversationId: string,
+    itemId: string
+  ) => Effect.Effect<typeof ConversationResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
    * Creates an embedding vector representing the input text.
    */
   readonly "createEmbedding": (
@@ -13838,8 +21080,8 @@ export interface Client {
   ) => Effect.Effect<typeof EvalList.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Create the structure of an evaluation that can be used to test a model's performance.
-   * An evaluation is a set of testing criteria and a datasource. After creating an evaluation, you can run it on different models and model parameters. We support several types of graders and datasources.
-   * For more information, see the [Evals guide](/docs/guides/evals).
+   * An evaluation is a set of testing criteria and the config for a data source, which dictates the schema of the data used in the evaluation. After creating an evaluation, you can run it on different models and model parameters. We support several types of graders and datasources.
+   * For more information, see the [Evals guide](https://platform.openai.com/docs/guides/evals).
    */
   readonly "createEval": (
     options: typeof CreateEvalRequest.Encoded
@@ -13872,7 +21114,7 @@ export interface Client {
     options?: typeof GetEvalRunsParams.Encoded | undefined
   ) => Effect.Effect<typeof EvalRunList.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Create a new evaluation run. This is the endpoint that will kick off grading.
+   * Kicks off a new run for a given evaluation, specifying the data source, and what model configuration to use to test. The datasource will be validated against the schema specified in the config of the evaluation.
    */
   readonly "createEvalRun": (
     evalId: string,
@@ -13928,15 +21170,23 @@ export interface Client {
     options?: typeof ListFilesParams.Encoded | undefined
   ) => Effect.Effect<typeof ListFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Upload a file that can be used across various endpoints. Individual files can be up to 512 MB, and the size of all files uploaded by one organization can be up to 100 GB.
+   * Upload a file that can be used across various endpoints. Individual files
+   * can be up to 512 MB, and the size of all files uploaded by one organization
+   * can be up to 1 TB.
    *
-   * The Assistants API supports files up to 2 million tokens and of specific file types. See the [Assistants Tools guide](/docs/assistants/tools) for details.
+   * - The Assistants API supports files up to 2 million tokens and of specific
+   *   file types. See the [Assistants Tools guide](https://platform.openai.com/docs/assistants/tools) for
+   *   details.
+   * - The Fine-tuning API only supports `.jsonl` files. The input also has
+   *   certain required formats for fine-tuning
+   *   [chat](https://platform.openai.com/docs/api-reference/fine-tuning/chat-input) or
+   *   [completions](https://platform.openai.com/docs/api-reference/fine-tuning/completions-input) models.
+   * - The Batch API only supports `.jsonl` files up to 200 MB in size. The input
+   *   also has a specific required
+   *   [format](https://platform.openai.com/docs/api-reference/batch/request-input).
    *
-   * The Fine-tuning API only supports `.jsonl` files. The input also has certain required formats for fine-tuning [chat](/docs/api-reference/fine-tuning/chat-input) or [completions](/docs/api-reference/fine-tuning/completions-input) models.
-   *
-   * The Batch API only supports `.jsonl` files up to 200 MB in size. The input also has a specific required [format](/docs/api-reference/batch/request-input).
-   *
-   * Please [contact us](https://help.openai.com/) if you need to increase these storage limits.
+   * Please [contact us](https://help.openai.com/) if you need to increase these
+   * storage limits.
    */
   readonly "createFile": (
     options: typeof CreateFileRequest.Encoded
@@ -13948,7 +21198,7 @@ export interface Client {
     fileId: string
   ) => Effect.Effect<typeof OpenAIFile.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Delete a file.
+   * Delete a file and remove it from all vector stores.
    */
   readonly "deleteFile": (
     fileId: string
@@ -13959,6 +21209,18 @@ export interface Client {
   readonly "downloadFile": (
     fileId: string
   ) => Effect.Effect<typeof DownloadFile200.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Run a grader.
+   */
+  readonly "runGrader": (
+    options: typeof RunGraderRequest.Encoded
+  ) => Effect.Effect<typeof RunGraderResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Validate a grader.
+   */
+  readonly "validateGrader": (
+    options: typeof ValidateGraderRequest.Encoded
+  ) => Effect.Effect<typeof ValidateGraderResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * **NOTE:** This endpoint requires an [admin API key](../admin-api-keys).
    *
@@ -14006,7 +21268,7 @@ export interface Client {
    *
    * Response includes details of the enqueued job including job status and the name of the fine-tuned models once complete.
    *
-   * [Learn more about fine-tuning](/docs/guides/fine-tuning)
+   * [Learn more about fine-tuning](https://platform.openai.com/docs/guides/model-optimization)
    */
   readonly "createFineTuningJob": (
     options: typeof CreateFineTuningJobRequest.Encoded
@@ -14014,7 +21276,7 @@ export interface Client {
   /**
    * Get info about a fine-tuning job.
    *
-   * [Learn more about fine-tuning](/docs/guides/fine-tuning)
+   * [Learn more about fine-tuning](https://platform.openai.com/docs/guides/model-optimization)
    */
   readonly "retrieveFineTuningJob": (
     fineTuningJobId: string
@@ -14040,13 +21302,25 @@ export interface Client {
     options?: typeof ListFineTuningEventsParams.Encoded | undefined
   ) => Effect.Effect<typeof ListFineTuningJobEventsResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
+   * Pause a fine-tune job.
+   */
+  readonly "pauseFineTuningJob": (
+    fineTuningJobId: string
+  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Resume a fine-tune job.
+   */
+  readonly "resumeFineTuningJob": (
+    fineTuningJobId: string
+  ) => Effect.Effect<typeof FineTuningJob.Type, HttpClientError.HttpClientError | ParseError>
+  /**
    * Creates an edited or extended image given one or more source images and a prompt. This endpoint only supports `gpt-image-1` and `dall-e-2`.
    */
   readonly "createImageEdit": (
     options: typeof CreateImageEditRequest.Encoded
   ) => Effect.Effect<typeof ImagesResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Creates an image given a prompt. [Learn more](/docs/guides/images).
+   * Creates an image given a prompt. [Learn more](https://platform.openai.com/docs/guides/images).
    */
   readonly "createImage": (
     options: typeof CreateImageRequest.Encoded
@@ -14078,31 +21352,31 @@ export interface Client {
   ) => Effect.Effect<typeof DeleteModelResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Classifies if text and/or image inputs are potentially harmful. Learn
-   * more in the [moderation guide](/docs/guides/moderation).
+   * more in the [moderation guide](https://platform.openai.com/docs/guides/moderation).
    */
   readonly "createModeration": (
     options: typeof CreateModerationRequest.Encoded
   ) => Effect.Effect<typeof CreateModerationResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Retrieve a paginated list of organization admin API keys.
+   * List organization API keys
    */
   readonly "adminApiKeysList": (
     options?: typeof AdminApiKeysListParams.Encoded | undefined
   ) => Effect.Effect<typeof ApiKeyList.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Create a new admin-level API key for the organization.
+   * Create an organization admin API key
    */
   readonly "adminApiKeysCreate": (
     options: typeof AdminApiKeysCreateRequest.Encoded
   ) => Effect.Effect<typeof AdminApiKey.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Get details for a specific organization API key by its ID.
+   * Retrieve a single organization API key
    */
   readonly "adminApiKeysGet": (
     keyId: string
   ) => Effect.Effect<typeof AdminApiKey.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Delete the specified admin API key.
+   * Delete an organization admin API key
    */
   readonly "adminApiKeysDelete": (
     keyId: string
@@ -14173,6 +21447,73 @@ export interface Client {
   readonly "usageCosts": (
     options: typeof UsageCostsParams.Encoded
   ) => Effect.Effect<typeof UsageResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists all groups in the organization.
+   */
+  readonly "listGroups": (
+    options?: typeof ListGroupsParams.Encoded | undefined
+  ) => Effect.Effect<typeof GroupListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates a new group in the organization.
+   */
+  readonly "createGroup": (
+    options: typeof CreateGroupBody.Encoded
+  ) => Effect.Effect<typeof GroupResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates a group's information.
+   */
+  readonly "updateGroup": (
+    groupId: string,
+    options: typeof UpdateGroupBody.Encoded
+  ) => Effect.Effect<typeof GroupResourceWithSuccess.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes a group from the organization.
+   */
+  readonly "deleteGroup": (
+    groupId: string
+  ) => Effect.Effect<typeof GroupDeletedResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the organization roles assigned to a group within the organization.
+   */
+  readonly "listGroupRoleAssignments": (
+    groupId: string,
+    options?: typeof ListGroupRoleAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof RoleListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Assigns an organization role to a group within the organization.
+   */
+  readonly "assignGroupRole": (
+    groupId: string,
+    options: typeof PublicAssignOrganizationGroupRoleBody.Encoded
+  ) => Effect.Effect<typeof GroupRoleAssignment.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Unassigns an organization role from a group within the organization.
+   */
+  readonly "unassignGroupRole": (
+    groupId: string,
+    roleId: string
+  ) => Effect.Effect<typeof DeletedRoleAssignmentResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the users assigned to a group.
+   */
+  readonly "listGroupUsers": (
+    groupId: string,
+    options?: typeof ListGroupUsersParams.Encoded | undefined
+  ) => Effect.Effect<typeof UserListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Adds a user to a group.
+   */
+  readonly "addGroupUser": (
+    groupId: string,
+    options: typeof CreateGroupUserBody.Encoded
+  ) => Effect.Effect<typeof GroupUserAssignment.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Removes a user from a group.
+   */
+  readonly "removeGroupUser": (
+    groupId: string,
+    userId: string
+  ) => Effect.Effect<typeof GroupUserDeletedResource.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Returns a list of invites in the organization.
    */
@@ -14272,14 +21613,34 @@ export interface Client {
     options: typeof ToggleCertificatesRequest.Encoded
   ) => Effect.Effect<typeof ListCertificatesResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Deactivate certificates at the project level.
-   *
-   * You can atomically and idempotently deactivate up to 10 certificates at a time.
+   * Deactivate certificates at the project level. You can atomically and
+   * idempotently deactivate up to 10 certificates at a time.
    */
   readonly "deactivateProjectCertificates": (
     projectId: string,
     options: typeof ToggleCertificatesRequest.Encoded
   ) => Effect.Effect<typeof ListCertificatesResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the groups that have access to a project.
+   */
+  readonly "listProjectGroups": (
+    projectId: string,
+    options?: typeof ListProjectGroupsParams.Encoded | undefined
+  ) => Effect.Effect<typeof ProjectGroupListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Grants a group access to a project.
+   */
+  readonly "addProjectGroup": (
+    projectId: string,
+    options: typeof InviteProjectGroupBody.Encoded
+  ) => Effect.Effect<typeof ProjectGroup.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Revokes a group's access to a project.
+   */
+  readonly "removeProjectGroup": (
+    projectId: string,
+    groupId: string
+  ) => Effect.Effect<typeof ProjectGroupDeletedResource.Type, HttpClientError.HttpClientError | ParseError>
   /**
    * Returns the rate limits per model for a project.
    */
@@ -14381,6 +21742,31 @@ export interface Client {
     HttpClientError.HttpClientError | ParseError | ClientError<"ErrorResponse", typeof ErrorResponse.Type>
   >
   /**
+   * Lists the roles configured for the organization.
+   */
+  readonly "listRoles": (
+    options?: typeof ListRolesParams.Encoded | undefined
+  ) => Effect.Effect<typeof PublicRoleListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates a custom role for the organization.
+   */
+  readonly "createRole": (
+    options: typeof PublicCreateOrganizationRoleBody.Encoded
+  ) => Effect.Effect<typeof Role.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates an existing organization role.
+   */
+  readonly "updateRole": (
+    roleId: string,
+    options: typeof PublicUpdateOrganizationRoleBody.Encoded
+  ) => Effect.Effect<typeof Role.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes a custom role from the organization.
+   */
+  readonly "deleteRole": (
+    roleId: string
+  ) => Effect.Effect<typeof RoleDeletedResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
    * Get audio speeches usage details for the organization.
    */
   readonly "usageAudioSpeeches": (
@@ -14454,6 +21840,144 @@ export interface Client {
     userId: string
   ) => Effect.Effect<typeof UserDeleteResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
+   * Lists the organization roles assigned to a user within the organization.
+   */
+  readonly "listUserRoleAssignments": (
+    userId: string,
+    options?: typeof ListUserRoleAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof RoleListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Assigns an organization role to a user within the organization.
+   */
+  readonly "assignUserRole": (
+    userId: string,
+    options: typeof PublicAssignOrganizationGroupRoleBody.Encoded
+  ) => Effect.Effect<typeof UserRoleAssignment.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Unassigns an organization role from a user within the organization.
+   */
+  readonly "unassignUserRole": (
+    userId: string,
+    roleId: string
+  ) => Effect.Effect<typeof DeletedRoleAssignmentResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the project roles assigned to a group within a project.
+   */
+  readonly "listProjectGroupRoleAssignments": (
+    projectId: string,
+    groupId: string,
+    options?: typeof ListProjectGroupRoleAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof RoleListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Assigns a project role to a group within a project.
+   */
+  readonly "assignProjectGroupRole": (
+    projectId: string,
+    groupId: string,
+    options: typeof PublicAssignOrganizationGroupRoleBody.Encoded
+  ) => Effect.Effect<typeof GroupRoleAssignment.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Unassigns a project role from a group within a project.
+   */
+  readonly "unassignProjectGroupRole": (
+    projectId: string,
+    groupId: string,
+    roleId: string
+  ) => Effect.Effect<typeof DeletedRoleAssignmentResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the roles configured for a project.
+   */
+  readonly "listProjectRoles": (
+    projectId: string,
+    options?: typeof ListProjectRolesParams.Encoded | undefined
+  ) => Effect.Effect<typeof PublicRoleListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Creates a custom role for a project.
+   */
+  readonly "createProjectRole": (
+    projectId: string,
+    options: typeof PublicCreateOrganizationRoleBody.Encoded
+  ) => Effect.Effect<typeof Role.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Updates an existing project role.
+   */
+  readonly "updateProjectRole": (
+    projectId: string,
+    roleId: string,
+    options: typeof PublicUpdateOrganizationRoleBody.Encoded
+  ) => Effect.Effect<typeof Role.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Deletes a custom role from a project.
+   */
+  readonly "deleteProjectRole": (
+    projectId: string,
+    roleId: string
+  ) => Effect.Effect<typeof RoleDeletedResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Lists the project roles assigned to a user within a project.
+   */
+  readonly "listProjectUserRoleAssignments": (
+    projectId: string,
+    userId: string,
+    options?: typeof ListProjectUserRoleAssignmentsParams.Encoded | undefined
+  ) => Effect.Effect<typeof RoleListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Assigns a project role to a user within a project.
+   */
+  readonly "assignProjectUserRole": (
+    projectId: string,
+    userId: string,
+    options: typeof PublicAssignOrganizationGroupRoleBody.Encoded
+  ) => Effect.Effect<typeof UserRoleAssignment.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Unassigns a project role from a user within a project.
+   */
+  readonly "unassignProjectUserRole": (
+    projectId: string,
+    userId: string,
+    roleId: string
+  ) => Effect.Effect<typeof DeletedRoleAssignmentResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a new Realtime API call over WebRTC and receive the SDP answer needed
+   * to complete the peer connection.
+   */
+  readonly "createRealtimeCall": (
+    options: typeof RealtimeCallCreateRequest.Encoded
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Accept an incoming SIP call and configure the realtime session that will
+   * handle it.
+   */
+  readonly "acceptRealtimeCall": (
+    callId: string,
+    options: typeof RealtimeSessionCreateRequestGA.Encoded
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * End an active Realtime API call, whether it was initiated over SIP or
+   * WebRTC.
+   */
+  readonly "hangupRealtimeCall": (callId: string) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Transfer an active SIP call to a new destination using the SIP REFER verb.
+   */
+  readonly "referRealtimeCall": (
+    callId: string,
+    options: typeof RealtimeCallReferRequest.Encoded
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Decline an incoming SIP call by returning a SIP status code to the caller.
+   */
+  readonly "rejectRealtimeCall": (
+    callId: string,
+    options: typeof RealtimeCallRejectRequest.Encoded
+  ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a Realtime client secret with an associated session configuration.
+   */
+  readonly "createRealtimeClientSecret": (
+    options: typeof RealtimeCreateClientSecretRequest.Encoded
+  ) => Effect.Effect<typeof RealtimeCreateClientSecretResponse.Type, HttpClientError.HttpClientError | ParseError>
+  /**
    * Create an ephemeral API token for use in client-side applications with the
    * Realtime API. Can be configured with the same session parameters as the
    * `session.update` client event.
@@ -14481,12 +22005,12 @@ export interface Client {
     HttpClientError.HttpClientError | ParseError
   >
   /**
-   * Creates a model response. Provide [text](/docs/guides/text) or
-   * [image](/docs/guides/images) inputs to generate [text](/docs/guides/text)
-   * or [JSON](/docs/guides/structured-outputs) outputs. Have the model call
-   * your own [custom code](/docs/guides/function-calling) or use built-in
-   * [tools](/docs/guides/tools) like [web search](/docs/guides/tools-web-search)
-   * or [file search](/docs/guides/tools-file-search) to use your own data
+   * Creates a model response. Provide [text](https://platform.openai.com/docs/guides/text) or
+   * [image](https://platform.openai.com/docs/guides/images) inputs to generate [text](https://platform.openai.com/docs/guides/text)
+   * or [JSON](https://platform.openai.com/docs/guides/structured-outputs) outputs. Have the model call
+   * your own [custom code](https://platform.openai.com/docs/guides/function-calling) or use built-in
+   * [tools](https://platform.openai.com/docs/guides/tools) like [web search](https://platform.openai.com/docs/guides/tools-web-search)
+   * or [file search](https://platform.openai.com/docs/guides/tools-file-search) to use your own data
    * as input for the model's response.
    */
   readonly "createResponse": (
@@ -14505,6 +22029,17 @@ export interface Client {
   readonly "deleteResponse": (
     responseId: string
   ) => Effect.Effect<void, HttpClientError.HttpClientError | ParseError | ClientError<"Error", typeof Error.Type>>
+  /**
+   * Cancels a model response with the given ID. Only responses created with
+   * the `background` parameter set to `true` can be cancelled.
+   * [Learn more](https://platform.openai.com/docs/guides/background).
+   */
+  readonly "cancelResponse": (
+    responseId: string
+  ) => Effect.Effect<
+    typeof Response.Type,
+    HttpClientError.HttpClientError | ParseError | ClientError<"Error", typeof Error.Type>
+  >
   /**
    * Returns a list of input items for a given response.
    */
@@ -14644,23 +22179,23 @@ export interface Client {
     options: typeof SubmitToolOutputsRunRequest.Encoded
   ) => Effect.Effect<typeof RunObject.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Creates an intermediate [Upload](/docs/api-reference/uploads/object) object
-   * that you can add [Parts](/docs/api-reference/uploads/part-object) to.
+   * Creates an intermediate [Upload](https://platform.openai.com/docs/api-reference/uploads/object) object
+   * that you can add [Parts](https://platform.openai.com/docs/api-reference/uploads/part-object) to.
    * Currently, an Upload can accept at most 8 GB in total and expires after an
    * hour after you create it.
    *
    * Once you complete the Upload, we will create a
-   * [File](/docs/api-reference/files/object) object that contains all the parts
+   * [File](https://platform.openai.com/docs/api-reference/files/object) object that contains all the parts
    * you uploaded. This File is usable in the rest of our platform as a regular
    * File object.
    *
    * For certain `purpose` values, the correct `mime_type` must be specified.
    * Please refer to documentation for the
-   * [supported MIME types for your use case](/docs/assistants/tools/file-search#supported-files).
+   * [supported MIME types for your use case](https://platform.openai.com/docs/assistants/tools/file-search#supported-files).
    *
    * For guidance on the proper filename extensions for each purpose, please
    * follow the documentation on [creating a
-   * File](/docs/api-reference/files/create).
+   * File](https://platform.openai.com/docs/api-reference/files/create).
    */
   readonly "createUpload": (
     options: typeof CreateUploadRequest.Encoded
@@ -14672,9 +22207,9 @@ export interface Client {
     uploadId: string
   ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Completes the [Upload](/docs/api-reference/uploads/object).
+   * Completes the [Upload](https://platform.openai.com/docs/api-reference/uploads/object).
    *
-   * Within the returned Upload object, there is a nested [File](/docs/api-reference/files/object) object that is ready to use in the rest of the platform.
+   * Within the returned Upload object, there is a nested [File](https://platform.openai.com/docs/api-reference/files/object) object that is ready to use in the rest of the platform.
    *
    * You can specify the order of the Parts by passing in an ordered list of the Part IDs.
    *
@@ -14685,11 +22220,11 @@ export interface Client {
     options: typeof CompleteUploadRequest.Encoded
   ) => Effect.Effect<typeof Upload.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Adds a [Part](/docs/api-reference/uploads/part-object) to an [Upload](/docs/api-reference/uploads/object) object. A Part represents a chunk of bytes from the file you are trying to upload.
+   * Adds a [Part](https://platform.openai.com/docs/api-reference/uploads/part-object) to an [Upload](https://platform.openai.com/docs/api-reference/uploads/object) object. A Part represents a chunk of bytes from the file you are trying to upload.
    *
    * Each Part can be at most 64 MB, and you can add Parts until you hit the Upload maximum of 8 GB.
    *
-   * It is possible to add multiple Parts in parallel. You can decide the intended order of the Parts when you [complete the Upload](/docs/api-reference/uploads/complete).
+   * It is possible to add multiple Parts in parallel. You can decide the intended order of the Parts when you [complete the Upload](https://platform.openai.com/docs/api-reference/uploads/complete).
    */
   readonly "addUploadPart": (
     uploadId: string,
@@ -14763,7 +22298,7 @@ export interface Client {
     options?: typeof ListVectorStoreFilesParams.Encoded | undefined
   ) => Effect.Effect<typeof ListVectorStoreFilesResponse.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Create a vector store file by attaching a [File](/docs/api-reference/files) to a [vector store](/docs/api-reference/vector-stores/object).
+   * Create a vector store file by attaching a [File](https://platform.openai.com/docs/api-reference/files) to a [vector store](https://platform.openai.com/docs/api-reference/vector-stores/object).
    */
   readonly "createVectorStoreFile": (
     vectorStoreId: string,
@@ -14785,7 +22320,7 @@ export interface Client {
     options: typeof UpdateVectorStoreFileAttributesRequest.Encoded
   ) => Effect.Effect<typeof VectorStoreFileObject.Type, HttpClientError.HttpClientError | ParseError>
   /**
-   * Delete a vector store file. This will remove the file from the vector store but the file itself will not be deleted. To delete the file, use the [delete file](/docs/api-reference/files/delete) endpoint.
+   * Delete a vector store file. This will remove the file from the vector store but the file itself will not be deleted. To delete the file, use the [delete file](https://platform.openai.com/docs/api-reference/files/delete) endpoint.
    */
   readonly "deleteVectorStoreFile": (
     vectorStoreId: string,
@@ -14805,6 +22340,112 @@ export interface Client {
     vectorStoreId: string,
     options: typeof VectorStoreSearchRequest.Encoded
   ) => Effect.Effect<typeof VectorStoreSearchResultsPage.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a conversation.
+   */
+  readonly "createConversation": (
+    options: typeof CreateConversationBody.Encoded
+  ) => Effect.Effect<typeof ConversationResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Get a conversation
+   */
+  readonly "getConversation": (
+    conversationId: string
+  ) => Effect.Effect<typeof ConversationResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Update a conversation
+   */
+  readonly "updateConversation": (
+    conversationId: string,
+    options: typeof UpdateConversationBody.Encoded
+  ) => Effect.Effect<typeof ConversationResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Delete a conversation. Items in the conversation will not be deleted.
+   */
+  readonly "deleteConversation": (
+    conversationId: string
+  ) => Effect.Effect<typeof DeletedConversationResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List videos
+   */
+  readonly "ListVideos": (
+    options?: typeof ListVideosParams.Encoded | undefined
+  ) => Effect.Effect<typeof VideoListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a video
+   */
+  readonly "createVideo": (
+    options: typeof CreateVideoBody.Encoded
+  ) => Effect.Effect<typeof VideoResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Retrieve a video
+   */
+  readonly "GetVideo": (
+    videoId: string
+  ) => Effect.Effect<typeof VideoResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Delete a video
+   */
+  readonly "DeleteVideo": (
+    videoId: string
+  ) => Effect.Effect<typeof DeletedVideoResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Download video content
+   */
+  readonly "RetrieveVideoContent": (
+    videoId: string,
+    options?: typeof RetrieveVideoContentParams.Encoded | undefined
+  ) => Effect.Effect<typeof RetrieveVideoContent200.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a video remix
+   */
+  readonly "CreateVideoRemix": (
+    videoId: string,
+    options: typeof CreateVideoRemixBody.Encoded
+  ) => Effect.Effect<typeof VideoResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Get input token counts
+   */
+  readonly "Getinputtokencounts": (
+    options: typeof TokenCountsBody.Encoded
+  ) => Effect.Effect<typeof TokenCountsResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Cancel a ChatKit session
+   */
+  readonly "CancelChatSessionMethod": (
+    sessionId: string
+  ) => Effect.Effect<typeof ChatSessionResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Create a ChatKit session
+   */
+  readonly "CreateChatSessionMethod": (
+    options: typeof CreateChatSessionBody.Encoded
+  ) => Effect.Effect<typeof ChatSessionResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List ChatKit thread items
+   */
+  readonly "ListThreadItemsMethod": (
+    threadId: string,
+    options?: typeof ListThreadItemsMethodParams.Encoded | undefined
+  ) => Effect.Effect<typeof ThreadItemListResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Retrieve a ChatKit thread
+   */
+  readonly "GetThreadMethod": (
+    threadId: string
+  ) => Effect.Effect<typeof ThreadResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * Delete a ChatKit thread
+   */
+  readonly "DeleteThreadMethod": (
+    threadId: string
+  ) => Effect.Effect<typeof DeletedThreadResource.Type, HttpClientError.HttpClientError | ParseError>
+  /**
+   * List ChatKit threads
+   */
+  readonly "ListThreadsMethod": (
+    options?: typeof ListThreadsMethodParams.Encoded | undefined
+  ) => Effect.Effect<typeof ThreadListResource.Type, HttpClientError.HttpClientError | ParseError>
 }
 
 export interface ClientError<Tag extends string, E> {

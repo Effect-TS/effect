@@ -4,7 +4,9 @@
  * @since 2.0.0
  */
 
-type _TupleOf<T, N extends number, R extends Array<unknown>> = R["length"] extends N ? R : _TupleOf<T, N, [T, ...R]>
+type _TupleOf<T, N extends number, R extends Array<unknown>> = `${N}` extends `-${number}` ? never
+  : R["length"] extends N ? R
+  : _TupleOf<T, N, [T, ...R]>
 
 /**
  * Represents a tuple with a fixed number of elements of type `T`.
@@ -259,7 +261,7 @@ export type Mutable<T> = {
  */
 export type DeepMutable<T> = T extends ReadonlyMap<infer K, infer V> ? Map<DeepMutable<K>, DeepMutable<V>>
   : T extends ReadonlySet<infer V> ? Set<DeepMutable<V>>
-  : T extends string | number | boolean | bigint | symbol ? T
+  : T extends string | number | boolean | bigint | symbol | Function ? T
   : { -readonly [K in keyof T]: DeepMutable<T[K]> }
 
 /**
@@ -349,3 +351,11 @@ export type NoExcessProperties<T, U> = T & { readonly [K in Exclude<keyof U, key
  * @since 3.15.0
  */
 export type Ctor<T = {}> = new(...args: Array<any>) => T
+
+/**
+ * Conditional type that returns `void` if `S` is an empty object type,
+ * otherwise returns `S`.
+ *
+ * @since 3.19.20
+ */
+export type VoidIfEmpty<S> = keyof S extends never ? void : S
