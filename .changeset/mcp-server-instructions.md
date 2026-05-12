@@ -1,5 +1,5 @@
 ---
-"@effect/ai": minor
+"@effect/ai": patch
 ---
 
 Add optional `instructions` to `McpServer` layer options.
