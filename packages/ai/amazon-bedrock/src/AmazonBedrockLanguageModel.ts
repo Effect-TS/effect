@@ -208,23 +208,26 @@ export const make = Effect.fnUntraced(function*(options: {
       const responseFormat = providerOptions.responseFormat
 
       // Anthropic rejects requests that combine extended thinking with forced tool use.
-      // generateObject always forces toolChoice, so strip "thinking" in the json path.
-      // Return an explicit object (even if empty) when fields are present so the spread
-      // overrides the thinking config already placed in the request by ...config above.
-      const requestAdditionalFields: Record<string, unknown> | undefined = responseFormat.type === "json"
-        ? (Predicate.isNotUndefined(config.additionalModelRequestFields) ||
-            Predicate.isNotUndefined(additionalTools))
-          ? (() => {
-            const { thinking: _thinking, ...rest } = {
-              ...config.additionalModelRequestFields,
-              ...additionalTools
-            }
-            return rest
-          })()
-          : undefined
-        : Predicate.isNotUndefined(additionalTools)
-        ? { ...config.additionalModelRequestFields, ...additionalTools }
-        : undefined
+      // generateObject always forces toolChoice, so strip "thinking" from the merged
+      // fields on the json path to prevent a 400 from the Bedrock Converse API.
+      let requestAdditionalFields: Record<string, unknown> | undefined
+      if (responseFormat.type === "json") {
+        if (
+          Predicate.isNotUndefined(config.additionalModelRequestFields) ||
+          Predicate.isNotUndefined(additionalTools)
+        ) {
+          const { thinking: _thinking, ...rest } = {
+            ...config.additionalModelRequestFields,
+            ...additionalTools
+          }
+          requestAdditionalFields = rest
+        }
+      } else if (Predicate.isNotUndefined(additionalTools)) {
+        requestAdditionalFields = {
+          ...config.additionalModelRequestFields,
+          ...additionalTools
+        }
+      }
 
       const request: typeof ConverseRequest.Encoded = {
         ...config,
