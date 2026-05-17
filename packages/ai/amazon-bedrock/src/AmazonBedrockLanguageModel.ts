@@ -638,6 +638,7 @@ const makeStreamResponse: (
 
     let trace: ConverseTrace | undefined = undefined
     let cacheWriteInputTokens: number | undefined = undefined
+    let pendingFinishReason: typeof Response.FinishReason.Encoded | undefined = undefined
     const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
       outputTokens: undefined,
@@ -659,16 +660,7 @@ const makeStreamResponse: (
           }
 
           case "messageStop": {
-            const reason = InternalUtilities.resolveFinishReason(event.messageStop.stopReason)
-            parts.push({
-              type: "finish",
-              reason,
-              usage,
-              metadata: {
-                bedrock: { trace, usage: { cacheWriteInputTokens } }
-              }
-            })
-
+            pendingFinishReason = InternalUtilities.resolveFinishReason(event.messageStop.stopReason)
             break
           }
 
@@ -889,6 +881,17 @@ const makeStreamResponse: (
             }
             if (Predicate.isNotUndefined(event.metadata.trace)) {
               trace = event.metadata.trace
+            }
+            if (Predicate.isNotUndefined(pendingFinishReason)) {
+              parts.push({
+                type: "finish",
+                reason: pendingFinishReason,
+                usage,
+                metadata: {
+                  bedrock: { trace, usage: { cacheWriteInputTokens } }
+                }
+              })
+              pendingFinishReason = undefined
             }
             break
           }
