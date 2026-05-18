@@ -251,7 +251,7 @@ export type Encoded = {
    * - Un-acknowledged chunk replies
    * - WithExit replies
    */
-  readonly repliesFor: (requestIds: Array<string>) => Effect.Effect<
+  readonly repliesFor: (requestIds: Arr.NonEmptyArray<string>) => Effect.Effect<
     Array<Reply.ReplyEncoded<any>>,
     PersistenceError
   >
@@ -259,7 +259,7 @@ export type Encoded = {
   /**
    * Retrieves the replies for the specified request ids.
    */
-  readonly repliesForUnfiltered: (requestIds: Array<string>) => Effect.Effect<
+  readonly repliesForUnfiltered: (requestIds: Arr.NonEmptyArray<string>) => Effect.Effect<
     Array<Reply.ReplyEncoded<any>>,
     PersistenceError
   >
@@ -275,7 +275,7 @@ export type Encoded = {
    * - All Interrupt's for unprocessed requests
    */
   readonly unprocessedMessages: (
-    shardIds: ReadonlyArray<string>,
+    shardIds: Arr.NonEmptyArray<string>,
     now: number
   ) => Effect.Effect<
     Array<{
@@ -289,7 +289,7 @@ export type Encoded = {
    * Retrieves the unprocessed messages by id.
    */
   readonly unprocessedMessagesById: (
-    messageIds: ReadonlyArray<Snowflake.Snowflake>,
+    messageIds: Arr.NonEmptyArray<Snowflake.Snowflake>,
     now: number
   ) => Effect.Effect<
     Array<{
@@ -317,7 +317,7 @@ export type Encoded = {
    * Reset the mailbox state for the provided shards.
    */
   readonly resetShards: (
-    shardIds: ReadonlyArray<string>
+    shardIds: Arr.NonEmptyArray<string>
   ) => Effect.Effect<void, PersistenceError>
 }
 
@@ -504,28 +504,31 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         requestIds.push(id)
         map.set(id, message)
       }
-      if (requestIds.length === 0) return []
+      if (!Arr.isNonEmptyArray(requestIds)) return []
       const encodedReplies = yield* encoded.repliesFor(requestIds)
       return yield* decodeReplies(map, encodedReplies)
     }),
-    repliesForUnfiltered: (ids) => encoded.repliesForUnfiltered(Array.from(ids, String)),
+    repliesForUnfiltered: (ids) => {
+      const requestIds = Array.from(ids, String)
+      return Arr.isNonEmptyArray(requestIds)
+        ? encoded.repliesForUnfiltered(requestIds)
+        : Effect.succeed([])
+    },
     requestIdForPrimaryKey(options) {
       const primaryKey = Envelope.primaryKeyByAddress(options)
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
     unprocessedMessages: (shardIds) => {
-      const shards = Array.from(shardIds)
-      if (shards.length === 0) return Effect.succeed([])
+      const shards = Array.from(shardIds, (id) => id.toString())
+      if (!Arr.isNonEmptyArray(shards)) return Effect.succeed([])
       return Effect.flatMap(
-        Effect.suspend(() =>
-          encoded.unprocessedMessages(shards.map((id) => id.toString()), clock.unsafeCurrentTimeMillis())
-        ),
+        Effect.suspend(() => encoded.unprocessedMessages(shards, clock.unsafeCurrentTimeMillis())),
         decodeMessages
       )
     },
     unprocessedMessagesById(messageIds) {
       const ids = Array.from(messageIds)
-      if (ids.length === 0) return Effect.succeed([])
+      if (!Arr.isNonEmptyArray(ids)) return Effect.succeed([])
       return Effect.flatMap(
         Effect.suspend(() => encoded.unprocessedMessagesById(ids, clock.unsafeCurrentTimeMillis())),
         decodeMessages
@@ -533,7 +536,12 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
     },
     resetAddress: encoded.resetAddress,
     clearAddress: encoded.clearAddress,
-    resetShards: (shardIds) => encoded.resetShards(Array.from(shardIds, (id) => id.toString()))
+    resetShards: (shardIds) => {
+      const shards = Array.from(shardIds, (id) => id.toString())
+      return Arr.isNonEmptyArray(shards)
+        ? encoded.resetShards(shards)
+        : Effect.void
+    }
   })
 
   const decodeMessages = (

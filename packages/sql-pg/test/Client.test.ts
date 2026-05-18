@@ -2,7 +2,7 @@ import { PgClient } from "@effect/sql-pg"
 import * as SqlClient from "@effect/sql/SqlClient"
 import * as Statement from "@effect/sql/Statement"
 import { assert, expect, it } from "@effect/vitest"
-import { Effect, Redacted, String } from "effect"
+import { Effect, Fiber, Redacted, String } from "effect"
 import * as Chunk from "effect/Chunk"
 import * as Stream from "effect/Stream"
 import * as TestServices from "effect/TestServices"
@@ -317,4 +317,64 @@ it.layer(PgContainer.ClientTransformLive, { timeout: "30 seconds" })("PgClient t
       expect(Redacted.value(sql.config.password)).toEqual(parsedConfig.password)
       expect(sql.config.database).toEqual(parsedConfig.database)
     }))
+})
+
+it.layer(PgContainer.ClientFromPoolLive, { timeout: "30 seconds" })("PgClient fromPool", (it) => {
+  it.effect("uses compiler transforms", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const [query] = sql`SELECT * from ${sql("peopleTest")}`.compile()
+      expect(query).toEqual(`SELECT * from "people_test"`)
+    }))
+
+  it.effect("Should populate config", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+
+      assert.isDefined(sql.config.url)
+      const parsedConfig = parsePgConnectionString(Redacted.value(sql.config.url))
+
+      expect(sql.config.host).toEqual(parsedConfig.host)
+      assert.isNotNull(parsedConfig.port)
+      assert.isDefined(parsedConfig.port)
+      expect(sql.config.port).toEqual(parseInt(parsedConfig.port))
+      expect(sql.config.username).toEqual(parsedConfig.user)
+      assert.isDefined(sql.config.password)
+      expect(Redacted.value(sql.config.password)).toEqual(parsedConfig.password)
+      expect(sql.config.database).toEqual(parsedConfig.database)
+    }))
+})
+
+it.layer(PgContainer.ClientSingleConnectionLive, { timeout: "30 seconds" })("PgClient listen", (it) => {
+  it.scoped("listen does not reserve a pool connection", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const channel = "pool_connection_listen"
+
+      const listenFiber = yield* sql.listen(channel).pipe(
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.forkScoped
+      )
+
+      yield* Effect.sleep("250 millis")
+
+      const rows = yield* sql<{ value: number }>`SELECT 1 as value`.pipe(
+        Effect.timeoutFail({
+          duration: "3 seconds",
+          onTimeout: () => new Error("query timed out while listener was active")
+        })
+      )
+      expect(rows).toEqual([{ value: 1 }])
+
+      yield* sql`SELECT pg_notify(${channel}, ${"payload"})`
+
+      const payloads = yield* Fiber.join(listenFiber).pipe(
+        Effect.timeoutFail({
+          duration: "3 seconds",
+          onTimeout: () => new Error("listener did not receive notification in time")
+        })
+      )
+      expect(Chunk.toReadonlyArray(payloads)).toEqual(["payload"])
+    }).pipe(TestServices.provideLive))
 })

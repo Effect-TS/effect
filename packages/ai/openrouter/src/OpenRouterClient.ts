@@ -102,7 +102,7 @@ export const make: (options: {
       request.pipe(
         HttpClientRequest.prependUrl(options.apiUrl ?? "https://openrouter.ai/api/v1"),
         options.apiKey ? HttpClientRequest.bearerToken(options.apiKey) : identity,
-        options.referrer ? HttpClientRequest.setHeader("HTTP-Referrer", options.referrer) : identity,
+        options.referrer ? HttpClientRequest.setHeader("HTTP-Referer", options.referrer) : identity,
         options.title ? HttpClientRequest.setHeader("X-Title", options.title) : identity,
         HttpClientRequest.acceptJson
       )
@@ -313,10 +313,10 @@ export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMess
 )({
   index: Schema.Number,
   id: Schema.optionalWith(Schema.String, { nullable: true }),
-  type: Schema.Literal("function"),
+  type: Schema.optionalWith(Schema.Literal("function"), { nullable: true }),
   function: Schema.Struct({
-    name: Schema.String,
-    arguments: Schema.String
+    name: Schema.optionalWith(Schema.String, { nullable: true }),
+    arguments: Schema.optionalWith(Schema.String, { nullable: true })
   })
 }) {}
 

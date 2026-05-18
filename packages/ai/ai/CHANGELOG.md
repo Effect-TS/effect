@@ -1,5 +1,55 @@
 # @effect/ai
 
+## 0.35.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/experimental@0.60.0
+  - @effect/platform@0.96.0
+  - @effect/rpc@0.75.0
+
+## 0.34.0
+
+### Patch Changes
+
+- [#6094](https://github.com/Effect-TS/effect/pull/6094) [`88a5260`](https://github.com/Effect-TS/effect/commit/88a5260788d57bb0c31a645fa44b5a68f5c73c38) Thanks @IMax153! - Remove superfluous / defensive check from tool call json schema generation
+
+- [#6101](https://github.com/Effect-TS/effect/pull/6101) [`cf74940`](https://github.com/Effect-TS/effect/commit/cf749405214282edc916a783b3417c766d2bbfe3) Thanks @IMax153! - Prevent schema validation when directly constructing an `AiError.HttpRequestError` / `AiError.HttpResponseError`
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/experimental@0.59.0
+  - @effect/platform@0.95.0
+  - @effect/rpc@0.74.0
+
+## 0.33.2
+
+### Patch Changes
+
+- [#5944](https://github.com/Effect-TS/effect/pull/5944) [`f21f034`](https://github.com/Effect-TS/effect/commit/f21f03477ea9b6fd4662a93097290cb940ce9c2b) Thanks @IMax153! - Fix Prompt.fromResponseParts when input contains a provider executed tool
+
+## 0.33.1
+
+### Patch Changes
+
+- [#5931](https://github.com/Effect-TS/effect/pull/5931) [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4) Thanks @IMax153! - Fix the accumulation logic for response parts in the AI `Chat` module
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+
+## 0.33.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/experimental@0.58.0
+  - @effect/rpc@0.73.0
+
 ## 0.32.1
 
 ### Patch Changes

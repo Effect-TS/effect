@@ -184,7 +184,7 @@ export class PodStatus extends Schema.Class<PodStatus>("@effect/cluster/K8sHttpC
   conditions: Schema.Array(Schema.Struct({
     type: Schema.String,
     status: Schema.String,
-    lastTransitionTime: Schema.String
+    lastTransitionTime: Schema.NullOr(Schema.String)
   })),
   podIP: Schema.String,
   hostIP: Schema.String
@@ -208,8 +208,8 @@ export class Pod extends Schema.Class<Pod>("@effect/cluster/K8sHttpClient/Pod")(
   }
 
   get isReadyOrInitializing(): boolean {
-    let initializedAt: string | undefined
-    let readyAt: string | undefined
+    let initializedAt: string | null | undefined
+    let readyAt: string | null | undefined
     for (let i = 0; i < this.status.conditions.length; i++) {
       const condition = this.status.conditions[i]
       switch (condition.type) {

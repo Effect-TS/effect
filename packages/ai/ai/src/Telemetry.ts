@@ -519,11 +519,13 @@ export interface SpanTransformer {
  * @example
  * ```ts
  * import { Telemetry } from "@effect/ai"
- * import { Context, Effect } from "effect"
+ * import * as Effect from "effect/Effect"
+ *
+ * declare const myAIOperation: Effect.Effect<void>
  *
  * // Create a custom span transformer
  * const loggingTransformer: Telemetry.SpanTransformer = (options) => {
- *   console.log(`AI request completed: ${options.model}`)
+ *   console.log(`AI request completed: ${options.response.length} part(s)`)
  *   options.response.forEach((part, index) => {
  *     console.log(`Part ${index}: ${part.type}`)
  *   })

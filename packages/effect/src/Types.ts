@@ -351,3 +351,11 @@ export type NoExcessProperties<T, U> = T & { readonly [K in Exclude<keyof U, key
  * @since 3.15.0
  */
 export type Ctor<T = {}> = new(...args: Array<any>) => T
+
+/**
+ * Conditional type that returns `void` if `S` is an empty object type,
+ * otherwise returns `S`.
+ *
+ * @since 3.19.20
+ */
+export type VoidIfEmpty<S> = keyof S extends never ? void : S

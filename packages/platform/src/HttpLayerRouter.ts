@@ -1032,7 +1032,7 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
       existing.add(route)
       routes.push(makeRoute({
         ...route as any,
-        handler: Effect.provide(route.handler, context)
+        handler: Effect.mapInputContext(route.handler, (input) => Context.merge(context, input))
       }))
     }
 

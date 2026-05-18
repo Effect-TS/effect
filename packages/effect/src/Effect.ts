@@ -12999,6 +12999,12 @@ export const annotateCurrentSpan: {
 export const currentSpan: Effect<Tracer.Span, Cause.NoSuchElementException> = effect.currentSpan
 
 /**
+ * @since 3.20.0
+ * @category Tracing
+ */
+export const currentPropagatedSpan: Effect<Tracer.Span, Cause.NoSuchElementException> = effect.currentPropagatedSpan
+
+/**
  * @since 2.0.0
  * @category Tracing
  */

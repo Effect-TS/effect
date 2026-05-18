@@ -204,6 +204,7 @@ export const EnvelopeFromSelf: Schema.Schema<
   Envelope.Any,
   Envelope.Any
 > = Schema.declare(isEnvelope, {
+  typeConstructor: { _tag: "effect/cluster/Envelope" },
   identifier: "Envelope"
 })
 
@@ -215,6 +216,7 @@ export const RequestFromSelf: Schema.Schema<
   Request.Any,
   Request.Any
 > = Schema.declare((u): u is Request.Any => isEnvelope(u) && u._tag === "Request", {
+  typeConstructor: { _tag: "effect/cluster/Envelope.Request" },
   identifier: "Envelope"
 })
 

@@ -175,4 +175,63 @@ describe("RcMap", () => {
 
       deepStrictEqual(yield* RcMap.keys(map), ["foo", "bar", "baz"])
     }))
+
+  it.scoped("dynamic idleTimeToLive", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const map = yield* RcMap.make({
+        lookup: (key: string) =>
+          Effect.acquireRelease(
+            Effect.sync(() => {
+              acquired.push(key)
+              return key
+            }),
+            () => Effect.sync(() => released.push(key))
+          ),
+        idleTimeToLive: (key: string) => key.startsWith("short:") ? 500 : 2000
+      })
+
+      deepStrictEqual(acquired, [])
+
+      yield* Effect.scoped(RcMap.get(map, "short:a"))
+      yield* Effect.scoped(RcMap.get(map, "long:b"))
+      deepStrictEqual(acquired, ["short:a", "long:b"])
+      deepStrictEqual(released, [])
+
+      yield* TestClock.adjust(500)
+      deepStrictEqual(released, ["short:a"])
+
+      yield* TestClock.adjust(1500)
+      deepStrictEqual(released, ["short:a", "long:b"])
+    }))
+
+  it.scoped("dynamic idleTimeToLive with touch", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      const released: Array<string> = []
+      const map = yield* RcMap.make({
+        lookup: (key: string) =>
+          Effect.acquireRelease(
+            Effect.sync(() => {
+              acquired.push(key)
+              return key
+            }),
+            () => Effect.sync(() => released.push(key))
+          ),
+        idleTimeToLive: (key: string) => key.startsWith("short:") ? 500 : 2000
+      })
+
+      yield* Effect.scoped(RcMap.get(map, "short:a"))
+      deepStrictEqual(acquired, ["short:a"])
+      deepStrictEqual(released, [])
+
+      yield* TestClock.adjust(250)
+      yield* RcMap.touch(map, "short:a")
+      yield* TestClock.adjust(250)
+      deepStrictEqual(released, [])
+
+      yield* TestClock.adjust(250)
+      deepStrictEqual(released, ["short:a"])
+    }))
 })

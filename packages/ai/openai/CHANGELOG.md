@@ -1,5 +1,71 @@
 # @effect/ai-openai
 
+## 0.39.2
+
+### Patch Changes
+
+- [`49c5acd`](https://github.com/Effect-TS/effect/commit/49c5acd5932b3d3981353481664606097082ea2f) Thanks @mollyegibson! - Previously, setting `strict: false` on `OpenAiLanguageModel` config caused a 400 "Unknown parameter: 'strict'" response from the OpenAI Responses API, because the flag was spread into the top-level request body instead of being consumed only by the tool and response_format schema builders. The `strict` flag is now stripped from the request body while still controlling `strict` on tool schemas (`prepareTools`) and json_schema response formats (`prepareResponseFormat`).
+
+## 0.39.1
+
+### Patch Changes
+
+- [`47f0439`](https://github.com/Effect-TS/effect/commit/47f04399d317a1a5619de7dec5b23f6ad7255eca) Thanks @aayushbaluni! - fix(ai-openai): deduplicate response.output items to prevent invalid JSON concatenation
+
+- [#6187](https://github.com/Effect-TS/effect/pull/6187) [`b63fdb8`](https://github.com/Effect-TS/effect/commit/b63fdb8783a606077ac80d263b4e09b57cdab476) Thanks @alex-dixon! - Change 'in-memory' to 'in_memory' in prompt cache enums
+
+- [#6174](https://github.com/Effect-TS/effect/pull/6174) [`739f077`](https://github.com/Effect-TS/effect/commit/739f077d1cdfb63d26d4744abd59822231866dac) Thanks @mollyegibson! - Make 'strict' mode configurable for tool definitions passed to the OpenAI model
+
+- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
+  - effect@3.21.1
+
+## 0.39.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/ai@0.35.0
+  - @effect/experimental@0.60.0
+  - @effect/platform@0.96.0
+
+## 0.38.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/ai@0.34.0
+  - @effect/experimental@0.59.0
+  - @effect/platform@0.95.0
+
+## 0.37.2
+
+### Patch Changes
+
+- [#5949](https://github.com/Effect-TS/effect/pull/5949) [`577f839`](https://github.com/Effect-TS/effect/commit/577f839e00bc74bccb96444e53b9d710310b50e3) Thanks @thewilkybarkid! - Ensure OpenAI headers are redacted
+
+## 0.37.1
+
+### Patch Changes
+
+- [#5938](https://github.com/Effect-TS/effect/pull/5938) [`72f61be`](https://github.com/Effect-TS/effect/commit/72f61be280fdda98eb3835b3d559d6d5031699dc) Thanks @tensor2077! - Fix streaming decode: response.output_item.added may emit web_search_call without action (when status="in_progress").
+
+- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
+  - @effect/platform@0.94.1
+  - effect@3.19.14
+  - @effect/ai@0.33.1
+
+## 0.37.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+  - @effect/ai@0.33.0
+  - @effect/experimental@0.58.0
+
 ## 0.36.0
 
 ### Minor Changes

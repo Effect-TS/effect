@@ -323,6 +323,21 @@ describe("Tuple", () => {
    └─ is missing`
       )
     })
+
+    it("[String] + [Boolean, String, Number, Number] validates every post-rest index", async () => {
+      const schema = S.Tuple([S.String], S.Boolean, S.String, S.NumberFromString, S.NumberFromString)
+
+      await Util.assertions.decoding.fail(
+        schema,
+        ["a", true, "b", "1", "x"],
+        `readonly [string, ...boolean[], string, NumberFromString, NumberFromString]
+└─ [4]
+   └─ NumberFromString
+      └─ Transformation process failure
+         └─ Unable to decode "x" into a number`
+      )
+      await Util.assertions.decoding.succeed(schema, ["a", true, "b", "1", "2"], ["a", true, "b", 1, 2])
+    })
   })
 
   describe("encoding", () => {

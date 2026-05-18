@@ -1,5 +1,126 @@
 # @effect/platform
 
+## 0.96.1
+
+### Patch Changes
+
+- [#6147](https://github.com/Effect-TS/effect/pull/6147) [`518d0e3`](https://github.com/Effect-TS/effect/commit/518d0e3f4879be6d9d9a7fa137a1820604bb3ea7) Thanks @syhstanley! - Fix `HttpLayerRouter.addHttpApi` silently skipping API-level middleware.
+
+- [#6191](https://github.com/Effect-TS/effect/pull/6191) [`c016642`](https://github.com/Effect-TS/effect/commit/c0166426f80b7eb8e7f7d3aecc95dcd4fdb5cb55) Thanks @IGassmann! - Update `msgpackr` to 1.11.10 to fix silent decode failures in environments that block `new Function()` at runtime (e.g. Cloudflare Workers). The new version wraps the JIT `new Function()` call in a try/catch, falling back to the interpreted path when dynamic code evaluation is blocked.
+
+- Updated dependencies [[`74f3267`](https://github.com/Effect-TS/effect/commit/74f3267a6cc7ed7818c4c34cc1232f7cfc7d3339)]:
+  - effect@3.21.2
+
+## 0.96.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+
+## 0.95.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+
+## 0.94.5
+
+### Patch Changes
+
+- [#6050](https://github.com/Effect-TS/effect/pull/6050) [`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a) Thanks @tim-smart! - Backport Effect 4 `contentType` support for `HttpBody` JSON / URL-encoded constructors and `HttpServerResponse` JSON / URL-encoded helpers.
+
+- Updated dependencies [[`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f)]:
+  - effect@3.19.17
+
+## 0.94.4
+
+### Patch Changes
+
+- [#6035](https://github.com/Effect-TS/effect/pull/6035) [`22d9d27`](https://github.com/Effect-TS/effect/commit/22d9d27bc007db86d9e4748c17324fab5f950c7d) Thanks @tim-smart! - Fix `HttpServerError.causeResponse` to prefer 499 when a client abort interrupt is present.
+
+## 0.94.3
+
+### Patch Changes
+
+- [#6021](https://github.com/Effect-TS/effect/pull/6021) [`0023c19`](https://github.com/Effect-TS/effect/commit/0023c19c63c402c050d496817ba92aceea7f25b7) Thanks @codewithkenzo! - Fix `HttpClientRequest.appendUrl` to properly join URL paths.
+
+  Previously, `appendUrl` used simple string concatenation which could produce invalid URLs:
+
+  ```typescript
+  // Before (broken):
+  appendUrl("https://api.example.com/v1", "users")
+  // Result: "https://api.example.com/v1users" (missing slash!)
+  ```
+
+  Now it ensures proper path joining:
+
+  ```typescript
+  // After (fixed):
+  appendUrl("https://api.example.com/v1", "users")
+  // Result: "https://api.example.com/v1/users"
+  ```
+
+- [#6019](https://github.com/Effect-TS/effect/pull/6019) [`9a96b87`](https://github.com/Effect-TS/effect/commit/9a96b87a33a75ebc277c585e60758ab4409c0d9e) Thanks @codewithkenzo! - Fix `retryTransient` to use correct transient status codes
+
+  Changed `isTransientResponse` from `status >= 429` to an explicit allowlist (408, 429, 500, 502, 503, 504). This correctly excludes 501 (Not Implemented) and 505+ permanent errors, while including 408 (Request Timeout) which was previously missed.
+
+  Also aligned response retry behavior with v4: the `while` predicate now only applies to error retries, not response retries. Response retries are determined solely by `isTransientResponse`. This matches the semantic intent since `while` is typed for errors, not responses.
+
+  Fixes #5995
+
+- Updated dependencies [[`e71889f`](https://github.com/Effect-TS/effect/commit/e71889f35b081d13b7da2c04d2f81d6933056b49)]:
+  - effect@3.19.16
+
+## 0.94.2
+
+### Patch Changes
+
+- [#5977](https://github.com/Effect-TS/effect/pull/5977) [`118e7a4`](https://github.com/Effect-TS/effect/commit/118e7a4af5b86f6d707a40d3b03157b6bf5827e7) Thanks @scotttrinh! - Added `rows` and `isTTY` properties to `Terminal`
+
+- Updated dependencies [[`7e925ea`](https://github.com/Effect-TS/effect/commit/7e925eae4a9db556bcbf7e8b6a762ccf8588aa3b), [`d7e75d6`](https://github.com/Effect-TS/effect/commit/d7e75d6d15294bbcd7ac49a0e9005848379ea86f), [`4860d1e`](https://github.com/Effect-TS/effect/commit/4860d1e09b436061ea4aeca07605a669793560fc)]:
+  - effect@3.19.15
+
+## 0.94.1
+
+### Patch Changes
+
+- [#5936](https://github.com/Effect-TS/effect/pull/5936) [`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0) Thanks @schickling! - Document subtle CORS middleware `allowedHeaders` behavior: when empty array (default), it reflects back the client's `Access-Control-Request-Headers` (permissive), and when non-empty array, it only allows specified headers (restrictive). Added comprehensive JSDoc with examples.
+
+- [#5940](https://github.com/Effect-TS/effect/pull/5940) [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e) Thanks @kitlangton! - HttpServerResponse: fix `fromWeb` to preserve Content-Type header when response has a body
+
+  Previously, when converting a web `Response` to an `HttpServerResponse` via `fromWeb`, the `Content-Type` header was not passed to `Body.stream()`, causing it to default to `application/octet-stream`. This affected any code using `HttpApp.fromWebHandler` to wrap web handlers, as JSON responses would incorrectly have their Content-Type set to `application/octet-stream` instead of `application/json`.
+
+- Updated dependencies [[`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3)]:
+  - effect@3.19.14
+
+## 0.94.0
+
+### Minor Changes
+
+- [#5917](https://github.com/Effect-TS/effect/pull/5917) [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53) Thanks @tim-smart! - support non-errors in HttpClient.retryTransient
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+
+## 0.93.8
+
+### Patch Changes
+
+- [#5902](https://github.com/Effect-TS/effect/pull/5902) [`a0a84d8`](https://github.com/Effect-TS/effect/commit/a0a84d8df05d18023ffcb1f60af91d14c2b8db57) Thanks @tim-smart! - add HttpApp.fromWebHandler
+
+- Updated dependencies [[`a6dfca9`](https://github.com/Effect-TS/effect/commit/a6dfca93b676eeffe4db64945b01e2004b395cb8)]:
+  - effect@3.19.12
+
+## 0.93.7
+
+### Patch Changes
+
+- [#5896](https://github.com/Effect-TS/effect/pull/5896) [`65bff45`](https://github.com/Effect-TS/effect/commit/65bff451fc54d47b32995b3bc898ccc5f8b1beb6) Thanks @tim-smart! - add basic apis for converting to web Request/Response
+
 ## 0.93.6
 
 ### Patch Changes

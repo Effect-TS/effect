@@ -2,9 +2,9 @@ import { HttpClient, HttpClientRequest, HttpRouter, HttpServer, SocketServer } f
 import { NodeHttpServer, NodeSocket, NodeSocketServer, NodeWorker } from "@effect/platform-node"
 import { RpcClient, RpcSerialization, RpcServer } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer } from "effect"
+import { Cause, Effect, Layer } from "effect"
 import * as CP from "node:child_process"
-import { RpcLive, User, UsersClient } from "./fixtures/rpc-schemas.js"
+import { RpcLive, RpcLiveDisableFatalDefects, User, UsersClient } from "./fixtures/rpc-schemas.js"
 import { e2eSuite } from "./rpc-e2e.js"
 
 describe("RpcServer", () => {
@@ -147,5 +147,39 @@ describe("RpcServer", () => {
         const user = yield* client.GetUser({ id: "1" })
         assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
       }).pipe(Effect.provide(UsersClient.layerTest)))
+  })
+
+  describe("custom defect schema", () => {
+    const CustomDefectServer = HttpRouter.Default.serve().pipe(
+      Layer.provide(RpcLiveDisableFatalDefects),
+      Layer.provideMerge(RpcServer.layerProtocolHttp({ path: "/rpc" }))
+    )
+    const CustomDefectClient = UsersClient.layer.pipe(
+      Layer.provide(
+        RpcClient.layerProtocolHttp({
+          url: "",
+          transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc"))
+        })
+      )
+    )
+    const CustomDefectLayer = CustomDefectClient.pipe(
+      Layer.provideMerge(CustomDefectServer),
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson])
+    )
+
+    it.effect("preserves full defect with Schema.Unknown", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const cause = yield* client.ProduceDefectCustom().pipe(
+          Effect.sandbox,
+          Effect.flip
+        )
+        const defect = Cause.squash(cause)
+        assert.deepStrictEqual(defect, {
+          message: "detailed error",
+          stack: "Error: detailed error\n  at handler.ts:1",
+          code: 42
+        })
+      }).pipe(Effect.provide(CustomDefectLayer)))
   })
 })

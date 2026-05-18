@@ -406,6 +406,10 @@ const prepareMessages: (options: LanguageModel.ProviderOptions) => Effect.Effect
                 break
               }
             }
+
+            if (getCachePoint(message)) {
+              content.push(BEDROCK_CACHE_POINT)
+            }
           }
 
           messages.push({ role: "user", content })

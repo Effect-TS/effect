@@ -54,6 +54,23 @@ export type AST =
 
 /**
  * @category annotations
+ * @since 3.19.0
+ * @experimental
+ */
+export type TypeConstructorAnnotation = {
+  readonly _tag: string
+  [key: PropertyKey]: unknown
+}
+
+/**
+ * @category annotations
+ * @since 3.19.0
+ * @experimental
+ */
+export const TypeConstructorAnnotationId: unique symbol = Symbol.for("effect/annotation/TypeConstructor")
+
+/**
+ * @category annotations
  * @since 3.10.0
  */
 export type BrandAnnotation = Arr.NonEmptyReadonlyArray<string | symbol>
@@ -325,6 +342,13 @@ export const getAnnotation: {
       Option.some(annotated.annotations[key] as any) :
       Option.none()
 )
+
+/**
+ * @category annotations
+ * @since 3.19.0
+ * @experimental
+ */
+export const getTypeConstructorAnnotation = getAnnotation<TypeConstructorAnnotation>(TypeConstructorAnnotationId)
 
 /**
  * @category annotations
@@ -2207,6 +2231,8 @@ const getIndexSignatures = (ast: AST): Array<IndexSignature> => {
       return getIndexSignatures(ast.f())
     case "Refinement":
       return getIndexSignatures(ast.from)
+    case "Transformation":
+      return getIndexSignatures(ast.to)
   }
   return []
 }
@@ -2304,6 +2330,8 @@ export const getPropertyKeyIndexedAccess = (ast: AST, name: PropertyKey): Proper
       return getPropertyKeyIndexedAccess(ast.f(), name)
     case "Refinement":
       return getPropertyKeyIndexedAccess(ast.from, name)
+    case "Transformation":
+      return getPropertyKeyIndexedAccess(ast.to, name)
   }
   throw new Error(errors_.getASTUnsupportedSchemaErrorMessage(ast))
 }

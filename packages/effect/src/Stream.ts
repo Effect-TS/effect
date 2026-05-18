@@ -4432,7 +4432,7 @@ export const runIntoQueue: {
 } = internal.runIntoQueue
 
 /**
- * Like `Stream.runIntoQueue`, but provides the result as a scoped [[ZIO]]
+ * Like `Stream.runIntoQueue`, but provides the result as a scoped Effect
  * to allow for scope composition.
  *
  * @since 2.0.0
@@ -5221,7 +5221,7 @@ export const toPubSub: {
 } = internal.toPubSub
 
 /**
- * Returns in a scope a ZIO effect that can be used to repeatedly pull chunks
+ * Returns in a scope an Effect that can be used to repeatedly pull chunks
  * from the stream. The pull effect fails with None when the stream is
  * finished, or with Some error if it fails, otherwise it returns a chunk of
  * the stream's output.

@@ -40,7 +40,7 @@
     "@changesets/cli": "^2.29.4",
     "@edge-runtime/vm": "^5.0.0",
     "@effect/build-utils": "^0.8.3",
-    "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@fd06738",
+    "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@e7fe055",
     "@effect/eslint-plugin": "^0.3.2",
     "@effect/language-service": "^0.23.3",
     "@effect/vitest": "workspace:^",
@@ -69,7 +69,7 @@
     "playwright": "^1.52.0",
     "prettier": "^3.5.3",
     "rimraf": "^6.0.1",
-    "tstyche": "^4.1.0",
+    "tstyche": "^6.0.0-beta.5",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vite": "^6.1.1",
@@ -91,7 +91,10 @@
       "workerd"
     ],
     "onlyBuiltDependencies": [
-      "better-sqlite3"
+      "@parcel/watcher",
+      "better-sqlite3",
+      "sharp",
+      "unrs-resolver"
     ]
   }
 }

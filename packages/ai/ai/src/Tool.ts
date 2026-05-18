@@ -1297,15 +1297,6 @@ export const getJsonSchema = <
 export const getJsonSchemaFromSchemaAst = (
   ast: AST.AST
 ): JsonSchema.JsonSchema7 => {
-  const props = AST.getPropertySignatures(ast)
-  if (props.length === 0) {
-    return {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false
-    }
-  }
   const $defs = {}
   const schema = JsonSchema.fromAST(ast, {
     definitions: $defs,

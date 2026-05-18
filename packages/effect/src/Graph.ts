@@ -2987,6 +2987,9 @@ export const bellmanFord = <N, E, T extends Kind = "directed">(
  * @category models
  */
 export class Walker<T, N> implements Iterable<[T, N]> {
+  /**
+   * @since 3.18.0
+   */
   // @ts-ignore
   readonly [Symbol.iterator]: () => Iterator<[T, N]>
 

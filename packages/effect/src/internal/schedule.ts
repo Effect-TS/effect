@@ -2034,7 +2034,7 @@ export const fromRetryOptions = (options: Effect.Retry.Options<any>): Schedule.S
       return scheduleDefectWrap(applied)
     }) :
     withWhile
-  return options.times ?
+  return options.times !== undefined ?
     intersect(withUntil, recurs(options.times)) :
     withUntil
 }

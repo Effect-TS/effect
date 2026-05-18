@@ -9,6 +9,8 @@ permissions: {}
 jobs:
   types:
     name: Types
+    # TODO enable after TSTyche adds TypeScript 7 support (see https://github.com/tstyche/tstyche/issues/443)
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

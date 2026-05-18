@@ -135,7 +135,7 @@ const WorkflowEngineLayer = ClusterWorkflowEngine.layer.pipe(
 const EnvLayer = Layer.mergeAll(
   EmailWorkflowLayer
   // You can add any other cluster entities or workflow layers here
-).pipe(Layer.provide(WorkflowEngineLayer))
+).pipe(Layer.provideMerge(WorkflowEngineLayer))
 
 // Finally, you can execute a workflow using the `.execute` method.
 EmailWorkflow.execute({ id: "123", to: "hello@timsmart.co" }).pipe(

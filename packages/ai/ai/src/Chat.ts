@@ -49,6 +49,7 @@
 import type { PersistenceBackingError } from "@effect/experimental/Persistence"
 import { BackingPersistence } from "@effect/experimental/Persistence"
 import * as Channel from "effect/Channel"
+import * as Chunk from "effect/Chunk"
 import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -77,10 +78,10 @@ import type * as Tool from "./Tool.js"
  * @example
  * ```ts
  * import { Chat } from "@effect/ai"
- * import { Effect } from "effect"
+ * import * as Effect from "effect/Effect"
  *
  * const useChat = Effect.gen(function* () {
- *   const chat = yield* Chat
+ *   const chat = yield* Chat.Chat
  *   const response = yield* chat.generateText({
  *     prompt: "Explain quantum computing in simple terms"
  *   })
@@ -379,7 +380,7 @@ export const empty: Effect.Effect<Service> = Effect.gen(function*() {
     ),
     streamText: Effect.fnUntraced(
       function*(options) {
-        let combined: Prompt.Prompt = Prompt.empty
+        let parts = Chunk.empty<Response.AnyPart>()
         return Stream.fromChannel(Channel.acquireUseRelease(
           semaphore.take(1).pipe(
             Effect.zipRight(Ref.get(history)),
@@ -387,16 +388,18 @@ export const empty: Effect.Effect<Service> = Effect.gen(function*() {
           ),
           (prompt) =>
             LanguageModel.streamText({ ...options, prompt }).pipe(
-              Stream.mapChunksEffect(Effect.fnUntraced(function*(chunk) {
-                const parts = Array.from(chunk)
-                combined = Prompt.merge(combined, Prompt.fromResponseParts(parts))
+              Stream.mapChunks((chunk) => {
+                parts = Chunk.appendAll(parts, chunk)
                 return chunk
-              })),
+              }),
               Stream.toChannel
             ),
-          (parts) =>
+          (prompt) =>
             Effect.zipRight(
-              Ref.set(history, Prompt.merge(parts, combined)),
+              Ref.set(
+                history,
+                Prompt.merge(prompt, Prompt.fromResponseParts(Array.from(parts)))
+              ),
               semaphore.release(1)
             )
         )).pipe(

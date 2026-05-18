@@ -12,6 +12,8 @@ import * as Record from "./Record.js"
 import type * as Schema from "./Schema.js"
 import * as AST from "./SchemaAST.js"
 
+type JsonValue = string | number | boolean | null | Array<JsonValue> | { [key: string]: JsonValue }
+
 /**
  * @category model
  * @since 3.10.0
@@ -19,8 +21,8 @@ import * as AST from "./SchemaAST.js"
 export interface JsonSchemaAnnotations {
   title?: string
   description?: string
-  default?: unknown
-  examples?: Array<unknown>
+  default?: JsonValue
+  examples?: Array<JsonValue>
 }
 
 /**
@@ -246,20 +248,34 @@ export type JsonSchema7Root = JsonSchema7 & {
 }
 
 /**
+ * Generates a JSON Schema from a schema.
+ *
+ * **Options**
+ *
+ * - `target`: The target JSON Schema version. Possible values are:
+ *   - `"jsonSchema7"`: JSON Schema draft-07 (default behavior).
+ *   - `"jsonSchema2019-09"`: JSON Schema draft-2019-09.
+ *   - `"jsonSchema2020-12"`: JSON Schema draft-2020-12.
+ *   - `"openApi3.1"`: OpenAPI 3.1.
+ *
  * @category encoding
  * @since 3.10.0
  */
-export const make = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
+export const make = <A, I, R>(schema: Schema.Schema<A, I, R>, options?: {
+  readonly target?: Target | undefined
+}): JsonSchema7Root => {
   const definitions: Record<string, any> = {}
+  const target = options?.target ?? "jsonSchema7"
   const ast = AST.isTransformation(schema.ast) && isParseJsonTransformation(schema.ast.from)
     // Special case top level `parseJson` transformations
     ? schema.ast.to
     : schema.ast
   const jsonSchema = fromAST(ast, {
-    definitions
+    definitions,
+    target
   })
   const out: JsonSchema7Root = {
-    $schema: getMetaSchemaUri("jsonSchema7"),
+    $schema: getMetaSchemaUri(target),
     $defs: {},
     ...jsonSchema
   }
@@ -401,9 +417,9 @@ function getRawExamples(annotated: AST.Annotated | undefined): ReadonlyArray<unk
   if (annotated !== undefined) return Option.getOrUndefined(AST.getExamplesAnnotation(annotated))
 }
 
-function encodeExamples(ast: AST.AST, examples: ReadonlyArray<unknown>): Array<unknown> | undefined {
+function encodeExamples(ast: AST.AST, examples: ReadonlyArray<unknown>): Array<JsonValue> | undefined {
   const getOption = ParseResult.getOption(ast, false)
-  const out = Arr.filterMap(examples, (e) => getOption(e))
+  const out = Arr.filterMap(examples, (e) => getOption(e).pipe(Option.filter(isJsonValue)))
   return out.length > 0 ? out : undefined
 }
 
@@ -421,6 +437,38 @@ function filterBuiltIn(ast: AST.AST, annotation: string | undefined, key: symbol
   return annotation
 }
 
+function isJsonValue(value: unknown, visited: Set<unknown> = new Set()): value is JsonValue {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return true
+  }
+  if (Array.isArray(value) || typeof value === "object") {
+    // Check for cyclic references
+    if (visited.has(value)) {
+      return false
+    }
+    visited.add(value)
+    try {
+      if (Array.isArray(value)) {
+        return value.every((item) => isJsonValue(item, visited))
+      }
+      // Exclude non-plain objects (Date, RegExp, etc.) by checking constructor
+      const proto = Object.getPrototypeOf(value)
+      if (proto !== null && proto !== Object.prototype) {
+        return false
+      }
+      // JSON only allows string keys, so exclude objects with Symbol keys
+      if (Object.getOwnPropertySymbols(value).length > 0) {
+        return false
+      }
+      // Check all values are JSON values
+      return Object.values(value).every((v) => isJsonValue(v, visited))
+    } finally {
+      visited.delete(value)
+    }
+  }
+  return false
+}
+
 function pruneJsonSchemaAnnotations(
   ast: AST.AST,
   description: string | undefined,
@@ -433,7 +481,7 @@ function pruneJsonSchemaAnnotations(
   if (title !== undefined) out.title = title
   if (Option.isSome(def)) {
     const o = encodeDefault(ast, def.value)
-    if (Option.isSome(o)) {
+    if (Option.isSome(o) && isJsonValue(o.value)) {
       out.default = o.value
     }
   }
@@ -935,7 +983,9 @@ function go(
                   if (Predicate.isString(toProperty.title)) annotations.title = toProperty.title
                   if (Predicate.isString(toProperty.description)) annotations.description = toProperty.description
                   if (Array.isArray(toProperty.examples)) annotations.examples = toProperty.examples
-                  if (Object.hasOwn(toProperty, "default")) annotations.default = toProperty.default
+                  if (Object.hasOwn(toProperty, "default") && toProperty.default !== undefined) {
+                    annotations.default = toProperty.default
+                  }
                   from.properties[fromKey] = addAnnotations(fromProperty, annotations)
                 }
               }

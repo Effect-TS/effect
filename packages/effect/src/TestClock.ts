@@ -158,7 +158,7 @@ export class TestClockImpl implements TestClock {
    * Unsafely returns the current time in nanoseconds.
    */
   unsafeCurrentTimeNanos(): bigint {
-    return BigInt(ref.unsafeGet(this.clockState).instant * 1000000)
+    return BigInt(Math.floor(this.unsafeCurrentTimeMillis() * 1000000))
   }
 
   /**

@@ -1,5 +1,62 @@
 # @effect/rpc
 
+## 0.75.1
+
+### Patch Changes
+
+- [#6191](https://github.com/Effect-TS/effect/pull/6191) [`c016642`](https://github.com/Effect-TS/effect/commit/c0166426f80b7eb8e7f7d3aecc95dcd4fdb5cb55) Thanks @IGassmann! - Update `msgpackr` to 1.11.10 to fix silent decode failures in environments that block `new Function()` at runtime (e.g. Cloudflare Workers). The new version wraps the JIT `new Function()` call in a try/catch, falling back to the interpreted path when dynamic code evaluation is blocked.
+
+- [#6110](https://github.com/Effect-TS/effect/pull/6110) [`0fac630`](https://github.com/Effect-TS/effect/commit/0fac630b27095ffbfa6c48851087950ddc29cda0) Thanks @mitre88! - fix: correct typos in source code (receive, separate)
+
+- [#6161](https://github.com/Effect-TS/effect/pull/6161) [`e2374c2`](https://github.com/Effect-TS/effect/commit/e2374c20ce699d9f5340baf744cf1bd67bb220a0) Thanks @bohdanbirdie! - add RpcSerialization.makeMsgPack
+
+- Updated dependencies [[`74f3267`](https://github.com/Effect-TS/effect/commit/74f3267a6cc7ed7818c4c34cc1232f7cfc7d3339), [`518d0e3`](https://github.com/Effect-TS/effect/commit/518d0e3f4879be6d9d9a7fa137a1820604bb3ea7), [`c016642`](https://github.com/Effect-TS/effect/commit/c0166426f80b7eb8e7f7d3aecc95dcd4fdb5cb55)]:
+  - effect@3.21.2
+  - @effect/platform@0.96.1
+
+## 0.75.0
+
+### Patch Changes
+
+- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
+  - effect@3.21.0
+  - @effect/platform@0.96.0
+
+## 0.74.0
+
+### Patch Changes
+
+- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
+  - effect@3.20.0
+  - @effect/platform@0.95.0
+
+## 0.73.2
+
+### Patch Changes
+
+- [#6065](https://github.com/Effect-TS/effect/pull/6065) [`94b00c8`](https://github.com/Effect-TS/effect/commit/94b00c8e4c5c150f858c95262d0ff1433276ede5) Thanks @marbemac! - Add optional `defect` parameter to `Rpc.make` for customizing defect serialization per-RPC. Defaults to `Schema.Defect`, preserving existing behavior.
+
+- Updated dependencies [[`12b1f1e`](https://github.com/Effect-TS/effect/commit/12b1f1eadf649e30dec581b7351ba3abb12f8004)]:
+  - effect@3.19.18
+
+## 0.73.1
+
+### Patch Changes
+
+- [#6055](https://github.com/Effect-TS/effect/pull/6055) [`598ff76`](https://github.com/Effect-TS/effect/commit/598ff7642fdee7f3379bca49e378a0e9647bbe75) Thanks @marbemac! - Fix `sendRequestDefect` and `sendDefect` to encode defects with `Schema.Defect`, preventing `Error` objects from being serialized as `{}` due to non-enumerable properties.
+
+- Updated dependencies [[`d67c708`](https://github.com/Effect-TS/effect/commit/d67c7089ba8616b2d48ef7324312267a2a6f310a), [`a8c436f`](https://github.com/Effect-TS/effect/commit/a8c436f7004cc2a8ce2daec589ea7256b91c324f)]:
+  - @effect/platform@0.94.5
+  - effect@3.19.17
+
+## 0.73.0
+
+### Patch Changes
+
+- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
+  - effect@3.19.13
+  - @effect/platform@0.94.0
+
 ## 0.72.2
 
 ### Patch Changes

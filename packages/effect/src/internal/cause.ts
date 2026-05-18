@@ -14,7 +14,7 @@ import { pipeArguments } from "../Pipeable.js"
 import type { Predicate, Refinement } from "../Predicate.js"
 import { hasProperty, isFunction } from "../Predicate.js"
 import type { AnySpan, Span } from "../Tracer.js"
-import type { NoInfer } from "../Types.js"
+import type * as Types from "../Types.js"
 import { getBugErrorMessage } from "./errors.js"
 import * as OpCodes from "./opCodes/cause.js"
 
@@ -879,59 +879,58 @@ export const pretty = <E>(cause: Cause.Cause<E>, options?: {
     if (options?.renderErrorCause !== true || e.cause === undefined) {
       return e.stack
     }
-    return `${e.stack} {\n${renderErrorCause(e.cause as PrettyError, "  ")}\n}`
+    return `${e.stack} {\n${renderErrorCause(e.cause as Cause.PrettyError, "  ")}\n}`
   }).join("\n")
 }
 
-const renderErrorCause = (cause: PrettyError, prefix: string) => {
+const renderErrorCause = (cause: Cause.PrettyError, prefix: string) => {
   const lines = cause.stack!.split("\n")
   let stack = `${prefix}[cause]: ${lines[0]}`
   for (let i = 1, len = lines.length; i < len; i++) {
     stack += `\n${prefix}${lines[i]}`
   }
   if (cause.cause) {
-    stack += ` {\n${renderErrorCause(cause.cause as PrettyError, `${prefix}  `)}\n${prefix}}`
+    stack += ` {\n${renderErrorCause(cause.cause as Cause.PrettyError, `${prefix}  `)}\n${prefix}}`
   }
   return stack
 }
 
 /** @internal */
-export class PrettyError extends globalThis.Error implements Cause.PrettyError {
-  span: undefined | Span = undefined
-  constructor(originalError: unknown) {
-    const originalErrorIsObject = typeof originalError === "object" && originalError !== null
-    const prevLimit = Error.stackTraceLimit
-    Error.stackTraceLimit = 1
-    super(
-      prettyErrorMessage(originalError),
-      originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
-        ? { cause: new PrettyError(originalError.cause) }
-        : undefined
-    )
-    if (this.message === "") {
-      this.message = "An error has occurred"
-    }
-    Error.stackTraceLimit = prevLimit
-    this.name = originalError instanceof Error ? originalError.name : "Error"
-    if (originalErrorIsObject) {
-      if (spanSymbol in originalError) {
-        this.span = originalError[spanSymbol] as Span
-      }
-      Object.keys(originalError).forEach((key) => {
-        if (!(key in this)) {
-          // @ts-expect-error
-          this[key] = originalError[key]
-        }
-      })
-    }
-    this.stack = prettyErrorStack(
-      `${this.name}: ${this.message}`,
-      originalError instanceof Error && originalError.stack
-        ? originalError.stack
-        : "",
-      this.span
-    )
+export const makePrettyError = (originalError: unknown): Cause.PrettyError => {
+  const originalErrorIsObject = typeof originalError === "object" && originalError !== null
+  const prevLimit = Error.stackTraceLimit
+  Error.stackTraceLimit = 1
+  const error = new Error(
+    prettyErrorMessage(originalError),
+    originalErrorIsObject && "cause" in originalError && typeof originalError.cause !== "undefined"
+      ? { cause: makePrettyError(originalError.cause) }
+      : undefined
+  ) as Types.Mutable<Cause.PrettyError>
+  Error.stackTraceLimit = prevLimit
+  if (error.message === "") {
+    error.message = "An error has occurred"
   }
+  Error.stackTraceLimit = prevLimit
+  error.name = originalError instanceof Error ? originalError.name : "Error"
+  if (originalErrorIsObject) {
+    if (spanSymbol in originalError) {
+      error.span = originalError[spanSymbol] as Span
+    }
+    Object.keys(originalError).forEach((key) => {
+      if (!(key in error)) {
+        // @ts-expect-error
+        error[key] = originalError[key]
+      }
+    })
+  }
+  error.stack = prettyErrorStack(
+    `${error.name}: ${error.message}`,
+    originalError instanceof Error && originalError.stack
+      ? originalError.stack
+      : "",
+    error.span
+  )
+  return error
 }
 
 /**
@@ -1035,14 +1034,14 @@ const prettyErrorStack = (message: string, stack: string, span?: Span | undefine
 export const spanSymbol = Symbol.for("effect/SpanAnnotation")
 
 /** @internal */
-export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<PrettyError> =>
+export const prettyErrors = <E>(cause: Cause.Cause<E>): Array<Cause.PrettyError> =>
   reduceWithContext(cause, void 0, {
-    emptyCase: (): Array<PrettyError> => [],
+    emptyCase: (): Array<Cause.PrettyError> => [],
     dieCase: (_, unknownError) => {
-      return [new PrettyError(unknownError)]
+      return [makePrettyError(unknownError)]
     },
     failCase: (_, error) => {
-      return [new PrettyError(error)]
+      return [makePrettyError(error)]
     },
     interruptCase: () => [],
     parallelCase: (_, l, r) => [...l, ...r],

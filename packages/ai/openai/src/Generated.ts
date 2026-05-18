@@ -2466,7 +2466,7 @@ export class ChatCompletionFunctions extends S.Class<ChatCompletionFunctions>("C
 /**
  * The retention policy for the prompt cache. Set to `24h` to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. [Learn more](https://platform.openai.com/docs/guides/prompt-caching#prompt-cache-retention).
  */
-export class CreateChatCompletionRequestPromptCacheRetentionEnum extends S.Literal("in-memory", "24h") {}
+export class CreateChatCompletionRequestPromptCacheRetentionEnum extends S.Literal("in_memory", "24h") {}
 
 export class CreateChatCompletionRequest extends S.Class<CreateChatCompletionRequest>("CreateChatCompletionRequest")({
   /**
@@ -14969,7 +14969,7 @@ export class CreateResponseTruncationEnum extends S.Literal("auto", "disabled") 
 /**
  * The retention policy for the prompt cache. Set to `24h` to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. [Learn more](https://platform.openai.com/docs/guides/prompt-caching#prompt-cache-retention).
  */
-export class CreateResponsePromptCacheRetentionEnum extends S.Literal("in-memory", "24h") {}
+export class CreateResponsePromptCacheRetentionEnum extends S.Literal("in_memory", "24h") {}
 
 export class CreateResponse extends S.Class<CreateResponse>("CreateResponse")({
   "input": S.optionalWith(InputParam, { nullable: true }),
@@ -15181,7 +15181,7 @@ export class ResponseTruncationEnum extends S.Literal("auto", "disabled") {}
 /**
  * The retention policy for the prompt cache. Set to `24h` to enable extended prompt caching, which keeps cached prefixes active for longer, up to a maximum of 24 hours. [Learn more](https://platform.openai.com/docs/guides/prompt-caching#prompt-cache-retention).
  */
-export class ResponsePromptCacheRetentionEnum extends S.Literal("in-memory", "24h") {}
+export class ResponsePromptCacheRetentionEnum extends S.Literal("in_memory", "24h") {}
 
 export class Response extends S.Class<Response>("Response")({
   /**

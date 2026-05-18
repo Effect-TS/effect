@@ -108,6 +108,34 @@ describe("MessageStorage", () => {
         yield* fiber.await
       }).pipe(Effect.provide(MemoryLive)))
   })
+
+  describe("makeEncoded", () => {
+    it.effect("guards empty id lists before delegating", () =>
+      Effect.gen(function*() {
+        const encoded = {
+          saveEnvelope: () => Effect.succeed(MessageStorage.SaveResultEncoded.Success()),
+          saveReply: () => Effect.void,
+          clearReplies: () => Effect.void,
+          requestIdForPrimaryKey: () => Effect.succeed(Option.none()),
+          repliesFor: () => Effect.succeed([]),
+          repliesForUnfiltered: () => Effect.die("unexpected repliesForUnfiltered call"),
+          unprocessedMessages: () => Effect.succeed([]),
+          unprocessedMessagesById: () => Effect.succeed([]),
+          resetAddress: () => Effect.void,
+          clearAddress: () => Effect.void,
+          resetShards: () => Effect.die("unexpected resetShards call")
+        }
+
+        const storage = yield* MessageStorage.makeEncoded(encoded).pipe(
+          Effect.provide(Snowflake.layerGenerator)
+        )
+
+        const replies = yield* storage.repliesForUnfiltered([])
+        expect(replies).toEqual([])
+
+        yield* storage.resetShards([])
+      }))
+  })
 })
 
 export const GetUserRpc = Rpc.make("GetUser", {

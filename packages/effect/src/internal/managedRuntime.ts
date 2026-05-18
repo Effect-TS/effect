@@ -7,6 +7,7 @@ import type * as M from "../ManagedRuntime.js"
 import { pipeArguments } from "../Pipeable.js"
 import { hasProperty } from "../Predicate.js"
 import type * as Runtime from "../Runtime.js"
+import * as Scheduler from "../Scheduler.js"
 import * as Scope from "../Scope.js"
 import type { Mutable } from "../Types.js"
 import * as core from "./core.js"
@@ -57,8 +58,9 @@ export const make = <R, ER>(
   memoMap = memoMap ?? internalLayer.unsafeMakeMemoMap()
   const scope = internalRuntime.unsafeRunSyncEffect(fiberRuntime.scopeMake())
   let buildFiber: Fiber.RuntimeFiber<Runtime.Runtime<R>, ER> | undefined
-  const runtimeEffect = core.withFiberRuntime<Runtime.Runtime<R>, ER>((fiber) => {
+  const runtimeEffect = core.suspend(() => {
     if (!buildFiber) {
+      const scheduler = new Scheduler.SyncScheduler()
       buildFiber = internalRuntime.unsafeForkEffect(
         core.tap(
           Scope.extend(
@@ -69,8 +71,9 @@ export const make = <R, ER>(
             self.cachedRuntime = rt
           }
         ),
-        { scope, scheduler: fiber.currentScheduler }
+        { scope, scheduler }
       )
+      scheduler.flush()
     }
     return core.flatten(buildFiber.await)
   })

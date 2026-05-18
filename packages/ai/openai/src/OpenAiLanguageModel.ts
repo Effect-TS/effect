@@ -94,6 +94,23 @@ export declare namespace Config {
        */
       readonly verbosity?: "low" | "medium" | "high"
     }
+
+    /**
+     * Controls whether tool and response format schemas are sent with
+     * `strict: true` to enable OpenAI's structured outputs mode.
+     *
+     * When `true` (default), OpenAI validates that tool schemas comply with
+     * strict mode requirements (all properties in `required`,
+     * `additionalProperties: false` on all objects, etc.).
+     *
+     * Set to `false` to send tool schemas without strict mode validation,
+     * which is useful when tool parameter schemas use `Schema.optional()`
+     * (optional properties are not listed in `required` by Effect's JSON
+     * schema generator, which strict mode rejects).
+     *
+     * Defaults to `true` for backward compatibility.
+     */
+    readonly strict?: boolean
   }
 }
 
@@ -283,12 +300,13 @@ export const make = Effect.fnUntraced(function*(options: {
       const context = yield* Effect.context<never>()
       const config = { model: options.model, ...options.config, ...context.unsafeMap.get(Config.key) }
       const messages = yield* prepareMessages(providerOptions, config)
-      const { toolChoice, tools } = yield* prepareTools(providerOptions)
+      const { toolChoice, tools } = yield* prepareTools(providerOptions, config)
       const include = prepareInclude(providerOptions, config)
-      const responseFormat = prepareResponseFormat(providerOptions)
+      const responseFormat = prepareResponseFormat(providerOptions, config)
       const verbosity = config.text?.verbosity
+      const { strict: _strict, ...requestConfig } = config
       const request: typeof Generated.CreateResponse.Encoded = {
-        ...config,
+        ...requestConfig,
         input: messages,
         include,
         text: { format: responseFormat, verbosity },
@@ -567,7 +585,16 @@ const makeResponse: (
       timestamp: DateTime.formatIso(DateTime.unsafeFromDate(createdAt))
     })
 
+    // Deduplicate output items by ID to handle OpenAI Responses API bug
+    // where duplicate OutputMessage items appear in response.output
+    const seenOutputIds = new Set<string>()
     for (const part of response.output) {
+      if (part.id && seenOutputIds.has(part.id)) {
+        continue
+      }
+      if (part.id) {
+        seenOutputIds.add(part.id)
+      }
       switch (part.type) {
         case "message": {
           for (const contentPart of part.content) {
@@ -1272,10 +1299,10 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
 
 type OpenAiToolChoice = typeof Generated.CreateResponse.fields.tool_choice.from.Encoded
 
-const prepareTools: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
+const prepareTools: (options: LanguageModel.ProviderOptions, config: Config.Service) => Effect.Effect<{
   readonly tools: ReadonlyArray<typeof Generated.Tool.Encoded> | undefined
   readonly toolChoice: OpenAiToolChoice | undefined
-}, AiError.AiError> = Effect.fnUntraced(function*(options) {
+}, AiError.AiError> = Effect.fnUntraced(function*(options, config) {
   // Return immediately if no tools are in the toolkit
   if (options.tools.length === 0) {
     return { tools: undefined, toolChoice: undefined }
@@ -1303,7 +1330,7 @@ const prepareTools: (options: LanguageModel.ProviderOptions) => Effect.Effect<{
         name: tool.name,
         description: Tool.getDescription(tool as any),
         parameters: Tool.getJsonSchema(tool as any) as any,
-        strict: true
+        strict: config.strict ?? true
       })
     }
 
@@ -1406,7 +1433,8 @@ const prepareInclude = (
 }
 
 const prepareResponseFormat = (
-  options: LanguageModel.ProviderOptions
+  options: LanguageModel.ProviderOptions,
+  config: Config.Service
 ): typeof Generated.TextResponseFormatConfiguration.Encoded => {
   if (options.responseFormat.type === "json") {
     const name = options.responseFormat.objectName
@@ -1416,7 +1444,7 @@ const prepareResponseFormat = (
       name,
       description: Tool.getDescriptionFromSchemaAst(schema.ast) ?? "Response with a JSON object",
       schema: Tool.getJsonSchemaFromSchemaAst(schema.ast) as any,
-      strict: true
+      strict: config.strict ?? true
     }
   }
   return { type: "text" }

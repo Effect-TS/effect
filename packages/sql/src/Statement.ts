@@ -322,7 +322,7 @@ export interface Constructor {
   readonly or: (clauses: ReadonlyArray<string | Fragment>) => Fragment
 
   /**
-   * Create comma seperated values, with an optional prefix
+   * Create comma separated values, with an optional prefix
    *
    * Useful for `ORDER BY` and `GROUP BY` clauses
    */

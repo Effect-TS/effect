@@ -202,6 +202,50 @@ describe("HttpClient", () => {
     )
   })
 
+  describe("appendUrl", () => {
+    it("joins path without trailing slash on base", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins path with trailing slash on base", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1/").pipe(
+        HttpClientRequest.appendUrl("users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins path with leading slash", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("/users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins path with both trailing and leading slashes", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1/").pipe(
+        HttpClientRequest.appendUrl("/users")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users")
+    })
+
+    it("joins nested paths", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("users/123/posts")
+      )
+      strictEqual(request.url, "https://api.example.com/v1/users/123/posts")
+    })
+
+    it("handles empty path", () => {
+      const request = HttpClientRequest.get("https://api.example.com/v1").pipe(
+        HttpClientRequest.appendUrl("")
+      )
+      strictEqual(request.url, "https://api.example.com/v1")
+    })
+  })
+
   it.effect("matchStatus", () =>
     Effect.gen(function*() {
       const jp = yield* JsonPlaceholder
@@ -261,4 +305,111 @@ describe("HttpClient", () => {
       Effect.provide(FetchHttpClient.layer),
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" })
     ), 30000)
+
+  describe("retryTransient", () => {
+    const makeTestClient = (status: number) => {
+      const attemptsRef = Ref.unsafeMake(0)
+      const client = HttpClient.make((request) =>
+        Effect.gen(function*() {
+          yield* Ref.update(attemptsRef, (n) => n + 1)
+          return HttpClientResponse.fromWeb(request, new Response(null, { status }))
+        })
+      )
+      return { attemptsRef, client }
+    }
+
+    it.effect("retries 408 Request Timeout", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(408)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+
+    it.effect("retries 429 Too Many Requests", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(429)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+
+    it.effect("retries 500 Internal Server Error", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(500)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+
+    it.effect("retries 502 Bad Gateway", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(502)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+
+    it.effect("retries 503 Service Unavailable", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(503)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+
+    it.effect("retries 504 Gateway Timeout", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(504)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+
+    it.effect("does NOT retry 200 OK", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(200)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 1)
+      }))
+
+    it.effect("does NOT retry 501 Not Implemented", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(501)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 1)
+      }))
+
+    it.effect("does NOT retry 505 HTTP Version Not Supported", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(505)
+        const retryClient = client.pipe(HttpClient.retryTransient({ times: 2 }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 1)
+      }))
+
+    it.effect("while predicate only applies to error retries, not response retries", () =>
+      Effect.gen(function*() {
+        const { attemptsRef, client } = makeTestClient(503)
+        const errorOnlyPredicate = (e: unknown) => e !== null && typeof e === "object" && "_tag" in e
+        const retryClient = client.pipe(HttpClient.retryTransient({
+          times: 2,
+          while: errorOnlyPredicate
+        }))
+        yield* retryClient.get("http://test/").pipe(Effect.ignore)
+        const attempts = yield* Ref.get(attemptsRef)
+        strictEqual(attempts, 3)
+      }))
+  })
 })

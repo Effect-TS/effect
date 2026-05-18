@@ -376,9 +376,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
               completed = true
               resume(exit)
               if (fiber && !fiber.unsafePoll()) {
-                parentFiber.currentScheduler.scheduleTask(() => {
-                  fiber.unsafeInterruptAsFork(parentFiber.id())
-                }, 0)
+                parentFiber.currentScheduler.scheduleTask(
+                  () => {
+                    fiber.unsafeInterruptAsFork(parentFiber.id())
+                  },
+                  0,
+                  fiber
+                )
               }
             }
           }
@@ -1045,18 +1049,18 @@ const defaultRetrySchedule = Schedule.exponential(500, 1.5).pipe(
 )
 
 const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect<A, E, R>) {
-  let recievedPong = true
+  let receivedPong = true
   const latch = Effect.unsafeMakeLatch()
   const reset = () => {
-    recievedPong = true
+    receivedPong = true
     latch.unsafeClose()
   }
   const onPong = () => {
-    recievedPong = true
+    receivedPong = true
   }
   yield* Effect.suspend(() => {
-    if (!recievedPong) return latch.open
-    recievedPong = false
+    if (!receivedPong) return latch.open
+    receivedPong = false
     return writePing
   }).pipe(
     Effect.delay("10 seconds"),

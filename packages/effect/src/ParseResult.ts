@@ -1033,15 +1033,15 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
           // handle post rest elements
           // ---------------------------------------------
           for (let j = 0; j < tail.length; j++) {
-            i += j
-            if (len < i + 1) {
+            const index = i + j
+            if (len < index + 1) {
               continue
             } else {
-              const te = tail[j](input[i], options)
+              const te = tail[j](input[index], options)
               if (isEither(te)) {
                 if (Either.isLeft(te)) {
                   // the input element is present but is not valid
-                  const e = new Pointer(i, input, te.left)
+                  const e = new Pointer(index, input, te.left)
                   if (allErrors) {
                     es.push([stepKey++, e])
                     continue
@@ -1052,7 +1052,6 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser => {
                 output.push([stepKey++, te.right])
               } else {
                 const nk = stepKey++
-                const index = i
                 if (!queue) {
                   queue = []
                 }

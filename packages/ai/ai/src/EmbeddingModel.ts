@@ -69,10 +69,17 @@ import * as AiError from "./AiError.js"
  * @example
  * ```ts
  * import { EmbeddingModel } from "@effect/ai"
- * import { Effect } from "effect"
+ * import * as Effect from "effect/Effect"
+ *
+ * const cosineSimilarity = (a: ReadonlyArray<number>, b: ReadonlyArray<number>): number => {
+ *   const dot = a.reduce((sum, ai, i) => sum + ai * (b[i] ?? 0), 0)
+ *   const normA = Math.sqrt(a.reduce((sum, ai) => sum + ai * ai, 0))
+ *   const normB = Math.sqrt(b.reduce((sum, bi) => sum + bi * bi, 0))
+ *   return normA === 0 || normB === 0 ? 0 : dot / (normA * normB)
+ * }
  *
  * const useEmbeddings = Effect.gen(function* () {
- *   const embedder = yield* EmbeddingModel
+ *   const embedder = yield* EmbeddingModel.EmbeddingModel
  *
  *   const documentVector = yield* embedder.embed("This is a sample document")
  *   const queryVector = yield* embedder.embed("sample query")

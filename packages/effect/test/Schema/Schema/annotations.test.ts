@@ -1,5 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import * as Option from "effect/Option"
 import type * as ParseResult from "effect/ParseResult"
 import type * as Pretty from "effect/Pretty"
 import * as S from "effect/Schema"
@@ -79,6 +80,17 @@ describe(".annotations()", () => {
     deepStrictEqual(schema.ast.annotations, {
       [AST.BatchingAnnotationId]: "inherit"
     })
+  })
+
+  it("typeConstructor", () => {
+    const schema = S.Struct({ a: S.String }).annotations({ typeConstructor: { _tag: "MyTypeConstructor" } })
+    deepStrictEqual(schema.ast.annotations, {
+      [AST.TypeConstructorAnnotationId]: { _tag: "MyTypeConstructor" }
+    })
+    deepStrictEqual(
+      AST.getTypeConstructorAnnotation(schema.ast),
+      Option.some({ _tag: "MyTypeConstructor" })
+    )
   })
 
   it("parseIssueTitle", async () => {

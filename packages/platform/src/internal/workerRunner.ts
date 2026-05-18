@@ -47,9 +47,13 @@ export const make = Effect.fnUntraced(function*<I, E, R, O>(
 
   yield* Deferred.await(closeLatch).pipe(
     Effect.onExit(() => {
-      fiber.currentScheduler.scheduleTask(() => {
-        fiber.unsafeInterruptAsFork(fiber.id())
-      }, 0)
+      fiber.currentScheduler.scheduleTask(
+        () => {
+          fiber.unsafeInterruptAsFork(fiber.id())
+        },
+        0,
+        fiber
+      )
       return Effect.void
     }),
     Effect.forkScoped

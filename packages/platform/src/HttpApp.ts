@@ -318,3 +318,38 @@ export const toWebHandlerLayer = <E, R, RE>(
     ...options,
     toHandler: () => Effect.succeed(self)
   })
+
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const fromWebHandler = (
+  handler: (request: Request) => Promise<Response>
+): Default<ServerError.HttpServerError> =>
+  Effect.async((resume, signal) => {
+    const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+    const request = Context.unsafeGet(fiber.currentContext, ServerRequest.HttpServerRequest)
+    const requestResult = ServerRequest.toWebEither(request, {
+      signal,
+      runtime: Runtime.make({
+        context: fiber.currentContext,
+        fiberRefs: fiber.getFiberRefs(),
+        runtimeFlags: Runtime.defaultRuntimeFlags
+      })
+    })
+    if (requestResult._tag === "Left") {
+      return resume(Effect.fail(requestResult.left))
+    }
+    handler(requestResult.right).then(
+      (response) => resume(Effect.succeed(ServerResponse.fromWeb(response))),
+      (cause) =>
+        resume(Effect.fail(
+          new ServerError.RequestError({
+            cause,
+            request,
+            reason: "Transport",
+            description: "HttpApp.fromWebHandler: Error in handler"
+          })
+        ))
+    )
+  })

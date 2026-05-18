@@ -308,7 +308,7 @@ export const make = Effect.fnUntraced(function*(options?: {
   })
 
   const getUnprocessedMessages = sql.onDialectOrElse({
-    pg: () => (shardIds: ReadonlyArray<string>, now: number) =>
+    pg: () => (shardIds: Arr.NonEmptyArray<string>, now: number) =>
       sql<MessageJoinRow>`
         WITH messages AS (
           UPDATE ${messagesTableSql} m
@@ -333,7 +333,7 @@ export const make = Effect.fnUntraced(function*(options?: {
         )
         SELECT * FROM messages ORDER BY rowid ASC
       `,
-    orElse: () => (shardIds: ReadonlyArray<string>, now: number) =>
+    orElse: () => (shardIds: Arr.NonEmptyArray<string>, now: number) =>
       sql<MessageJoinRow>`
         SELECT m.*, r.id as reply_reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m
@@ -514,7 +514,7 @@ export const make = Effect.fnUntraced(function*(options?: {
     ),
 
     unprocessedMessagesById(ids, now) {
-      const idArr = Array.from(ids, (id) => String(id))
+      const idArr = ids.map((id) => String(id))
       return sql<MessageRow & ReplyJoinRow>`
         SELECT m.*, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
         FROM ${messagesTableSql} m

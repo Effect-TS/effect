@@ -700,4 +700,89 @@ describe("Options", () => {
       const helpDoc = Options.getHelp(option)
       yield* Effect.promise(() => expect(helpDoc).toMatchFileSnapshot("./snapshots/help-output/options-no-default"))
     }).pipe(runEffect))
+
+  describe("options after positional arguments", () => {
+    it("parses a text option that appears after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --firstName John
+        const args = Array.make("positional", "--firstName", "John")
+        const result = yield* process(firstName, args, CliConfig.defaultConfig)
+        // The "positional" should be in the leftover, firstName should be parsed
+        expect(result).toEqual([["positional"], "John"])
+      }).pipe(runEffect))
+
+    it("parses a text option with alias that appears after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional -f John
+        const args = Array.make("positional", "-f", "John")
+        const result = yield* process(firstName, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], "John"])
+      }).pipe(runEffect))
+
+    it("parses a boolean option that appears after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --verbose
+        const args = Array.make("positional", "--verbose")
+        const result = yield* process(verbose, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], true])
+      }).pipe(runEffect))
+
+    it("parses multiple options when some appear after positional args", () =>
+      Effect.gen(function*() {
+        const options = Options.all([firstName, lastName])
+        // Simulating: cmd --firstName John positional --lastName Doe
+        const args = Array.make("--firstName", "John", "positional", "--lastName", "Doe")
+        const result = yield* process(options, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], ["John", "Doe"]])
+      }).pipe(runEffect))
+
+    it("parses options interspersed with multiple positional args", () =>
+      Effect.gen(function*() {
+        const options = Options.all([firstName, verbose])
+        // Simulating: cmd pos1 --firstName John pos2 --verbose pos3
+        const args = Array.make("pos1", "--firstName", "John", "pos2", "--verbose", "pos3")
+        const result = yield* process(options, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["pos1", "pos2", "pos3"], ["John", true]])
+      }).pipe(runEffect))
+
+    it("parses text option with = syntax after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --firstName=John
+        const args = Array.make("positional", "--firstName=John")
+        const result = yield* process(firstName, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], "John"])
+      }).pipe(runEffect))
+
+    it("parses boolean option with explicit true value after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --verbose true
+        const args = Array.make("positional", "--verbose", "true")
+        const result = yield* process(verbose, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], true])
+      }).pipe(runEffect))
+
+    it("parses boolean option with explicit false value after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --verbose false
+        const args = Array.make("positional", "--verbose", "false")
+        const result = yield* process(verbose, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], false])
+      }).pipe(runEffect))
+
+    it("parses keyValueMap option that appears after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --defs key=value
+        const args = Array.make("positional", "--defs", "key=value")
+        const result = yield* process(defs, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], HashMap.make(["key", "value"])])
+      }).pipe(runEffect))
+
+    it("parses keyValueMap option with multiple values after positional args", () =>
+      Effect.gen(function*() {
+        // Simulating: cmd positional --defs key1=value1 key2=value2
+        const args = Array.make("positional", "-d", "key1=value1", "key2=value2")
+        const result = yield* process(defs, args, CliConfig.defaultConfig)
+        expect(result).toEqual([["positional"], HashMap.make(["key1", "value1"], ["key2", "value2"])])
+      }).pipe(runEffect))
+  })
 })

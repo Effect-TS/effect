@@ -43,4 +43,30 @@ describe("getPropertySignatures", () => {
       new AST.PropertySignature("b", S.Number.ast, false, true)
     ])
   })
+
+  it("Transformation (Struct with optionalWith default)", () => {
+    const schema = S.Struct({
+      a: S.String,
+      b: S.optionalWith(S.Number, { default: () => 0 })
+    })
+    deepStrictEqual(AST.getPropertySignatures(schema.ast), [
+      new AST.PropertySignature("a", S.String.ast, false, true),
+      new AST.PropertySignature("b", S.Number.ast, false, true)
+    ])
+  })
+
+  it("Transformation (Struct with optionalWith as Option)", () => {
+    const schema = S.Struct({
+      a: S.String,
+      b: S.optionalWith(S.Number, { as: "Option" })
+    })
+    const signatures = AST.getPropertySignatures(schema.ast)
+    deepStrictEqual(signatures.length, 2)
+    deepStrictEqual(signatures[0], new AST.PropertySignature("a", S.String.ast, false, true))
+    deepStrictEqual(signatures[1].name, "b")
+    deepStrictEqual(signatures[1].isOptional, false)
+    deepStrictEqual(signatures[1].isReadonly, true)
+    // b's type on the decoded side is Option<number> (a Declaration AST)
+    deepStrictEqual(signatures[1].type._tag, "Declaration")
+  })
 })

@@ -26,6 +26,14 @@ describe("Function", () => {
           identity
         )
     })
+
+    it("should preserve literal types (issue #5963)", () => {
+      const result = pipe(
+        [1, 2, 3] as const,
+        (x) => x
+      )
+      expect(result).type.toBe<readonly [1, 2, 3]>()
+    })
   })
 
   it("apply", () => {

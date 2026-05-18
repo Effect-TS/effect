@@ -19,6 +19,7 @@ import {
 import { NodeHttpServer } from "@effect/platform-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Deferred, Duration, Fiber, Stream } from "effect"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
@@ -479,6 +480,17 @@ describe("HttpServer", () => {
       expect(response.status).toEqual(499)
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
+  it.effect("causeResponse uses client abort when present", () =>
+    Effect.gen(function*() {
+      const parentFiberId = yield* Effect.fiberId
+      const cause = Cause.sequential(
+        Cause.interrupt(parentFiberId),
+        Cause.interrupt(HttpServerError.clientAbortFiberId)
+      )
+      const [response] = yield* HttpServerError.causeResponse(cause)
+      expect(response.status).toEqual(499)
+    }))
+
   it.scoped("multiplex", () =>
     Effect.gen(function*() {
       yield* HttpMultiplex.empty.pipe(
@@ -755,4 +767,30 @@ describe("HttpServer", () => {
       )
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  describe("HttpServerRequest.toWeb", () => {
+    it.scoped("converts POST request with body", () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.empty.pipe(
+          HttpRouter.post(
+            "/echo",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              const webRequest = yield* HttpServerRequest.toWeb(request)
+              assert(webRequest !== undefined, "toWeb returned undefined")
+              const body = yield* Effect.promise(() => webRequest.json())
+              return HttpServerResponse.unsafeJson({ received: body })
+            })
+          ),
+          HttpServer.serveEffect()
+        )
+        const client = yield* HttpClient.HttpClient
+        const res = yield* client.post("/echo", {
+          body: HttpBody.unsafeJson({ message: "hello" })
+        })
+        assert.strictEqual(res.status, 200)
+        const json = yield* res.json
+        assert.deepStrictEqual(json, { received: { message: "hello" } })
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  })
 })
