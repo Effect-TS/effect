@@ -246,8 +246,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("catch"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
-  // Regression: the discard fast-path in WorkflowEngine.execute used to drop the `parent` option,
-  // leaving observability tools unable to link discarded children back to their parent.
   it.effect("forwards parent pointer when spawning a child with discard:true", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
