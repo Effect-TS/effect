@@ -1008,15 +1008,15 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
   | R
   | HttpApiGroup.HttpApiGroup.ToService<Id, Groups>
   | HttpApiGroup.HttpApiGroup.ErrorContext<Groups>
-> => {
-  const ApiMiddleware = middleware(HttpApiBuilder.buildMiddleware(api)).layer as Layer.Layer<never>
-  return HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
+> =>
+  HttpApiBuilder.Router.unwrap(Effect.fnUntraced(function*(router_) {
     const router = yield* HttpRouter
     let existing = existingRoutesMap.get(router)
     if (!existing) {
       existing = new Set()
       existingRoutesMap.set(router, existing)
     }
+    const apiMiddleware = yield* HttpApiBuilder.buildMiddleware(api)
     const context = yield* Effect.context<
       | Etag.Generator
       | HttpRouter
@@ -1024,15 +1024,28 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
       | HttpPlatform
       | Path
     >()
+    const apiEndpointKeys = new Set<string>()
+    for (const groupKey of Object.keys((api as any).groups)) {
+      const group = (api as any).groups[groupKey]
+      for (const endpointKey of Object.keys(group.endpoints)) {
+        const endpoint = group.endpoints[endpointKey]
+        apiEndpointKeys.add(`${endpoint.method} ${endpoint.path}`)
+      }
+    }
     const routes = Arr.empty<Route<any, any>>()
     for (const route of router_.routes) {
+      if (!apiEndpointKeys.has(`${(route as any).method} ${(route as any).path}`)) {
+        continue
+      }
       if (existing.has(route)) {
         continue
       }
       existing.add(route)
       routes.push(makeRoute({
         ...route as any,
-        handler: Effect.mapInputContext(route.handler, (input) => Context.merge(context, input))
+        handler: apiMiddleware(
+          Effect.mapInputContext(route.handler, (input) => Context.merge(context, input)) as any
+        )
       }))
     }
 
@@ -1042,10 +1055,7 @@ export const addHttpApi = <Id extends string, Groups extends HttpApiGroup.HttpAp
       const spec = OpenApi.fromApi(api)
       yield* router.add("GET", options.openapiPath, Effect.succeed(HttpServerResponse.unsafeJson(spec)))
     }
-  }, Layer.effectDiscard)).pipe(
-    Layer.provide(ApiMiddleware)
-  )
-}
+  }, Layer.effectDiscard))
 
 const existingRoutesMap = new WeakMap<HttpRouter, Set<any>>()
 
