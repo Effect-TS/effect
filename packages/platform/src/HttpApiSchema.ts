@@ -221,18 +221,16 @@ export const getStatusError = <A extends Schema.Schema.All>(self: A): number => 
  * @internal
  */
 export const extractUnionTypes = (ast: AST.AST): ReadonlyArray<AST.AST> => {
-  function process(ast: AST.AST): void {
-    if (AST.isUnion(ast)) {
-      for (const type of ast.types) {
-        process(type)
-      }
+  if (AST.isUnion(ast)) {
+    const types = ast.types.flatMap((type) => extractUnionTypes(type))
+    if (Reflect.ownKeys(ast.annotations).length === 0) {
+      return types
     } else {
-      out.push(ast)
+      return [AST.Union.make(types, ast.annotations)]
     }
+  } else {
+    return [ast]
   }
-  const out: Array<AST.AST> = []
-  process(ast)
-  return out
 }
 
 /** @internal */
