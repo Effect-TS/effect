@@ -166,6 +166,7 @@ describe("PerplexitySearch", () => {
         assert.match(captured!.url, /\/search$/)
         assert.deepStrictEqual(captured!.body, { query: "effect typescript", max_results: 2 })
         assert.strictEqual(captured!.headers["authorization"], "Bearer test-api-key")
+        assert.match(captured!.headers["x-pplx-integration"], /^effect\//)
       }))
 
     it.effect("forwards filter options to the request body", () =>

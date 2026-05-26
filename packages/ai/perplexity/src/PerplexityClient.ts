@@ -16,6 +16,10 @@ import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import Package from "../package.json" with { type: "json" }
+
+const integrationHeader = "X-Pplx-Integration"
+const integrationVersion = `effect/${Package.version}`
 
 /**
  * @since 1.0.0
@@ -89,6 +93,7 @@ export const make = (options: {
           options.apiKey
             ? HttpClientRequest.setHeader(authHeader, `Bearer ${Redacted.value(options.apiKey)}`)
             : identity,
+          HttpClientRequest.setHeader(integrationHeader, integrationVersion),
           HttpClientRequest.acceptJson
         )
       ),
