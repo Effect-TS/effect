@@ -206,6 +206,29 @@ export const make = Effect.fnUntraced(function*(options: {
       const { messages, system } = yield* prepareMessages(providerOptions)
       const { additionalTools, betas, toolConfig } = yield* prepareTools(providerOptions, config)
       const responseFormat = providerOptions.responseFormat
+
+      // Anthropic rejects requests that combine extended thinking with forced tool use.
+      // generateObject always forces toolChoice, so strip "thinking" from the merged
+      // fields on the json path to prevent a 400 from the Bedrock Converse API.
+      let requestAdditionalFields: Record<string, unknown> | undefined
+      if (responseFormat.type === "json") {
+        if (
+          Predicate.isNotUndefined(config.additionalModelRequestFields) ||
+          Predicate.isNotUndefined(additionalTools)
+        ) {
+          const { thinking: _thinking, ...rest } = {
+            ...config.additionalModelRequestFields,
+            ...additionalTools
+          }
+          requestAdditionalFields = rest
+        }
+      } else if (Predicate.isNotUndefined(additionalTools)) {
+        requestAdditionalFields = {
+          ...config.additionalModelRequestFields,
+          ...additionalTools
+        }
+      }
+
       const request: typeof ConverseRequest.Encoded = {
         ...config,
         system,
@@ -231,13 +254,8 @@ export const make = Effect.fnUntraced(function*(options: {
           ? { toolConfig }
           : {}),
         // Handle additional model request fields
-        ...(Predicate.isNotUndefined(additionalTools)
-          ? {
-            additionalModelRequestFields: {
-              ...config.additionalModelRequestFields,
-              ...additionalTools
-            }
-          }
+        ...(Predicate.isNotUndefined(requestAdditionalFields)
+          ? { additionalModelRequestFields: requestAdditionalFields }
           : {})
       }
       return { betas, request }

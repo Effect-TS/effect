@@ -366,7 +366,8 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Type"] =>
         yield* options.execute(self, {
           executionId,
           payload: payload as object,
-          discard: true
+          discard: true,
+          parent: Option.getOrUndefined(parentInstance)
         })
         return executionId
       }
