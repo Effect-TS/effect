@@ -44,9 +44,21 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly runnerShardWeight: number
   /**
+   * The shard groups available across all runners.
+   *
+   * Defaults to `["default"]`.
+   */
+  readonly availableShardGroups: ReadonlyArray<string>
+  /**
    * The shard groups that are assigned to this runner.
    *
    * Defaults to `["default"]`.
+   */
+  readonly assignedShardGroups: ReadonlyArray<string>
+  /**
+   * The shard groups that are assigned to this runner.
+   *
+   * @deprecated Use `assignedShardGroups` instead.
    */
   readonly shardGroups: ReadonlyArray<string>
   /**
@@ -134,6 +146,8 @@ export const defaults: ShardingConfig["Type"] = {
   runnerListenAddress: Option.none(),
   runnerShardWeight: 1,
   shardsPerGroup: 300,
+  availableShardGroups: ["default"],
+  assignedShardGroups: ["default"],
   shardGroups: ["default"],
   preemptiveShutdown: true,
   shardLockRefreshInterval: Duration.seconds(10),
@@ -156,7 +170,7 @@ export const defaults: ShardingConfig["Type"] = {
  * @category Layers
  */
 export const layer = (options?: Partial<ShardingConfig["Type"]>): Layer.Layer<ShardingConfig> =>
-  Layer.succeed(ShardingConfig, { ...defaults, ...options })
+  Layer.succeed(ShardingConfig, normalize({ ...defaults, ...options }, options))
 
 /**
  * @since 1.0.0
@@ -190,6 +204,14 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   }).pipe(Config.map((options) => RunnerAddress.make(options)), Config.option),
   runnerShardWeight: Config.integer("runnerShardWeight").pipe(
     Config.withDefault(defaults.runnerShardWeight)
+  ),
+  availableShardGroups: Config.array(Config.string("availableShardGroups")).pipe(
+    Config.withDefault(["default"]),
+    Config.withDescription("The shard groups available across all runners.")
+  ),
+  assignedShardGroups: Config.array(Config.string("shardGroups")).pipe(
+    Config.withDefault(["default"]),
+    Config.withDescription("The shard groups that are assigned to this runner.")
   ),
   shardGroups: Config.array(Config.string("shardGroups")).pipe(
     Config.withDefault(["default"]),
@@ -283,5 +305,36 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Type"]> | undefin
 > =>
   Layer.effect(
     ShardingConfig,
-    options ? Effect.map(configFromEnv, (config) => ({ ...config, ...options })) : configFromEnv
+    options ? Effect.map(configFromEnv, (config) => normalize({ ...config, ...options }, options)) : configFromEnv
   )
+
+function normalize(
+  config: ShardingConfig["Type"],
+  options: Partial<ShardingConfig["Type"]> | undefined
+): ShardingConfig["Type"] {
+  const assignedShardGroups = options?.assignedShardGroups ?? options?.shardGroups ?? config.assignedShardGroups
+  const availableShardGroups = options?.availableShardGroups ??
+    (options?.shardGroups && !options.assignedShardGroups ? assignedShardGroups : config.availableShardGroups)
+  return { ...config, availableShardGroups, assignedShardGroups, shardGroups: assignedShardGroups }
+}
+
+/**
+ * Normalizes the provided `ShardingConfig` to calculate the available and
+ * assigned shard groups.
+ *
+ * @since 1.0.0
+ * @category Shard groups
+ */
+export const shardGroupConfig = (config: ShardingConfig["Type"]): {
+  readonly available: ReadonlySet<string>
+  readonly assigned: ReadonlySet<string>
+} => {
+  const available = new Set(config.availableShardGroups.slice().sort())
+  const assigned = new Set<string>()
+  available.forEach((group) => {
+    if (config.assignedShardGroups.includes(group)) {
+      assigned.add(group)
+    }
+  })
+  return { available, assigned }
+}
