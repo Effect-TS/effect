@@ -56,12 +56,6 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly assignedShardGroups: ReadonlyArray<string>
   /**
-   * The shard groups that are assigned to this runner.
-   *
-   * @deprecated Use `assignedShardGroups` instead.
-   */
-  readonly shardGroups: ReadonlyArray<string>
-  /**
    * The number of shards to allocate per shard group.
    *
    * **Note**: this value should be consistent across all runners.
@@ -148,7 +142,6 @@ export const defaults: ShardingConfig["Type"] = {
   shardsPerGroup: 300,
   availableShardGroups: ["default"],
   assignedShardGroups: ["default"],
-  shardGroups: ["default"],
   preemptiveShutdown: true,
   shardLockRefreshInterval: Duration.seconds(10),
   shardLockExpiration: Duration.seconds(35),
@@ -170,7 +163,7 @@ export const defaults: ShardingConfig["Type"] = {
  * @category Layers
  */
 export const layer = (options?: Partial<ShardingConfig["Type"]>): Layer.Layer<ShardingConfig> =>
-  Layer.succeed(ShardingConfig, normalize({ ...defaults, ...options }, options))
+  Layer.succeed(ShardingConfig, { ...defaults, ...options })
 
 /**
  * @since 1.0.0
@@ -210,10 +203,6 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
     Config.withDescription("The shard groups available across all runners.")
   ),
   assignedShardGroups: Config.array(Config.string("shardGroups")).pipe(
-    Config.withDefault(["default"]),
-    Config.withDescription("The shard groups that are assigned to this runner.")
-  ),
-  shardGroups: Config.array(Config.string("shardGroups")).pipe(
     Config.withDefault(["default"]),
     Config.withDescription("The shard groups that are assigned to this runner.")
   ),
@@ -305,18 +294,8 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Type"]> | undefin
 > =>
   Layer.effect(
     ShardingConfig,
-    options ? Effect.map(configFromEnv, (config) => normalize({ ...config, ...options }, options)) : configFromEnv
+    options ? Effect.map(configFromEnv, (config) => ({ ...config, ...options })) : configFromEnv
   )
-
-function normalize(
-  config: ShardingConfig["Type"],
-  options: Partial<ShardingConfig["Type"]> | undefined
-): ShardingConfig["Type"] {
-  const assignedShardGroups = options?.assignedShardGroups ?? options?.shardGroups ?? config.assignedShardGroups
-  const availableShardGroups = options?.availableShardGroups ??
-    (options?.shardGroups && !options.assignedShardGroups ? assignedShardGroups : config.availableShardGroups)
-  return { ...config, availableShardGroups, assignedShardGroups, shardGroups: assignedShardGroups }
-}
 
 /**
  * Normalizes the provided `ShardingConfig` to calculate the available and
