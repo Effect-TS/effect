@@ -2149,6 +2149,18 @@ details: Cannot encode Symbol(effect/Schema/test/a) key to JSON Schema`
       })
     })
 
+    it("Record(string, never)", () => {
+      const jsonSchema = expectJSONSchema(Schema.Record({ key: Schema.String, value: Schema.Never }), {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      })
+      const validate = getAjvValidate(jsonSchema)
+      assertTrue(validate({}))
+      assertFalse(validate({ a: null }))
+    })
+
     it("Record('a' | 'b', number)", () => {
       expectJSONSchemaAnnotations(
         Schema.Record(

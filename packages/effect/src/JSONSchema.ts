@@ -843,7 +843,7 @@ function go(
         const parameter = is.parameter
         switch (parameter._tag) {
           case "StringKeyword": {
-            output.additionalProperties = go(
+            const additionalProperties = go(
               pruned,
               $defs,
               "handle-identifier",
@@ -852,6 +852,9 @@ function go(
               "handle-annotation",
               errors
             )
+            output.additionalProperties = isNeverWithoutCustomAnnotations(additionalProperties)
+              ? false
+              : additionalProperties
             break
           }
           case "TemplateLiteral": {
