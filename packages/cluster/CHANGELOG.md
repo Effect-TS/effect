@@ -1,5 +1,16 @@
 # @effect/cluster
 
+## 0.59.0
+
+### Minor Changes
+
+- [#6255](https://github.com/Effect-TS/effect/pull/6255) [`26e1922`](https://github.com/Effect-TS/effect/commit/26e19228e1422decbe11ef58e29757f013d96fc8) Thanks @tim-smart! - Backport cluster shard group fixes: use available shard groups for SQL advisory lock numbering and route workflow durable clock/deferred messages through the owning workflow shard group.
+
+### Patch Changes
+
+- Updated dependencies [[`e5998a4`](https://github.com/Effect-TS/effect/commit/e5998a45f69960b38eb2b8cb67cbb07b9e6962c7)]:
+  - @effect/workflow@0.18.2
+
 ## 0.58.3
 
 ### Patch Changes

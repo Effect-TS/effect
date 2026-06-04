@@ -1,5 +1,14 @@
 # @effect/workflow
 
+## 0.18.2
+
+### Patch Changes
+
+- [#6241](https://github.com/Effect-TS/effect/pull/6241) [`e5998a4`](https://github.com/Effect-TS/effect/commit/e5998a45f69960b38eb2b8cb67cbb07b9e6962c7) Thanks @jcalem-rogo! - Forward the parent pointer when spawning a child workflow with `discard: true`
+
+- Updated dependencies []:
+  - @effect/experimental@0.60.0
+
 ## 0.18.1
 
 ### Patch Changes

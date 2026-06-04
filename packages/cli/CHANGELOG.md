@@ -1,5 +1,13 @@
 # @effect/cli
 
+## 0.75.2
+
+### Patch Changes
+
+- [#6213](https://github.com/Effect-TS/effect/pull/6213) [`1a63ec8`](https://github.com/Effect-TS/effect/commit/1a63ec87cd295972b05b51c9b4ad2db9567dc994) Thanks @lihan3238! - fix(cli): replace all hyphens in shell completion command names
+
+- [#6208](https://github.com/Effect-TS/effect/pull/6208) [`e71ba68`](https://github.com/Effect-TS/effect/commit/e71ba68273026a1a2c1ace7218bdb206b0d3386d) Thanks @Zelys-DFKH! - Fix `@effect/cli` help output to use `Ansi.blackBright` instead of `Ansi.black` for `Weak` spans. The previous black foreground was invisible on dark terminal backgrounds.
+
 ## 0.75.1
 
 ### Patch Changes
