@@ -282,7 +282,7 @@ const Proto = {
         let schemas = schemasCache.get(tool)
         if (Predicate.isUndefined(schemas)) {
           const handler = context.unsafeMap.get(tool.id)! as Tool.Handler<any>
-          const decodeParameters = Schema.decodeUnknown(tool.parametersSchema) as any
+          const decodeParameters = Schema.decodeUnknown(tool.parametersSchema as Schema.Schema.Any) as any
           const resultSchema = Schema.Union(tool.successSchema, tool.failureSchema)
           const validateResult = Schema.validate(resultSchema) as any
           const encodeResult = Schema.encodeUnknown(resultSchema) as any

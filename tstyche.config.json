@@ -1,6 +1,7 @@
 {
   "$schema": "https://tstyche.org/schemas/config.json",
   "testFileMatch": [
-    "packages/*/dtslint/**/*.tst.*"
+    "packages/*/dtslint/**/*.tst.*",
+    "packages/ai/*/dtslint/**/*.tst.*"
   ]
 }

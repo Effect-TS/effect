@@ -411,8 +411,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
  * @category Utility Types
  */
 export type ToolCallParts<Tools extends Record<string, Tool.Any>> = {
-  [Name in keyof Tools]: Name extends string ?
-    ToolCallPart<Name, Schema.Struct.Type<Tool.ParametersSchema<Tools[Name]>["fields"]>>
+  [Name in keyof Tools]: Name extends string ? ToolCallPart<Name, Tool.Parameters<Tools[Name]>>
     : never
 }[keyof Tools]
 
@@ -1473,7 +1472,7 @@ export interface ToolCallPartMetadata extends ProviderMetadata {}
  * @since 1.0.0
  * @category Schemas
  */
-export const ToolCallPart = <const Name extends string, Params extends Schema.Struct.Fields>(
+export const ToolCallPart = <const Name extends string, Params extends Tool.AnyParametersSchema>(
   /**
    * Name of the tool.
    */
@@ -1481,8 +1480,8 @@ export const ToolCallPart = <const Name extends string, Params extends Schema.St
   /**
    * Schema for the tool parameters.
    */
-  params: Schema.Struct<Params>
-): Schema.Schema<ToolCallPart<Name, Params>, ToolCallPartEncoded> =>
+  params: Params
+): Schema.Schema<ToolCallPart<Name, Schema.Schema.Type<Params>>, ToolCallPartEncoded> =>
   Schema.Struct({
     type: Schema.Literal("tool-call"),
     id: Schema.String,
