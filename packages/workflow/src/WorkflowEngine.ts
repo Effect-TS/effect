@@ -15,6 +15,7 @@ import * as Scope from "effect/Scope"
 import type * as Activity from "./Activity.js"
 import type { DurableClock } from "./DurableClock.js"
 import type * as DurableDeferred from "./DurableDeferred.js"
+import { CurrentActivityExecution } from "./internal/activity.js"
 import * as Workflow from "./Workflow.js"
 
 /**
@@ -349,6 +350,7 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Type"] =>
       const suspendedRetrySchedule = opts.suspendedRetrySchedule ?? defaultRetrySchedule
       yield* Effect.annotateCurrentSpan({ executionId })
       let result: Workflow.Result<Success["Type"], Error["Type"]> | undefined
+      const currentActivityExecution = yield* CurrentActivityExecution
 
       // link interruption with parent workflow
       const parentInstance = yield* Effect.serviceOption(WorkflowInstance)
@@ -379,6 +381,19 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Type"] =>
         parent: Option.getOrUndefined(parentInstance)
       })
       if (Option.isSome(parentInstance)) {
+        if (currentActivityExecution) {
+          let sleep: Effect.Effect<any> | undefined
+          while (true) {
+            result = yield* run
+            if (result._tag === "Complete") {
+              return yield* result.exit
+            }
+            sleep ??= (yield* Schedule.driver(suspendedRetrySchedule)).next(void 0).pipe(
+              Effect.catchAll(() => Effect.dieMessage(`${self.name}.execute: suspendedRetrySchedule exhausted`))
+            )
+            yield* sleep
+          }
+        }
         result = yield* Workflow.wrapActivityResult(
           run,
           (result) => result._tag === "Suspended"
