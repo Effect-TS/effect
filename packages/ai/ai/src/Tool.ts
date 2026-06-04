@@ -487,7 +487,7 @@ export const isProviderDefined = (
  * @since 1.0.0
  * @category Utility Types
  */
-export type AnyParametersSchema = Schema.Struct<any> | AnyTaggedRequestSchema | EmptyParams
+export type AnyParametersSchema = AnyStructSchema | EmptyParams
 
 /**
  * A type which represents any `Tool`.
