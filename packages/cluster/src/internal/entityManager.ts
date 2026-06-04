@@ -145,6 +145,8 @@ export const make = Effect.fnUntraced(function*<
 
     const activeRequests: EntityState["activeRequests"] = new Map()
     let defectRequestIds: Array<bigint> = []
+    let isRestartingAfterDefect = false
+    const withDefectRestartLock = Effect.unsafeMakeSemaphore(1).withPermits(1)
 
     // the server is stored in a ref, so if there is a defect, we can
     // swap the server without losing the active requests
@@ -192,7 +194,11 @@ export const make = Effect.fnUntraced(function*<
                   Exit.isInterrupted(response.exit) &&
                   (isShuttingDown || Uninterruptible.forServer(request.rpc.annotations))
                 ) {
-                  if (!isShuttingDown) {
+                  if (isRestartingAfterDefect && isShuttingDown) {
+                    // Closing the old server during a defect restart interrupts active handlers.
+                    // Keep durable requests registered so the new server can replay them below.
+                    return Effect.void
+                  } else if (!isShuttingDown) {
                     return server.write(0, {
                       ...request.message.envelope,
                       id: RequestId(request.message.envelope.requestId),
@@ -279,7 +285,9 @@ export const make = Effect.fnUntraced(function*<
 
         if (defectRequestIds.length > 0) {
           for (const id of defectRequestIds) {
-            const { lastSentChunk, message } = activeRequests.get(id)!
+            const request = activeRequests.get(id)
+            if (!request) continue
+            const { lastSentChunk, message } = request
             yield* server.write(0, {
               ...message.envelope,
               id: RequestId(message.envelope.requestId),
@@ -298,9 +306,16 @@ export const make = Effect.fnUntraced(function*<
     )
 
     function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
+      return withDefectRestartLock(Effect.suspend(() => restartOnDefect(cause))).pipe(
+        Effect.catchAllCause(onDefect)
+      )
+    }
+
+    function restartOnDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
       if (!activeServers.has(address.entityId)) {
         return endLatch.open
       }
+      isRestartingAfterDefect = true
       const effect = writeRef.unsafeRebuild()
       defectRequestIds = Array.from(activeRequests.keys())
       return Effect.logError("Defect in entity, restarting", cause).pipe(
@@ -311,7 +326,9 @@ export const make = Effect.fnUntraced(function*<
           address,
           runner: options.runnerAddress
         }),
-        Effect.catchAllCause(onDefect)
+        Effect.ensuring(Effect.sync(() => {
+          isRestartingAfterDefect = false
+        }))
       )
     }
 
