@@ -186,16 +186,14 @@ export interface Tool<
    * Set the schema to use to validate the result of a tool call when successful.
    */
   setParameters<
-    ParametersSchema extends Schema.Struct<any> | Schema.Struct.Fields | EmptyParams
+    ParametersSchema extends AnyParametersSchema | Schema.Struct.Fields
   >(
     schema: ParametersSchema
   ): Tool<
     Name,
     {
-      readonly parameters: ParametersSchema extends Schema.Struct<infer _> ? ParametersSchema
-        : ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
-        : ParametersSchema extends EmptyParams ? EmptyParams
-        : never
+      readonly parameters: ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
+        : ParametersSchema
       readonly success: Config["success"]
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
@@ -825,7 +823,7 @@ const Proto = {
   },
   setParameters(
     this: Any,
-    parametersSchema: Schema.Struct<any> | Schema.Struct.Fields | EmptyParams
+    parametersSchema: AnyParametersSchema | Schema.Struct.Fields
   ) {
     return userDefinedProto({
       ...this,
