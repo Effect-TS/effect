@@ -1,5 +1,16 @@
 # @effect/ai
 
+## 0.36.0
+
+### Minor Changes
+
+- [#6260](https://github.com/Effect-TS/effect/pull/6260) [`02ae8fb`](https://github.com/Effect-TS/effect/commit/02ae8fb15809a85ba6a9239ab4421845e87d7985) Thanks @IMax153! - Support `Tool.EmptyParams` as an explicit tool parameters schema.
+
+### Patch Changes
+
+- Updated dependencies [[`e2126bc`](https://github.com/Effect-TS/effect/commit/e2126bc14c4c902ff9f3dbe486e53190c6c87725), [`f7e836e`](https://github.com/Effect-TS/effect/commit/f7e836ea9b399784fdb3846d176ebe72bb07bfc7)]:
+  - effect@3.21.3
+
 ## 0.35.0
 
 ### Patch Changes
