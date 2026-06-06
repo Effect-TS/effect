@@ -456,7 +456,7 @@ export const collectAllOutputs: <Out, In, R>(self: Schedule<Out, In, R>) => Sche
  * @since 2.0.0
  * @category Collecting
  */
-export const collectUntil: <A>(f: Predicate<A>) => Schedule<Chunk.Chunk<A>, A> = internal.collectUntil
+export const collectUntil: <A>(f: Predicate<Types.NoInfer<A>>) => Schedule<Chunk.Chunk<A>, A> = internal.collectUntil
 
 /**
  * Collects all inputs into a `Chunk` until an effectful condition fails.
@@ -487,7 +487,7 @@ export const collectUntilEffect: <A, R>(
  * @since 2.0.0
  * @category Collecting
  */
-export const collectWhile: <A>(f: Predicate<A>) => Schedule<Chunk.Chunk<A>, A> = internal.collectWhile
+export const collectWhile: <A>(f: Predicate<Types.NoInfer<A>>) => Schedule<Chunk.Chunk<A>, A> = internal.collectWhile
 
 /**
  * Collects all inputs into a `Chunk` while an effectful condition holds.
@@ -1495,7 +1495,7 @@ export const provideService: {
  * @since 2.0.0
  * @category Recurrence Conditions
  */
-export const recurUntil: <A>(f: Predicate<A>) => Schedule<A, A> = internal.recurUntil
+export const recurUntil: <A>(f: Predicate<Types.NoInfer<A>>) => Schedule<A, A> = internal.recurUntil
 
 /**
  * A schedule that recurs until the given effectful predicate evaluates to true.
@@ -1568,7 +1568,7 @@ export const recurUpTo: (duration: Duration.DurationInput) => Schedule<Duration.
  * @since 2.0.0
  * @category Recurrence Conditions
  */
-export const recurWhile: <A>(f: Predicate<A>) => Schedule<A, A> = internal.recurWhile
+export const recurWhile: <A>(f: Predicate<Types.NoInfer<A>>) => Schedule<A, A> = internal.recurWhile
 
 /**
  * A schedule that recurs as long as the given effectful predicate evaluates to

@@ -106,7 +106,7 @@ describe("Schedule", () => {
     }))
   it.effect("union of two schedules should continue as long as either wants to continue", () =>
     Effect.gen(function*() {
-      const schedule = Schedule.recurWhile((b: boolean) => b).pipe(Schedule.union(Schedule.fixed("1 seconds")))
+      const schedule = Schedule.recurWhile<boolean>((b) => b).pipe(Schedule.union(Schedule.fixed("1 seconds")))
       const input = Chunk.make(true, false, false, false, false)
       const result = yield* runCollect(schedule.pipe(Schedule.compose(Schedule.elapsed)), input)
       const expected = [0, 0, 1, 2, 3].map(Duration.seconds)
