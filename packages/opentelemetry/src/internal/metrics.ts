@@ -1,5 +1,5 @@
 import type { HrTime } from "@opentelemetry/api"
-import { ValueType } from "@opentelemetry/api"
+import { diag, ValueType } from "@opentelemetry/api"
 import type * as Resources from "@opentelemetry/resources"
 import type {
   CollectionResult,
@@ -32,7 +32,13 @@ type MetricDataWithInstrumentDescriptor = MetricData & {
 
 /** @internal */
 export class MetricProducerImpl implements MetricProducer {
-  constructor(readonly resource: Resources.Resource) {}
+  readonly resource: Resources.Resource
+  readonly readers: Array<MetricReader> = []
+  private warnedConflictingTemporalities = false
+
+  constructor(resource: Resources.Resource) {
+    this.resource = resource
+  }
 
   startTimes = new Map<string, HrTime>()
 
@@ -42,6 +48,26 @@ export class MetricProducerImpl implements MetricProducer {
     }
     this.startTimes.set(name, hrTime)
     return hrTime
+  }
+
+  private temporalityFor(descriptorType: InstrumentType): AggregationTemporality {
+    if (this.readers.length === 0) {
+      return AggregationTemporality.CUMULATIVE
+    }
+    const selected = this.readers[0].selectAggregationTemporality(descriptorType)
+    if (
+      this.readers.length > 1 &&
+      this.readers.some((r) => r.selectAggregationTemporality(descriptorType) !== selected)
+    ) {
+      if (!this.warnedConflictingTemporalities) {
+        this.warnedConflictingTemporalities = true
+        diag.warn(
+          "@effect/opentelemetry: multiple MetricReaders registered with conflicting " +
+            "aggregationTemporality for the same instrument type; using the first reader's preference."
+        )
+      }
+    }
+    return selected
   }
 
   collect(_options?: MetricCollectOptions): Promise<CollectionResult> {
@@ -62,6 +88,7 @@ export class MetricProducerImpl implements MetricProducer {
       })
       const descriptor = descriptorFromKey(metricKey, attributes)
       const startTime = this.startTimeFor(descriptor.name, hrTimeNow)
+      const temporality = this.temporalityFor(descriptor.type)
 
       if (MetricState.isCounterState(metricState)) {
         const dataPoint: DataPoint<number> = {
@@ -77,7 +104,7 @@ export class MetricProducerImpl implements MetricProducer {
             dataPointType: DataPointType.SUM,
             descriptor,
             isMonotonic: descriptor.type === InstrumentType.COUNTER,
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             dataPoints: [dataPoint]
           })
         }
@@ -94,7 +121,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.GAUGE,
             descriptor,
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             dataPoints: [dataPoint]
           })
         }
@@ -133,7 +160,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.HISTOGRAM,
             descriptor,
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             dataPoints: [dataPoint]
           })
         }
@@ -157,7 +184,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.SUM,
             descriptor: descriptorFromKey(metricKey, attributes),
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: true,
             dataPoints
           })
@@ -205,7 +232,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.SUM,
             descriptor: descriptorFromKey(metricKey, attributes, "quantiles"),
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: false,
             dataPoints
           })
@@ -217,7 +244,7 @@ export class MetricProducerImpl implements MetricProducer {
               type: InstrumentType.COUNTER,
               valueType: ValueType.INT
             },
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: true,
             dataPoints: [countDataPoint]
           })
@@ -229,7 +256,7 @@ export class MetricProducerImpl implements MetricProducer {
               type: InstrumentType.COUNTER,
               valueType: ValueType.DOUBLE
             },
-            aggregationTemporality: AggregationTemporality.CUMULATIVE,
+            aggregationTemporality: temporality,
             isMonotonic: true,
             dataPoints: [sumDataPoint]
           })
@@ -307,6 +334,9 @@ export const registerProducer = (
     Effect.sync(() => {
       const reader = metricReader()
       const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
+      if (self instanceof MetricProducerImpl) {
+        for (const r of readers) self.readers.push(r)
+      }
       readers.forEach((reader) => reader.setMetricProducer(self))
       return readers
     }),

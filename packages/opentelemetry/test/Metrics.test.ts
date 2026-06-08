@@ -1,6 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
 import { resourceFromAttributes } from "@opentelemetry/resources"
+import {
+  AggregationTemporality,
+  InMemoryMetricExporter,
+  PeriodicExportingMetricReader
+} from "@opentelemetry/sdk-metrics"
 import * as Effect from "effect/Effect"
 import * as Metric from "effect/Metric"
 import * as internal from "../src/internal/metrics.js"
@@ -291,5 +296,58 @@ describe("Metrics", () => {
           }
         ]
       })
+    }))
+
+  it.effect("counter honors reader's preferred temporality (DELTA)", () =>
+    Effect.gen(function*() {
+      const producer = new internal.MetricProducerImpl(
+        resourceFromAttributes({ name: "test", version: "1.0.0" })
+      )
+      const reader = new PeriodicExportingMetricReader({
+        exporter: new InMemoryMetricExporter(AggregationTemporality.DELTA),
+        exportIntervalMillis: 60_000_000
+      })
+      yield* Effect.scoped(internal.registerProducer(producer, () => reader))
+
+      const counter = Metric.counter("counter-temp", { incremental: true })
+      yield* Metric.increment(counter)
+      yield* Metric.increment(counter)
+
+      const results = yield* Effect.promise(() => producer.collect())
+      const metric = findMetric(JSON.parse(JSON.stringify(results)), "counter-temp")
+      assert.equal(metric.aggregationTemporality, AggregationTemporality.DELTA)
+      assert.equal(metric.isMonotonic, true)
+    }))
+
+  it.effect("gauge honors reader's preferred temporality (DELTA)", () =>
+    Effect.gen(function*() {
+      const producer = new internal.MetricProducerImpl(
+        resourceFromAttributes({ name: "test", version: "1.0.0" })
+      )
+      const reader = new PeriodicExportingMetricReader({
+        exporter: new InMemoryMetricExporter(AggregationTemporality.DELTA),
+        exportIntervalMillis: 60_000_000
+      })
+      yield* Effect.scoped(internal.registerProducer(producer, () => reader))
+
+      const gauge = Metric.gauge("gauge-temp")
+      yield* Metric.set(gauge, 42)
+
+      const results = yield* Effect.promise(() => producer.collect())
+      const metric = findMetric(JSON.parse(JSON.stringify(results)), "gauge-temp")
+      assert.equal(metric.aggregationTemporality, AggregationTemporality.DELTA)
+    }))
+
+  it.effect("falls back to CUMULATIVE when no reader is registered", () =>
+    Effect.gen(function*() {
+      const producer = new internal.MetricProducerImpl(
+        resourceFromAttributes({ name: "test", version: "1.0.0" })
+      )
+      const counter = Metric.counter("counter-no-reader", { incremental: true })
+      yield* Metric.increment(counter)
+
+      const results = yield* Effect.promise(() => producer.collect())
+      const metric = findMetric(JSON.parse(JSON.stringify(results)), "counter-no-reader")
+      assert.equal(metric.aggregationTemporality, AggregationTemporality.CUMULATIVE)
     }))
 })
