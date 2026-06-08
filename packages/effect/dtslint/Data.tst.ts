@@ -189,5 +189,30 @@ describe("Data", () => {
       expect<typeof A>().type.toBe<(<A>(args: { readonly a: A }) => { readonly _tag: "A"; readonly a: A })>()
       expect<typeof B>().type.toBe<(<B>(args: { readonly b?: B }) => { readonly _tag: "B"; readonly b?: B })>()
     })
+
+    it("should preserve the generic type parameter inside $match arms (#6249)", () => {
+      type TE<T> = Data.TaggedEnum<{
+        Leaf: { value: T }
+        Branch: { children: ReadonlyArray<TE<T>> }
+      }>
+
+      interface TEDefinition extends Data.TaggedEnum.WithGenerics<1> {
+        readonly taggedEnum: TE<this["A"]>
+      }
+
+      const TE = Data.taggedEnum<TEDefinition>()
+
+      function collectValues<A>(node: TE<A>): ReadonlyArray<A> {
+        return TE.$match(node, {
+          Leaf: (leaf) => {
+            expect(leaf.value).type.toBe<A>()
+            return [leaf.value]
+          },
+          Branch: (branch) => branch.children.flatMap(collectValues<A>)
+        })
+      }
+
+      expect(collectValues).type.toBe<<A>(node: TE<A>) => ReadonlyArray<A>>()
+    })
   })
 })

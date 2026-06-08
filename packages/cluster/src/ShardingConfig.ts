@@ -44,11 +44,17 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
    */
   readonly runnerShardWeight: number
   /**
+   * The shard groups available across all runners.
+   *
+   * Defaults to `["default"]`.
+   */
+  readonly availableShardGroups: ReadonlyArray<string>
+  /**
    * The shard groups that are assigned to this runner.
    *
    * Defaults to `["default"]`.
    */
-  readonly shardGroups: ReadonlyArray<string>
+  readonly assignedShardGroups: ReadonlyArray<string>
   /**
    * The number of shards to allocate per shard group.
    *
@@ -134,7 +140,8 @@ export const defaults: ShardingConfig["Type"] = {
   runnerListenAddress: Option.none(),
   runnerShardWeight: 1,
   shardsPerGroup: 300,
-  shardGroups: ["default"],
+  availableShardGroups: ["default"],
+  assignedShardGroups: ["default"],
   preemptiveShutdown: true,
   shardLockRefreshInterval: Duration.seconds(10),
   shardLockExpiration: Duration.seconds(35),
@@ -191,7 +198,11 @@ export const config: Config.Config<ShardingConfig["Type"]> = Config.all({
   runnerShardWeight: Config.integer("runnerShardWeight").pipe(
     Config.withDefault(defaults.runnerShardWeight)
   ),
-  shardGroups: Config.array(Config.string("shardGroups")).pipe(
+  availableShardGroups: Config.array(Config.string("availableShardGroups")).pipe(
+    Config.withDefault(["default"]),
+    Config.withDescription("The shard groups available across all runners.")
+  ),
+  assignedShardGroups: Config.array(Config.string("shardGroups")).pipe(
     Config.withDefault(["default"]),
     Config.withDescription("The shard groups that are assigned to this runner.")
   ),
@@ -285,3 +296,24 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Type"]> | undefin
     ShardingConfig,
     options ? Effect.map(configFromEnv, (config) => ({ ...config, ...options })) : configFromEnv
   )
+
+/**
+ * Normalizes the provided `ShardingConfig` to calculate the available and
+ * assigned shard groups.
+ *
+ * @since 1.0.0
+ * @category Shard groups
+ */
+export const shardGroupConfig = (config: ShardingConfig["Type"]): {
+  readonly available: ReadonlySet<string>
+  readonly assigned: ReadonlySet<string>
+} => {
+  const available = new Set(config.availableShardGroups.slice().sort())
+  const assigned = new Set<string>()
+  available.forEach((group) => {
+    if (config.assignedShardGroups.includes(group)) {
+      assigned.add(group)
+    }
+  })
+  return { available, assigned }
+}

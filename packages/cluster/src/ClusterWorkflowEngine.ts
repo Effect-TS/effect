@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as Headers from "@effect/platform/Headers"
 import * as Rpc from "@effect/rpc/Rpc"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import { DurableDeferred } from "@effect/workflow"
@@ -33,6 +34,8 @@ import * as Entity from "./Entity.js"
 import { EntityAddress } from "./EntityAddress.js"
 import { EntityId } from "./EntityId.js"
 import { EntityType } from "./EntityType.js"
+import * as Envelope from "./Envelope.js"
+import * as Message from "./Message.js"
 import { MessageStorage } from "./MessageStorage.js"
 import type { WithExitEncoded } from "./Reply.js"
 import * as Reply from "./Reply.js"
@@ -130,7 +133,48 @@ export const make = Effect.gen(function*() {
     }),
     idleTimeToLive: "5 minutes"
   })
-  const clockClient = yield* ClockEntity.client
+  const entityAddressFor = (options: {
+    readonly workflow: Workflow.Any
+    readonly entityType: string
+    readonly executionId: string
+  }) => {
+    const shardGroup = Context.get(options.workflow.annotations, ClusterSchema.ShardGroup)(
+      options.executionId as EntityId
+    )
+    const entityId = EntityId.make(options.executionId)
+    return new EntityAddress({
+      entityType: EntityType.make(options.entityType),
+      entityId,
+      shardId: sharding.getShardId(entityId, shardGroup)
+    })
+  }
+
+  const sendDiscard = Effect.fnUntraced(function*(options: {
+    readonly rpc: Rpc.AnyWithProps
+    readonly address: EntityAddress
+    readonly payload: unknown
+  }) {
+    const payload = options.rpc.payloadSchema.make
+      ? options.rpc.payloadSchema.make(options.payload)
+      : options.payload
+    const envelope = Envelope.makeRequest<any>({
+      requestId: yield* sharding.getSnowflake,
+      address: options.address,
+      tag: options.rpc._tag as any,
+      payload,
+      headers: Headers.empty
+    })
+    yield* sharding.sendOutgoing(
+      new Message.OutgoingRequest({
+        envelope,
+        context: Context.empty() as Context.Context<any>,
+        lastReceivedReply: Option.none(),
+        rpc: options.rpc,
+        respond: () => Effect.void
+      }),
+      true
+    )
+  })
 
   const requestIdFor = Effect.fnUntraced(function*(options: {
     readonly workflow: Workflow.Any
@@ -139,15 +183,7 @@ export const make = Effect.gen(function*() {
     readonly tag: string
     readonly id: string
   }) {
-    const shardGroup = Context.get(options.workflow.annotations, ClusterSchema.ShardGroup)(
-      options.executionId as EntityId
-    )
-    const entityId = EntityId.make(options.executionId)
-    const address = new EntityAddress({
-      entityType: EntityType.make(options.entityType),
-      entityId,
-      shardId: sharding.getShardId(entityId, shardGroup)
-    })
+    const address = entityAddressFor(options)
     return yield* storage.requestIdForPrimaryKey({ address, tag: options.tag, id: options.id })
   })
 
@@ -493,6 +529,21 @@ export const make = Effect.gen(function*() {
 
     deferredDone: Effect.fnUntraced(
       function*({ deferredName, executionId, exit, workflowName }) {
+        const workflow = workflows.get(workflowName)
+        if (workflow) {
+          return yield* Effect.orDie(sendDiscard({
+            rpc: DeferredRpc,
+            address: entityAddressFor({
+              workflow,
+              entityType: `Workflow/${workflowName}`,
+              executionId
+            }),
+            payload: {
+              name: deferredName,
+              exit
+            }
+          }))
+        }
         const client = yield* RcMap.get(clientsPartial, workflowName)
         return yield* Effect.orDie(
           client(executionId).deferred({
@@ -505,14 +556,21 @@ export const make = Effect.gen(function*() {
     ),
 
     scheduleClock(workflow, options) {
-      const client = clockClient(options.executionId)
       return DateTime.now.pipe(
         Effect.flatMap((now) =>
-          client.run({
-            name: options.clock.name,
-            workflowName: workflow.name,
-            wakeUp: DateTime.addDuration(now, options.clock.duration)
-          }, { discard: true })
+          sendDiscard({
+            rpc: ClockRpc,
+            address: entityAddressFor({
+              workflow,
+              entityType: ClockEntity.type,
+              executionId: options.executionId
+            }),
+            payload: {
+              name: options.clock.name,
+              workflowName: workflow.name,
+              wakeUp: DateTime.addDuration(now, options.clock.duration)
+            }
+          })
         ),
         Effect.orDie
       )
@@ -621,11 +679,11 @@ class ClockPayload extends Schema.Class<ClockPayload>(`Workflow/DurableClock/Run
   }
 }
 
-const ClockEntity = Entity.make("Workflow/-/DurableClock", [
-  Rpc.make("run", { payload: ClockPayload })
-    .annotate(ClusterSchema.Persisted, true)
-    .annotate(ClusterSchema.Uninterruptible, true)
-])
+const ClockRpc = Rpc.make("run", { payload: ClockPayload })
+  .annotate(ClusterSchema.Persisted, true)
+  .annotate(ClusterSchema.Uninterruptible, true)
+
+const ClockEntity = Entity.make("Workflow/-/DurableClock", [ClockRpc])
 
 const ClockEntityLayer = ClockEntity.toLayer(Effect.gen(function*() {
   const engine = yield* WorkflowEngine

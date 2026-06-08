@@ -56,7 +56,7 @@ import { Runners } from "./Runners.js"
 import { RunnerStorage } from "./RunnerStorage.js"
 import type { ShardId } from "./ShardId.js"
 import { make as makeShardId } from "./ShardId.js"
-import { ShardingConfig } from "./ShardingConfig.js"
+import { shardGroupConfig, ShardingConfig } from "./ShardingConfig.js"
 import { EntityRegistered, type ShardingRegistrationEvent, SingletonRegistered } from "./ShardingRegistrationEvent.js"
 import { SingletonAddress } from "./SingletonAddress.js"
 import * as Snowflake from "./Snowflake.js"
@@ -199,6 +199,7 @@ interface EntityManagerState {
 
 const make = Effect.gen(function*() {
   const config = yield* ShardingConfig
+  const shardGroups = shardGroupConfig(config)
   const clock = yield* Effect.clock
 
   const runnersService = yield* Runners
@@ -871,7 +872,7 @@ const make = Effect.gen(function*() {
   const selfRunner = Option.isSome(config.runnerAddress) ?
     new Runner({
       address: config.runnerAddress.value,
-      groups: config.shardGroups,
+      groups: Array.from(shardGroups.assigned),
       weight: config.runnerShardWeight
     }) :
     undefined

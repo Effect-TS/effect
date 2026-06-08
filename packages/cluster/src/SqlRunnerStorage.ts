@@ -25,6 +25,8 @@ export const make = Effect.fnUntraced(function*(options: {
   readonly prefix?: string | undefined
 }) {
   const config = yield* ShardingConfig.ShardingConfig
+  const shardGroups = ShardingConfig.shardGroupConfig(config)
+  const availableShardGroups = Array.from(shardGroups.available)
   const disableAdvisoryLocks = config.shardLockDisableAdvisory
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const prefix = options?.prefix ?? "cluster"
@@ -397,8 +399,8 @@ export const make = Effect.fnUntraced(function*(options: {
 
   const lockNumbers = new Map<string, number>()
   const lockNumbersReverse = new Map<number, string>()
-  for (let i = 0; i < config.shardGroups.length; i++) {
-    const group = config.shardGroups[i]
+  for (let i = 0; i < availableShardGroups.length; i++) {
+    const group = availableShardGroups[i]
     const base = (i + 1) * 1000000
     for (let shard = 1; shard <= config.shardsPerGroup; shard++) {
       const shardId = ShardId.make(group, shard).toString()
@@ -413,8 +415,8 @@ export const make = Effect.fnUntraced(function*(options: {
   const lockNamesReverse = new Map<string, string>()
   {
     let index = 0
-    for (let i = 0; i < config.shardGroups.length; i++) {
-      const group = config.shardGroups[i]
+    for (let i = 0; i < availableShardGroups.length; i++) {
+      const group = availableShardGroups[i]
       for (let shard = 1; shard <= config.shardsPerGroup; shard++) {
         const shardId = ShardId.make(group, shard).toString()
         const lockName = `${prefix}.${shardId}`

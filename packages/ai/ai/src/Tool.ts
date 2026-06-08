@@ -112,7 +112,7 @@ export type ProviderDefinedTypeId = typeof ProviderDefinedTypeId
 export interface Tool<
   Name extends string,
   Config extends {
-    readonly parameters: AnyStructSchema
+    readonly parameters: AnyParametersSchema
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
     readonly failureMode: FailureMode
@@ -186,15 +186,14 @@ export interface Tool<
    * Set the schema to use to validate the result of a tool call when successful.
    */
   setParameters<
-    ParametersSchema extends Schema.Struct<any> | Schema.Struct.Fields
+    ParametersSchema extends AnyParametersSchema | Schema.Struct.Fields
   >(
     schema: ParametersSchema
   ): Tool<
     Name,
     {
-      readonly parameters: ParametersSchema extends Schema.Struct<infer _> ? ParametersSchema
-        : ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
-        : never
+      readonly parameters: ParametersSchema extends Schema.Struct.Fields ? Schema.Struct<ParametersSchema>
+        : ParametersSchema
       readonly success: Config["success"]
       readonly failure: Config["failure"]
       readonly failureMode: Config["failureMode"]
@@ -288,13 +287,13 @@ export interface ProviderDefined<
   Name extends string,
   Config extends {
     readonly args: AnyStructSchema
-    readonly parameters: AnyStructSchema
+    readonly parameters: AnyParametersSchema
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
     readonly failureMode: FailureMode
   } = {
     readonly args: Schema.Struct<{}>
-    readonly parameters: Schema.Struct<{}>
+    readonly parameters: EmptyParams
     readonly success: typeof Schema.Void
     readonly failure: typeof Schema.Never
     readonly failureMode: "error"
@@ -481,6 +480,14 @@ export const isProviderDefined = (
 // =============================================================================
 
 /**
+ * A type which represents any valid parameters schema.
+ *
+ * @since 1.0.0
+ * @category Utility Types
+ */
+export type AnyParametersSchema = AnyStructSchema | EmptyParams
+
+/**
  * A type which represents any `Tool`.
  *
  * @since 1.0.0
@@ -493,7 +500,7 @@ export interface Any extends Pipeable {
   readonly id: string
   readonly name: string
   readonly description?: string | undefined
-  readonly parametersSchema: AnyStructSchema
+  readonly parametersSchema: AnyParametersSchema
   readonly successSchema: Schema.Schema.Any
   readonly failureSchema: Schema.Schema.All
   readonly failureMode: FailureMode
@@ -582,7 +589,7 @@ export type Parameters<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? Schema.Struct.Type<_Config["parameters"]["fields"]>
+> ? Schema.Schema.Type<_Config["parameters"]>
   : never
 
 /**
@@ -816,7 +823,7 @@ const Proto = {
   },
   setParameters(
     this: Any,
-    parametersSchema: Schema.Struct<any> | Schema.Struct.Fields
+    parametersSchema: AnyParametersSchema | Schema.Struct.Fields
   ) {
     return userDefinedProto({
       ...this,
@@ -858,7 +865,7 @@ const ProviderDefinedProto = {
 
 const userDefinedProto = <
   const Name extends string,
-  Parameters extends AnyStructSchema,
+  Parameters extends AnyParametersSchema,
   Success extends Schema.Schema.Any,
   Failure extends Schema.Schema.All,
   Mode extends FailureMode
@@ -887,7 +894,7 @@ const userDefinedProto = <
 const providerDefinedProto = <
   const Name extends string,
   Args extends AnyStructSchema,
-  Parameters extends AnyStructSchema,
+  Parameters extends AnyParametersSchema,
   Success extends Schema.Schema.Any,
   Failure extends Schema.Schema.All,
   RequiresHandler extends boolean,
@@ -915,14 +922,15 @@ const providerDefinedProto = <
   RequiresHandler
 > => Object.assign(Object.create(ProviderDefinedProto), options)
 
-const constEmptyStruct = Schema.Struct({})
-
 /**
  * Creates a user-defined tool with the specified name and configuration.
  *
  * This is the primary constructor for creating custom tools that AI models
  * can call. The tool definition includes parameter validation, success/failure
  * schemas, and optional service dependencies.
+ *
+ * If a tool accepts no parameters but still needs an explicit empty object
+ * schema, use {@link EmptyParams}.
  *
  * @example
  * ```ts
@@ -941,7 +949,7 @@ const constEmptyStruct = Schema.Struct({})
  */
 export const make = <
   const Name extends string,
-  Parameters extends Schema.Struct.Fields = {},
+  Parameters extends Schema.Struct.Fields | EmptyParams = typeof EmptyParams,
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Failure extends Schema.Schema.All = typeof Schema.Never,
   Mode extends FailureMode | undefined = undefined,
@@ -987,7 +995,9 @@ export const make = <
 ): Tool<
   Name,
   {
-    readonly parameters: Schema.Struct<Parameters>
+    readonly parameters: Parameters extends EmptyParams ? EmptyParams
+      : Parameters extends Schema.Struct.Fields ? Schema.Struct<Parameters>
+      : never
     readonly success: Success
     readonly failure: Failure
     readonly failureMode: Mode extends undefined ? "error" : Mode
@@ -999,9 +1009,11 @@ export const make = <
   return userDefinedProto({
     name,
     description: options?.description,
-    parametersSchema: options?.parameters
-      ? Schema.Struct(options?.parameters as any)
-      : constEmptyStruct,
+    parametersSchema: options?.parameters !== undefined
+      ? options.parameters === EmptyParams
+        ? EmptyParams
+        : Schema.Struct(options.parameters as any)
+      : EmptyParams,
     successSchema,
     failureSchema,
     failureMode: options?.failureMode ?? "error",
@@ -1046,7 +1058,7 @@ export const make = <
 export const providerDefined = <
   const Name extends string,
   Args extends Schema.Struct.Fields = {},
-  Parameters extends Schema.Struct.Fields = {},
+  Parameters extends Schema.Struct.Fields | EmptyParams = EmptyParams,
   Success extends Schema.Schema.Any = typeof Schema.Void,
   Failure extends Schema.Schema.All = typeof Schema.Never,
   RequiresHandler extends boolean = false
@@ -1105,7 +1117,9 @@ export const providerDefined = <
   Name,
   {
     readonly args: Schema.Struct<Args>
-    readonly parameters: Schema.Struct<Parameters>
+    readonly parameters: Parameters extends EmptyParams ? EmptyParams
+      : Parameters extends Schema.Struct.Fields ? Schema.Struct<Parameters>
+      : never
     readonly success: Success
     readonly failure: Failure
     readonly failureMode: Mode extends undefined ? "error" : Mode
@@ -1122,9 +1136,11 @@ export const providerDefined = <
     args,
     argsSchema: Schema.Struct(options.args as any),
     requiresHandler: options.requiresHandler ?? false,
-    parametersSchema: options?.parameters
-      ? Schema.Struct(options?.parameters as any)
-      : constEmptyStruct,
+    parametersSchema: options?.parameters !== undefined
+      ? options.parameters === EmptyParams
+        ? EmptyParams
+        : Schema.Struct(options.parameters as any)
+      : EmptyParams,
     successSchema,
     failureSchema,
     failureMode: failureMode ?? "error"
@@ -1209,7 +1225,7 @@ export const fromTaggedRequest = <S extends AnyTaggedRequestSchema>(
 export const getDescription = <
   Name extends string,
   Config extends {
-    readonly parameters: AnyStructSchema
+    readonly parameters: AnyParametersSchema
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
     readonly failureMode: FailureMode
@@ -1281,7 +1297,7 @@ export const getDescriptionFromSchemaAst = (
 export const getJsonSchema = <
   Name extends string,
   Config extends {
-    readonly parameters: AnyStructSchema
+    readonly parameters: AnyParametersSchema
     readonly success: Schema.Schema.Any
     readonly failure: Schema.Schema.All
     readonly failureMode: FailureMode
@@ -1506,4 +1522,41 @@ export const unsafeSecureJsonParse = (text: string): unknown => {
   } finally {
     Error.stackTraceLimit = stackTraceLimit
   }
+}
+
+/**
+ * Type of the `EmptyParams` schema used for tools with no parameters.
+ *
+ * **Details**
+ *
+ * It is a record schema with string keys and `never` values, so the generated
+ * parameter schema accepts an empty object shape with no properties.
+ *
+ * @category Schemas
+ * @since 1.0.0
+ */
+export interface EmptyParams extends Schema.Record$<typeof Schema.String, typeof Schema.Never> {}
+
+/**
+ * Schema for tools that accept no parameters.
+ *
+ * **When to use**
+ *
+ * Use when you need an explicit no-parameter `parameters` schema for a tool.
+ *
+ * **Details**
+ *
+ * This is `Schema.Record({ key: Schema.String, value: Schema.Never })`,
+ * representing an empty object parameter shape with no additional properties.
+ *
+ * @see {@link make} for the tool constructor that defaults omitted parameters to this schema
+ *
+ * @category Schemas
+ * @since 1.0.0
+ */
+export const EmptyParams: EmptyParams = Schema.Record({ key: Schema.String, value: Schema.Never })
+
+/** @internal */
+export function isEmptyParamsRecord(indexSignature: AST.IndexSignature): boolean {
+  return AST.isStringKeyword(indexSignature.parameter) && AST.isNeverKeyword(indexSignature.type)
 }
