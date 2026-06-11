@@ -656,6 +656,7 @@ const makeStreamResponse: (
 
     let trace: ConverseTrace | undefined = undefined
     let cacheWriteInputTokens: number | undefined = undefined
+    let finishReason: Response.FinishReason | undefined = undefined
     const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
       outputTokens: undefined,
@@ -677,16 +678,12 @@ const makeStreamResponse: (
           }
 
           case "messageStop": {
-            const reason = InternalUtilities.resolveFinishReason(event.messageStop.stopReason)
-            parts.push({
-              type: "finish",
-              reason,
-              usage,
-              metadata: {
-                bedrock: { trace, usage: { cacheWriteInputTokens } }
-              }
-            })
-
+            // Buffer the finish reason — the Bedrock Converse stream sends
+            // `metadata` (with usage / cache / trace) AFTER `messageStop`,
+            // so emitting the `"finish"` part here would leak the empty
+            // `usage` defaults from the case below to the caller. Wait for
+            // `metadata` to land and emit `"finish"` there.
+            finishReason = InternalUtilities.resolveFinishReason(event.messageStop.stopReason)
             break
           }
 
@@ -907,6 +904,22 @@ const makeStreamResponse: (
             }
             if (Predicate.isNotUndefined(event.metadata.trace)) {
               trace = event.metadata.trace
+            }
+            // Bedrock sends `metadata` after `messageStop`, so by the time
+            // we land here we have both the finish reason (buffered above)
+            // and the populated usage / cache / trace. Emit the `"finish"`
+            // part now so the caller sees real token counts on the
+            // terminal stream event.
+            if (Predicate.isNotUndefined(finishReason)) {
+              parts.push({
+                type: "finish",
+                reason: finishReason,
+                usage,
+                metadata: {
+                  bedrock: { trace, usage: { cacheWriteInputTokens } }
+                }
+              })
+              finishReason = undefined
             }
             break
           }
