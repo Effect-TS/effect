@@ -16,7 +16,10 @@ const fetch: Client.HttpClient = client.make((request, url, signal, fiber) => {
   const context = fiber.getFiberRef(FiberRef.currentContext)
   const fetch: typeof globalThis.fetch = context.unsafeMap.get(fetchTagKey) ?? globalThis.fetch
   const options: RequestInit = context.unsafeMap.get(requestInitTagKey) ?? {}
-  const headers = options.headers ? Headers.merge(Headers.fromInput(options.headers), request.headers) : request.headers
+  let headers = options.headers ? Headers.merge(Headers.fromInput(options.headers), request.headers) : request.headers
+  if (headers["content-length"]) {
+    headers = Headers.remove(headers, "content-length")
+  }
   const send = (body: BodyInit | undefined) =>
     Effect.map(
       Effect.tryPromise({

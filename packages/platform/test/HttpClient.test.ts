@@ -306,6 +306,35 @@ describe("HttpClient", () => {
       Effect.provideService(FetchHttpClient.RequestInit, { redirect: "manual" })
     ), 30000)
 
+  it.effect("fetch removes content-length header", () => {
+    let headers: globalThis.RequestInit["headers"] | undefined
+    const fetch: typeof globalThis.fetch = (_, init) => {
+      headers = init?.headers
+      return Promise.resolve(new Response("ok"))
+    }
+    return Effect.gen(function*() {
+      const client = yield* HttpClient.HttpClient
+
+      yield* HttpClientRequest.post("http://test/").pipe(
+        HttpClientRequest.bodyText("hello"),
+        client.execute
+      )
+
+      strictEqual((headers as Record<string, string> | undefined)?.["content-length"], undefined)
+      strictEqual((headers as Record<string, string> | undefined)?.["content-type"], "text/plain")
+      strictEqual((headers as Record<string, string> | undefined)?.["x-test"], "ok")
+    }).pipe(
+      Effect.provide(FetchHttpClient.layer),
+      Effect.provideService(FetchHttpClient.Fetch, fetch),
+      Effect.provideService(FetchHttpClient.RequestInit, {
+        headers: {
+          "content-length": "100",
+          "x-test": "ok"
+        }
+      })
+    )
+  })
+
   describe("retryTransient", () => {
     const makeTestClient = (status: number) => {
       const attemptsRef = Ref.unsafeMake(0)
