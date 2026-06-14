@@ -1,4 +1,5 @@
 import { RpcSerialization } from "@effect/rpc"
+import type { RpcMessage } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
 
 describe("RpcSerialization", () => {
@@ -56,6 +57,37 @@ describe("RpcSerialization", () => {
       const decoded = parser.decode(encoded as Uint8Array)
       assert.strictEqual(decoded.length, 1)
       assert.deepStrictEqual(decoded[0], payload)
+    })
+  })
+
+  describe("jsonRpc", () => {
+    const exit = (id: string): RpcMessage.FromServerEncoded => ({
+      _tag: "Exit",
+      requestId: id,
+      exit: { _tag: "Success", value: { ok: true } }
+    })
+
+    it("encodes the response to a single request as an object, not a one-element array", () => {
+      const parser = RpcSerialization.jsonRpc().unsafeMake()
+
+      parser.decode(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }))
+      const encoded = JSON.parse(parser.encode([exit("1")]) as string)
+
+      assert.isFalse(Array.isArray(encoded))
+      assert.strictEqual(encoded.id, 1)
+    })
+
+    it("encodes the responses to a batch request as an array", () => {
+      const parser = RpcSerialization.jsonRpc().unsafeMake()
+
+      parser.decode(JSON.stringify([
+        { jsonrpc: "2.0", id: 1, method: "ping", params: {} },
+        { jsonrpc: "2.0", id: 2, method: "ping", params: {} }
+      ]))
+      const encoded = JSON.parse(parser.encode([exit("1"), exit("2")]) as string)
+
+      assert.isTrue(Array.isArray(encoded))
+      assert.strictEqual(encoded.length, 2)
     })
   })
 })

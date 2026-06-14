@@ -2,8 +2,9 @@
  * @since 1.0.0
  */
 import * as Headers from "@effect/platform/Headers"
-import type * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
-import type * as HttpRouter from "@effect/platform/HttpRouter"
+import * as HttpLayerRouter from "@effect/platform/HttpLayerRouter"
+import * as HttpRouter from "@effect/platform/HttpRouter"
+import * as HttpServerResponse from "@effect/platform/HttpServerResponse"
 import type { RpcMessage } from "@effect/rpc"
 import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcClient from "@effect/rpc/RpcClient"
@@ -304,6 +305,11 @@ export class McpServer extends Context.Tag("@effect/ai/McpServer")<
    */
   static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.scoped(McpServer, McpServer.make) as any
 }
+
+const McpMethodNotAllowed = HttpServerResponse.empty({
+  status: 405,
+  headers: Headers.fromInput({ allow: "POST" })
+})
 
 const LATEST_PROTOCOL_VERSION = "2025-06-18"
 const SUPPORTED_PROTOCOL_VERSIONS = [
@@ -612,11 +618,23 @@ export const layerHttp = <I = HttpRouter.Default>(options: {
   readonly version: string
   readonly path: HttpRouter.PathInput
   readonly routerTag?: HttpRouter.HttpRouter.TagClass<I, string, any, any>
-}): Layer.Layer<McpServer | McpServerClient> =>
-  layer(options).pipe(
+}): Layer.Layer<McpServer | McpServerClient> => {
+  const routerTag = options.routerTag ??
+    HttpRouter.Default as any as HttpRouter.HttpRouter.TagClass<I, string, any, any>
+
+  const methodNotAllowed = Layer.effectDiscard(Effect.gen(function*() {
+    const router = yield* routerTag
+
+    yield* router.get(options.path, Effect.succeed(McpMethodNotAllowed))
+    yield* router.del(options.path, Effect.succeed(McpMethodNotAllowed))
+  })).pipe(Layer.provide(routerTag.Live))
+
+  return layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolHttp(options)),
-    Layer.provide(RpcSerialization.layerJsonRpc())
+    Layer.provide(RpcSerialization.layerJsonRpc()),
+    Layer.provideMerge(methodNotAllowed)
   )
+}
 
 /**
  * Run the McpServer, using HTTP for input and output.
@@ -634,11 +652,20 @@ export const layerHttpRouter = (options: {
   McpServer | McpServerClient,
   never,
   HttpLayerRouter.HttpRouter
-> =>
-  layer(options).pipe(
+> => {
+  const methodNotAllowed = Layer.effectDiscard(Effect.gen(function*() {
+    const router = yield* HttpLayerRouter.HttpRouter
+
+    yield* router.add("GET", options.path, Effect.succeed(McpMethodNotAllowed))
+    yield* router.add("DELETE", options.path, Effect.succeed(McpMethodNotAllowed))
+  }))
+
+  return layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolHttpRouter(options)),
-    Layer.provide(RpcSerialization.layerJsonRpc())
+    Layer.provide(RpcSerialization.layerJsonRpc()),
+    Layer.provideMerge(methodNotAllowed)
   )
+}
 
 /**
  * Register an AiToolkit with the McpServer.

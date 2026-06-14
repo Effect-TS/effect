@@ -98,19 +98,28 @@ export const jsonRpc = (options?: {
         readonly size: number
         readonly responses: Map<string, RpcMessage.FromServerEncoded>
       }>()
+      let decodedBatch = false
       return {
         decode: (bytes) => {
           const decoded: JsonRpcMessage | Array<JsonRpcMessage> = JSON.parse(
             typeof bytes === "string" ? bytes : decoder.decode(bytes)
           )
+          decodedBatch = Array.isArray(decoded)
           return decodeJsonRpcRaw(decoded, batches)
         },
         encode: (response) => {
           if (Array.isArray(response)) {
             if (response.length === 0) return undefined
+
+            if (!decodedBatch && response.length === 1) {
+              return JSON.stringify(encodeJsonRpcMessage(response[0]))
+            }
+
             return JSON.stringify(response.map(encodeJsonRpcMessage))
           }
+
           const encoded = encodeJsonRpcRaw(response as any, batches)
+
           return encoded && JSON.stringify(encoded)
         }
       }
