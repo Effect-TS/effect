@@ -847,6 +847,37 @@ describe("Graph", () => {
       expect(Array.from(neighborsB)).toEqual([0]) // B -> A
       expect(Array.from(neighborsC)).toEqual([0]) // C -> A
     })
+
+    it("should preserve adjacency lists when adding edges after reversal", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.reverse(mutable)
+        Graph.addEdge(mutable, a, b, 2)
+      })
+
+      expect(Graph.edgeCount(graph)).toBe(2)
+      expect(Graph.neighbors(graph, 0)).toEqual([1])
+      expect(Graph.hasEdge(graph, 0, 1)).toBe(true)
+      expect(Graph.hasEdge(graph, 1, 0)).toBe(true)
+    })
+
+    it("should be a no-op for undirected graphs", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.reverse(mutable)
+      })
+
+      expect(Graph.neighbors(graph, 0)).toEqual([1])
+      expect(Graph.neighbors(graph, 1)).toEqual([0])
+      expect(Graph.hasEdge(graph, 0, 1)).toBe(true)
+      expect(Graph.hasEdge(graph, 1, 0)).toBe(true)
+    })
   })
 
   describe("filterMapNodes", () => {
@@ -1467,6 +1498,17 @@ describe("Graph", () => {
 
         expect(Graph.hasEdge(graph, nodeA, nodeB)).toBe(false)
       })
+
+      it("should be symmetric for undirected graphs", () => {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          const nodeA = Graph.addNode(mutable, "Node A")
+          const nodeB = Graph.addNode(mutable, "Node B")
+          Graph.addEdge(mutable, nodeA, nodeB, 42)
+        })
+
+        expect(Graph.hasEdge(graph, 0, 1)).toBe(true)
+        expect(Graph.hasEdge(graph, 1, 0)).toBe(true)
+      })
     })
 
     describe("edgeCount", () => {
@@ -1572,6 +1614,32 @@ describe("Graph", () => {
       })
     })
 
+    describe("successors and predecessors", () => {
+      it("should return outgoing and incoming directed neighbors", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const nodeA = Graph.addNode(mutable, "Node A")
+          const nodeB = Graph.addNode(mutable, "Node B")
+          const nodeC = Graph.addNode(mutable, "Node C")
+          Graph.addEdge(mutable, nodeA, nodeB, 1)
+          Graph.addEdge(mutable, nodeC, nodeB, 2)
+        })
+
+        expect(Graph.successors(graph, 0)).toEqual([1])
+        expect(Graph.predecessors(graph, 1).sort()).toEqual([0, 2])
+      })
+
+      it("should throw for undirected graphs", () => {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          const nodeA = Graph.addNode(mutable, "Node A")
+          const nodeB = Graph.addNode(mutable, "Node B")
+          Graph.addEdge(mutable, nodeA, nodeB, 1)
+        })
+
+        expect(() => Graph.successors(graph as any, 0)).toThrow("Cannot get successors of undirected graph")
+        expect(() => Graph.predecessors(graph as any, 0)).toThrow("Cannot get predecessors of undirected graph")
+      })
+    })
+
     describe("neighborsDirected", () => {
       it("should return incoming neighbors", () => {
         let nodeA: Graph.NodeIndex
@@ -1622,6 +1690,18 @@ describe("Graph", () => {
 
         expect(Graph.neighborsDirected(graph, nodeA!, "incoming")).toEqual([])
         expect(Graph.neighborsDirected(graph, nodeA!, "outgoing")).toEqual([])
+      })
+
+      it("should throw for undirected graphs", () => {
+        const graph = Graph.undirected<string, number>((mutable) => {
+          const nodeA = Graph.addNode(mutable, "Node A")
+          const nodeB = Graph.addNode(mutable, "Node B")
+          Graph.addEdge(mutable, nodeA, nodeB, 1)
+        })
+
+        expect(() => Graph.neighborsDirected(graph as any, 0, "outgoing")).toThrow(
+          "Cannot get directed neighbors of undirected graph"
+        )
       })
     })
   })
@@ -2364,6 +2444,14 @@ describe("Graph", () => {
           expect(scc).toHaveLength(2)
         })
       })
+
+      it("should throw for undirected graphs", () => {
+        const graph = makeReversedUndirectedPath()
+
+        expect(() => Graph.stronglyConnectedComponents(graph as any)).toThrow(
+          "Cannot find strongly connected components of undirected graph"
+        )
+      })
     })
 
     describe("dijkstra", () => {
@@ -2436,6 +2524,40 @@ describe("Graph", () => {
         expect(() => Graph.dijkstra(graph, { source: nodeA!, target: nodeB!, cost: (edge) => edge })).toThrow(
           "Dijkstra's algorithm requires non-negative edge weights"
         )
+      })
+
+      it("should throw for negative weights before early target termination", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const source = Graph.addNode(mutable, "source")
+          const target = Graph.addNode(mutable, "target")
+          const other = Graph.addNode(mutable, "other")
+          Graph.addEdge(mutable, source, target, 1)
+          Graph.addEdge(mutable, source, other, 2)
+          Graph.addEdge(mutable, other, target, -5)
+        })
+
+        expect(() =>
+          Graph.dijkstra(graph, {
+            source: 0,
+            target: 1,
+            cost: (edge) => edge
+          })
+        ).toThrow("Dijkstra's algorithm requires non-negative edge weights")
+      })
+
+      it("should validate weights before returning same source and target", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const node = Graph.addNode(mutable, "node")
+          Graph.addEdge(mutable, node, node, -1)
+        })
+
+        expect(() =>
+          Graph.dijkstra(graph, {
+            source: 0,
+            target: 0,
+            cost: (edge) => edge
+          })
+        ).toThrow("Dijkstra's algorithm requires non-negative edge weights")
       })
 
       it("should throw for non-existent nodes", () => {
@@ -2531,6 +2653,42 @@ describe("Graph", () => {
         expect(() => Graph.astar(graph, { source: 0, target: 1, cost: (edge) => edge, heuristic })).toThrow(
           "A* algorithm requires non-negative edge weights"
         )
+      })
+
+      it("should throw for negative weights before early target termination", () => {
+        const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
+          const source = Graph.addNode(mutable, { x: 0, y: 0 })
+          const target = Graph.addNode(mutable, { x: 1, y: 0 })
+          const other = Graph.addNode(mutable, { x: 2, y: 0 })
+          Graph.addEdge(mutable, source, target, 1)
+          Graph.addEdge(mutable, source, other, 2)
+          Graph.addEdge(mutable, other, target, -5)
+        })
+
+        expect(() =>
+          Graph.astar(graph, {
+            source: 0,
+            target: 1,
+            cost: (edge) => edge,
+            heuristic: () => 0
+          })
+        ).toThrow("A* algorithm requires non-negative edge weights")
+      })
+
+      it("should validate weights before returning same source and target", () => {
+        const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
+          const node = Graph.addNode(mutable, { x: 0, y: 0 })
+          Graph.addEdge(mutable, node, node, -1)
+        })
+
+        expect(() =>
+          Graph.astar(graph, {
+            source: 0,
+            target: 0,
+            cost: (edge) => edge,
+            heuristic: () => 0
+          })
+        ).toThrow("A* algorithm requires non-negative edge weights")
       })
 
       it("should traverse undirected edges in reverse storage direction", () => {
@@ -2814,6 +2972,30 @@ describe("Graph", () => {
 
         const entries = Array.from(Graph.entries(topoIterator))
         expect(entries).toEqual([[0, "A"], [1, "B"], [2, "C"]])
+      })
+
+      it("should prioritize valid initials and still include all nodes", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const a = Graph.addNode(mutable, "A")
+          const b = Graph.addNode(mutable, "B")
+          const c = Graph.addNode(mutable, "C")
+          const d = Graph.addNode(mutable, "D")
+          Graph.addEdge(mutable, a, b, 1)
+          Graph.addEdge(mutable, c, d, 2)
+        })
+
+        const order = Array.from(Graph.indices(Graph.topo(graph, { initials: [2] })))
+        expect(order).toEqual([2, 0, 3, 1])
+      })
+
+      it("should reject initials with incoming edges", () => {
+        const graph = Graph.directed<string, number>((mutable) => {
+          const a = Graph.addNode(mutable, "A")
+          const b = Graph.addNode(mutable, "B")
+          Graph.addEdge(mutable, a, b, 1)
+        })
+
+        expect(() => Array.from(Graph.topo(graph, { initials: [1] }))).toThrow("Initial node 1 has incoming edges")
       })
 
       it("should throw for cyclic graphs", () => {
