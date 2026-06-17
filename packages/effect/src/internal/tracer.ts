@@ -6,6 +6,7 @@ import type * as Exit from "../Exit.js"
 import { constFalse } from "../Function.js"
 import type * as Option from "../Option.js"
 import type * as Tracer from "../Tracer.js"
+import * as StackTraceLimit from "./stackTraceLimit.js"
 
 /** @internal */
 export const TracerTypeId: Tracer.TracerTypeId = Symbol.for("effect/Tracer") as Tracer.TracerTypeId
@@ -122,10 +123,10 @@ export const addSpanStackTrace = (options: Tracer.SpanOptions | undefined): Trac
   } else if (options?.captureStackTrace !== undefined && typeof options.captureStackTrace !== "boolean") {
     return options
   }
-  const limit = Error.stackTraceLimit
-  Error.stackTraceLimit = 3
+  const limit = StackTraceLimit.getStackTraceLimit()
+  StackTraceLimit.setStackTraceLimit(3)
   const traceError = new Error()
-  Error.stackTraceLimit = limit
+  StackTraceLimit.setStackTraceLimit(limit)
   let cache: false | string = false
   return {
     ...options,
