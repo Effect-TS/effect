@@ -10,8 +10,16 @@ on:
 permissions: {}
 
 jobs:
+  approval-gate:
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    environment: release-queue
+    steps:
+      - run: echo "Fork PR approved by maintainer."
+
   update:
-    if: github.repository_owner == 'Effect-Ts'
+    needs: [approval-gate]
+    if: github.repository_owner == 'Effect-Ts' && (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped')
     name: Update
     runs-on: ubuntu-latest
     timeout-minutes: 10
