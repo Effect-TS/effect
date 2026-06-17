@@ -609,6 +609,10 @@ const makeResponse: (
   parts.push({
     type: "finish",
     reason: finishReason,
+    // NOTE: `reasoningTokens` is intentionally left unset. The Bedrock Converse
+    // API does not report reasoning tokens as a discrete value - when extended
+    // thinking is enabled, reasoning tokens are already included in
+    // `outputTokens`. See the `TokenUsage` schema in `AmazonBedrockSchema.ts`.
     usage: {
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
@@ -657,6 +661,10 @@ const makeStreamResponse: (
     let trace: ConverseTrace | undefined = undefined
     let cacheWriteInputTokens: number | undefined = undefined
     let finishReason: Response.FinishReason | undefined = undefined
+    // NOTE: `reasoningTokens` is intentionally omitted. The Bedrock Converse API
+    // does not report reasoning tokens as a discrete value - when extended
+    // thinking is enabled, reasoning tokens are already included in
+    // `outputTokens`. See the `TokenUsage` schema in `AmazonBedrockSchema.ts`.
     const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
       outputTokens: undefined,

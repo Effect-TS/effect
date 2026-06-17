@@ -887,6 +887,10 @@ const makeResponse: (
     parts.push({
       type: "finish",
       reason: finishReason,
+      // NOTE: `reasoningTokens` is intentionally left unset. The Anthropic
+      // Messages API does not report reasoning tokens as a discrete value -
+      // when extended thinking is enabled, reasoning tokens are already
+      // included in `output_tokens`. See the `Usage` schema in `Generated.ts`.
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -951,6 +955,10 @@ const makeStreamResponse: (
       | "mcp_tool_result"
       | "container_upload"
       | undefined = undefined
+    // NOTE: `reasoningTokens` is intentionally omitted. The Anthropic Messages
+    // API does not report reasoning tokens as a discrete value - when extended
+    // thinking is enabled, reasoning tokens are already included in
+    // `output_tokens`. See the `Usage` schema in `Generated.ts`.
     const usage: Mutable<typeof Response.Usage.Encoded> = {
       inputTokens: undefined,
       outputTokens: undefined,

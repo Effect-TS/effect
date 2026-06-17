@@ -2214,6 +2214,14 @@ export class Usage extends Schema.Class<Usage>("@effect/ai/AiResponse/Usage")({
   /**
    * The number of reasoning tokens that the model used to generate the output
    * for the request.
+   *
+   * **NOTE**: This value is only populated by providers whose API reports
+   * reasoning tokens as a discrete value (e.g. OpenAI via
+   * `output_tokens_details.reasoning_tokens`). Providers such as Anthropic and
+   * Amazon Bedrock do not report reasoning tokens separately - for those
+   * providers reasoning tokens are already included in `outputTokens`, and this
+   * field will be left unset. Do not rely on this field for cost calculations
+   * unless your provider is known to report it.
    */
   reasoningTokens: Schema.optional(Schema.Number),
   /**
