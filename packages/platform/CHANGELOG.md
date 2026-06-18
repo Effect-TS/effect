@@ -1,5 +1,14 @@
 # @effect/platform
 
+## 0.96.2
+
+### Patch Changes
+
+- [#6273](https://github.com/Effect-TS/effect/pull/6273) [`7e00169`](https://github.com/Effect-TS/effect/commit/7e00169ae0a98d0619dc75857ce0a771e7c83da6) Thanks @tim-smart! - Remove the content-length header before sending FetchHttpClient requests.
+
+- Updated dependencies [[`8222963`](https://github.com/Effect-TS/effect/commit/8222963e76b80e62f27d0301bc4cdac73e73bdfc)]:
+  - effect@3.21.4
+
 ## 0.96.1
 
 ### Patch Changes

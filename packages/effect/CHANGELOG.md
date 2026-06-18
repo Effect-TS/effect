@@ -1,5 +1,11 @@
 # effect
 
+## 3.21.4
+
+### Patch Changes
+
+- [#6267](https://github.com/Effect-TS/effect/pull/6267) [`8222963`](https://github.com/Effect-TS/effect/commit/8222963e76b80e62f27d0301bc4cdac73e73bdfc) Thanks @fubhy! - Fix Graph traversal and shortest-path algorithms to traverse undirected edges independently of their stored source/target orientation.
+
 ## 3.21.3
 
 ### Patch Changes

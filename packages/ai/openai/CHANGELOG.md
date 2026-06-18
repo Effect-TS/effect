@@ -1,5 +1,17 @@
 # @effect/ai-openai
 
+## 0.40.1
+
+### Patch Changes
+
+- [#6281](https://github.com/Effect-TS/effect/pull/6281) [`2e01a9e`](https://github.com/Effect-TS/effect/commit/2e01a9e8cdf3963136dc46c6df69a92b3c5006de) Thanks @mollyegibson! - Skip unrecognized or malformed events in OpenAI streaming responses instead of aborting the whole stream.
+
+  OpenAI emits events that are absent from the generated OpenAPI schema — most visibly `{"type":"keepalive"}` SSE heartbeats during long Responses turns (reasoning, tool calls, web search). These previously failed strict per-event decoding with `MalformedOutput` and tore down the entire in-progress stream. Such frames are now skipped (logged at debug level) and the stream continues; every recognized event is still decoded as before.
+
+- Updated dependencies [[`8222963`](https://github.com/Effect-TS/effect/commit/8222963e76b80e62f27d0301bc4cdac73e73bdfc), [`7e00169`](https://github.com/Effect-TS/effect/commit/7e00169ae0a98d0619dc75857ce0a771e7c83da6)]:
+  - effect@3.21.4
+  - @effect/platform@0.96.2
+
 ## 0.40.0
 
 ### Patch Changes
