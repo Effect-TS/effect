@@ -14,6 +14,7 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
@@ -131,7 +132,21 @@ export const make = (options: {
         Stream.unwrapScoped,
         Stream.decodeText(),
         Stream.pipeThroughChannel(Sse.makeChannel()),
-        Stream.mapEffect((event) => decodeEvent(event.data)),
+        // Decode each SSE event, but don't let a single unrecognized or malformed
+        // frame abort the whole stream. OpenAI emits events absent from the generated
+        // schema (e.g. `keepalive` heartbeats during long Responses turns); skip what
+        // we can't decode and keep the stream alive.
+        Stream.mapEffect((event) =>
+          decodeEvent(event.data).pipe(
+            Effect.asSome,
+            Effect.catchTag("ParseError", (error) =>
+              Effect.logDebug("Skipping undecodable stream event", error).pipe(
+                Effect.as(Option.none())
+              )
+            )
+          )
+        ),
+        Stream.filterMap(identity),
         Stream.catchTags({
           RequestError: (error) =>
             AiError.HttpRequestError.fromRequestError({
@@ -141,12 +156,6 @@ export const make = (options: {
             }),
           ResponseError: (error) =>
             AiError.HttpResponseError.fromResponseError({
-              module: "OpenAiClient",
-              method: "streamRequest",
-              error
-            }),
-          ParseError: (error) =>
-            AiError.MalformedOutput.fromParseError({
               module: "OpenAiClient",
               method: "streamRequest",
               error
