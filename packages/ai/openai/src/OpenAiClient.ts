@@ -142,8 +142,7 @@ export const make = (options: {
             Effect.catchTag("ParseError", (error) =>
               Effect.logDebug("Skipping undecodable stream event", error).pipe(
                 Effect.as(Option.none())
-              )
-            )
+              ))
           )
         ),
         Stream.filterMap(identity),
