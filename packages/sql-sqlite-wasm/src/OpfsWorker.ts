@@ -16,6 +16,7 @@ import type { OpfsWorkerMessage } from "./internal/opfsWorker.js"
 export interface OpfsWorkerConfig {
   readonly port: EventTarget & Pick<MessagePort, "postMessage" | "close">
   readonly dbName: string
+  readonly config?: Parameters<typeof SQLiteESMFactory>[0]
 }
 
 /**
@@ -26,7 +27,7 @@ export const run = (
   options: OpfsWorkerConfig
 ): Effect.Effect<void, SqlError> =>
   Effect.gen(function*() {
-    const factory = yield* Effect.promise(() => SQLiteESMFactory())
+    const factory = yield* Effect.promise(() => SQLiteESMFactory(options.config))
     const sqlite3 = WaSqlite.Factory(factory)
     const vfs = yield* Effect.promise(() => AccessHandlePoolVFS.create("opfs", factory))
     sqlite3.vfs_register(vfs, false)
