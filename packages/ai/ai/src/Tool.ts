@@ -1522,19 +1522,6 @@ const isStackTraceLimitWritable = (): boolean => {
 
 const canWriteStackTraceLimit = isStackTraceLimitWritable()
 
-const withStackTraceLimit = <T>(limit: number, fn: () => T): T => {
-  if (!canWriteStackTraceLimit) {
-    return fn()
-  }
-  const prevLimit = Error.stackTraceLimit
-  try {
-    Error.stackTraceLimit = limit
-    return fn()
-  } finally {
-    Error.stackTraceLimit = prevLimit
-  }
-}
-
 /**
  * **Unsafe**: This function will throw an error if an insecure property is
  * found in the parsed JSON or if the provided JSON text is not parseable.
@@ -1542,9 +1529,19 @@ const withStackTraceLimit = <T>(limit: number, fn: () => T): T => {
  * @since 1.0.0
  * @category Utilities
  */
-export const unsafeSecureJsonParse = (text: string): unknown =>
+export const unsafeSecureJsonParse = (text: string): unknown => {
   // Performance optimization, see https://github.com/fastify/secure-json-parse/pull/90
-  withStackTraceLimit(0, () => _parse(text))
+  if (!canWriteStackTraceLimit) {
+    return _parse(text)
+  }
+  const prevLimit = Error.stackTraceLimit
+  Error.stackTraceLimit = 0
+  try {
+    return _parse(text)
+  } finally {
+    Error.stackTraceLimit = prevLimit
+  }
+}
 
 /**
  * Type of the `EmptyParams` schema used for tools with no parameters.
