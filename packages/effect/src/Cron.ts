@@ -584,6 +584,12 @@ const stepCron = (cron: Cron, startFrom: DateTime.DateTime.Input | undefined, di
             } else {
               b = daysInMonth(current) - currentDay + boundary.day
             }
+          } else if (!prev && nextDay > daysInMonth(current)) {
+            // The next matching day does not exist in the current month (e.g. day 31
+            // in a 30-day month). Setting it directly would overflow into the following
+            // month and skip its earlier matching days, so wrap to the first matching
+            // day of the next month instead.
+            b = daysInMonth(current) - currentDay + boundary.day
           } else {
             b = nextDay - currentDay
           }

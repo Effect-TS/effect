@@ -245,6 +245,21 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, from), new Date("2024-01-31T00:00:00.000Z"))
   })
 
+  it("next does not skip earlier days when the upcoming day is missing from the month", () => {
+    const tz = DateTime.zoneUnsafeMakeNamed("UTC")
+    const cron = Cron.unsafeParse("0 0 1,16,31 * *", tz)
+    // From Feb 18 the next matching day in February would be the 31st, which does
+    // not exist. Rolling onto it must not overshoot past March 1 (also a match).
+    deepStrictEqual(next(cron, new Date("2020-02-18T00:00:00.000Z")), new Date("2020-03-01T00:00:00.000Z"))
+    // `*/15` expands to days [1, 16, 31] and exhibits the same wrap.
+    deepStrictEqual(
+      next(Cron.unsafeParse("0 0 */15 * *", tz), new Date("2020-02-18T00:00:00.000Z")),
+      new Date("2020-03-01T00:00:00.000Z")
+    )
+    // 30-day month: from the 20th the next day is the 31st (missing) → July 1.
+    deepStrictEqual(next(cron, new Date("2024-06-20T00:00:00.000Z")), new Date("2024-07-01T00:00:00.000Z"))
+  })
+
   it("prev clamps to the last valid day when rolling back a month with only month constraints", () => {
     const tz = DateTime.zoneUnsafeMakeNamed("UTC")
     const cron = Cron.unsafeParse("0 0 0 * FEB *", tz)
