@@ -971,6 +971,7 @@ const makeStreamResponse: (
           case "message_start": {
             // Track usage metadata
             usage.inputTokens = event.message.usage.input_tokens
+            usage.cachedInputTokens = event.message.usage.cache_read_input_tokens ?? undefined
             metaUsage = event.message.usage
 
             // Track response metadata
