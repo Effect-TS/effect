@@ -4257,6 +4257,7 @@ export declare namespace Retry {
   export type Return<R, E, A, O extends NoExcessProperties<Options<E>, O>> = Effect<
     A,
     | (O extends { schedule: Schedule.Schedule<infer _O, infer _I, infer _R> } ? E
+      : O extends { while: Refinement<E, infer E2> } ? Exclude<E, E2>
       : O extends { until: Refinement<E, infer E2> } ? E2
       : E)
     | (O extends { while: (...args: Array<any>) => Effect<infer _A, infer E, infer _R> } ? E : never)
