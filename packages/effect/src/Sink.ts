@@ -813,20 +813,23 @@ export const foldWeighted: <S, In>(
  * The `decompose` function will be used for decomposing elements that cause
  * an `S` aggregate to cross `max` into smaller elements. For example:
  *
- * ```ts skip-type-checking
- * pipe(
- *   Stream.make(1, 5, 1),
- *   Stream.transduce(
- *     Sink.foldWeightedDecompose(
- *       Chunk.empty<number>(),
- *       4,
- *       (n: number) => n,
- *       (n: number) => Chunk.make(n - 1, 1),
- *       (acc, el) => pipe(acc, Chunk.append(el))
- *     )
- *   ),
+ * ```ts
+ * import { Chunk, Effect, Sink, Stream } from "effect"
+ *
+ * const sink = Sink.foldWeightedDecompose({
+ *   initial: Chunk.empty<number>(),
+ *   maxCost: 4,
+ *   cost: (_acc, n: number) => n,
+ *   decompose: (n: number) => (n > 4 ? Chunk.make(4, n - 4) : Chunk.of(n)),
+ *   body: (acc, n) => Chunk.append(acc, n)
+ * })
+ *
+ * const program = Stream.make(1, 5, 1).pipe(
+ *   Stream.transduce(sink),
  *   Stream.runCollect
  * )
+ *
+ * Effect.runPromise(program).then(console.log)
  * ```
  *
  * The stream would emit the elements `Chunk(1), Chunk(4), Chunk(1, 1)`.
