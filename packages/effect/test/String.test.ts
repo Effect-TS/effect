@@ -277,4 +277,30 @@ describe("String", () => {
       deepStrictEqual(Array.from(result), ["", "$", "    $Hello,", "    $World!", " $"])
     })
   })
+
+  describe("case conversion", () => {
+    it("snakeToCamel", () => {
+      strictEqual(Str.snakeToCamel("foo_bar_baz"), "fooBarBaz")
+    })
+
+    it("snakeToPascal", () => {
+      strictEqual(Str.snakeToPascal("foo_bar_baz"), "FooBarBaz")
+    })
+
+    it("snakeToKebab", () => {
+      strictEqual(Str.snakeToKebab("foo_bar_baz"), "foo-bar-baz")
+    })
+
+    it("camelToSnake", () => {
+      strictEqual(Str.camelToSnake("fooBarBaz"), "foo_bar_baz")
+    })
+
+    it("pascalToSnake", () => {
+      strictEqual(Str.pascalToSnake("FooBarBaz"), "foo_bar_baz")
+    })
+
+    it("kebabToSnake", () => {
+      strictEqual(Str.kebabToSnake("foo-bar-baz"), "foo_bar_baz")
+    })
+  })
 })
