@@ -566,7 +566,7 @@ export const Uint8Array = (options?: {
 
 const astCache = globalValue(
   "@effect/platform/HttpApiSchema/astCache",
-  () => new WeakMap<AST.AST, Schema.Schema.Any>()
+  () => new WeakMap<AST.AST, ReadonlyArray<Schema.Schema.Any>>()
 )
 
 /**
@@ -577,25 +577,23 @@ export const deunionize = (
   schema: Schema.Schema.Any
 ): void => {
   if (astCache.has(schema.ast)) {
-    schemas.add(astCache.get(schema.ast)!)
+    astCache.get(schema.ast)!.forEach((s) => schemas.add(s))
     return
   }
   const ast = schema.ast
   if (ast._tag === "Union") {
+    const memberSchemas: Array<Schema.Schema.Any> = []
     for (const astType of ast.types) {
-      if (astCache.has(astType)) {
-        schemas.add(astCache.get(astType)!)
-        continue
-      }
       const memberSchema = Schema.make(AST.annotations(astType, {
         ...ast.annotations,
         ...astType.annotations
       }))
-      astCache.set(astType, memberSchema)
+      memberSchemas.push(memberSchema)
       schemas.add(memberSchema)
     }
+    astCache.set(ast, memberSchemas)
   } else {
-    astCache.set(ast, schema)
+    astCache.set(ast, [schema])
     schemas.add(schema)
   }
 }
