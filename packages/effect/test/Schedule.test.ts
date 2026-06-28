@@ -828,6 +828,17 @@ describe("Schedule", () => {
         yield* Effect.void.pipe(Effect.schedule(schedule))
         deepStrictEqual(log, [1, 1])
       }))
+    it.effect("finishes instead of crashing when the clock is past the end of time", () =>
+      Effect.gen(function*() {
+        yield* TestClock.setTime(new Date(2024, 0, 1, 0, 0, 0).getTime())
+        // advancing past the end of time makes `now` non-finite for the schedule
+        yield* TestClock.adjust(Infinity)
+        const exit = yield* Effect.void.pipe(
+          Effect.repeat(Schedule.cron("0 4 8-14 * *")),
+          Effect.exit
+        )
+        assertTrue(Exit.isSuccess(exit))
+      }))
   })
 })
 
