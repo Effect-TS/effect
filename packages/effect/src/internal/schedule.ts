@@ -482,6 +482,14 @@ export const cron: {
   return makeWithState<[boolean, [number, number, number]], unknown, [number, number]>(
     [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {
+      if (!Number.isFinite(now)) {
+        return core.succeed([
+          [false, previous],
+          [previous[1], previous[2]],
+          ScheduleDecision.done
+        ])
+      }
+
       if (now < previous[0]) {
         return core.succeed([
           [false, previous],
