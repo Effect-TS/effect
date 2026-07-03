@@ -99,6 +99,30 @@ export const make: (options: {
   readonly apiKey?: Redacted.Redacted | undefined
 
   /**
+   * The name of the HTTP header used to send the `apiKey`.
+   *
+   * Defaults to `"x-api-key"`, which is the header Anthropic's own API expects.
+   *
+   * Override this when targeting a gateway or proxy in front of Anthropic's
+   * API (or an Anthropic-compatible API) that authenticates requests using a
+   * different header, such as `"authorization"`.
+   */
+  readonly apiKeyHeader?: string | undefined
+
+  /**
+   * The authentication scheme prefix to prepend to the `apiKey` value before
+   * it is sent in the `apiKeyHeader`, e.g. `"Bearer"` or `"OAuth"`.
+   *
+   * Defaults to `undefined`, which sends the raw `apiKey` value with no
+   * prefix (Anthropic's own API expects the raw key in `x-api-key`).
+   *
+   * Set this when `apiKeyHeader` is changed to `"authorization"` and the
+   * downstream service expects a scheme prefix, e.g. `"Bearer"` to produce
+   * an `authorization: Bearer <apiKey>` header.
+   */
+  readonly apiKeyScheme?: string | undefined
+
+  /**
    * The base URL endpoint used to communicate with Anthropic's API.
    *
    * This property determines the HTTP destination for all API requests made by
@@ -135,6 +159,18 @@ export const make: (options: {
    * differences.
    */
   readonly anthropicVersion?: string | undefined
+
+  /**
+   * Additional HTTP headers to send with every request made by this client.
+   *
+   * Merged in after all standard headers (`apiKeyHeader`, `anthropic-version`,
+   * `accept`), so these values take precedence and may be used to override
+   * them if needed.
+   *
+   * Use this for headers required by a proxy or gateway sitting in front of
+   * Anthropic's API, such as additional authentication or routing headers.
+   */
+  readonly headers?: Headers.Input | undefined
 
   /**
    * The organization ID to associate with API requests.
@@ -197,7 +233,7 @@ export const make: (options: {
   never,
   HttpClient.HttpClient | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
-  const apiKeyHeader = "x-api-key"
+  const apiKeyHeader = options.apiKeyHeader ?? "x-api-key"
 
   yield* Effect.locallyScopedWith(Headers.currentRedactedNames, Arr.append(apiKeyHeader))
 
@@ -206,10 +242,16 @@ export const make: (options: {
       request.pipe(
         HttpClientRequest.prependUrl(options.apiUrl ?? "https://api.anthropic.com"),
         options.apiKey
-          ? HttpClientRequest.setHeader(apiKeyHeader, Redacted.value(options.apiKey))
+          ? HttpClientRequest.setHeader(
+            apiKeyHeader,
+            options.apiKeyScheme
+              ? `${options.apiKeyScheme} ${Redacted.value(options.apiKey)}`
+              : Redacted.value(options.apiKey)
+          )
           : identity,
         HttpClientRequest.setHeader("anthropic-version", options.anthropicVersion ?? "2023-06-01"),
-        HttpClientRequest.acceptJson
+        HttpClientRequest.acceptJson,
+        options.headers ? HttpClientRequest.setHeaders(options.headers) : identity
       )
     ),
     options.transformClient ? options.transformClient : identity
@@ -636,6 +678,28 @@ export const layer = (options: {
    */
   readonly apiKey?: Redacted.Redacted | undefined
   /**
+   * The name of the HTTP header used to send the `apiKey`.
+   *
+   * Defaults to `"x-api-key"`, which is the header Anthropic's own API expects.
+   *
+   * Override this when targeting a gateway or proxy in front of Anthropic's
+   * API (or an Anthropic-compatible API) that authenticates requests using a
+   * different header, such as `"authorization"`.
+   */
+  readonly apiKeyHeader?: string | undefined
+  /**
+   * The authentication scheme prefix to prepend to the `apiKey` value before
+   * it is sent in the `apiKeyHeader`, e.g. `"Bearer"` or `"OAuth"`.
+   *
+   * Defaults to `undefined`, which sends the raw `apiKey` value with no
+   * prefix (Anthropic's own API expects the raw key in `x-api-key`).
+   *
+   * Set this when `apiKeyHeader` is changed to `"authorization"` and the
+   * downstream service expects a scheme prefix, e.g. `"Bearer"` to produce
+   * an `authorization: Bearer <apiKey>` header.
+   */
+  readonly apiKeyScheme?: string | undefined
+  /**
    * The base URL endpoint used to communicate with Anthropic's API.
    *
    * This property determines the HTTP destination for all API requests made by
@@ -671,6 +735,17 @@ export const layer = (options: {
    * differences.
    */
   readonly anthropicVersion?: string | undefined
+  /**
+   * Additional HTTP headers to send with every request made by this client.
+   *
+   * Merged in after all standard headers (`apiKeyHeader`, `anthropic-version`,
+   * `accept`), so these values take precedence and may be used to override
+   * them if needed.
+   *
+   * Use this for headers required by a proxy or gateway sitting in front of
+   * Anthropic's API, such as additional authentication or routing headers.
+   */
+  readonly headers?: Headers.Input | undefined
   /**
    * A function to transform the underlying HTTP client before it's used for API requests.
    *
@@ -714,6 +789,28 @@ export const layerConfig = (options: {
    */
   readonly apiKey?: Config.Config<Redacted.Redacted | undefined> | undefined
   /**
+   * The name of the HTTP header used to send the `apiKey`.
+   *
+   * Defaults to `"x-api-key"`, which is the header Anthropic's own API expects.
+   *
+   * Override this when targeting a gateway or proxy in front of Anthropic's
+   * API (or an Anthropic-compatible API) that authenticates requests using a
+   * different header, such as `"authorization"`.
+   */
+  readonly apiKeyHeader?: Config.Config<string | undefined> | undefined
+  /**
+   * The authentication scheme prefix to prepend to the `apiKey` value before
+   * it is sent in the `apiKeyHeader`, e.g. `"Bearer"` or `"OAuth"`.
+   *
+   * Defaults to `undefined`, which sends the raw `apiKey` value with no
+   * prefix (Anthropic's own API expects the raw key in `x-api-key`).
+   *
+   * Set this when `apiKeyHeader` is changed to `"authorization"` and the
+   * downstream service expects a scheme prefix, e.g. `"Bearer"` to produce
+   * an `authorization: Bearer <apiKey>` header.
+   */
+  readonly apiKeyScheme?: Config.Config<string | undefined> | undefined
+  /**
    * The base URL endpoint used to communicate with Anthropic's API.
    *
    * This property determines the HTTP destination for all API requests made by
@@ -749,6 +846,17 @@ export const layerConfig = (options: {
    * differences.
    */
   readonly anthropicVersion?: Config.Config<string | undefined> | undefined
+  /**
+   * Additional HTTP headers to send with every request made by this client.
+   *
+   * Merged in after all standard headers (`apiKeyHeader`, `anthropic-version`,
+   * `accept`), so these values take precedence and may be used to override
+   * them if needed.
+   *
+   * Use this for headers required by a proxy or gateway sitting in front of
+   * Anthropic's API, such as additional authentication or routing headers.
+   */
+  readonly headers?: Config.Config<Record<string, string> | undefined> | undefined
   /**
    * A function to transform the underlying HTTP client before it's used for API requests.
    *
