@@ -77,7 +77,7 @@ describe("record", () => {
     it("Record(never, number)", async () => {
       const schema = S.Record({ key: S.Never, value: S.Number })
       await Util.assertions.decoding.succeed(schema, {})
-      await Util.assertions.decoding.succeed(schema, { a: 1 })
+      await Util.assertions.decoding.succeed(schema, { a: 1 }, {})
     })
 
     it("Record(string, number)", async () => {
