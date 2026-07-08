@@ -482,7 +482,7 @@ export const cron: {
   return makeWithState<[boolean, [number, number, number]], unknown, [number, number]>(
     [true, [Number.MIN_SAFE_INTEGER, 0, 0]],
     (now, _, [initial, previous]) => {
-      if (!Number.isFinite(now)) {
+      if (now === Number.POSITIVE_INFINITY) {
         return core.succeed([
           [false, previous],
           [previous[1], previous[2]],
