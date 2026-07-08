@@ -1,5 +1,17 @@
 # effect
 
+## 3.21.5
+
+### Patch Changes
+
+- [#6302](https://github.com/Effect-TS/effect/pull/6302) [`307d54a`](https://github.com/Effect-TS/effect/commit/307d54a54beb3407b8bcf50c943523433267e33b) Thanks @fubhy! - Allow cron fields like `5/15` to expand from the starting value through the field maximum.
+
+- [#6303](https://github.com/Effect-TS/effect/pull/6303) [`d95868a`](https://github.com/Effect-TS/effect/commit/d95868a1c92dc8ea4b203ee56c29ac209e507634) Thanks @fubhy! - Fix `Schedule.cron` when the test clock is adjusted to infinity.
+
+- [#6285](https://github.com/Effect-TS/effect/pull/6285) [`95c7d2e`](https://github.com/Effect-TS/effect/commit/95c7d2ed435cf4cc954cf015304952a0fffbebc7) Thanks @chatman-media! - Fix `Cron.next` skipping earlier matching days when the upcoming day-of-month does not exist in the current month. For an expression like `0 0 1,16,31 * *`, advancing from a date past the 16th selected day 31; in a month without 31 days this overflowed into the following month and landed on a later matching day (e.g. the 16th), silently skipping the 1st. `Cron.next` now wraps to the first matching day of the next month in that case, matching the behaviour of `Cron.prev` and other cron implementations.
+
+- [#6305](https://github.com/Effect-TS/effect/pull/6305) [`d24511f`](https://github.com/Effect-TS/effect/commit/d24511fee929d4cb98ab2a86387de4ea290f11ff) Thanks @fubhy! - Fix cron parsing and scheduling edge cases for whitespace, Sunday `7`, strict numeric tokens, explicit full day ranges, and month-constrained day-of-month / weekday matching.
+
 ## 3.21.4
 
 ### Patch Changes
