@@ -1,4 +1,4 @@
-import { Console, Schedule } from "effect"
+import { Console, Effect, Schedule } from "effect"
 import { describe, expect, it, when } from "tstyche"
 
 describe("Schedule", () => {
@@ -30,5 +30,24 @@ describe("Schedule", () => {
         (s: string) => Console.log(s.trim())
       )
     )
+  })
+
+  it("recurWhile / recurUntil predicate argument inference", () => {
+    // predicate arg should infer from the In type of the surrounding Effect.repeat, not default to unknown
+    const stringEffect = Effect.sync(() => "foo")
+
+    expect(stringEffect.pipe(
+      Effect.repeat(Schedule.recurWhile((data) => {
+        expect(data).type.toBe<string>()
+        return data === "foo"
+      }))
+    )).type.toBe<Effect.Effect<string, never, never>>()
+
+    expect(stringEffect.pipe(
+      Effect.repeat(Schedule.recurUntil((data) => {
+        expect(data).type.toBe<string>()
+        return data === "foo"
+      }))
+    )).type.toBe<Effect.Effect<string, never, never>>()
   })
 })
