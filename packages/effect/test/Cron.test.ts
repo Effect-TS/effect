@@ -46,6 +46,17 @@ describe("Cron", () => {
         weekdays: []
       }))
     )
+    // Starting at minute 5 and then every 15 minutes.
+    deepStrictEqual(
+      Cron.parse("5/15 * * * *"),
+      Either.right(Cron.make({
+        minutes: [5, 20, 35, 50],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      }))
+    )
   })
 
   it("unsafeParse", () => {
