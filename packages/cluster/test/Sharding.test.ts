@@ -511,6 +511,26 @@ describe.concurrent("Sharding", () => {
       expect(result).toEqual(new User({ id: 123, name: "User 123" }))
       expect(state.layerBuilds.current).toEqual(2)
     }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("replays in-flight requests when restarting after a defect", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+
+      yield* client.NeverFork().pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(1))
+
+      MutableRef.set(state.defectTrigger, true)
+      const result = yield* client.GetUser({ id: 123 })
+      assert.deepStrictEqual(result, new User({ id: 123, name: "User 123" }))
+      assert.strictEqual(state.layerBuilds.current, 2)
+
+      yield* TestClock.adjust(1)
+      assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(4))
+    }).pipe(Effect.provide(TestSharding)))
 })
 
 const TestShardingConfig = ShardingConfig.layer({

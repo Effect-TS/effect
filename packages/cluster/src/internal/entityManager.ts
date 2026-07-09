@@ -144,7 +144,8 @@ export const make = Effect.fnUntraced(function*<
     )
 
     const activeRequests: EntityState["activeRequests"] = new Map()
-    let defectRequestIds: Array<bigint> = []
+    let defectRequestIds = new Set<bigint>()
+    let isRestartingDueToDefect = false
 
     // the server is stored in a ref, so if there is a defect, we can
     // swap the server without losing the active requests
@@ -180,6 +181,14 @@ export const make = Effect.fnUntraced(function*<
                 if (!request) return Effect.void
 
                 request.sentReply = true
+
+                if (
+                  isShuttingDown &&
+                  Exit.isInterrupted(response.exit) &&
+                  defectRequestIds.has(response.requestId)
+                ) {
+                  return Effect.void
+                }
 
                 // For durable messages, ignore interrupts during shutdown.
                 // They will be retried when the entity is restarted.
@@ -277,9 +286,11 @@ export const make = Effect.fnUntraced(function*<
           })
         )
 
-        if (defectRequestIds.length > 0) {
+        if (defectRequestIds.size > 0) {
           for (const id of defectRequestIds) {
-            const { lastSentChunk, message } = activeRequests.get(id)!
+            const request = activeRequests.get(id)
+            if (!request) continue
+            const { lastSentChunk, message } = request
             yield* server.write(0, {
               ...message.envelope,
               id: RequestId(message.envelope.requestId),
@@ -290,7 +301,7 @@ export const make = Effect.fnUntraced(function*<
               } as any) as any
             })
           }
-          defectRequestIds = []
+          defectRequestIds.clear()
         }
 
         return server.write
@@ -301,11 +312,18 @@ export const make = Effect.fnUntraced(function*<
       if (!activeServers.has(address.entityId)) {
         return endLatch.open
       }
+      if (isRestartingDueToDefect) {
+        return Effect.void
+      }
+      defectRequestIds = new Set(activeRequests.keys())
+      isRestartingDueToDefect = true
       const effect = writeRef.unsafeRebuild()
-      defectRequestIds = Array.from(activeRequests.keys())
       return Effect.logError("Defect in entity, restarting", cause).pipe(
         Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
         Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
+        Effect.ensuring(Effect.sync(() => {
+          isRestartingDueToDefect = false
+        })),
         Effect.annotateLogs({
           module: "EntityManager",
           address,
