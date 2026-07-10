@@ -875,10 +875,16 @@ describe("Options", () => {
         expect(result).toEqual([[], "debug"])
       }).pipe(runEffect))
 
+    it("uses --flag=-value syntax even when the value looks like a flag", () =>
+      Effect.gen(function*() {
+        const result = yield* process(level, ["--level=-foo"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], "-foo"])
+      }).pipe(runEffect))
+
     it("works with choice options (canonical use case from the feature request)", () =>
       Effect.gen(function*() {
         const watch = Options.choice("watch", ["first-failure", "until-done"] as const).pipe(
-          Options.withOptionalValue("first-failure" as const),
+          Options.withOptionalValue<"first-failure" | "until-done">("first-failure"),
           Options.optional
         )
         const result1 = yield* process(watch, ["--watch"], CliConfig.defaultConfig)
@@ -894,8 +900,28 @@ describe("Options", () => {
         const count = Options.integer("count").pipe(Options.withOptionalValue(1))
         const result1 = yield* process(count, ["--count"], CliConfig.defaultConfig)
         const result2 = yield* process(count, ["--count", "5"], CliConfig.defaultConfig)
+        const result3 = yield* process(count, ["--count", "-5"], CliConfig.defaultConfig)
         expect(result1).toEqual([[], 1])
         expect(result2).toEqual([[], 5])
+        expect(result3).toEqual([[], -5])
+      }).pipe(runEffect))
+
+    it("uses the fallback when the flag is followed by another flag", () =>
+      Effect.gen(function*() {
+        const options = Options.all([level, Options.boolean("watch")])
+        const result = yield* process(options, ["--level", "--watch"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], ["info", true]])
+      }).pipe(runEffect))
+
+    it("uses the fallback when the flag is followed by another flag using its alias", () =>
+      Effect.gen(function*() {
+        const levelAliased = Options.text("level").pipe(
+          Options.withOptionalValue("info"),
+          Options.withAlias("l")
+        )
+        const options = Options.all([levelAliased, Options.boolean("watch")])
+        const result = yield* process(options, ["-l", "--watch"], CliConfig.defaultConfig)
+        expect(result).toEqual([[], ["info", true]])
       }).pipe(runEffect))
   })
 })

@@ -1700,6 +1700,9 @@ interface ParsedCommandLine {
 
 const CLUSTERED_REGEX = /^-{1}([^-]{2,}$)/
 const FLAG_REGEX = /^(--[^=]+)(?:=(.+))?$/
+const NEGATIVE_NUMBER_REGEX = /^-(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/
+
+const looksLikeAnotherFlag = (value: string): boolean => value.startsWith("-") && !NEGATIVE_NUMBER_REGEX.test(value)
 
 /**
  * Normalizes the leading command-line argument by performing the following:
@@ -1754,6 +1757,7 @@ const parseCommandLine = (
 ): Effect.Effect<ParsedCommandLine, ValidationError.ValidationError> => {
   switch (self._tag) {
     case "Single": {
+      const usedExplicitEquals = args.length > 0 && FLAG_REGEX.exec(args[0].trim())?.[2] !== undefined
       return processArgs(args).pipe(Effect.flatMap((args) =>
         Arr.matchLeft(args, {
           onEmpty: () => {
@@ -1798,6 +1802,10 @@ const parseCommandLine = (
                   return Effect.fail(InternalValidationError.missingValue(error))
                 },
                 onNonEmpty: (value, leftover) => {
+                  if (Option.isSome(self.optionalValueDefault) && !usedExplicitEquals && looksLikeAnotherFlag(value)) {
+                    const parsed = Option.some({ name: head, values: Arr.empty() })
+                    return Effect.succeed<ParsedCommandLine>({ parsed, leftover: tail })
+                  }
                   const parsed = Option.some({ name: head, values: Arr.of(value) })
                   return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
                 }
@@ -1899,6 +1907,11 @@ const parseCommandLine = (
             }
 
             const optionValue = afterOption[0]
+            if (Option.isSome(self.optionalValueDefault) && looksLikeAnotherFlag(optionValue)) {
+              const parsed = Option.some({ name: optionName, values: Arr.empty() })
+              const leftover = Arr.appendAll(beforeOption, afterOption)
+              return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
+            }
             const parsed = Option.some({ name: optionName, values: Arr.of(optionValue) })
             const leftover = Arr.appendAll(beforeOption, afterOption.slice(1))
             return Effect.succeed<ParsedCommandLine>({ parsed, leftover })
