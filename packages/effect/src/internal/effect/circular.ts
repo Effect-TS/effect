@@ -263,12 +263,13 @@ export const cachedInvalidateWithTTL: {
 const computeCachedValue = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   timeToLive: Duration.DurationInput,
-  start: number
+  start: number,
+  restore: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<Option.Option<[number, Deferred.Deferred<A, E>]>, never, R> => {
   const timeToLiveMillis = Duration.toMillis(Duration.decode(timeToLive))
   return pipe(
     core.deferredMake<A, E>(),
-    core.tap((deferred) => core.intoDeferred(self, deferred)),
+    core.tap((deferred) => core.intoDeferred(restore(self), deferred)),
     core.map((deferred) => Option.some([start + timeToLiveMillis, deferred]))
   )
 }
@@ -286,12 +287,12 @@ const getCachedValue = <A, E, R>(
         updateSomeAndGetEffectSynchronized(cache, (option) => {
           switch (option._tag) {
             case "None": {
-              return Option.some(computeCachedValue(self, timeToLive, time))
+              return Option.some(computeCachedValue(self, timeToLive, time, restore))
             }
             case "Some": {
               const [end] = option.value
               return end - time <= 0
-                ? Option.some(computeCachedValue(self, timeToLive, time))
+                ? Option.some(computeCachedValue(self, timeToLive, time, restore))
                 : Option.none()
             }
           }
