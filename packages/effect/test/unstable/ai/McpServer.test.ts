@@ -81,7 +81,7 @@ const makeTestClient = (
         )
       )
 
-    return { client, request, responses }
+    return { client, getSessionId: () => sessionId, request, responses }
   })
 
 describe("McpServer", () => {
@@ -279,5 +279,57 @@ describe("McpServer", () => {
       }, { "Mcp-Session-Id": "unknown" })
 
       strictEqual(response.status, 404)
+    }))
+
+  it.effect("accepts the negotiated protocol version header", () =>
+    Effect.gen(function*() {
+      const { client, getSessionId, request } = yield* makeTestClient()
+      yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+        "Mcp-Session-Id": getSessionId() ?? "",
+        "Mcp-Protocol-Version": "2025-11-25"
+      })
+
+      strictEqual(response.status, 200)
+      strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
+    }))
+
+  it.effect("returns 400 for an unsupported protocol version header", () =>
+    Effect.gen(function*() {
+      const { client, getSessionId, request } = yield* makeTestClient()
+      yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+        "Mcp-Session-Id": getSessionId() ?? "",
+        "Mcp-Protocol-Version": "not-a-version"
+      })
+
+      strictEqual(response.status, 400)
+    }))
+
+  it.effect("returns 400 when the protocol version differs from the session", () =>
+    Effect.gen(function*() {
+      const { client, getSessionId, request } = yield* makeTestClient()
+      yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+        "Mcp-Session-Id": getSessionId() ?? "",
+        "Mcp-Protocol-Version": "2025-06-18"
+      })
+
+      strictEqual(response.status, 400)
     }))
 })

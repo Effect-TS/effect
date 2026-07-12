@@ -530,7 +530,19 @@ export const run: (options: ServerOptions) => Effect.Effect<
             if (isHttp) {
               const fiber = Fiber.getCurrent()!
               const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
+              const requestProtocolVersion = httpRequest.headers[mcpProtocolVersionHeader]
               const session = getSession(clientSessions, clientId, httpRequest.headers)
+              if (
+                request.tag !== "initialize" &&
+                requestProtocolVersion !== undefined &&
+                requestProtocolVersion !== session?.protocolVersion
+              ) {
+                appendPreResponseHandlerUnsafe(
+                  httpRequest,
+                  () => Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+                )
+                return Effect.void
+              }
               if (session) {
                 appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
                   Effect.succeed(
