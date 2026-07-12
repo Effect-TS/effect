@@ -1,4 +1,5 @@
-import { McpServer } from "effect/unstable/ai"
+import type * as Effect from "effect/Effect"
+import { McpSchema, McpServer } from "effect/unstable/ai"
 import { describe, expect, it } from "tstyche"
 
 describe("McpServer", () => {
@@ -24,5 +25,11 @@ describe("McpServer", () => {
       version: "1.0.0",
       supportedProtocolVersions: ["2025-03-26"] as const
     })
+  })
+
+  it("exposes the negotiated protocol version to handlers", () => {
+    expect(McpSchema.McpServerClient.useSync((client) => client.protocolVersion)).type.toBe<
+      Effect.Effect<"2025-11-25" | "2025-06-18", never, McpSchema.McpServerClient>
+    >()
   })
 })

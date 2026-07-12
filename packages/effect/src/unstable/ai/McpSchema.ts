@@ -702,6 +702,22 @@ export class Ping extends Rpc.make("ping", {
 // =============================================================================
 
 /**
+ * Schema for protocol versions supported by the MCP server implementation.
+ *
+ * @category initialization
+ * @since 4.0.0
+ */
+export const ProtocolVersion = Schema.Literals(["2025-11-25", "2025-06-18"])
+
+/**
+ * Protocol version supported by the MCP server implementation.
+ *
+ * @category initialization
+ * @since 4.0.0
+ */
+export type ProtocolVersion = typeof ProtocolVersion.Type
+
+/**
  * Schema for the server's response to an initialize request from the client.
  *
  * @category initialization
@@ -2329,6 +2345,7 @@ export class ElicitationDeclined
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
+  readonly protocolVersion: ProtocolVersion
   readonly getClient: Effect.Effect<
     RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerRequestRpcs>, RpcClientError>,
     never,
@@ -2444,21 +2461,10 @@ export type FailureEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
   : never
   : never
 
-/**
- * RPC group for requests that MCP clients send to the server.
- *
- * **Details**
- *
- * The group includes initialization, resource, prompt, tool, logging,
- * completion, and ping requests, and installs `McpServerClientMiddleware` for
- * handlers.
- *
- * @category protocols
- * @since 4.0.0
- */
-export class ClientRequestRpcs extends RpcGroup.make(
+class InitializeRequestRpcs extends RpcGroup.make(Initialize) {}
+
+class OperationalClientRequestRpcs extends RpcGroup.make(
   Ping,
-  Initialize,
   Complete,
   SetLevel,
   GetPrompt,
@@ -2471,6 +2477,20 @@ export class ClientRequestRpcs extends RpcGroup.make(
   CallTool,
   ListTools
 ).middleware(McpServerClientMiddleware) {}
+
+/**
+ * RPC group for requests that MCP clients send to the server.
+ *
+ * **Details**
+ *
+ * The group includes initialization, resource, prompt, tool, logging,
+ * completion, and ping requests. Requests after initialization use
+ * `McpServerClientMiddleware` to access the current session.
+ *
+ * @category protocols
+ * @since 4.0.0
+ */
+export class ClientRequestRpcs extends InitializeRequestRpcs.merge(OperationalClientRequestRpcs) {}
 
 /**
  * Encoded union of all client-to-server MCP request messages.

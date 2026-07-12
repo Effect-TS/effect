@@ -50,6 +50,7 @@ import {
   GetPromptResult,
   InternalError,
   InvalidParams,
+  InvalidRequest,
   isParam,
   ListPromptsResult,
   ListResourcesResult,
@@ -74,6 +75,7 @@ import type {
   Param,
   PromptArgument,
   PromptMessage,
+  ProtocolVersion as McpProtocolVersion,
   ReadResourceResult,
   ServerCapabilities
 } from "./McpSchema.ts"
@@ -351,7 +353,7 @@ export const supportedProtocolVersions = [
  * @category models
  * @since 4.0.0
  */
-export type ProtocolVersion = typeof supportedProtocolVersions[number]
+export type ProtocolVersion = McpProtocolVersion
 
 /**
  * Latest protocol version supported by the MCP server implementation.
@@ -379,6 +381,19 @@ export interface ServerOptions {
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }
 
+type InitializePayload = typeof Initialize.payloadSchema.Type
+
+type Session =
+  & {
+    readonly initializePayload: InitializePayload
+    readonly protocolVersion: ProtocolVersion
+  }
+  & ({
+    readonly _tag: "Negotiated"
+  } | {
+    readonly _tag: "Operational"
+  })
+
 const mcpSessionIdHeader = "mcp-session-id"
 const mcpProtocolVersionHeader = "mcp-protocol-version"
 
@@ -402,7 +417,7 @@ export const run: (options: ServerOptions) => Effect.Effect<
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
-  const clientSessions = new Map<string, typeof Initialize.payloadSchema.Type>()
+  const clientSessions = new Map<string, Session>()
   const configuredProtocolVersions = yield* resolveProtocolVersions(
     options.supportedProtocolVersions ?? supportedProtocolVersions
   )
@@ -446,10 +461,9 @@ export const run: (options: ServerOptions) => Effect.Effect<
     idleTimeToLive: 10000
   })
 
-  const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, rpc }) => {
-    const initializePayload = getInitializedClient(clientSessions, client.id, headers)
-    const isInitialize = rpc._tag === "initialize"
-    if (!isInitialize && !initializePayload) {
+  const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers }) => {
+    const session = getSession(clientSessions, client.id, headers)
+    if (!session) {
       const fiber = Fiber.getCurrent()!
       const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
       if (httpRequest) {
@@ -465,7 +479,8 @@ export const run: (options: ServerOptions) => Effect.Effect<
       McpServerClient,
       McpServerClient.of({
         clientId: client.id,
-        initializePayload: initializePayload!,
+        initializePayload: session.initializePayload,
+        protocolVersion: session.protocolVersion,
         getClient: RcMap.get(clients, client.id).pipe(
           Effect.map(({ client }) => client)
         )
@@ -485,11 +500,11 @@ export const run: (options: ServerOptions) => Effect.Effect<
             if (isHttp) {
               const fiber = Fiber.getCurrent()!
               const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
-              const client = getInitializedClient(clientSessions, clientId, httpRequest.headers)
-              if (client) {
+              const session = getSession(clientSessions, clientId, httpRequest.headers)
+              if (session) {
                 appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
                   Effect.succeed(
-                    HttpServerResponse.setHeader(res, mcpProtocolVersionHeader, client.protocolVersion)
+                    HttpServerResponse.setHeader(res, mcpProtocolVersionHeader, session.protocolVersion)
                   ))
               }
             }
@@ -1331,7 +1346,7 @@ const layerHandlers = (serverInfo: {
   readonly version: string
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }, options: {
-  readonly clientSessions: Map<string, typeof Initialize.payloadSchema.Type>
+  readonly clientSessions: Map<string, Session>
   readonly supportedProtocolVersions: Arr.NonEmptyReadonlyArray<ProtocolVersion>
 }) =>
   ClientRpcs.toLayer(
@@ -1344,9 +1359,11 @@ const layerHandlers = (serverInfo: {
         ping: () => Effect.succeed({}),
         initialize(params, { client }) {
           const protocolVersion = negotiateProtocolVersion(params.protocolVersion, options.supportedProtocolVersions)
-          const initializePayload = protocolVersion === params.protocolVersion
-            ? params
-            : { ...params, protocolVersion }
+          const session: Session = {
+            _tag: "Negotiated",
+            initializePayload: params,
+            protocolVersion
+          }
           const capabilities: Types.DeepMutable<typeof ServerCapabilities.Type> = {
             completions: {}
           }
@@ -1368,15 +1385,22 @@ const layerHandlers = (serverInfo: {
           return Effect.withFiber((fiber) => {
             const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
             if (httpRequest) {
+              if (getSession(options.clientSessions, client.id, httpRequest.headers)) {
+                return Effect.fail(new InvalidRequest({ message: "This MCP session has already been initialized" }))
+              }
               const sessionId = crypto.randomUUID()
-              options.clientSessions.set(sessionId, initializePayload)
+              options.clientSessions.set(sessionId, session)
               appendPreResponseHandlerUnsafe(httpRequest, (_req, res) =>
                 Effect.succeed(HttpServerResponse.setHeaders(res, {
                   [mcpSessionIdHeader]: sessionId,
                   [mcpProtocolVersionHeader]: protocolVersion
                 })))
             } else {
-              options.clientSessions.set(String(client.id), initializePayload)
+              const sessionId = String(client.id)
+              if (options.clientSessions.has(sessionId)) {
+                return Effect.fail(new InvalidRequest({ message: "This MCP connection has already been initialized" }))
+              }
+              options.clientSessions.set(sessionId, session)
             }
             return Effect.succeed({
               capabilities,
@@ -1418,13 +1442,13 @@ const layerHandlers = (serverInfo: {
           ),
         "prompts/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
-            return new ListPromptsResult({ prompts: filterByClient(initialized, server.prompts, "prompt") })
+            const session = getSession(options.clientSessions, client.id, headers)
+            return new ListPromptsResult({ prompts: filterByClient(session, server.prompts, "prompt") })
           }),
         "resources/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
-            return new ListResourcesResult({ resources: filterByClient(initialized, server.resources, "resource") })
+            const session = getSession(options.clientSessions, client.id, headers)
+            return new ListResourcesResult({ resources: filterByClient(session, server.resources, "resource") })
           }),
         "resources/read": ({ uri }) =>
           server.findResource(uri).pipe(
@@ -1436,9 +1460,9 @@ const layerHandlers = (serverInfo: {
           InternalError.notImplemented,
         "resources/templates/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
+            const session = getSession(options.clientSessions, client.id, headers)
             return new ListResourceTemplatesResult({
-              resourceTemplates: filterByClient(initialized, server.resourceTemplates, "template")
+              resourceTemplates: filterByClient(session, server.resourceTemplates, "template")
             })
           }),
         "tools/call": (r) =>
@@ -1447,15 +1471,26 @@ const layerHandlers = (serverInfo: {
           ),
         "tools/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
+            const session = getSession(options.clientSessions, client.id, headers)
             return new ListToolsResult({
-              tools: filterByClient(initialized, server.tools, "tool")
+              tools: filterByClient(session, server.tools, "tool")
             })
           }),
 
         // Notifications
         "notifications/cancelled": (_) => Effect.void,
-        "notifications/initialized": (_) => Effect.void,
+        "notifications/initialized": (_, { client, headers }) =>
+          Effect.sync(() => {
+            const sessionId = getSessionId(client.id, headers)
+            const session = options.clientSessions.get(sessionId)
+            if (session === undefined || session._tag === "Operational") {
+              return
+            }
+            options.clientSessions.set(sessionId, { ...session, _tag: "Operational" })
+            if (headers[mcpSessionIdHeader] === undefined) {
+              server.initializedClients.add(client.id)
+            }
+          }),
         "notifications/progress": (_) => Effect.void,
         "notifications/roots/list_changed": (_) => Effect.void
       })
@@ -1514,32 +1549,34 @@ const filterByClient = <
   },
   P extends keyof A
 >(
-  client: typeof Initialize.payloadSchema.Type | undefined,
+  session: Session | undefined,
   items: ReadonlyArray<A>,
   prop: P
 ): Array<A[P]> => {
-  if (!client) {
+  if (!session) {
     return items.map((item) => item[prop])
   }
   const out = Arr.empty<A[P]>()
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     const enabledWhen = Context.getOrUndefined(item.annotations, EnabledWhen)
-    if (!enabledWhen || enabledWhen(client)) {
+    if (!enabledWhen || enabledWhen(session.initializePayload)) {
       out.push(item[prop])
     }
   }
   return out
 }
 
-const getInitializedClient = (
-  sessions: Map<string, typeof Initialize.payloadSchema.Type>,
+const getSessionId = (
   clientId: number,
   headers: Headers.Headers
-) => {
+): string => {
   const sessionId = headers[mcpSessionIdHeader]
-  if (sessionId === undefined) {
-    return sessions.get(String(clientId))
-  }
-  return sessions.get(sessionId)
+  return sessionId === undefined ? String(clientId) : sessionId
 }
+
+const getSession = (
+  sessions: Map<string, Session>,
+  clientId: number,
+  headers: Headers.Headers
+): Session | undefined => sessions.get(getSessionId(clientId, headers))

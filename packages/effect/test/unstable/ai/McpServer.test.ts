@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Effect, Layer } from "effect"
+import { Context, Effect, Layer } from "effect"
 import type * as Arr from "effect/Array"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -17,12 +17,35 @@ const makeTestClient = (
   Effect.gen(function*() {
     const responses: Array<Response> = []
 
-    const serverLayer = McpServer.layerHttp({
+    const protocolLayer = McpServer.layerHttp({
       name: "TestServer",
       version: "1.0.0",
       path: "/mcp",
       supportedProtocolVersions
     })
+    const serverLayer = Layer.effectDiscard(Effect.gen(function*() {
+      const server = yield* McpServer.McpServer
+      yield* server.addTool({
+        tool: new McpSchema.Tool({
+          name: "session",
+          inputSchema: { type: "object" }
+        }),
+        annotations: Context.empty(),
+        handle: () =>
+          Effect.gen(function*() {
+            const client = yield* McpSchema.McpServerClient
+            return new McpSchema.CallToolResult({
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  requested: client.initializePayload.protocolVersion,
+                  negotiated: client.protocolVersion
+                })
+              }]
+            })
+          })
+      })
+    })).pipe(Layer.provideMerge(protocolLayer))
     const { handler, dispose } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
     yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
 
@@ -33,7 +56,7 @@ const makeTestClient = (
         request.headers.set("Mcp-Session-Id", sessionId)
       }
       const response = await handler(request)
-      sessionId = response.headers.get("Mcp-Session-Id")
+      sessionId = response.headers.get("Mcp-Session-Id") ?? sessionId
       responses.push(response.clone())
       return response
     }
@@ -50,7 +73,26 @@ const makeTestClient = (
       Effect.provide(clientLayer)
     )
 
-    return { client, responses, httpClient }
+    const sendInitialized = () =>
+      Effect.promise(() => {
+        const headers = new Headers({ "content-type": "application/json" })
+        if (sessionId) {
+          headers.set("Mcp-Session-Id", sessionId)
+        }
+        return handler(
+          new Request("http://localhost/mcp", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "notifications/initialized",
+              params: {}
+            })
+          })
+        )
+      })
+
+    return { client, responses, httpClient, sendInitialized }
   })
 
 describe("McpServer", () => {
@@ -151,12 +193,11 @@ describe("McpServer", () => {
       strictEqual(result.protocolVersion, "2025-06-18")
     }))
 
-  it.effect("snapshots configured protocol versions at server startup", () =>
+  it.effect("rejects reinitializing an existing HTTP session", () =>
     Effect.gen(function*() {
-      const versions: [McpServer.ProtocolVersion, ...Array<McpServer.ProtocolVersion>] = ["2025-11-25"]
-      const { client } = yield* makeTestClient(versions)
+      const { client } = yield* makeTestClient()
       const initialize = {
-        protocolVersion: "9999-01-01",
+        protocolVersion: "2025-11-25",
         capabilities: {},
         clientInfo: {
           name: "TestClient",
@@ -164,12 +205,52 @@ describe("McpServer", () => {
         }
       }
 
-      const first = yield* client.initialize(initialize)
-      versions[0] = "2025-06-18"
-      const second = yield* client.initialize(initialize)
+      yield* client.initialize(initialize)
+      const exit = yield* Effect.exit(client.initialize(initialize))
 
-      strictEqual(first.protocolVersion, "2025-11-25")
-      strictEqual(second.protocolVersion, "2025-11-25")
+      strictEqual(exit._tag, "Failure")
+    }))
+
+  it.effect("preserves the requested version separately from the negotiated version", () =>
+    Effect.gen(function*() {
+      const { client } = yield* makeTestClient()
+
+      yield* client.initialize({
+        protocolVersion: "9999-01-01",
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      })
+      const result = yield* client["tools/call"]({ name: "session", arguments: {} })
+
+      strictEqual(result.content[0]?.type, "text")
+      if (result.content[0]?.type === "text") {
+        strictEqual(
+          result.content[0].text,
+          JSON.stringify({ requested: "9999-01-01", negotiated: McpServer.latestProtocolVersion })
+        )
+      }
+    }))
+
+  it.effect("accepts duplicate initialized notifications", () =>
+    Effect.gen(function*() {
+      const { client, sendInitialized } = yield* makeTestClient()
+
+      yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      })
+      const first = yield* sendInitialized()
+      const second = yield* sendInitialized()
+
+      strictEqual(first.ok, true)
+      strictEqual(second.ok, true)
     }))
 
   it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>
