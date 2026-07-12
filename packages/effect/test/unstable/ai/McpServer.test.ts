@@ -67,7 +67,21 @@ const makeTestClient = (
       Effect.provide(clientLayer)
     )
 
-    return { client, responses }
+    const request = (body: unknown, headers?: globalThis.HeadersInit) =>
+      Effect.promise(() =>
+        handler(
+          new Request("http://localhost/mcp", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              ...headers
+            },
+            body: JSON.stringify(body)
+          })
+        )
+      )
+
+    return { client, request, responses }
   })
 
 describe("McpServer", () => {
@@ -237,5 +251,33 @@ describe("McpServer", () => {
       const exit = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
 
       strictEqual(exit._tag, "Failure")
+    }))
+
+  it.effect("returns 400 when a normal HTTP request omits the session id", () =>
+    Effect.gen(function*() {
+      const { request } = yield* makeTestClient()
+
+      const response = yield* request({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "session", arguments: {} }
+      })
+
+      strictEqual(response.status, 400)
+    }))
+
+  it.effect("returns 404 when an HTTP request supplies an unknown session id", () =>
+    Effect.gen(function*() {
+      const { request } = yield* makeTestClient()
+
+      const response = yield* request({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "session", arguments: {} }
+      }, { "Mcp-Session-Id": "unknown" })
+
+      strictEqual(response.status, 404)
     }))
 })

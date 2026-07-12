@@ -467,12 +467,19 @@ export const run: (options: ServerOptions) => Effect.Effect<
       const fiber = Fiber.getCurrent()!
       const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
       if (httpRequest) {
+        const hasSessionId = httpRequest.headers[mcpSessionIdHeader] !== undefined
         appendPreResponseHandlerUnsafe(
           httpRequest,
-          () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))
+          () => Effect.succeed(HttpServerResponse.empty({ status: hasSessionId ? 404 : 400 }))
         )
       }
-      return Effect.fail(new InvalidRequest({ message: "MCP session does not exist; initialize the client first" }))
+      return Effect.fail(
+        new InvalidRequest({
+          message: httpRequest?.headers[mcpSessionIdHeader] === undefined
+            ? "MCP session ID is required; initialize the client first"
+            : "MCP session does not exist or has expired; initialize a new session"
+        })
+      )
     }
     if (session._tag !== "Operational") {
       return Effect.fail(
