@@ -730,7 +730,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const mcpTool = new McpTool({
       name: tool.name,
       description: Tool.getDescription(tool),
-      inputSchema: Tool.getJsonSchema(tool),
+      inputSchema: {
+        ...Tool.getJsonSchema(tool),
+        type: "object"
+      },
       annotations: {
         ...(Context.getOption(tool.annotations, Tool.Title).pipe(
           Option.map((title) => ({ title })),
@@ -764,7 +767,11 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             onSuccess: (result: any) =>
               new CallToolResult({
                 isError: false,
-                structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
+                structuredContent: typeof result.encodedResult === "object" &&
+                    result.encodedResult !== null &&
+                    !Array.isArray(result.encodedResult)
+                  ? result.encodedResult
+                  : undefined,
                 content: [{
                   type: "text",
                   text: JSON.stringify(result.encodedResult)
@@ -953,13 +960,17 @@ export const registerResource: {
       const handler = (input: string) =>
         handle(input).pipe(
           Effect.flatMap(encodeArray),
-          Effect.map((values) => ({
-            completion: {
-              values: values as Array<string>,
-              total: values.length,
-              hasMore: false
+          Effect.map((values) => {
+            const total = values.length
+            const completionValues = values.slice(0, 100).filter((value): value is string => typeof value === "string")
+            return {
+              completion: {
+                values: completionValues,
+                total,
+                hasMore: total > 100
+              }
             }
-          })),
+          }),
           Effect.catchCause((cause) => {
             const prettyError = Cause.prettyErrors(cause)[0]
             return Effect.fail(new InternalError({ message: prettyError.message }))
@@ -1123,13 +1134,17 @@ export const registerPrompt = <
       const handler = (input: string) =>
         handle(input).pipe(
           Effect.flatMap(encodeArray),
-          Effect.map((values) => ({
-            completion: {
-              values: values as Array<string>,
-              total: values.length,
-              hasMore: false
+          Effect.map((values) => {
+            const total = values.length
+            const completionValues = values.slice(0, 100).filter((value): value is string => typeof value === "string")
+            return {
+              completion: {
+                values: completionValues,
+                total,
+                hasMore: total > 100
+              }
             }
-          })),
+          }),
           Effect.catchCause((cause) => {
             const prettyError = Cause.prettyErrors(cause)[0]
             return Effect.fail(new InternalError({ message: prettyError.message }))
@@ -1229,13 +1244,17 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   readonly message: string
   readonly schema: S
 }) {
-  const { getClient } = yield* McpServerClient
+  const { getClient, initializePayload } = yield* McpServerClient
   const client = yield* getClient
   const schema = options.schema
-  const request = Elicit.payloadSchema.make({
+  const request = yield* Schema.decodeUnknownEffect(Elicit.payloadSchema)({
     message: options.message,
     requestedSchema: Tool.getJsonSchemaFromSchema(schema)
-  })
+  }).pipe(Effect.orDie)
+  const elicitation = initializePayload.capabilities.elicitation
+  if (elicitation === undefined || (elicitation.form === undefined && elicitation.url !== undefined)) {
+    return yield* new ElicitationDeclined({ request })
+  }
   const res = yield* client["elicitation/create"](request).pipe(
     Effect.catchCause((cause) => Effect.fail(new ElicitationDeclined({ cause: Cause.squash(cause), request })))
   )

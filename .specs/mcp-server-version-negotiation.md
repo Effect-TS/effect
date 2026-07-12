@@ -119,7 +119,7 @@ The following differences affect types already accepted, emitted, or exposed by 
 - Make request `_meta` open to arbitrary JSON-compatible keys while retaining typed `progressToken`.
 - Add shared request metadata to completion, sampling, and elicitation requests.
 - Add result metadata to completion, sampling, and roots results.
-- Preserve arbitrary result extension keys where client results are decoded.
+- Accept arbitrary result extension keys where client results are decoded. Retaining them in typed values is deferred because adding rest fields would remove existing `Schema.Class` constructors from exported result models.
 - Require integer MCP error codes at the schema boundary.
 - Verify that JSON-RPC parse and invalid-request errors can omit `id`; address this in RPC serialization only if wire tests show the generic layer cannot emit the official envelope.
 

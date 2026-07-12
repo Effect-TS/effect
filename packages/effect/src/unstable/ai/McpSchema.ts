@@ -143,16 +143,19 @@ export type ProgressToken = typeof ProgressToken.Type
  * @since 4.0.0
  */
 export class RequestMeta extends Schema.Opaque<RequestMeta>()(Schema.Struct({
-  _meta: optional(Schema.Struct({
-    /**
-     * If specified, the caller is requesting out-of-band progress notifications
-     * for this request (as represented by notifications/progress). The value of
-     * this parameter is an opaque token that will be attached to any subsequent
-     * notifications. The receiver is not obligated to provide these
-     * notifications.
-     */
-    progressToken: optional(ProgressToken)
-  }))
+  _meta: optional(Schema.StructWithRest(
+    Schema.Struct({
+      /**
+       * If specified, the caller is requesting out-of-band progress notifications
+       * for this request (as represented by notifications/progress). The value of
+       * this parameter is an opaque token that will be attached to any subsequent
+       * notifications. The receiver is not obligated to provide these
+       * notifications.
+       */
+      progressToken: optional(ProgressToken)
+    }),
+    [Schema.Record(Schema.String, Schema.Json)]
+  ))
 })) {}
 
 /**
@@ -299,7 +302,21 @@ export class Annotations extends Schema.Opaque<Annotations>()(Schema.Struct({
    * effectively required, while 0 means "least important," and indicates that
    * the data is entirely optional.
    */
-  priority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
+  priority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
+  lastModified: optional(Schema.String)
+})) {}
+
+/**
+ * Describes an icon associated with an MCP implementation or protocol object.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export class Icon extends Schema.Opaque<Icon>()(Schema.Struct({
+  src: Schema.String,
+  mimeType: optional(Schema.String),
+  sizes: optional(Schema.Array(Schema.String)),
+  theme: optional(Schema.Literals(["light", "dark"]))
 })) {}
 
 /**
@@ -311,7 +328,10 @@ export class Annotations extends Schema.Opaque<Annotations>()(Schema.Struct({
 export class Implementation extends Schema.Opaque<Implementation>()(Schema.Struct({
   name: Schema.String,
   title: optional(Schema.String),
-  version: Schema.String
+  version: Schema.String,
+  description: optional(Schema.String),
+  icons: optional(Schema.Array(Icon)),
+  websiteUrl: optional(Schema.String)
 })) {}
 
 /**
@@ -354,11 +374,17 @@ export class ClientCapabilities extends Schema.Class<ClientCapabilities>(
   /**
    * Present if the client supports sampling from an LLM.
    */
-  sampling: optional(Schema.Struct({})),
+  sampling: optional(Schema.Struct({
+    context: optional(Schema.Struct({})),
+    tools: optional(Schema.Struct({}))
+  })),
   /**
    * Present if the client supports elicitation from the server.
    */
-  elicitation: optional(Schema.Struct({}))
+  elicitation: optional(Schema.Struct({
+    form: optional(Schema.Struct({})),
+    url: optional(Schema.Struct({}))
+  }))
 }) {}
 
 /**
@@ -449,7 +475,7 @@ export class McpErrorBase extends Schema.Class<McpErrorBase>(
   /**
    * The error type that occurred.
    */
-  code: Schema.Number,
+  code: Schema.Int,
   /**
    * A short description of the error. The message SHOULD be limited to a
    * concise single sentence.
@@ -797,7 +823,7 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
      * The progress thus far. This should increase every time progress is made,
      * even if the total is unknown.
      */
-    progress: optional(Schema.Number),
+    progress: Schema.Number,
     /**
      * Total number of items to process (or total progress required), if known.
      */
@@ -856,6 +882,7 @@ export class Resource extends Schema.Class<Resource>(
    * window usage.
    */
   size: optional(Schema.Number),
+  icons: optional(Schema.Array(Icon)),
   /**
    * Optional additional metadata for the client.
    *
@@ -904,6 +931,7 @@ export class ResourceTemplate extends Schema.Class<ResourceTemplate>(
    * Optional annotations for the client.
    */
   annotations: optional(Annotations),
+  icons: optional(Schema.Array(Icon)),
 
   /**
    * Optional additional metadata for the client.
@@ -958,7 +986,7 @@ export class BlobResourceContents extends Schema.Opaque<BlobResourceContents>()(
   /**
    * The binary data of the item decoded from a base64-encoded string.
    */
-  blob: Schema.Uint8Array
+  blob: Schema.Uint8ArrayFromBase64
 })) {}
 
 /**
@@ -1167,7 +1195,9 @@ export class Prompt extends Schema.Class<Prompt>(
   /**
    * A list of arguments to use for templating the prompt.
    */
-  arguments: optional(Schema.Array(PromptArgument))
+  arguments: optional(Schema.Array(PromptArgument)),
+  icons: optional(Schema.Array(Icon)),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 }) {}
 
 /**
@@ -1185,7 +1215,8 @@ export class TextContent extends Schema.Opaque<TextContent>()(Schema.Struct({
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1199,7 +1230,7 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
   /**
    * The image data.
    */
-  data: Schema.Uint8Array,
+  data: Schema.Uint8ArrayFromBase64,
   /**
    * The MIME type of the image. Different providers may support different
    * image types.
@@ -1208,7 +1239,8 @@ export class ImageContent extends Schema.Opaque<ImageContent>()(Schema.Struct({
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1222,7 +1254,7 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
   /**
    * The audio data.
    */
-  data: Schema.Uint8Array,
+  data: Schema.Uint8ArrayFromBase64,
   /**
    * The MIME type of the audio. Different providers may support different
    * audio types.
@@ -1231,7 +1263,8 @@ export class AudioContent extends Schema.Opaque<AudioContent>()(Schema.Struct({
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1251,7 +1284,8 @@ export class EmbeddedResource extends Schema.Opaque<EmbeddedResource>()(Schema.S
   /**
    * Optional annotations for the client.
    */
-  annotations: optional(Annotations)
+  annotations: optional(Annotations),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1469,7 +1503,19 @@ export class Tool extends Schema.Class<Tool>(
   /**
    * A JSON Schema object defining the expected parameters for the tool.
    */
-  inputSchema: Schema.Any,
+  inputSchema: Schema.StructWithRest(
+    Schema.Struct({
+      type: Schema.Literal("object")
+    }),
+    [Schema.Record(Schema.String, Schema.Json)]
+  ),
+  outputSchema: optional(Schema.StructWithRest(
+    Schema.Struct({
+      type: Schema.Literal("object")
+    }),
+    [Schema.Record(Schema.String, Schema.Json)]
+  )),
+  icons: optional(Schema.Array(Icon)),
   /**
    * Optional additional tool information.
    */
@@ -1526,7 +1572,7 @@ export class ListTools extends Rpc.make("tools/list", {
 export class CallToolResult extends Schema.Class<CallToolResult>("@effect/ai/McpSchema/CallToolResult")({
   ...ResultMeta.fields,
   content: Schema.Array(ContentBlock),
-  structuredContent: optional(Schema.Any),
+  structuredContent: optional(Schema.Record(Schema.String, Schema.Json)),
   /**
    * Whether the tool call ended in an error.
    *
@@ -1555,10 +1601,7 @@ export class CallTool extends Rpc.make("tools/call", {
   payload: {
     ...RequestMeta.fields,
     name: Schema.String,
-    arguments: Schema.Record(
-      Schema.String,
-      Schema.Any
-    )
+    arguments: optionalWithDefault(Schema.Record(Schema.String, Schema.Any), () => ({}))
   }
 }) {}
 
@@ -1683,7 +1726,13 @@ export class LoggingMessageNotification extends Rpc.make("notifications/message"
  */
 export class SamplingMessage extends Schema.Opaque<SamplingMessage>()(Schema.Struct({
   role: Role,
-  content: Schema.Union([TextContent, ImageContent, AudioContent])
+  content: Schema.Union([
+    TextContent,
+    ImageContent,
+    AudioContent,
+    Schema.Array(Schema.Union([TextContent, ImageContent, AudioContent]))
+  ]),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 })) {}
 
 /**
@@ -1785,6 +1834,14 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
 export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
   "@effect/ai/McpSchema/CreateMessageResult"
 )({
+  ...ResultMeta.fields,
+  role: Role,
+  content: Schema.Union([
+    TextContent,
+    ImageContent,
+    AudioContent,
+    Schema.Array(Schema.Union([TextContent, ImageContent, AudioContent]))
+  ]),
   /**
    * The name of the model that generated the message.
    */
@@ -1815,6 +1872,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
   success: CreateMessageResult,
   error: McpError,
   payload: {
+    ...RequestMeta.fields,
     messages: Schema.Array(SamplingMessage),
     /**
      * The server's preferences for which model to select. The client MAY ignore
@@ -1842,7 +1900,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * Optional metadata to pass through to the LLM provider. The format of
      * this metadata is provider-specific.
      */
-    metadata: Schema.Any
+    metadata: optional(Schema.Record(Schema.String, Schema.Json))
   }
 }) {}
 
@@ -1886,16 +1944,17 @@ export class PromptReference extends Schema.Opaque<PromptReference>()(Schema.Str
  * @since 4.0.0
  */
 export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struct({
+  ...ResultMeta.fields,
   completion: Schema.Struct({
     /**
      * An array of completion values. Must not exceed 100 items.
      */
-    values: Schema.Array(Schema.String),
+    values: Schema.Array(Schema.String).check(Schema.isMaxLength(100)),
     /**
      * The total number of completion options available. This can exceed the
      * number of values actually sent in the response.
      */
-    total: optional(Schema.Number),
+    total: optional(Schema.Int),
     /**
      * Indicates whether there are additional completion options beyond those
      * provided in the current response, even if the exact total is unknown.
@@ -1927,6 +1986,7 @@ export class Complete extends Rpc.make("completion/complete", {
   success: CompleteResult,
   error: McpError,
   payload: Schema.Struct({
+    ...RequestMeta.fields,
     ref: Schema.Union([PromptReference, ResourceReference]),
     /**
      * The argument's information
@@ -1983,7 +2043,8 @@ export class Root extends Schema.Class<Root>(
    * identifier for the root, which may be useful for display purposes or for
    * referencing the root in other parts of the application.
    */
-  name: optional(Schema.String)
+  name: optional(Schema.String),
+  _meta: optional(Schema.Record(Schema.String, Schema.Json))
 }) {}
 
 /**
@@ -1999,6 +2060,7 @@ export class Root extends Schema.Class<Root>(
 export class ListRootsResult extends Schema.Class<ListRootsResult>(
   "@effect/ai/McpSchema/ListRootsResult"
 )({
+  ...ResultMeta.fields,
   roots: Schema.Array(Root)
 }) {}
 
@@ -2045,6 +2107,100 @@ export class RootsListChangedNotification extends Rpc.make("notifications/roots/
 // Elicitation
 // =============================================================================
 
+const ElicitationSchemaMetadata = {
+  title: optional(Schema.String),
+  description: optional(Schema.String)
+}
+
+const ElicitationStringSchema = Schema.Struct({
+  type: Schema.Literal("string"),
+  ...ElicitationSchemaMetadata,
+  minLength: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  maxLength: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  format: optional(Schema.Literals(["email", "uri", "date", "date-time"])),
+  default: optional(Schema.String)
+})
+
+const ElicitationUntitledSingleSelectSchema = Schema.Struct({
+  type: Schema.Literal("string"),
+  ...ElicitationSchemaMetadata,
+  enum: Schema.Array(Schema.String),
+  default: optional(Schema.String)
+})
+
+const ElicitationLegacyTitledEnumSchema = Schema.Struct({
+  type: Schema.Literal("string"),
+  ...ElicitationSchemaMetadata,
+  enum: Schema.Array(Schema.String),
+  enumNames: Schema.Array(Schema.String),
+  default: optional(Schema.String)
+})
+
+const ElicitationTitledEnumOption = Schema.Struct({
+  const: Schema.String,
+  title: Schema.String
+})
+
+const ElicitationTitledSingleSelectSchema = Schema.Struct({
+  type: Schema.Literal("string"),
+  ...ElicitationSchemaMetadata,
+  oneOf: Schema.Array(ElicitationTitledEnumOption),
+  default: optional(Schema.String)
+})
+
+const ElicitationNumberSchema = Schema.Struct({
+  type: Schema.Literals(["number", "integer"]),
+  ...ElicitationSchemaMetadata,
+  minimum: optional(Schema.Number),
+  maximum: optional(Schema.Number),
+  default: optional(Schema.Number)
+})
+
+const ElicitationBooleanSchema = Schema.Struct({
+  type: Schema.Literal("boolean"),
+  ...ElicitationSchemaMetadata,
+  default: optional(Schema.Boolean)
+})
+
+const ElicitationUntitledMultiSelectSchema = Schema.Struct({
+  type: Schema.Literal("array"),
+  ...ElicitationSchemaMetadata,
+  items: Schema.Struct({
+    type: Schema.Literal("string"),
+    enum: Schema.Array(Schema.String)
+  }),
+  minItems: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  maxItems: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  default: optional(Schema.Array(Schema.String))
+})
+
+const ElicitationTitledMultiSelectSchema = Schema.Struct({
+  type: Schema.Literal("array"),
+  ...ElicitationSchemaMetadata,
+  items: Schema.Struct({
+    anyOf: Schema.Array(ElicitationTitledEnumOption)
+  }),
+  minItems: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  maxItems: optional(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  default: optional(Schema.Array(Schema.String))
+})
+
+const ElicitationPrimitiveSchema = Schema.Union([
+  ElicitationUntitledSingleSelectSchema,
+  ElicitationTitledSingleSelectSchema,
+  ElicitationLegacyTitledEnumSchema,
+  ElicitationStringSchema,
+  ElicitationNumberSchema,
+  ElicitationBooleanSchema,
+  ElicitationUntitledMultiSelectSchema,
+  ElicitationTitledMultiSelectSchema
+])
+
+const ElicitationContent = Schema.Record(
+  Schema.String,
+  Schema.Union([Schema.String, Schema.Number, Schema.Boolean, Schema.Array(Schema.String)])
+)
+
 /**
  * Schema for an accepted client response to an elicitation request.
  *
@@ -2066,7 +2222,7 @@ export class ElicitAcceptResult extends Schema.Class<ElicitAcceptResult>(
    * The submitted form data, only present when action is "accept".
    * Contains values matching the requested schema.
    */
-  content: Schema.Any
+  content: optional(ElicitationContent)
 }) {}
 
 /**
@@ -2115,6 +2271,8 @@ export class Elicit extends Rpc.make("elicitation/create", {
   success: ElicitResult,
   error: McpError,
   payload: {
+    ...RequestMeta.fields,
+    mode: optional(Schema.Literal("form")),
     /**
      * A message to display to the user, explaining what they are being
      * elicited for.
@@ -2124,7 +2282,12 @@ export class Elicit extends Rpc.make("elicitation/create", {
      * A restricted subset of JSON Schema.
      * Only top-level properties are allowed, without nesting.
      */
-    requestedSchema: Schema.Any
+    requestedSchema: Schema.Struct({
+      $schema: optional(Schema.String),
+      type: Schema.Literal("object"),
+      properties: Schema.Record(Schema.String, ElicitationPrimitiveSchema),
+      required: optional(Schema.Array(Schema.String))
+    })
   }
 }) {}
 
