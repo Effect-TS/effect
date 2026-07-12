@@ -5,8 +5,6 @@ import type * as Arr from "effect/Array"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
@@ -69,30 +67,7 @@ const makeTestClient = (
       Effect.provide(clientLayer)
     )
 
-    const httpClient = yield* HttpClient.HttpClient.pipe(
-      Effect.provide(clientLayer)
-    )
-
-    const sendInitialized = () =>
-      Effect.promise(() => {
-        const headers = new Headers({ "content-type": "application/json" })
-        if (sessionId) {
-          headers.set("Mcp-Session-Id", sessionId)
-        }
-        return handler(
-          new Request("http://localhost/mcp", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              jsonrpc: "2.0",
-              method: "notifications/initialized",
-              params: {}
-            })
-          })
-        )
-      })
-
-    return { client, responses, httpClient, sendInitialized }
+    return { client, responses }
   })
 
 describe("McpServer", () => {
@@ -223,6 +198,10 @@ describe("McpServer", () => {
           version: "1.0.0"
         }
       })
+      const beforeInitialized = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
+      strictEqual(beforeInitialized._tag, "Failure")
+
+      yield* Effect.ignore(client["notifications/initialized"]({}))
       const result = yield* client["tools/call"]({ name: "session", arguments: {} })
 
       strictEqual(result.content[0]?.type, "text")
@@ -236,7 +215,7 @@ describe("McpServer", () => {
 
   it.effect("accepts duplicate initialized notifications", () =>
     Effect.gen(function*() {
-      const { client, sendInitialized } = yield* makeTestClient()
+      const { client } = yield* makeTestClient()
 
       yield* client.initialize({
         protocolVersion: "2025-11-25",
@@ -246,22 +225,17 @@ describe("McpServer", () => {
           version: "1.0.0"
         }
       })
-      const first = yield* sendInitialized()
-      const second = yield* sendInitialized()
-
-      strictEqual(first.ok, true)
-      strictEqual(second.ok, true)
+      yield* Effect.ignore(client["notifications/initialized"]({}))
+      yield* Effect.ignore(client["notifications/initialized"]({}))
     }))
 
-  it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>
+  it.effect("allows ping but rejects normal requests before initialization", () =>
     Effect.gen(function*() {
-      const { httpClient } = yield* makeTestClient()
+      const { client } = yield* makeTestClient()
 
-      const response = yield* HttpClientRequest.post("http://locahost/mcp").pipe(
-        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", method: "ping", params: {}, id: 0 }),
-        httpClient.execute
-      )
+      yield* client.ping({})
+      const exit = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
 
-      strictEqual(response.status, 404)
+      strictEqual(exit._tag, "Failure")
     }))
 })

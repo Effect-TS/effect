@@ -472,7 +472,14 @@ export const run: (options: ServerOptions) => Effect.Effect<
           () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))
         )
       }
-      return Effect.die(new Error(`Mcp-Session-Id does not exist`))
+      return Effect.fail(new InvalidRequest({ message: "MCP session does not exist; initialize the client first" }))
+    }
+    if (session._tag !== "Operational") {
+      return Effect.fail(
+        new InvalidRequest({
+          message: "MCP session is not operational; send notifications/initialized first"
+        })
+      )
     }
     return Effect.provideService(
       effect,
@@ -487,6 +494,22 @@ export const run: (options: ServerOptions) => Effect.Effect<
       })
     )
   })
+
+  const markSessionOperational = (clientId: number, headers: Headers.Headers) =>
+    Effect.withFiber((fiber) => {
+      const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
+      const requestHeaders = httpRequest?.headers ?? headers
+      const sessionId = getSessionId(clientId, requestHeaders)
+      const session = clientSessions.get(sessionId)
+      if (session === undefined || session._tag === "Operational") {
+        return Effect.void
+      }
+      clientSessions.set(sessionId, { ...session, _tag: "Operational" })
+      if (requestHeaders[mcpSessionIdHeader] === undefined) {
+        server.initializedClients.add(clientId)
+      }
+      return Effect.void
+    })
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
@@ -517,7 +540,7 @@ export const run: (options: ServerOptions) => Effect.Effect<
                 })
               }
               const handler = handlers.mapUnsafe.get(request.tag) as Rpc.Handler<string>
-              return handler
+              const handled = handler
                 ? handler.handler(request.payload, {
                   rpc,
                   requestId: RpcMessage.RequestId(request.id),
@@ -525,6 +548,9 @@ export const run: (options: ServerOptions) => Effect.Effect<
                   headers: Headers.fromInput(request.headers)
                 }) as any as Effect.Effect<void>
                 : Effect.void
+              return request.tag === "notifications/initialized"
+                ? Effect.andThen(markSessionOperational(clientId, Headers.fromInput(request.headers)), handled)
+                : handled
             }
             return f(clientId, request)
           }
@@ -1479,18 +1505,7 @@ const layerHandlers = (serverInfo: {
 
         // Notifications
         "notifications/cancelled": (_) => Effect.void,
-        "notifications/initialized": (_, { client, headers }) =>
-          Effect.sync(() => {
-            const sessionId = getSessionId(client.id, headers)
-            const session = options.clientSessions.get(sessionId)
-            if (session === undefined || session._tag === "Operational") {
-              return
-            }
-            options.clientSessions.set(sessionId, { ...session, _tag: "Operational" })
-            if (headers[mcpSessionIdHeader] === undefined) {
-              server.initializedClients.add(client.id)
-            }
-          }),
+        "notifications/initialized": (_) => Effect.void,
         "notifications/progress": (_) => Effect.void,
         "notifications/roots/list_changed": (_) => Effect.void
       })

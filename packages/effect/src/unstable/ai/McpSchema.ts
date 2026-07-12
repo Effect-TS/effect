@@ -2362,7 +2362,7 @@ export class McpServerClient extends Context.Service<McpServerClient, {
  */
 export class McpServerClientMiddleware extends RpcMiddleware.Service<McpServerClientMiddleware, {
   provides: McpServerClient
-}>()("effect/ai/McpSchema/McpServerClientMiddleware") {}
+}>()("effect/ai/McpSchema/McpServerClientMiddleware", { error: InvalidRequest }) {}
 
 // =============================================================================
 // Protocol
@@ -2461,10 +2461,9 @@ export type FailureEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<
   : never
   : never
 
-class InitializeRequestRpcs extends RpcGroup.make(Initialize) {}
+class LifecycleRequestRpcs extends RpcGroup.make(Initialize, Ping) {}
 
 class OperationalClientRequestRpcs extends RpcGroup.make(
-  Ping,
   Complete,
   SetLevel,
   GetPrompt,
@@ -2490,7 +2489,7 @@ class OperationalClientRequestRpcs extends RpcGroup.make(
  * @category protocols
  * @since 4.0.0
  */
-export class ClientRequestRpcs extends InitializeRequestRpcs.merge(OperationalClientRequestRpcs) {}
+export class ClientRequestRpcs extends LifecycleRequestRpcs.merge(OperationalClientRequestRpcs) {}
 
 /**
  * Encoded union of all client-to-server MCP request messages.
