@@ -36,6 +36,7 @@ const makeTestClient = (
               content: [{
                 type: "text",
                 text: JSON.stringify({
+                  notifications: server.initializedClients.has(client.clientId),
                   requested: client.initializePayload.protocolVersion,
                   negotiated: client.protocolVersion
                 })
@@ -108,6 +109,19 @@ describe("McpServer", () => {
 
         strictEqual(result.protocolVersion, protocolVersion)
       }
+    }))
+
+  it.effect("does not advertise HTTP list-change notifications without an SSE stream", () =>
+    Effect.gen(function*() {
+      const { client } = yield* makeTestClient()
+
+      const result = yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      strictEqual(result.capabilities.tools?.listChanged, undefined)
     }))
 
   it.effect("falls back to the latest protocol version for unsupported offers", () =>
@@ -222,7 +236,11 @@ describe("McpServer", () => {
       if (result.content[0]?.type === "text") {
         strictEqual(
           result.content[0].text,
-          JSON.stringify({ requested: "9999-01-01", negotiated: McpServer.latestProtocolVersion })
+          JSON.stringify({
+            notifications: false,
+            requested: "9999-01-01",
+            negotiated: McpServer.latestProtocolVersion
+          })
         )
       }
     }))

@@ -423,6 +423,7 @@ export const run: (options: ServerOptions) => Effect.Effect<
   )
   const handlers = yield* Layer.build(layerHandlers(options, {
     clientSessions,
+    supportsServerNotifications: !isHttp,
     supportedProtocolVersions: configuredProtocolVersions
   }))
 
@@ -745,6 +746,12 @@ export const layerStdio = (options: ServerOptions): Layer.Layer<McpServer | McpS
  *
  * This layer composes `layer(options)`, `RpcServer.layerProtocolHttp(options)`,
  * and `RpcSerialization.layerJsonRpc()`.
+ *
+ * **Gotchas**
+ *
+ * This layer does not expose a standalone SSE stream, so it does not advertise
+ * list-change notifications. Use a connection-oriented protocol when the
+ * server must push requests or notifications outside a client POST.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
@@ -1392,6 +1399,7 @@ const layerHandlers = (serverInfo: {
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }, options: {
   readonly clientSessions: Map<string, Session>
+  readonly supportsServerNotifications: boolean
   readonly supportedProtocolVersions: Arr.NonEmptyReadonlyArray<ProtocolVersion>
 }) =>
   ClientRpcs.toLayer(
@@ -1413,16 +1421,15 @@ const layerHandlers = (serverInfo: {
             completions: {}
           }
           if (server.tools.length > 0) {
-            capabilities.tools = { listChanged: true }
+            capabilities.tools = options.supportsServerNotifications ? { listChanged: true } : {}
           }
           if (server.resources.length > 0 || server.resourceTemplates.length > 0) {
-            capabilities.resources = {
-              listChanged: true,
-              subscribe: false
-            }
+            capabilities.resources = options.supportsServerNotifications
+              ? { listChanged: true, subscribe: false }
+              : { subscribe: false }
           }
           if (server.prompts.length > 0) {
-            capabilities.prompts = { listChanged: true }
+            capabilities.prompts = options.supportsServerNotifications ? { listChanged: true } : {}
           }
           if (serverInfo.extensions) {
             capabilities.extensions = serverInfo.extensions as any
