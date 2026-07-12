@@ -361,6 +361,24 @@ export type ProtocolVersion = typeof supportedProtocolVersions[number]
  */
 export const latestProtocolVersion = supportedProtocolVersions[0]
 
+/**
+ * Configuration shared by MCP server runners and transport layers.
+ *
+ * **Details**
+ *
+ * `supportedProtocolVersions` is ordered by preference. The server uses its
+ * first entry when the client requests an unsupported version.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ServerOptions {
+  readonly name: string
+  readonly version: string
+  readonly supportedProtocolVersions?: Arr.NonEmptyReadonlyArray<ProtocolVersion> | undefined
+  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
+}
+
 const mcpSessionIdHeader = "mcp-session-id"
 const mcpProtocolVersionHeader = "mcp-protocol-version"
 
@@ -376,23 +394,22 @@ const mcpProtocolVersionHeader = "mcp-protocol-version"
  * @category constructors
  * @since 4.0.0
  */
-export const run: (options: {
-  readonly name: string
-  readonly version: string
-  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}) => Effect.Effect<
+export const run: (options: ServerOptions) => Effect.Effect<
   never,
   never,
   McpServer | RpcServer.Protocol
-> = Effect.fnUntraced(function*(options: {
-  readonly name: string
-  readonly version: string
-}) {
+> = Effect.fnUntraced(function*(options: ServerOptions) {
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
   const clientSessions = new Map<string, typeof Initialize.payloadSchema.Type>()
-  const handlers = yield* Layer.build(layerHandlers(options, { clientSessions }))
+  const configuredProtocolVersions = yield* resolveProtocolVersions(
+    options.supportedProtocolVersions ?? supportedProtocolVersions
+  )
+  const handlers = yield* Layer.build(layerHandlers(options, {
+    clientSessions,
+    supportedProtocolVersions: configuredProtocolVersions
+  }))
 
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(clientId: number) {
@@ -578,12 +595,17 @@ export const run: (options: {
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: {
-  readonly name: string
-  readonly version: string
-  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol> =>
-  Layer.effectDiscard(Effect.forkScoped(run(options))).pipe(
+export const layer = (options: ServerOptions): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol> =>
+  Layer.effectDiscard(
+    Effect.flatMap(
+      resolveProtocolVersions(options.supportedProtocolVersions ?? supportedProtocolVersions),
+      (configuredProtocolVersions) =>
+        Effect.forkScoped(run({
+          ...options,
+          supportedProtocolVersions: configuredProtocolVersions
+        }))
+    )
+  ).pipe(
     Layer.provideMerge(McpServer.layer)
   )
 
@@ -645,11 +667,7 @@ export const layer = (options: {
  * @category layers
  * @since 4.0.0
  */
-export const layerStdio = (options: {
-  readonly name: string
-  readonly version: string
-  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}): Layer.Layer<McpServer | McpServerClient, never, Stdio> =>
+export const layerStdio = (options: ServerOptions): Layer.Layer<McpServer | McpServerClient, never, Stdio> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolStdio),
     Layer.provide(RpcSerialization.layerNdJsonRpc())
@@ -674,12 +692,11 @@ export const layerStdio = (options: {
  * @category layers
  * @since 4.0.0
  */
-export const layerHttp = (options: {
-  readonly name: string
-  readonly version: string
-  readonly path: HttpRouter.PathInput
-  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}): Layer.Layer<McpServer | McpServerClient, never, HttpRouter.HttpRouter> =>
+export const layerHttp = (
+  options: ServerOptions & {
+    readonly path: HttpRouter.PathInput
+  }
+): Layer.Layer<McpServer | McpServerClient, never, HttpRouter.HttpRouter> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolHttp(options)),
     Layer.provide(RpcSerialization.layerJsonRpc())
@@ -1296,6 +1313,7 @@ const layerHandlers = (serverInfo: {
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }, options: {
   readonly clientSessions: Map<string, typeof Initialize.payloadSchema.Type>
+  readonly supportedProtocolVersions: Arr.NonEmptyReadonlyArray<ProtocolVersion>
 }) =>
   ClientRpcs.toLayer(
     Effect.gen(function*() {
@@ -1306,7 +1324,7 @@ const layerHandlers = (serverInfo: {
         // Requests
         ping: () => Effect.succeed({}),
         initialize(params, { client }) {
-          const protocolVersion = negotiateProtocolVersion(params.protocolVersion, supportedProtocolVersions)
+          const protocolVersion = negotiateProtocolVersion(params.protocolVersion, options.supportedProtocolVersions)
           const initializePayload = protocolVersion === params.protocolVersion
             ? params
             : { ...params, protocolVersion }
@@ -1427,7 +1445,7 @@ const layerHandlers = (serverInfo: {
 
 const negotiateProtocolVersion = (
   requested: string,
-  supported: readonly [ProtocolVersion, ...Array<ProtocolVersion>]
+  supported: Arr.NonEmptyReadonlyArray<ProtocolVersion>
 ): ProtocolVersion => {
   for (const version of supported) {
     if (version === requested) {
@@ -1435,6 +1453,18 @@ const negotiateProtocolVersion = (
     }
   }
   return supported[0]
+}
+
+const resolveProtocolVersions = (
+  versions: ReadonlyArray<ProtocolVersion>
+): Effect.Effect<Arr.NonEmptyReadonlyArray<ProtocolVersion>> => {
+  const first = versions[0]
+  if (first === undefined) {
+    return Effect.die(new Error("MCP server requires at least one supported protocol version"))
+  }
+  const unique = new Set(versions)
+  unique.delete(first)
+  return Effect.succeed([first, ...unique])
 }
 
 const resolveResourceContent = (

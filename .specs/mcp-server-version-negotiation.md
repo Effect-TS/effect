@@ -448,7 +448,7 @@ The initial initialize POST negotiates through its JSON payload and does not req
 2. Add optional `supportedProtocolVersions` to `run`, `layer`, `layerStdio`, and `layerHttp`.
 3. Require a non-empty readonly tuple when supplied.
 4. Snapshot the supplied tuple at server construction so external mutation cannot change active behavior.
-5. Validate duplicate entries at construction if the type cannot prevent them; fail with a specific configuration error rather than silently normalizing.
+5. Deduplicate entries at construction with an insertion-ordered `Set`, preserving the first occurrence and configured preference order.
 6. Pass the effective tuple into `layerHandlers` and the pure negotiation function.
 7. Use the verified default tuple when the option is omitted.
 

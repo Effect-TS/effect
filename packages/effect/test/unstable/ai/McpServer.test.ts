@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Effect, Layer } from "effect"
+import type * as Arr from "effect/Array"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
@@ -10,43 +11,47 @@ import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 
-const makeTestClient = Effect.gen(function*() {
-  const responses: Array<Response> = []
+const makeTestClient = (
+  supportedProtocolVersions: Arr.NonEmptyReadonlyArray<McpServer.ProtocolVersion> = McpServer.supportedProtocolVersions
+) =>
+  Effect.gen(function*() {
+    const responses: Array<Response> = []
 
-  const serverLayer = McpServer.layerHttp({
-    name: "TestServer",
-    version: "1.0.0",
-    path: "/mcp"
-  })
-  const { handler, dispose } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
-  yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
+    const serverLayer = McpServer.layerHttp({
+      name: "TestServer",
+      version: "1.0.0",
+      path: "/mcp",
+      supportedProtocolVersions
+    })
+    const { handler, dispose } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
+    yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
 
-  let sessionId: string | null = null
-  const customFetch: typeof fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(input, init)
-    if (sessionId) {
-      request.headers.set("Mcp-Session-Id", sessionId)
+    let sessionId: string | null = null
+    const customFetch: typeof fetch = async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (sessionId) {
+        request.headers.set("Mcp-Session-Id", sessionId)
+      }
+      const response = await handler(request)
+      sessionId = response.headers.get("Mcp-Session-Id")
+      responses.push(response.clone())
+      return response
     }
-    const response = await handler(request)
-    sessionId = response.headers.get("Mcp-Session-Id")
-    responses.push(response.clone())
-    return response
-  }
 
-  const clientLayer = RpcClient.layerProtocolHttp({ url: "http://localhost/mcp" }).pipe(
-    Layer.provideMerge([FetchHttpClient.layer, RpcSerialization.layerJsonRpc()]),
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, customFetch))
-  )
-  const client = yield* RpcClient.make(McpSchema.ClientRpcs).pipe(
-    Effect.provide(clientLayer)
-  )
+    const clientLayer = RpcClient.layerProtocolHttp({ url: "http://localhost/mcp" }).pipe(
+      Layer.provideMerge([FetchHttpClient.layer, RpcSerialization.layerJsonRpc()]),
+      Layer.provide(Layer.succeed(FetchHttpClient.Fetch, customFetch))
+    )
+    const client = yield* RpcClient.make(McpSchema.ClientRpcs).pipe(
+      Effect.provide(clientLayer)
+    )
 
-  const httpClient = yield* HttpClient.HttpClient.pipe(
-    Effect.provide(clientLayer)
-  )
+    const httpClient = yield* HttpClient.HttpClient.pipe(
+      Effect.provide(clientLayer)
+    )
 
-  return { client, responses, httpClient }
-})
+    return { client, responses, httpClient }
+  })
 
 describe("McpServer", () => {
   it("exposes supported protocol versions from latest to oldest", () => {
@@ -59,7 +64,7 @@ describe("McpServer", () => {
   it.effect("echoes supported protocol versions during initialization", () =>
     Effect.gen(function*() {
       for (const protocolVersion of McpServer.supportedProtocolVersions) {
-        const { client } = yield* makeTestClient
+        const { client } = yield* makeTestClient()
 
         const result = yield* client.initialize({
           protocolVersion,
@@ -76,7 +81,7 @@ describe("McpServer", () => {
 
   it.effect("falls back to the latest protocol version for unsupported offers", () =>
     Effect.gen(function*() {
-      const { client, responses } = yield* makeTestClient
+      const { client, responses } = yield* makeTestClient()
 
       const result = yield* client.initialize({
         protocolVersion: "9999-01-01",
@@ -96,7 +101,7 @@ describe("McpServer", () => {
 
   it.effect("falls back to the latest protocol version for malformed offers", () =>
     Effect.gen(function*() {
-      const { client } = yield* makeTestClient
+      const { client } = yield* makeTestClient()
 
       const result = yield* client.initialize({
         protocolVersion: "not-a-version",
@@ -110,9 +115,66 @@ describe("McpServer", () => {
       strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
     }))
 
+  it.effect("uses each server's configured protocol version preference", () =>
+    Effect.gen(function*() {
+      const preferredLegacy = yield* makeTestClient(["2025-06-18", "2025-11-25"])
+      const latestOnly = yield* makeTestClient(["2025-11-25"])
+      const initialize = {
+        protocolVersion: "9999-01-01",
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      }
+
+      const legacyResult = yield* preferredLegacy.client.initialize(initialize)
+      const latestResult = yield* latestOnly.client.initialize(initialize)
+
+      strictEqual(legacyResult.protocolVersion, "2025-06-18")
+      strictEqual(latestResult.protocolVersion, "2025-11-25")
+    }))
+
+  it.effect("deduplicates configured protocol versions", () =>
+    Effect.gen(function*() {
+      const { client } = yield* makeTestClient(["2025-11-25", "2025-11-25", "2025-06-18"])
+
+      const result = yield* client.initialize({
+        protocolVersion: "2025-06-18",
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      })
+
+      strictEqual(result.protocolVersion, "2025-06-18")
+    }))
+
+  it.effect("snapshots configured protocol versions at server startup", () =>
+    Effect.gen(function*() {
+      const versions: [McpServer.ProtocolVersion, ...Array<McpServer.ProtocolVersion>] = ["2025-11-25"]
+      const { client } = yield* makeTestClient(versions)
+      const initialize = {
+        protocolVersion: "9999-01-01",
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      }
+
+      const first = yield* client.initialize(initialize)
+      versions[0] = "2025-06-18"
+      const second = yield* client.initialize(initialize)
+
+      strictEqual(first.protocolVersion, "2025-11-25")
+      strictEqual(second.protocolVersion, "2025-11-25")
+    }))
+
   it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>
     Effect.gen(function*() {
-      const { httpClient } = yield* makeTestClient
+      const { httpClient } = yield* makeTestClient()
 
       const response = yield* HttpClientRequest.post("http://locahost/mcp").pipe(
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", method: "ping", params: {}, id: 0 }),
