@@ -369,7 +369,10 @@ export const latestProtocolVersion = supportedProtocolVersions[0]
  * **Details**
  *
  * `supportedProtocolVersions` is ordered by preference. The server uses its
- * first entry when the client requests an unsupported version.
+ * first entry when the client requests an unsupported version, removes
+ * duplicate entries while preserving order, and defaults to
+ * `supportedProtocolVersions`. Clients still offer one version string during
+ * initialization rather than sending their complete supported-version set.
  *
  * @category models
  * @since 4.0.0
@@ -404,7 +407,8 @@ const mcpProtocolVersionHeader = "mcp-protocol-version"
  *
  * The server performs initialization and session handling, serves registered
  * tools, resources, and prompts, and forwards queued server notifications to
- * initialized clients.
+ * initialized connection-oriented clients. Normal requests are accepted only
+ * after the client sends `notifications/initialized`.
  *
  * @category constructors
  * @since 4.0.0

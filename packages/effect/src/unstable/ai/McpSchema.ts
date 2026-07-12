@@ -2336,8 +2336,9 @@ export class ElicitationDeclined
  *
  * **Details**
  *
- * It exposes the current client id, the client's initialize payload, and a
- * scoped RPC client for server-initiated requests back to that client.
+ * It exposes the current client id, the original client initialize payload,
+ * the negotiated protocol version, and a scoped RPC client for
+ * server-initiated requests back to that client.
  *
  * @category client
  * @since 4.0.0
