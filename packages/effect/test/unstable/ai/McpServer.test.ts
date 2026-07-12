@@ -49,11 +49,36 @@ const makeTestClient = Effect.gen(function*() {
 })
 
 describe("McpServer", () => {
-  it.effect("replays MCP session and negotiated protocol headers after initialize", () =>
+  it("exposes supported protocol versions from latest to oldest", () => {
+    strictEqual(McpServer.supportedProtocolVersions.length, 2)
+    strictEqual(McpServer.supportedProtocolVersions[0], "2025-11-25")
+    strictEqual(McpServer.supportedProtocolVersions[1], "2025-06-18")
+    strictEqual(McpServer.latestProtocolVersion, McpServer.supportedProtocolVersions[0])
+  })
+
+  it.effect("echoes supported protocol versions during initialization", () =>
+    Effect.gen(function*() {
+      for (const protocolVersion of McpServer.supportedProtocolVersions) {
+        const { client } = yield* makeTestClient
+
+        const result = yield* client.initialize({
+          protocolVersion,
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        })
+
+        strictEqual(result.protocolVersion, protocolVersion)
+      }
+    }))
+
+  it.effect("falls back to the latest protocol version for unsupported offers", () =>
     Effect.gen(function*() {
       const { client, responses } = yield* makeTestClient
 
-      yield* client.initialize({
+      const result = yield* client.initialize({
         protocolVersion: "9999-01-01",
         capabilities: {},
         clientInfo: {
@@ -64,8 +89,25 @@ describe("McpServer", () => {
 
       yield* client.ping({})
 
+      strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
       strictEqual(responses.length, 2)
-      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), McpServer.latestProtocolVersion)
+    }))
+
+  it.effect("falls back to the latest protocol version for malformed offers", () =>
+    Effect.gen(function*() {
+      const { client } = yield* makeTestClient
+
+      const result = yield* client.initialize({
+        protocolVersion: "not-a-version",
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      })
+
+      strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
     }))
 
   it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>

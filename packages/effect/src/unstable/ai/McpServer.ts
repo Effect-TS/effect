@@ -333,13 +333,34 @@ export class McpServer extends Context.Service<McpServer, {
   static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
 }
 
-const LATEST_PROTOCOL_VERSION = "2025-06-18"
-const SUPPORTED_PROTOCOL_VERSIONS = [
-  LATEST_PROTOCOL_VERSION,
-  "2025-03-26",
-  "2024-11-05",
-  "2024-10-07"
-]
+/**
+ * Protocol versions supported by the MCP server implementation, ordered from
+ * newest to oldest.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const supportedProtocolVersions = [
+  "2025-11-25",
+  "2025-06-18"
+] as const
+
+/**
+ * Union of protocol versions supported by the MCP server implementation.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ProtocolVersion = typeof supportedProtocolVersions[number]
+
+/**
+ * Latest protocol version supported by the MCP server implementation.
+ *
+ * @category constants
+ * @since 4.0.0
+ */
+export const latestProtocolVersion = supportedProtocolVersions[0]
+
 const mcpSessionIdHeader = "mcp-session-id"
 const mcpProtocolVersionHeader = "mcp-protocol-version"
 
@@ -1285,15 +1306,10 @@ const layerHandlers = (serverInfo: {
         // Requests
         ping: () => Effect.succeed({}),
         initialize(params, { client }) {
-          const requestedVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(params.protocolVersion)
-            ? params.protocolVersion
-            : LATEST_PROTOCOL_VERSION
-          if (requestedVersion !== params.protocolVersion) {
-            params = {
-              ...params,
-              protocolVersion: requestedVersion
-            }
-          }
+          const protocolVersion = negotiateProtocolVersion(params.protocolVersion, supportedProtocolVersions)
+          const initializePayload = protocolVersion === params.protocolVersion
+            ? params
+            : { ...params, protocolVersion }
           const capabilities: Types.DeepMutable<typeof ServerCapabilities.Type> = {
             completions: {}
           }
@@ -1316,19 +1332,19 @@ const layerHandlers = (serverInfo: {
             const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
             if (httpRequest) {
               const sessionId = crypto.randomUUID()
-              options.clientSessions.set(sessionId, params)
+              options.clientSessions.set(sessionId, initializePayload)
               appendPreResponseHandlerUnsafe(httpRequest, (_req, res) =>
                 Effect.succeed(HttpServerResponse.setHeaders(res, {
                   [mcpSessionIdHeader]: sessionId,
-                  [mcpProtocolVersionHeader]: requestedVersion
+                  [mcpProtocolVersionHeader]: protocolVersion
                 })))
             } else {
-              options.clientSessions.set(String(client.id), params)
+              options.clientSessions.set(String(client.id), initializePayload)
             }
             return Effect.succeed({
               capabilities,
               serverInfo,
-              protocolVersion: requestedVersion
+              protocolVersion
             })
           })
         },
@@ -1408,6 +1424,18 @@ const layerHandlers = (serverInfo: {
       })
     })
   )
+
+const negotiateProtocolVersion = (
+  requested: string,
+  supported: readonly [ProtocolVersion, ...Array<ProtocolVersion>]
+): ProtocolVersion => {
+  for (const version of supported) {
+    if (version === requested) {
+      return version
+    }
+  }
+  return supported[0]
+}
 
 const resolveResourceContent = (
   uri: string,
