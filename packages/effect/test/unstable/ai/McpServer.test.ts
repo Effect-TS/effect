@@ -144,6 +144,22 @@ describe("McpServer", () => {
       strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), McpServer.latestProtocolVersion)
     }))
 
+  it.effect("returns initialization session and protocol headers", () =>
+    Effect.gen(function*() {
+      const { client, responses } = yield* makeTestClient()
+
+      const result = yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      strictEqual(result.protocolVersion, "2025-11-25")
+      strictEqual(responses.length, 1)
+      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-11-25")
+      strictEqual(typeof responses[0].headers.get("Mcp-Session-Id"), "string")
+    }))
+
   it.effect("falls back to the latest protocol version for malformed offers", () =>
     Effect.gen(function*() {
       const { client } = yield* makeTestClient()
@@ -349,5 +365,40 @@ describe("McpServer", () => {
       })
 
       strictEqual(response.status, 400)
+    }))
+
+  it.effect("uses the session version when the protocol header is omitted", () =>
+    Effect.gen(function*() {
+      const { client, getSessionId, request } = yield* makeTestClient()
+      yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+        "Mcp-Session-Id": getSessionId() ?? ""
+      })
+
+      strictEqual(response.status, 200)
+      strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
+    }))
+
+  it.effect("returns 202 for accepted initialized notifications", () =>
+    Effect.gen(function*() {
+      const { client, getSessionId, request } = yield* makeTestClient()
+      yield* client.initialize({
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "TestClient", version: "1.0.0" }
+      })
+
+      const response = yield* request({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+        params: {}
+      }, { "Mcp-Session-Id": getSessionId() ?? "" })
+
+      strictEqual(response.status, 202)
     }))
 })

@@ -553,6 +553,14 @@ export const run: (options: ServerOptions) => Effect.Effect<
             }
             const rpc = ClientNotificationRpcs.requests.get(request.tag)
             if (rpc) {
+              if (isHttp) {
+                const fiber = Fiber.getCurrent()!
+                const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
+                appendPreResponseHandlerUnsafe(
+                  httpRequest,
+                  () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+                )
+              }
               if (request.tag === "notifications/cancelled") {
                 return f(clientId, {
                   _tag: "Interrupt",
