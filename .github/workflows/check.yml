@@ -88,7 +88,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: base
-          ref: ${{ github.head_ref == 'migration/effect-v4' && 'archive/effect-smol-pre-merge' || github.event.pull_request.base.ref }}
+          ref: ${{ github.event.pull_request.base.ref }}
       - name: Set strip internals config
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json

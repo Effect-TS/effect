@@ -5,6 +5,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false # Prevent newer push from interrupting active release
 
 permissions: {}
 
@@ -18,7 +19,6 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
-      packages: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -44,4 +44,3 @@ jobs:
           # automatically to ensure workflows get triggered on the changesets
           # release branch.
           GITHUB_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
