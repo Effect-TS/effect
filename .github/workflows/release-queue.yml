@@ -3,9 +3,9 @@ on:
   issue_comment:
     types: [created]
   pull_request_target:
-    branches: [main, next-minor, next-major]
+    branches: [v3, next-minor, next-major]
   push:
-    branches: [main, next-minor, next-major]
+    branches: [v3, next-minor, next-major]
 
 permissions: {}
 
