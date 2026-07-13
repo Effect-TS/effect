@@ -25,7 +25,7 @@ jobs:
         with:
           registry-url: "https://registry.npmjs.org"
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
       - name: Create Release Pull Request or Publish
         uses: changesets/action@v1
         with:
