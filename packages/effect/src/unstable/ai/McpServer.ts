@@ -568,9 +568,18 @@ export const run: (options: ServerOptions) => Effect.Effect<
                 }
               }
               if (request.tag === "notifications/cancelled") {
+                const payload = request.payload
+                if (
+                  typeof payload !== "object" ||
+                  payload === null ||
+                  !("requestId" in payload) ||
+                  (typeof payload.requestId !== "string" && typeof payload.requestId !== "number")
+                ) {
+                  return Effect.void
+                }
                 return f(clientId, {
                   _tag: "Interrupt",
-                  requestId: String((request.payload as any).requestId)
+                  requestId: payload.requestId
                 })
               }
               const handler = handlers.mapUnsafe.get(request.tag) as Rpc.Handler<string>
