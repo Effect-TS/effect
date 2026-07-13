@@ -11,7 +11,7 @@ concurrency:
 permissions: {}
 
 jobs:
-  version:
+  release:
     if: github.repository_owner == 'Effect-Ts'
     name: Release (v3)
     runs-on: ubuntu-latest
