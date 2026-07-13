@@ -101,28 +101,12 @@ export const withMaxBodySize = dual<
  * @since 1.0.0
  */
 export const inspect = <E>(self: HttpIncomingMessage<E>, that: object): object => {
-  const contentType = self.headers["content-type"] ?? ""
-  let body: unknown
-  if (contentType.includes("application/json")) {
-    try {
-      body = Effect.runSync(self.json)
-    } catch {
-      //
-    }
-  } else if (contentType.includes("text/") || contentType.includes("urlencoded")) {
-    try {
-      body = Effect.runSync(self.text)
-    } catch {
-      //
-    }
-  }
-  const obj: any = {
+  // NOTE: intentionally does not read the body here. Reading `self.text` /
+  // `self.json` eagerly consumes (and locks) the underlying one-shot body
+  // stream, which corrupts the message just by logging/inspecting it.
+  return {
     ...that,
     headers: Inspectable.redact(self.headers),
     remoteAddress: self.remoteAddress.toJSON()
   }
-  if (body !== undefined) {
-    obj.body = body
-  }
-  return obj
 }
