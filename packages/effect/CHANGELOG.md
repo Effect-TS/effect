@@ -1,5 +1,11 @@
 # effect
 
+## 3.22.0
+
+### Minor Changes
+
+- [#6286](https://github.com/Effect-TS/effect/pull/6286) [`fffdee0`](https://github.com/Effect-TS/effect/commit/fffdee0cc55bf72bd233fdf3e6894cdae7e29560) Thanks @effect-bot! - Add `Graph.successors` and `Graph.predecessors`, deprecate `Graph.neighborsDirected`, and fix graph algorithm edge cases around reversal, undirected edge queries, shortest-path weight validation, topological sort initials, and strongly connected components.
+
 ## 3.21.5
 
 ### Patch Changes
