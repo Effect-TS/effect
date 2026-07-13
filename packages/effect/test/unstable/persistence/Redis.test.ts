@@ -3,6 +3,43 @@ import { Effect } from "effect"
 import { Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
+  it.effect("retries script loading when SCRIPT LOAD fails", () =>
+    Effect.gen(function*() {
+      const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []
+      let scriptLoadAttempts = 0
+      const redis = yield* Redis.make({
+        send: (command, ...args) =>
+          Effect.suspend(() => {
+            commands.push([command, args])
+            if (command === "SCRIPT") {
+              scriptLoadAttempts += 1
+              if (scriptLoadAttempts === 1) {
+                return Effect.fail(new Redis.RedisError({ cause: new Error("ERR transient script load failure") }))
+              }
+              return Effect.succeed("sha" as any)
+            }
+            return Effect.succeed("ok")
+          })
+      })
+      const evalScript = redis.eval(
+        Redis.script((key: string) => [key], {
+          lua: "return KEYS[1]",
+          numberOfKeys: 1
+        }).withReturnType<string>()
+      )
+
+      const first = yield* Effect.result(evalScript("key"))
+      const second = yield* evalScript("key")
+
+      assert.strictEqual(first._tag, "Failure")
+      assert.strictEqual(second, "ok")
+      assert.deepStrictEqual(commands.map(([command]) => command), [
+        "SCRIPT",
+        "SCRIPT",
+        "EVALSHA"
+      ])
+    }))
+
   it.effect("reloads and retries scripts when EVALSHA returns NOSCRIPT", () =>
     Effect.gen(function*() {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []

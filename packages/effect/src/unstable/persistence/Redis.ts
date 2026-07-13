@@ -11,8 +11,10 @@
  */
 import * as Cache from "../../Cache.ts"
 import * as Context from "../../Context.ts"
+import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
+import * as Exit from "../../Exit.ts"
 import { constant, identity } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
 import * as Schema from "../../Schema.ts"
@@ -50,10 +52,13 @@ export const make = Effect.fnUntraced(function*(
     readonly send: <A = unknown>(command: string, ...args: ReadonlyArray<string>) => Effect.Effect<A, RedisError>
   }
 ) {
-  const scriptCache = yield* Cache.make({
-    lookup: (script: Script<any>) => options.send<string>("SCRIPT", "LOAD", script.lua),
-    capacity: Number.POSITIVE_INFINITY
-  })
+  const scriptCache = yield* Cache.makeWith(
+    (script: Script<any>) => options.send<string>("SCRIPT", "LOAD", script.lua),
+    {
+      capacity: Number.POSITIVE_INFINITY,
+      timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.infinity : Duration.zero
+    }
+  )
 
   const eval_ = <
     Config extends {
