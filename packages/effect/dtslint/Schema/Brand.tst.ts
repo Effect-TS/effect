@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { pipe, Schema } from "effect"
-import { describe, expect, it, when } from "tstyche"
+import { describe, expect, it } from "tstyche"
 
 const Int1 = Symbol.for("Int")
 const Int2 = Symbol.for("Int")
@@ -18,9 +18,10 @@ describe("SchemaBrand", () => {
   })
 
   it("should raise an error when the brand is not assignable to the schema", () => {
-    when(pipe).isCalledWith(
+    pipe(
       Schema.Number,
-      expect(Schema.brand).type.not.toBeCallableWith("UserId", {
+      Schema.brand("UserId", {
+        // @ts-expect-error Type 'string' is not assignable
         examples: ["a"]
       })
     )

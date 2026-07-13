@@ -1,5 +1,5 @@
 import { Console, Schedule } from "effect"
-import { describe, expect, it, when } from "tstyche"
+import { describe, expect, it } from "tstyche"
 
 describe("Schedule", () => {
   it("tapOutput", () => {
@@ -24,11 +24,10 @@ describe("Schedule", () => {
       (x: string | number) => Console.log(x)
     )).type.toBe<Schedule.Schedule<number, unknown, never>>()
 
-    when(Schedule.once.pipe).isCalledWith(
+    Schedule.once.pipe(
       Schedule.as<number | string>(1),
-      expect(Schedule.tapOutput).type.not.toBeCallableWith(
-        (s: string) => Console.log(s.trim())
-      )
+      // @ts-expect-error Argument of type
+      Schedule.tapOutput((s: string) => Console.log(s.trim()))
     )
   })
 })
