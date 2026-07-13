@@ -85,21 +85,59 @@ const makeTestClient = (
     return { client, getSessionId: () => sessionId, request, responses }
   })
 
-describe("McpServer", () => {
-  it("exposes supported protocol versions from latest to oldest", () => {
-    strictEqual(McpServer.supportedProtocolVersions.length, 2)
-    strictEqual(McpServer.supportedProtocolVersions[0], "2025-11-25")
-    strictEqual(McpServer.supportedProtocolVersions[1], "2025-06-18")
-    strictEqual(McpServer.latestProtocolVersion, McpServer.supportedProtocolVersions[0])
-  })
-
-  it.effect("echoes supported protocol versions during initialization", () =>
+const exactVersionSuite = (protocolVersion: McpServer.ProtocolVersion) => {
+  it.effect("echoes the supported protocol version during initialization", () =>
     Effect.gen(function*() {
-      for (const protocolVersion of McpServer.supportedProtocolVersions) {
-        const { client } = yield* makeTestClient()
+      const { client } = yield* makeTestClient()
+
+      const result = yield* client.initialize({
+        protocolVersion,
+        capabilities: {},
+        clientInfo: {
+          name: "TestClient",
+          version: "1.0.0"
+        }
+      })
+
+      strictEqual(result.protocolVersion, protocolVersion)
+    }))
+}
+
+describe("McpServer", () => {
+  describe("configuration", () => {
+    it("exposes supported protocol versions from latest to oldest", () => {
+      strictEqual(McpServer.supportedProtocolVersions.length, 2)
+      strictEqual(McpServer.supportedProtocolVersions[0], "2025-11-25")
+      strictEqual(McpServer.supportedProtocolVersions[1], "2025-06-18")
+      strictEqual(McpServer.latestProtocolVersion, McpServer.supportedProtocolVersions[0])
+    })
+
+    it.effect("uses each server's configured protocol version preference", () =>
+      Effect.gen(function*() {
+        const preferredLegacy = yield* makeTestClient(["2025-06-18", "2025-11-25"])
+        const latestOnly = yield* makeTestClient(["2025-11-25"])
+        const initialize = {
+          protocolVersion: "9999-01-01",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        }
+
+        const legacyResult = yield* preferredLegacy.client.initialize(initialize)
+        const latestResult = yield* latestOnly.client.initialize(initialize)
+
+        strictEqual(legacyResult.protocolVersion, "2025-06-18")
+        strictEqual(latestResult.protocolVersion, "2025-11-25")
+      }))
+
+    it.effect("deduplicates configured protocol versions", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient(["2025-11-25", "2025-11-25", "2025-06-18"])
 
         const result = yield* client.initialize({
-          protocolVersion,
+          protocolVersion: "2025-06-18",
           capabilities: {},
           clientInfo: {
             name: "TestClient",
@@ -107,298 +145,272 @@ describe("McpServer", () => {
           }
         })
 
-        strictEqual(result.protocolVersion, protocolVersion)
-      }
-    }))
+        strictEqual(result.protocolVersion, "2025-06-18")
+      }))
+  })
 
-  it.effect("does not advertise HTTP list-change notifications without an SSE stream", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient()
+  describe("2025-06-18", () => {
+    exactVersionSuite("2025-06-18")
+  })
 
-      const result = yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
+  describe("2025-11-25", () => {
+    exactVersionSuite("2025-11-25")
 
-      strictEqual(result.capabilities.tools?.listChanged, undefined)
-    }))
+    it.effect("does not advertise HTTP list-change notifications without an SSE stream", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient()
 
-  it.effect("falls back to the latest protocol version for unsupported offers", () =>
-    Effect.gen(function*() {
-      const { client, responses } = yield* makeTestClient()
+        const result = yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
 
-      const result = yield* client.initialize({
-        protocolVersion: "9999-01-01",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
+        strictEqual(result.capabilities.tools?.listChanged, undefined)
+      }))
+
+    it.effect("falls back to the latest protocol version for unsupported offers", () =>
+      Effect.gen(function*() {
+        const { client, responses } = yield* makeTestClient()
+
+        const result = yield* client.initialize({
+          protocolVersion: "9999-01-01",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        })
+
+        yield* client.ping({})
+
+        strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
+        strictEqual(responses.length, 2)
+        strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), McpServer.latestProtocolVersion)
+      }))
+
+    it.effect("returns initialization session and protocol headers", () =>
+      Effect.gen(function*() {
+        const { client, responses } = yield* makeTestClient()
+
+        const result = yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
+
+        strictEqual(result.protocolVersion, "2025-11-25")
+        strictEqual(responses.length, 1)
+        strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-11-25")
+        strictEqual(typeof responses[0].headers.get("Mcp-Session-Id"), "string")
+      }))
+
+    it.effect("falls back to the latest protocol version for malformed offers", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient()
+
+        const result = yield* client.initialize({
+          protocolVersion: "not-a-version",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        })
+
+        strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
+      }))
+
+    it.effect("rejects reinitializing an existing HTTP session", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient()
+        const initialize = {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
         }
-      })
 
-      yield* client.ping({})
+        yield* client.initialize(initialize)
+        const exit = yield* Effect.exit(client.initialize(initialize))
 
-      strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
-      strictEqual(responses.length, 2)
-      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), McpServer.latestProtocolVersion)
-    }))
+        strictEqual(exit._tag, "Failure")
+      }))
 
-  it.effect("returns initialization session and protocol headers", () =>
-    Effect.gen(function*() {
-      const { client, responses } = yield* makeTestClient()
+    it.effect("preserves the requested version separately from the negotiated version", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient()
 
-      const result = yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
+        yield* client.initialize({
+          protocolVersion: "9999-01-01",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        })
+        const beforeInitialized = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
+        strictEqual(beforeInitialized._tag, "Failure")
 
-      strictEqual(result.protocolVersion, "2025-11-25")
-      strictEqual(responses.length, 1)
-      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-11-25")
-      strictEqual(typeof responses[0].headers.get("Mcp-Session-Id"), "string")
-    }))
+        yield* Effect.ignore(client["notifications/initialized"]({}))
+        const result = yield* client["tools/call"]({ name: "session", arguments: {} })
 
-  it.effect("falls back to the latest protocol version for malformed offers", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient()
-
-      const result = yield* client.initialize({
-        protocolVersion: "not-a-version",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
+        strictEqual(result.content[0]?.type, "text")
+        if (result.content[0]?.type === "text") {
+          strictEqual(
+            result.content[0].text,
+            JSON.stringify({
+              notifications: false,
+              requested: "9999-01-01",
+              negotiated: McpServer.latestProtocolVersion
+            })
+          )
         }
-      })
+      }))
 
-      strictEqual(result.protocolVersion, McpServer.latestProtocolVersion)
-    }))
+    it.effect("accepts duplicate initialized notifications", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient()
 
-  it.effect("uses each server's configured protocol version preference", () =>
-    Effect.gen(function*() {
-      const preferredLegacy = yield* makeTestClient(["2025-06-18", "2025-11-25"])
-      const latestOnly = yield* makeTestClient(["2025-11-25"])
-      const initialize = {
-        protocolVersion: "9999-01-01",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
-        }
-      }
+        yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        })
+        yield* Effect.ignore(client["notifications/initialized"]({}))
+        yield* Effect.ignore(client["notifications/initialized"]({}))
+      }))
 
-      const legacyResult = yield* preferredLegacy.client.initialize(initialize)
-      const latestResult = yield* latestOnly.client.initialize(initialize)
+    it.effect("accepts the negotiated protocol version header", () =>
+      Effect.gen(function*() {
+        const { client, getSessionId, request } = yield* makeTestClient()
+        yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
 
-      strictEqual(legacyResult.protocolVersion, "2025-06-18")
-      strictEqual(latestResult.protocolVersion, "2025-11-25")
-    }))
+        const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+          "Mcp-Session-Id": getSessionId() ?? "",
+          "Mcp-Protocol-Version": "2025-11-25"
+        })
 
-  it.effect("deduplicates configured protocol versions", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient(["2025-11-25", "2025-11-25", "2025-06-18"])
+        strictEqual(response.status, 200)
+        strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
+      }))
 
-      const result = yield* client.initialize({
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
-        }
-      })
+    it.effect("returns 400 for an unsupported protocol version header", () =>
+      Effect.gen(function*() {
+        const { client, getSessionId, request } = yield* makeTestClient()
+        yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
 
-      strictEqual(result.protocolVersion, "2025-06-18")
-    }))
+        const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+          "Mcp-Session-Id": getSessionId() ?? "",
+          "Mcp-Protocol-Version": "not-a-version"
+        })
 
-  it.effect("rejects reinitializing an existing HTTP session", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient()
-      const initialize = {
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
-        }
-      }
+        strictEqual(response.status, 400)
+      }))
 
-      yield* client.initialize(initialize)
-      const exit = yield* Effect.exit(client.initialize(initialize))
+    it.effect("returns 400 when the protocol version differs from the session", () =>
+      Effect.gen(function*() {
+        const { client, getSessionId, request } = yield* makeTestClient()
+        yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
 
-      strictEqual(exit._tag, "Failure")
-    }))
+        const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+          "Mcp-Session-Id": getSessionId() ?? "",
+          "Mcp-Protocol-Version": "2025-06-18"
+        })
 
-  it.effect("preserves the requested version separately from the negotiated version", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient()
+        strictEqual(response.status, 400)
+      }))
 
-      yield* client.initialize({
-        protocolVersion: "9999-01-01",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
-        }
-      })
-      const beforeInitialized = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
-      strictEqual(beforeInitialized._tag, "Failure")
+    it.effect("uses the session version when the protocol header is omitted", () =>
+      Effect.gen(function*() {
+        const { client, getSessionId, request } = yield* makeTestClient()
+        yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
 
-      yield* Effect.ignore(client["notifications/initialized"]({}))
-      const result = yield* client["tools/call"]({ name: "session", arguments: {} })
+        const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
+          "Mcp-Session-Id": getSessionId() ?? ""
+        })
 
-      strictEqual(result.content[0]?.type, "text")
-      if (result.content[0]?.type === "text") {
-        strictEqual(
-          result.content[0].text,
-          JSON.stringify({
-            notifications: false,
-            requested: "9999-01-01",
-            negotiated: McpServer.latestProtocolVersion
-          })
-        )
-      }
-    }))
+        strictEqual(response.status, 200)
+        strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
+      }))
 
-  it.effect("accepts duplicate initialized notifications", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient()
+    it.effect("returns 202 for accepted initialized notifications", () =>
+      Effect.gen(function*() {
+        const { client, getSessionId, request } = yield* makeTestClient()
+        yield* client.initialize({
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "TestClient", version: "1.0.0" }
+        })
 
-      yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: {
-          name: "TestClient",
-          version: "1.0.0"
-        }
-      })
-      yield* Effect.ignore(client["notifications/initialized"]({}))
-      yield* Effect.ignore(client["notifications/initialized"]({}))
-    }))
+        const response = yield* request({
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+          params: {}
+        }, { "Mcp-Session-Id": getSessionId() ?? "" })
 
-  it.effect("allows ping but rejects normal requests before initialization", () =>
-    Effect.gen(function*() {
-      const { client } = yield* makeTestClient()
+        strictEqual(response.status, 202)
+      }))
+  })
 
-      yield* client.ping({})
-      const exit = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
+  describe("shared", () => {
+    it.effect("allows ping but rejects normal requests before initialization", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeTestClient()
 
-      strictEqual(exit._tag, "Failure")
-    }))
+        yield* client.ping({})
+        const exit = yield* Effect.exit(client["tools/call"]({ name: "session", arguments: {} }))
 
-  it.effect("returns 400 when a normal HTTP request omits the session id", () =>
-    Effect.gen(function*() {
-      const { request } = yield* makeTestClient()
+        strictEqual(exit._tag, "Failure")
+      }))
 
-      const response = yield* request({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: { name: "session", arguments: {} }
-      })
+    it.effect("returns 400 when a normal HTTP request omits the session id", () =>
+      Effect.gen(function*() {
+        const { request } = yield* makeTestClient()
 
-      strictEqual(response.status, 400)
-    }))
+        const response = yield* request({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "session", arguments: {} }
+        })
 
-  it.effect("returns 404 when an HTTP request supplies an unknown session id", () =>
-    Effect.gen(function*() {
-      const { request } = yield* makeTestClient()
+        strictEqual(response.status, 400)
+      }))
 
-      const response = yield* request({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/call",
-        params: { name: "session", arguments: {} }
-      }, { "Mcp-Session-Id": "unknown" })
+    it.effect("returns 404 when an HTTP request supplies an unknown session id", () =>
+      Effect.gen(function*() {
+        const { request } = yield* makeTestClient()
 
-      strictEqual(response.status, 404)
-    }))
+        const response = yield* request({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "session", arguments: {} }
+        }, { "Mcp-Session-Id": "unknown" })
 
-  it.effect("accepts the negotiated protocol version header", () =>
-    Effect.gen(function*() {
-      const { client, getSessionId, request } = yield* makeTestClient()
-      yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
-
-      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
-        "Mcp-Session-Id": getSessionId() ?? "",
-        "Mcp-Protocol-Version": "2025-11-25"
-      })
-
-      strictEqual(response.status, 200)
-      strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
-    }))
-
-  it.effect("returns 400 for an unsupported protocol version header", () =>
-    Effect.gen(function*() {
-      const { client, getSessionId, request } = yield* makeTestClient()
-      yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
-
-      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
-        "Mcp-Session-Id": getSessionId() ?? "",
-        "Mcp-Protocol-Version": "not-a-version"
-      })
-
-      strictEqual(response.status, 400)
-    }))
-
-  it.effect("returns 400 when the protocol version differs from the session", () =>
-    Effect.gen(function*() {
-      const { client, getSessionId, request } = yield* makeTestClient()
-      yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
-
-      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
-        "Mcp-Session-Id": getSessionId() ?? "",
-        "Mcp-Protocol-Version": "2025-06-18"
-      })
-
-      strictEqual(response.status, 400)
-    }))
-
-  it.effect("uses the session version when the protocol header is omitted", () =>
-    Effect.gen(function*() {
-      const { client, getSessionId, request } = yield* makeTestClient()
-      yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
-
-      const response = yield* request({ jsonrpc: "2.0", id: 1, method: "ping", params: {} }, {
-        "Mcp-Session-Id": getSessionId() ?? ""
-      })
-
-      strictEqual(response.status, 200)
-      strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-11-25")
-    }))
-
-  it.effect("returns 202 for accepted initialized notifications", () =>
-    Effect.gen(function*() {
-      const { client, getSessionId, request } = yield* makeTestClient()
-      yield* client.initialize({
-        protocolVersion: "2025-11-25",
-        capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
-      })
-
-      const response = yield* request({
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-        params: {}
-      }, { "Mcp-Session-Id": getSessionId() ?? "" })
-
-      strictEqual(response.status, 202)
-    }))
+        strictEqual(response.status, 404)
+      }))
+  })
 })

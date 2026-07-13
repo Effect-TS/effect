@@ -854,3 +854,71 @@ This project is complete when:
 9. The implemented surface conforms to official `2025-11-25` schemas without advertising unimplemented optional capabilities.
 10. Runtime tests, type tests, lint, and type checking pass.
 11. Public JSDoc and a changeset describe the behavior.
+
+## Atomic Test Expansion Plan
+
+The test expansion is split into the following dependency-ordered subtasks. Each subtask must preserve all coverage established by its dependencies and should be reviewed independently.
+
+### 1. Structure
+
+- Reorganize `McpSchema.test.ts` and `McpServer.test.ts` into `2025-06-18`, `2025-11-25`, shared, and configuration suites without changing behavioral assertions.
+- Split mixed-version tests only where needed to make the asserted protocol revision explicit; use shared suites only for behavior that is invariant across revisions.
+- Verify with `pnpm lint-fix` and targeted runs of both MCP test files.
+
+**Depends on:** Nothing.
+
+### 2. HTTP Helper/Parameterized Shared Suites
+
+- Extend `makeTestClient` with the minimum raw-request controls needed to set or omit session and protocol headers deliberately while retaining automatic session handling for RPC calls.
+- Parameterize exact negotiation, initialize headers, lifecycle, valid-session requests, and omitted protocol-header behavior across `2025-06-18` and `2025-11-25`.
+- Keep revision-specific expected payloads in their version suites rather than adding conditionals to shared assertions.
+
+**Depends on:** Subtask 1.
+
+### 3. Schema Expansion
+
+- Add the Task 5 conformance fixtures to `McpSchema.test.ts`: metadata and capabilities, argumentless tool calls, structured content boundaries, required progress, completion limits, sampling, form elicitation, and binary round trips.
+- Validate emitted compatibility fixtures against local schemas representing each official tagged revision, with separate expected fields for `2025-06-18` and `2025-11-25`.
+- Add one focused rejection assertion for every audited schema boundary, without combining unrelated failures in a single fixture.
+
+**Depends on:** Subtask 2.
+
+### 4. Registered Feature Integrations
+
+- Register representative tools, prompts, resources, completions, logging handlers, sampling, and elicitation through `McpServer` and exercise each through the client.
+- Assert capability advertisement and wire results in both version suites, including absence of `2025-11-25`-only fields for `2025-06-18` sessions.
+- Cover list-change notification eligibility before and after `notifications/initialized` only for transports that can deliver it.
+
+**Depends on:** Subtask 3.
+
+### 5. Multi-Session HTTP Edges
+
+- Add raw HTTP tests for missing, unknown, expired, and cross-session `MCP-Session-Id` values, plus exact, absent, unsupported, malformed, and session-mismatched `MCP-Protocol-Version` values.
+- Exercise at least three sequential requests in one session and two interleaved sessions negotiated to different revisions.
+- Assert status, response headers, JSON-RPC body, and handler invocation or non-invocation for every rejection path.
+
+**Depends on:** Subtask 4.
+
+### 6. Connection Protocol Harness
+
+- Add a transport-level harness that controls connection identity and captures server-initiated messages independently of request-scoped RPC client IDs.
+- Cover negotiated and operational lifecycle states, duplicate initialization events, disconnect cleanup, notification isolation, and single-delivery behavior across simultaneous connections.
+- Reuse the parameterized version suites where wire behavior is shared and retain explicit revision suites where encoding differs.
+
+**Depends on:** Subtask 5.
+
+### 7. Typetests
+
+- Add targeted typetests for the readonly supported-version tuple, the `ProtocolVersion` union, non-empty custom configuration, constructor option parity, and rejection of empty or unknown version arrays.
+- Assert that initialize requests continue accepting arbitrary strings while server configuration accepts only implemented revisions.
+- Run the targeted MCP typetest file after runtime suites pass.
+
+**Depends on:** Subtask 6.
+
+### 8. Final Validation
+
+- Run `pnpm lint-fix`, both targeted MCP runtime suites, the targeted MCP typetest, and `pnpm check`.
+- Inspect the final diff for lost assertions, stale protocol literals outside fixtures, unsafe assertions, generated-file edits, and unrelated changes.
+- Map every normative requirement and Test Matrix row to a passing assertion or an explicit documented transport limitation.
+
+**Depends on:** Subtask 7.
