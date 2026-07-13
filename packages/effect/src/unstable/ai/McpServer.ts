@@ -1173,7 +1173,7 @@ export const registerPrompt = <
   R,
   Params extends Schema.Struct.Fields = {},
   const Completions extends {
-    readonly [K in keyof Params]?: (input: string) => Effect.Effect<Array<Params[K]>, any, any>
+    readonly [K in keyof Params]?: (input: string) => Effect.Effect<Array<Params[K]["Type"]>, any, any>
   } = {}
 >(
   options: {
@@ -1241,20 +1241,23 @@ export const registerPrompt = <
       handle: (params) =>
         decode(params).pipe(
           Effect.mapError((error) => new InvalidParams({ message: error.message })),
-          Effect.flatMap((params) => options.content(params as any)),
-          Effect.map((messages) => {
-            messages = typeof messages === "string" ?
-              [{
-                role: "user",
-                content: TextContent.make({ text: messages })
-              }] :
-              messages
-            return new GetPromptResult({ messages, description: prompt.description })
-          }),
-          Effect.catchCause((cause) => {
-            const prettyError = Cause.prettyErrors(cause)[0]
-            return Effect.fail(new InternalError({ message: prettyError.message }))
-          }),
+          Effect.flatMap((params) =>
+            options.content(params as any).pipe(
+              Effect.map((messages) => {
+                messages = typeof messages === "string" ?
+                  [{
+                    role: "user",
+                    content: TextContent.make({ text: messages })
+                  }] :
+                  messages
+                return new GetPromptResult({ messages, description: prompt.description })
+              }),
+              Effect.catchCause((cause) => {
+                const prettyError = Cause.prettyErrors(cause)[0]
+                return Effect.fail(new InternalError({ message: prettyError.message }))
+              })
+            )
+          ),
           Effect.provideContext(services as Context.Context<unknown>)
         )
     })

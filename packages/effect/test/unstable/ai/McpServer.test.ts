@@ -1,9 +1,11 @@
 import { describe, it } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
-import { Context, Effect, Layer } from "effect"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Context, Effect, Layer, Schema } from "effect"
 import type * as Arr from "effect/Array"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
+import * as Tool from "effect/unstable/ai/Tool"
+import * as Toolkit from "effect/unstable/ai/Toolkit"
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
@@ -11,6 +13,7 @@ import * as RpcClient from "effect/unstable/rpc/RpcClient"
 
 interface MakeTestClientOptions {
   readonly supportedProtocolVersions?: Arr.NonEmptyReadonlyArray<McpServer.ProtocolVersion>
+  readonly register?: Effect.Effect<void, never, McpServer.McpServer>
 }
 
 interface RawRequestOptions {
@@ -57,6 +60,9 @@ const makeTestClient = (options: MakeTestClientOptions = {}) =>
             })
           })
       })
+      if (options.register) {
+        yield* options.register
+      }
     })).pipe(Layer.provideMerge(protocolLayer))
     const { handler, dispose } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
     yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
@@ -81,11 +87,11 @@ const makeTestClient = (options: MakeTestClientOptions = {}) =>
       Effect.provide(clientLayer)
     )
 
-    const initialize = (protocolVersion: string) =>
+    const initialize = (protocolVersion: string, clientName = "TestClient") =>
       client.initialize({
         protocolVersion,
         capabilities: {},
-        clientInfo: { name: "TestClient", version: "1.0.0" }
+        clientInfo: { name: clientName, version: "1.0.0" }
       })
 
     const rawRequest = ({ body, protocolVersion, sessionId }: RawRequestOptions) => {
@@ -110,11 +116,111 @@ const makeTestClient = (options: MakeTestClientOptions = {}) =>
     const operationalRequest = ({ body, protocolVersion }: OperationalRequestOptions) =>
       rawRequest({
         body,
-        sessionId: sessionId ?? undefined,
-        protocolVersion
+        ...(sessionId === null ? {} : { sessionId }),
+        ...(protocolVersion === undefined ? {} : { protocolVersion })
       })
 
     return { client, initialize, operationalRequest, rawRequest, responses }
+  })
+
+const ObjectTool = Tool.make("object-output", {
+  success: Schema.Struct({ status: Schema.String })
+})
+const PrimitiveTool = Tool.make("primitive-output", { success: Schema.String })
+const ArrayTool = Tool.make("array-output", { success: Schema.Array(Schema.String) })
+const FailingTool = Tool.make("failing", {
+  success: Schema.String,
+  failure: Schema.String
+})
+const RepresentativeToolkit = Toolkit.make(ObjectTool, PrimitiveTool, ArrayTool, FailingTool)
+
+const enabledAnnotations = Context.make(
+  McpSchema.EnabledWhen,
+  (payload) => payload.clientInfo.name === "EnabledClient"
+)
+const FiniteNumberFromString = Schema.NumberFromString.check(Schema.isFinite())
+const CountString = Schema.String.check(Schema.isPattern(/^\d+$/))
+
+const registerRepresentativeCapabilities = Effect.gen(function*() {
+  const server = yield* McpServer.McpServer
+
+  yield* server.addTool({
+    tool: new McpSchema.Tool({ name: "argumentless", inputSchema: { type: "object" } }),
+    annotations: Context.empty(),
+    handle: (arguments_) =>
+      Effect.succeed(
+        new McpSchema.CallToolResult({
+          content: [{ type: "text", text: JSON.stringify(arguments_) }]
+        })
+      )
+  })
+  yield* server.addTool({
+    tool: new McpSchema.Tool({ name: "enabled-tool", inputSchema: { type: "object" } }),
+    annotations: enabledAnnotations,
+    handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+  })
+
+  yield* McpServer.registerToolkit(RepresentativeToolkit).pipe(
+    Effect.provide(RepresentativeToolkit.toLayer({
+      "object-output": () => Effect.succeed({ status: "ok" }),
+      "primitive-output": () => Effect.succeed("ok"),
+      "array-output": () => Effect.succeed(["ok"]),
+      failing: () => Effect.fail("handler failed")
+    }))
+  )
+
+  yield* McpServer.registerResource({
+    uri: "file:///text",
+    name: "text-resource",
+    content: Effect.succeed("text content")
+  })
+  yield* McpServer.registerResource({
+    uri: "file:///binary",
+    name: "binary-resource",
+    content: Effect.succeed(new Uint8Array([1, 2, 3]))
+  })
+  yield* McpServer.registerResource({
+    uri: "file:///enabled",
+    name: "enabled-resource",
+    content: Effect.succeed("enabled"),
+    annotations: enabledAnnotations
+  })
+
+  const id = McpSchema.param("id", FiniteNumberFromString)
+  yield* McpServer.registerResource`file:///items/${id}`({
+    name: "item-template",
+    completion: {
+      id: () => Effect.succeed(Array.from({ length: 105 }, (_, index) => index))
+    },
+    content: (uri, value) => Effect.succeed(`${uri}:${value}`)
+  })
+  yield* McpServer.registerResource`file:///enabled-items/${id}`({
+    name: "enabled-template",
+    content: (_uri, value) => Effect.succeed(String(value)),
+    annotations: enabledAnnotations
+  })
+
+  yield* McpServer.registerPrompt({
+    name: "count-prompt",
+    parameters: { count: CountString },
+    completion: {
+      count: () => Effect.succeed(Array.from({ length: 105 }, (_, index) => String(index)))
+    },
+    content: ({ count }) => Effect.succeed(`Count: ${count}`)
+  })
+  yield* McpServer.registerPrompt({
+    name: "enabled-prompt",
+    content: () => Effect.succeed("enabled"),
+    annotations: enabledAnnotations
+  })
+})
+
+const makeRepresentativeClient = (protocolVersion: McpServer.ProtocolVersion, clientName = "TestClient") =>
+  Effect.gen(function*() {
+    const fixture = yield* makeTestClient({ register: registerRepresentativeCapabilities })
+    yield* fixture.initialize(protocolVersion, clientName)
+    yield* Effect.ignore(fixture.client["notifications/initialized"]({}))
+    return fixture.client
   })
 
 const protocolVersionSuite = (protocolVersion: McpServer.ProtocolVersion) => {
@@ -223,6 +329,196 @@ const protocolVersionSuite = (protocolVersion: McpServer.ProtocolVersion) => {
       })
 
       strictEqual(response.status, 202)
+    }))
+
+  it.effect("advertises registered capabilities", () =>
+    Effect.gen(function*() {
+      const { initialize } = yield* makeTestClient({ register: registerRepresentativeCapabilities })
+
+      const result = yield* initialize(protocolVersion)
+
+      deepStrictEqual(result.capabilities, {
+        completions: {},
+        tools: {},
+        resources: { subscribe: false },
+        prompts: {}
+      })
+    }))
+
+  it.effect("returns InvalidParams for an unknown tool", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const error = yield* Effect.flip(client["tools/call"]({ name: "unknown" }))
+
+      strictEqual(error instanceof McpSchema.InvalidParams, true)
+    }))
+
+  it.effect("normalizes omitted tool arguments", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const result = yield* client["tools/call"]({ name: "argumentless" })
+
+      strictEqual(result.content[0]?.type, "text")
+      if (result.content[0]?.type === "text") {
+        strictEqual(result.content[0].text, "{}")
+      }
+    }))
+
+  it.effect("returns toolkit handler failures as tool errors", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const result = yield* client["tools/call"]({ name: "failing" })
+
+      strictEqual(result.isError, true)
+      strictEqual(result.content[0]?.type, "text")
+    }))
+
+  it.effect("includes structured content only for object tool output", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const object = yield* client["tools/call"]({ name: "object-output" })
+      const primitive = yield* client["tools/call"]({ name: "primitive-output" })
+      const array = yield* client["tools/call"]({ name: "array-output" })
+
+      deepStrictEqual(object.structuredContent, { status: "ok" })
+      strictEqual(primitive.structuredContent, undefined)
+      strictEqual(array.structuredContent, undefined)
+    }))
+
+  it.effect("returns InvalidParams for an unknown prompt", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const error = yield* Effect.flip(client["prompts/get"]({ name: "unknown" }))
+
+      strictEqual(error instanceof McpSchema.InvalidParams, true)
+    }))
+
+  it.effect("converts string prompts to user text messages", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const result = yield* client["prompts/get"]({
+        name: "count-prompt",
+        arguments: { count: "2" }
+      })
+
+      strictEqual(result.messages[0]?.role, "user")
+      strictEqual(result.messages[0]?.content.type, "text")
+      if (result.messages[0]?.content.type === "text") {
+        strictEqual(result.messages[0].content.text, "Count: 2")
+      }
+    }))
+
+  it.effect("returns InvalidParams for prompt argument decode errors", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const error = yield* Effect.flip(client["prompts/get"]({
+        name: "count-prompt",
+        arguments: { count: "not-a-number" }
+      }))
+
+      strictEqual(error instanceof McpSchema.InvalidParams, true)
+    }))
+
+  it.effect("returns empty contents for an unknown resource", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const result = yield* client["resources/read"]({ uri: "file:///unknown" })
+
+      deepStrictEqual(result.contents, [])
+    }))
+
+  it.effect("converts string and Uint8Array resource content", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const text = yield* client["resources/read"]({ uri: "file:///text" })
+      const binary = yield* client["resources/read"]({ uri: "file:///binary" })
+
+      deepStrictEqual(text.contents, [{ uri: "file:///text", text: "text content" }])
+      deepStrictEqual(binary.contents, [{ uri: "file:///binary", blob: new Uint8Array([1, 2, 3]) }])
+    }))
+
+  it.effect("decodes resource template parameters and rejects invalid values", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const result = yield* client["resources/read"]({ uri: "file:///items/2" })
+      const error = yield* Effect.flip(client["resources/read"]({ uri: "file:///items/not-a-number" }))
+
+      deepStrictEqual(result.contents, [{ uri: "file:///items/2", text: "file:///items/2:2" }])
+      strictEqual(error instanceof McpSchema.InvalidParams, true)
+    }))
+
+  it.effect("returns an empty result for an unknown completion", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const result = yield* client["completion/complete"]({
+        ref: { type: "ref/prompt", name: "unknown" },
+        argument: { name: "value", value: "" }
+      })
+
+      deepStrictEqual(result.completion, { values: [], total: 0, hasMore: false })
+    }))
+
+  it.effect("truncates resource and prompt completions to 100 values", () =>
+    Effect.gen(function*() {
+      const client = yield* makeRepresentativeClient(protocolVersion)
+
+      const resource = yield* client["completion/complete"]({
+        ref: { type: "ref/resource", uri: "file:///items/{id}" },
+        argument: { name: "id", value: "" }
+      })
+      const prompt = yield* client["completion/complete"]({
+        ref: { type: "ref/prompt", name: "count-prompt" },
+        argument: { name: "count", value: "" }
+      })
+
+      strictEqual(resource.completion.values.length, 100)
+      strictEqual(resource.completion.values[0], "0")
+      strictEqual(resource.completion.values[99], "99")
+      strictEqual(resource.completion.total, 105)
+      strictEqual(resource.completion.hasMore, true)
+      strictEqual(prompt.completion.values.length, 100)
+      strictEqual(prompt.completion.values[0], "0")
+      strictEqual(prompt.completion.values[99], "99")
+      strictEqual(prompt.completion.total, 105)
+      strictEqual(prompt.completion.hasMore, true)
+    }))
+
+  it.effect("filters registered entries using the initialize payload", () =>
+    Effect.gen(function*() {
+      const disabled = yield* makeRepresentativeClient(protocolVersion)
+      const enabled = yield* makeRepresentativeClient(protocolVersion, "EnabledClient")
+
+      const disabledTools = yield* disabled["tools/list"]({})
+      const enabledTools = yield* enabled["tools/list"]({})
+      const disabledResources = yield* disabled["resources/list"]({})
+      const enabledResources = yield* enabled["resources/list"]({})
+      const disabledTemplates = yield* disabled["resources/templates/list"]({})
+      const enabledTemplates = yield* enabled["resources/templates/list"]({})
+      const disabledPrompts = yield* disabled["prompts/list"]({})
+      const enabledPrompts = yield* enabled["prompts/list"]({})
+
+      strictEqual(disabledTools.tools.some((tool) => tool.name === "enabled-tool"), false)
+      strictEqual(enabledTools.tools.some((tool) => tool.name === "enabled-tool"), true)
+      strictEqual(disabledResources.resources.some((resource) => resource.name === "enabled-resource"), false)
+      strictEqual(enabledResources.resources.some((resource) => resource.name === "enabled-resource"), true)
+      strictEqual(
+        disabledTemplates.resourceTemplates.some((template) => template.name === "enabled-template"),
+        false
+      )
+      strictEqual(enabledTemplates.resourceTemplates.some((template) => template.name === "enabled-template"), true)
+      strictEqual(disabledPrompts.prompts.some((prompt) => prompt.name === "enabled-prompt"), false)
+      strictEqual(enabledPrompts.prompts.some((prompt) => prompt.name === "enabled-prompt"), true)
     }))
 }
 
