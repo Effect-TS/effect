@@ -1028,37 +1028,34 @@ export type RequiresHandler<Tool extends Any> = Tool extends ProviderDefined<
 // Constructors
 // =============================================================================
 
+// Clones a tool while preserving its prototype (and thus its kind, e.g.
+// user-defined vs. provider-defined vs. dynamic) and its own properties such
+// as `id`. Optional `overrides` replace individual fields on the clone.
+const clone = (self: Any, overrides?: Record<string, unknown>): any =>
+  Object.assign(Object.create(Object.getPrototypeOf(self)), self, overrides)
+
 const Proto = {
   [TypeId]: { _Requirements: identity },
   pipe() {
     return pipeArguments(this, arguments)
   },
   addDependency(this: Any) {
-    return userDefinedProto({ ...this })
+    return clone(this)
   },
   setParameters(this: Any, parametersSchema: Schema.Constraint) {
-    return userDefinedProto({
-      ...this,
-      parametersSchema
-    })
+    return clone(this, { parametersSchema })
   },
   setSuccess(this: Any, successSchema: Schema.Constraint) {
-    return userDefinedProto({ ...this, successSchema })
+    return clone(this, { successSchema })
   },
   setFailure(this: Any, failureSchema: Schema.Constraint) {
-    return userDefinedProto({ ...this, failureSchema })
+    return clone(this, { failureSchema })
   },
   annotate<I, S>(this: Any, tag: Context.Key<I, S>, value: S) {
-    return userDefinedProto({
-      ...this,
-      annotations: Context.add(this.annotations, tag, value)
-    })
+    return clone(this, { annotations: Context.add(this.annotations, tag, value) })
   },
   annotateMerge<I>(this: Any, context: Context.Context<I>) {
-    return userDefinedProto({
-      ...this,
-      annotations: Context.merge(this.annotations, context)
-    })
+    return clone(this, { annotations: Context.merge(this.annotations, context) })
   }
 }
 
@@ -1132,7 +1129,7 @@ const providerDefinedProto = <
     readonly failureMode: Mode
   },
   RequiresHandler
-> => Object.assign(Object.create(ProviderDefinedProto), { ...options })
+> => Object.assign(Object.create(ProviderDefinedProto), { annotations: Context.empty(), ...options })
 
 const dynamicProto = <
   const Name extends string,
