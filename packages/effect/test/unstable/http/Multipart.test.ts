@@ -1,7 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, identity, Schema, Stream, Unify } from "effect"
 import { Multipart } from "effect/unstable/http"
-import { deepStrictEqual } from "node:assert"
+import { deepStrictEqual, strictEqual } from "node:assert"
 
 describe("Multipart", () => {
   it.effect("parses fields and streams file content", () =>
@@ -35,6 +35,34 @@ describe("Multipart", () => {
         ["test", "ing"],
         ["foo.txt", "A".repeat(1024 * 1024)]
       ])
+    }))
+
+  it.effect("fails when a limit is exceeded even if the whole body arrives in one chunk", () =>
+    Effect.gen(function*() {
+      // A raw body delivered as a single chunk makes the parser reach the
+      // max-parts error and end-of-input within one pump, so `onDone` used to
+      // clobber the captured failure and the violation was swallowed.
+      // https://github.com/Effect-TS/effect/issues/6392
+      const boundary = "----testboundary"
+      const part = (name: string) =>
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="${name}"; filename="${name}.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n${name}\r\n`
+      const body = part("a") + part("b") + part("c") + `--${boundary}--\r\n`
+
+      // `Effect.flip` surfaces the expected failure as the success channel; if
+      // the stream wrongly completes instead, `flip` fails and the test fails.
+      const error = yield* Stream.make(new TextEncoder().encode(body)).pipe(
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.runCollect,
+        Effect.provideService(Multipart.MaxParts, 2),
+        Effect.flip
+      )
+
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "TooManyParts")
     }))
 
   describe("FileSchema", () => {
