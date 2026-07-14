@@ -76,7 +76,7 @@ export const Bash_20241022 = Tool.providerDefined({
   success: Schema.String,
   parameters: Schema.Struct({
     command: Schema.String,
-    restart: Schema.optional(Schema.Boolean)
+    restart: Schema.optionalKey(Schema.Boolean)
   })
 })
 
@@ -106,7 +106,7 @@ export const Bash_20250124 = Tool.providerDefined({
   success: Schema.String,
   parameters: Schema.Struct({
     command: Schema.String,
-    restart: Schema.optional(Schema.Boolean)
+    restart: Schema.optionalKey(Schema.Boolean)
   })
 })
 
@@ -671,7 +671,7 @@ export const ComputerUseLeftClickAction = Schema.Struct({
    * The `[x, y]` coordinate on the screen to left click (defaults to the current
    * mouse position if omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for performing a left click, optionally at a specific coordinate.
@@ -829,7 +829,7 @@ export const ComputerUseDoubleClickAction = Schema.Struct({
    * The coordinate to double click (defaults to the current mouse position if
    * omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for performing a double click, optionally at a specific coordinate.
@@ -955,7 +955,7 @@ export const ComputerUseLeftMouseDownAction = Schema.Struct({
    * The coordinate at which the left mouse button should be held down (defaults
    * to the current mouse position if omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for pressing and holding the left mouse button, optionally at a specific coordinate.
@@ -982,7 +982,7 @@ export const ComputerUseLeftMouseUpAction = Schema.Struct({
    * The coordinate at which the left mouse button should be released (defaults
    * to the current mouse position if omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for releasing the left mouse button, optionally at a specific coordinate.
@@ -1023,7 +1023,7 @@ export const ComputerUseMiddleClickAction = Schema.Struct({
    * The coordinate to middle click (defaults to the current mouse position if
    * omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for performing a middle click, optionally at a specific coordinate.
@@ -1060,7 +1060,7 @@ export const ComputerUseRightClickAction = Schema.Struct({
    * The coordinate to right click (defaults to the current mouse position if
    * omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for performing a right click, optionally at a specific coordinate.
@@ -1099,7 +1099,7 @@ export const ComputerUseScrollAction = Schema.Struct({
    * The coordinate to start scrolling from (defaults to the current mouse
    * position if omitted).
    */
-  coordinate: Schema.optional(Coordinate),
+  coordinate: Schema.optionalKey(Coordinate),
   /**
    * The direction to scroll.
    */
@@ -1148,7 +1148,7 @@ export const ComputerUseTripleClickAction = Schema.Struct({
    * The coordinate to triple click (defaults to the current mouse position if
    * omitted).
    */
-  coordinate: Schema.optional(Coordinate)
+  coordinate: Schema.optionalKey(Coordinate)
 })
 /**
  * Computer-use action payload for performing a triple click, optionally at a specific coordinate.
@@ -1405,7 +1405,8 @@ export type ViewRange = typeof ViewRange.Type
  *
  * **Details**
  *
- * The payload contains `command: "create"` and a `path` string.
+ * The payload contains `command: "create"`, a `path` string, and the
+ * `file_text` content to write to the file.
  *
  * @category memory
  * @since 4.0.0
@@ -1415,7 +1416,11 @@ export const MemoryCreateCommand = Schema.Struct({
   /**
    * The path to the file that should be created.
    */
-  path: Schema.String
+  path: Schema.String,
+  /**
+   * The content to write to the file.
+   */
+  file_text: Schema.String
 })
 /**
  * Memory tool command payload for creating a new file at a path.
@@ -1578,7 +1583,7 @@ export const MemoryViewCommand = Schema.Struct({
   /**
    * The specific lines to view.
    */
-  view_range: Schema.optional(ViewRange)
+  view_range: Schema.optionalKey(ViewRange)
 })
 /**
  * Memory tool command payload for viewing a file or directory, optionally with a file line range.
@@ -1659,7 +1664,7 @@ export const TextEditorViewCommand = Schema.Struct({
    * Optional line range to view (only applies to files, not directories).
    * Lines are 1-indexed. Use -1 for end to read to end of file.
    */
-  view_range: Schema.optional(ViewRange)
+  view_range: Schema.optionalKey(ViewRange)
 })
 /**
  * Text editor command payload for viewing file contents or listing directory contents.
