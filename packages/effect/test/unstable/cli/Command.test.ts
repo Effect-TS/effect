@@ -135,6 +135,36 @@ describe("Command", () => {
         )
       }).pipe(Effect.provide(TestLayer)))
 
+    const missingValueCases: ReadonlyArray<{
+      readonly flag: Flag.Flag<unknown>
+      readonly name: string
+      readonly expected: string
+    }> = [
+      { flag: Flag.string("name").pipe(Flag.optional), name: "name", expected: "string" },
+      { flag: Flag.integer("count").pipe(Flag.optional), name: "count", expected: "integer" },
+      { flag: Flag.path("config").pipe(Flag.optional), name: "config", expected: "path" },
+      { flag: Flag.keyValuePair("env").pipe(Flag.optional), name: "env", expected: "key=value" }
+    ]
+
+    for (const { expected, flag, name } of missingValueCases) {
+      it.effect(`should reject --${name} without a ${expected} value`, () =>
+        Effect.gen(function*() {
+          let invoked = false
+          const command = Command.make("demo", { value: flag }, () =>
+            Effect.sync(() => {
+              invoked = true
+            }))
+
+          yield* Command.runWith(command, { version: "1.0.0" })([`--${name}`]).pipe(Effect.ignore)
+
+          const stderr = yield* TestConsole.errorLines
+          assert.isFalse(invoked)
+          assert.isTrue(
+            stderr.some((line) => String(line).includes(`Missing value for flag --${name}. Expected: ${expected}`))
+          )
+        }).pipe(Effect.provide(TestLayer)))
+    }
+
     it.effect("should execute handler with parsed config", () =>
       Effect.gen(function*() {
         const path = yield* Path.Path
