@@ -1016,6 +1016,212 @@ export const symmetricDifference: {
   })
 })
 
+/**
+ * Returns the complement over the existing node set.
+ *
+ * **Details**
+ *
+ * Adds every missing edge between distinct nodes. The `createEdge` function
+ * receives the source and target node data for each added edge. The result has
+ * the same graph kind as `self`.
+ *
+ * `G' = {V, (V x V) \ E}`
+ *
+ * **Example** (Finding missing relationships)
+ *
+ * ```ts
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.directed<string, string>((mutable) => {
+ *   const a = Graph.addNode(mutable, "A")
+ *   const b = Graph.addNode(mutable, "B")
+ *   Graph.addEdge(mutable, a, b, "A-B")
+ * })
+ *
+ * const result = Graph.complement(graph, (source, target) => `${source}-${target}`)
+ *
+ * console.log(Graph.edgeCount(result)) // 1
+ * ```
+ *
+ * @category set operations
+ * @since 4.0.0
+ */
+export const complement: {
+  <N, E>(
+    createEdge: (source: N, target: N) => E
+  ): <T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>,
+    createEdge: (source: N, target: N) => E
+  ): Graph<N, E, T>
+} = dual(2, <N, E, T extends Kind>(
+  self: Graph<N, E, T>,
+  createEdge: (source: N, target: N) => E
+): Graph<N, E, T> => {
+  const nodeEntries = Array.from(self.nodes)
+
+  return emptyLike(self, (mutable) => {
+    const newIndexMap = new Map<NodeIndex, NodeIndex>()
+
+    for (const [oldIndex, data] of nodeEntries) {
+      newIndexMap.set(oldIndex, addNode(mutable, data))
+    }
+
+    for (let i = 0; i < nodeEntries.length; i++) {
+      const [sourceOldIndex, sourceData] = nodeEntries[i]
+      const start = self.type === "undirected" ? i + 1 : 0
+
+      for (let j = start; j < nodeEntries.length; j++) {
+        const [targetOldIndex, targetData] = nodeEntries[j]
+        if (sourceOldIndex === targetOldIndex || hasEdge(self, sourceOldIndex, targetOldIndex)) {
+          continue
+        }
+
+        const sourceIndex = newIndexMap.get(sourceOldIndex)
+        const targetIndex = newIndexMap.get(targetOldIndex)
+        if (sourceIndex !== undefined && targetIndex !== undefined) {
+          addEdge(mutable, sourceIndex, targetIndex, createEdge(sourceData, targetData))
+        }
+      }
+    }
+  })
+})
+
+/**
+ * Direction for neighborhood expansion in directed graphs.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type NeighborhoodDirection = "outgoing" | "incoming" | "both"
+
+/**
+ * Returns the induced subgraph containing nodes within a radius of a node.
+ *
+ * **Details**
+ *
+ * The `radius` option is the maximum edge distance from `nodeIndex` and
+ * defaults to `1`. The `direction` option controls directed graph traversal and
+ * defaults to `"both"`. The result has the same graph kind as `self` and keeps
+ * all original edges whose endpoints are both reached.
+ *
+ * **Example** (Getting a local neighborhood)
+ *
+ * ```ts
+ * import { Graph } from "effect"
+ *
+ * const graph = Graph.directed<string, string>((mutable) => {
+ *   const a = Graph.addNode(mutable, "A")
+ *   const b = Graph.addNode(mutable, "B")
+ *   const c = Graph.addNode(mutable, "C")
+ *   Graph.addEdge(mutable, a, b, "A-B")
+ *   Graph.addEdge(mutable, b, c, "B-C")
+ * })
+ *
+ * const result = Graph.neighborhood(graph, 1, { radius: 1 })
+ *
+ * console.log(Graph.nodeCount(result)) // 3
+ * ```
+ *
+ * @category set operations
+ * @since 4.0.0
+ */
+export const neighborhood: {
+  (
+    nodeIndex: NodeIndex,
+    options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
+  ): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>,
+    nodeIndex: NodeIndex,
+    options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
+  ): Graph<N, E, T>
+} = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
+  self: Graph<N, E, T>,
+  nodeIndex: NodeIndex,
+  options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
+): Graph<N, E, T> => {
+  const radius = options?.radius ?? 1
+  const direction = options?.direction ?? "both"
+  const reached = new Set<NodeIndex>()
+
+  if (direction === "outgoing" || direction === "both") {
+    for (const index of indices(bfs(self, { start: [nodeIndex], direction: "outgoing", maxDepth: radius }))) {
+      reached.add(index)
+    }
+  }
+
+  if (direction === "incoming" || direction === "both") {
+    for (const index of indices(bfs(self, { start: [nodeIndex], direction: "incoming", maxDepth: radius }))) {
+      reached.add(index)
+    }
+  }
+
+  return emptyLike(self, (mutable) => {
+    const newIndexMap = new Map<NodeIndex, NodeIndex>()
+
+    for (const oldIndex of reached) {
+      newIndexMap.set(oldIndex, addNode(mutable, Option.getOrThrow(getNode(self, oldIndex))))
+    }
+
+    for (const edge of self.edges.values()) {
+      if (reached.has(edge.source) && reached.has(edge.target)) {
+        const sourceIndex = newIndexMap.get(edge.source)
+        const targetIndex = newIndexMap.get(edge.target)
+        if (sourceIndex !== undefined && targetIndex !== undefined) {
+          addEdge(mutable, sourceIndex, targetIndex, edge.data)
+        }
+      }
+    }
+  })
+})
+
+/**
+ * Returns the disjoint union of two graphs.
+ *
+ * **Details**
+ *
+ * Copies all nodes and edges from both graphs without merging equal node data.
+ * The result has the same graph kind as `self`.
+ *
+ * `G1 + G2 = {disjoint V1 + V2, disjoint E1 + E2}`
+ *
+ * @category set operations
+ * @since 4.0.0
+ */
+export const sum: {
+  <N, E, T extends Kind = "directed">(
+    that: Graph<N, E, T>
+  ): (self: Graph<N, E, T>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed">(
+    self: Graph<N, E, T>,
+    that: Graph<N, E, T>
+  ): Graph<N, E, T>
+} = dual(
+  2,
+  <N, E, T extends Kind>(self: Graph<N, E, T>, that: Graph<N, E, T>): Graph<N, E, T> =>
+    emptyLike(self, (mutable) => {
+      const copyInto = (graph: Graph<N, E, T>) => {
+        const indexMap = new Map<NodeIndex, NodeIndex>()
+
+        for (const [oldIndex, data] of graph.nodes) {
+          indexMap.set(oldIndex, addNode(mutable, data))
+        }
+
+        for (const edge of graph.edges.values()) {
+          const sourceIndex = indexMap.get(edge.source)
+          const targetIndex = indexMap.get(edge.target)
+          if (sourceIndex !== undefined && targetIndex !== undefined) {
+            addEdge(mutable, sourceIndex, targetIndex, edge.data)
+          }
+        }
+      }
+
+      copyInto(self)
+      copyInto(that)
+    })
+)
+
 // =============================================================================
 // Basic Node Operations
 // =============================================================================
