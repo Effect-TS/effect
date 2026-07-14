@@ -1,6 +1,9 @@
 import { Graph, pipe } from "effect"
 import { describe, expect, it } from "tstyche"
 
+declare const directed: Graph.DirectedGraph<string, number>
+declare const undirected: Graph.UndirectedGraph<string, number>
+
 interface Node {
   readonly id: string
 }
@@ -69,4 +72,35 @@ describe("Graph", () => {
     )).type.toBe<Graph.UndirectedGraph<Node, number>>()
   })
 
+  it("complement", () => {
+    expect(Graph.complement(directed, (source, target) => {
+      expect(source).type.toBe<string>()
+      expect(target).type.toBe<string>()
+      return source.length + target.length
+    })).type.toBe<Graph.DirectedGraph<string, number>>()
+
+    expect(pipe(
+      undirected,
+      Graph.complement((source, target) => {
+        expect(source).type.toBe<string>()
+        expect(target).type.toBe<string>()
+        return source.length + target.length
+      })
+    )).type.toBe<Graph.UndirectedGraph<string, number>>()
+  })
+
+  it("neighborhood", () => {
+    expect(Graph.neighborhood(directed, 0)).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(Graph.neighborhood(directed, 0, { radius: 2, direction: "both" })).type.toBe<
+      Graph.DirectedGraph<string, number>
+    >()
+    expect(pipe(undirected, Graph.neighborhood(0, { radius: 2, direction: "outgoing" }))).type.toBe<
+      Graph.UndirectedGraph<string, number>
+    >()
+  })
+
+  it("sum", () => {
+    expect(Graph.sum(directed, directed)).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(pipe(undirected, Graph.sum(undirected))).type.toBe<Graph.UndirectedGraph<string, number>>()
+  })
 })
