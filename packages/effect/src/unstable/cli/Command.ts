@@ -26,6 +26,7 @@ import * as Stdio from "../../Stdio.ts"
 import * as Terminal from "../../Terminal.ts"
 import type { Contravariant, Covariant, NoInfer, Simplify } from "../../Types.ts"
 import type { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
+import * as CliConfig from "./CliConfig.ts"
 import * as CliError from "./CliError.ts"
 import * as CliOutput from "./CliOutput.ts"
 import * as GlobalFlag from "./GlobalFlag.ts"
@@ -1412,8 +1413,9 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
   error: CliError.ShowHelp
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
+    const { builtIns } = yield* CliConfig.CliConfig
     const formatter = yield* CliOutput.Formatter
-    const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, GlobalFlag.BuiltIns)
+    const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
     yield* Console.log(formatter.formatHelpDoc(helpDoc))
     if (error.errors.length > 0) {
       yield* Console.error(formatter.formatErrors(error.errors as any))
@@ -1530,10 +1532,11 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
   const commandImpl = toImpl(command)
   return Effect.fnUntraced(
     function*(args: ReadonlyArray<string>) {
+      const { builtIns } = yield* CliConfig.CliConfig
       const { tokens, trailingOperands } = Lexer.lex(args)
 
       // 1. Collect known global flags from the command tree
-      const allFlags = getGlobalFlagsForCommandTree(command, GlobalFlag.BuiltIns)
+      const allFlags = getGlobalFlagsForCommandTree(command, builtIns)
 
       // 2. Extract global flag tokens
       const allFlagParams = allFlags.flatMap((f) => Param.extractSingleParams(f.flag))
@@ -1548,8 +1551,8 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
       // 3. Parse command arguments from remaining tokens
       const parsedArgs = yield* Parser.parseArgs({ tokens: remainder, trailingOperands }, command)
       const commandPath = [command.name, ...Parser.getCommandPath(parsedArgs)] as const
-      const handlerCtx: GlobalFlag.HandlerContext = { command, commandPath, version: config.version }
-      const activeFlags = getGlobalFlagsForCommandPath(command, commandPath, GlobalFlag.BuiltIns)
+      const handlerCtx: GlobalFlag.HandlerContext = { builtIns, command, commandPath, version: config.version }
+      const activeFlags = getGlobalFlagsForCommandPath(command, commandPath, builtIns)
 
       // 4. Reject globals that were passed outside the active command scope
       const outOfScopeErrors = getOutOfScopeGlobalFlagErrors(allFlags, activeFlags, flagMap, commandPath)
@@ -1589,7 +1592,9 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
 
       // 7. Provide setting values
       let program = commandImpl.handle(parseResult.success, [command.name])
-      const [, logLevel] = yield* GlobalFlag.LogLevel.flag.parse(emptyArgs)
+      const logLevel = activeFlags.includes(GlobalFlag.LogLevel)
+        ? (yield* GlobalFlag.LogLevel.flag.parse(emptyArgs))[1]
+        : Option.none()
       program = Effect.provideService(program, GlobalFlag.LogLevel, logLevel)
       for (const flag of activeFlags) {
         if (flag._tag !== "Setting" || flag === GlobalFlag.LogLevel) continue

@@ -37,6 +37,7 @@ export interface HandlerContext {
   readonly command: Command.Command.Any
   readonly commandPath: ReadonlyArray<string>
   readonly version: string
+  readonly builtIns: ReadonlyArray<BuiltIn>
 }
 
 /**
@@ -156,9 +157,9 @@ export const Help: Action<boolean> = action({
     Flag.withAlias("h"),
     Flag.withDescription("Show help information")
   ),
-  run: Effect.fnUntraced(function*(_, { command, commandPath }) {
+  run: Effect.fnUntraced(function*(_, { builtIns, command, commandPath }) {
     const formatter = yield* CliOutput.Formatter
-    const helpDoc = yield* HelpInternal.getHelpForCommandPath(command, commandPath, BuiltIns)
+    const helpDoc = yield* HelpInternal.getHelpForCommandPath(command, commandPath, builtIns)
     yield* Console.log(formatter.formatHelpDoc(helpDoc))
   })
 })
@@ -282,3 +283,11 @@ export const BuiltIns: readonly [
   Action<Option.Option<"bash" | "zsh" | "fish">>,
   Setting<"log-level", Option.Option<LogLevelType>>
 ] = [Help, Version, Completions, LogLevel]
+
+/**
+ * Global flag included in the default command-runner configuration.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type BuiltIn = typeof BuiltIns[number]

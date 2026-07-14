@@ -1,7 +1,7 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, FileSystem, Layer, Option, Path, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
-import { Argument, CliOutput, Command, Flag, GlobalFlag } from "effect/unstable/cli"
+import { Argument, CliConfig, CliOutput, Command, Flag, GlobalFlag } from "effect/unstable/cli"
 import { toImpl } from "effect/unstable/cli/internal/command"
 import { ChildProcessSpawner } from "effect/unstable/process"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
@@ -344,6 +344,32 @@ describe("Command", () => {
         yield* runCommand([])
 
         assert.deepStrictEqual(captured, ["eu-west-1", "us-west-2"])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should configure built-in global flags per run", () =>
+      Effect.gen(function*() {
+        const command = Command.make("app", {}, () => Effect.void)
+        const runCommand = Command.runWith(command, { version: "1.0.0" })
+        const config = CliConfig.make({
+          builtIns: GlobalFlag.BuiltIns.filter((flag) => flag !== GlobalFlag.LogLevel)
+        })
+
+        yield* runCommand(["--help"]).pipe(Effect.provide(CliConfig.layer(config)))
+        const configuredHelp = yield* TestConsole.logLines
+        assert.isFalse(configuredHelp.some((line) => String(line).includes("--log-level")))
+
+        yield* runCommand(["--log-level", "debug"]).pipe(
+          Effect.provideService(CliConfig.CliConfig, config),
+          Effect.ignore
+        )
+        const errors = yield* TestConsole.errorLines
+        assert.isTrue(errors.some((line) => String(line).includes("Unrecognized flag: --log-level")))
+
+        const helpCountBeforeDefault = (yield* TestConsole.logLines).length
+        yield* runCommand(["--help"])
+        const allHelp = yield* TestConsole.logLines
+        const defaultHelp = allHelp.slice(helpCountBeforeDefault)
+        assert.isTrue(defaultHelp.some((line) => String(line).includes("--log-level")))
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should support mixed action and setting global flags", () =>
