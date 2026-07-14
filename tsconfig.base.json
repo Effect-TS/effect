@@ -33,7 +33,6 @@
     "jsx": "react-jsx",
     "plugins": [{
       "name": "@effect/language-service",
-      "transform": "@effect/language-service/transform",
       "namespaceImportPackages": ["effect", "@effect/*"],
       "diagnosticSeverity": {
         "globalErrorInEffectFailure": "off" // TODO: Check if we should fix the warnings this reports

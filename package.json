@@ -3,6 +3,7 @@
   "type": "module",
   "packageManager": "pnpm@10.17.1",
   "scripts": {
+    "prepare": "effect-tsgo patch",
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel --filter \"./packages/**/*\" run codegen",
     "codemod": "node scripts/codemod.mjs",
@@ -38,9 +39,8 @@
     "@effect/bundle": "workspace:^",
     "@effect/docgen": "https://pkg.pr.new/Effect-TS/docgen/@effect/docgen@e57e5f5",
     "@effect/jsdocs": "workspace:^",
-    "@effect/language-service": "^0.86.4",
     "@effect/oxc": "workspace:^",
-    "@effect/tsgo": "^0.16.3",
+    "@effect/tsgo": "^0.21.0",
     "@effect/utils": "workspace:^",
     "@effect/vitest": "workspace:^",
     "@faker-js/faker": "^10.5.0",

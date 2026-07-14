@@ -4,7 +4,7 @@ The `effect` package is the heart of the Effect framework, providing robust prim
 
 ## Requirements
 
-- **TypeScript 5.4 or Newer:**
+- **TypeScript 5.9 or Newer:**
   Ensure you are using a compatible TypeScript version.
 
 - **Strict Type-Checking:**
