@@ -114,6 +114,15 @@ export interface PgClientConfig {
   readonly password?: Redacted.Redacted | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
+  /**
+   * Sets the server-side `statement_timeout` for every connection, cancelling
+   * any statement that runs longer than the given duration.
+   */
+  readonly statementTimeout?: Duration.Input | undefined
+  /**
+   * Client-side timeout for each query, enforced by `pg`.
+   */
+  readonly queryTimeout?: Duration.Input | undefined
 
   readonly stream?: (() => Duplex) | undefined
 
@@ -161,6 +170,12 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
         ...(options.stream ? { stream: options.stream } : {}),
         connectionTimeoutMillis: options.connectTimeout
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectTimeout))
+          : undefined,
+        statement_timeout: options.statementTimeout
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.statementTimeout))
+          : undefined,
+        query_timeout: options.queryTimeout
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.queryTimeout))
           : undefined,
         idleTimeoutMillis: options.idleTimeout
           ? Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout))
@@ -232,6 +247,12 @@ export const makeClient = (
         ssl: options.ssl,
         port: options.port,
         ...(options.stream ? { stream: options.stream } : {}),
+        statement_timeout: options.statementTimeout
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.statementTimeout))
+          : undefined,
+        query_timeout: options.queryTimeout
+          ? Duration.toMillis(Duration.fromInputUnsafe(options.queryTimeout))
+          : undefined,
         application_name: options.applicationName ?? "@effect/sql-pg",
         types: options.types
       })
