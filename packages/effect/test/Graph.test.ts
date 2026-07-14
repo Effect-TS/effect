@@ -3009,6 +3009,49 @@ describe("Graph", () => {
       expect(entries).toEqual([[0, "A"], [1, "B"], [2, "C"]])
     })
 
+    it("should limit DFS traversal by maxDepth", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        const d = Graph.addNode(mutable, "D")
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.addEdge(mutable, b, c, 2)
+        Graph.addEdge(mutable, c, d, 3)
+      })
+
+      const dfsIterator = Graph.dfs(graph, { start: [0], maxDepth: 1 })
+
+      expect(Array.from(Graph.indices(dfsIterator))).toEqual([0, 1])
+    })
+
+    it("should limit BFS traversal by maxDepth", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        const d = Graph.addNode(mutable, "D")
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.addEdge(mutable, a, c, 2)
+        Graph.addEdge(mutable, b, d, 3)
+      })
+
+      const bfsIterator = Graph.bfs(graph, { start: [0], maxDepth: 1 })
+
+      expect(Array.from(Graph.indices(bfsIterator))).toEqual([0, 1, 2])
+    })
+
+    it("should only include start nodes when maxDepth is zero", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, a, b, 1)
+      })
+
+      expect(Array.from(Graph.indices(Graph.dfs(graph, { start: [0], maxDepth: 0 })))).toEqual([0])
+      expect(Array.from(Graph.indices(Graph.bfs(graph, { start: [0], maxDepth: 0 })))).toEqual([0])
+    })
+
     it("should provide values() method for Topo iterator", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")
