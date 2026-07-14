@@ -60,6 +60,7 @@ import {
   type ListToolsResult,
   type McpError as McpErrorSchema,
   MethodNotFound,
+  ProtocolVersion,
   type ReadResourceResult,
   type ServerCapabilities,
   ServerNotificationRpcs,
@@ -72,13 +73,11 @@ import {
  */
 type McpError = typeof McpErrorSchema.Type
 
-const LATEST_PROTOCOL_VERSION = "2025-06-18"
-const SUPPORTED_PROTOCOL_VERSIONS = [
-  LATEST_PROTOCOL_VERSION,
-  "2025-03-26",
-  "2024-11-05",
-  "2024-10-07"
-]
+// Protocol versions the client understands, sourced from the shared MCP schema
+// (ordered newest-first) so the client and server negotiate against the same
+// set instead of drifting copies.
+const SUPPORTED_PROTOCOL_VERSIONS: ReadonlyArray<string> = ProtocolVersion.literals
+const LATEST_PROTOCOL_VERSION = ProtocolVersion.literals[0]
 const mcpSessionIdHeader = "mcp-session-id"
 const mcpProtocolVersionHeader = "mcp-protocol-version"
 
@@ -291,16 +290,6 @@ export const run: (options: {
     Effect.forkScoped
   )
 
-  if (handlers.roots?.changes) {
-    yield* handlers.roots.changes.pipe(
-      // `discard: true` since notifications never receive a response - the
-      // MCP server treats `notifications/*` methods as JSON-RPC
-      // notifications and never sends an `Exit` back for them.
-      Stream.runForEach(() => client["notifications/roots/list_changed"]({}, { discard: true })),
-      Effect.forkScoped
-    )
-  }
-
   const initResult = yield* client.initialize({
     protocolVersion: LATEST_PROTOCOL_VERSION,
     capabilities,
@@ -322,6 +311,21 @@ export const run: (options: {
   yield* client["notifications/initialized"]({}, { discard: true }).pipe(
     Effect.mapError((error) => new McpClientError({ message: "MCP notifications/initialized failed", cause: error }))
   )
+
+  // Only start forwarding roots change notifications once the
+  // initialize/initialized handshake has completed: per the MCP lifecycle the
+  // client must not send notifications other than `notifications/initialized`
+  // before the handshake finishes, and a `changes` stream that emits on
+  // subscription would otherwise race (or precede) it.
+  if (handlers.roots?.changes) {
+    yield* handlers.roots.changes.pipe(
+      // `discard: true` since notifications never receive a response - the
+      // MCP server treats `notifications/*` methods as JSON-RPC
+      // notifications and never sends an `Exit` back for them.
+      Stream.runForEach(() => client["notifications/roots/list_changed"]({}, { discard: true })),
+      Effect.forkScoped
+    )
+  }
 
   return McpClient.of({
     serverInfo: initResult.serverInfo,
@@ -623,8 +627,23 @@ const layerProtocolPairStdio = (options: {
   Layer.unwrap(Effect.gen(function*() {
     const handle = yield* ChildProcess.make(options.command, options.args ?? [], {
       env: options.env,
-      cwd: options.cwd
+      cwd: options.cwd,
+      // Merge `env` onto the parent environment rather than replacing it, so a
+      // caller-supplied `env` does not strip `PATH`/`HOME` and leave the server
+      // unable to locate its own runtime.
+      extendEnv: true
     })
+
+    // Continuously drain the child's stderr so a server that logs verbosely to
+    // stderr cannot deadlock on a full pipe; forward output to the debug log
+    // rather than discarding it silently.
+    const stderrDecoder = new TextDecoder()
+    yield* handle.stderr.pipe(
+      Stream.runForEach((chunk) => Effect.logDebug("MCP server stderr", stderrDecoder.decode(chunk, { stream: true }))),
+      Effect.ignore,
+      Effect.forkScoped
+    )
+
     const serialization = yield* RpcSerialization.RpcSerialization
     const parser = serialization.makeUnsafe()
 
@@ -791,7 +810,10 @@ const layerProtocolPairHttp = (options: {
       new RpcClientError({ reason: new RpcClientDefect({ message, cause }) })
 
     const requestHeaders = (): Headers.Input => {
-      let headers = baseHeaders
+      // The Streamable HTTP transport requires every request to advertise both
+      // JSON and SSE response support; forced on top of caller headers so it
+      // cannot be accidentally dropped.
+      let headers = Headers.set(baseHeaders, "accept", "application/json, text/event-stream")
       if (sessionId !== undefined) {
         headers = Headers.set(headers, mcpSessionIdHeader, sessionId)
       }

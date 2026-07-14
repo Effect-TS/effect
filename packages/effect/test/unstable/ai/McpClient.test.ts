@@ -229,7 +229,7 @@ describe("McpClient", () => {
 
       assert.strictEqual(client.serverInfo.name, "TestServer")
       assert.strictEqual(client.serverInfo.version, "1.0.0")
-      assert.strictEqual(client.protocolVersion, "2025-06-18")
+      assert.strictEqual(client.protocolVersion, "2025-11-25")
       assert.isTrue(Option.isNone(client.instructions))
     }).pipe(Effect.scoped))
 
@@ -505,7 +505,7 @@ describe("McpClient (HTTP transport)", () => {
       const client = yield* makeHttpTestClient()
 
       assert.strictEqual(client.serverInfo.name, "TestServer")
-      assert.strictEqual(client.protocolVersion, "2025-06-18")
+      assert.strictEqual(client.protocolVersion, "2025-11-25")
 
       const read = yield* McpClient.readResource({ uri: "file:///echo.txt" }).pipe(
         Effect.provideService(McpClient.McpClient, client)
