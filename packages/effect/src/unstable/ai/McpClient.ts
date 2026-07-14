@@ -871,6 +871,28 @@ const layerProtocolPairHttp = (options: {
       }
     }
 
+    // The negotiated protocol version is authoritative in the `initialize`
+    // result body; a spec-compliant server is only required to advertise it
+    // there (plus an optional response header), so capture it from the body and
+    // echo it on every subsequent request per the Streamable HTTP spec, rather
+    // than relying on the server to also send it back as a response header.
+    const captureNegotiatedVersion = (
+      responses: ReadonlyArray<RpcMessage.FromServerEncoded | RpcMessage.FromClientEncoded>
+    ): void => {
+      for (const message of responses) {
+        if (
+          message._tag === "Exit" &&
+          message.exit._tag === "Success" &&
+          typeof message.exit.value === "object" &&
+          message.exit.value !== null &&
+          typeof (message.exit.value as { protocolVersion?: unknown }).protocolVersion === "string"
+        ) {
+          negotiatedProtocolVersion = (message.exit.value as { protocolVersion: string }).protocolVersion
+          return
+        }
+      }
+    }
+
     const send = Effect.fnUntraced(function*(
       clientId: number,
       request: RpcMessage.FromClientEncoded,
@@ -879,6 +901,7 @@ const layerProtocolPairHttp = (options: {
       if (request._tag !== "Request") {
         return
       }
+      const isInitialize = request.tag === "initialize"
 
       const parser = serialization.makeUnsafe()
       const encoded = parser.encode(request)!
@@ -906,6 +929,9 @@ const layerProtocolPairHttp = (options: {
         if (!Array.isArray(responses)) {
           return yield* protocolDefect("Expected an array of responses", responses)
         }
+        if (isInitialize) {
+          captureNegotiatedVersion(responses)
+        }
         let i = 0
         yield* Effect.whileLoop({
           while: () => i < responses.length,
@@ -922,6 +948,9 @@ const layerProtocolPairHttp = (options: {
         }).pipe(
           Effect.flatMap((responses) => {
             if (responses.length === 0) return Effect.void
+            if (isInitialize) {
+              captureNegotiatedVersion(responses)
+            }
             let i = 0
             return Effect.whileLoop({
               while: () => i < responses.length,
