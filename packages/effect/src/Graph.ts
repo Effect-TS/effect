@@ -4649,6 +4649,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
 export interface SearchConfig {
   readonly start?: Array<NodeIndex>
   readonly direction?: Direction
+  readonly maxDepth?: number
 }
 
 /**
@@ -4658,7 +4659,8 @@ export interface SearchConfig {
  * **Details**
  *
  * If no start nodes are supplied, the iterator is empty. The `direction` option
- * chooses whether to follow outgoing or incoming edges. Throws a `GraphError`
+ * chooses whether to follow outgoing or incoming edges. The `maxDepth` option
+ * limits traversal by edge distance from the start nodes. Throws a `GraphError`
  * if any configured start node does not exist.
  *
  * **Example** (Traversing depth-first)
@@ -4702,6 +4704,7 @@ export const dfs: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const maxDepth = config.maxDepth ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -4712,12 +4715,12 @@ export const dfs: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const stack = [...start]
+      const stack: Array<readonly [NodeIndex, number]> = start.map((node) => [node, 0])
       const discovered = new Set<NodeIndex>()
 
       const nextMapped = () => {
         while (stack.length > 0) {
-          const current = stack.pop()!
+          const [current, depth] = stack.pop()!
 
           if (discovered.has(current)) {
             continue
@@ -4730,11 +4733,13 @@ export const dfs: {
             continue
           }
 
-          const neighbors = getTraversalNeighbors(graph, current, direction)
-          for (let i = neighbors.length - 1; i >= 0; i--) {
-            const neighbor = neighbors[i]
-            if (!discovered.has(neighbor)) {
-              stack.push(neighbor)
+          if (depth < maxDepth) {
+            const neighbors = getTraversalNeighbors(graph, current, direction)
+            for (let i = neighbors.length - 1; i >= 0; i--) {
+              const neighbor = neighbors[i]
+              if (!discovered.has(neighbor)) {
+                stack.push([neighbor, depth + 1])
+              }
             }
           }
 
@@ -4756,7 +4761,8 @@ export const dfs: {
  * **Details**
  *
  * If no start nodes are supplied, the iterator is empty. The `direction` option
- * chooses whether to follow outgoing or incoming edges. Throws a `GraphError`
+ * chooses whether to follow outgoing or incoming edges. The `maxDepth` option
+ * limits traversal by edge distance from the start nodes. Throws a `GraphError`
  * if any configured start node does not exist.
  *
  * **Example** (Traversing breadth-first)
@@ -4800,6 +4806,7 @@ export const bfs: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const maxDepth = config.maxDepth ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -4810,20 +4817,22 @@ export const bfs: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const queue = [...start]
+      const queue: Array<readonly [NodeIndex, number]> = start.map((node) => [node, 0])
       const discovered = new Set<NodeIndex>()
 
       const nextMapped = () => {
         while (queue.length > 0) {
-          const current = queue.shift()!
+          const [current, depth] = queue.shift()!
 
           if (!discovered.has(current)) {
             discovered.add(current)
 
-            const neighbors = getTraversalNeighbors(graph, current, direction)
-            for (const neighbor of neighbors) {
-              if (!discovered.has(neighbor)) {
-                queue.push(neighbor)
+            if (depth < maxDepth) {
+              const neighbors = getTraversalNeighbors(graph, current, direction)
+              for (const neighbor of neighbors) {
+                if (!discovered.has(neighbor)) {
+                  queue.push([neighbor, depth + 1])
+                }
               }
             }
 
