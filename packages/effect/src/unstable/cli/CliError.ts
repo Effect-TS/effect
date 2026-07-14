@@ -365,6 +365,9 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
     if (this.kind === "argument") {
       return `Invalid value for argument <${this.option}>: "${this.value}". Expected: ${this.expected}`
     }
+    if (this.value.length === 0) {
+      return `Missing value for flag --${this.option}. Expected: ${this.expected}`
+    }
     return `Invalid value for flag --${this.option}: "${this.value}". Expected: ${this.expected}`
   }
 }

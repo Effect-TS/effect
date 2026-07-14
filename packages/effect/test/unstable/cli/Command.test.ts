@@ -116,6 +116,25 @@ describe("Command", () => {
   })
 
   describe("run", () => {
+    it.effect("should reject --completions without a shell", () =>
+      Effect.gen(function*() {
+        let invoked = false
+        const command = Command.make("demo", {}, () =>
+          Effect.sync(() => {
+            invoked = true
+          }))
+
+        yield* Command.runWith(command, { version: "1.0.0" })(["--completions"]).pipe(Effect.ignore)
+
+        const stderr = yield* TestConsole.errorLines
+        assert.isFalse(invoked)
+        assert.isTrue(
+          stderr.some((line) =>
+            String(line).includes("Missing value for flag --completions. Expected: bash | zsh | fish | sh")
+          )
+        )
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should execute handler with parsed config", () =>
       Effect.gen(function*() {
         const path = yield* Path.Path
