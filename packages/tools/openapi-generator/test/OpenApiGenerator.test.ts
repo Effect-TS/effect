@@ -379,12 +379,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): TestClient => {
+): TestClient<E, R> => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
       Effect.orElseSucceed(response.json, () => "Unexpected status code"),
@@ -399,9 +399,13 @@ export const make = (
           }),
         ),
     )
-  const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
-    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  const withResponse = <Config extends OperationConfig, A, E2, R2>(config: Config | undefined) => (
+    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E2, R2>,
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
+    Config extends { readonly includeResponse: true } ? [A, HttpClientResponse.HttpClientResponse] : A,
+    E | E2,
+    R | R2
+  > => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -437,9 +441,9 @@ export const make = (
   }
 }
 
-export interface TestClient {
-  readonly httpClient: HttpClient.HttpClient
-  readonly "getUser": <Config extends OperationConfig>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config>, HttpClientError.HttpClientError | SchemaError>
+export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
+  readonly "getUser": <Config extends OperationConfig>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<typeof GetUser200.Type, Config>, E | SchemaError, R>
 }
 
 export interface TestClientError<Tag extends string, E> {
@@ -518,7 +522,7 @@ export const TestClientError = <Tag extends string, E>(
         },
         [
           `import * as Sse from "effect/unstable/encoding/Sse"`,
-          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry, typeof StreamEvents200Sse.DecodingServices>`,
+          `readonly "streamEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof StreamEvents200Sse.Type }, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry, R | typeof StreamEvents200Sse.DecodingServices>`,
           `"streamEventsSse": () => HttpClientRequest.get(\`/events\`).pipe(`,
           `sseRequest(StreamEvents200Sse)`,
           `schema: Schema.ConstraintDecoder<Type, DecodingServices>`
@@ -678,12 +682,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): TestClient => {
+): TestClient<E, R> => {
   const unexpectedStatus = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.flatMap(
       Effect.orElseSucceed(response.json, () => "Unexpected status code"),
@@ -698,9 +702,13 @@ export const make = (
           }),
         ),
     )
-  const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
-    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  const withResponse = <Config extends OperationConfig, A, E2, R2>(config: Config | undefined) => (
+    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E2, R2>,
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
+    Config extends { readonly includeResponse: true } ? [A, HttpClientResponse.HttpClientResponse] : A,
+    E | E2,
+    R | R2
+  > => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -756,9 +764,9 @@ export const make = (
   }
 }
 
-export interface TestClient {
-  readonly httpClient: HttpClient.HttpClient
-  readonly "getUser": <Config extends OperationConfig>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<GetUser200, Config>, HttpClientError.HttpClientError>
+export interface TestClient<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
+  readonly "getUser": <Config extends OperationConfig>(id: string, options: { readonly config?: Config | undefined } | undefined) => Effect.Effect<WithOptionalResponse<GetUser200, Config>, E, R>
 }
 
 export interface TestClientError<Tag extends string, E> {

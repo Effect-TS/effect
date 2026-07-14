@@ -122,7 +122,7 @@ describe("openapigen CLI", () => {
       const result = yield* runCli(["--spec", spec, "--name", "CliClient"])
 
       assert.isTrue(Exit.isSuccess(result.exit))
-      assert.include(result.stdout, "export const make = (")
+      assert.include(result.stdout, "export const make = <E, R>(")
       assert.include(result.stderr, "WARNING [cookie-parameter-dropped]")
       assert.include(result.stderr, "cookie-parameter-dropped")
       assert.notInclude(result.stdout, "cookie-parameter-dropped")
@@ -135,7 +135,7 @@ describe("openapigen CLI", () => {
       const result = yield* runCliProcess(["--spec", spec, "--name", "CliClient"])
 
       assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(0))
-      assert.include(result.stdout, "export const make = (")
+      assert.include(result.stdout, "export const make = <E, R>(")
       assert.notInclude(result.stdout, "WARNING [")
       assert.notInclude(result.stdout, "cookie-parameter-dropped")
       assert.include(

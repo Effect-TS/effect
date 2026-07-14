@@ -88,8 +88,8 @@ export const makeTransformerSchema = () => {
         methods.push(operationToBinaryMethod(name, op))
       }
     }
-    return `export interface ${name} {
-  readonly httpClient: HttpClient.HttpClient
+    return `export interface ${name}<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   ${methods.join("\n  ")}
 }
 
@@ -129,7 +129,7 @@ ${clientErrorSource(name)}`
         .map((schema) => `typeof ${schema}.Type`)
         .join(" | ")
     }
-    const errors = ["HttpClientError.HttpClientError", "SchemaError"]
+    const errors = ["E", "SchemaError"]
     if (operation.errorSchemas.size > 0) {
       Utils.spreadElementsInto(
         Array.from(operation.errorSchemas.values()).map(
@@ -143,7 +143,7 @@ ${clientErrorSource(name)}`
     const methodKey = `readonly "${operation.id}"`
     const generic = `<Config extends OperationConfig>`
     const parameters = args.join(", ")
-    const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
+    const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}, R>`
     return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
   }
 
@@ -174,7 +174,7 @@ ${clientErrorSource(name)}`
     const methodKey = `readonly "${operation.id}Sse"`
     const parameters = args.join(", ")
     const returnType =
-      `Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof ${operation.sseSchema}.Type }, HttpClientError.HttpClientError | SchemaError | Sse.Retry, typeof ${operation.sseSchema}.DecodingServices>`
+      `Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: typeof ${operation.sseSchema}.Type }, E | HttpClientError.HttpClientError | SchemaError | Sse.Retry, R | typeof ${operation.sseSchema}.DecodingServices>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -204,7 +204,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Stream"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -255,12 +255,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): ${name} => {
+): ${name}<E, R> => {
   ${helpers.join("\n  ")}
   const decodeSuccess =
     <Schema extends ${importName}.Constraint>(schema: Schema) =>
@@ -499,8 +499,8 @@ export const makeTransformerTs = () => {
         methods.push(operationToBinaryMethod(op))
       }
     }
-    return `export interface ${name} {
-  readonly httpClient: HttpClient.HttpClient
+    return `export interface ${name}<E = HttpClientError.HttpClientError, R = never> {
+  readonly httpClient: HttpClient.HttpClient.With<E, R>
   ${methods.join("\n  ")}
 }
 
@@ -537,7 +537,7 @@ ${clientErrorSource(name)}`
       success = Array.from(operation.successSchemas.values()).join(" | ")
     }
 
-    const errors = ["HttpClientError.HttpClientError"]
+    const errors = ["E"]
     if (operation.errorSchemas.size > 0) {
       for (const schema of operation.errorSchemas.values()) {
         errors.push(`${name}Error<"${schema}", ${schema}>`)
@@ -548,7 +548,7 @@ ${clientErrorSource(name)}`
     const methodKey = `readonly "${operation.id}"`
     const generic = `<Config extends OperationConfig>`
     const parameters = args.join(", ")
-    const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}>`
+    const returnType = `Effect.Effect<WithOptionalResponse<${success}, Config>, ${errors.join(" | ")}, R>`
     return `${jsdoc}${methodKey}: ${generic}(${parameters}) => ${returnType}`
   }
 
@@ -608,7 +608,7 @@ ${clientErrorSource(name)}`
     const jsdoc = Utils.toComment(operation.description)
     const methodKey = `readonly "${operation.id}Stream"`
     const parameters = args.join(", ")
-    const returnType = `Stream.Stream<Uint8Array, HttpClientError.HttpClientError>`
+    const returnType = `Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -659,12 +659,12 @@ export type WithOptionalResponse<A, Config extends OperationConfig> = Config ext
   readonly includeResponse: true
 } ? [A, HttpClientResponse.HttpClientResponse] : A
 
-export const make = (
-  httpClient: HttpClient.HttpClient,
+export const make = <E, R>(
+  httpClient: HttpClient.HttpClient.With<E, R>,
   options: {
-    readonly transformClient?: ((client: HttpClient.HttpClient) => Effect.Effect<HttpClient.HttpClient>) | undefined
+    readonly transformClient?: ((client: HttpClient.HttpClient.With<E, R>) => Effect.Effect<HttpClient.HttpClient.With<E, R>>) | undefined
   } = {}
-): ${name} => {
+): ${name}<E, R> => {
   ${helpers.join("\n  ")}
   const decodeSuccess = <A>(response: HttpClientResponse.HttpClientResponse) =>
     response.json as Effect.Effect<A, HttpClientError.HttpClientError>
@@ -895,9 +895,13 @@ const commonSource = `const unexpectedStatus = (response: HttpClientResponse.Htt
           }),
         ),
     )
-  const withResponse = <Config extends OperationConfig>(config: Config | undefined) => (
-    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<any, any>,
-  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> => {
+  const withResponse = <Config extends OperationConfig, A, E2, R2>(config: Config | undefined) => (
+    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E2, R2>,
+  ): (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<
+    Config extends { readonly includeResponse: true } ? [A, HttpClientResponse.HttpClientResponse] : A,
+    E | E2,
+    R | R2
+  > => {
     const withOptionalResponse = (
       config?.includeResponse
         ? (response: HttpClientResponse.HttpClientResponse) => Effect.map(f(response), (a) => [a, response])
@@ -923,8 +927,8 @@ const sseRequestSource = (_importName: string) =>
       request: HttpClientRequest.HttpClientRequest
     ): Stream.Stream<
       { readonly event: string; readonly id: string | undefined; readonly data: Type },
-      HttpClientError.HttpClientError | SchemaError | Sse.Retry,
-      DecodingServices
+      E | HttpClientError.HttpClientError | SchemaError | Sse.Retry,
+      R | DecodingServices
     > =>
       HttpClient.filterStatusOk(httpClient).execute(request).pipe(
         Effect.map((response) => response.stream),
@@ -934,7 +938,7 @@ const sseRequestSource = (_importName: string) =>
       )`
 
 const binaryRequestSource =
-  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
+  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R> =>
     HttpClient.filterStatusOk(httpClient).execute(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap
@@ -953,7 +957,7 @@ const sseRequestSourceTs =
     )`
 
 const binaryRequestSourceTs =
-  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, HttpClientError.HttpClientError> =>
+  `const binaryRequest = (request: HttpClientRequest.HttpClientRequest): Stream.Stream<Uint8Array, E | HttpClientError.HttpClientError, R> =>
     HttpClient.filterStatusOk(httpClient).execute(request).pipe(
       Effect.map((response) => response.stream),
       Stream.unwrap
