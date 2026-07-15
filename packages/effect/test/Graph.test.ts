@@ -393,6 +393,21 @@ describe("Graph", () => {
       expect(graphEdgeKeys(result)).toEqual(new Set(["B->C"]))
     })
 
+    it("neighborhood can ignore edge direction", () => {
+      const graph = Graph.directed<SetNode, string>((mutable) => {
+        const a = Graph.addNode(mutable, { id: "A", label: "A" })
+        const b = Graph.addNode(mutable, { id: "B", label: "B" })
+        const c = Graph.addNode(mutable, { id: "C", label: "C" })
+        Graph.addEdge(mutable, a, b, "A-B")
+        Graph.addEdge(mutable, a, c, "A-C")
+      })
+
+      const result = Graph.neighborhood(graph, 1, { radius: 2, direction: "undirected" })
+
+      expect(graphNodeIds(result)).toEqual(new Set(["A", "B", "C"]))
+      expect(graphEdgeKeys(result)).toEqual(new Set(["A->B", "A->C"]))
+    })
+
     it("sum keeps equal nodes disjoint", () => {
       const left = Graph.directed<string, string>((mutable) => {
         const a = Graph.addNode(mutable, "A")

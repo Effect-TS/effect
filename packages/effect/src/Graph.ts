@@ -1201,7 +1201,7 @@ export const complement: {
  * @category models
  * @since 4.0.0
  */
-export type NeighborhoodDirection = "outgoing" | "incoming" | "both"
+export type NeighborhoodDirection = "outgoing" | "incoming" | "undirected"
 
 /**
  * Returns the induced subgraph containing nodes within a radius of a node.
@@ -1211,7 +1211,8 @@ export type NeighborhoodDirection = "outgoing" | "incoming" | "both"
  * The `radius` option is the maximum edge distance from `nodeIndex` and
  * defaults to `1`. The `direction` option controls directed graph traversal and
  * defaults to `"outgoing"`. The result has the same graph kind as `self` and
- * keeps all original edges whose endpoints are both reached.
+ * keeps all original edges whose endpoints are both reached. `"undirected"`
+ * ignores edge direction while finding reachable nodes.
  *
  * **Example** (Getting a local neighborhood)
  *
@@ -1253,14 +1254,28 @@ export const neighborhood: {
   const direction = options?.direction ?? "outgoing"
   const reached = new Set<NodeIndex>()
 
-  if (direction === "outgoing" || direction === "both") {
-    for (const index of indices(bfs(self, { start: [nodeIndex], direction: "outgoing", maxDepth: radius }))) {
-      reached.add(index)
+  if (direction === "undirected") {
+    if (!hasNode(self, nodeIndex)) {
+      throw missingNode(nodeIndex)
     }
-  }
-
-  if (direction === "incoming" || direction === "both") {
-    for (const index of indices(bfs(self, { start: [nodeIndex], direction: "incoming", maxDepth: radius }))) {
+    const queue: Array<readonly [NodeIndex, number]> = [[nodeIndex, 0]]
+    reached.add(nodeIndex)
+    for (let i = 0; i < queue.length; i++) {
+      const [current, depth] = queue[i]
+      if (depth >= radius) {
+        continue
+      }
+      for (const traversalDirection of ["outgoing", "incoming"] as const) {
+        for (const neighbor of getTraversalNeighbors(self, current, traversalDirection)) {
+          if (!reached.has(neighbor)) {
+            reached.add(neighbor)
+            queue.push([neighbor, depth + 1])
+          }
+        }
+      }
+    }
+  } else {
+    for (const index of indices(bfs(self, { start: [nodeIndex], direction, maxDepth: radius }))) {
       reached.add(index)
     }
   }

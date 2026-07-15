@@ -115,7 +115,7 @@ describe("Graph", () => {
 
   it("neighborhood", () => {
     expect(Graph.neighborhood(directed, 0)).type.toBe<Graph.DirectedGraph<string, number>>()
-    expect(Graph.neighborhood(directed, 0, { radius: 2, direction: "both" })).type.toBe<
+    expect(Graph.neighborhood(directed, 0, { radius: 2, direction: "undirected" })).type.toBe<
       Graph.DirectedGraph<string, number>
     >()
     expect(pipe(undirected, Graph.neighborhood(0, { radius: 2, direction: "outgoing" }))).type.toBe<
