@@ -140,4 +140,28 @@ describe("HttpClient", () => {
       >()
     })
   })
+
+  describe("withTracerHeadersFilter", () => {
+    it("should support data-last and data-first usage on all three combinators", () => {
+      const predicate = (name: string) => name === "x-request-id"
+
+      const requestDataLast = client.pipe(HttpClient.withTracerRequestHeadersFilter(predicate))
+      expect(requestDataLast).type.toBe<HttpClient.HttpClient.With<HttpClientError.HttpClientError>>()
+
+      const requestDataFirst = HttpClient.withTracerRequestHeadersFilter(client, predicate)
+      expect(requestDataFirst).type.toBe<HttpClient.HttpClient.With<HttpClientError.HttpClientError>>()
+
+      const responseDataLast = client.pipe(HttpClient.withTracerResponseHeadersFilter(predicate))
+      expect(responseDataLast).type.toBe<HttpClient.HttpClient.With<HttpClientError.HttpClientError>>()
+
+      const responseDataFirst = HttpClient.withTracerResponseHeadersFilter(client, predicate)
+      expect(responseDataFirst).type.toBe<HttpClient.HttpClient.With<HttpClientError.HttpClientError>>()
+
+      const combinedDataLast = client.pipe(HttpClient.withTracerHeadersFilter(predicate))
+      expect(combinedDataLast).type.toBe<HttpClient.HttpClient.With<HttpClientError.HttpClientError>>()
+
+      const combinedDataFirst = HttpClient.withTracerHeadersFilter(client, predicate)
+      expect(combinedDataFirst).type.toBe<HttpClient.HttpClient.With<HttpClientError.HttpClientError>>()
+    })
+  })
 })

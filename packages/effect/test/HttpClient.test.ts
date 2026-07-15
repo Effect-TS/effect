@@ -1,5 +1,6 @@
 import { expect, it } from "@effect/vitest"
-import { Context, Effect, Layer, Schema, Stream, Struct } from "effect"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Context, Effect, Layer, Option, Ref, Schema, Stream, Struct, type Tracer } from "effect"
 import { TestClock } from "effect/testing"
 import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
@@ -121,6 +122,133 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
       })))
   })
 })
+
+it.effect("captures all request and response headers as span attributes by default", () =>
+  Effect.gen(function*() {
+    const spanRef = yield* Ref.make<Option.Option<Tracer.Span>>(Option.none())
+
+    const client = HttpClient.make((request) =>
+      Effect.gen(function*() {
+        const span = yield* Effect.orDie(Effect.currentSpan)
+        yield* Ref.set(spanRef, Option.some(span))
+        return HttpClientResponse.fromWeb(
+          request,
+          new Response(null, { status: 200, headers: { "X-Request-Id": "resp-abc" } })
+        )
+      })
+    )
+
+    yield* client.execute(
+      HttpClientRequest.get("http://test/").pipe(
+        HttpClientRequest.setHeaders({ "X-Request-Id": "req-abc" })
+      )
+    ).pipe(Effect.ignore)
+
+    const span = Option.getOrThrow(yield* Ref.get(spanRef))
+    deepStrictEqual(span.attributes.get("http.request.header.x-request-id"), "req-abc")
+    deepStrictEqual(span.attributes.get("http.response.header.x-request-id"), "resp-abc")
+  }))
+
+it.effect("withTracerRequestHeadersFilter only captures matching request headers as span attributes", () =>
+  Effect.gen(function*() {
+    const spanRef = yield* Ref.make<Option.Option<Tracer.Span>>(Option.none())
+
+    const client = HttpClient.make((request) =>
+      Effect.gen(function*() {
+        const span = yield* Effect.orDie(Effect.currentSpan)
+        yield* Ref.set(spanRef, Option.some(span))
+        return HttpClientResponse.fromWeb(request, new Response(null, { status: 200 }))
+      })
+    ).pipe(
+      HttpClient.withTracerRequestHeadersFilter((name) => name === "x-request-id")
+    )
+
+    yield* client.execute(
+      HttpClientRequest.get("http://test/").pipe(
+        HttpClientRequest.setHeaders({
+          "x-request-id": "abc",
+          "content-type": "application/json",
+          "accept": "application/json"
+        })
+      )
+    ).pipe(Effect.ignore)
+
+    const span = Option.getOrThrow(yield* Ref.get(spanRef))
+    deepStrictEqual(span.attributes.get("http.request.header.x-request-id"), "abc")
+    strictEqual(span.attributes.get("http.request.header.content-type"), undefined)
+    strictEqual(span.attributes.get("http.request.header.accept"), undefined)
+  }))
+
+it.effect("withTracerResponseHeadersFilter only captures matching response headers as span attributes", () =>
+  Effect.gen(function*() {
+    const spanRef = yield* Ref.make<Option.Option<Tracer.Span>>(Option.none())
+
+    const client = HttpClient.make((request) =>
+      Effect.gen(function*() {
+        const span = yield* Effect.orDie(Effect.currentSpan)
+        yield* Ref.set(spanRef, Option.some(span))
+        return HttpClientResponse.fromWeb(
+          request,
+          new Response(null, {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              "x-request-id": "resp-123",
+              "cf-ray": "abc123"
+            }
+          })
+        )
+      })
+    ).pipe(
+      HttpClient.withTracerResponseHeadersFilter((name) => name === "x-request-id")
+    )
+
+    yield* client.get("http://test/").pipe(Effect.ignore)
+
+    const span = Option.getOrThrow(yield* Ref.get(spanRef))
+    deepStrictEqual(span.attributes.get("http.response.header.x-request-id"), "resp-123")
+    strictEqual(span.attributes.get("http.response.header.content-type"), undefined)
+    strictEqual(span.attributes.get("http.response.header.cf-ray"), undefined)
+  }))
+
+it.effect("withTracerHeadersFilter applies the same predicate to both request and response headers", () =>
+  Effect.gen(function*() {
+    const spanRef = yield* Ref.make<Option.Option<Tracer.Span>>(Option.none())
+
+    const client = HttpClient.make((request) =>
+      Effect.gen(function*() {
+        const span = yield* Effect.orDie(Effect.currentSpan)
+        yield* Ref.set(spanRef, Option.some(span))
+        return HttpClientResponse.fromWeb(
+          request,
+          new Response(null, {
+            status: 200,
+            headers: {
+              "x-request-id": "resp-abc",
+              "cf-ray": "ignored"
+            }
+          })
+        )
+      })
+    ).pipe(
+      HttpClient.withTracerHeadersFilter((name) => name === "x-request-id")
+    )
+
+    yield* client.execute(
+      HttpClientRequest.get("http://test/").pipe(
+        HttpClientRequest.setHeaders({
+          "x-request-id": "req-abc",
+          "content-type": "application/json"
+        })
+      )
+    ).pipe(Effect.ignore)
+
+    const span = Option.getOrThrow(yield* Ref.get(spanRef))
+    deepStrictEqual(span.attributes.get("http.request.header.x-request-id"), "req-abc")
+    strictEqual(span.attributes.get("http.request.header.content-type"), undefined)
+    deepStrictEqual(span.attributes.get("http.response.header.x-request-id"), "resp-abc")
+    strictEqual(span.attributes.get("http.response.header.cf-ray"), undefined)
+  }))
 
 const flakyTest = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
