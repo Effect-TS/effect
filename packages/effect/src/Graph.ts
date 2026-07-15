@@ -15,6 +15,7 @@ import { dual } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { NodeInspectSymbol } from "./Inspectable.ts"
+import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
@@ -372,31 +373,54 @@ const missingNode = (node: number) => new GraphError({ message: `Node ${node} do
  */
 export const isGraph = (u: unknown): u is Graph<unknown, unknown> => hasProperty(u, TypeId)
 
-/** @internal */
-const make = <T extends Kind>(type: T) =>
-<N, E>(
-  mutate?: (mutable: MutableGraph<N, E, T>) => void
-): Graph<N, E, T> => {
-  const graph: Mutable<Graph<N, E, T>> = Object.create(ProtoGraph)
+/**
+ * Creates a graph constructor for the specified graph kind.
+ *
+ * **When to use**
+ *
+ * Use when the graph kind is selected dynamically. Prefer `directed` or
+ * `undirected` when the kind is known statically.
+ *
+ * **Example** (Constructing by kind)
+ *
+ * ```ts
+ * import { Graph } from "effect"
+ *
+ * const makeGraph = Graph.make("directed")
+ * const graph = makeGraph<string, number>((mutable) => {
+ *   Graph.addNode(mutable, "A")
+ * })
+ *
+ * console.log(graph.type) // "directed"
+ * ```
+ *
+ * @see {@link directed} for constructing a directed graph directly
+ * @see {@link undirected} for constructing an undirected graph directly
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make =
+  <T extends Kind>(type: T) => <N, E>(mutate?: (mutable: MutableGraph<N, E, T>) => void): Graph<N, E, T> => {
+    const graph: Mutable<Graph<N, E, T> | MutableGraph<N, E, T>> = Object.create(ProtoGraph)
+    graph.type = type
+    graph.nodes = new Map()
+    graph.edges = new Map()
+    graph.adjacency = new Map()
+    graph.reverseAdjacency = new Map()
+    graph.nextNodeIndex = 0
+    graph.nextEdgeIndex = 0
+    graph.acyclic = Option.some(true)
 
-  graph.type = type
-  graph.nodes = new Map()
-  graph.edges = new Map()
-  graph.adjacency = new Map()
-  graph.reverseAdjacency = new Map()
-  graph.nextNodeIndex = 0
-  graph.nextEdgeIndex = 0
-  graph.acyclic = Option.some(true)
-  graph.mutable = false
+    if (mutate === undefined) {
+      graph.mutable = false
+      return graph as Graph<N, E, T>
+    }
 
-  if (mutate !== undefined) {
-    const mutable = beginMutation(graph)
+    graph.mutable = true
+    const mutable = graph as MutableGraph<N, E, T>
     mutate(mutable)
     return endMutation(mutable)
   }
-
-  return graph
-}
 
 /**
  * Creates a directed graph, optionally with initial mutations.
@@ -419,9 +443,9 @@ const make = <T extends Kind>(type: T) =>
  * @category constructors
  * @since 3.18.0
  */
-export const directed = <N, E>(
+export const directed: <N, E>(
   mutate?: (mutable: MutableDirectedGraph<N, E>) => void
-): DirectedGraph<N, E> => make("directed")(mutate)
+) => DirectedGraph<N, E> = make("directed")
 
 /**
  * Creates an undirected graph, optionally with initial mutations.
@@ -444,9 +468,9 @@ export const directed = <N, E>(
  * @category constructors
  * @since 3.18.0
  */
-export const undirected = <N, E>(
+export const undirected: <N, E>(
   mutate?: (mutable: MutableUndirectedGraph<N, E>) => void
-): UndirectedGraph<N, E> => make("undirected")(mutate)
+) => UndirectedGraph<N, E> = make("undirected")
 
 // =============================================================================
 // Scoped Mutable API
@@ -575,31 +599,95 @@ export const mutate: {
 // =============================================================================
 
 /** @internal */
-type NodeMaps<N> = {
-  readonly byId: Map<string, { readonly index: NodeIndex; readonly data: N }>
-  readonly byIndex: Map<NodeIndex, string>
+type NodeMaps<N, I> = {
+  readonly byIdentity: MutableHashMap.MutableHashMap<I, N>
+  readonly byIndex: Map<NodeIndex, I>
 }
 
 /** @internal */
-type EdgeIdentity<E> = { readonly sourceId: string; readonly targetId: string; readonly data: E }
+class EdgeIdentity<NI, EI> implements Equal.Equal {
+  readonly type: Kind
+  readonly source: NI
+  readonly target: NI
+  readonly identity: EI
 
-/** @internal */
-const buildNodeMaps = <N, E, T extends Kind>(graph: Graph<N, E, T>, nodeId: (node: N) => string): NodeMaps<N> => {
-  const byId = new Map<string, { readonly index: NodeIndex; readonly data: N }>()
-  const byIndex = new Map<NodeIndex, string>()
-
-  for (const [index, data] of graph.nodes) {
-    const id = nodeId(data)
-    byId.set(id, { index, data })
-    byIndex.set(index, id)
+  constructor(
+    type: Kind,
+    source: NI,
+    target: NI,
+    identity: EI
+  ) {
+    this.type = type
+    this.source = source
+    this.target = target
+    this.identity = identity
   }
 
-  return { byId, byIndex }
+  [Equal.symbol](that: Equal.Equal): boolean {
+    if (!(that instanceof EdgeIdentity) || this.type !== that.type || !Equal.equals(this.identity, that.identity)) {
+      return false
+    }
+
+    if (this.type === "directed") {
+      return Equal.equals(this.source, that.source) && Equal.equals(this.target, that.target)
+    }
+
+    return (
+      (Equal.equals(this.source, that.source) && Equal.equals(this.target, that.target)) ||
+      (Equal.equals(this.source, that.target) && Equal.equals(this.target, that.source))
+    )
+  }
+
+  [Hash.symbol](): number {
+    const hash = Hash.hash(this.identity)
+    return this.type === "directed"
+      ? Hash.combine(Hash.hash(this.target))(Hash.combine(Hash.hash(this.source))(hash))
+      : Hash.optimize(hash ^ (Hash.hash(this.source) + Hash.hash(this.target)))
+  }
+}
+
+/**
+ * Configures node and edge identity for graph set operations.
+ *
+ * **Details**
+ *
+ * Both functions default to using the complete node or edge data. Edge identity
+ * also includes the identities of its endpoint nodes and the graph kind.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface IdentityOptions<N, E, NI = N, EI = E> {
+  readonly nodeIdentity?: (node: N) => NI
+  readonly edgeIdentity?: (edge: E) => EI
 }
 
 /** @internal */
-const edgeKey = (type: Kind, sourceId: string, targetId: string): string =>
-  type === "undirected" && sourceId > targetId ? `${targetId}\0${sourceId}` : `${sourceId}\0${targetId}`
+const buildNodeMaps = <N, E, T extends Kind, I>(
+  graph: Graph<N, E, T>,
+  identity: (node: N) => I
+): NodeMaps<N, I> => {
+  const byIdentity = MutableHashMap.empty<I, N>()
+  const byIndex = new Map<NodeIndex, I>()
+
+  for (const [index, data] of graph.nodes) {
+    const nodeIdentity = identity(data)
+    MutableHashMap.set(byIdentity, nodeIdentity, data)
+    byIndex.set(index, nodeIdentity)
+  }
+
+  return { byIdentity, byIndex }
+}
+
+/** @internal */
+const nodeIdentityAt = <N, I>(maps: NodeMaps<N, I>, index: NodeIndex): I => maps.byIndex.get(index) as I
+
+/** @internal */
+const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>): void => {
+  if (self.type !== that.type) {
+    throw new GraphError({ message: `Cannot combine ${self.type} and ${that.type} graphs` })
+  }
+}
 
 /**
  * Returns the union of two graphs, merging nodes by identity.
@@ -607,9 +695,16 @@ const edgeKey = (type: Kind, sourceId: string, targetId: string): string =>
  * **Details**
  *
  * Nodes and edges present in both graphs use data from `that`. The result has
- * the same graph kind as `self`.
+ * the same graph kind as `self`. Throws a `GraphError` when the graph kinds do
+ * not match. `nodeIdentity` and `edgeIdentity` default to the complete node and
+ * edge data. Edge identity also includes the endpoint identities.
  *
  * `G1 ∪ G2 = {V1 ∪ V2, E1 ∪ E2}`
+ *
+ * **Gotchas**
+ *
+ * Nodes with equal identities in one input graph are coalesced. The last node
+ * supplies the data, and redirected edges can collapse or become self-loops.
  *
  * **Example** (Composing graphs)
  *
@@ -628,7 +723,9 @@ const edgeKey = (type: Kind, sourceId: string, targetId: string): string =>
  *   Graph.addEdge(mutable, b, c, "B-C")
  * })
  *
- * const result = Graph.compose(left, right, (node) => node.id)
+ * const result = Graph.compose(left, right, {
+ *   nodeIdentity: (node) => node.id
+ * })
  *
  * console.log(Graph.nodeCount(result)) // 3
  * console.log(Graph.edgeCount(result)) // 2
@@ -638,52 +735,60 @@ const edgeKey = (type: Kind, sourceId: string, targetId: string): string =>
  * @since 4.0.0
  */
 export const compose: {
-  <N, E, T extends Kind = "directed">(
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     that: Graph<N, E, T>,
-    nodeId: (node: N) => string
-  ): (self: Graph<N, E, T>) => Graph<N, E, T>
-  <N, E, T extends Kind = "directed">(
+    options?: IdentityOptions<N, E, NI, EI>
+  ): (self: Graph<N, E, NoInfer<T>>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     self: Graph<N, E, T>,
-    that: Graph<N, E, T>,
-    nodeId: (node: N) => string
+    that: Graph<N, E, NoInfer<T>>,
+    options?: IdentityOptions<N, E, NI, EI>
   ): Graph<N, E, T>
 } = dual(
-  3,
-  <N, E, T extends Kind>(self: Graph<N, E, T>, that: Graph<N, E, T>, nodeId: (node: N) => string): Graph<N, E, T> => {
-    const selfMaps = buildNodeMaps(self, nodeId)
-    const thatMaps = buildNodeMaps(that, nodeId)
-    const allNodeIds = new Set([...selfMaps.byId.keys(), ...thatMaps.byId.keys()])
-    const edgeMap = new Map<string, EdgeIdentity<E>>()
+  (args) => isGraph(args[0]) && isGraph(args[1]),
+  <N, E, T extends Kind, NI, EI>(
+    self: Graph<N, E, T>,
+    that: Graph<N, E, T>,
+    options?: IdentityOptions<N, E, NI, EI>
+  ): Graph<N, E, T> => {
+    assertSameKind(self, that)
+    const getNodeIdentity = options?.nodeIdentity ?? ((node: N) => node as unknown as NI)
+    const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
+    const selfMaps = buildNodeMaps(self, getNodeIdentity)
+    const thatMaps = buildNodeMaps(that, getNodeIdentity)
+    const nodes = MutableHashMap.empty<NI, N>()
+    const edges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+
+    for (const [identity, data] of selfMaps.byIdentity) {
+      MutableHashMap.set(nodes, identity, data)
+    }
+    for (const [identity, data] of thatMaps.byIdentity) {
+      MutableHashMap.set(nodes, identity, data)
+    }
 
     for (const edge of self.edges.values()) {
-      const sourceId = selfMaps.byIndex.get(edge.source)
-      const targetId = selfMaps.byIndex.get(edge.target)
-      if (sourceId !== undefined && targetId !== undefined) {
-        edgeMap.set(edgeKey(self.type, sourceId, targetId), { sourceId, targetId, data: edge.data })
-      }
+      const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
+      const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
+      const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+      MutableHashMap.set(edges, edgeIdentity, edge.data)
     }
 
     for (const edge of that.edges.values()) {
-      const sourceId = thatMaps.byIndex.get(edge.source)
-      const targetId = thatMaps.byIndex.get(edge.target)
-      if (sourceId !== undefined && targetId !== undefined) {
-        edgeMap.set(edgeKey(that.type, sourceId, targetId), { sourceId, targetId, data: edge.data })
-      }
+      const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
+      const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
+      const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+      MutableHashMap.set(edges, edgeIdentity, edge.data)
     }
 
-    return make(self.type)((mutable) => {
-      const newIndexMap = new Map<string, NodeIndex>()
-
-      for (const id of allNodeIds) {
-        const entry = thatMaps.byId.get(id) ?? selfMaps.byId.get(id)
-        if (entry !== undefined) {
-          newIndexMap.set(id, addNode(mutable, entry.data))
-        }
+    return make(self.type)<N, E>((mutable) => {
+      const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
+      for (const [identity, data] of nodes) {
+        MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
       }
 
-      for (const { sourceId, targetId, data } of edgeMap.values()) {
-        const sourceIndex = newIndexMap.get(sourceId)
-        const targetIndex = newIndexMap.get(targetId)
+      for (const [identity, data] of edges) {
+        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
+        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
         if (sourceIndex !== undefined && targetIndex !== undefined) {
           addEdge(mutable, sourceIndex, targetIndex, data)
         }
@@ -698,9 +803,16 @@ export const compose: {
  * **Details**
  *
  * Node data comes from `self`, and edge data comes from `that`. The result has
- * the same graph kind as `self`.
+ * the same graph kind as `self`. Throws a `GraphError` when the graph kinds do
+ * not match. `nodeIdentity` and `edgeIdentity` default to the complete node and
+ * edge data. Edge identity also includes the endpoint identities.
  *
  * `G1 ∩ G2 = {V1 ∩ V2, E1 ∩ E2}`
+ *
+ * **Gotchas**
+ *
+ * Nodes with equal identities in one input graph are coalesced. The last node
+ * supplies the data, and redirected edges can collapse or become self-loops.
  *
  * **Example** (Finding shared structure)
  *
@@ -710,16 +822,16 @@ export const compose: {
  * const left = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "left")
+ *   Graph.addEdge(mutable, a, b, "shared")
  * })
  *
  * const right = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "right")
+ *   Graph.addEdge(mutable, a, b, "shared")
  * })
  *
- * const result = Graph.intersection(left, right, (node) => node)
+ * const result = Graph.intersection(left, right)
  *
  * console.log(Graph.nodeCount(result)) // 2
  * console.log(Graph.edgeCount(result)) // 1
@@ -729,58 +841,63 @@ export const compose: {
  * @since 4.0.0
  */
 export const intersection: {
-  <N, E, T extends Kind = "directed">(
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     that: Graph<N, E, T>,
-    nodeId: (node: N) => string
-  ): (self: Graph<N, E, T>) => Graph<N, E, T>
-  <N, E, T extends Kind = "directed">(
+    options?: IdentityOptions<N, E, NI, EI>
+  ): (self: Graph<N, E, NoInfer<T>>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     self: Graph<N, E, T>,
-    that: Graph<N, E, T>,
-    nodeId: (node: N) => string
+    that: Graph<N, E, NoInfer<T>>,
+    options?: IdentityOptions<N, E, NI, EI>
   ): Graph<N, E, T>
-} = dual(3, <N, E, T extends Kind>(
+} = dual((args) => isGraph(args[0]) && isGraph(args[1]), <N, E, T extends Kind, NI, EI>(
   self: Graph<N, E, T>,
   that: Graph<N, E, T>,
-  nodeId: (node: N) => string
+  options?: IdentityOptions<N, E, NI, EI>
 ): Graph<N, E, T> => {
-  const selfMaps = buildNodeMaps(self, nodeId)
-  const thatMaps = buildNodeMaps(that, nodeId)
-  const commonNodeIds = [...selfMaps.byId.keys()].filter((id) => thatMaps.byId.has(id))
-  const commonNodeIdSet = new Set(commonNodeIds)
-  const selfEdgeKeys = new Set<string>()
+  assertSameKind(self, that)
+  const getNodeIdentity = options?.nodeIdentity ?? ((node: N) => node as unknown as NI)
+  const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
+  const selfMaps = buildNodeMaps(self, getNodeIdentity)
+  const thatMaps = buildNodeMaps(that, getNodeIdentity)
+  const nodes = MutableHashMap.empty<NI, N>()
+  const selfEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+  const thatEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
 
-  for (const edge of self.edges.values()) {
-    const sourceId = selfMaps.byIndex.get(edge.source)
-    const targetId = selfMaps.byIndex.get(edge.target)
-    if (sourceId !== undefined && targetId !== undefined) {
-      selfEdgeKeys.add(edgeKey(self.type, sourceId, targetId))
+  for (const [identity, data] of selfMaps.byIdentity) {
+    if (MutableHashMap.has(thatMaps.byIdentity, identity)) {
+      MutableHashMap.set(nodes, identity, data)
     }
   }
 
-  return make(self.type)((mutable) => {
-    const newIndexMap = new Map<string, NodeIndex>()
+  for (const edge of self.edges.values()) {
+    const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
+    const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
+    const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+    MutableHashMap.set(selfEdges, edgeIdentity, edge.data)
+  }
 
-    for (const id of commonNodeIds) {
-      const entry = selfMaps.byId.get(id)
-      if (entry !== undefined) {
-        newIndexMap.set(id, addNode(mutable, entry.data))
-      }
+  for (const edge of that.edges.values()) {
+    const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
+    const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
+    if (MutableHashMap.has(nodes, sourceIdentity) && MutableHashMap.has(nodes, targetIdentity)) {
+      const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+      MutableHashMap.set(thatEdges, edgeIdentity, edge.data)
+    }
+  }
+
+  return make(self.type)<N, E>((mutable) => {
+    const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
+    for (const [identity, data] of nodes) {
+      MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
     }
 
-    for (const edge of that.edges.values()) {
-      const sourceId = thatMaps.byIndex.get(edge.source)
-      const targetId = thatMaps.byIndex.get(edge.target)
-      if (
-        sourceId !== undefined &&
-        targetId !== undefined &&
-        commonNodeIdSet.has(sourceId) &&
-        commonNodeIdSet.has(targetId) &&
-        selfEdgeKeys.has(edgeKey(that.type, sourceId, targetId))
-      ) {
-        const sourceIndex = newIndexMap.get(sourceId)
-        const targetIndex = newIndexMap.get(targetId)
+    for (const [identity, data] of thatEdges) {
+      if (MutableHashMap.has(selfEdges, identity)) {
+        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
+        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
         if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, edge.data)
+          addEdge(mutable, sourceIndex, targetIndex, data)
         }
       }
     }
@@ -792,10 +909,17 @@ export const intersection: {
  *
  * **Details**
  *
- * All nodes from `self` are preserved. Edges are matched by endpoint identity,
- * and edge data is ignored. The result has the same graph kind as `self`.
+ * All nodes from `self` are preserved. Edges are matched by endpoint and edge
+ * identities. The result has the same graph kind as `self`. Throws a
+ * `GraphError` when the graph kinds do not match. `nodeIdentity` and
+ * `edgeIdentity` default to the complete node and edge data.
  *
  * `G1 \ G2 = {V1, E1 \ E2}`
+ *
+ * **Gotchas**
+ *
+ * Nodes with equal identities in one input graph are coalesced. The last node
+ * supplies the data, and redirected edges can collapse or become self-loops.
  *
  * **Example** (Removing shared edges)
  *
@@ -813,10 +937,10 @@ export const intersection: {
  * const right = Graph.directed<string, string>((mutable) => {
  *   const b = Graph.addNode(mutable, "B")
  *   const c = Graph.addNode(mutable, "C")
- *   Graph.addEdge(mutable, b, c, "other")
+ *   Graph.addEdge(mutable, b, c, "B-C")
  * })
  *
- * const result = Graph.difference(left, right, (node) => node)
+ * const result = Graph.difference(left, right)
  *
  * console.log(Graph.nodeCount(result)) // 3
  * console.log(Graph.edgeCount(result)) // 1
@@ -826,47 +950,48 @@ export const intersection: {
  * @since 4.0.0
  */
 export const difference: {
-  <N, E, T extends Kind = "directed">(
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     that: Graph<N, E, T>,
-    nodeId: (node: N) => string
-  ): (self: Graph<N, E, T>) => Graph<N, E, T>
-  <N, E, T extends Kind = "directed">(
+    options?: IdentityOptions<N, E, NI, EI>
+  ): (self: Graph<N, E, NoInfer<T>>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     self: Graph<N, E, T>,
-    that: Graph<N, E, T>,
-    nodeId: (node: N) => string
+    that: Graph<N, E, NoInfer<T>>,
+    options?: IdentityOptions<N, E, NI, EI>
   ): Graph<N, E, T>
-} = dual(3, <N, E, T extends Kind>(
+} = dual((args) => isGraph(args[0]) && isGraph(args[1]), <N, E, T extends Kind, NI, EI>(
   self: Graph<N, E, T>,
   that: Graph<N, E, T>,
-  nodeId: (node: N) => string
+  options?: IdentityOptions<N, E, NI, EI>
 ): Graph<N, E, T> => {
-  const selfMaps = buildNodeMaps(self, nodeId)
-  const thatMaps = buildNodeMaps(that, nodeId)
-  const thatEdgeKeys = new Set<string>()
+  assertSameKind(self, that)
+  const getNodeIdentity = options?.nodeIdentity ?? ((node: N) => node as unknown as NI)
+  const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
+  const selfMaps = buildNodeMaps(self, getNodeIdentity)
+  const thatMaps = buildNodeMaps(that, getNodeIdentity)
+  const thatEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
 
   for (const edge of that.edges.values()) {
-    const sourceId = thatMaps.byIndex.get(edge.source)
-    const targetId = thatMaps.byIndex.get(edge.target)
-    if (sourceId !== undefined && targetId !== undefined) {
-      thatEdgeKeys.add(edgeKey(that.type, sourceId, targetId))
-    }
+    const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
+    const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
+    const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+    MutableHashMap.set(thatEdges, edgeIdentity, edge.data)
   }
 
-  return make(self.type)((mutable) => {
-    const newIndexMap = new Map<string, NodeIndex>()
+  return make(self.type)<N, E>((mutable) => {
+    const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
 
-    for (const [id, entry] of selfMaps.byId) {
-      newIndexMap.set(id, addNode(mutable, entry.data))
+    for (const [identity, data] of selfMaps.byIdentity) {
+      MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
     }
 
     for (const edge of self.edges.values()) {
-      const sourceId = selfMaps.byIndex.get(edge.source)
-      const targetId = selfMaps.byIndex.get(edge.target)
-      if (
-        sourceId !== undefined && targetId !== undefined && !thatEdgeKeys.has(edgeKey(self.type, sourceId, targetId))
-      ) {
-        const sourceIndex = newIndexMap.get(sourceId)
-        const targetIndex = newIndexMap.get(targetId)
+      const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
+      const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
+      const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+      if (!MutableHashMap.has(thatEdges, edgeIdentity)) {
+        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, sourceIdentity))
+        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, targetIdentity))
         if (sourceIndex !== undefined && targetIndex !== undefined) {
           addEdge(mutable, sourceIndex, targetIndex, edge.data)
         }
@@ -881,13 +1006,18 @@ export const difference: {
  * **Details**
  *
  * Keeps nodes from both graphs. Overlapping nodes use data from `that`. The
- * result has the same graph kind as `self`.
+ * result has the same graph kind as `self`. Throws a `GraphError` when the
+ * graph kinds do not match. `nodeIdentity` and `edgeIdentity` default to the
+ * complete node and edge data. Edge identity also includes the endpoint
+ * identities.
  *
  * `G1 Δ G2 = {V1 ∪ V2, (E1 ∪ E2) \ (E1 ∩ E2)}`
  *
  * **Gotchas**
  *
- * Edges present in both graphs are removed even when their edge data differs.
+ * Edges with different projected identities are distinct.
+ * Nodes with equal identities in one input graph are coalesced. The last node
+ * supplies the data, and redirected edges can collapse or become self-loops.
  *
  * **Example** (Finding differing edges)
  *
@@ -910,7 +1040,7 @@ export const difference: {
  *   Graph.addEdge(mutable, c, d, "C-D")
  * })
  *
- * const result = Graph.symmetricDifference(left, right, (node) => node)
+ * const result = Graph.symmetricDifference(left, right)
  *
  * console.log(Graph.nodeCount(result)) // 4
  * console.log(Graph.edgeCount(result)) // 2
@@ -920,66 +1050,72 @@ export const difference: {
  * @since 4.0.0
  */
 export const symmetricDifference: {
-  <N, E, T extends Kind = "directed">(
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     that: Graph<N, E, T>,
-    nodeId: (node: N) => string
-  ): (self: Graph<N, E, T>) => Graph<N, E, T>
-  <N, E, T extends Kind = "directed">(
+    options?: IdentityOptions<N, E, NI, EI>
+  ): (self: Graph<N, E, NoInfer<T>>) => Graph<N, E, T>
+  <N, E, T extends Kind = "directed", NI = N, EI = E>(
     self: Graph<N, E, T>,
-    that: Graph<N, E, T>,
-    nodeId: (node: N) => string
+    that: Graph<N, E, NoInfer<T>>,
+    options?: IdentityOptions<N, E, NI, EI>
   ): Graph<N, E, T>
-} = dual(3, <N, E, T extends Kind>(
+} = dual((args) => isGraph(args[0]) && isGraph(args[1]), <N, E, T extends Kind, NI, EI>(
   self: Graph<N, E, T>,
   that: Graph<N, E, T>,
-  nodeId: (node: N) => string
+  options?: IdentityOptions<N, E, NI, EI>
 ): Graph<N, E, T> => {
-  const selfMaps = buildNodeMaps(self, nodeId)
-  const thatMaps = buildNodeMaps(that, nodeId)
-  const allNodeIds = new Set([...selfMaps.byId.keys(), ...thatMaps.byId.keys()])
-  const selfEdges = new Map<string, EdgeIdentity<E>>()
-  const thatEdges = new Map<string, EdgeIdentity<E>>()
+  assertSameKind(self, that)
+  const getNodeIdentity = options?.nodeIdentity ?? ((node: N) => node as unknown as NI)
+  const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
+  const selfMaps = buildNodeMaps(self, getNodeIdentity)
+  const thatMaps = buildNodeMaps(that, getNodeIdentity)
+  const nodes = MutableHashMap.empty<NI, N>()
+  const selfEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+  const thatEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+
+  for (const [identity, data] of selfMaps.byIdentity) {
+    MutableHashMap.set(nodes, identity, data)
+  }
+
+  for (const [identity, data] of thatMaps.byIdentity) {
+    MutableHashMap.set(nodes, identity, data)
+  }
 
   for (const edge of self.edges.values()) {
-    const sourceId = selfMaps.byIndex.get(edge.source)
-    const targetId = selfMaps.byIndex.get(edge.target)
-    if (sourceId !== undefined && targetId !== undefined) {
-      selfEdges.set(edgeKey(self.type, sourceId, targetId), { sourceId, targetId, data: edge.data })
-    }
+    const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
+    const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
+    const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+    MutableHashMap.set(selfEdges, edgeIdentity, edge.data)
   }
 
   for (const edge of that.edges.values()) {
-    const sourceId = thatMaps.byIndex.get(edge.source)
-    const targetId = thatMaps.byIndex.get(edge.target)
-    if (sourceId !== undefined && targetId !== undefined) {
-      thatEdges.set(edgeKey(that.type, sourceId, targetId), { sourceId, targetId, data: edge.data })
-    }
+    const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
+    const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
+    const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
+    MutableHashMap.set(thatEdges, edgeIdentity, edge.data)
   }
 
-  return make(self.type)((mutable) => {
-    const newIndexMap = new Map<string, NodeIndex>()
+  return make(self.type)<N, E>((mutable) => {
+    const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
 
-    for (const id of allNodeIds) {
-      const entry = thatMaps.byId.get(id) ?? selfMaps.byId.get(id)
-      if (entry !== undefined) {
-        newIndexMap.set(id, addNode(mutable, entry.data))
-      }
+    for (const [identity, data] of nodes) {
+      MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
     }
 
-    for (const [key, { sourceId, targetId, data }] of selfEdges) {
-      if (!thatEdges.has(key)) {
-        const sourceIndex = newIndexMap.get(sourceId)
-        const targetIndex = newIndexMap.get(targetId)
+    for (const [identity, data] of selfEdges) {
+      if (!MutableHashMap.has(thatEdges, identity)) {
+        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
+        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
         if (sourceIndex !== undefined && targetIndex !== undefined) {
           addEdge(mutable, sourceIndex, targetIndex, data)
         }
       }
     }
 
-    for (const [key, { sourceId, targetId, data }] of thatEdges) {
-      if (!selfEdges.has(key)) {
-        const sourceIndex = newIndexMap.get(sourceId)
-        const targetIndex = newIndexMap.get(targetId)
+    for (const [identity, data] of thatEdges) {
+      if (!MutableHashMap.has(selfEdges, identity)) {
+        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
+        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
         if (sourceIndex !== undefined && targetIndex !== undefined) {
           addEdge(mutable, sourceIndex, targetIndex, data)
         }
@@ -1032,7 +1168,7 @@ export const complement: {
 ): Graph<N, E, T> => {
   const nodeEntries = Array.from(self.nodes)
 
-  return make(self.type)((mutable) => {
+  return make(self.type)<N, E>((mutable) => {
     const newIndexMap = new Map<NodeIndex, NodeIndex>()
 
     for (const [oldIndex, data] of nodeEntries) {
@@ -1129,7 +1265,7 @@ export const neighborhood: {
     }
   }
 
-  return make(self.type)((mutable) => {
+  return make(self.type)<N, E>((mutable) => {
     const newIndexMap = new Map<NodeIndex, NodeIndex>()
 
     for (const oldIndex of reached) {
@@ -1154,7 +1290,8 @@ export const neighborhood: {
  * **Details**
  *
  * Copies all nodes and edges from both graphs without merging equal node data.
- * The result has the same graph kind as `self`.
+ * The result has the same graph kind as `self`. Throws a `GraphError` when the
+ * graph kinds do not match.
  *
  * `G1 + G2 = {disjoint V1 + V2, disjoint E1 + E2}`
  *
@@ -1162,37 +1299,31 @@ export const neighborhood: {
  * @since 4.0.0
  */
 export const sum: {
-  <N, E, T extends Kind = "directed">(
-    that: Graph<N, E, T>
-  ): (self: Graph<N, E, T>) => Graph<N, E, T>
-  <N, E, T extends Kind = "directed">(
-    self: Graph<N, E, T>,
-    that: Graph<N, E, T>
-  ): Graph<N, E, T>
-} = dual(
-  2,
-  <N, E, T extends Kind>(self: Graph<N, E, T>, that: Graph<N, E, T>): Graph<N, E, T> =>
-    make(self.type)((mutable) => {
-      const copyInto = (graph: Graph<N, E, T>) => {
-        const indexMap = new Map<NodeIndex, NodeIndex>()
+  <N, E, T extends Kind>(that: Graph<N, E, T>): (self: Graph<N, E, NoInfer<T>>) => Graph<N, E, T>
+  <N, E, T extends Kind>(self: Graph<N, E, T>, that: Graph<N, E, NoInfer<T>>): Graph<N, E, T>
+} = dual(2, <N, E, T extends Kind>(self: Graph<N, E, T>, that: Graph<N, E, T>): Graph<N, E, T> => {
+  assertSameKind(self, that)
+  return make(self.type)<N, E>((mutable) => {
+    const copyInto = (graph: Graph<N, E, T>) => {
+      const indexMap = new Map<NodeIndex, NodeIndex>()
 
-        for (const [oldIndex, data] of graph.nodes) {
-          indexMap.set(oldIndex, addNode(mutable, data))
-        }
-
-        for (const edge of graph.edges.values()) {
-          const sourceIndex = indexMap.get(edge.source)
-          const targetIndex = indexMap.get(edge.target)
-          if (sourceIndex !== undefined && targetIndex !== undefined) {
-            addEdge(mutable, sourceIndex, targetIndex, edge.data)
-          }
-        }
+      for (const [oldIndex, data] of graph.nodes) {
+        indexMap.set(oldIndex, addNode(mutable, data))
       }
 
-      copyInto(self)
-      copyInto(that)
-    })
-)
+      for (const edge of graph.edges.values()) {
+        const sourceIndex = indexMap.get(edge.source)
+        const targetIndex = indexMap.get(edge.target)
+        if (sourceIndex !== undefined && targetIndex !== undefined) {
+          addEdge(mutable, sourceIndex, targetIndex, edge.data)
+        }
+      }
+    }
+
+    copyInto(self)
+    copyInto(that)
+  })
+})
 
 // =============================================================================
 // Basic Node Operations

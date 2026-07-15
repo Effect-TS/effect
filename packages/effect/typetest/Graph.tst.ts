@@ -12,62 +12,86 @@ declare const directedNodes: Graph.DirectedGraph<Node, number>
 declare const undirectedNodes: Graph.UndirectedGraph<Node, number>
 
 describe("Graph", () => {
+  it("make", () => {
+    expect(
+      Graph.make("directed")<string, number>((mutable) => {
+        expect(mutable).type.toBe<Graph.MutableDirectedGraph<string, number>>()
+      })
+    ).type.toBe<Graph.DirectedGraph<string, number>>()
+
+    expect(
+      Graph.make("undirected")<string, number>((mutable) => {
+        expect(mutable).type.toBe<Graph.MutableUndirectedGraph<string, number>>()
+      })
+    ).type.toBe<Graph.UndirectedGraph<string, number>>()
+  })
+
   it("compose", () => {
-    expect(Graph.compose(directedNodes, directedNodes, (node) => {
-      expect(node).type.toBe<Node>()
-      return node.id
+    expect(Graph.compose(directedNodes, directedNodes, {
+      nodeIdentity: (node) => {
+        expect(node).type.toBe<Node>()
+        return node.id
+      },
+      edgeIdentity: (edge) => {
+        expect(edge).type.toBe<number>()
+        return edge
+      }
     })).type.toBe<Graph.DirectedGraph<Node, number>>()
 
     expect(pipe(
       undirectedNodes,
-      Graph.compose(undirectedNodes, (node) => {
-        expect(node).type.toBe<Node>()
-        return node.id
+      Graph.compose(undirectedNodes, {
+        nodeIdentity: (node) => {
+          expect(node).type.toBe<Node>()
+          return node.id
+        }
       })
     )).type.toBe<Graph.UndirectedGraph<Node, number>>()
   })
 
   it("intersection", () => {
-    expect(Graph.intersection(directedNodes, directedNodes, (node) => {
-      expect(node).type.toBe<Node>()
-      return node.id
-    })).type.toBe<Graph.DirectedGraph<Node, number>>()
+    expect(Graph.intersection(directedNodes, directedNodes)).type.toBe<Graph.DirectedGraph<Node, number>>()
 
     expect(pipe(
       undirectedNodes,
-      Graph.intersection(undirectedNodes, (node) => {
-        expect(node).type.toBe<Node>()
-        return node.id
-      })
+      Graph.intersection(undirectedNodes)
     )).type.toBe<Graph.UndirectedGraph<Node, number>>()
   })
 
   it("difference", () => {
-    expect(Graph.difference(directedNodes, directedNodes, (node) => {
-      expect(node).type.toBe<Node>()
-      return node.id
+    expect(Graph.difference(directedNodes, directedNodes, {
+      nodeIdentity: (node) => {
+        expect(node).type.toBe<Node>()
+        return node.id
+      }
     })).type.toBe<Graph.DirectedGraph<Node, number>>()
 
     expect(pipe(
       undirectedNodes,
-      Graph.difference(undirectedNodes, (node) => {
-        expect(node).type.toBe<Node>()
-        return node.id
+      Graph.difference(undirectedNodes, {
+        nodeIdentity: (node) => {
+          expect(node).type.toBe<Node>()
+          return node.id
+        }
       })
     )).type.toBe<Graph.UndirectedGraph<Node, number>>()
   })
 
   it("symmetricDifference", () => {
-    expect(Graph.symmetricDifference(directedNodes, directedNodes, (node) => {
-      expect(node).type.toBe<Node>()
-      return node.id
+    expect(Graph.symmetricDifference(directedNodes, directedNodes, {
+      nodeIdentity: (node) => {
+        expect(node).type.toBe<Node>()
+        return node.id
+      }
     })).type.toBe<Graph.DirectedGraph<Node, number>>()
 
     expect(pipe(
       undirectedNodes,
-      Graph.symmetricDifference(undirectedNodes, (node) => {
-        expect(node).type.toBe<Node>()
-        return node.id
+      Graph.symmetricDifference(undirectedNodes, {
+        nodeIdentity: (node) => {
+          expect(node).type.toBe<Node>()
+          return node.id
+        }
       })
     )).type.toBe<Graph.UndirectedGraph<Node, number>>()
   })
