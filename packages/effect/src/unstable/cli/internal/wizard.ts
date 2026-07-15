@@ -25,7 +25,7 @@ export const run: (
     const selected = getCommandAtPath(command, commandPath)
     const commandLine = [...(options?.prefix ?? commandPath)]
     yield* logCurrentCommand(commandLine)
-    yield* promptCommand(selected, commandLine)
+    yield* promptCommand(selected, commandLine, selected === command ? "ROOT" : selected.name)
     return commandLine
   }
 )
@@ -49,27 +49,32 @@ const getCommandAtPath = (
 
 const promptCommand: (
   command: Command.Command.Any,
-  commandLine: Array<string>
+  commandLine: Array<string>,
+  sectionName: string
 ) => Effect.Effect<void, CliError.CliError | Terminal.QuitError, Command.Environment> = Effect.fnUntraced(
-  function*(command, commandLine) {
+  function*(command, commandLine, sectionName) {
     const impl = toImpl(command)
     const visibleSubcommands = command.subcommands.flatMap((group) => group.commands.filter((child) => !child.hidden))
     const config = visibleSubcommands.length === 0 ? impl.config : impl.contextConfig
 
     if (config.flags.length > 0) {
-      yield* Console.log(renderSection("Options Wizard", command.name))
+      yield* Console.log(renderSection(sectionName, "FLAGS"))
       for (const param of config.flags) {
         commandLine.push(...yield* promptParam(param))
       }
-      yield* logCurrentCommand(commandLine)
+      if (config.arguments.length > 0 || visibleSubcommands.length > 0) {
+        yield* logCurrentCommand(commandLine)
+      }
     }
 
     if (config.arguments.length > 0) {
-      yield* Console.log(renderSection("Args Wizard", command.name))
+      yield* Console.log(renderSection(sectionName, "ARGUMENTS"))
       for (const param of config.arguments) {
         commandLine.push(...yield* promptParam(param))
       }
-      yield* logCurrentCommand(commandLine)
+      if (visibleSubcommands.length > 0) {
+        yield* logCurrentCommand(commandLine)
+      }
     }
 
     if (visibleSubcommands.length === 0) {
@@ -77,7 +82,7 @@ const promptCommand: (
     }
 
     const child = yield* runPrompt(Prompt.select({
-      message: "Select which command you would like to execute",
+      message: "Command",
       choices: visibleSubcommands.map((command) => ({
         title: command.name,
         value: command,
@@ -88,11 +93,19 @@ const promptCommand: (
           : {})
       }))
     }))
+    yield* Console.log()
     commandLine.push(child.name)
-    yield* logCurrentCommand(commandLine)
-    yield* promptCommand(child, commandLine)
+    if (hasWizardSteps(child)) {
+      yield* logCurrentCommand(commandLine)
+    }
+    yield* promptCommand(child, commandLine, child.name)
   }
 )
+
+const hasWizardSteps = (command: Command.Command.Any): boolean => {
+  const hasVisibleSubcommands = command.subcommands.some((group) => group.commands.some((child) => !child.hidden))
+  return hasVisibleSubcommands || toImpl(command).config.orderedParams.length > 0
+}
 
 const promptParam: (
   param: Param.Any
@@ -103,10 +116,11 @@ const promptParam: (
 
     if (metadata.isOptional) {
       const include = yield* runPrompt(Prompt.confirm({
-        message: `Provide ${formatName(single)}?`,
+        message: `Set ${renderParamLabel(single)}?`,
         initial: false
       }))
       if (!include) {
+        yield* Console.log()
         return []
       }
     }
@@ -114,7 +128,7 @@ const promptParam: (
     const count = !metadata.isVariadic
       ? 1
       : yield* runPrompt(Prompt.integer({
-        message: `How many values should be provided for ${formatName(single)}?`,
+        message: `${renderParamLabel(single)} count`,
         default: Option.getOrElse(metadata.variadicMin, () => 0),
         min: Option.getOrElse(metadata.variadicMin, () => 0),
         ...(Option.isSome(metadata.variadicMax) ? { max: metadata.variadicMax.value } : {})
@@ -134,6 +148,7 @@ const promptParam: (
         arguments: values
       }
     yield* param.parse(parsed)
+    yield* Console.log()
 
     if (single.kind === Param.argumentKind) {
       return values
@@ -148,7 +163,20 @@ const promptSingle = (
   const message = renderParamMessage(single)
   switch (single.primitiveType._tag) {
     case "Boolean":
-      return Effect.map(runPrompt(Prompt.toggle({ message })), String)
+      return Effect.map(
+        runPrompt(Prompt.confirm({
+          message,
+          label: {
+            confirm: "true",
+            deny: "false"
+          },
+          placeholder: {
+            defaultConfirm: "(T/f)",
+            defaultDeny: "(t/F)"
+          }
+        })),
+        String
+      )
     case "Choice": {
       const choices = Primitive.getChoiceKeys(single.primitiveType) ?? []
       return runPrompt(Prompt.select({
@@ -171,76 +199,89 @@ const promptSingle = (
 
 const runPrompt = <A>(
   prompt: Prompt.Prompt<A>
-): Effect.Effect<A, Terminal.QuitError, Command.Environment> => Prompt.run(prompt).pipe(Effect.tap(() => Console.log()))
+): Effect.Effect<A, Terminal.QuitError, Command.Environment> => Prompt.run(prompt)
 
 const formatName = (single: Param.Single<Param.ParamKind, unknown>): string =>
   single.kind === Param.flagKind ? `--${single.name}` : single.name
 
-const renderParamMessage = (single: Param.Single<Param.ParamKind, unknown>): string => {
-  const name = Ansi.annotate(formatName(single), Ansi.bold, Ansi.white)
-  const type = Ansi.annotate(single.typeName ?? Primitive.getTypeName(single.primitiveType), Ansi.blackBright)
-  const description = Option.match(single.description, {
-    onNone: () => "",
-    onSome: (description) => `\n  ${description}`
-  })
-  return `${name} ${type}${description}\n${getPrimitiveInstruction(single.primitiveType)}`
+const renderParamMessage = (single: Param.Single<Param.ParamKind, unknown>): string => renderParamLabel(single)
+
+const renderParamLabel = (single: Param.Single<Param.ParamKind, unknown>): string => {
+  const description = Option.getOrUndefined(single.description)?.trim()
+  const label = single.kind === Param.flagKind && description !== undefined && description.length <= 32
+    ? description
+    : humanize(single.name)
+  return single.kind === Param.flagKind ? `${label} (${formatName(single)})` : label
 }
 
-const getPrimitiveInstruction = (primitive: Primitive.Primitive<unknown>): string => {
-  switch (primitive._tag) {
-    case "Boolean":
-      return "Select true or false"
-    case "Choice":
-      return "Select one of the following choices"
-    case "Date":
-      return "Enter a date"
-    case "Float":
-      return "Enter a floating point value"
-    case "Integer":
-      return "Enter an integer"
-    case "Path":
-    case "FileText":
-    case "FileParse":
-    case "FileSchema":
-      return "Select a file system path"
-    case "Redacted":
-      return "Enter some text (value will be redacted)"
-    case "KeyValuePair":
-      return "Enter a key=value pair"
-    default:
-      return "Enter some text"
-  }
+const humanize = (name: string): string => {
+  const words = name.split(/[-_]+/).filter((word) => word.length > 0)
+  if (words.length === 0) return name
+  return [words[0][0].toUpperCase() + words[0].slice(1), ...words.slice(1)].join(" ")
 }
 
 const logCurrentCommand = (commandLine: ReadonlyArray<string>): Effect.Effect<void> =>
-  Console.log(
-    `${Ansi.annotate("COMMAND:", Ansi.bold, Ansi.cyanBright)} ${Ansi.annotate(commandLine.join(" "), Ansi.magenta)}`
-  )
+  Console.log(renderCommandBlock("Current command", commandLine, Ansi.magenta))
 
-const renderSection = (section: string, commandName: string): string =>
-  `\n${Ansi.annotate(`${section} -`, Ansi.bold, Ansi.white)} ${Ansi.annotate(commandName, Ansi.magenta)}`
+const renderSection = (commandName: string, section: string): string =>
+  `${Ansi.annotate(commandName.toUpperCase(), Ansi.bold, Ansi.cyanBright)} ${Ansi.annotate("·", Ansi.blackBright)} ${
+    Ansi.annotate(section, Ansi.bold, Ansi.white)
+  }`
 
 export const renderIntroduction = (name: string, version: string, summary: string | undefined): string => {
-  const title = Ansi.annotate(`Wizard Mode for CLI Application: ${name} (${version})`, Ansi.bold, Ansi.white)
-  const suffix = summary === undefined || summary.length === 0 ? "" : ` -- ${summary}`
+  const title = `${Ansi.annotate(name, Ansi.bold, Ansi.cyanBright)} ${Ansi.annotate(`v${version}`, Ansi.white)} ${
+    Ansi.annotate("· Command wizard", Ansi.bold, Ansi.white)
+  }`
   return [
-    `${title}${suffix}`,
-    "",
-    Ansi.annotate("Instructions", Ansi.bold),
-    `  The wizard mode will assist you with constructing commands for ${name} (${version}).`,
-    "  Please answer all prompts provided by the wizard.",
+    title,
+    ...(summary === undefined || summary.length === 0 ? [] : [summary]),
+    Ansi.annotate("Build a command interactively. Press Ctrl+C to cancel.", Ansi.blackBright),
     ""
   ].join("\n")
 }
 
 export const renderCompletion = (commandLine: ReadonlyArray<string>): string =>
-  [
-    "",
-    Ansi.annotate("Wizard Mode Complete!", Ansi.bold, Ansi.white),
-    "",
-    "You may now execute your command directly with the following options and arguments:",
-    "",
-    `    ${Ansi.annotate(commandLine.join(" "), Ansi.cyanBright)}`
-  ].join("\n")
+  renderCommandBlock("Command ready", commandLine, Ansi.cyanBright, Ansi.green)
 
-export const renderQuit = (): string => `\n\n${Ansi.annotate("Quitting wizard mode...", Ansi.red)}`
+export const renderQuit = (): string => `\n${Ansi.annotate("Wizard cancelled.", Ansi.red)}`
+
+const renderCommandBlock = (
+  label: string,
+  commandLine: ReadonlyArray<string>,
+  commandColor: string,
+  labelColor: string = Ansi.white
+): string => {
+  const lines = wrapCommand(commandLine)
+  return [
+    Ansi.annotate(label, Ansi.bold, labelColor),
+    ...lines.map((line) => Ansi.annotate(line, commandColor)),
+    ""
+  ].join("\n")
+}
+
+const wrapCommand = (commandLine: ReadonlyArray<string>): Array<string> => {
+  const width = 88
+  const firstIndent = "  $ "
+  const continuationIndent = "    "
+  const args = commandLine.map(formatShellArg)
+  const lines: Array<string> = []
+  let current = firstIndent
+
+  for (const arg of args) {
+    const separator = current === firstIndent || current === continuationIndent ? "" : " "
+    if (current.length + separator.length + arg.length > width && current !== firstIndent) {
+      lines.push(`${current} \\`)
+      current = `${continuationIndent}${arg}`
+    } else {
+      current += `${separator}${arg}`
+    }
+  }
+
+  if (current !== firstIndent) {
+    lines.push(current)
+  }
+  return lines
+}
+
+const formatShellArg = (arg: string): string =>
+  /^[A-Za-z0-9_./:@%+=,-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'"'"'`)}'`

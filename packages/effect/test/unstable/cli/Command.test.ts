@@ -147,18 +147,22 @@ describe("Command", () => {
         }, ({ name }) => Effect.sync(() => captured.push(name)))
 
         const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
-        yield* MockTerminal.inputText("Alice")
+        yield* MockTerminal.inputText("Alice Smith")
         yield* MockTerminal.inputKey("enter")
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
 
-        assert.deepStrictEqual(captured, ["Alice"])
+        assert.deepStrictEqual(captured, ["Alice Smith"])
         const output = (yield* TestConsole.logLines).join("\n")
-        assert.include(output, "Wizard Mode for CLI Application: greet (1.0.0)")
-        assert.include(output, "COMMAND:")
-        assert.include(output, "Options Wizard -")
-        assert.include(output, "Wizard Mode Complete!")
-        assert.include(output, "greet --name Alice")
+        assert.include(output, "Command wizard")
+        assert.include(output, "Build a command interactively. Press Ctrl+C to cancel.")
+        assert.include(output, "Current command")
+        assert.include(output, "ROOT")
+        assert.include(output, "FLAGS")
+        assert.include(output, "Name (--name)")
+        assert.include(output, "Command ready")
+        assert.include(output, "$ greet --name 'Alice Smith'")
+        assert.include(output, "Run this command?")
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should print a message when wizard mode is cancelled", () =>
@@ -177,7 +181,26 @@ describe("Command", () => {
 
         const output = (yield* TestConsole.logLines).join("\n")
         assert.isFalse(invoked)
-        assert.include(output, "Quitting wizard mode...")
+        assert.include(output, "Wizard cancelled.")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should render boolean wizard values consistently", () =>
+      Effect.gen(function*() {
+        const captured: Array<boolean> = []
+        const command = Command.make("deploy", {
+          dryRun: Flag.boolean("dry-run")
+        }, ({ dryRun }) => Effect.sync(() => captured.push(dryRun)))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputKey("y")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        const output = (yield* TestConsole.logLines).join("\n")
+        assert.deepStrictEqual(captured, [true])
+        assert.include(output, "Dry run (--dry-run)")
+        assert.include(output, "deploy --dry-run true")
+        assert.notInclude(output, "on / off")
       }).pipe(Effect.provide(TestLayer)))
 
     it.effect("should start wizard mode at a selected subcommand", () =>
