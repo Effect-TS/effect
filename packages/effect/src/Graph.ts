@@ -654,6 +654,12 @@ class EdgeIdentity<NI, EI> implements Equal.Equal {
  * Both functions default to using the complete node or edge data. Edge identity
  * also includes the identities of its endpoint nodes and the graph kind.
  *
+ * **Gotchas**
+ *
+ * Edge identity defines set membership, not edge multiplicity. Parallel edges
+ * with the same endpoint identities and projected edge identity are treated as
+ * the same member by graph set operations.
+ *
  * @category models
  * @since 4.0.0
  */
@@ -750,6 +756,8 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  *
  * Nodes with equal identities in one input graph are coalesced. The last node
  * supplies the data, and redirected edges can collapse or become self-loops.
+ * Parallel edges with equal identities are also coalesced, with the last edge
+ * supplying the data.
  *
  * **Example** (Combining graphs)
  *
@@ -841,6 +849,7 @@ export const compose: {
  *
  * Nodes with equal identities in one input graph are coalesced. The last node
  * supplies the data, and redirected edges can collapse or become self-loops.
+ * The result contains at most one edge for each shared edge identity.
  *
  * **Example** (Finding shared structure)
  *
@@ -934,6 +943,8 @@ export const intersection: {
  *
  * Nodes with equal identities in one input graph are coalesced. The last node
  * supplies the data, and redirected edges can collapse or become self-loops.
+ * If `that` contains an edge identity, every parallel edge with that identity
+ * is removed from `self`.
  *
  * **Example** (Removing shared edges)
  *
@@ -1017,6 +1028,8 @@ export const difference: {
  * Edges with different projected identities are distinct.
  * Nodes with equal identities in one input graph are coalesced. The last node
  * supplies the data, and redirected edges can collapse or become self-loops.
+ * Parallel edges with equal identities are coalesced before the graphs are
+ * compared.
  *
  * **Example** (Finding differing edges)
  *
@@ -5388,6 +5401,12 @@ export const topo: {
  * no start nodes are supplied, the iterator is empty. The `direction` option
  * chooses whether to follow outgoing or incoming edges. The `radius` option
  * limits traversal by edge distance from the start nodes.
+ *
+ * **Gotchas**
+ *
+ * With a finite `radius`, iteration first performs a bounded breadth-first
+ * traversal to determine shortest-distance membership before emitting nodes in
+ * postorder.
  *
  * **Example** (Traversing in postorder)
  *

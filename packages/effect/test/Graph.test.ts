@@ -288,6 +288,27 @@ describe("Graph", () => {
       strictEqual(Graph.edgeCount(Graph.intersection(left, right)), 1)
     })
 
+    it("treats equal parallel edges as set members rather than occurrences", () => {
+      const left = Graph.directed<string, string>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, a, b, "shared")
+        Graph.addEdge(mutable, a, b, "shared")
+      })
+      const empty = Graph.directed<string, string>()
+      const right = Graph.directed<string, string>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, a, b, "shared")
+      })
+
+      strictEqual(Graph.edgeCount(Graph.compose(left, empty)), 1)
+      strictEqual(Graph.edgeCount(Graph.intersection(left, right)), 1)
+      strictEqual(Graph.edgeCount(Graph.difference(left, empty)), 2)
+      strictEqual(Graph.edgeCount(Graph.difference(left, right)), 0)
+      strictEqual(Graph.edgeCount(Graph.symmetricDifference(left, empty)), 1)
+    })
+
     it("rejects graphs with different kinds", () => {
       const directed: Graph.Graph<string, string, Graph.Kind> = Graph.directed()
       const undirected: Graph.Graph<string, string, Graph.Kind> = Graph.undirected()
