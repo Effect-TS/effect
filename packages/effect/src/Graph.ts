@@ -709,7 +709,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
 }
 
 /**
- * Returns the union of two graphs, merging nodes by identity.
+ * Composes two graphs, merging nodes by identity.
  *
  * **Details**
  *
@@ -742,7 +742,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  *   Graph.addEdge(mutable, b, c, "B-C")
  * })
  *
- * const result = Graph.union(left, right, {
+ * const result = Graph.compose(left, right, {
  *   nodeIdentity: (node) => node.id
  * })
  *
@@ -753,7 +753,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  * @category set operations
  * @since 4.0.0
  */
-export const union: {
+export const compose: {
   <N, E, T extends Kind = "directed", NI = N, EI = E>(
     that: Graph<N, E, T>,
     options?: IdentityOptions<N, E, NI, EI>
@@ -1219,7 +1219,7 @@ export interface NeighborhoodConfig {
  *
  * const result = Graph.neighborhood(graph, 1, { radius: 1 })
  *
- * console.log(Graph.nodeCount(result)) // 3
+ * console.log(Graph.nodeCount(result)) // 2
  * ```
  *
  * @category set operations
@@ -5394,7 +5394,8 @@ export const topo: {
  *
  * Nodes are emitted after their reachable descendants have been processed. If
  * no start nodes are supplied, the iterator is empty. The `direction` option
- * chooses whether to follow outgoing or incoming edges.
+ * chooses whether to follow outgoing or incoming edges. The `radius` option
+ * limits traversal by edge distance from the start nodes.
  *
  * **Example** (Traversing in postorder)
  *
@@ -5433,6 +5434,7 @@ export const dfsPostOrder: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
+  const radius = config.radius ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -5443,6 +5445,9 @@ export const dfsPostOrder: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
+      const reached = radius === Infinity
+        ? undefined
+        : new Set(indices(bfs(graph, { start, direction, radius })))
       const stack: Array<{ node: NodeIndex; visitedChildren: boolean }> = []
       const discovered = new Set<NodeIndex>()
       const finished = new Set<NodeIndex>()
@@ -5467,7 +5472,11 @@ export const dfsPostOrder: {
 
             for (let i = neighbors.length - 1; i >= 0; i--) {
               const neighbor = neighbors[i]
-              if (!discovered.has(neighbor) && !finished.has(neighbor)) {
+              if (
+                (reached === undefined || reached.has(neighbor)) &&
+                !discovered.has(neighbor) &&
+                !finished.has(neighbor)
+              ) {
                 stack.push({ node: neighbor, visitedChildren: false })
               }
             }

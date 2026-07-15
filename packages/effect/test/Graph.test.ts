@@ -106,11 +106,12 @@ describe("Graph", () => {
         Graph.addEdge(mutable, c, d, "right-cd")
       })
 
-    it("union merges nodes and edges by identity", () => {
-      const graph = Graph.union(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
+    it("compose merges nodes and edges by identity", () => {
+      const graph = Graph.compose(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
 
-      expect(graphNodeIds(graph)).toEqual(new Set(["a", "b", "c", "d"]))
-      expect(graphNodeLabels(graph)).toEqual(
+      assert.deepStrictEqual(graphNodeIds(graph), new Set(["a", "b", "c", "d"]))
+      assert.deepStrictEqual(
+        graphNodeLabels(graph),
         new Map([
           ["a", "A1"],
           ["b", "B2"],
@@ -118,8 +119,9 @@ describe("Graph", () => {
           ["d", "D2"]
         ])
       )
-      expect(graphEdgeKeys(graph)).toEqual(new Set(["a->b", "b->c", "c->d"]))
-      expect(graphEdgeData(graph)).toEqual(
+      assert.deepStrictEqual(graphEdgeKeys(graph), new Set(["a->b", "b->c", "c->d"]))
+      assert.deepStrictEqual(
+        graphEdgeData(graph),
         new Map([
           ["a->b", "left-ab"],
           ["b->c", "shared-bc"],
@@ -131,37 +133,40 @@ describe("Graph", () => {
     it("intersection keeps shared nodes and shared edges", () => {
       const graph = Graph.intersection(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
 
-      expect(graphNodeIds(graph)).toEqual(new Set(["b", "c"]))
-      expect(graphNodeLabels(graph)).toEqual(
+      assert.deepStrictEqual(graphNodeIds(graph), new Set(["b", "c"]))
+      assert.deepStrictEqual(
+        graphNodeLabels(graph),
         new Map([
           ["b", "B1"],
           ["c", "C1"]
         ])
       )
-      expect(graphEdgeKeys(graph)).toEqual(new Set(["b->c"]))
-      expect(graphEdgeData(graph)).toEqual(new Map([["b->c", "shared-bc"]]))
+      assert.deepStrictEqual(graphEdgeKeys(graph), new Set(["b->c"]))
+      assert.deepStrictEqual(graphEdgeData(graph), new Map([["b->c", "shared-bc"]]))
     })
 
     it("difference preserves self nodes and removes shared edges", () => {
       const graph = Graph.difference(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
 
-      expect(graphNodeIds(graph)).toEqual(new Set(["a", "b", "c"]))
-      expect(graphNodeLabels(graph)).toEqual(
+      assert.deepStrictEqual(graphNodeIds(graph), new Set(["a", "b", "c"]))
+      assert.deepStrictEqual(
+        graphNodeLabels(graph),
         new Map([
           ["a", "A1"],
           ["b", "B1"],
           ["c", "C1"]
         ])
       )
-      expect(graphEdgeKeys(graph)).toEqual(new Set(["a->b"]))
-      expect(graphEdgeData(graph)).toEqual(new Map([["a->b", "left-ab"]]))
+      assert.deepStrictEqual(graphEdgeKeys(graph), new Set(["a->b"]))
+      assert.deepStrictEqual(graphEdgeData(graph), new Map([["a->b", "left-ab"]]))
     })
 
     it("symmetricDifference keeps edges present in exactly one graph", () => {
       const graph = Graph.symmetricDifference(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
 
-      expect(graphNodeIds(graph)).toEqual(new Set(["a", "b", "c", "d"]))
-      expect(graphNodeLabels(graph)).toEqual(
+      assert.deepStrictEqual(graphNodeIds(graph), new Set(["a", "b", "c", "d"]))
+      assert.deepStrictEqual(
+        graphNodeLabels(graph),
         new Map([
           ["a", "A1"],
           ["b", "B2"],
@@ -169,8 +174,9 @@ describe("Graph", () => {
           ["d", "D2"]
         ])
       )
-      expect(graphEdgeKeys(graph)).toEqual(new Set(["a->b", "c->d"]))
-      expect(graphEdgeData(graph)).toEqual(
+      assert.deepStrictEqual(graphEdgeKeys(graph), new Set(["a->b", "c->d"]))
+      assert.deepStrictEqual(
+        graphEdgeData(graph),
         new Map([
           ["a->b", "left-ab"],
           ["c->d", "right-cd"]
@@ -190,14 +196,14 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, "shared")
       })
 
-      strictEqual(Graph.nodeCount(Graph.union(left, right)), 2)
+      strictEqual(Graph.nodeCount(Graph.compose(left, right)), 2)
       strictEqual(Graph.edgeCount(left.pipe(Graph.intersection(right))), 1)
       strictEqual(Graph.edgeCount(Graph.difference(left, right)), 0)
       strictEqual(Graph.edgeCount(left.pipe(Graph.symmetricDifference(right))), 0)
     })
 
     it("supports hashable node identities", () => {
-      const graph = Graph.union(makeLeft(), makeRight(), {
+      const graph = Graph.compose(makeLeft(), makeRight(), {
         nodeIdentity: (node) => new SetNodeKey(node.id)
       })
 
@@ -213,7 +219,7 @@ describe("Graph", () => {
         Graph.addNode(mutable, undefined)
       })
 
-      strictEqual(Graph.nodeCount(Graph.union(left, right)), 1)
+      strictEqual(Graph.nodeCount(Graph.compose(left, right)), 1)
     })
 
     it("coalesces duplicate node identities", () => {
@@ -223,7 +229,7 @@ describe("Graph", () => {
         Graph.addEdge(mutable, first, last, "same")
       })
       const right = Graph.directed<SetNode, string>()
-      const result = Graph.union(left, right, { nodeIdentity: (node) => node.id })
+      const result = Graph.compose(left, right, { nodeIdentity: (node) => node.id })
       const edge = Array.from(Graph.edges(result))[0][1]
 
       strictEqual(Graph.nodeCount(result), 1)
@@ -243,7 +249,7 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, "right")
       })
 
-      strictEqual(Graph.edgeCount(Graph.union(left, right)), 2)
+      strictEqual(Graph.edgeCount(Graph.compose(left, right)), 2)
       strictEqual(Graph.edgeCount(Graph.intersection(left, right)), 0)
       strictEqual(Graph.edgeCount(Graph.difference(left, right)), 1)
       strictEqual(Graph.edgeCount(Graph.symmetricDifference(left, right)), 2)
@@ -262,7 +268,7 @@ describe("Graph", () => {
       })
       const options = { edgeIdentity: (edge: { readonly id: string }) => edge.id }
 
-      strictEqual(Array.from(Graph.edges(Graph.union(left, right, options)))[0][1].data.label, "right")
+      strictEqual(Array.from(Graph.edges(Graph.compose(left, right, options)))[0][1].data.label, "right")
       strictEqual(Array.from(Graph.edges(Graph.intersection(left, right, options)))[0][1].data.label, "right")
     })
 
@@ -287,7 +293,7 @@ describe("Graph", () => {
       const undirected: Graph.Graph<string, string, Graph.Kind> = Graph.undirected()
 
       throws(
-        () => Graph.union(directed, undirected),
+        () => Graph.compose(directed, undirected),
         (error) => {
           strictEqual(error instanceof Graph.GraphError, true)
           if (error instanceof Graph.GraphError) {
@@ -328,9 +334,10 @@ describe("Graph", () => {
 
       const result = Graph.complement(graph, (source, target) => `${source.label}-${target.label}`)
 
-      expect(Graph.nodeCount(result)).toBe(3)
-      expect(Graph.edgeCount(result)).toBe(4)
-      expect(graphEdgeData(result)).toEqual(
+      strictEqual(Graph.nodeCount(result), 3)
+      strictEqual(Graph.edgeCount(result), 4)
+      assert.deepStrictEqual(
+        graphEdgeData(result),
         new Map([
           ["a->c", "A-C"],
           ["b->a", "B-A"],
@@ -350,9 +357,10 @@ describe("Graph", () => {
 
       const result = Graph.complement(graph, (source, target) => `${source.label}-${target.label}`)
 
-      expect(result.type).toBe("undirected")
-      expect(Graph.edgeCount(result)).toBe(2)
-      expect(graphEdgeData(result)).toEqual(
+      strictEqual(result.type, "undirected")
+      strictEqual(Graph.edgeCount(result), 2)
+      assert.deepStrictEqual(
+        graphEdgeData(result),
         new Map([
           ["A--C", "A-C"],
           ["B--C", "B-C"]
@@ -374,8 +382,8 @@ describe("Graph", () => {
 
       const result = Graph.neighborhood(graph, 1, { radius: 1, direction: "outgoing" })
 
-      expect(graphNodeIds(result)).toEqual(new Set(["B", "C"]))
-      expect(graphEdgeKeys(result)).toEqual(new Set(["B->C", "C->B"]))
+      assert.deepStrictEqual(graphNodeIds(result), new Set(["B", "C"]))
+      assert.deepStrictEqual(graphEdgeKeys(result), new Set(["B->C", "C->B"]))
     })
 
     it("neighborhood follows outgoing edges by default", () => {
@@ -389,8 +397,8 @@ describe("Graph", () => {
 
       const result = Graph.neighborhood(graph, 1)
 
-      expect(graphNodeIds(result)).toEqual(new Set(["B", "C"]))
-      expect(graphEdgeKeys(result)).toEqual(new Set(["B->C"]))
+      assert.deepStrictEqual(graphNodeIds(result), new Set(["B", "C"]))
+      assert.deepStrictEqual(graphEdgeKeys(result), new Set(["B->C"]))
     })
 
     it("neighborhood can ignore edge direction", () => {
@@ -404,8 +412,8 @@ describe("Graph", () => {
 
       const result = Graph.neighborhood(graph, 1, { radius: 2, direction: "undirected" })
 
-      expect(graphNodeIds(result)).toEqual(new Set(["A", "B", "C"]))
-      expect(graphEdgeKeys(result)).toEqual(new Set(["A->B", "A->C"]))
+      assert.deepStrictEqual(graphNodeIds(result), new Set(["A", "B", "C"]))
+      assert.deepStrictEqual(graphEdgeKeys(result), new Set(["A->B", "A->C"]))
     })
 
     it("sum keeps equal nodes disjoint", () => {
@@ -422,9 +430,9 @@ describe("Graph", () => {
 
       const result = Graph.sum(left, right)
 
-      expect(Graph.nodeCount(result)).toBe(4)
-      expect(Graph.edgeCount(result)).toBe(2)
-      expect(Array.from(Graph.values(Graph.nodes(result)))).toEqual(["A", "B", "A", "B"])
+      strictEqual(Graph.nodeCount(result), 4)
+      strictEqual(Graph.edgeCount(result), 2)
+      assert.deepStrictEqual(Array.from(Graph.values(Graph.nodes(result))), ["A", "B", "A", "B"])
     })
   })
 
@@ -3271,7 +3279,7 @@ describe("Graph", () => {
 
       const dfsIterator = Graph.dfs(graph, { start: [0], radius: 1 })
 
-      expect(Array.from(Graph.indices(dfsIterator))).toEqual([0, 1])
+      assert.deepStrictEqual(Array.from(Graph.indices(dfsIterator)), [0, 1])
     })
 
     it("should use the shortest discovered depth when limiting DFS traversal", () => {
@@ -3304,7 +3312,7 @@ describe("Graph", () => {
 
       const bfsIterator = Graph.bfs(graph, { start: [0], radius: 1 })
 
-      expect(Array.from(Graph.indices(bfsIterator))).toEqual([0, 1, 2])
+      assert.deepStrictEqual(Array.from(Graph.indices(bfsIterator)), [0, 1, 2])
     })
 
     it("should only include start nodes when radius is zero", () => {
@@ -3314,8 +3322,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, 1)
       })
 
-      expect(Array.from(Graph.indices(Graph.dfs(graph, { start: [0], radius: 0 })))).toEqual([0])
-      expect(Array.from(Graph.indices(Graph.bfs(graph, { start: [0], radius: 0 })))).toEqual([0])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.dfs(graph, { start: [0], radius: 0 }))), [0])
+      assert.deepStrictEqual(Array.from(Graph.indices(Graph.bfs(graph, { start: [0], radius: 0 }))), [0])
     })
 
     it("should provide values() method for Topo iterator", () => {
@@ -3470,12 +3478,33 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, c, 2)
       })
 
-      expect(Array.from(Graph.indices(Graph.dfs(graph, { start: [1], direction: "undirected" })))).toEqual([1, 0, 2])
-      expect(Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" })))).toEqual([1, 0, 2])
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.dfs(graph, { start: [1], direction: "undirected" }))),
+        [1, 0, 2]
+      )
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))),
+        [1, 0, 2]
+      )
     })
   })
 
   describe("DfsPostOrder Iterator", () => {
+    it("should limit traversal by radius", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.addEdge(mutable, b, c, 2)
+      })
+
+      assert.deepStrictEqual(
+        Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [0], radius: 1 }))),
+        [1, 0]
+      )
+    })
+
     it("should traverse in postorder for simple chain", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")

@@ -26,8 +26,8 @@ describe("Graph", () => {
     ).type.toBe<Graph.UndirectedGraph<string, number>>()
   })
 
-  it("union", () => {
-    expect(Graph.union(directedNodes, directedNodes, {
+  it("compose", () => {
+    expect(Graph.compose(directedNodes, directedNodes, {
       nodeIdentity: (node) => {
         expect(node).type.toBe<Node>()
         return node.id
@@ -40,7 +40,7 @@ describe("Graph", () => {
 
     expect(pipe(
       undirectedNodes,
-      Graph.union(undirectedNodes, {
+      Graph.compose(undirectedNodes, {
         nodeIdentity: (node) => {
           expect(node).type.toBe<Node>()
           return node.id
@@ -126,6 +126,7 @@ describe("Graph", () => {
   it("undirected traversal", () => {
     expect(Graph.dfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
     expect(Graph.bfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
+    expect(Graph.dfsPostOrder(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
   })
 
   it("sum", () => {
