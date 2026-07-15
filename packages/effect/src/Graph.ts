@@ -1246,7 +1246,7 @@ export const neighborhood: {
   const direction = options?.direction ?? "outgoing"
   const reached = new Set<NodeIndex>()
 
-  for (const index of indices(bfs(self, { start: [nodeIndex], direction, maxDepth: radius }))) {
+  for (const index of indices(bfs(self, { start: [nodeIndex], direction, radius }))) {
     reached.add(index)
   }
 
@@ -4959,7 +4959,8 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
  *
  * `start` supplies the node indices where traversal begins. If it is omitted,
  * the iterator is empty. `direction` chooses whether traversal follows
- * outgoing edges, incoming edges, or ignores edge direction.
+ * outgoing edges, incoming edges, or ignores edge direction. `radius` limits
+ * traversal by edge distance from the nearest start node.
  *
  * **Gotchas**
  *
@@ -4976,7 +4977,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
 export interface SearchConfig {
   readonly start?: Array<NodeIndex>
   readonly direction?: TraversalDirection
-  readonly maxDepth?: number
+  readonly radius?: number
 }
 
 /**
@@ -4986,7 +4987,7 @@ export interface SearchConfig {
  * **Details**
  *
  * If no start nodes are supplied, the iterator is empty. The `direction` option
- * chooses whether to follow outgoing or incoming edges. The `maxDepth` option
+ * chooses whether to follow outgoing or incoming edges. The `radius` option
  * limits traversal by edge distance from the start nodes. Throws a `GraphError`
  * if any configured start node does not exist.
  *
@@ -5031,7 +5032,7 @@ export const dfs: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
-  const max = config.maxDepth ?? Infinity
+  const radius = config.radius ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -5042,7 +5043,7 @@ export const dfs: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const depths = max === Infinity ? undefined : new Map<NodeIndex, number>()
+      const depths = radius === Infinity ? undefined : new Map<NodeIndex, number>()
       const stack: Array<readonly [NodeIndex, number]> = []
       const yielded = new Set<NodeIndex>()
 
@@ -5080,7 +5081,7 @@ export const dfs: {
             continue
           }
 
-          if (depth < max) {
+          if (depth < radius) {
             const neighbors = getTraversalNeighbors(graph, current, direction)
             for (let i = neighbors.length - 1; i >= 0; i--) {
               const neighbor = neighbors[i]
@@ -5123,7 +5124,7 @@ export const dfs: {
  * **Details**
  *
  * If no start nodes are supplied, the iterator is empty. The `direction` option
- * chooses whether to follow outgoing or incoming edges. The `maxDepth` option
+ * chooses whether to follow outgoing or incoming edges. The `radius` option
  * limits traversal by edge distance from the start nodes. Throws a `GraphError`
  * if any configured start node does not exist.
  *
@@ -5168,7 +5169,7 @@ export const bfs: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
-  const max = config.maxDepth ?? Infinity
+  const radius = config.radius ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -5189,7 +5190,7 @@ export const bfs: {
           if (!discovered.has(current)) {
             discovered.add(current)
 
-            if (depth < max) {
+            if (depth < radius) {
               const neighbors = getTraversalNeighbors(graph, current, direction)
               for (const neighbor of neighbors) {
                 if (!discovered.has(neighbor)) {

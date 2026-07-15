@@ -124,8 +124,8 @@ describe("Graph", () => {
   })
 
   it("undirected traversal", () => {
-    expect(Graph.dfs(directed, { direction: "undirected" })).type.toBe<Graph.NodeWalker<string>>()
-    expect(Graph.bfs(directed, { direction: "undirected" })).type.toBe<Graph.NodeWalker<string>>()
+    expect(Graph.dfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
+    expect(Graph.bfs(directed, { direction: "undirected", radius: 1 })).type.toBe<Graph.NodeWalker<string>>()
   })
 
   it("sum", () => {
