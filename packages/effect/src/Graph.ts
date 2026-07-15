@@ -1210,8 +1210,8 @@ export type NeighborhoodDirection = "outgoing" | "incoming" | "both"
  *
  * The `radius` option is the maximum edge distance from `nodeIndex` and
  * defaults to `1`. The `direction` option controls directed graph traversal and
- * defaults to `"both"`. The result has the same graph kind as `self` and keeps
- * all original edges whose endpoints are both reached.
+ * defaults to `"outgoing"`. The result has the same graph kind as `self` and
+ * keeps all original edges whose endpoints are both reached.
  *
  * **Example** (Getting a local neighborhood)
  *
@@ -1250,7 +1250,7 @@ export const neighborhood: {
   options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
 ): Graph<N, E, T> => {
   const radius = options?.radius ?? 1
-  const direction = options?.direction ?? "both"
+  const direction = options?.direction ?? "outgoing"
   const reached = new Set<NodeIndex>()
 
   if (direction === "outgoing" || direction === "both") {

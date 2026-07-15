@@ -378,7 +378,7 @@ describe("Graph", () => {
       expect(graphEdgeKeys(result)).toEqual(new Set(["B->C", "C->B"]))
     })
 
-    it("neighborhood can include incoming and outgoing nodes", () => {
+    it("neighborhood follows outgoing edges by default", () => {
       const graph = Graph.directed<SetNode, string>((mutable) => {
         const a = Graph.addNode(mutable, { id: "A", label: "A" })
         const b = Graph.addNode(mutable, { id: "B", label: "B" })
@@ -389,8 +389,8 @@ describe("Graph", () => {
 
       const result = Graph.neighborhood(graph, 1)
 
-      expect(graphNodeIds(result)).toEqual(new Set(["A", "B", "C"]))
-      expect(graphEdgeKeys(result)).toEqual(new Set(["A->B", "B->C"]))
+      expect(graphNodeIds(result)).toEqual(new Set(["B", "C"]))
+      expect(graphEdgeKeys(result)).toEqual(new Set(["B->C"]))
     })
 
     it("sum keeps equal nodes disjoint", () => {
