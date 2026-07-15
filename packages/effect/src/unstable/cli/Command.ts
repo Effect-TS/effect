@@ -35,7 +35,9 @@ import { mergeConfig, parseConfig } from "./internal/config.ts"
 import { getGlobalFlagsForCommandPath, getGlobalFlagsForCommandTree, getHelpForCommandPath } from "./internal/help.ts"
 import * as Lexer from "./internal/lexer.ts"
 import * as Parser from "./internal/parser.ts"
+import * as Wizard from "./internal/wizard.ts"
 import * as Param from "./Param.ts"
+import * as Prompt from "./Prompt.ts"
 
 /* ========================================================================== */
 /* Public Types                                                               */
@@ -1369,6 +1371,38 @@ export const provideEffectDiscard: {
 /* Execution                                                                  */
 /* ========================================================================== */
 
+/**
+ * Interactively constructs command-line arguments for a command.
+ *
+ * **Details**
+ *
+ * The returned arguments include the command name and can be inspected,
+ * modified, or passed to another command runner by the caller.
+ *
+ * **Example** (Constructing command arguments)
+ *
+ * ```ts
+ * import { Console, Effect } from "effect"
+ * import { Command } from "effect/unstable/cli"
+ *
+ * const command = Command.make("app")
+ *
+ * const program = Effect.gen(function*() {
+ *   const args = yield* Command.wizard(command)
+ *   yield* Console.log(args.join(" "))
+ * })
+ * ```
+ *
+ * @category command execution
+ * @since 4.0.0
+ */
+export const wizard = <Name extends string, Input, E, R, ContextInput>(
+  command: Command<Name, Input, ContextInput, E, R>,
+  options?: {
+    readonly prefix?: ReadonlyArray<string> | undefined
+  } | undefined
+): Effect.Effect<Array<string>, CliError.CliError | Terminal.QuitError, Environment> => Wizard.run(command, options)
+
 const getOutOfScopeGlobalFlagErrors = (
   allFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
   activeFlags: ReadonlyArray<GlobalFlag.GlobalFlag<any>>,
@@ -1574,6 +1608,29 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         })
         if (!hasEntry) continue
         const [, value] = yield* flag.flag.parse(emptyArgs)
+        if (flag === GlobalFlag.Wizard) {
+          return yield* Effect.gen(function*() {
+            yield* Console.log(Wizard.renderIntroduction(command.name, config.version, command.description))
+            const prefix = [
+              command.name,
+              ...args.filter((arg) => arg !== "--wizard" && !arg.startsWith("--wizard="))
+            ]
+            const wizardArgs = yield* Wizard.run(command, { commandPath, prefix })
+            yield* Console.log(Wizard.renderCompletion(wizardArgs))
+            const shouldRun = yield* Prompt.run(Prompt.toggle({
+              message: "Would you like to run the command?",
+              initial: true,
+              active: "yes",
+              inactive: "no"
+            }))
+            if (shouldRun) {
+              yield* Console.log()
+              yield* runWith(command, config)(wizardArgs.slice(1))
+            }
+          }).pipe(
+            Effect.catchTag("QuitError", () => Console.log(Wizard.renderQuit()))
+          )
+        }
         yield* flag.run(value, handlerCtx)
         return
       }

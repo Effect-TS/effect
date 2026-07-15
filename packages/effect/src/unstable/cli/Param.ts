@@ -2101,9 +2101,19 @@ export const getUnderlyingSingleOrThrow = <Kind extends ParamKind, A>(
  */
 export const getParamMetadata = <Kind extends ParamKind, A>(
   param: Param<Kind, A>
-): { isOptional: boolean; isVariadic: boolean } => {
+): {
+  readonly isOptional: boolean
+  readonly isVariadic: boolean
+  readonly variadicMin: Option.Option<number>
+  readonly variadicMax: Option.Option<number>
+} => {
   return matchParam(param, {
-    Single: () => ({ isOptional: false, isVariadic: false }),
+    Single: () => ({
+      isOptional: false,
+      isVariadic: false,
+      variadicMin: Option.none(),
+      variadicMax: Option.none()
+    }),
     Map: (mapped) => getParamMetadata(mapped.param),
     Transform: (mapped) => getParamMetadata(mapped.param),
     Optional: (optional) => ({
@@ -2112,7 +2122,9 @@ export const getParamMetadata = <Kind extends ParamKind, A>(
     }),
     Variadic: (variadic) => ({
       ...getParamMetadata(variadic.param),
-      isVariadic: true
+      isVariadic: true,
+      variadicMin: variadic.min,
+      variadicMax: variadic.max
     })
   })
 }

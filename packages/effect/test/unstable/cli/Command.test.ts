@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Context, Effect, FileSystem, Layer, Option, Path, Stdio } from "effect"
+import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
 import { Argument, CliConfig, CliOutput, Command, Flag, GlobalFlag } from "effect/unstable/cli"
 import { toImpl } from "effect/unstable/cli/internal/command"
@@ -116,6 +116,89 @@ describe("Command", () => {
   })
 
   describe("run", () => {
+    it.effect("should invoke the wizard programmatically from a command handler", () =>
+      Effect.gen(function*() {
+        const captured: Array<ReadonlyArray<string>> = []
+        const target = Command.make("greet", {
+          name: Flag.string("name"),
+          count: Argument.integer("count")
+        })
+        const command = Command.make("launcher", {}, () =>
+          Effect.flatMap(Command.wizard(target), (args) =>
+            Effect.sync(() => {
+              captured.push(args)
+            })))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("Alice")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputText("2")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, [["greet", "--name", "Alice", "2"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should run wizard-generated arguments with --wizard", () =>
+      Effect.gen(function*() {
+        const captured: Array<string> = []
+        const command = Command.make("greet", {
+          name: Flag.string("name")
+        }, ({ name }) => Effect.sync(() => captured.push(name)))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputText("Alice")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, ["Alice"])
+        const output = (yield* TestConsole.logLines).join("\n")
+        assert.include(output, "Wizard Mode for CLI Application: greet (1.0.0)")
+        assert.include(output, "COMMAND:")
+        assert.include(output, "Options Wizard -")
+        assert.include(output, "Wizard Mode Complete!")
+        assert.include(output, "greet --name Alice")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should print a message when wizard mode is cancelled", () =>
+      Effect.gen(function*() {
+        let invoked = false
+        const command = Command.make("greet", {
+          name: Flag.string("name")
+        }, () =>
+          Effect.sync(() => {
+            invoked = true
+          }))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(Effect.forkChild)
+        yield* MockTerminal.inputKey("c", { ctrl: true })
+        yield* Fiber.join(fiber)
+
+        const output = (yield* TestConsole.logLines).join("\n")
+        assert.isFalse(invoked)
+        assert.include(output, "Quitting wizard mode...")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should start wizard mode at a selected subcommand", () =>
+      Effect.gen(function*() {
+        const captured: Array<string> = []
+        const child = Command.make("child", {
+          value: Argument.string("value")
+        }, ({ value }) => Effect.sync(() => captured.push(value)))
+        const command = Command.make("root").pipe(Command.withSubcommands([child]))
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["child", "--wizard"]).pipe(
+          Effect.forkChild
+        )
+        yield* MockTerminal.inputText("selected")
+        yield* MockTerminal.inputKey("enter")
+        yield* MockTerminal.inputKey("enter")
+        yield* Fiber.join(fiber)
+
+        assert.deepStrictEqual(captured, ["selected"])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should reject --completions without a shell", () =>
       Effect.gen(function*() {
         let invoked = false
