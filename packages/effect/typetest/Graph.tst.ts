@@ -26,8 +26,8 @@ describe("Graph", () => {
     ).type.toBe<Graph.UndirectedGraph<string, number>>()
   })
 
-  it("compose", () => {
-    expect(Graph.compose(directedNodes, directedNodes, {
+  it("union", () => {
+    expect(Graph.union(directedNodes, directedNodes, {
       nodeIdentity: (node) => {
         expect(node).type.toBe<Node>()
         return node.id
@@ -40,7 +40,7 @@ describe("Graph", () => {
 
     expect(pipe(
       undirectedNodes,
-      Graph.compose(undirectedNodes, {
+      Graph.union(undirectedNodes, {
         nodeIdentity: (node) => {
           expect(node).type.toBe<Node>()
           return node.id

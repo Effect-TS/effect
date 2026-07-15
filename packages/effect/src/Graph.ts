@@ -706,7 +706,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  * Nodes with equal identities in one input graph are coalesced. The last node
  * supplies the data, and redirected edges can collapse or become self-loops.
  *
- * **Example** (Composing graphs)
+ * **Example** (Combining graphs)
  *
  * ```ts
  * import { Graph } from "effect"
@@ -723,7 +723,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  *   Graph.addEdge(mutable, b, c, "B-C")
  * })
  *
- * const result = Graph.compose(left, right, {
+ * const result = Graph.union(left, right, {
  *   nodeIdentity: (node) => node.id
  * })
  *
@@ -734,7 +734,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  * @category set operations
  * @since 4.0.0
  */
-export const compose: {
+export const union: {
   <N, E, T extends Kind = "directed", NI = N, EI = E>(
     that: Graph<N, E, T>,
     options?: IdentityOptions<N, E, NI, EI>

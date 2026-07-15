@@ -106,8 +106,8 @@ describe("Graph", () => {
         Graph.addEdge(mutable, c, d, "right-cd")
       })
 
-    it("compose merges nodes and edges by identity", () => {
-      const graph = Graph.compose(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
+    it("union merges nodes and edges by identity", () => {
+      const graph = Graph.union(makeLeft(), makeRight(), { nodeIdentity: (node) => node.id })
 
       expect(graphNodeIds(graph)).toEqual(new Set(["a", "b", "c", "d"]))
       expect(graphNodeLabels(graph)).toEqual(
@@ -190,14 +190,14 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, "shared")
       })
 
-      strictEqual(Graph.nodeCount(Graph.compose(left, right)), 2)
+      strictEqual(Graph.nodeCount(Graph.union(left, right)), 2)
       strictEqual(Graph.edgeCount(left.pipe(Graph.intersection(right))), 1)
       strictEqual(Graph.edgeCount(Graph.difference(left, right)), 0)
       strictEqual(Graph.edgeCount(left.pipe(Graph.symmetricDifference(right))), 0)
     })
 
     it("supports hashable node identities", () => {
-      const graph = Graph.compose(makeLeft(), makeRight(), {
+      const graph = Graph.union(makeLeft(), makeRight(), {
         nodeIdentity: (node) => new SetNodeKey(node.id)
       })
 
@@ -213,7 +213,7 @@ describe("Graph", () => {
         Graph.addNode(mutable, undefined)
       })
 
-      strictEqual(Graph.nodeCount(Graph.compose(left, right)), 1)
+      strictEqual(Graph.nodeCount(Graph.union(left, right)), 1)
     })
 
     it("coalesces duplicate node identities", () => {
@@ -223,7 +223,7 @@ describe("Graph", () => {
         Graph.addEdge(mutable, first, last, "same")
       })
       const right = Graph.directed<SetNode, string>()
-      const result = Graph.compose(left, right, { nodeIdentity: (node) => node.id })
+      const result = Graph.union(left, right, { nodeIdentity: (node) => node.id })
       const edge = Array.from(Graph.edges(result))[0][1]
 
       strictEqual(Graph.nodeCount(result), 1)
@@ -243,7 +243,7 @@ describe("Graph", () => {
         Graph.addEdge(mutable, a, b, "right")
       })
 
-      strictEqual(Graph.edgeCount(Graph.compose(left, right)), 2)
+      strictEqual(Graph.edgeCount(Graph.union(left, right)), 2)
       strictEqual(Graph.edgeCount(Graph.intersection(left, right)), 0)
       strictEqual(Graph.edgeCount(Graph.difference(left, right)), 1)
       strictEqual(Graph.edgeCount(Graph.symmetricDifference(left, right)), 2)
@@ -262,7 +262,7 @@ describe("Graph", () => {
       })
       const options = { edgeIdentity: (edge: { readonly id: string }) => edge.id }
 
-      strictEqual(Array.from(Graph.edges(Graph.compose(left, right, options)))[0][1].data.label, "right")
+      strictEqual(Array.from(Graph.edges(Graph.union(left, right, options)))[0][1].data.label, "right")
       strictEqual(Array.from(Graph.edges(Graph.intersection(left, right, options)))[0][1].data.label, "right")
     })
 
@@ -287,7 +287,7 @@ describe("Graph", () => {
       const undirected: Graph.Graph<string, string, Graph.Kind> = Graph.undirected()
 
       throws(
-        () => Graph.compose(directed, undirected),
+        () => Graph.union(directed, undirected),
         (error) => {
           strictEqual(error instanceof Graph.GraphError, true)
           if (error instanceof Graph.GraphError) {
