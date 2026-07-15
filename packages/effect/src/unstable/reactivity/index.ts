@@ -22,6 +22,11 @@ export * as AtomHttpApi from "./AtomHttpApi.ts"
 /**
  * @since 4.0.0
  */
+export * as AtomMachine from "./AtomMachine.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as AtomRef from "./AtomRef.ts"
 
 /**
