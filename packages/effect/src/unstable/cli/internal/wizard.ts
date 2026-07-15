@@ -81,7 +81,7 @@ const promptCommand: (
       return
     }
 
-    const child = yield* runPrompt(Prompt.select({
+    const child = yield* Prompt.run(Prompt.select({
       message: "Command",
       choices: visibleSubcommands.map((command) => ({
         title: command.name,
@@ -115,7 +115,7 @@ const promptParam: (
     const metadata = Param.getParamMetadata(param)
 
     if (metadata.isOptional) {
-      const include = yield* runPrompt(Prompt.confirm({
+      const include = yield* Prompt.run(Prompt.confirm({
         message: `Set ${renderParamLabel(single)}?`,
         initial: false
       }))
@@ -127,7 +127,7 @@ const promptParam: (
 
     const count = !metadata.isVariadic
       ? 1
-      : yield* runPrompt(Prompt.integer({
+      : yield* Prompt.run(Prompt.integer({
         message: `${renderParamLabel(single)} count`,
         default: Option.getOrElse(metadata.variadicMin, () => 0),
         min: Option.getOrElse(metadata.variadicMin, () => 0),
@@ -164,7 +164,7 @@ const promptSingle = (
   switch (single.primitiveType._tag) {
     case "Boolean":
       return Effect.map(
-        runPrompt(Prompt.confirm({
+        Prompt.run(Prompt.confirm({
           message,
           label: {
             confirm: "true",
@@ -179,27 +179,23 @@ const promptSingle = (
       )
     case "Choice": {
       const choices = Primitive.getChoiceKeys(single.primitiveType) ?? []
-      return runPrompt(Prompt.select({
+      return Prompt.run(Prompt.select({
         message,
         choices: choices.map((choice) => ({ title: choice, value: choice }))
       }))
     }
     case "Date":
-      return Effect.map(runPrompt(Prompt.date({ message })), (date) => date.toISOString())
+      return Effect.map(Prompt.run(Prompt.date({ message })), (date) => date.toISOString())
     case "Float":
-      return Effect.map(runPrompt(Prompt.float({ message })), String)
+      return Effect.map(Prompt.run(Prompt.float({ message })), String)
     case "Integer":
-      return Effect.map(runPrompt(Prompt.integer({ message })), String)
+      return Effect.map(Prompt.run(Prompt.integer({ message })), String)
     case "Redacted":
-      return Effect.map(runPrompt(Prompt.password({ message })), Redacted.value)
+      return Effect.map(Prompt.run(Prompt.password({ message })), Redacted.value)
     default:
-      return runPrompt(Prompt.text({ message }))
+      return Prompt.run(Prompt.text({ message }))
   }
 }
-
-const runPrompt = <A>(
-  prompt: Prompt.Prompt<A>
-): Effect.Effect<A, Terminal.QuitError, Command.Environment> => Prompt.run(prompt)
 
 const formatName = (single: Param.Single<Param.ParamKind, unknown>): string =>
   single.kind === Param.flagKind ? `--${single.name}` : single.name
