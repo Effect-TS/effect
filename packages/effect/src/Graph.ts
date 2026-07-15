@@ -1196,14 +1196,6 @@ export const complement: {
 })
 
 /**
- * Direction for neighborhood expansion in directed graphs.
- *
- * @category models
- * @since 4.0.0
- */
-export type NeighborhoodDirection = TraversalDirection
-
-/**
  * Returns the induced subgraph containing nodes within a radius of a node.
  *
  * **Details**
@@ -1238,17 +1230,17 @@ export type NeighborhoodDirection = TraversalDirection
 export const neighborhood: {
   (
     nodeIndex: NodeIndex,
-    options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
+    options?: { readonly radius?: number; readonly direction?: TraversalDirection }
   ): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
   <N, E, T extends Kind = "directed">(
     self: Graph<N, E, T>,
     nodeIndex: NodeIndex,
-    options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
+    options?: { readonly radius?: number; readonly direction?: TraversalDirection }
   ): Graph<N, E, T>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
   self: Graph<N, E, T>,
   nodeIndex: NodeIndex,
-  options?: { readonly radius?: number; readonly direction?: NeighborhoodDirection }
+  options?: { readonly radius?: number; readonly direction?: TraversalDirection }
 ): Graph<N, E, T> => {
   const radius = options?.radius ?? 1
   const direction = options?.direction ?? "outgoing"
