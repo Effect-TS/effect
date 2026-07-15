@@ -2,7 +2,7 @@ import { describe, it, vi } from "@effect/vitest"
 import * as StackTraceLimit from "effect/internal/stackTraceLimit"
 import { assertFalse, assertTrue, strictEqual } from "./utils/assert.ts"
 
-const getLimit = (): number | undefined => (Error as { stackTraceLimit?: number | undefined }).stackTraceLimit
+const getLimit = (): number | undefined => Error.stackTraceLimit
 
 describe("stackTraceLimit", () => {
   describe("writable environment", () => {

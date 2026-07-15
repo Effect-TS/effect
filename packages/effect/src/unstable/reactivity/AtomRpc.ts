@@ -111,12 +111,6 @@ export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> ex
     : never
 }
 
-declare global {
-  interface ErrorConstructor {
-    stackTraceLimit: number
-  }
-}
-
 /**
  * Creates a `Context.Service` class for an RPC client backed by an atom runtime.
  *

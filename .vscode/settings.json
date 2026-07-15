@@ -39,6 +39,11 @@
   "[markdown]": {
     "editor.defaultFormatter": "dprint.dprint"
   },
-  "deno.enable": false,
-  "js/ts.tsdk.path": "node_modules/typescript/lib"
+  "deno.enable": true,
+  "deno.lint": false,
+  "deno.enablePaths": [
+    "./packages/platform-deno"
+  ],
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
+  "js/ts.tsserver.experimental.enableProjectDiagnostics": false // Breaks Deno.
 }

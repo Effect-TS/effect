@@ -147,12 +147,6 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
     : never
 }
 
-declare global {
-  interface ErrorConstructor {
-    stackTraceLimit: number
-  }
-}
-
 /**
  * Creates a `Context.Service` class for an HTTP API client backed by an atom
  * runtime.

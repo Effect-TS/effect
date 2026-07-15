@@ -14,8 +14,6 @@
  *
  * @internal
  */
-import type { ErrorWithStackTraceLimit } from "./tracer.ts"
-
 const ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor
 const ObjectPrototypeHasOwnProperty = Object.prototype.hasOwnProperty
 const ObjectIsExtensible = Object.isExtensible
@@ -46,7 +44,7 @@ const canWriteStackTraceLimit = isStackTraceLimitWritable()
  *
  * @internal
  */
-export const getStackTraceLimit = (): number | undefined => (Error as ErrorWithStackTraceLimit).stackTraceLimit
+export const getStackTraceLimit = (): number | undefined => Error.stackTraceLimit
 
 /**
  * Safely set `Error.stackTraceLimit` if possible, otherwise no-op.
@@ -58,6 +56,6 @@ export const getStackTraceLimit = (): number | undefined => (Error as ErrorWithS
  */
 export const setStackTraceLimit = (value: number | undefined): void => {
   if (canWriteStackTraceLimit) {
-    ;(Error as ErrorWithStackTraceLimit).stackTraceLimit = value
+    ;(Error as { stackTraceLimit?: number | undefined }).stackTraceLimit = value
   }
 }
