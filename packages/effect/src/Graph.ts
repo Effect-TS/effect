@@ -3313,11 +3313,30 @@ export const toMermaid: {
 })
 
 // =============================================================================
-// Direction Types for Bidirectional Traversal
+// Edge Direction Types
 // =============================================================================
 
 /**
- * Direction for graph traversal, indicating which edges to follow.
+ * Direction of directed edges relative to a node.
+ *
+ * **Details**
+ *
+ * `"outgoing"` selects edges whose source is the node, while `"incoming"`
+ * selects edges whose target is the node.
+ *
+ * @category models
+ * @since 3.18.0
+ */
+export type Direction = "outgoing" | "incoming"
+
+/**
+ * Controls how traversal follows directed edges.
+ *
+ * **Details**
+ *
+ * `"outgoing"` follows edges from source to target, `"incoming"` follows them
+ * from target to source, and `"undirected"` allows traversal in either
+ * direction.
  *
  * **Example** (Traversing by direction)
  *
@@ -3327,28 +3346,23 @@ export const toMermaid: {
  * const graph = Graph.directed<string, string>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
  *   const b = Graph.addNode(mutable, "B")
- *   Graph.addEdge(mutable, a, b, "A->B")
+ *   const c = Graph.addNode(mutable, "C")
+ *   Graph.addEdge(mutable, a, b, "A-B")
+ *   Graph.addEdge(mutable, a, c, "A-C")
  * })
  *
- * // Follow outgoing edges (normal direction)
- * const outgoingNodes = Array.from(
- *   Graph.indices(Graph.dfs(graph, { start: [0], direction: "outgoing" }))
- * )
+ * const outgoing = Array.from(
+ *   Graph.indices(Graph.bfs(graph, { start: [0], direction: "outgoing" }))
+ * ) // [0, 1, 2]
  *
- * // Follow incoming edges (reverse direction)
- * const incomingNodes = Array.from(
- *   Graph.indices(Graph.dfs(graph, { start: [1], direction: "incoming" }))
- * )
+ * const incoming = Array.from(
+ *   Graph.indices(Graph.bfs(graph, { start: [1], direction: "incoming" }))
+ * ) // [1, 0]
+ *
+ * const undirected = Array.from(
+ *   Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))
+ * ) // [1, 0, 2]
  * ```
- *
- * @category models
- * @since 3.18.0
- */
-export type Direction = "outgoing" | "incoming"
-
-/**
- * Direction for graph traversal, including traversal that ignores edge
- * direction.
  *
  * @category models
  * @since 4.0.0
