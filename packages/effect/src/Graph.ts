@@ -683,6 +683,25 @@ const buildNodeMaps = <N, E, T extends Kind, I>(
 const nodeIdentityAt = <N, I>(maps: NodeMaps<N, I>, index: NodeIndex): I => maps.byIndex.get(index) as I
 
 /** @internal */
+const buildEdgeMap = <N, E, T extends Kind, NI, EI>(
+  graph: Graph<N, E, T>,
+  nodeMaps: NodeMaps<N, NI>,
+  identity: (edge: E) => EI
+): MutableHashMap.MutableHashMap<EdgeIdentity<NI, EI>, E> => {
+  const edges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+  for (const edge of graph.edges.values()) {
+    const sourceIdentity = nodeIdentityAt(nodeMaps, edge.source)
+    const targetIdentity = nodeIdentityAt(nodeMaps, edge.target)
+    MutableHashMap.set(
+      edges,
+      new EdgeIdentity(graph.type, sourceIdentity, targetIdentity, identity(edge.data)),
+      edge.data
+    )
+  }
+  return edges
+}
+
+/** @internal */
 const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>): void => {
   if (self.type !== that.type) {
     throw new GraphError({ message: `Cannot combine ${self.type} and ${that.type} graphs` })
@@ -757,7 +776,7 @@ export const union: {
     const selfMaps = buildNodeMaps(self, getNodeIdentity)
     const thatMaps = buildNodeMaps(that, getNodeIdentity)
     const nodes = MutableHashMap.empty<NI, N>()
-    const edges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+    const edges = buildEdgeMap(self, selfMaps, getEdgeIdentity)
 
     for (const [identity, data] of selfMaps.byIdentity) {
       MutableHashMap.set(nodes, identity, data)
@@ -766,18 +785,8 @@ export const union: {
       MutableHashMap.set(nodes, identity, data)
     }
 
-    for (const edge of self.edges.values()) {
-      const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
-      const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
-      const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
-      MutableHashMap.set(edges, edgeIdentity, edge.data)
-    }
-
-    for (const edge of that.edges.values()) {
-      const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
-      const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
-      const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
-      MutableHashMap.set(edges, edgeIdentity, edge.data)
+    for (const [identity, data] of buildEdgeMap(that, thatMaps, getEdgeIdentity)) {
+      MutableHashMap.set(edges, identity, data)
     }
 
     return make(self.type)<N, E>((mutable) => {
@@ -861,20 +870,13 @@ export const intersection: {
   const selfMaps = buildNodeMaps(self, getNodeIdentity)
   const thatMaps = buildNodeMaps(that, getNodeIdentity)
   const nodes = MutableHashMap.empty<NI, N>()
-  const selfEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+  const selfEdges = buildEdgeMap(self, selfMaps, getEdgeIdentity)
   const thatEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
 
   for (const [identity, data] of selfMaps.byIdentity) {
     if (MutableHashMap.has(thatMaps.byIdentity, identity)) {
       MutableHashMap.set(nodes, identity, data)
     }
-  }
-
-  for (const edge of self.edges.values()) {
-    const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
-    const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
-    const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
-    MutableHashMap.set(selfEdges, edgeIdentity, edge.data)
   }
 
   for (const edge of that.edges.values()) {
@@ -969,14 +971,7 @@ export const difference: {
   const getEdgeIdentity = options?.edgeIdentity ?? ((edge: E) => edge as unknown as EI)
   const selfMaps = buildNodeMaps(self, getNodeIdentity)
   const thatMaps = buildNodeMaps(that, getNodeIdentity)
-  const thatEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
-
-  for (const edge of that.edges.values()) {
-    const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
-    const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
-    const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
-    MutableHashMap.set(thatEdges, edgeIdentity, edge.data)
-  }
+  const thatEdges = buildEdgeMap(that, thatMaps, getEdgeIdentity)
 
   return make(self.type)<N, E>((mutable) => {
     const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
@@ -1070,8 +1065,8 @@ export const symmetricDifference: {
   const selfMaps = buildNodeMaps(self, getNodeIdentity)
   const thatMaps = buildNodeMaps(that, getNodeIdentity)
   const nodes = MutableHashMap.empty<NI, N>()
-  const selfEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
-  const thatEdges = MutableHashMap.empty<EdgeIdentity<NI, EI>, E>()
+  const selfEdges = buildEdgeMap(self, selfMaps, getEdgeIdentity)
+  const thatEdges = buildEdgeMap(that, thatMaps, getEdgeIdentity)
 
   for (const [identity, data] of selfMaps.byIdentity) {
     MutableHashMap.set(nodes, identity, data)
@@ -1079,20 +1074,6 @@ export const symmetricDifference: {
 
   for (const [identity, data] of thatMaps.byIdentity) {
     MutableHashMap.set(nodes, identity, data)
-  }
-
-  for (const edge of self.edges.values()) {
-    const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
-    const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
-    const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
-    MutableHashMap.set(selfEdges, edgeIdentity, edge.data)
-  }
-
-  for (const edge of that.edges.values()) {
-    const sourceIdentity = nodeIdentityAt(thatMaps, edge.source)
-    const targetIdentity = nodeIdentityAt(thatMaps, edge.target)
-    const edgeIdentity = new EdgeIdentity(that.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
-    MutableHashMap.set(thatEdges, edgeIdentity, edge.data)
   }
 
   return make(self.type)<N, E>((mutable) => {
