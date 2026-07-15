@@ -372,6 +372,32 @@ const missingNode = (node: number) => new GraphError({ message: `Node ${node} do
  */
 export const isGraph = (u: unknown): u is Graph<unknown, unknown> => hasProperty(u, TypeId)
 
+/** @internal */
+const make = <T extends Kind>(type: T) =>
+<N, E>(
+  mutate?: (mutable: MutableGraph<N, E, T>) => void
+): Graph<N, E, T> => {
+  const graph: Mutable<Graph<N, E, T>> = Object.create(ProtoGraph)
+
+  graph.type = type
+  graph.nodes = new Map()
+  graph.edges = new Map()
+  graph.adjacency = new Map()
+  graph.reverseAdjacency = new Map()
+  graph.nextNodeIndex = 0
+  graph.nextEdgeIndex = 0
+  graph.acyclic = Option.some(true)
+  graph.mutable = false
+
+  if (mutate !== undefined) {
+    const mutable = beginMutation(graph)
+    mutate(mutable)
+    return endMutation(mutable)
+  }
+
+  return graph
+}
+
 /**
  * Creates a directed graph, optionally with initial mutations.
  *
@@ -393,26 +419,9 @@ export const isGraph = (u: unknown): u is Graph<unknown, unknown> => hasProperty
  * @category constructors
  * @since 3.18.0
  */
-export const directed = <N, E>(mutate?: (mutable: MutableDirectedGraph<N, E>) => void): DirectedGraph<N, E> => {
-  const graph: Mutable<DirectedGraph<N, E>> = Object.create(ProtoGraph)
-  graph.type = "directed"
-  graph.nodes = new Map()
-  graph.edges = new Map()
-  graph.adjacency = new Map()
-  graph.reverseAdjacency = new Map()
-  graph.nextNodeIndex = 0
-  graph.nextEdgeIndex = 0
-  graph.acyclic = Option.some(true)
-  graph.mutable = false
-
-  if (mutate) {
-    const mutable = beginMutation(graph as DirectedGraph<N, E>)
-    mutate(mutable as MutableDirectedGraph<N, E>)
-    return endMutation(mutable)
-  }
-
-  return graph
-}
+export const directed = <N, E>(
+  mutate?: (mutable: MutableDirectedGraph<N, E>) => void
+): DirectedGraph<N, E> => make("directed")(mutate)
 
 /**
  * Creates an undirected graph, optionally with initial mutations.
@@ -435,26 +444,9 @@ export const directed = <N, E>(mutate?: (mutable: MutableDirectedGraph<N, E>) =>
  * @category constructors
  * @since 3.18.0
  */
-export const undirected = <N, E>(mutate?: (mutable: MutableUndirectedGraph<N, E>) => void): UndirectedGraph<N, E> => {
-  const graph: Mutable<UndirectedGraph<N, E>> = Object.create(ProtoGraph)
-  graph.type = "undirected"
-  graph.nodes = new Map()
-  graph.edges = new Map()
-  graph.adjacency = new Map()
-  graph.reverseAdjacency = new Map()
-  graph.nextNodeIndex = 0
-  graph.nextEdgeIndex = 0
-  graph.acyclic = Option.some(true)
-  graph.mutable = false
-
-  if (mutate) {
-    const mutable = beginMutation(graph)
-    mutate(mutable as MutableUndirectedGraph<N, E>)
-    return endMutation(mutable)
-  }
-
-  return graph
-}
+export const undirected = <N, E>(
+  mutate?: (mutable: MutableUndirectedGraph<N, E>) => void
+): UndirectedGraph<N, E> => make("undirected")(mutate)
 
 // =============================================================================
 // Scoped Mutable API
@@ -609,26 +601,6 @@ const buildNodeMaps = <N, E, T extends Kind>(graph: Graph<N, E, T>, nodeId: (nod
 const edgeKey = (type: Kind, sourceId: string, targetId: string): string =>
   type === "undirected" && sourceId > targetId ? `${targetId}\0${sourceId}` : `${sourceId}\0${targetId}`
 
-/** @internal */
-const emptyLike = <N, E, T extends Kind>(
-  graph: Graph<N, E, T>,
-  mutate: (mutable: MutableGraph<N, E, T>) => void
-): Graph<N, E, T> => {
-  const mutable = beginMutation(graph)
-
-  mutable.nodes.clear()
-  mutable.edges.clear()
-  mutable.adjacency.clear()
-  mutable.reverseAdjacency.clear()
-  mutable.nextNodeIndex = 0
-  mutable.nextEdgeIndex = 0
-  mutable.acyclic = Option.some(true)
-
-  mutate(mutable)
-
-  return endMutation(mutable)
-}
-
 /**
  * Returns the union of two graphs, merging nodes by identity.
  *
@@ -699,7 +671,7 @@ export const compose: {
       }
     }
 
-    return emptyLike(self, (mutable) => {
+    return make(self.type)((mutable) => {
       const newIndexMap = new Map<string, NodeIndex>()
 
       for (const id of allNodeIds) {
@@ -785,7 +757,7 @@ export const intersection: {
     }
   }
 
-  return emptyLike(self, (mutable) => {
+  return make(self.type)((mutable) => {
     const newIndexMap = new Map<string, NodeIndex>()
 
     for (const id of commonNodeIds) {
@@ -880,7 +852,7 @@ export const difference: {
     }
   }
 
-  return emptyLike(self, (mutable) => {
+  return make(self.type)((mutable) => {
     const newIndexMap = new Map<string, NodeIndex>()
 
     for (const [id, entry] of selfMaps.byId) {
@@ -984,7 +956,7 @@ export const symmetricDifference: {
     }
   }
 
-  return emptyLike(self, (mutable) => {
+  return make(self.type)((mutable) => {
     const newIndexMap = new Map<string, NodeIndex>()
 
     for (const id of allNodeIds) {
@@ -1060,7 +1032,7 @@ export const complement: {
 ): Graph<N, E, T> => {
   const nodeEntries = Array.from(self.nodes)
 
-  return emptyLike(self, (mutable) => {
+  return make(self.type)((mutable) => {
     const newIndexMap = new Map<NodeIndex, NodeIndex>()
 
     for (const [oldIndex, data] of nodeEntries) {
@@ -1157,7 +1129,7 @@ export const neighborhood: {
     }
   }
 
-  return emptyLike(self, (mutable) => {
+  return make(self.type)((mutable) => {
     const newIndexMap = new Map<NodeIndex, NodeIndex>()
 
     for (const oldIndex of reached) {
@@ -1200,7 +1172,7 @@ export const sum: {
 } = dual(
   2,
   <N, E, T extends Kind>(self: Graph<N, E, T>, that: Graph<N, E, T>): Graph<N, E, T> =>
-    emptyLike(self, (mutable) => {
+    make(self.type)((mutable) => {
       const copyInto = (graph: Graph<N, E, T>) => {
         const indexMap = new Map<NodeIndex, NodeIndex>()
 
