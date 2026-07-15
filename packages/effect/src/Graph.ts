@@ -1196,6 +1196,23 @@ export const complement: {
 })
 
 /**
+ * Configuration for selecting a graph neighborhood.
+ *
+ * **Details**
+ *
+ * `radius` limits the edge distance from the center node and defaults to `1`.
+ * `direction` controls how directed edges are traversed and defaults to
+ * `"outgoing"`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface NeighborhoodConfig {
+  readonly radius?: number
+  readonly direction?: TraversalDirection
+}
+
+/**
  * Returns the induced subgraph containing nodes within a radius of a node.
  *
  * **Details**
@@ -1230,17 +1247,17 @@ export const complement: {
 export const neighborhood: {
   (
     nodeIndex: NodeIndex,
-    options?: { readonly radius?: number; readonly direction?: TraversalDirection }
+    options?: NeighborhoodConfig
   ): <N, E, T extends Kind = "directed">(self: Graph<N, E, T>) => Graph<N, E, T>
   <N, E, T extends Kind = "directed">(
     self: Graph<N, E, T>,
     nodeIndex: NodeIndex,
-    options?: { readonly radius?: number; readonly direction?: TraversalDirection }
+    options?: NeighborhoodConfig
   ): Graph<N, E, T>
 } = dual((args) => isGraph(args[0]), <N, E, T extends Kind>(
   self: Graph<N, E, T>,
   nodeIndex: NodeIndex,
-  options?: { readonly radius?: number; readonly direction?: TraversalDirection }
+  options?: NeighborhoodConfig
 ): Graph<N, E, T> => {
   const radius = options?.radius ?? 1
   const direction = options?.direction ?? "outgoing"
