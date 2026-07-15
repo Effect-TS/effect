@@ -16,19 +16,13 @@ export default defineConfig({
       "packages/sql/*/vitest.config.ts",
       ...(isDeno ?
         [
-          "!packages/atom",
-          "!packages/platform-bun",
-          "!packages/platform-node",
           "!packages/platform-node-shared",
           "!packages/sql/d1",
           "!packages/sql/sqlite-node"
         ] :
         []),
-      ...(isBun ?
-        [
-          "!packages/platform-node"
-        ] :
-        [])
+      ...(!isBun ? ["!packages/platform-bun"] : []),
+      ...(!isNode ? ["!packages/platform-node"] : [])
     ]
   }
 })
