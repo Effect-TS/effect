@@ -498,9 +498,8 @@ const make = Effect.gen(function*() {
               Effect.catch(
                 killProcessGroup(command, childProcess, signal),
                 () => killProcess(command, childProcess, signal)
-              )
+              ).pipe(Effect.andThen(Deferred.await(exitSignal)))
             ).pipe(
-              Effect.andThen(Deferred.await(exitSignal)),
               Effect.ignore
             )
           })
@@ -545,9 +544,8 @@ const make = Effect.gen(function*() {
             Effect.catch(
               killProcessGroup(command, childProcess, signal),
               () => killProcess(command, childProcess, signal)
-            )
+            ).pipe(Effect.andThen(Deferred.await(exitSignal)))
           ).pipe(
-            Effect.andThen(Deferred.await(exitSignal)),
             Effect.asVoid
           )
         }

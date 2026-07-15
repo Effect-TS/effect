@@ -8,6 +8,7 @@ import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
+import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
@@ -455,6 +456,83 @@ describe("NodeChildProcessSpawner", () => {
 
             const exit = yield* Effect.exit(handle.exitCode)
             assert.isTrue(exit._tag === "Failure")
+          }).pipe(Effect.scoped))
+
+        it.effect("should force kill a process after the initial signal times out", () =>
+          Effect.gen(function*() {
+            const fs = yield* FileSystem.FileSystem
+            const path = yield* Path.Path
+            const directory = yield* fs.makeTempDirectoryScoped()
+            const ready = path.join(directory, "ready")
+            const handle = yield* ChildProcess.make("node", [
+              "-e",
+              "process.on('SIGTERM', () => {}); require('node:fs').writeFileSync(process.argv[1], ''); setInterval(() => {}, 1000)",
+              ready
+            ], {
+              killSignal: "SIGKILL",
+              stdout: "ignore",
+              stderr: "ignore"
+            })
+
+            yield* fs.exists(ready).pipe(
+              Effect.repeat({
+                while: (exists) => !exists,
+                schedule: Schedule.spaced("10 millis")
+              }),
+              Effect.timeout("1 second"),
+              TestClock.withLive
+            )
+
+            const completed = yield* handle.kill({
+              killSignal: "SIGTERM",
+              forceKillAfter: "50 millis"
+            }).pipe(
+              Effect.as(true),
+              Effect.timeoutOrElse({
+                duration: "1 second",
+                orElse: () => Effect.succeed(false)
+              }),
+              TestClock.withLive
+            )
+
+            assert.isTrue(completed)
+          }).pipe(Effect.scoped))
+
+        it.effect("should force kill a process when its scope closes", () =>
+          Effect.gen(function*() {
+            const fs = yield* FileSystem.FileSystem
+            const path = yield* Path.Path
+            const directory = yield* fs.makeTempDirectoryScoped()
+            const ready = path.join(directory, "ready")
+            const completed = yield* Effect.scoped(Effect.gen(function*() {
+              yield* ChildProcess.make("node", [
+                "-e",
+                "process.on('SIGTERM', () => {}); require('node:fs').writeFileSync(process.argv[1], ''); setTimeout(() => process.exit(0), 2000)",
+                ready
+              ], {
+                killSignal: "SIGTERM",
+                forceKillAfter: "50 millis",
+                stdout: "ignore",
+                stderr: "ignore"
+              })
+
+              yield* fs.exists(ready).pipe(
+                Effect.repeat({
+                  while: (exists) => !exists,
+                  schedule: Schedule.spaced("10 millis")
+                }),
+                Effect.timeout("1 second")
+              )
+            })).pipe(
+              Effect.as(true),
+              Effect.timeoutOrElse({
+                duration: "1 second",
+                orElse: () => Effect.succeed(false)
+              }),
+              TestClock.withLive
+            )
+
+            assert.isTrue(completed)
           }).pipe(Effect.scoped))
       })
     })
