@@ -1,16 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Data, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
-import { TestConsole } from "effect/testing"
 import { Prompt } from "effect/unstable/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
-const ConsoleLayer = TestConsole.layer
 const FileSystemLayer = FileSystem.layerNoop({})
 const PathLayer = Path.layer
 const TerminalLayer = MockTerminal.layer
 
 const TestLayer = Layer.mergeAll(
-  ConsoleLayer,
   FileSystemLayer,
   PathLayer,
   TerminalLayer
@@ -98,7 +95,7 @@ describe("Prompt.float", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, 12.5)
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const rendered = frames.join("\n")
 
@@ -212,7 +209,7 @@ describe("Prompt.text", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const lastFrame = frames.at(-1)
 
@@ -269,7 +266,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "banana")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const filteredFrame = findFrame(frames, "[filter: ban]")
 
@@ -296,7 +293,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "alpha")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const narrowedFrame = findFrame(frames, "[filter: al]")
       const expandedFrame = findFrame(frames, "[filter: a]")
@@ -325,7 +322,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "alpha")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const narrowedFrame = findFrame(frames, "[filter: al]")
       const clearedFrame = findFrame(frames, "[filter: type to filter]")
@@ -356,7 +353,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "cat")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
 
       assert.isTrue(output.some((line) => String(line).includes("\x07")))
@@ -380,7 +377,7 @@ describe("Prompt.autoComplete", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "fast")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       assert.isTrue(output.some((line) => String(line).includes("\x07")))
     }).pipe(Effect.provide(TestLayer)))
 
@@ -395,7 +392,7 @@ describe("Prompt.autoComplete", () => {
       const exit = yield* Prompt.run(prompt).pipe(Effect.exit)
       assert.isTrue(exit._tag === "Failure")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
 
       assert.isTrue(findFrame(frames, "No matches") !== undefined)
@@ -404,7 +401,6 @@ describe("Prompt.autoComplete", () => {
 
 describe("Prompt.file", () => {
   const FilePromptLayer = Layer.mergeAll(
-    ConsoleLayer,
     FileSystem.layerNoop({
       exists: () => Effect.succeed(true),
       readDirectory: (directory) =>
@@ -450,7 +446,7 @@ describe("Prompt.file", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "/workspace/banana.txt")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const filteredFrame = findFrame(frames, "[filter: ban]")
 
@@ -474,7 +470,7 @@ describe("Prompt.file", () => {
       const result = yield* Prompt.run(prompt)
       assert.strictEqual(result, "/workspace/banana.txt")
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toFrames(output)
       const narrowedFrame = findFrame(frames, "[filter: ban]")
       const expandedFrame = findFrame(frames, "[filter: ba]")
@@ -506,7 +502,7 @@ describe("Prompt.multiSelect", () => {
       yield* MockTerminal.inputKey("down")
       yield* Effect.yieldNow
 
-      const output = yield* TestConsole.logLines
+      const output = yield* MockTerminal.displayLines
       const frames = toRawFrames(output)
       const highlightedFrame = [...frames].reverse().find((frame) => frame.includes("Beta"))
 

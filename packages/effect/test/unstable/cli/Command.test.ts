@@ -153,7 +153,7 @@ describe("Command", () => {
         yield* Fiber.join(fiber)
 
         assert.deepStrictEqual(captured, ["Alice Smith"])
-        const output = (yield* TestConsole.logLines).join("\n")
+        const output = [...yield* TestConsole.logLines, ...yield* MockTerminal.displayLines].join("\n")
         assert.include(output, "Command wizard")
         assert.include(output, "Build a command interactively. Press Ctrl+C to cancel.")
         assert.include(output, "Current command")
@@ -179,7 +179,7 @@ describe("Command", () => {
         yield* MockTerminal.inputKey("c", { ctrl: true })
         yield* Fiber.join(fiber)
 
-        const output = (yield* TestConsole.logLines).join("\n")
+        const output = [...yield* TestConsole.logLines, ...yield* MockTerminal.displayLines].join("\n")
         assert.isFalse(invoked)
         assert.include(output, "Wizard cancelled.")
       }).pipe(Effect.provide(TestLayer)))
@@ -196,7 +196,7 @@ describe("Command", () => {
         yield* MockTerminal.inputKey("enter")
         yield* Fiber.join(fiber)
 
-        const output = (yield* TestConsole.logLines).join("\n")
+        const output = [...yield* TestConsole.logLines, ...yield* MockTerminal.displayLines].join("\n")
         assert.deepStrictEqual(captured, [true])
         assert.include(output, "Dry run (--dry-run)")
         assert.include(output, "deploy --dry-run true")
