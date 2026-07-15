@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 add advanced graph set operations for deriving related graph structures

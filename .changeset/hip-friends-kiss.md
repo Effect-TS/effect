@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 added graph set operations for combining and comparing graphs
