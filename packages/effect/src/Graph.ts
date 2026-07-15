@@ -702,6 +702,32 @@ const buildEdgeMap = <N, E, T extends Kind, NI, EI>(
 }
 
 /** @internal */
+const addNodesByIdentity = <N, E, T extends Kind, NI>(
+  mutable: MutableGraph<N, E, T>,
+  nodes: Iterable<readonly [NI, N]>
+): MutableHashMap.MutableHashMap<NI, NodeIndex> => {
+  const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
+  for (const [identity, data] of nodes) {
+    MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
+  }
+  return indexByIdentity
+}
+
+/** @internal */
+const addEdgeByIdentity = <N, E, T extends Kind, NI, EI>(
+  mutable: MutableGraph<N, E, T>,
+  indexByIdentity: MutableHashMap.MutableHashMap<NI, NodeIndex>,
+  identity: EdgeIdentity<NI, EI>,
+  data: E
+): void => {
+  const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
+  const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
+  if (sourceIndex !== undefined && targetIndex !== undefined) {
+    addEdge(mutable, sourceIndex, targetIndex, data)
+  }
+}
+
+/** @internal */
 const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>): void => {
   if (self.type !== that.type) {
     throw new GraphError({ message: `Cannot combine ${self.type} and ${that.type} graphs` })
@@ -790,17 +816,10 @@ export const compose: {
     }
 
     return make(self.type)<N, E>((mutable) => {
-      const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
-      for (const [identity, data] of nodes) {
-        MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
-      }
+      const indexByIdentity = addNodesByIdentity(mutable, nodes)
 
       for (const [identity, data] of edges) {
-        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
-        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, data)
-        }
+        addEdgeByIdentity(mutable, indexByIdentity, identity, data)
       }
     })
   }
@@ -889,18 +908,11 @@ export const intersection: {
   }
 
   return make(self.type)<N, E>((mutable) => {
-    const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
-    for (const [identity, data] of nodes) {
-      MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
-    }
+    const indexByIdentity = addNodesByIdentity(mutable, nodes)
 
     for (const [identity, data] of thatEdges) {
       if (MutableHashMap.has(selfEdges, identity)) {
-        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
-        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, data)
-        }
+        addEdgeByIdentity(mutable, indexByIdentity, identity, data)
       }
     }
   })
@@ -974,22 +986,14 @@ export const difference: {
   const thatEdges = buildEdgeMap(that, thatMaps, getEdgeIdentity)
 
   return make(self.type)<N, E>((mutable) => {
-    const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
-
-    for (const [identity, data] of selfMaps.byIdentity) {
-      MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
-    }
+    const indexByIdentity = addNodesByIdentity(mutable, selfMaps.byIdentity)
 
     for (const edge of self.edges.values()) {
       const sourceIdentity = nodeIdentityAt(selfMaps, edge.source)
       const targetIdentity = nodeIdentityAt(selfMaps, edge.target)
       const edgeIdentity = new EdgeIdentity(self.type, sourceIdentity, targetIdentity, getEdgeIdentity(edge.data))
       if (!MutableHashMap.has(thatEdges, edgeIdentity)) {
-        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, sourceIdentity))
-        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, targetIdentity))
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, edge.data)
-        }
+        addEdgeByIdentity(mutable, indexByIdentity, edgeIdentity, edge.data)
       }
     }
   })
@@ -1077,29 +1081,17 @@ export const symmetricDifference: {
   }
 
   return make(self.type)<N, E>((mutable) => {
-    const indexByIdentity = MutableHashMap.empty<NI, NodeIndex>()
-
-    for (const [identity, data] of nodes) {
-      MutableHashMap.set(indexByIdentity, identity, addNode(mutable, data))
-    }
+    const indexByIdentity = addNodesByIdentity(mutable, nodes)
 
     for (const [identity, data] of selfEdges) {
       if (!MutableHashMap.has(thatEdges, identity)) {
-        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
-        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, data)
-        }
+        addEdgeByIdentity(mutable, indexByIdentity, identity, data)
       }
     }
 
     for (const [identity, data] of thatEdges) {
       if (!MutableHashMap.has(selfEdges, identity)) {
-        const sourceIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.source))
-        const targetIndex = Option.getOrUndefined(MutableHashMap.get(indexByIdentity, identity.target))
-        if (sourceIndex !== undefined && targetIndex !== undefined) {
-          addEdge(mutable, sourceIndex, targetIndex, data)
-        }
+        addEdgeByIdentity(mutable, indexByIdentity, identity, data)
       }
     }
   })
