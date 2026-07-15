@@ -5013,7 +5013,7 @@ export const dfs: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
-  const maxDepth = config.maxDepth ?? Infinity
+  const max = config.maxDepth ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -5024,33 +5024,68 @@ export const dfs: {
 
   return new Walker((f) => ({
     [Symbol.iterator]: () => {
-      const stack: Array<readonly [NodeIndex, number]> = start.map((node) => [node, 0])
-      const discovered = new Set<NodeIndex>()
+      const depths = max === Infinity ? undefined : new Map<NodeIndex, number>()
+      const stack: Array<readonly [NodeIndex, number]> = []
+      const yielded = new Set<NodeIndex>()
+
+      if (depths === undefined) {
+        for (const node of start) {
+          stack.push([node, 0])
+        }
+      } else {
+        const starts = new Set<NodeIndex>()
+        for (let i = start.length - 1; i >= 0; i--) {
+          const node = start[i]
+          if (!starts.has(node)) {
+            starts.add(node)
+            stack.push([node, 0])
+            depths.set(node, 0)
+          }
+        }
+        stack.reverse()
+      }
 
       const nextMapped = () => {
         while (stack.length > 0) {
           const [current, depth] = stack.pop()!
 
-          if (discovered.has(current)) {
+          if (depths === undefined) {
+            if (yielded.has(current)) {
+              continue
+            }
+          } else if (depths.get(current) !== depth) {
             continue
           }
-
-          discovered.add(current)
 
           const nodeDataOption = getNode(graph, current)
           if (Option.isNone(nodeDataOption)) {
             continue
           }
 
-          if (depth < maxDepth) {
+          if (depth < max) {
             const neighbors = getTraversalNeighbors(graph, current, direction)
             for (let i = neighbors.length - 1; i >= 0; i--) {
               const neighbor = neighbors[i]
-              if (!discovered.has(neighbor)) {
-                stack.push([neighbor, depth + 1])
+              const nextDepth = depth + 1
+              if (depths === undefined) {
+                if (!yielded.has(neighbor)) {
+                  stack.push([neighbor, nextDepth])
+                }
+                continue
+              }
+              const neighborDepth = depths.get(neighbor)
+              if (neighborDepth === undefined || nextDepth < neighborDepth) {
+                depths.set(neighbor, nextDepth)
+                stack.push([neighbor, nextDepth])
               }
             }
           }
+
+          if (yielded.has(current)) {
+            continue
+          }
+
+          yielded.add(current)
 
           return { done: false, value: f(current, nodeDataOption.value) }
         }
@@ -5115,7 +5150,7 @@ export const bfs: {
 ): NodeWalker<N> => {
   const start = config.start ?? []
   const direction = config.direction ?? "outgoing"
-  const maxDepth = config.maxDepth ?? Infinity
+  const max = config.maxDepth ?? Infinity
 
   // Validate that all start nodes exist
   for (const nodeIndex of start) {
@@ -5136,7 +5171,7 @@ export const bfs: {
           if (!discovered.has(current)) {
             discovered.add(current)
 
-            if (depth < maxDepth) {
+            if (depth < max) {
               const neighbors = getTraversalNeighbors(graph, current, direction)
               for (const neighbor of neighbors) {
                 if (!discovered.has(neighbor)) {

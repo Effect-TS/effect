@@ -1,3 +1,4 @@
+import { assert } from "@effect/vitest"
 import { assertNone, assertSome, strictEqual, throws } from "@effect/vitest/utils"
 import { Equal, Graph, Hash, Option } from "effect"
 import { describe, expect, it } from "vitest"
@@ -3256,6 +3257,23 @@ describe("Graph", () => {
       const dfsIterator = Graph.dfs(graph, { start: [0], maxDepth: 1 })
 
       expect(Array.from(Graph.indices(dfsIterator))).toEqual([0, 1])
+    })
+
+    it("should use the shortest discovered depth when limiting DFS traversal", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        const d = Graph.addNode(mutable, "D")
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.addEdge(mutable, b, c, 2)
+        Graph.addEdge(mutable, a, c, 3)
+        Graph.addEdge(mutable, c, d, 4)
+      })
+
+      const dfsIterator = Graph.dfs(graph, { start: [0], maxDepth: 2 })
+
+      assert.deepStrictEqual(Array.from(Graph.indices(dfsIterator)), [0, 1, 2, 3])
     })
 
     it("should limit BFS traversal by maxDepth", () => {
