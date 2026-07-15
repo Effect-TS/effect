@@ -3460,6 +3460,19 @@ describe("Graph", () => {
       expect(Array.from(Graph.indices(Graph.bfs(graph, { start: [0] })))).toEqual([0, 1, 2])
       expect(Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [0] })))).toEqual([2, 1, 0])
     })
+
+    it("should ignore edge direction during traversal", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.addEdge(mutable, a, c, 2)
+      })
+
+      expect(Array.from(Graph.indices(Graph.dfs(graph, { start: [1], direction: "undirected" })))).toEqual([1, 0, 2])
+      expect(Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" })))).toEqual([1, 0, 2])
+    })
   })
 
   describe("DfsPostOrder Iterator", () => {

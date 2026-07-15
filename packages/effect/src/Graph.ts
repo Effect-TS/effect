@@ -1201,7 +1201,7 @@ export const complement: {
  * @category models
  * @since 4.0.0
  */
-export type NeighborhoodDirection = "outgoing" | "incoming" | "undirected"
+export type NeighborhoodDirection = TraversalDirection
 
 /**
  * Returns the induced subgraph containing nodes within a radius of a node.
@@ -1254,30 +1254,8 @@ export const neighborhood: {
   const direction = options?.direction ?? "outgoing"
   const reached = new Set<NodeIndex>()
 
-  if (direction === "undirected") {
-    if (!hasNode(self, nodeIndex)) {
-      throw missingNode(nodeIndex)
-    }
-    const queue: Array<readonly [NodeIndex, number]> = [[nodeIndex, 0]]
-    reached.add(nodeIndex)
-    for (let i = 0; i < queue.length; i++) {
-      const [current, depth] = queue[i]
-      if (depth >= radius) {
-        continue
-      }
-      for (const traversalDirection of ["outgoing", "incoming"] as const) {
-        for (const neighbor of getTraversalNeighbors(self, current, traversalDirection)) {
-          if (!reached.has(neighbor)) {
-            reached.add(neighbor)
-            queue.push([neighbor, depth + 1])
-          }
-        }
-      }
-    }
-  } else {
-    for (const index of indices(bfs(self, { start: [nodeIndex], direction, maxDepth: radius }))) {
-      reached.add(index)
-    }
+  for (const index of indices(bfs(self, { start: [nodeIndex], direction, maxDepth: radius }))) {
+    reached.add(index)
   }
 
   return make(self.type)<N, E>((mutable) => {
@@ -3376,6 +3354,15 @@ export const toMermaid: {
  */
 export type Direction = "outgoing" | "incoming"
 
+/**
+ * Direction for graph traversal, including traversal that ignores edge
+ * direction.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type TraversalDirection = Direction | "undirected"
+
 // =============================================================================
 // Graph Structure Analysis Algorithms
 // =============================================================================
@@ -3646,11 +3633,21 @@ const getUndirectedNeighbors = <N, E>(
 const getTraversalNeighbors = <N, E, T extends Kind>(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   nodeIndex: NodeIndex,
-  direction: Direction
-): Array<NodeIndex> =>
-  graph.type === "undirected"
-    ? getUndirectedNeighbors(graph as any, nodeIndex)
-    : getDirectedNeighbors(graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">, nodeIndex, direction)
+  direction: TraversalDirection
+): Array<NodeIndex> => {
+  if (graph.type === "undirected") {
+    return getUndirectedNeighbors(graph as any, nodeIndex)
+  }
+  const directed = graph as Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+  if (direction !== "undirected") {
+    return getDirectedNeighbors(directed, nodeIndex, direction)
+  }
+  const neighbors = new Set(getDirectedNeighbors(directed, nodeIndex, "outgoing"))
+  for (const neighbor of getDirectedNeighbors(directed, nodeIndex, "incoming")) {
+    neighbors.add(neighbor)
+  }
+  return Array.from(neighbors)
+}
 
 const getTraversableNeighbor = <E, T extends Kind>(
   graph: Graph<unknown, E, T> | MutableGraph<unknown, E, T>,
@@ -4956,7 +4953,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
  *
  * `start` supplies the node indices where traversal begins. If it is omitted,
  * the iterator is empty. `direction` chooses whether traversal follows
- * outgoing or incoming edges.
+ * outgoing edges, incoming edges, or ignores edge direction.
  *
  * **Gotchas**
  *
@@ -4972,7 +4969,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
  */
 export interface SearchConfig {
   readonly start?: Array<NodeIndex>
-  readonly direction?: Direction
+  readonly direction?: TraversalDirection
   readonly maxDepth?: number
 }
 
