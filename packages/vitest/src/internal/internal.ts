@@ -148,10 +148,7 @@ const makeTester = <R>(
     const arbs = fc.record(
       Object.keys(arbitraries).reduce(function(result, key) {
         const arb: any = arbitraries[key]
-        if (Schema.isSchema(arb)) {
-          result[key] = Schema.toArbitrary(arb)
-        }
-        result[key] = arb
+        result[key] = Schema.isSchema(arb) ? Schema.toArbitrary(arb) : arb
         return result
       }, {} as Record<string, fc.Arbitrary<any>>)
     )

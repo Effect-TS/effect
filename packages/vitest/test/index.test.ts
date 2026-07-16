@@ -1,5 +1,5 @@
 import { afterAll, assert, describe, expect, it, layer } from "@effect/vitest"
-import { Clock, Context, Duration, Effect, Fiber, Layer } from "effect"
+import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import { FastCheck, TestClock } from "effect/testing"
 
 it.effect(
@@ -197,6 +197,12 @@ it.prop(
   "symmetry with object",
   { a: realNumber, b: FastCheck.integer() },
   ({ a, b }) => a + b === b + a
+)
+
+it.live.prop(
+  "schema with object",
+  { value: Schema.Int },
+  ({ value }) => Effect.sync(() => assert.isTrue(Number.isInteger(value)))
 )
 
 it.effect.prop("symmetry", [realNumber, FastCheck.integer()], ([a, b]) =>
