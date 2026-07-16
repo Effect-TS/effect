@@ -290,6 +290,12 @@ export interface FileSystem {
     }
   ) => Sink.Sink<void, Uint8Array, never, PlatformError>
   /**
+   * Get information about a file at `path` without following symbolic links.
+   */
+  readonly lstat: (
+    path: string
+  ) => Effect.Effect<File.Info, PlatformError>
+  /**
    * Get information about a file at `path`.
    */
   readonly stat: (
@@ -977,6 +983,9 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
     },
     sink(path) {
       return Sink.fail(notFound("sink", path))
+    },
+    lstat(path) {
+      return Effect.fail(notFound("lstat", path))
     },
     stat(path) {
       return Effect.fail(notFound("stat", path))
