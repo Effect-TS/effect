@@ -4084,19 +4084,6 @@ export interface DijkstraConfig<E> {
   cost: (edgeData: E) => number
 }
 
-const collectEdgeWeights = <N, E, T extends Kind = "directed">(
-  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  cost: (edgeData: E) => number
-): Map<EdgeIndex, number> => {
-  const impl = graphImpl(graph)
-  const edgeWeights = new Map<EdgeIndex, number>()
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    const weight = cost(edgeData.data)
-    edgeWeights.set(edgeIndex, weight)
-  }
-  return edgeWeights
-}
-
 /**
  * Finds the shortest path from the configured source node to the target node
  * using Dijkstra's algorithm.
@@ -4158,13 +4145,14 @@ export const dijkstra: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
-    const weight = config.cost(edgeData)
+  const edgeWeights = new Map<EdgeIndex, number>()
+  for (const [edgeIndex, edgeData] of impl.edges) {
+    const weight = config.cost(edgeData.data)
     if (Number.isNaN(weight) || weight < 0) {
       throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
     }
-    return weight
-  })
+    edgeWeights.set(edgeIndex, weight)
+  }
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -4347,13 +4335,6 @@ export const floydWarshall: {
   cost: (edgeData: E) => number
 ): AllPairsResult<E> => {
   const impl = graphImpl(graph)
-  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
-    const weight = cost(edgeData)
-    if (Number.isNaN(weight) || weight === -Infinity) {
-      throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
-    }
-    return weight
-  })
   // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
   const allNodes = Array.from(impl.nodes.keys())
 
@@ -4374,8 +4355,11 @@ export const floydWarshall: {
   }
 
   // Set edge weights
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    const weight = edgeWeights.get(edgeIndex)!
+  for (const [, edgeData] of impl.edges) {
+    const weight = cost(edgeData.data)
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
+    }
     const i = edgeData.source
     const j = edgeData.target
 
@@ -4567,13 +4551,14 @@ export const astar: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
-    const weight = config.cost(edgeData)
+  const edgeWeights = new Map<EdgeIndex, number>()
+  for (const [edgeIndex, edgeData] of impl.edges) {
+    const weight = config.cost(edgeData.data)
     if (Number.isNaN(weight) || weight < 0) {
       throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
     }
-    return weight
-  })
+    edgeWeights.set(edgeIndex, weight)
+  }
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -4795,14 +4780,6 @@ export const bellmanFord: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
-    const weight = config.cost(edgeData)
-    if (Number.isNaN(weight) || weight === -Infinity) {
-      throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
-    }
-    return weight
-  })
-
   // Initialize distances and predecessors
   const distances = new Map<NodeIndex, number>()
   const previous = new Map<NodeIndex, { node: NodeIndex; edgeData: E } | null>()
@@ -4815,8 +4792,11 @@ export const bellmanFord: {
 
   // Collect all edges for relaxation
   const edges: Array<{ source: NodeIndex; target: NodeIndex; weight: number; edgeData: E }> = []
-  for (const [edgeIndex, edgeData] of impl.edges) {
-    const weight = edgeWeights.get(edgeIndex)!
+  for (const [, edgeData] of impl.edges) {
+    const weight = config.cost(edgeData.data)
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
+    }
     edges.push({
       source: edgeData.source,
       target: edgeData.target,
