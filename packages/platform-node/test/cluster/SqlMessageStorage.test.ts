@@ -5,6 +5,7 @@ import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { Message, MessageStorage, ShardingConfig, Snowflake, SqlMessageStorage } from "effect/unstable/cluster"
 import { SqlClient } from "effect/unstable/sql"
+import { MssqlContainer } from "../fixtures/mssql-utils.ts"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
@@ -24,10 +25,11 @@ const storageLive = (prefix: string) =>
     Layer.provide(ShardingConfig.layerDefaults)
   )
 
-describe("SqlMessageStorage", () => {
+describe("SqlMessageStorage", { timeout: 30_000 }, () => {
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
+    ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
     it.layer(layer, {

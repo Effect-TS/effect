@@ -481,6 +481,9 @@ importers:
         specifier: ^8.7.0
         version: 8.7.0
     devDependencies:
+      '@testcontainers/mssqlserver':
+        specifier: ^11.14.0
+        version: 11.14.0
       '@testcontainers/mysql':
         specifier: ^11.14.0
         version: 11.14.0
@@ -2784,6 +2787,9 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
+
+  '@testcontainers/mssqlserver@11.14.0':
+    resolution: {integrity: sha512-/qjtcAg0UNIPmlh7ZQ+xsQE0Gpdw2gndg8shPhvCxxpCACW5Pw/dR6Hp87dcGZz551Ekr/r9fu3rUW852/wYhw==}
 
   '@testcontainers/mysql@11.14.0':
     resolution: {integrity: sha512-0/OKd1gOvnl0qS+RIpmT6J0XKWpjkVyIbOtS3cFTVR8t6Ps7W9TV0U+zp7FPxCmitWuWYPXwH/+RQXF+1jZuZQ==}
@@ -8412,6 +8418,15 @@ snapshots:
     optional: true
 
   '@standard-schema/spec@1.1.0': {}
+
+  '@testcontainers/mssqlserver@11.14.0':
+    dependencies:
+      testcontainers: 11.14.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+      - supports-color
 
   '@testcontainers/mysql@11.14.0':
     dependencies:

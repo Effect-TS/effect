@@ -72,6 +72,7 @@
     "ioredis": "^5.7.0"
   },
   "devDependencies": {
+    "@testcontainers/mssqlserver": "^11.14.0",
     "@testcontainers/mysql": "^11.14.0",
     "@testcontainers/postgresql": "^11.14.0",
     "@testcontainers/redis": "^11.14.0",
