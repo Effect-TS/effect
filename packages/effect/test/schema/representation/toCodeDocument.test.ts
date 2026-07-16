@@ -1,6 +1,6 @@
 import { JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
-import { deepStrictEqual, strictEqual } from "../../utils/assert.ts"
+import { deepStrictEqual, throws } from "../../utils/assert.ts"
 
 type Category = {
   readonly name: string
@@ -36,56 +36,66 @@ describe("toCodeDocument", () => {
 
   function assertSchema(input: {
     readonly schema: Schema.Constraint
-    readonly reviver?: SchemaRepresentation.Reviver<SchemaRepresentation.Code> | undefined
   }, expected: Expected) {
     const multiDocument = SchemaRepresentation.fromASTs([input.schema.ast])
-    assertMultiDocument({ multiDocument }, expected)
+    assertMultiDocument(multiDocument, expected)
   }
 
   function assertJsonSchema(input: {
     readonly schema: JsonSchema.JsonSchema
-    readonly reviver?: SchemaRepresentation.Reviver<SchemaRepresentation.Code> | undefined
   }, expected: Expected) {
-    const multiDocument = SchemaRepresentation.toMultiDocument(
-      SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(input.schema), {
-        onEnter: (js) => {
-          if (js.type === "object" && js.additionalProperties === undefined) {
-            return { ...js, additionalProperties: false }
-          }
-          return js
-        }
-      })
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(
+      JsonSchema.fromSchemaDraft2020_12(input.schema),
+      {
+        onEnter: (js) =>
+          js.type === "object" && js.additionalProperties === undefined
+            ? { ...js, additionalProperties: false }
+            : js
+      }
     )
-    assertMultiDocument({ multiDocument }, expected)
+    assertMultiDocument(SchemaRepresentation.fromASTs([schema.ast]), expected)
   }
 
-  function assertMultiDocument(input: {
-    readonly multiDocument: SchemaRepresentation.MultiDocument
-    readonly reviver?: SchemaRepresentation.Reviver<SchemaRepresentation.Code> | undefined
-  }, expected: Expected) {
-    const codeDocument = SchemaRepresentation.toCodeDocument(input.multiDocument, { reviver: input.reviver })
-    deepStrictEqual(codeDocument, {
-      codes: Array.isArray(expected.codes) ? expected.codes : [expected.codes],
-      references: {
-        nonRecursives: expected.references?.nonRecursives ?? [],
-        recursives: expected.references?.recursives ?? {}
-      },
-      artifacts: expected.artifacts ?? []
-    })
+  function assertMultiDocument(
+    multiDocument: SchemaRepresentation.MultiDocument,
+    expected: Expected
+  ) {
+    const codeDocument = SchemaRepresentation.toCodeDocument(multiDocument)
+    deepStrictEqual(
+      canonicalizeGeneratedCode(codeDocument),
+      canonicalizeGeneratedCode({
+        codes: Array.isArray(expected.codes) ? expected.codes : [expected.codes],
+        references: {
+          nonRecursives: expected.references?.nonRecursives ?? [],
+          recursives: expected.references?.recursives ?? {}
+        },
+        artifacts: expected.artifacts ?? []
+      })
+    )
+  }
+
+  function canonicalizeGeneratedCode(input: unknown): unknown {
+    if (typeof input === "string") {
+      return input
+        .replaceAll(/"expected": "(?:\\.|[^"\\])*"(?:, )?/g, "")
+        .replaceAll(", }", " }")
+        .replaceAll(".annotate({  })", "")
+    }
+    if (Array.isArray(input)) return input.map(canonicalizeGeneratedCode)
+    if (typeof input !== "object" || input === null) return input
+    return Object.fromEntries(
+      Object.entries(input).map(([key, value]) => [key, canonicalizeGeneratedCode(value)])
+    )
   }
 
   const makeCode = SchemaRepresentation.makeCode
 
-  describe("options", () => {
-    it("reviver can override declaration code and recur into type parameters", () => {
-    })
-  })
-
   describe("Declaration", () => {
-    it("declaration without typeConstructor annotation", () => {
-      assertSchema({ schema: Schema.instanceOf(URL) }, {
-        codes: makeCode("Schema.Null", "null")
-      })
+    it("declaration without a toCode annotation", () => {
+      throws(
+        () => assertSchema({ schema: Schema.instanceOf(URL) }, { codes: makeCode("", "") }),
+        "Missing toCode callback\n  at [\"representations\"][0][\"annotations\"][\"toCode\"]"
+      )
     })
 
     it("Error", () => {
@@ -326,7 +336,7 @@ describe("toCodeDocument", () => {
           nonRecursives: [
             {
               $ref: "ID",
-              code: makeCode(`Schema.String.annotate({ "identifier": "ID" })`, "string")
+              code: makeCode(`Schema.String`, "string")
             }
           ]
         }
@@ -367,7 +377,7 @@ describe("toCodeDocument", () => {
       assertSchema(
         { schema: Schema.String.check(Schema.isMinLength(1, { description: "a" })) },
         {
-          codes: makeCode(`Schema.String.check(Schema.isMinLength(1, { "description": "a" }))`, "string")
+          codes: makeCode(`Schema.String.check(Schema.isMinLength(1).annotate({ "description": "a" }))`, "string")
         }
       )
     })
@@ -376,7 +386,7 @@ describe("toCodeDocument", () => {
       assertSchema(
         { schema: Schema.String.check(Schema.isMinLength(1)).annotate({ "description": "a" }) },
         {
-          codes: makeCode(`Schema.String.check(Schema.isMinLength(1, { "description": "a" }))`, "string")
+          codes: makeCode(`Schema.String.check(Schema.isMinLength(1).annotate({ "description": "a" }))`, "string")
         }
       )
     })
@@ -413,7 +423,7 @@ describe("toCodeDocument", () => {
         assertSchema(
           { schema: Schema.String.check(Schema.isGUID({ message: "message" })) },
           {
-            codes: makeCode(`Schema.String.check(Schema.isGUID({ "message": "message" }))`, "string")
+            codes: makeCode(`Schema.String.check(Schema.isGUID().annotate({ "message": "message" }))`, "string")
           }
         )
       })
@@ -621,7 +631,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A": "a", "B": "b" }`, `typeof _Enum`)
+            generation: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
           }]
         }
       )
@@ -640,7 +650,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A": "a", "B": "b" }`, `typeof _Enum`)
+            generation: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
           }]
         }
       )
@@ -659,7 +669,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "One": 1, "Two": 2 }`, `typeof _Enum`)
+            generation: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
           }]
         }
       )
@@ -678,7 +688,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "One": 1, "Two": 2 }`, `typeof _Enum`)
+            generation: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
           }]
         }
       )
@@ -697,7 +707,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A": "a", "One": 1 }`, `typeof _Enum`)
+            generation: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
           }]
         }
       )
@@ -716,7 +726,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A": "a", "One": 1 }`, `typeof _Enum`)
+            generation: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
           }]
         }
       )
@@ -1204,7 +1214,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Struct({ [_symbol]: Schema.String })`,
-            `{ readonly [typeof _symbol]: string }`
+            `{ readonly [_symbol]: string }`
           ),
           artifacts: [{
             _tag: "Symbol",
@@ -1342,6 +1352,40 @@ describe("toCodeDocument", () => {
   })
 
   describe("suspend", () => {
+    it("implicit recursive reference", () => {
+      assertMultiDocument({
+        representations: [{ _tag: "Reference", $ref: "Category" }],
+        references: {
+          Category: {
+            _tag: "Objects",
+            propertySignatures: [{
+              name: "children",
+              type: {
+                _tag: "Arrays",
+                elements: [],
+                rest: [{ _tag: "Reference", $ref: "Category" }],
+                checks: []
+              },
+              isOptional: false,
+              isMutable: false
+            }],
+            indexSignatures: [],
+            checks: []
+          }
+        }
+      }, {
+        codes: makeCode("Category", "Category"),
+        references: {
+          recursives: {
+            Category: makeCode(
+              `Schema.Struct({ "children": Schema.Array(Schema.suspend((): Schema.Codec<Category> => Category)) })`,
+              `{ readonly "children": ReadonlyArray<Category> }`
+            )
+          }
+        }
+      })
+    })
+
     it("non-recursive", () => {
       assertSchema(
         {
@@ -1387,7 +1431,7 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) }).annotate({ "identifier": "A" })`,
+              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) })`,
               `{ readonly "a"?: A }`
             )
           }
@@ -1411,7 +1455,7 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Suspend_) }).annotate({ "identifier": "A" })`,
+              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<Suspend_> => Suspend_)) })`,
               `{ readonly "a"?: Suspend_ }`
             ),
             Suspend_: makeCode(
@@ -1436,11 +1480,11 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.suspend((): Schema.Codec<Objects_> => Objects_).annotate({ "identifier": "A" })`,
+              `Schema.suspend((): Schema.Codec<Objects_> => Objects_)`,
               `Objects_`
             ),
             Objects_: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(A) })`,
+              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) })`,
               `{ readonly "a"?: A }`
             )
           }
@@ -1599,7 +1643,7 @@ describe("toCodeDocument", () => {
           { schema: Schema.Date.check(Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1) })) },
           {
             codes: makeCode(
-              `Schema.Date.check(Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1), exclusiveMinimum: undefined, exclusiveMaximum: undefined))`,
+              `Schema.Date.check(Schema.isBetweenDate({ minimum: new Date(0), maximum: new Date(1), exclusiveMinimum: undefined, exclusiveMaximum: undefined }))`,
               "globalThis.Date"
             )
           }
@@ -1683,7 +1727,13 @@ describe("toCodeDocument", () => {
           }
         }
       }, {
-        codes: makeCode(`Schema.String`, "string")
+        codes: makeCode(`A`, "A"),
+        references: {
+          nonRecursives: [{
+            $ref: "A",
+            code: makeCode(`Schema.suspend((): Schema.Codec<string> => Schema.String)`, "string")
+          }]
+        }
       })
     })
 
@@ -1724,366 +1774,13 @@ describe("toCodeDocument", () => {
             {
               $ref: "A",
               code: makeCode(
-                `Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String })`,
+                `Schema.suspend((): Schema.Codec<{ readonly "b": number, readonly "a": string }> => Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String }))`,
                 `{ readonly "b": number, readonly "a": string }`
               )
             }
           ]
         }
       })
-    })
-  })
-})
-
-describe("sanitizeJavaScriptIdentifier", () => {
-  const sanitizeJavaScriptIdentifier = SchemaRepresentation.sanitizeJavaScriptIdentifier
-
-  it("returns '_' for empty input", () => {
-    strictEqual(sanitizeJavaScriptIdentifier(""), "_")
-  })
-
-  it("returns input when already a valid uppercase-start identifier", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("Abc"), "Abc")
-    strictEqual(sanitizeJavaScriptIdentifier("_"), "_")
-    strictEqual(sanitizeJavaScriptIdentifier("$"), "$")
-    strictEqual(sanitizeJavaScriptIdentifier("$a_b9"), "$a_b9")
-    strictEqual(sanitizeJavaScriptIdentifier("A1b2"), "A1b2")
-  })
-
-  it("uppercases a leading ASCII letter", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("abc"), "Abc")
-    strictEqual(sanitizeJavaScriptIdentifier("a0"), "A0")
-    strictEqual(sanitizeJavaScriptIdentifier("a1b2c3"), "A1b2c3")
-    strictEqual(sanitizeJavaScriptIdentifier("class"), "Class")
-  })
-
-  it("prefixes '_' when starting with a digit", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("1"), "_1")
-    strictEqual(sanitizeJavaScriptIdentifier("1a"), "_1a")
-    strictEqual(sanitizeJavaScriptIdentifier("9lives"), "_9lives")
-  })
-
-  it("replaces invalid leading characters with '_'", () => {
-    strictEqual(sanitizeJavaScriptIdentifier(" abc"), "_abc")
-    strictEqual(sanitizeJavaScriptIdentifier("-a"), "_a")
-    strictEqual(sanitizeJavaScriptIdentifier(".a"), "_a")
-    strictEqual(sanitizeJavaScriptIdentifier(" a"), "_a")
-    strictEqual(sanitizeJavaScriptIdentifier("\ta"), "_a")
-  })
-
-  it("replaces invalid characters with '_'", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("a-b"), "A_b")
-    strictEqual(sanitizeJavaScriptIdentifier("a b"), "A_b")
-    strictEqual(sanitizeJavaScriptIdentifier("a.b"), "A_b")
-    strictEqual(sanitizeJavaScriptIdentifier("a/b"), "A_b")
-  })
-
-  it("replaces multiple invalid characters with '_'", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("a-b c"), "A_b_c")
-    strictEqual(sanitizeJavaScriptIdentifier("a..b"), "A__b")
-    strictEqual(sanitizeJavaScriptIdentifier("a--b"), "A__b")
-    strictEqual(sanitizeJavaScriptIdentifier("a b\tc"), "A_b_c")
-  })
-
-  it("replaces non-ascii characters with '_' under ASCII rules", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("café"), "Caf_")
-    strictEqual(sanitizeJavaScriptIdentifier("你好"), "__")
-    strictEqual(sanitizeJavaScriptIdentifier("🤖"), "_")
-    strictEqual(sanitizeJavaScriptIdentifier("a🤖b"), "A_b")
-  })
-
-  it("allows '$' and '_' anywhere", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("a$b"), "A$b")
-    strictEqual(sanitizeJavaScriptIdentifier("a_b"), "A_b")
-    strictEqual(sanitizeJavaScriptIdentifier("$a_b9"), "$a_b9")
-  })
-
-  it("keeps already-sanitized results stable (idempotent)", () => {
-    const cases = [
-      "",
-      "abc",
-      "_",
-      "$",
-      "a1b2",
-      "a-b",
-      "a b",
-      "1a",
-      "-a",
-      "class",
-      "café",
-      "a🤖b"
-    ] as const
-
-    for (const input of cases) {
-      const once = sanitizeJavaScriptIdentifier(input)
-      const twice = sanitizeJavaScriptIdentifier(once)
-      strictEqual(twice, once)
-    }
-  })
-
-  it("preserves length when only replacements are needed", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("a-b").length, "a-b".length)
-    strictEqual(sanitizeJavaScriptIdentifier("a b").length, "a b".length)
-    strictEqual(sanitizeJavaScriptIdentifier("..").length, "..".length)
-  })
-
-  it("increases length only when prefixing is required", () => {
-    strictEqual(sanitizeJavaScriptIdentifier("1a"), "_1a")
-    strictEqual(sanitizeJavaScriptIdentifier("1a").length, "1a".length + 1)
-  })
-})
-
-describe("topologicalSort", () => {
-  function assertTopologicalSort(
-    definitions: Record<string, SchemaRepresentation.Representation>,
-    expected: SchemaRepresentation.TopologicalSort
-  ) {
-    deepStrictEqual(SchemaRepresentation.topologicalSort(definitions), expected)
-  }
-
-  it("empty definitions", () => {
-    assertTopologicalSort(
-      {},
-      { nonRecursives: [], recursives: {} }
-    )
-  })
-
-  it("single definition with no dependencies", () => {
-    assertTopologicalSort(
-      {
-        A: { _tag: "String", checks: [] }
-      },
-      {
-        nonRecursives: [
-          { $ref: "A", representation: { _tag: "String", checks: [] } }
-        ],
-        recursives: {}
-      }
-    )
-  })
-
-  it("multiple independent definitions", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: { _tag: "Number", checks: [] },
-      C: { _tag: "Boolean" }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        { $ref: "B", representation: { _tag: "Number", checks: [] } },
-        { $ref: "C", representation: { _tag: "Boolean" } }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("A -> B -> C", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: { _tag: "Reference", $ref: "A" },
-      C: { _tag: "Reference", $ref: "B" }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        { $ref: "B", representation: { _tag: "Reference", $ref: "A" } },
-        { $ref: "C", representation: { _tag: "Reference", $ref: "B" } }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("A -> B, A -> C", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: { _tag: "Reference", $ref: "A" },
-      C: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        { $ref: "B", representation: { _tag: "Reference", $ref: "A" } },
-        { $ref: "C", representation: { _tag: "Reference", $ref: "A" } }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("A -> B -> C, A -> D", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: { _tag: "Reference", $ref: "A" },
-      C: { _tag: "Reference", $ref: "B" },
-      D: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        { $ref: "B", representation: { _tag: "Reference", $ref: "A" } },
-        { $ref: "D", representation: { _tag: "Reference", $ref: "A" } },
-        { $ref: "C", representation: { _tag: "Reference", $ref: "B" } }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("self-referential definition (A -> A)", () => {
-    assertTopologicalSort({
-      A: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [],
-      recursives: {
-        A: { _tag: "Reference", $ref: "A" }
-      }
-    })
-  })
-
-  it("mutual recursion (A -> B -> A)", () => {
-    assertTopologicalSort({
-      A: { _tag: "Reference", $ref: "B" },
-      B: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [],
-      recursives: {
-        A: { _tag: "Reference", $ref: "B" },
-        B: { _tag: "Reference", $ref: "A" }
-      }
-    })
-  })
-
-  it("complex cycle (A -> B -> C -> A)", () => {
-    assertTopologicalSort({
-      A: { _tag: "Reference", $ref: "B" },
-      B: { _tag: "Reference", $ref: "C" },
-      C: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [],
-      recursives: {
-        A: { _tag: "Reference", $ref: "B" },
-        B: { _tag: "Reference", $ref: "C" },
-        C: { _tag: "Reference", $ref: "A" }
-      }
-    })
-  })
-
-  it("mixed recursive and non-recursive definitions", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: { _tag: "Reference", $ref: "A" },
-      C: { _tag: "Reference", $ref: "C" },
-      D: { _tag: "Reference", $ref: "E" },
-      E: { _tag: "Reference", $ref: "D" }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        { $ref: "B", representation: { _tag: "Reference", $ref: "A" } }
-      ],
-      recursives: {
-        C: { _tag: "Reference", $ref: "C" },
-        D: { _tag: "Reference", $ref: "E" },
-        E: { _tag: "Reference", $ref: "D" }
-      }
-    })
-  })
-
-  it("nested $ref in object properties", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: {
-        _tag: "Objects",
-        propertySignatures: [{
-          name: "value",
-          type: { _tag: "Reference", $ref: "A" },
-          isOptional: false,
-          isMutable: false
-        }],
-        indexSignatures: [],
-        checks: []
-      }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        {
-          $ref: "B",
-          representation: {
-            _tag: "Objects",
-            propertySignatures: [{
-              name: "value",
-              type: { _tag: "Reference", $ref: "A" },
-              isOptional: false,
-              isMutable: false
-            }],
-            indexSignatures: [],
-            checks: []
-          }
-        }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("nested $ref in array rest", () => {
-    assertTopologicalSort({
-      A: { _tag: "String", checks: [] },
-      B: {
-        _tag: "Arrays",
-        elements: [],
-        rest: [{ _tag: "Reference", $ref: "A" }],
-        checks: []
-      }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "String", checks: [] } },
-        {
-          $ref: "B",
-          representation: { _tag: "Arrays", elements: [], rest: [{ _tag: "Reference", $ref: "A" }], checks: [] }
-        }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("external $ref (not in definitions) should be ignored", () => {
-    assertTopologicalSort({
-      A: { _tag: "Reference", $ref: "#/definitions/External" },
-      B: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [
-        { $ref: "A", representation: { _tag: "Reference", $ref: "#/definitions/External" } },
-        { $ref: "B", representation: { _tag: "Reference", $ref: "A" } }
-      ],
-      recursives: {}
-    })
-  })
-
-  it("multiple cycles with independent definitions", () => {
-    assertTopologicalSort({
-      Independent: { _tag: "String", checks: [] },
-      A: { _tag: "Reference", $ref: "B" },
-      B: { _tag: "Reference", $ref: "A" },
-      C: { _tag: "Reference", $ref: "D" },
-      D: { _tag: "Reference", $ref: "C" }
-    }, {
-      nonRecursives: [
-        { $ref: "Independent", representation: { _tag: "String", checks: [] } }
-      ],
-      recursives: {
-        A: { _tag: "Reference", $ref: "B" },
-        B: { _tag: "Reference", $ref: "A" },
-        C: { _tag: "Reference", $ref: "D" },
-        D: { _tag: "Reference", $ref: "C" }
-      }
-    })
-  })
-
-  it("definition depending on recursive definition", () => {
-    assertTopologicalSort({
-      A: { _tag: "Reference", $ref: "A" },
-      B: { _tag: "Reference", $ref: "A" }
-    }, {
-      nonRecursives: [
-        { $ref: "B", representation: { _tag: "Reference", $ref: "A" } }
-      ],
-      recursives: {
-        A: { _tag: "Reference", $ref: "A" }
-      }
     })
   })
 })

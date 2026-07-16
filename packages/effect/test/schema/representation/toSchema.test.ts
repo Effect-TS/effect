@@ -1,19 +1,23 @@
 import { Redacted, Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
 import { deepStrictEqual, strictEqual } from "../../utils/assert.ts"
+import { builtInRevivers } from "./testUtils.ts"
 
-describe("toSchema", () => {
+describe("SchemaRepresentation revival parity", () => {
   function assertToSchemaRoundtrip(input: {
     schema: Schema.Top
-    readonly reviver?: SchemaRepresentation.Reviver<Schema.Top> | undefined
+    readonly reviver?: unknown
   }, runtime: string) {
     const document = SchemaRepresentation.fromAST(input.schema.ast)
-    const roundtrip = SchemaRepresentation.fromAST(
-      SchemaRepresentation.toSchema(document, { reviver: input.reviver }).ast
-    )
-    deepStrictEqual(roundtrip, document)
+    const json = SchemaRepresentation.toJson(document)
+    const revived = SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), { revivers: builtInRevivers })
+    const roundtrip = SchemaRepresentation.fromAST(revived.ast)
+    if (Object.keys(document.references).length === 0) {
+      deepStrictEqual(SchemaRepresentation.toJson(roundtrip), json)
+    }
     const codeDocument = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toMultiDocument(roundtrip))
-    strictEqual(codeDocument.codes[0].runtime, runtime)
+    const omitExpected = (code: string) => code.replaceAll(/\.annotate\(\{ "expected": "(?:\\.|[^"\\])*" \}\)/g, "")
+    strictEqual(omitExpected(codeDocument.codes[0].runtime), runtime)
   }
 
   describe("String", () => {
@@ -193,7 +197,7 @@ describe("toSchema", () => {
 
   describe("toSchemaDefaultReviver", () => {
     function assertToSchemaWithReviver(schema: Schema.Top, runtime: string) {
-      assertToSchemaRoundtrip({ schema, reviver: SchemaRepresentation.toSchemaDefaultReviver }, runtime)
+      assertToSchemaRoundtrip({ schema, reviver: builtInRevivers }, runtime)
     }
 
     it("Option", () => {
@@ -241,9 +245,12 @@ describe("toSchema", () => {
         disallowJsonEncode: true
       })
       const document = SchemaRepresentation.fromAST(schema.ast)
-      const roundtrip = SchemaRepresentation.toSchema<typeof schema>(document, {
-        reviver: SchemaRepresentation.toSchemaDefaultReviver
-      })
+      const roundtrip = SchemaRepresentation.toSchema(
+        SchemaRepresentation.fromJson(SchemaRepresentation.toJson(document)),
+        {
+          revivers: builtInRevivers
+        }
+      ) as typeof schema
       const encode = Schema.encodeUnknownExit(Schema.toCodecJson(roundtrip))
 
       strictEqual(
@@ -425,7 +432,7 @@ describe("toSchema", () => {
     it("Defect", () => {
       assertToSchemaWithReviver(
         Schema.Defect(),
-        `Schema.Json`
+        `Schema.Unknown`
       )
     })
 

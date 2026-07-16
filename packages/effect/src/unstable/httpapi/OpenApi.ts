@@ -14,13 +14,13 @@ import * as Context from "../../Context.ts"
 import * as Equal from "../../Equal.ts"
 import { constFalse } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
+import * as InternalRepresentation from "../../internal/schema/representation.ts"
 import * as JsonPatch from "../../JsonPatch.ts"
 import { escapeToken } from "../../JsonPointer.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
-import * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
 import * as HttpApi from "./HttpApi.ts"
 import * as HttpApiEndpoint from "./HttpApiEndpoint.ts"
@@ -212,6 +212,15 @@ export const annotations: (
 
 const apiCache = new WeakMap<HttpApi.Constraint, OpenAPISpec>()
 
+type CompileSchemas = (
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
+) => JsonSchema.MultiDocument<"openapi-3.1">
+
+const compileSchemas: CompileSchemas = (asts) =>
+  JsonSchema.toMultiDocumentOpenApi3_1(
+    InternalRepresentation.toJsonSchemaMultiDocument(InternalRepresentation.fromEncodedASTs(asts))
+  )
+
 /**
  * This function checks if a given tag exists within the provided context. If
  * the tag is present, it retrieves the associated value and applies the given
@@ -251,7 +260,15 @@ function processAnnotation<Services, S, I>(
 export function fromApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
   api: HttpApi.HttpApi<Id, Groups>
 ): OpenAPISpec {
-  const cached = apiCache.get(api)
+  return fromApiWith(api, apiCache, compileSchemas)
+}
+
+function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
+  api: HttpApi.HttpApi<Id, Groups>,
+  cache: WeakMap<HttpApi.Constraint, OpenAPISpec>,
+  compileSchemas: CompileSchemas
+): OpenAPISpec {
+  const cached = cache.get(api)
   if (cached !== undefined) {
     return cached
   }
@@ -599,12 +616,7 @@ export function fromApi<Id extends string, Groups extends HttpApiGroup.Constrain
   }
 
   if (Arr.isArrayNonEmpty(pathOps)) {
-    const multiDocument = SchemaRepresentation.fromASTs(
-      Arr.map(pathOps, (op) => op.ast)
-    )
-    const jsonSchemaMultiDocument = JsonSchema.toMultiDocumentOpenApi3_1(
-      SchemaRepresentation.toJsonSchemaMultiDocument(multiDocument)
-    )
+    const jsonSchemaMultiDocument = compileSchemas(Arr.map(pathOps, (op) => op.ast))
     const patchOps: Array<JsonPatch.JsonPatchOperation> = pathOps.map((op, i) => {
       const oppath = escapePath(op.path)
       const value = jsonSchemaMultiDocument.schemas[i]
@@ -639,7 +651,7 @@ export function fromApi<Id extends string, Groups extends HttpApiGroup.Constrain
     spec = transformFn(spec) as OpenAPISpec
   })
 
-  apiCache.set(api, spec)
+  cache.set(api, spec)
 
   return spec
 }

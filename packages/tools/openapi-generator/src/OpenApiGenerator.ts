@@ -15,6 +15,7 @@ import * as Effect from "effect/Effect"
 import type * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Predicate from "effect/Predicate"
+import * as Rec from "effect/Record"
 import * as String from "effect/String"
 import type { OpenAPISecurityScheme, OpenAPISpec, OpenAPISpecMethodName } from "effect/unstable/httpapi/OpenApi"
 import SwaggerToOpenApi from "swagger2openapi"
@@ -156,7 +157,7 @@ export const make = Effect.gen(function*() {
       const generation = options.format === "httpapi"
         ? generator.generateHttpApi(
           source,
-          withHttpApiMultipartSchemas(spec.components?.schemas ?? {}, multipartSchemaRefs),
+          withHttpApiMultipartSchemas(spec.components?.schemas ?? {}, multipartSchemaRefs, resolveRef),
           {
             onEnter: options.onEnter,
             multipartSchemaRefs
@@ -807,13 +808,14 @@ const toDefinitionRef = (name: string): string => `#/$defs/${name.replaceAll("~"
 
 const withHttpApiMultipartSchemas = (
   definitions: JsonSchema.Definitions,
-  multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined
+  multipartSchemaRefs: HttpApiMultipartSchemaRefs | undefined,
+  resolveRef: (ref: string) => unknown
 ): JsonSchema.Definitions => {
   if (multipartSchemaRefs === undefined) {
     return definitions
   }
   return {
-    ...definitions,
+    ...Rec.map(definitions, (schema) => transformMultipartSchema(schema, multipartSchemaRefs, resolveRef)),
     [multipartSchemaRefs.singleFile]: {
       type: "string",
       format: "binary"

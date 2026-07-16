@@ -1,20 +1,22 @@
-import { Array as Arr, Option, Predicate, Schema, SchemaGetter, SchemaRepresentation } from "effect"
+import { Array as Arr, Option, Predicate, Schema, SchemaGetter, type SchemaRepresentation } from "effect"
+import * as InternalRepresentation from "effect/internal/schema/representation"
 import { describe, it } from "vitest"
 import { deepStrictEqual } from "../../utils/assert.ts"
+import { canonicalize } from "./testUtils.ts"
 
 describe("fromASTs", () => {
   function assertFromASTs(schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>], expected: {
-    readonly representations: readonly [
-      SchemaRepresentation.Representation,
-      ...Array<SchemaRepresentation.Representation>
-    ]
-    readonly references?: SchemaRepresentation.References
+    readonly representations: readonly [unknown, ...Array<unknown>]
+    readonly references?: Readonly<Record<string, unknown>>
   }) {
-    const document = SchemaRepresentation.fromASTs(Arr.map(schemas, (s) => s.ast))
-    deepStrictEqual(document, {
-      representations: expected.representations,
-      references: expected.references ?? {}
-    })
+    const document = InternalRepresentation.fromEncodedASTs(Arr.map(schemas, (s) => s.ast))
+    deepStrictEqual(
+      canonicalize(document),
+      canonicalize({
+        representations: expected.representations,
+        references: expected.references ?? {}
+      })
+    )
   }
 
   it("should handle multiple schemas", () => {
@@ -59,14 +61,17 @@ describe("fromASTs", () => {
 
 describe("fromAST", () => {
   function assertFromAST(schema: Schema.Constraint, expected: {
-    readonly representation: SchemaRepresentation.Representation
-    readonly references?: SchemaRepresentation.References
+    readonly representation: unknown
+    readonly references?: Readonly<Record<string, unknown>>
   }) {
-    const document = SchemaRepresentation.fromAST(schema.ast)
-    deepStrictEqual(document, {
-      representation: expected.representation,
-      references: expected.references ?? {}
-    })
+    const document = InternalRepresentation.fromEncodedAST(schema.ast)
+    deepStrictEqual(
+      canonicalize(document),
+      canonicalize({
+        representation: expected.representation,
+        references: expected.references ?? {}
+      })
+    )
   }
 
   describe("String", () => {
@@ -325,7 +330,7 @@ describe("fromAST", () => {
     })
 
     it("string content schema", () => {
-      const document = SchemaRepresentation.fromAST(
+      const document = InternalRepresentation.fromEncodedAST(
         Schema.fromJsonString(Schema.Struct({ a: Schema.String })).ast
       )
       const representation = document.representation as SchemaRepresentation.String
@@ -343,7 +348,7 @@ describe("fromAST", () => {
         checks: []
       })
       deepStrictEqual(representation.annotations?.expected, "a string that will be decoded as JSON")
-      deepStrictEqual(representation.annotations?.contentMediaType, "application/json")
+      deepStrictEqual(representation.contentMediaType, "application/json")
     })
 
     it("tuple rest and mutable properties", () => {
@@ -431,12 +436,12 @@ describe("fromAST", () => {
                   checks: [
                     {
                       _tag: "Filter",
-                      meta: { _tag: "isMinLength", minLength: 1 },
+                      representation: { id: "effect/schema/isMinLength", payload: { minLength: 1 } },
                       annotations: { expected: "a value with a length of at least 1" }
                     },
                     {
                       _tag: "Filter",
-                      meta: { _tag: "isUnique" },
+                      representation: { id: "effect/schema/isUnique", payload: null },
                       annotations: { expected: "an array with unique items" }
                     }
                   ]
@@ -456,12 +461,12 @@ describe("fromAST", () => {
                   checks: [
                     {
                       _tag: "Filter",
-                      meta: { _tag: "isMinProperties", minProperties: 1 },
+                      representation: { id: "effect/schema/isMinProperties", payload: { minProperties: 1 } },
                       annotations: { expected: "a value with at least 1 entry" }
                     },
                     {
                       _tag: "Filter",
-                      meta: { _tag: "isMaxProperties", maxProperties: 2 },
+                      representation: { id: "effect/schema/isMaxProperties", payload: { maxProperties: 2 } },
                       annotations: { expected: "a value with at most 2 entries" }
                     }
                   ]
@@ -492,12 +497,12 @@ describe("fromAST", () => {
                 checks: [
                   {
                     _tag: "Filter",
-                    meta: { _tag: "isMinLength", minLength: 1 },
+                    representation: { id: "effect/schema/isMinLength", payload: { minLength: 1 } },
                     annotations: { expected: "a value with a length of at least 1" }
                   },
                   {
                     _tag: "Filter",
-                    meta: { _tag: "isMaxLength", maxLength: 2 },
+                    representation: { id: "effect/schema/isMaxLength", payload: { maxLength: 2 } },
                     annotations: { expected: "a value with a length of at most 2" }
                   }
                 ],
@@ -554,18 +559,19 @@ describe("fromAST", () => {
               checks: [
                 {
                   _tag: "Filter",
-                  meta: {
-                    _tag: "isPropertyNames",
-                    propertyNames: {
+                  representation: {
+                    id: "effect/schema/isPropertyNames",
+                    payload: null,
+                    schemas: [{
                       _tag: "String",
                       checks: [
                         {
                           _tag: "Filter",
-                          meta: { _tag: "isPattern", regExp: new RegExp("^[A-Z]") },
+                          representation: { id: "effect/schema/isPattern", payload: { source: "^[A-Z]", flags: "" } },
                           annotations: { expected: "a string matching the RegExp ^[A-Z]" }
                         }
                       ]
-                    }
+                    }]
                   },
                   annotations: { expected: "an object with property names matching the schema" }
                 }
@@ -619,26 +625,17 @@ describe("fromAST", () => {
               identifier: "A"
             },
             checks: [],
-            typeParameters: [
-              { _tag: "Reference", $ref: "A1" }
-            ],
-            encodedSchema: { _tag: "Reference", $ref: "A1" }
-          },
-          A1: {
-            _tag: "Objects",
-            propertySignatures: [
-              {
+            typeParameters: [{
+              _tag: "Objects",
+              propertySignatures: [{
                 name: "a",
-                type: {
-                  _tag: "String",
-                  checks: []
-                },
+                type: { _tag: "String", checks: [] },
                 isOptional: false,
                 isMutable: false
-              }
-            ],
-            indexSignatures: [],
-            checks: []
+              }],
+              indexSignatures: [],
+              checks: []
+            }]
           }
         }
       })
@@ -669,10 +666,17 @@ describe("fromAST", () => {
             _tag: "Declaration",
             annotations: { identifier: "A" },
             checks: [],
-            typeParameters: [
-              { _tag: "Reference", $ref: "A1" }
-            ],
-            encodedSchema: { _tag: "Reference", $ref: "A1" }
+            typeParameters: [{
+              _tag: "Objects",
+              propertySignatures: [{
+                name: "a",
+                type: { _tag: "String", checks: [] },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: [],
+              checks: []
+            }]
           },
           A1: {
             _tag: "Objects",

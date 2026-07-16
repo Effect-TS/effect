@@ -1372,14 +1372,20 @@ export class Number extends Base {
   }
   /** @internal */
   toCodecJson(): AST {
-    if (this.checks && (hasCheck(this.checks, "isFinite") || hasCheck(this.checks, "isInt"))) {
+    if (
+      this.checks &&
+      (hasCheck(this.checks, "effect/schema/isFinite") || hasCheck(this.checks, "effect/schema/isInt"))
+    ) {
       return this
     }
     return replaceEncoding(this, [numberToJson])
   }
   /** @internal */
   toCodecStringTree(): AST {
-    if (this.checks && (hasCheck(this.checks, "isFinite") || hasCheck(this.checks, "isInt"))) {
+    if (
+      this.checks &&
+      (hasCheck(this.checks, "effect/schema/isFinite") || hasCheck(this.checks, "effect/schema/isInt"))
+    ) {
       return replaceEncoding(this, [finiteToString])
     }
     return replaceEncoding(this, [numberToString])
@@ -1391,13 +1397,13 @@ export class Number extends Base {
 }
 
 // oxlint-disable-next-line only-used-in-recursion - @gcanti what's this? :-)
-function hasCheck(checks: ReadonlyArray<Check<unknown>>, tag: string): boolean {
+function hasCheck(checks: ReadonlyArray<Check<unknown>>, id: string): boolean {
   return checks.some((c) => {
     switch (c._tag) {
       case "Filter":
-        return c.annotations?.meta?._tag === tag
+        return c.annotations?.representation?.id === id
       case "FilterGroup":
-        return hasCheck(c.checks, tag)
+        return hasCheck(c.checks, id)
     }
   })
 }
@@ -2889,8 +2895,8 @@ export class Suspend extends Base {
  *
  * - `run` — the validation function. Returns `undefined` on success, or an
  *   `Issue` on failure.
- * - `annotations` — optional filter-level metadata (expected message, meta
- *   tags, arbitrary constraint hints).
+ * - `annotations` — optional filter-level annotations (expected message,
+ *   representation, arbitrary constraint hints).
  * - `aborted` — when `true`, parsing stops immediately after this filter
  *   fails (no further checks run).
  *
@@ -3051,10 +3057,11 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
     (s: string) => regExp.test(s),
     {
       expected: `a string matching the RegExp ${source}`,
-      meta: {
-        _tag: "isPattern",
-        regExp
+      representation: {
+        id: "effect/schema/isPattern",
+        payload: { source, flags: regExp.flags }
       },
+      toJsonSchema: () => ({ pattern: source }),
       arbitrary: {
         constraint: {
           patterns: [regExp.source]
@@ -3635,10 +3642,11 @@ export function isStringFinite(annotations?: Schema.Annotations.Filter) {
     isStringFiniteRegExp,
     {
       expected: "a string representing a finite number",
-      meta: {
-        _tag: "isStringFinite",
-        regExp: isStringFiniteRegExp
+      representation: {
+        id: "effect/schema/isStringFinite",
+        payload: null
       },
+      toJsonSchema: () => ({ pattern: isStringFiniteRegExp.source }),
       ...annotations
     }
   )
@@ -3669,10 +3677,11 @@ export function isStringBigInt(annotations?: Schema.Annotations.Filter) {
     isStringBigIntRegExp,
     {
       expected: "a string representing a bigint",
-      meta: {
-        _tag: "isStringBigInt",
-        regExp: isStringBigIntRegExp
+      representation: {
+        id: "effect/schema/isStringBigInt",
+        payload: null
       },
+      toJsonSchema: () => ({ pattern: isStringBigIntRegExp.source }),
       ...annotations
     }
   )
@@ -3720,10 +3729,11 @@ export function isStringSymbol(annotations?: Schema.Annotations.Filter) {
     isStringSymbolRegExp,
     {
       expected: "a string representing a symbol",
-      meta: {
-        _tag: "isStringSymbol",
-        regExp: isStringSymbolRegExp
+      representation: {
+        id: "effect/schema/isStringSymbol",
+        payload: null
       },
+      toJsonSchema: () => ({ pattern: isStringSymbolRegExp.source }),
       ...annotations
     }
   )
@@ -3896,9 +3906,17 @@ export function isJson(u: unknown): u is Schema.Json {
       }
     }
     onPath.add(u)
-    const ok = isArray
-      ? u.every(recur)
-      : Object.keys(u).every((key) => recur((u as Record<string, unknown>)[key]))
+    let ok = true
+    if (isArray) {
+      for (let index = 0; index < u.length; index++) {
+        if (!Object.hasOwn(u, index) || !recur(u[index])) {
+          ok = false
+          break
+        }
+      }
+    } else {
+      ok = Object.keys(u).every((key) => recur((u as Record<string, unknown>)[key]))
+    }
     // Pop on exit so siblings reaching the same node via a different path
     // don't see it as an ancestor (that would reject valid DAGs).
     onPath.delete(u)
@@ -3924,6 +3942,15 @@ export const Json = new Declaration(
       runtime: `Schema.Json`,
       Type: `Schema.Json`
     },
+    representation: {
+      id: "effect/schema/Json",
+      payload: null
+    },
+    toJsonSchema: () => ({}),
+    toCode: () => ({
+      runtime: "Schema.Json",
+      Type: "Schema.Json"
+    }),
     expected: "JSON value",
     toCodecJson: () => new Link(unknown, SchemaTransformation.passthrough()),
     toArbitrary: () => (fc: typeof FastCheck) => fc.jsonValue()
@@ -3938,7 +3965,16 @@ export const MutableJson = annotate(Json, {
   generation: {
     runtime: `Schema.MutableJson`,
     Type: `Schema.MutableJson`
-  }
+  },
+  representation: {
+    id: "effect/schema/MutableJson",
+    payload: null
+  },
+  toJsonSchema: () => ({}),
+  toCode: () => ({
+    runtime: "Schema.MutableJson",
+    Type: "Schema.MutableJson"
+  })
 })
 
 /** @internal */

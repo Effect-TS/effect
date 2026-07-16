@@ -2,7 +2,7 @@ import { Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
 import { deepStrictEqual } from "../../utils/assert.ts"
 
-describe("toJsonSchemaMultiDocument", () => {
+describe("toJsonSchemaMultiDocument2 parity", () => {
   it("should handle multiple schemas", () => {
     const A = Schema.String.annotate({ identifier: "id", description: "a" })
     const B = Schema.String.annotate({ identifier: "id", description: "b" })

@@ -56,12 +56,22 @@ export function toCodecOpenAI<T, E, RD, RE>(
   codec: Schema.ConstraintCodec<T, unknown, RD, RE>
   jsonSchema: JsonSchema.JsonSchema
 } {
+  return toCodecOpenAIWith(schema, Schema.toJsonSchemaDocument)
+}
+
+function toCodecOpenAIWith<T, E, RD, RE>(
+  schema: Schema.ConstraintCodec<T, E, RD, RE>,
+  toJsonSchemaDocument: (schema: Schema.Constraint) => JsonSchema.Document<"draft-2020-12">
+): {
+  codec: Schema.ConstraintCodec<T, unknown, RD, RE>
+  jsonSchema: JsonSchema.JsonSchema
+} {
   const to = schema.ast
   const from = recurOpenAI(SchemaAST.toEncoded(to))
   const codec = from === to
     ? schema
     : Schema.make<typeof schema>(SchemaAST.decodeTo(from, to, SchemaTransformation.passthrough()))
-  const document = JsonSchema.resolveTopLevel$ref(Schema.toJsonSchemaDocument(codec))
+  const document = JsonSchema.resolveTopLevel$ref(toJsonSchemaDocument(codec))
   const jsonSchema = rewriteOpenAI(document.schema)
   if (Object.keys(document.definitions).length > 0) {
     jsonSchema.$defs = Rec.map(document.definitions, rewriteOpenAI)
@@ -362,10 +372,10 @@ const get = (ast: SchemaAST.AST): {
   }
   // OpenAI does not support allOf, so we merge multiple regex patterns into a single isPattern filter
   if (regexSources.length === 1) {
-    filters.push(SchemaAST.isPattern(new RegExp(regexSources[0])))
+    filters.push(Schema.isPattern(new RegExp(regexSources[0])))
   } else if (regexSources.length > 1) {
     const combined = regexSources.map((s) => `(?=[\\s\\S]*?(?:${s}))`).join("")
-    filters.push(SchemaAST.isPattern(new RegExp(`^${combined}`)))
+    filters.push(Schema.isPattern(new RegExp(`^${combined}`)))
   }
   return {
     annotations: Object.keys(annotations).length > 0 ? annotations : undefined,
@@ -381,8 +391,9 @@ const getChecks = (ast: SchemaAST.AST, isArray: boolean): Array<Filter> => [
 const getAnnotations = (annotations: Schema.Annotations.Filter | undefined): Array<Annotation> => {
   const out: Array<Annotation> = []
   if (annotations !== undefined) {
+    const id = annotations.representation?.id
     const description = annotations?.description
-      ?? (annotations.meta?._tag === "isInt" || annotations.meta?._tag === "isFinite"
+      ?? (id === "effect/schema/isInt" || id === "effect/schema/isFinite"
         ? undefined
         : annotations?.expected)
     if (typeof description === "string") {
@@ -403,26 +414,26 @@ const getAnnotations = (annotations: Schema.Annotations.Filter | undefined): Arr
 function getFilter(filter: SchemaAST.Filter<any>, isArray: boolean): Array<Filter> {
   let out: Array<Filter> = []
   const annotations = getAnnotations(filter.annotations)
-  const meta = filter.annotations?.meta
-  if (meta !== undefined) {
-    switch (meta._tag) {
-      case "isMinLength":
-      case "isMaxLength":
-      case "isLengthBetween": {
+  const id = filter.annotations?.representation?.id
+  if (id !== undefined) {
+    switch (id) {
+      case "effect/schema/isMinLength":
+      case "effect/schema/isMaxLength":
+      case "effect/schema/isLengthBetween": {
         out = out.concat(annotations)
         if (isArray) {
           out.push({ _tag: "filter", filter: resetFilter(filter) })
         }
         break
       }
-      case "isInt":
-      case "isFinite":
-      case "isGreaterThan":
-      case "isGreaterThanOrEqualTo":
-      case "isLessThan":
-      case "isLessThanOrEqualTo":
-      case "isBetween":
-      case "isMultipleOf": {
+      case "effect/schema/isInt":
+      case "effect/schema/isFinite":
+      case "effect/schema/isGreaterThan":
+      case "effect/schema/isGreaterThanOrEqualTo":
+      case "effect/schema/isLessThan":
+      case "effect/schema/isLessThanOrEqualTo":
+      case "effect/schema/isBetween":
+      case "effect/schema/isMultipleOf": {
         out = out.concat(annotations)
         out.push({ _tag: "filter", filter: resetFilter(filter) })
         break
@@ -432,11 +443,16 @@ function getFilter(filter: SchemaAST.Filter<any>, isArray: boolean): Array<Filte
         break
       }
     }
-    if ("regExp" in meta && meta.regExp instanceof RegExp) {
-      out.push({ _tag: "regex", source: meta.regExp.source })
+    const pattern = getPattern(filter)
+    if (pattern !== undefined) {
+      out.push({ _tag: "regex", source: pattern })
     }
   }
   return out
+}
+
+function getPattern(filter: SchemaAST.Filter<any>): string | undefined {
+  return filter.annotations?.toJsonSchema?.({ type: undefined, schemas: [] }).pattern as string | undefined
 }
 
 function resetFilter(filter: SchemaAST.Filter<any>): SchemaAST.Filter<any> {

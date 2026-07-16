@@ -19,8 +19,20 @@ describe("SchemaAST", () => {
     strictEqual(SchemaAST.isJson(Symbol.for("symbol")), false)
     strictEqual(SchemaAST.isJson([]), true)
     strictEqual(SchemaAST.isJson([1]), true)
+    strictEqual(SchemaAST.isJson(new Array(1)), false)
     strictEqual(SchemaAST.isJson([1, undefined]), false)
     strictEqual(SchemaAST.isJson([1, 1n]), false)
+    let getterCalls = 0
+    const arrayWithGetter = [0]
+    Object.defineProperty(arrayWithGetter, "0", {
+      enumerable: true,
+      get() {
+        getterCalls++
+        return 1
+      }
+    })
+    strictEqual(SchemaAST.isJson(arrayWithGetter), true)
+    strictEqual(getterCalls, 1)
     strictEqual(SchemaAST.isJson({}), true)
     strictEqual(SchemaAST.isJson({ a: 1 }), true)
     strictEqual(SchemaAST.isJson({ a: undefined }), false)

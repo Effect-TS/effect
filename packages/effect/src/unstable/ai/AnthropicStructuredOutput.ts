@@ -59,12 +59,22 @@ export function toCodecAnthropic<T, E, RD, RE>(
   readonly codec: Schema.ConstraintCodec<T, unknown, RD, RE>
   readonly jsonSchema: JsonSchema.JsonSchema
 } {
+  return toCodecAnthropicWith(schema, Schema.toJsonSchemaDocument)
+}
+
+function toCodecAnthropicWith<T, E, RD, RE>(
+  schema: Schema.ConstraintCodec<T, E, RD, RE>,
+  toJsonSchemaDocument: (schema: Schema.Constraint) => JsonSchema.Document<"draft-2020-12">
+): {
+  readonly codec: Schema.ConstraintCodec<T, unknown, RD, RE>
+  readonly jsonSchema: JsonSchema.JsonSchema
+} {
   const to = schema.ast
   const from = recur(SchemaAST.toEncoded(to))
   const codec = from === to
     ? schema
     : Schema.make<typeof schema>(SchemaAST.decodeTo(from, to, SchemaTransformation.passthrough()))
-  const document = JsonSchema.resolveTopLevel$ref(Schema.toJsonSchemaDocument(codec))
+  const document = JsonSchema.resolveTopLevel$ref(toJsonSchemaDocument(codec))
   const jsonSchema = { ...document.schema }
   if (Object.keys(document.definitions).length > 0) {
     jsonSchema.$defs = document.definitions
@@ -331,8 +341,9 @@ const getChecks = (ast: SchemaAST.AST): Array<Filter> => [
 const getAnnotations = (annotations: Schema.Annotations.Filter | undefined): Array<Annotation> => {
   const out: Array<Annotation> = []
   if (annotations !== undefined) {
+    const id = annotations.representation?.id
     const description = annotations?.description
-      ?? (annotations.meta?._tag === "isInt" || annotations.meta?._tag === "isFinite"
+      ?? (id === "effect/schema/isInt" || id === "effect/schema/isFinite"
         ? undefined
         : annotations?.expected)
     if (typeof description === "string") {
@@ -353,11 +364,11 @@ const getAnnotations = (annotations: Schema.Annotations.Filter | undefined): Arr
 function getFilter(filter: SchemaAST.Filter<any>): Array<Filter> {
   let out: Array<Filter> = []
   const annotations = getAnnotations(filter.annotations)
-  const meta = filter.annotations?.meta
-  if (meta !== undefined) {
-    switch (meta._tag) {
-      case "isInt":
-      case "isFinite": {
+  const id = filter.annotations?.representation?.id
+  if (id !== undefined) {
+    switch (id) {
+      case "effect/schema/isInt":
+      case "effect/schema/isFinite": {
         out = out.concat(annotations)
         out.push({ _tag: "filter", filter: resetFilter(filter) })
         break
@@ -367,11 +378,15 @@ function getFilter(filter: SchemaAST.Filter<any>): Array<Filter> {
         break
       }
     }
-    if ("regExp" in meta && meta.regExp instanceof RegExp) {
+    if (isPattern(filter)) {
       out.push({ _tag: "filter", filter: resetFilter(filter) })
     }
   }
   return out
+}
+
+function isPattern(filter: SchemaAST.Filter<any>): boolean {
+  return filter.annotations?.toJsonSchema?.({ type: undefined, schemas: [] }).pattern !== undefined
 }
 
 function resetFilter(filter: SchemaAST.Filter<any>): SchemaAST.Filter<any> {

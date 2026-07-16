@@ -403,10 +403,8 @@ function reportChecks(report: MutableReport, checks: SchemaAST.Checks | undefine
         visit(child, nextCovered)
       }
     } else if (!nextCovered) {
-      const meta = check.annotations?.meta
-      const description = typeof meta === "object" && meta !== null && "_tag" in meta && typeof meta._tag === "string"
-        ? meta._tag
-        : check.annotations?.identifier ?? check.annotations?.expected
+      const description = check.annotations?.representation?.id ?? check.annotations?.identifier ??
+        check.annotations?.expected
       report.warnings.push({ _tag: "OpaqueFilter", path, ...(description === undefined ? {} : { description }) })
     }
   }

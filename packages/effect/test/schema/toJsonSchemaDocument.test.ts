@@ -57,7 +57,7 @@ describe("toJsonSchemaDocument", () => {
     it("Tuple: unsupported post-rest elements", () => {
       assertUnsupportedSchema(
         Schema.TupleWithRest(Schema.Tuple([]), [Schema.Finite, Schema.String]),
-        "Generating a JSON Schema for post-rest elements is not supported"
+        `Invalid schema representation document\n  at ["representation"]["rest"]`
       )
     })
 
@@ -65,14 +65,14 @@ describe("toJsonSchemaDocument", () => {
       const a = Symbol.for("effect/Schema/test/a")
       assertUnsupportedSchema(
         Schema.Struct({ [a]: Schema.String }),
-        `Unsupported property signature name: Symbol(effect/Schema/test/a)`
+        `Invalid schema representation document\n  at ["representation"]["propertySignatures"][0]["name"]`
       )
     })
 
     it("Record: unsupported index signature parameter", () => {
       assertUnsupportedSchema(
         Schema.Record(Schema.Symbol, Schema.Finite),
-        `Unsupported index signature parameter: Symbol`
+        `Invalid schema representation document\n  at ["representation"]["indexSignatures"][0]["parameter"]`
       )
     })
   })

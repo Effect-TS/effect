@@ -1666,10 +1666,18 @@ export const getJsonSchema = <Tool extends Any>(tool: Tool, options?: {
 export const getJsonSchemaFromSchema = <S extends Schema.Constraint>(schema: S, options?: {
   readonly transformer?: CodecTransformer
 }): JsonSchema.JsonSchema => {
+  return getJsonSchemaFromSchemaWith(schema, Schema.toJsonSchemaDocument, options)
+}
+
+const getJsonSchemaFromSchemaWith = <S extends Schema.Constraint>(
+  schema: S,
+  toJsonSchemaDocument: (schema: Schema.Constraint) => JsonSchema.Document<"draft-2020-12">,
+  options?: { readonly transformer?: CodecTransformer }
+): JsonSchema.JsonSchema => {
   if (Predicate.isNotUndefined(options?.transformer)) {
     return options.transformer(schema).jsonSchema
   }
-  const document = Schema.toJsonSchemaDocument(schema)
+  const document = toJsonSchemaDocument(schema)
   if (Object.keys(document.definitions).length > 0) {
     document.schema.$defs = document.definitions
   }
