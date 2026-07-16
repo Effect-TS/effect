@@ -3886,6 +3886,12 @@ describe("Graph", () => {
       expect(Array.from(nodesIterable)).toHaveLength(3)
       expect(Array.from(externalsIterable)).toHaveLength(1) // Only one node with no outgoing edges
     })
+
+    it("should preserve the receiver for iterable iterator methods", () => {
+      const walker = new Graph.Walker<number, string>((f) => new Set([f(0, "A"), f(1, "B")]))
+
+      assert.deepStrictEqual(Array.from(walker), [[0, "A"], [1, "B"]])
+    })
   })
 
   describe("NodeIterable abstraction", () => {
