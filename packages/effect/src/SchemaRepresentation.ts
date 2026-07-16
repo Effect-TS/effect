@@ -620,12 +620,12 @@ export type Artifact =
   | {
     readonly _tag: "Symbol"
     readonly identifier: string
-    readonly generation: Code
+    readonly code: Code
   }
   | {
     readonly _tag: "Enum"
     readonly identifier: string
-    readonly generation: Code
+    readonly code: Code
   }
   | {
     readonly _tag: "Import"

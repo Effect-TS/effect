@@ -2366,7 +2366,7 @@ function compileCodeDocument(
     artifacts.push({
       _tag: "Symbol",
       identifier,
-      generation: makeCode(
+      code: makeCode(
         key === undefined
           ? `Symbol(${description === undefined ? "" : JSON.stringify(description)})`
           : `Symbol.for(${JSON.stringify(key)})`,
@@ -2381,7 +2381,7 @@ function compileCodeDocument(
     artifacts.push({
       _tag: "Enum",
       identifier,
-      generation: makeCode(
+      code: makeCode(
         `enum ${identifier} { ${
           representation.enums.map(([name, value]) => `${JSON.stringify(name)} = ${renderLiteral(value)}`).join(", ")
         } }`,

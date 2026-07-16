@@ -571,7 +571,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            generation: makeCode(`Symbol("a")`, `typeof _symbol`)
+            code: makeCode(`Symbol("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -582,7 +582,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            generation: makeCode(`Symbol()`, `typeof _symbol`)
+            code: makeCode(`Symbol()`, `typeof _symbol`)
           }]
         }
       )
@@ -596,7 +596,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            generation: makeCode(`Symbol.for("a")`, `typeof _symbol`)
+            code: makeCode(`Symbol.for("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -610,7 +610,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            generation: makeCode(`Symbol.for("a")`, `typeof _symbol`)
+            code: makeCode(`Symbol.for("a")`, `typeof _symbol`)
           }]
         }
       )
@@ -631,7 +631,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
+            code: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
           }]
         }
       )
@@ -650,7 +650,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
+            code: makeCode(`enum _Enum { "A" = "a", "B" = "b" }`, `typeof _Enum`)
           }]
         }
       )
@@ -669,7 +669,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
+            code: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
           }]
         }
       )
@@ -688,7 +688,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
+            code: makeCode(`enum _Enum { "One" = 1, "Two" = 2 }`, `typeof _Enum`)
           }]
         }
       )
@@ -707,7 +707,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
+            code: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
           }]
         }
       )
@@ -726,7 +726,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
-            generation: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
+            code: makeCode(`enum _Enum { "A" = "a", "One" = 1 }`, `typeof _Enum`)
           }]
         }
       )
@@ -1219,7 +1219,7 @@ describe("toCodeDocument", () => {
           artifacts: [{
             _tag: "Symbol",
             identifier: "_symbol",
-            generation: makeCode(`Symbol.for("a")`, `typeof _symbol`)
+            code: makeCode(`Symbol.for("a")`, `typeof _symbol`)
           }]
         }
       )
