@@ -28,6 +28,7 @@ import type { Logger } from "../Logger.js"
 import * as LogLevel from "../LogLevel.js"
 import type * as MetricLabel from "../MetricLabel.js"
 import * as Micro from "../Micro.js"
+import * as MutableQueue from "../MutableQueue.js"
 import * as MRef from "../MutableRef.js"
 import * as Option from "../Option.js"
 import { pipeArguments } from "../Pipeable.js"
@@ -297,7 +298,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
   readonly [internalFiber.RuntimeFiberTypeId] = runtimeFiberVariance
   private _fiberRefs: FiberRefs.FiberRefs
   private _fiberId: FiberId.Runtime
-  private _queue = new Array<FiberMessage.FiberMessage>()
+  private _queue = MutableQueue.unbounded<FiberMessage.FiberMessage>()
   private _children: Set<FiberRuntime<any, any>> | null = null
   private _observers = new Array<(exit: Exit.Exit<A, E>) => void>()
   private _running = false
@@ -441,7 +442,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
    * Adds a message to be processed by the fiber on the fiber.
    */
   tell(message: FiberMessage.FiberMessage): void {
-    this._queue.push(message)
+    MutableQueue.offer(this._queue, message)
     if (!this._running) {
       this._running = true
       this.drainQueueLaterOnExecutor()
@@ -671,9 +672,9 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       ;(globalThis as any)[internalFiber.currentFiberURI] = this
       try {
         while (evaluationSignal === EvaluationSignalContinue) {
-          evaluationSignal = this._queue.length === 0 ?
+          evaluationSignal = MutableQueue.isEmpty(this._queue) ?
             EvaluationSignalDone :
-            this.evaluateMessageWhileSuspended(this._queue.splice(0, 1)[0]!)
+            this.evaluateMessageWhileSuspended(MutableQueue.poll(this._queue, undefined)!)
         }
       } finally {
         this._running = false
@@ -682,7 +683,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       // Maybe someone added something to the queue between us checking, and us
       // giving up the drain. If so, we need to restart the draining, but only
       // if we beat everyone else to the restart:
-      if (this._queue.length > 0 && !this._running) {
+      if (!MutableQueue.isEmpty(this._queue) && !this._running) {
         this._running = true
         if (evaluationSignal === EvaluationSignalYieldNow) {
           this.drainQueueLaterOnExecutor()
@@ -725,8 +726,8 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
     cur0: Effect.Effect<any, any, any>
   ) {
     let cur = cur0
-    while (this._queue.length > 0) {
-      const message = this._queue.splice(0, 1)[0]
+    while (!MutableQueue.isEmpty(this._queue)) {
+      const message = MutableQueue.poll(this._queue, undefined)!
       // @ts-expect-error
       cur = drainQueueWhileRunningTable[message._tag](this, runtimeFlags, cur, message)
     }
@@ -969,7 +970,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
           if (interruption !== null) {
             effect = core.flatMap(interruption, () => exit)
           } else {
-            if (this._queue.length === 0) {
+            if (MutableQueue.isEmpty(this._queue)) {
               // No more messages to process, so we will allow the fiber to end life:
               this.setExitValue(exit)
             } else {
@@ -1009,7 +1010,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
         // for spinning up the fiber if there were new messages added to
         // the queue between the completion of the effect and the transition
         // to the not running state.
-        if (this._queue.length > 0) {
+        if (!MutableQueue.isEmpty(this._queue)) {
           this.drainQueueLaterOnExecutor()
         }
       }
@@ -1366,7 +1367,7 @@ export class FiberRuntime<in out A, in out E = never> extends Effectable.Class<A
       if ((this.currentRuntimeFlags & OpSupervision) !== 0) {
         this.currentSupervisor.onEffect(this, cur)
       }
-      if (this._queue.length > 0) {
+      if (!MutableQueue.isEmpty(this._queue)) {
         cur = this.drainQueueWhileRunning(this.currentRuntimeFlags, cur)
       }
       if (!this._isYielding) {
