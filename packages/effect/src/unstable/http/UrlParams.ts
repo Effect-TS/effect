@@ -236,9 +236,6 @@ export interface UrlParamsSchema extends Schema.declare<UrlParams, ReadonlyArray
 export const UrlParamsSchema: UrlParamsSchema = Schema.declare(
   isUrlParams,
   {
-    typeConstructor: {
-      _tag: "effect/http/UrlParams"
-    },
     generation: {
       runtime: `UrlParams.UrlParamsSchema`,
       Type: `UrlParams.UrlParams`,

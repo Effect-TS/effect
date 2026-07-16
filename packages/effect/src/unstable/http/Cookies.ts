@@ -65,9 +65,6 @@ export interface CookiesSchema extends Schema.declare<Cookies, Record.ReadonlyRe
 export const CookiesSchema: CookiesSchema = Schema.declare(
   isCookies,
   {
-    typeConstructor: {
-      _tag: "effect/http/Cookies"
-    },
     generation: {
       runtime: `Cookies.CookiesSchema`,
       Type: `Cookies.Cookies`,
@@ -146,9 +143,6 @@ export interface CookieSchema extends Schema.declare<Cookie> {}
 export const CookieSchema: CookieSchema = Schema.declare(
   isCookie,
   {
-    typeConstructor: {
-      _tag: "effect/http/Cookie"
-    },
     generation: {
       runtime: `Cookies.CookieSchema`,
       Type: `Cookies.Cookie`,

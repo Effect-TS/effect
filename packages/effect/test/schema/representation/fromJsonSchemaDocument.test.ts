@@ -54,9 +54,6 @@ describe("fromJsonSchemaDocument", () => {
               "id": "effect/schema/Json",
               "payload": null
             },
-            "typeConstructor": {
-              "_tag": "effect/Json"
-            },
             "generation": {
               "runtime": "Schema.Json",
               "Type": "Schema.Json"
@@ -87,9 +84,6 @@ describe("fromJsonSchemaDocument", () => {
             "representation": {
               "id": "effect/schema/Json",
               "payload": null
-            },
-            "typeConstructor": {
-              "_tag": "effect/Json"
             },
             "generation": {
               "runtime": "Schema.Json",
@@ -206,9 +200,6 @@ describe("fromJsonSchemaDocument", () => {
               "representation": {
                 "id": "effect/schema/Json",
                 "payload": null
-              },
-              "typeConstructor": {
-                "_tag": "effect/Json"
               },
               "generation": {
                 "runtime": "Schema.Json",
@@ -452,9 +443,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
-                      },
                       "generation": {
                         "runtime": "Schema.Json",
                         "Type": "Schema.Json"
@@ -520,9 +508,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
                       },
                       "generation": {
                         "runtime": "Schema.Json",
@@ -636,9 +621,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
-                      },
                       "generation": {
                         "runtime": "Schema.Json",
                         "Type": "Schema.Json"
@@ -704,9 +686,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
                       },
                       "generation": {
                         "runtime": "Schema.Json",
@@ -1429,9 +1408,6 @@ describe("fromJsonSchemaDocument", () => {
                     "id": "effect/schema/Json",
                     "payload": null
                   },
-                  "typeConstructor": {
-                    "_tag": "effect/Json"
-                  },
                   "generation": {
                     "runtime": "Schema.Json",
                     "Type": "Schema.Json"
@@ -1620,9 +1596,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "typeConstructor": {
-                      "_tag": "effect/Json"
-                    },
                     "generation": {
                       "runtime": "Schema.Json",
                       "Type": "Schema.Json"
@@ -1675,9 +1648,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "typeConstructor": {
-                      "_tag": "effect/Json"
-                    },
                     "generation": {
                       "runtime": "Schema.Json",
                       "Type": "Schema.Json"
@@ -1727,9 +1697,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "typeConstructor": {
-                      "_tag": "effect/Json"
-                    },
                     "generation": {
                       "runtime": "Schema.Json",
                       "Type": "Schema.Json"
@@ -1769,9 +1736,6 @@ describe("fromJsonSchemaDocument", () => {
                     "representation": {
                       "id": "effect/schema/Json",
                       "payload": null
-                    },
-                    "typeConstructor": {
-                      "_tag": "effect/Json"
                     },
                     "generation": {
                       "runtime": "Schema.Json",
@@ -2124,9 +2088,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
-                      },
                       "generation": {
                         "runtime": "Schema.Json",
                         "Type": "Schema.Json"
@@ -2184,9 +2145,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
                       },
                       "generation": {
                         "runtime": "Schema.Json",
@@ -2274,9 +2232,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
-                      },
                       "generation": {
                         "runtime": "Schema.Json",
                         "Type": "Schema.Json"
@@ -2338,9 +2293,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
                       },
                       "generation": {
                         "runtime": "Schema.Json",
@@ -2466,9 +2418,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "typeConstructor": {
-                        "_tag": "effect/Json"
-                      },
                       "generation": {
                         "runtime": "Schema.Json",
                         "Type": "Schema.Json"
@@ -2568,9 +2517,6 @@ describe("fromJsonSchemaDocument", () => {
                   "id": "effect/schema/Json",
                   "payload": null
                 },
-                "typeConstructor": {
-                  "_tag": "effect/Json"
-                },
                 "generation": {
                   "runtime": "Schema.Json",
                   "Type": "Schema.Json"
@@ -2586,9 +2532,6 @@ describe("fromJsonSchemaDocument", () => {
                 "representation": {
                   "id": "effect/schema/Json",
                   "payload": null
-                },
-                "typeConstructor": {
-                  "_tag": "effect/Json"
                 },
                 "generation": {
                   "runtime": "Schema.Json",
@@ -2641,9 +2584,6 @@ describe("fromJsonSchemaDocument", () => {
               "representation": {
                 "id": "effect/schema/Json",
                 "payload": null
-              },
-              "typeConstructor": {
-                "_tag": "effect/Json"
               },
               "generation": {
                 "runtime": "Schema.Json",
@@ -2946,9 +2886,6 @@ describe("fromJsonSchemaDocument", () => {
                   "representation": {
                     "id": "effect/schema/Json",
                     "payload": null
-                  },
-                  "typeConstructor": {
-                    "_tag": "effect/Json"
                   },
                   "generation": {
                     "runtime": "Schema.Json",
@@ -4480,9 +4417,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "typeConstructor": {
-                      "_tag": "effect/Json"
-                    },
                     "generation": {
                       "runtime": "Schema.Json",
                       "Type": "Schema.Json"
@@ -5145,9 +5079,6 @@ describe("fromJsonSchemaDocument", () => {
                   "id": "effect/schema/Json",
                   "payload": null
                 },
-                "typeConstructor": {
-                  "_tag": "effect/Json"
-                },
                 "generation": {
                   "runtime": "Schema.Json",
                   "Type": "Schema.Json"
@@ -5191,9 +5122,6 @@ describe("fromJsonSchemaDocument", () => {
                   "id": "effect/schema/Json",
                   "payload": null
                 },
-                "typeConstructor": {
-                  "_tag": "effect/Json"
-                },
                 "generation": {
                   "runtime": "Schema.Json",
                   "Type": "Schema.Json"
@@ -5227,9 +5155,6 @@ describe("fromJsonSchemaDocument", () => {
                 "representation": {
                   "id": "effect/schema/Json",
                   "payload": null
-                },
-                "typeConstructor": {
-                  "_tag": "effect/Json"
                 },
                 "generation": {
                   "runtime": "Schema.Json",

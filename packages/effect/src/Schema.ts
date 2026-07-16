@@ -9859,9 +9859,6 @@ export function Option<A extends Constraint>(value: A): Option<A> {
       return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
     },
     {
-      typeConstructor: {
-        _tag: "effect/Option"
-      },
       representation: {
         id: "effect/schema/Option",
         payload: null
@@ -10214,9 +10211,6 @@ export function Result<A extends Constraint, E extends Constraint>(
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/Result"
-      },
       representation: {
         id: "effect/schema/Result",
         payload: null
@@ -10427,10 +10421,6 @@ export function Redacted<S extends Constraint>(value: S, options?: {
       return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
     },
     {
-      typeConstructor: {
-        _tag: "effect/Redacted",
-        options: normalizedOptions
-      },
       representation: {
         id: "effect/schema/Redacted",
         payload: normalizedOptions ?? null
@@ -10691,9 +10681,6 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/Cause/Failure"
-      },
       representation: {
         id: "effect/schema/CauseReason",
         payload: null
@@ -10875,9 +10862,6 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/Cause"
-      },
       representation: {
         id: "effect/schema/Cause",
         payload: null
@@ -11064,10 +11048,6 @@ export function Error(options?: ErrorOptions): Error {
   }
   const normalizedOptions = getErrorOptions(key)
   const schema = instanceOf(globalThis.Error, {
-    typeConstructor: {
-      _tag: "Error",
-      ...(normalizedOptions === undefined ? {} : { options: normalizedOptions })
-    },
     representation: {
       id: "effect/schema/Error",
       payload: normalizedOptions ?? null
@@ -11264,9 +11244,6 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/Exit"
-      },
       representation: {
         id: "effect/schema/Exit",
         payload: null
@@ -11535,9 +11512,6 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
       }
     },
     {
-      typeConstructor: {
-        _tag: "ReadonlyMap"
-      },
       representation: {
         id: "effect/schema/ReadonlyMap",
         payload: null
@@ -11663,9 +11637,6 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/HashMap"
-      },
       representation: {
         id: "effect/schema/HashMap",
         payload: null
@@ -11789,9 +11760,6 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
       }
     },
     {
-      typeConstructor: {
-        _tag: "ReadonlySet"
-      },
       representation: {
         id: "effect/schema/ReadonlySet",
         payload: null
@@ -11910,9 +11878,6 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/HashSet"
-      },
       representation: {
         id: "effect/schema/HashSet",
         payload: null
@@ -12038,9 +12003,6 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
       }
     },
     {
-      typeConstructor: {
-        _tag: "effect/Chunk"
-      },
       representation: {
         id: "effect/schema/Chunk",
         payload: null
@@ -12125,9 +12087,6 @@ export interface RegExp extends instanceOf<globalThis.RegExp> {
 export const RegExp: RegExp = instanceOf(
   globalThis.RegExp,
   {
-    typeConstructor: {
-      _tag: "RegExp"
-    },
     representation: {
       id: "effect/schema/RegExp",
       payload: null
@@ -12235,9 +12194,6 @@ const URLString = String.annotate({ expected: "a string that will be decoded as 
 export const URL: URL = instanceOf(
   globalThis.URL,
   {
-    typeConstructor: {
-      _tag: "URL"
-    },
     representation: {
       id: "effect/schema/URL",
       payload: null
@@ -12378,9 +12334,6 @@ const DateString = String.annotate({ expected: "a string in ISO 8601 format that
 export const Date: Date = instanceOf(
   globalThis.Date,
   {
-    typeConstructor: {
-      _tag: "Date"
-    },
     representation: {
       id: "effect/schema/Date",
       payload: null
@@ -12601,9 +12554,6 @@ function durationJsonSchema(): JsonSchema.JsonSchema {
 export const Duration: Duration = declare(
   Duration_.isDuration,
   {
-    typeConstructor: {
-      _tag: "effect/Duration"
-    },
     representation: {
       id: "effect/schema/Duration",
       payload: null
@@ -12884,9 +12834,6 @@ function bigDecimalScaleConstraints(
 export const BigDecimal: BigDecimal = declare(
   BigDecimal_.isBigDecimal,
   {
-    typeConstructor: {
-      _tag: "effect/BigDecimal"
-    },
     representation: {
       id: "effect/schema/BigDecimal",
       payload: null
@@ -13153,9 +13100,6 @@ export interface File extends instanceOf<globalThis.File> {
  * @since 4.0.0
  */
 export const File: File = instanceOf(globalThis.File, {
-  typeConstructor: {
-    _tag: "File"
-  },
   representation: {
     id: "effect/schema/File",
     payload: null
@@ -13285,9 +13229,6 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * @since 4.0.0
  */
 export const FormData: FormData = instanceOf(globalThis.FormData, {
-  typeConstructor: {
-    _tag: "FormData"
-  },
   representation: {
     id: "effect/schema/FormData",
     payload: null
@@ -13469,9 +13410,6 @@ export interface URLSearchParams extends instanceOf<globalThis.URLSearchParams> 
  * @since 4.0.0
  */
 export const URLSearchParams: URLSearchParams = instanceOf(globalThis.URLSearchParams, {
-  typeConstructor: {
-    _tag: "URLSearchParams"
-  },
   representation: {
     id: "effect/schema/URLSearchParams",
     payload: null
@@ -14021,9 +13959,6 @@ const Base64String = String.annotate({
  * @since 4.0.0
  */
 export const Uint8Array: Uint8Array = instanceOf(globalThis.Uint8Array<ArrayBufferLike>, {
-  typeConstructor: {
-    _tag: "Uint8Array"
-  },
   representation: {
     id: "effect/schema/Uint8Array",
     payload: null
@@ -14190,9 +14125,6 @@ export interface DateTimeUtc extends declare<DateTime.Utc> {
 export const DateTimeUtc: DateTimeUtc = declare(
   (u) => DateTime.isDateTime(u) && DateTime.isUtc(u),
   {
-    typeConstructor: {
-      _tag: "effect/DateTime.Utc"
-    },
     representation: {
       id: "effect/schema/DateTimeUtc",
       payload: null
@@ -14380,9 +14312,6 @@ export interface TimeZoneOffset extends declare<DateTime.TimeZone.Offset> {
 export const TimeZoneOffset: TimeZoneOffset = declare(
   DateTime.isTimeZoneOffset,
   {
-    typeConstructor: {
-      _tag: "effect/DateTime.TimeZone.Offset"
-    },
     representation: {
       id: "effect/schema/TimeZoneOffset",
       payload: null
@@ -14457,9 +14386,6 @@ const TimeZoneNamedString = String.annotate({ expected: "an IANA time zone ident
 export const TimeZoneNamed: TimeZoneNamed = declare(
   DateTime.isTimeZoneNamed,
   {
-    typeConstructor: {
-      _tag: "effect/DateTime.TimeZone.Named"
-    },
     representation: {
       id: "effect/schema/TimeZoneNamed",
       payload: null
@@ -14562,9 +14488,6 @@ const TimeZoneString = String.annotate({
 export const TimeZone: TimeZone = declare(
   DateTime.isTimeZone,
   {
-    typeConstructor: {
-      _tag: "effect/DateTime.TimeZone"
-    },
     representation: {
       id: "effect/schema/TimeZone",
       payload: null
@@ -14672,9 +14595,6 @@ const DateTimeZonedString = String.annotate({
 export const DateTimeZoned: DateTimeZoned = declare(
   (u) => DateTime.isDateTime(u) && DateTime.isZoned(u),
   {
-    typeConstructor: {
-      _tag: "effect/DateTime.Zoned"
-    },
     representation: {
       id: "effect/schema/DateTimeZoned",
       payload: null
@@ -16799,10 +16719,6 @@ export declare namespace Annotations {
     readonly toArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined
     readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined
     readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined
-    readonly typeConstructor?: {
-      readonly _tag: string
-      readonly [key: string]: unknown
-    } | undefined
     readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
     readonly generation?:
       | {

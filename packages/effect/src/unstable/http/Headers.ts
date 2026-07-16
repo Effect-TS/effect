@@ -130,9 +130,6 @@ export interface HeadersSchema extends Schema.declare<Headers, { readonly [x: st
 export const HeadersSchema: HeadersSchema = Schema.declare(
   isHeaders,
   {
-    typeConstructor: {
-      _tag: "effect/http/Headers"
-    },
     generation: {
       runtime: `Headers.HeadersSchema`,
       Type: `Headers.Headers`,

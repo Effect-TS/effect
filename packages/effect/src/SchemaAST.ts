@@ -3935,9 +3935,6 @@ export const Json = new Declaration(
       Effect.succeed(input) :
       Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input))),
   {
-    typeConstructor: {
-      _tag: "effect/Json"
-    },
     generation: {
       runtime: `Schema.Json`,
       Type: `Schema.Json`
@@ -3959,9 +3956,6 @@ export const Json = new Declaration(
 
 /** @internal */
 export const MutableJson = annotate(Json, {
-  typeConstructor: {
-    _tag: "effect/MutableJson"
-  },
   generation: {
     runtime: `Schema.MutableJson`,
     Type: `Schema.MutableJson`

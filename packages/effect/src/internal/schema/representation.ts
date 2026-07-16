@@ -1502,7 +1502,6 @@ const jsonSchemaExcludedAnnotationKeys: ReadonlySet<string> = new Set([
   "toCodec",
   "toCodecJson",
   "toCodecIso",
-  "typeConstructor",
   "identifier",
   "brands",
   "expected"
@@ -2016,7 +2015,6 @@ const codeAnnotationExcludedKeys: ReadonlySet<string> = new Set([
   "toCodec",
   "toCodecJson",
   "toCodecIso",
-  "typeConstructor",
   "identifier",
   "brands",
   "contentMediaType",

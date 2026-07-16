@@ -297,9 +297,6 @@ const PersistedFileEncoded = Schema.Struct({
 export const PersistedFileSchema: PersistedFileSchema = Schema.declare(
   isPersistedFile,
   {
-    typeConstructor: {
-      _tag: "effect/http/PersistedFile"
-    },
     representation: {
       id: "effect/http/PersistedFile",
       payload: null,
