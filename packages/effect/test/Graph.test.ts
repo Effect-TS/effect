@@ -785,6 +785,33 @@ describe("Graph", () => {
       expect(Graph.nodeCount(result)).toBe(Graph.nodeCount(mutable))
       expect(Graph.edgeCount(result)).toBe(Graph.edgeCount(mutable))
     })
+
+    it("should reject mutations on a finalized mutable graph", () => {
+      let nodeA: Graph.NodeIndex
+      let nodeB: Graph.NodeIndex
+      let edgeIndex: Graph.EdgeIndex
+      const graph = Graph.directed<string, number>((mutable) => {
+        nodeA = Graph.addNode(mutable, "A")
+        nodeB = Graph.addNode(mutable, "B")
+        edgeIndex = Graph.addEdge(mutable, nodeA, nodeB, 1)
+      })
+
+      const mutable = Graph.beginMutation(graph)
+      const result = Graph.endMutation(mutable)
+
+      throws(
+        () => Graph.removeEdge(mutable, edgeIndex!),
+        (error) => {
+          strictEqual(error instanceof Graph.GraphError, true)
+          if (error instanceof Graph.GraphError) {
+            strictEqual(error.message, "Graph is not mutable")
+          }
+        }
+      )
+      strictEqual(Graph.hasEdge(result, nodeA!, nodeB!), true)
+      assert.deepStrictEqual(Graph.neighbors(result, nodeA!), [nodeB!])
+      assert.deepStrictEqual(Graph.predecessors(result, nodeB!), [nodeA!])
+    })
   })
 
   describe("mutate", () => {

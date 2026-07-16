@@ -351,6 +351,15 @@ export class GraphError extends Data.TaggedError("GraphError")<{
 /** @internal */
 const missingNode = (node: number) => new GraphError({ message: `Node ${node} does not exist` })
 
+/** @internal */
+function assertMutable<N, E, T extends Kind = "directed">(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>
+): asserts graph is MutableGraph<N, E, T> {
+  if (!graph.mutable) {
+    throw new GraphError({ message: "Graph is not mutable" })
+  }
+}
+
 // =============================================================================
 // Constructors
 // =============================================================================
@@ -524,6 +533,11 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
 /**
  * Converts a mutable graph back to an immutable graph, ending the mutation scope.
  *
+ * **Details**
+ *
+ * Finalizes the mutable handle. Later public mutation operations on that handle
+ * fail with a `GraphError`.
+ *
  * **Example** (Ending a mutation scope)
  *
  * ```ts
@@ -541,6 +555,8 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
 export const endMutation = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>
 ): Graph<N, E, T> => {
+  assertMutable(mutable)
+
   const graph: Mutable<Graph<N, E, T>> = Object.create(ProtoGraph)
   graph.type = mutable.type
   graph.nodes = new Map(mutable.nodes)
@@ -551,6 +567,8 @@ export const endMutation = <N, E, T extends Kind = "directed">(
   graph.nextEdgeIndex = mutable.nextEdgeIndex
   graph.acyclic = mutable.acyclic
   graph.mutable = false
+  const finalized = mutable as Mutable<Graph<N, E, T> | MutableGraph<N, E, T>>
+  finalized.mutable = false
 
   return graph
 }
@@ -1359,6 +1377,8 @@ export const addNode = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   data: N
 ): NodeIndex => {
+  assertMutable(mutable)
+
   const nodeIndex = mutable.nextNodeIndex
 
   // Add node data
@@ -1678,6 +1698,8 @@ export const updateNode = <N, E, T extends Kind = "directed">(
   index: NodeIndex,
   f: (data: N) => N
 ): void => {
+  assertMutable(mutable)
+
   if (!mutable.nodes.has(index)) {
     return
   }
@@ -1714,6 +1736,8 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
   edgeIndex: EdgeIndex,
   f: (data: E) => E
 ): void => {
+  assertMutable(mutable)
+
   if (!mutable.edges.has(edgeIndex)) {
     return
   }
@@ -1754,6 +1778,8 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: N) => N
 ): void => {
+  assertMutable(mutable)
+
   // Transform existing node data in place
   for (const [index, data] of mutable.nodes) {
     const newData = f(data)
@@ -1789,6 +1815,8 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: E) => E
 ): void => {
+  assertMutable(mutable)
+
   // Transform existing edge data in place
   for (const [index, edgeData] of mutable.edges) {
     const newData = f(edgeData.data)
@@ -1851,6 +1879,8 @@ const rebuildAdjacency = <N, E, T extends Kind = "directed">(
 export const reverse = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>
 ): void => {
+  assertMutable(mutable)
+
   if (mutable.type === "undirected") {
     return
   }
@@ -1907,6 +1937,8 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: N) => Option.Option<N>
 ): void => {
+  assertMutable(mutable)
+
   const nodesToRemove: Array<NodeIndex> = []
 
   // First pass: identify nodes to remove and transform data for nodes to keep
@@ -1961,6 +1993,8 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   f: (data: E) => Option.Option<E>
 ): void => {
+  assertMutable(mutable)
+
   const edgesToRemove: Array<EdgeIndex> = []
 
   // First pass: identify edges to remove and transform data for edges to keep
@@ -2013,6 +2047,8 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   predicate: (data: N) => boolean
 ): void => {
+  assertMutable(mutable)
+
   const nodesToRemove: Array<NodeIndex> = []
 
   // Identify nodes to remove
@@ -2060,6 +2096,8 @@ export const filterEdges = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   predicate: (data: E) => boolean
 ): void => {
+  assertMutable(mutable)
+
   const edgesToRemove: Array<EdgeIndex> = []
 
   // Identify edges to remove
@@ -2149,6 +2187,8 @@ export const addEdge = <N, E, T extends Kind = "directed">(
   target: NodeIndex,
   data: E
 ): EdgeIndex => {
+  assertMutable(mutable)
+
   // Validate that both nodes exist
   if (!mutable.nodes.has(source)) {
     throw missingNode(source)
@@ -2222,6 +2262,8 @@ export const removeNode = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   nodeIndex: NodeIndex
 ): void => {
+  assertMutable(mutable)
+
   // Check if node exists
   if (!mutable.nodes.has(nodeIndex)) {
     return // Node doesn't exist, nothing to remove
@@ -2286,6 +2328,8 @@ export const removeEdge = <N, E, T extends Kind = "directed">(
   mutable: MutableGraph<N, E, T>,
   edgeIndex: EdgeIndex
 ): void => {
+  assertMutable(mutable)
+
   const wasRemoved = removeEdgeInternal(mutable, edgeIndex)
 
   // Only invalidate cycle flag if an edge was actually removed
