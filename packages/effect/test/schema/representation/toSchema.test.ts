@@ -1,513 +1,513 @@
-import { Redacted, Schema, SchemaRepresentation } from "effect"
-import { describe, it } from "vitest"
-import { deepStrictEqual, strictEqual } from "../../utils/assert.ts"
-import { builtInRevivers } from "./testUtils.ts"
+import { assert, describe, it } from "@effect/vitest"
+import { Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { throws } from "../../utils/assert.ts"
 
-describe("SchemaRepresentation revival parity", () => {
-  function assertToSchemaRoundtrip(input: {
-    schema: Schema.Top
-    readonly reviver?: unknown
-  }, runtime: string) {
-    const document = SchemaRepresentation.fromAST(input.schema.ast)
-    const json = SchemaRepresentation.toJson(document)
-    const revived = SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), { revivers: builtInRevivers })
-    const roundtrip = SchemaRepresentation.fromAST(revived.ast)
-    if (Object.keys(document.references).length === 0) {
-      deepStrictEqual(SchemaRepresentation.toJson(roundtrip), json)
-    }
-    const codeDocument = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toMultiDocument(roundtrip))
-    const omitExpected = (code: string) => code.replaceAll(/\.annotate\(\{ "expected": "(?:\\.|[^"\\])*" \}\)/g, "")
-    strictEqual(omitExpected(codeDocument.codes[0].runtime), runtime)
-  }
+const filterId = "acme/schema/minLength"
 
-  describe("String", () => {
-    it("String", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String },
-        `Schema.String`
-      )
-    })
+const minLengthReviver: SchemaRepresentation.FilterReviver<{ readonly minimum: number }> = {
+  _tag: "Filter",
+  id: filterId,
+  payloadSchema: Schema.Struct({ minimum: Schema.Number }),
+  schemasArity: 0,
+  revive: ({ annotations, payload }) => minLengthCheck(payload.minimum, annotations)
+}
 
-    it("String & check", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String.check(Schema.isMinLength(1)) },
-        `Schema.String.check(Schema.isMinLength(1))`
-      )
-    })
+function minLengthCheck(minimum: number, annotations?: Schema.Annotations.Filter) {
+  return Schema.makeFilter<string>((value) => value.length >= minimum, {
+    representation: { id: filterId, payload: { minimum } },
+    ...annotations
+  })
+}
 
-    describe("checks", () => {
-      it("isTrimmed", () => {
-        assertToSchemaRoundtrip(
-          { schema: Schema.String.check(Schema.isTrimmed()) },
-          `Schema.String.check(Schema.isTrimmed())`
-        )
-      })
+function revive(
+  schema: Schema.Top,
+  revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = []
+): Schema.Top {
+  return SchemaRepresentation.toSchema(
+    SchemaRepresentation.fromJson(SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast))),
+    { revivers }
+  )
+}
 
-      it("isULID", () => {
-        assertToSchemaRoundtrip(
-          { schema: Schema.String.check(Schema.isULID()) },
-          `Schema.String.check(Schema.isULID())`
-        )
-      })
+function assertRepresentationRoundtrip(
+  schema: Schema.Top,
+  revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = []
+): Schema.Top {
+  const expected = SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast))
+  const revived = SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(expected), { revivers })
+  assert.deepStrictEqual(SchemaRepresentation.toJson(SchemaRepresentation.fromAST(revived.ast)), expected)
+  return revived
+}
 
-      it("isGUID", () => {
-        assertToSchemaRoundtrip(
-          { schema: Schema.String.check(Schema.isGUID()) },
-          `Schema.String.check(Schema.isGUID())`
-        )
-      })
-    })
+function errorFrom(run: () => unknown): Error {
+  let result: Error | undefined
+  throws(run, (error: unknown) => {
+    assert.instanceOf(error, Error)
+    result = error
+    return undefined
+  })
+  assert.isDefined(result)
+  return result
+}
+
+function filterJson(): Schema.Json {
+  return SchemaRepresentation.toJson(
+    SchemaRepresentation.fromAST(Schema.String.check(minLengthCheck(2)).ast)
+  )
+}
+
+describe("SchemaRepresentation.toSchema", () => {
+  it("revives Null", () => {
+    assertRepresentationRoundtrip(Schema.Null)
   })
 
-  it("Struct", () => {
-    assertToSchemaRoundtrip(
-      { schema: Schema.Struct({}) },
-      `Schema.Struct({  })`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Struct({ a: Schema.String }) },
-      `Schema.Struct({ "a": Schema.String })`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Struct({ [Symbol.for("a")]: Schema.String }) },
-      `Schema.Struct({ [_symbol]: Schema.String })`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Struct({ a: Schema.optionalKey(Schema.String) }) },
-      `Schema.Struct({ "a": Schema.optionalKey(Schema.String) })`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Struct({ a: Schema.mutableKey(Schema.String) }) },
-      `Schema.Struct({ "a": Schema.mutableKey(Schema.String) })`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Struct({ a: Schema.optionalKey(Schema.mutableKey(Schema.String)) }) },
-      `Schema.Struct({ "a": Schema.optionalKey(Schema.mutableKey(Schema.String)) })`
+  it("revives Undefined", () => {
+    assertRepresentationRoundtrip(Schema.Undefined)
+  })
+
+  it("revives Void", () => {
+    assertRepresentationRoundtrip(Schema.Void)
+  })
+
+  it("revives Never", () => {
+    assertRepresentationRoundtrip(Schema.Never)
+  })
+
+  it("revives Unknown", () => {
+    assertRepresentationRoundtrip(Schema.Unknown)
+  })
+
+  it("revives Any", () => {
+    assertRepresentationRoundtrip(Schema.Any)
+  })
+
+  it("revives String", () => {
+    assertRepresentationRoundtrip(Schema.String)
+  })
+
+  it("revives Number", () => {
+    assertRepresentationRoundtrip(Schema.Number)
+  })
+
+  it("revives Boolean", () => {
+    assertRepresentationRoundtrip(Schema.Boolean)
+  })
+
+  it("revives BigInt", () => {
+    assertRepresentationRoundtrip(Schema.BigInt)
+  })
+
+  it("revives Symbol", () => {
+    assertRepresentationRoundtrip(Schema.Symbol)
+  })
+
+  it("revives ObjectKeyword", () => {
+    assertRepresentationRoundtrip(Schema.ObjectKeyword)
+  })
+
+  it("revives Literal", () => {
+    const schema = assertRepresentationRoundtrip(Schema.Literal("value"))
+    assert.isTrue(Schema.is(schema)("value"))
+    assert.isFalse(Schema.is(schema)("other"))
+  })
+
+  it("revives UniqueSymbol", () => {
+    const symbol = Symbol.for("acme/schema/symbol")
+    const schema = assertRepresentationRoundtrip(Schema.UniqueSymbol(symbol))
+    assert.isTrue(Schema.is(schema)(symbol))
+    assert.isFalse(Schema.is(schema)(Symbol.for("acme/schema/other")))
+  })
+
+  it("revives Enum", () => {
+    const schema = assertRepresentationRoundtrip(Schema.Enum({ A: "a", One: 1 }))
+    assert.isTrue(Schema.is(schema)("a"))
+    assert.isTrue(Schema.is(schema)(1))
+    assert.isFalse(Schema.is(schema)("other"))
+  })
+
+  it("revives TemplateLiteral", () => {
+    const schema = assertRepresentationRoundtrip(Schema.TemplateLiteral(["prefix-", Schema.String]))
+    assert.isTrue(Schema.is(schema)("prefix-value"))
+    assert.isFalse(Schema.is(schema)("value"))
+  })
+
+  it("revives Tuple", () => {
+    assertRepresentationRoundtrip(Schema.Tuple([Schema.String, Schema.optionalKey(Schema.Number)]))
+  })
+
+  it("revives Array", () => {
+    assertRepresentationRoundtrip(Schema.Array(Schema.String))
+  })
+
+  it("revives TupleWithRest", () => {
+    assertRepresentationRoundtrip(
+      Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean])
     )
   })
 
-  it("Record", () => {
-    assertToSchemaRoundtrip(
-      { schema: Schema.Record(Schema.String, Schema.Number) },
-      `Schema.Record(Schema.String, Schema.Number)`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Record(Schema.Symbol, Schema.Number) },
-      `Schema.Record(Schema.Symbol, Schema.Number)`
+  it("revives Struct", () => {
+    assertRepresentationRoundtrip(Schema.Struct({
+      required: Schema.String,
+      optional: Schema.optionalKey(Schema.Number),
+      mutable: Schema.mutableKey(Schema.Boolean)
+    }))
+  })
+
+  it("revives Record", () => {
+    assertRepresentationRoundtrip(Schema.Record(Schema.String, Schema.Number))
+  })
+
+  it("revives StructWithRest", () => {
+    assertRepresentationRoundtrip(
+      Schema.StructWithRest(Schema.Struct({ value: Schema.Number }), [Schema.Record(Schema.Symbol, Schema.String)])
     )
   })
 
-  it("StructWithRest", () => {
-    assertToSchemaRoundtrip(
-      {
-        schema: Schema.StructWithRest(Schema.Struct({ a: Schema.Number }), [
-          Schema.Record(Schema.String, Schema.Number)
-        ])
-      },
-      `Schema.StructWithRest(Schema.Struct({ "a": Schema.Number }), [Schema.Record(Schema.String, Schema.Number)])`
-    )
+  it("revives Union", () => {
+    const schema = assertRepresentationRoundtrip(Schema.Union([Schema.String, Schema.Number]))
+    assert.isTrue(Schema.is(schema)("value"))
+    assert.isTrue(Schema.is(schema)(1))
+    assert.isFalse(Schema.is(schema)(true))
   })
 
-  it("Tuple", () => {
-    assertToSchemaRoundtrip(
-      { schema: Schema.Tuple([]) },
-      `Schema.Tuple([])`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Tuple([Schema.String, Schema.Number]) },
-      `Schema.Tuple([Schema.String, Schema.Number])`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.Tuple([Schema.String, Schema.optionalKey(Schema.Number)]) },
-      `Schema.Tuple([Schema.String, Schema.optionalKey(Schema.Number)])`
-    )
+  it("revives an empty Union as Never", () => {
+    const schema = SchemaRepresentation.toSchema({
+      representation: { _tag: "Union", types: [], mode: "anyOf", checks: [] },
+      references: {}
+    }, { revivers: [] })
+    assert.isFalse(Schema.is(schema)(undefined))
+    assert.isFalse(Schema.is(schema)(null))
   })
 
-  it("Array", () => {
-    assertToSchemaRoundtrip(
-      { schema: Schema.Array(Schema.String) },
-      `Schema.Array(Schema.String)`
-    )
-  })
-
-  it("TupleWithRest", () => {
-    assertToSchemaRoundtrip(
-      { schema: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number]) },
-      `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number])`
-    )
-    assertToSchemaRoundtrip(
-      { schema: Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean]) },
-      `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number, Schema.Boolean])`
-    )
-  })
-
-  it("Suspend", () => {
-    type Category = {
+  it("revives Suspend", () => {
+    interface Category {
       readonly name: string
       readonly children: ReadonlyArray<Category>
     }
-
-    const OuterCategory = Schema.Struct({
+    const Category: Schema.Codec<Category> = Schema.Struct({
       name: Schema.String,
-      children: Schema.Array(Schema.suspend((): Schema.Codec<Category> => OuterCategory))
+      children: Schema.Array(Schema.suspend((): Schema.Codec<Category> => Category))
     }).annotate({ identifier: "Category" })
+    const schema = revive(Category) as Schema.Codec<unknown>
+    assert.deepStrictEqual(
+      Schema.decodeUnknownSync(schema)({
+        name: "root",
+        children: [{ name: "child", children: [] }]
+      }),
+      {
+        name: "root",
+        children: [{ name: "child", children: [] }]
+      }
+    )
+    assert.strictEqual(SchemaRepresentation.fromAST(schema.ast).representation._tag, "Reference")
+  })
 
-    assertToSchemaRoundtrip(
-      { schema: OuterCategory },
-      `Category`
+  it("restores node annotations", () => {
+    const schema = revive(Schema.String.annotate({ title: "Name" }))
+    assert.strictEqual(schema.ast.annotations?.title, "Name")
+  })
+
+  it("restores tuple element annotations", () => {
+    const schema = revive(Schema.Tuple([Schema.String.annotateKey({ description: "element" })]))
+    const representation = SchemaRepresentation.fromAST(schema.ast).representation
+    assert.strictEqual(representation._tag, "Arrays")
+    if (representation._tag === "Arrays") {
+      assert.strictEqual(representation.elements[0].annotations?.description, "element")
+    }
+  })
+
+  it("restores property annotations", () => {
+    const schema = revive(Schema.Struct({ value: Schema.String.annotateKey({ description: "property" }) }))
+    const representation = SchemaRepresentation.fromAST(schema.ast).representation
+    assert.strictEqual(representation._tag, "Objects")
+    if (representation._tag === "Objects") {
+      assert.strictEqual(representation.propertySignatures[0].annotations?.description, "property")
+    }
+  })
+
+  it("restores brands", () => {
+    assertRepresentationRoundtrip(Schema.String.pipe(Schema.brand("A"), Schema.brand("B")))
+  })
+
+  it("restores a node representation annotation without schema dependencies", () => {
+    assertRepresentationRoundtrip(Schema.String.annotate({
+      representation: { id: "acme/schema/String", payload: null }
+    }))
+  })
+
+  it("restores a node representation annotation with schema dependencies", () => {
+    assertRepresentationRoundtrip(Schema.String.annotate({
+      representation: {
+        id: "acme/schema/String",
+        payload: null,
+        schemas: [Schema.Number.ast]
+      }
+    }))
+  })
+
+  it("revives String contentSchema in the same reference environment", () => {
+    const content = Schema.Struct({ value: Schema.Number }).annotate({ identifier: "Payload" })
+    const encoded = Schema.String.annotate({
+      contentMediaType: "application/json",
+      contentSchema: SchemaAST.toEncoded(content.ast)
+    })
+    const schema = revive(encoded)
+    assert.deepStrictEqual(Schema.decodeUnknownSync(schema as Schema.Codec<unknown>)("{\"value\":1}"), { value: 1 })
+    const document = SchemaRepresentation.fromAST(SchemaAST.toEncoded(schema.ast))
+    assert.strictEqual(document.representation._tag, "Reference")
+    if (document.representation._tag === "Reference") {
+      const representation = document.references[document.representation.$ref]
+      assert.strictEqual(representation._tag, "String")
+      if (representation._tag === "String") {
+        assert.strictEqual(representation.contentMediaType, "application/json")
+        assert.strictEqual(representation.contentSchema?._tag, "Reference")
+      }
+    }
+  })
+
+  it("revives a Filter", () => {
+    const schema = assertRepresentationRoundtrip(
+      Schema.String.check(minLengthCheck(2, { description: "at least two" }).abort()),
+      [minLengthReviver]
+    )
+    assert.strictEqual(Schema.decodeUnknownResult(schema as Schema.Codec<unknown>)("a")._tag, "Failure")
+    assert.strictEqual(schema.ast.checks?.[0]._tag, "Filter")
+    assert.isTrue(schema.ast.checks?.[0]._tag === "Filter" && schema.ast.checks[0].aborted)
+    assert.strictEqual(schema.ast.checks?.[0].annotations?.description, "at least two")
+  })
+
+  it("revives a FilterGroup without an identity from its children", () => {
+    const group = Schema.makeFilterGroup([minLengthCheck(2), minLengthCheck(3)], { description: "both" })
+    const schema = assertRepresentationRoundtrip(Schema.String.check(group), [minLengthReviver])
+    assert.strictEqual(Schema.decodeUnknownResult(schema as Schema.Codec<unknown>)("ab")._tag, "Failure")
+    assert.strictEqual(schema.ast.checks?.[0].annotations?.description, "both")
+  })
+
+  it("uses an identified FilterGroup reviver instead of its persisted children", () => {
+    const groupId = "acme/schema/group"
+    const document = SchemaRepresentation.fromJson({
+      representation: {
+        _tag: "String",
+        checks: [{
+          _tag: "FilterGroup",
+          annotations: { representation: { id: groupId, payload: null } },
+          checks: [{ _tag: "Filter", aborted: false }]
+        }]
+      },
+      references: {}
+    })
+    const reviver: SchemaRepresentation.FilterGroupReviver<null> = {
+      _tag: "FilterGroup",
+      id: groupId,
+      payloadSchema: Schema.Null,
+      schemasArity: 0,
+      revive: () => Schema.makeFilterGroup([Schema.makeFilter<string>((value) => value !== "blocked")])
+    }
+    const schema = SchemaRepresentation.toSchema(document, { revivers: [reviver] }) as Schema.Codec<unknown>
+    assert.strictEqual(Schema.decodeUnknownSync(schema)("allowed"), "allowed")
+    assert.strictEqual(Schema.decodeUnknownResult(schema)("blocked")._tag, "Failure")
+  })
+
+  it("revives a Declaration", () => {
+    const id = "acme/schema/Box"
+    const Box = Schema.declare<{ readonly value: string }>(
+      (input): input is { readonly value: string } =>
+        typeof input === "object" && input !== null && typeof (input as any).value === "string",
+      { representation: { id, payload: { label: "Box" }, schemas: [Schema.String.ast] } }
+    )
+    const reviver: SchemaRepresentation.DeclarationReviver<{ readonly label: string }> = {
+      _tag: "Declaration",
+      id,
+      payloadSchema: Schema.Struct({ label: Schema.String }),
+      schemasArity: 1,
+      typeParametersArity: 0,
+      revive: ({ annotations, payload, schemas }) =>
+        Schema.declare<{ readonly value: string }>(
+          (input): input is { readonly value: string } =>
+            typeof input === "object" && input !== null && typeof (input as any).value === "string",
+          { ...annotations, representation: { id, payload, schemas: schemas.map((schema) => schema.ast) } }
+        )
+    }
+    const schema = assertRepresentationRoundtrip(Box, [reviver]) as Schema.Codec<unknown>
+    assert.deepStrictEqual(Schema.decodeUnknownSync(schema)({ value: "ok" }), { value: "ok" })
+  })
+
+  it("reports a missing reviver", () => {
+    assert.strictEqual(
+      errorFrom(() => SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), { revivers: [] }))
+        .message,
+      `Missing reviver for ${filterId}\n  at ["representation"]["checks"][0]["annotations"]["representation"]`
     )
   })
 
-  describe("brand", () => {
-    it("brand", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String.pipe(Schema.brand("a")) },
-        `Schema.String.pipe(Schema.brand("a"))`
-      )
-    })
-
-    it("brand & brand", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String.pipe(Schema.brand("a"), Schema.brand("b")) },
-        `Schema.String.pipe(Schema.brand("a"), Schema.brand("b"))`
-      )
-    })
-
-    it("check & brand", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String.check(Schema.isMinLength(1)).pipe(Schema.brand("b")) },
-        `Schema.String.check(Schema.isMinLength(1)).pipe(Schema.brand("b"))`
-      )
-    })
-
-    it("brand & check & brand", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String.pipe(Schema.brand("a")).check(Schema.isMinLength(1)).pipe(Schema.brand("b")) },
-        `Schema.String.pipe(Schema.brand("a")).check(Schema.isMinLength(1)).pipe(Schema.brand("b"))`
-      )
-    })
-
-    it("check & brand & check", () => {
-      assertToSchemaRoundtrip(
-        { schema: Schema.String.check(Schema.isMinLength(1)).pipe(Schema.brand("b")).check(Schema.isMaxLength(2)) },
-        `Schema.String.check(Schema.isMinLength(1)).pipe(Schema.brand("b")).check(Schema.isMaxLength(2))`
-      )
-    })
+  it("rejects duplicate reviver IDs", () => {
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema({
+          representation: { _tag: "String", checks: [] },
+          references: {}
+        }, { revivers: [minLengthReviver, minLengthReviver] })
+      ).message,
+      `Duplicate reviver for ${filterId}\n  at ["revivers"][1]["id"]`
+    )
   })
 
-  describe("toSchemaDefaultReviver", () => {
-    function assertToSchemaWithReviver(schema: Schema.Top, runtime: string) {
-      assertToSchemaRoundtrip({ schema, reviver: builtInRevivers }, runtime)
+  it("rejects an invalid declared schemasArity", () => {
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
+          revivers: [{ ...minLengthReviver, schemasArity: -1 }]
+        })
+      ).message,
+      `Invalid schemasArity for ${filterId}\n  at ["revivers"][0]["schemasArity"]`
+    )
+  })
+
+  it("rejects an invalid effective schemas arity", () => {
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
+          revivers: [{ ...minLengthReviver, schemasArity: 1 }]
+        })
+      ).message,
+      `Invalid schemas arity for ${filterId}: expected 1, got 0\n  at ["representation"]["checks"][0]["annotations"]["representation"]["schemas"]`
+    )
+  })
+
+  it("rejects an invalid declared typeParametersArity", () => {
+    const id = "acme/schema/Declaration"
+    const reviver: SchemaRepresentation.DeclarationReviver<null> = {
+      _tag: "Declaration",
+      id,
+      payloadSchema: Schema.Null,
+      schemasArity: 0,
+      typeParametersArity: 0.5,
+      revive: () => Schema.String
     }
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema({
+          representation: { _tag: "String", checks: [] },
+          references: {}
+        }, { revivers: [reviver] })
+      ).message,
+      `Invalid typeParametersArity for ${id}\n  at ["revivers"][0]["typeParametersArity"]`
+    )
+  })
 
-    it("Option", () => {
-      assertToSchemaWithReviver(
-        Schema.Option(Schema.String),
-        `Schema.Option(Schema.String)`
-      )
-      assertToSchemaWithReviver(
-        Schema.Option(Schema.URL),
-        `Schema.Option(Schema.URL)`
-      )
+  it("rejects an invalid effective type parameters arity", () => {
+    const id = "acme/schema/Declaration"
+    const declaration = Schema.declare<string>((input): input is string => typeof input === "string", {
+      representation: { id, payload: null }
     })
-
-    it("Result", () => {
-      assertToSchemaWithReviver(
-        Schema.Result(Schema.String, Schema.Number),
-        `Schema.Result(Schema.String, Schema.Number)`
-      )
-    })
-
-    it("Json", () => {
-      assertToSchemaWithReviver(
-        Schema.Json,
-        `Schema.Json`
-      )
-    })
-
-    it("MutableJson", () => {
-      assertToSchemaWithReviver(
-        Schema.MutableJson,
-        `Schema.MutableJson`
-      )
-    })
-
-    it("Redacted", () => {
-      assertToSchemaWithReviver(
-        Schema.Redacted(Schema.String),
-        `Schema.Redacted(Schema.String)`
-      )
-    })
-
-    it("Redacted options", () => {
-      const schema = Schema.Redacted(Schema.String, {
-        label: "password",
-        disallowJsonEncode: true
-      })
-      const document = SchemaRepresentation.fromAST(schema.ast)
-      const roundtrip = SchemaRepresentation.toSchema(
-        SchemaRepresentation.fromJson(SchemaRepresentation.toJson(document)),
-        {
-          revivers: builtInRevivers
-        }
-      ) as typeof schema
-      const encode = Schema.encodeUnknownExit(Schema.toCodecJson(roundtrip))
-
-      strictEqual(
-        String(encode(Redacted.make("secret", { label: "password" }))),
-        `Failure(Cause([Fail(SchemaError(Cannot serialize Redacted with label: "password"))]))`
-      )
-      strictEqual(
-        String(encode(Redacted.make("secret", { label: "other" }))),
-        `Failure(Cause([Fail(SchemaError(Expected "password", got "other"
-  at ["label"]))]))`
-      )
-    })
-
-    it("CauseReason", () => {
-      assertToSchemaWithReviver(
-        Schema.CauseReason(Schema.String, Schema.Number),
-        `Schema.CauseReason(Schema.String, Schema.Number)`
-      )
-    })
-
-    it("Cause", () => {
-      assertToSchemaWithReviver(
-        Schema.Cause(Schema.String, Schema.Number),
-        `Schema.Cause(Schema.String, Schema.Number)`
-      )
-    })
-
-    it("Exit", () => {
-      assertToSchemaWithReviver(
-        Schema.Exit(Schema.String, Schema.Number, Schema.Boolean),
-        `Schema.Exit(Schema.String, Schema.Number, Schema.Boolean)`
-      )
-    })
-
-    it("ReadonlyMap", () => {
-      assertToSchemaWithReviver(
-        Schema.ReadonlyMap(Schema.String, Schema.Number),
-        `Schema.ReadonlyMap(Schema.String, Schema.Number)`
-      )
-    })
-
-    it("HashMap", () => {
-      assertToSchemaWithReviver(
-        Schema.HashMap(Schema.String, Schema.Number),
-        `Schema.HashMap(Schema.String, Schema.Number)`
-      )
-    })
-
-    it("Chunk", () => {
-      assertToSchemaWithReviver(
-        Schema.Chunk(Schema.String),
-        `Schema.Chunk(Schema.String)`
-      )
-    })
-
-    it("ReadonlySet", () => {
-      assertToSchemaWithReviver(
-        Schema.ReadonlySet(Schema.String),
-        `Schema.ReadonlySet(Schema.String)`
-      )
-    })
-
-    it("RegExp", () => {
-      assertToSchemaWithReviver(
-        Schema.RegExp,
-        `Schema.RegExp`
-      )
-    })
-
-    it("URL", () => {
-      assertToSchemaWithReviver(
-        Schema.URL,
-        `Schema.URL`
-      )
-    })
-
-    describe("Date", () => {
-      it("Date", () => {
-        assertToSchemaWithReviver(
-          Schema.Date,
-          `Schema.Date`
+    const reviver: SchemaRepresentation.DeclarationReviver<null> = {
+      _tag: "Declaration",
+      id,
+      payloadSchema: Schema.Null,
+      schemasArity: 0,
+      typeParametersArity: 1,
+      revive: () => Schema.String
+    }
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(
+          SchemaRepresentation.fromJson(SchemaRepresentation.toJson(SchemaRepresentation.fromAST(declaration.ast))),
+          { revivers: [reviver] }
         )
-      })
+      ).message,
+      `Invalid type parameters arity for ${id}: expected 1, got 0\n  at ["representation"]["typeParameters"]`
+    )
+  })
 
-      describe("checks", () => {
-        it("isDateValid", () => {
-          assertToSchemaWithReviver(
-            Schema.Date.check(Schema.isDateValid()),
-            `Schema.Date.check(Schema.isDateValid())`
-          )
+  it("rejects an invalid reviver payload", () => {
+    const json = filterJson() as any
+    json.representation.checks[0].annotations.representation.payload = { minimum: "two" }
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
+          revivers: [minLengthReviver]
         })
+      ).message,
+      `Invalid representation payload for ${filterId}\n  at ["representation"]["checks"][0]["annotations"]["representation"]["payload"]`
+    )
+  })
 
-        it("isGreaterThanDate", () => {
-          assertToSchemaWithReviver(
-            Schema.Date.check(Schema.isGreaterThanDate(new Date(0))),
-            `Schema.Date.check(Schema.isGreaterThanDate(new Date(0)))`
-          )
+  it("rejects a reviver of the wrong kind", () => {
+    const wrongKind: SchemaRepresentation.DeclarationReviver<{ readonly minimum: number }> = {
+      _tag: "Declaration",
+      id: filterId,
+      payloadSchema: Schema.Struct({ minimum: Schema.Number }),
+      schemasArity: 0,
+      typeParametersArity: 0,
+      revive: () => Schema.String
+    }
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
+          revivers: [wrongKind]
         })
+      ).message,
+      `Invalid reviver kind for ${filterId}\n  at ["representation"]["checks"][0]["annotations"]["representation"]`
+    )
+  })
 
-        it("isGreaterThanOrEqualToDate", () => {
-          assertToSchemaWithReviver(
-            Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new Date(0))),
-            `Schema.Date.check(Schema.isGreaterThanOrEqualToDate(new Date(0)))`
-          )
+  it("preserves a reviver exception by identity", () => {
+    const cause = new Error("boom")
+    const reviver = {
+      ...minLengthReviver,
+      revive: () => {
+        throw cause
+      }
+    }
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
+          revivers: [reviver]
         })
+      ),
+      cause
+    )
+  })
 
-        it("isLessThanDate", () => {
-          assertToSchemaWithReviver(
-            Schema.Date.check(Schema.isLessThanDate(new Date(0))),
-            `Schema.Date.check(Schema.isLessThanDate(new Date(0)))`
-          )
-        })
-
-        it("isLessThanOrEqualToDate", () => {
-          assertToSchemaWithReviver(
-            Schema.Date.check(Schema.isLessThanOrEqualToDate(new Date(0))),
-            `Schema.Date.check(Schema.isLessThanOrEqualToDate(new Date(0)))`
-          )
-        })
-      })
-    })
-
-    it("Duration", () => {
-      assertToSchemaWithReviver(
-        Schema.Duration,
-        `Schema.Duration`
-      )
-    })
-
-    it("FormData", () => {
-      assertToSchemaWithReviver(
-        Schema.FormData,
-        `Schema.FormData`
-      )
-    })
-
-    it("URLSearchParams", () => {
-      assertToSchemaWithReviver(
-        Schema.URLSearchParams,
-        `Schema.URLSearchParams`
-      )
-    })
-
-    it("Uint8Array", () => {
-      assertToSchemaWithReviver(
-        Schema.Uint8Array,
-        `Schema.Uint8Array`
-      )
-    })
-
-    it("DateTime.Utc", () => {
-      assertToSchemaWithReviver(
-        Schema.DateTimeUtc,
-        `Schema.DateTimeUtc`
-      )
-    })
-
-    it("Error", () => {
-      assertToSchemaWithReviver(
-        Schema.Error(),
-        `Schema.Error()`
-      )
-    })
-
-    it("Error with stack", () => {
-      assertToSchemaWithReviver(
-        Schema.Error({ includeStack: true }),
-        `Schema.Error({"includeStack":true})`
-      )
-    })
-
-    it("Error with excluded cause", () => {
-      assertToSchemaWithReviver(
-        Schema.Error({ excludeCause: true }),
-        `Schema.Error({"excludeCause":true})`
-      )
-    })
-
-    it("Defect", () => {
-      assertToSchemaWithReviver(
-        Schema.Defect(),
-        `Schema.Unknown`
-      )
-    })
-
-    it("HashSet", () => {
-      assertToSchemaWithReviver(
-        Schema.HashSet(Schema.String),
-        `Schema.HashSet(Schema.String)`
-      )
-    })
-
-    it("BigDecimal", () => {
-      assertToSchemaWithReviver(
-        Schema.BigDecimal,
-        `Schema.BigDecimal`
-      )
-    })
-
-    it("TimeZoneOffset", () => {
-      assertToSchemaWithReviver(
-        Schema.TimeZoneOffset,
-        `Schema.TimeZoneOffset`
-      )
-    })
-
-    it("TimeZoneNamed", () => {
-      assertToSchemaWithReviver(
-        Schema.TimeZoneNamed,
-        `Schema.TimeZoneNamed`
-      )
-    })
-
-    it("TimeZone", () => {
-      assertToSchemaWithReviver(
-        Schema.TimeZone,
-        `Schema.TimeZone`
-      )
-    })
-
-    it("DateTimeZoned", () => {
-      assertToSchemaWithReviver(
-        Schema.DateTimeZoned,
-        `Schema.DateTimeZoned`
-      )
-    })
-
-    describe("ReadonlySet", () => {
-      it("ReadonlySet(String)", () => {
-        assertToSchemaWithReviver(
-          Schema.ReadonlySet(Schema.String),
-          `Schema.ReadonlySet(Schema.String)`
+  it("requires a representation identity on a Filter", () => {
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(
+          SchemaRepresentation.fromJson({
+            representation: { _tag: "String", checks: [{ _tag: "Filter", aborted: false }] },
+            references: {}
+          }),
+          { revivers: [] }
         )
-      })
+      ).message,
+      `Missing representation annotation\n  at ["representation"]["checks"][0]["annotations"]["representation"]`
+    )
+  })
 
-      describe("checks", () => {
-        it("isMinSize", () => {
-          assertToSchemaWithReviver(
-            Schema.ReadonlySet(Schema.String).check(Schema.isMinSize(2)),
-            `Schema.ReadonlySet(Schema.String).check(Schema.isMinSize(2))`
-          )
-        })
-
-        it("isMaxSize", () => {
-          assertToSchemaWithReviver(
-            Schema.ReadonlySet(Schema.String).check(Schema.isMaxSize(2)),
-            `Schema.ReadonlySet(Schema.String).check(Schema.isMaxSize(2))`
-          )
-        })
-      })
-
-      it("isSizeBetween", () => {
-        assertToSchemaWithReviver(
-          Schema.ReadonlySet(Schema.String).check(Schema.isSizeBetween(2, 2)),
-          `Schema.ReadonlySet(Schema.String).check(Schema.isSizeBetween(2, 2))`
+  it("requires a representation identity on a Declaration", () => {
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema(
+          SchemaRepresentation.fromJson({
+            representation: { _tag: "Declaration", typeParameters: [], checks: [] },
+            references: {}
+          }),
+          { revivers: [] }
         )
-      })
-    })
+      ).message,
+      `Missing representation annotation\n  at ["representation"]["annotations"]["representation"]`
+    )
+  })
+
+  it("reports an invalid reference", () => {
+    assert.strictEqual(
+      errorFrom(() =>
+        SchemaRepresentation.toSchema({
+          representation: { _tag: "Reference", $ref: "Missing" },
+          references: {}
+        }, { revivers: [] })
+      ).message,
+      `Invalid reference Missing\n  at ["representation"]["$ref"]`
+    )
   })
 })

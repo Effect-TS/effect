@@ -1,0 +1,622 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Schema, SchemaAST, SchemaRepresentation } from "effect"
+
+describe("SchemaRepresentation.fromAST", () => {
+  it("converts Null", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Null.ast), {
+      representation: { _tag: "Null", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Undefined", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Undefined.ast), {
+      representation: { _tag: "Undefined", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Void", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Void.ast), {
+      representation: { _tag: "Void", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Never", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Never.ast), {
+      representation: { _tag: "Never", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Unknown", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Unknown.ast), {
+      representation: { _tag: "Unknown", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Any", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Any.ast), {
+      representation: { _tag: "Any", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts String", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.ast), {
+      representation: { _tag: "String", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Number", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Number.ast), {
+      representation: { _tag: "Number", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Boolean", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Boolean.ast), {
+      representation: { _tag: "Boolean", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts BigInt", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.BigInt.ast), {
+      representation: { _tag: "BigInt", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts Symbol", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Symbol.ast), {
+      representation: { _tag: "Symbol", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts ObjectKeyword", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.ObjectKeyword.ast), {
+      representation: { _tag: "ObjectKeyword", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts a literal", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Literal("value").ast), {
+      representation: { _tag: "Literal", literal: "value", checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts a global unique symbol", () => {
+    const symbol = Symbol.for("value")
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.UniqueSymbol(symbol).ast), {
+      representation: { _tag: "UniqueSymbol", symbol, checks: [] },
+      references: {}
+    })
+  })
+
+  it("converts an enum", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Enum({ A: "a", One: 1 }).ast), {
+      representation: {
+        _tag: "Enum",
+        enums: [["A", "a"], ["One", 1]],
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("converts a template literal", () => {
+    assert.deepStrictEqual(
+      SchemaRepresentation.fromAST(Schema.TemplateLiteral(["prefix-", Schema.String, Schema.Number]).ast),
+      {
+        representation: {
+          _tag: "TemplateLiteral",
+          parts: [
+            { _tag: "Literal", literal: "prefix-", checks: [] },
+            { _tag: "String", checks: [] },
+            { _tag: "Number", checks: [] }
+          ],
+          checks: []
+        },
+        references: {}
+      }
+    )
+  })
+
+  it("converts tuple elements and rest", () => {
+    const schema = Schema.TupleWithRest(
+      Schema.Tuple([Schema.String, Schema.optionalKey(Schema.Number)]),
+      [Schema.Boolean]
+    )
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: {
+        _tag: "Arrays",
+        elements: [
+          { type: { _tag: "String", checks: [] }, isOptional: false },
+          { type: { _tag: "Number", checks: [] }, isOptional: true }
+        ],
+        rest: [{ _tag: "Boolean", checks: [] }],
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("converts object properties and index signatures", () => {
+    const schema = Schema.StructWithRest(
+      Schema.Struct({
+        required: Schema.String,
+        optional: Schema.optionalKey(Schema.Number),
+        mutable: Schema.mutableKey(Schema.Boolean)
+      }),
+      [Schema.Record(Schema.Symbol, Schema.BigInt)]
+    )
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: {
+        _tag: "Objects",
+        propertySignatures: [
+          {
+            name: "required",
+            type: { _tag: "String", checks: [] },
+            isOptional: false,
+            isMutable: false
+          },
+          {
+            name: "optional",
+            type: { _tag: "Number", checks: [] },
+            isOptional: true,
+            isMutable: false
+          },
+          {
+            name: "mutable",
+            type: { _tag: "Boolean", checks: [] },
+            isOptional: false,
+            isMutable: true
+          }
+        ],
+        indexSignatures: [{
+          parameter: { _tag: "Symbol", checks: [] },
+          type: { _tag: "BigInt", checks: [] }
+        }],
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("converts a union", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Union([Schema.String, Schema.Number]).ast), {
+      representation: {
+        _tag: "Union",
+        types: [
+          { _tag: "String", checks: [] },
+          { _tag: "Number", checks: [] }
+        ],
+        mode: "anyOf",
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("uses the type side of a transformation", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.NumberFromString.ast), {
+      representation: { _tag: "Number", checks: [] },
+      references: {}
+    })
+  })
+
+  it("uses the encoded side only when the caller projects it", () => {
+    assert.deepStrictEqual(
+      SchemaRepresentation.fromAST(SchemaAST.toEncoded(Schema.NumberFromString.ast)),
+      {
+        representation: {
+          _tag: "String",
+          annotations: { expected: "a string that will be decoded as a number" },
+          checks: []
+        },
+        references: {}
+      }
+    )
+  })
+
+  it("preserves brands", () => {
+    assert.deepStrictEqual(
+      SchemaRepresentation.fromAST(Schema.String.pipe(Schema.brand("A"), Schema.brand("B")).ast),
+      {
+        representation: {
+          _tag: "String",
+          annotations: { brands: ["A", "B"] },
+          checks: []
+        },
+        references: {}
+      }
+    )
+  })
+
+  it("preserves declaration callbacks and representation dependencies", () => {
+    const toCode: SchemaRepresentation.Generation.Declaration = () => ({ runtime: "Custom", Type: "string" })
+    const toJsonSchema: SchemaRepresentation.ToJsonSchema.Declaration = () => ({ type: "string" })
+    const schema = Schema.declare<string>((input): input is string => typeof input === "string", {
+      representation: {
+        id: "acme/schema/Custom",
+        payload: null,
+        schemas: [Schema.Number.ast]
+      },
+      toCode,
+      toJsonSchema
+    })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: {
+        _tag: "Declaration",
+        typeParameters: [],
+        checks: [],
+        annotations: {
+          representation: {
+            id: "acme/schema/Custom",
+            payload: null,
+            schemas: [{ _tag: "Number", checks: [] }]
+          },
+          toCode,
+          toJsonSchema
+        }
+      },
+      references: {}
+    })
+  })
+
+  it("converts declaration type parameters", () => {
+    const representation = SchemaRepresentation.fromAST(Schema.Option(Schema.Number).ast).representation
+
+    assert.strictEqual(representation._tag, "Declaration")
+    if (representation._tag !== "Declaration") return
+    assert.deepStrictEqual(representation.typeParameters, [{ _tag: "Number", checks: [] }])
+  })
+
+  it("preserves custom filter callbacks, dependencies and aborted state", () => {
+    const toCode: SchemaRepresentation.Generation.Check = () => ({ runtime: "Custom" })
+    const toJsonSchema: SchemaRepresentation.ToJsonSchema.Check = () => ({ minLength: 1 })
+    const marker = () => "marker"
+    const filter = Schema.makeFilter<string>(() => true, {
+      representation: {
+        id: "acme/schema/Custom",
+        payload: { minimum: 1 },
+        schemas: [Schema.Number.ast]
+      },
+      toCode,
+      toJsonSchema,
+      marker
+    }).abort()
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(filter).ast), {
+      representation: {
+        _tag: "String",
+        checks: [{
+          _tag: "Filter",
+          annotations: {
+            representation: {
+              id: "acme/schema/Custom",
+              payload: { minimum: 1 },
+              schemas: [{ _tag: "Number", checks: [] }]
+            },
+            toCode,
+            toJsonSchema,
+            marker
+          },
+          aborted: true
+        }]
+      },
+      references: {}
+    })
+  })
+
+  it("preserves filters without persistence metadata", () => {
+    const filter = Schema.makeFilter<string>(() => true, { expected: "custom" })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(filter).ast), {
+      representation: {
+        _tag: "String",
+        checks: [{
+          _tag: "Filter",
+          annotations: { expected: "custom" },
+          aborted: false
+        }]
+      },
+      references: {}
+    })
+  })
+
+  it("preserves a filter without annotations", () => {
+    const filter = Schema.makeFilter<string>(() => true)
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(filter).ast), {
+      representation: {
+        _tag: "String",
+        checks: [{ _tag: "Filter", aborted: false }]
+      },
+      references: {}
+    })
+  })
+
+  it("preserves filter groups", () => {
+    const first = Schema.makeFilter<string>(() => true, { expected: "first" })
+    const second = Schema.makeFilter<string>(() => true, { expected: "second" })
+    const group = Schema.makeFilterGroup([first, second], { description: "group" })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(group).ast), {
+      representation: {
+        _tag: "String",
+        checks: [{
+          _tag: "FilterGroup",
+          annotations: { description: "group" },
+          checks: [
+            { _tag: "Filter", annotations: { expected: "first" }, aborted: false },
+            { _tag: "Filter", annotations: { expected: "second" }, aborted: false }
+          ]
+        }]
+      },
+      references: {}
+    })
+  })
+
+  it("converts representation dependencies of built-in filters", () => {
+    const schema = Schema.Record(Schema.String, Schema.Number).check(
+      Schema.isPropertyNames(Schema.String.check(Schema.isPattern(/^[A-Z]/)))
+    )
+    const representation = SchemaRepresentation.fromAST(schema.ast).representation
+
+    assert.strictEqual(representation._tag, "Objects")
+    if (representation._tag !== "Objects") return
+    const check = representation.checks[0]
+    assert.strictEqual(check._tag, "Filter")
+    if (check._tag !== "Filter") return
+    const dependency = check.annotations?.representation?.schemas?.[0]
+    assert.isDefined(dependency)
+    assert.deepStrictEqual(
+      SchemaRepresentation.toJson({ representation: dependency, references: {} }),
+      {
+        representation: {
+          _tag: "String",
+          checks: [{
+            _tag: "Filter",
+            annotations: {
+              arbitrary: { constraint: { patterns: ["^[A-Z]"] } },
+              expected: "a string matching the RegExp ^[A-Z]",
+              representation: {
+                id: "effect/schema/isPattern",
+                payload: { source: "^[A-Z]", flags: "" }
+              }
+            },
+            aborted: false
+          }]
+        },
+        references: {}
+      }
+    )
+  })
+
+  it("converts checks on arrays", () => {
+    const representation = SchemaRepresentation.fromAST(
+      Schema.Array(Schema.String).check(Schema.isMinLength(1)).ast
+    ).representation
+
+    assert.strictEqual(representation._tag, "Arrays")
+    if (representation._tag !== "Arrays") return
+    assert.strictEqual(representation.checks.length, 1)
+    assert.deepStrictEqual(representation.checks[0].annotations?.representation, {
+      id: "effect/schema/isMinLength",
+      payload: { minLength: 1 }
+    })
+  })
+
+  it("converts checks on objects", () => {
+    const representation = SchemaRepresentation.fromAST(
+      Schema.Record(Schema.String, Schema.Number).check(Schema.isMinProperties(1)).ast
+    ).representation
+
+    assert.strictEqual(representation._tag, "Objects")
+    if (representation._tag !== "Objects") return
+    assert.strictEqual(representation.checks.length, 1)
+    assert.deepStrictEqual(representation.checks[0].annotations?.representation, {
+      id: "effect/schema/isMinProperties",
+      payload: { minProperties: 1 }
+    })
+  })
+
+  it("promotes string content annotations to structural fields", () => {
+    const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
+    const document = SchemaRepresentation.fromAST(schema)
+
+    assert.deepStrictEqual(document, {
+      representation: {
+        _tag: "String",
+        annotations: {
+          expected: "a string that will be decoded as JSON",
+          identifier: undefined
+        },
+        contentMediaType: "application/json",
+        contentSchema: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "value",
+            type: { _tag: "Number", checks: [] },
+            isOptional: false,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        },
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("preserves tuple element annotations", () => {
+    const marker = () => "element"
+    const schema = Schema.Tuple([Schema.String.annotateKey({ description: "element", marker })])
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: {
+        _tag: "Arrays",
+        elements: [{
+          type: { _tag: "String", checks: [] },
+          isOptional: false,
+          annotations: { description: "element", marker }
+        }],
+        rest: [],
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("preserves property annotations", () => {
+    const marker = () => "property"
+    const schema = Schema.Struct({
+      value: Schema.String.annotateKey({ description: "property", marker })
+    })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: {
+        _tag: "Objects",
+        propertySignatures: [{
+          name: "value",
+          type: { _tag: "String", checks: [] },
+          isOptional: false,
+          isMutable: false,
+          annotations: { description: "property", marker }
+        }],
+        indexSignatures: [],
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("extracts a named schema into references", () => {
+    const schema = Schema.String.annotate({ identifier: "Value", description: "value" })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: { _tag: "Reference", $ref: "Value" },
+      references: {
+        Value: {
+          _tag: "String",
+          annotations: { identifier: "Value", description: "value" },
+          checks: []
+        }
+      }
+    })
+  })
+
+  it("converts a non-recursive suspend", () => {
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.suspend(() => Schema.String).ast), {
+      representation: {
+        _tag: "Suspend",
+        thunk: { _tag: "String", checks: [] },
+        checks: []
+      },
+      references: {}
+    })
+  })
+
+  it("uses an outer identifier for a recursive schema", () => {
+    interface Node {
+      readonly next?: Node
+    }
+    const Node = Schema.Struct({
+      next: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Node))
+    }).annotate({ identifier: "Node" })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(Node.ast), {
+      representation: { _tag: "Reference", $ref: "Node" },
+      references: {
+        Node: {
+          _tag: "Objects",
+          annotations: { identifier: "Node" },
+          propertySignatures: [{
+            name: "next",
+            type: {
+              _tag: "Suspend",
+              thunk: { _tag: "Reference", $ref: "Node" },
+              checks: []
+            },
+            isOptional: true,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        }
+      }
+    })
+  })
+
+  it("assigns distinct references to recursive schemas with duplicate identifiers", () => {
+    interface First {
+      readonly next?: First
+    }
+    const First = Schema.Struct({
+      next: Schema.optionalKey(Schema.suspend((): Schema.Codec<First> => First))
+    }).annotate({ identifier: "Node" })
+    interface Second {
+      readonly next?: Second
+    }
+    const Second = Schema.Struct({
+      next: Schema.optionalKey(Schema.suspend((): Schema.Codec<Second> => Second))
+    }).annotate({ identifier: "Node" })
+
+    const document = SchemaRepresentation.fromAST(Schema.Tuple([First, Second]).ast)
+    assert.deepStrictEqual(document.representation, {
+      _tag: "Arrays",
+      elements: [
+        { type: { _tag: "Reference", $ref: "Node" }, isOptional: false },
+        { type: { _tag: "Reference", $ref: "Node1" }, isOptional: false }
+      ],
+      rest: [],
+      checks: []
+    })
+    assert.deepStrictEqual(Object.keys(document.references), ["Node", "Node1"])
+  })
+
+  it("reuses the class reference", () => {
+    class User extends Schema.Class<User>("User")({ name: Schema.String }) {}
+
+    const document = SchemaRepresentation.fromAST(Schema.Tuple([User, User]).ast)
+    assert.deepStrictEqual(document.representation, {
+      _tag: "Arrays",
+      elements: [
+        { type: { _tag: "Reference", $ref: "User" }, isOptional: false },
+        { type: { _tag: "Reference", $ref: "User" }, isOptional: false }
+      ],
+      rest: [],
+      checks: []
+    })
+    assert.deepStrictEqual(Object.keys(document.references), ["User"])
+  })
+
+  it("extracts anonymous recursion into references", () => {
+    let schema: Schema.Codec<unknown>
+    schema = Schema.suspend((): Schema.Codec<unknown> => schema)
+
+    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+      representation: { _tag: "Reference", $ref: "Suspend_" },
+      references: {
+        Suspend_: {
+          _tag: "Suspend",
+          thunk: { _tag: "Reference", $ref: "Suspend_" },
+          checks: []
+        }
+      }
+    })
+  })
+})

@@ -2,6 +2,24 @@ import { type JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("SchemaRepresentation compilers", () => {
+  it("exposes exact compiler signatures", () => {
+    expect(SchemaRepresentation.toJsonSchemaDocument).type.toBe<
+      (
+        document: SchemaRepresentation.Document,
+        options?: Schema.ToJsonSchemaOptions
+      ) => JsonSchema.Document<"draft-2020-12">
+    >()
+    expect(SchemaRepresentation.toJsonSchemaMultiDocument).type.toBe<
+      (
+        document: SchemaRepresentation.MultiDocument,
+        options?: Schema.ToJsonSchemaOptions
+      ) => JsonSchema.MultiDocument<"draft-2020-12">
+    >()
+    expect(SchemaRepresentation.toCodeDocument).type.toBe<
+      (document: SchemaRepresentation.MultiDocument) => SchemaRepresentation.CodeDocument
+    >()
+  })
+
   it("distinguishes live compiler inputs and their outputs", () => {
     const document = SchemaRepresentation.fromAST(Schema.String.ast)
     const multiDocument = SchemaRepresentation.fromASTs([Schema.String.ast])

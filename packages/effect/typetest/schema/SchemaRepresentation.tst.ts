@@ -1,7 +1,21 @@
-import { type Schema, SchemaRepresentation } from "effect"
+import { type Schema, type SchemaAST, SchemaRepresentation } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("SchemaRepresentation persisted wire", () => {
+  it("exposes exact construction signatures", () => {
+    expect(SchemaRepresentation.fromAST).type.toBe<
+      (ast: SchemaAST.AST) => SchemaRepresentation.Document
+    >()
+    expect(SchemaRepresentation.fromASTs).type.toBe<
+      (
+        asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
+      ) => SchemaRepresentation.MultiDocument
+    >()
+    expect(SchemaRepresentation.fromSchemaMultiDocument).type.toBe<
+      (document: SchemaRepresentation.SchemaMultiDocument) => SchemaRepresentation.MultiDocument
+    >()
+  })
+
   it("exposes codecs for documents", () => {
     expect(SchemaRepresentation.DocumentFromJson).type.toBe<
       Schema.Codec<

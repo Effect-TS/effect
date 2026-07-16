@@ -14,6 +14,15 @@ describe("Schema JSON Schema consumer", () => {
     })
   })
 
+  it("projects encoded tuple elements for JSON Schema", () => {
+    assert.deepStrictEqual(Schema.toJsonSchemaDocument(Schema.Tuple([Schema.NumberFromString])).schema, {
+      type: "array",
+      prefixItems: [{ type: "string" }],
+      minItems: 1,
+      maxItems: 1
+    })
+  })
+
   it("preserves output, references and generation options", () => {
     const shared = Schema.String.check(Schema.isMinLength(2)).annotate({
       identifier: "Shared",
@@ -31,10 +40,33 @@ describe("Schema JSON Schema consumer", () => {
       includeAnnotationKey: (key) => key === "x-consumer"
     }
 
-    assert.deepStrictEqual(
-      Schema.toJsonSchemaDocument(schema, options),
-      Schema.toJsonSchemaDocument(schema, options)
-    )
+    assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema, options), {
+      dialect: "draft-2020-12",
+      schema: {
+        type: "object",
+        properties: {
+          first: { $ref: "#/$defs/Shared" },
+          second: { $ref: "#/$defs/Shared" },
+          count: {
+            type: "string",
+            description: "a string that will be decoded as a finite number"
+          }
+        },
+        required: ["first", "second", "count"],
+        additionalProperties: true,
+        description: "root"
+      },
+      definitions: {
+        Shared: {
+          type: "string",
+          allOf: [{
+            minLength: 2,
+            description: "shared text",
+            "x-consumer": "kept"
+          }]
+        }
+      }
+    })
   })
 
   it("uses custom compiler annotations without a central built-in switch", () => {
@@ -61,10 +93,6 @@ describe("Schema JSON Schema consumer", () => {
       value: Schema.FiniteFromString
     }))
 
-    assert.deepStrictEqual(
-      Schema.toJsonSchemaDocument(schema),
-      Schema.toJsonSchemaDocument(schema)
-    )
     assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
       type: "string",
       contentMediaType: "application/json",

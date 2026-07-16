@@ -1,25 +1,60 @@
+import { assert } from "@effect/vitest"
 import { SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
 import { deepStrictEqual, throws } from "../../utils/assert.ts"
-import { canonicalize } from "./testUtils.ts"
 
-function omitDefaultExpected(input: unknown): unknown {
-  if (Array.isArray(input)) return input.map(omitDefaultExpected)
-  if (typeof input !== "object" || input === null || Object.getPrototypeOf(input) !== Object.prototype) return input
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(input)) {
-    if (key === "expected") continue
-    const normalized = omitDefaultExpected(value)
-    if (
-      key === "annotations" && typeof normalized === "object" && normalized !== null &&
-      Object.keys(normalized).length === 0
-    ) continue
-    out[key] = normalized
-  }
-  return out
-}
+describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
+  it("preserves an onEnter exception by identity", () => {
+    const cause = new Error("boom")
 
-describe("fromJsonSchemaMultiDocument2 parity", () => {
+    throws(
+      () =>
+        SchemaRepresentation.fromJsonSchemaMultiDocument({
+          dialect: "draft-2020-12",
+          schemas: [{ type: "string" }],
+          definitions: {}
+        }, {
+          onEnter: () => {
+            throw cause
+          }
+        }),
+      (error: unknown) => {
+        assert.strictEqual(error, cause)
+        return undefined
+      }
+    )
+  })
+
+  it("preserves a shared JSON content schema", () => {
+    const document = SchemaRepresentation.fromSchemaMultiDocument(
+      SchemaRepresentation.fromJsonSchemaMultiDocument({
+        dialect: "draft-2020-12",
+        schemas: [{
+          type: "string",
+          contentMediaType: "application/json",
+          contentSchema: { $ref: "#/$defs/Payload" }
+        }],
+        definitions: {
+          Payload: {
+            type: "object",
+            properties: { value: { type: "number" } },
+            required: ["value"],
+            additionalProperties: false
+          }
+        }
+      })
+    )
+
+    assert.strictEqual(document.representations[0]._tag, "Reference")
+    assert.deepStrictEqual(Object.keys(document.references), ["PayloadJsonString", "Payload"])
+    const content = document.references.PayloadJsonString
+    assert.strictEqual(content._tag, "String")
+    if (content._tag === "String") {
+      assert.strictEqual(content.contentMediaType, "application/json")
+      assert.deepStrictEqual(content.contentSchema, { _tag: "Reference", $ref: "Payload" })
+    }
+  })
+
   it("preserves root order and shares definitions", () => {
     const document = SchemaRepresentation.fromSchemaMultiDocument(SchemaRepresentation.fromJsonSchemaMultiDocument({
       dialect: "draft-2020-12",
@@ -34,40 +69,47 @@ describe("fromJsonSchemaMultiDocument2 parity", () => {
       }
     }))
 
-    const definition = {
-      _tag: "String" as const,
-      checks: [{
-        _tag: "Filter" as const,
-        representation: { id: "effect/schema/isMinLength", payload: { minLength: 1 } }
-      }]
-    }
-    deepStrictEqual(
-      omitDefaultExpected(canonicalize(document)),
-      omitDefaultExpected(canonicalize({
-        representations: [
-          { _tag: "Reference", $ref: "A" },
-          {
-            _tag: "Suspend",
-            checks: [],
-            annotations: { description: "second" },
-            thunk: { _tag: "Reference", $ref: "A" }
-          },
-          {
-            _tag: "Arrays",
-            elements: [],
-            rest: [{ _tag: "Reference", $ref: "A" }],
-            checks: []
-          },
-          {
-            _tag: "Suspend",
-            checks: [],
-            annotations: { description: "fourth" },
-            thunk: { _tag: "Reference", $ref: "A" }
-          }
-        ],
-        references: { A: definition }
-      }))
-    )
+    deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
+      representations: [
+        { _tag: "Reference", $ref: "A" },
+        {
+          _tag: "Suspend",
+          checks: [],
+          annotations: { description: "second" },
+          thunk: { _tag: "Reference", $ref: "A" }
+        },
+        {
+          _tag: "Arrays",
+          elements: [],
+          rest: [{ _tag: "Reference", $ref: "A" }],
+          checks: []
+        },
+        {
+          _tag: "Suspend",
+          checks: [],
+          annotations: { description: "fourth" },
+          thunk: { _tag: "Reference", $ref: "A" }
+        }
+      ],
+      references: {
+        A: {
+          _tag: "String",
+          checks: [{
+            _tag: "Filter",
+            annotations: {
+              representation: {
+                id: "effect/schema/isMinLength",
+                payload: { minLength: 1 }
+              },
+              expected: "a value with a length of at least 1",
+              "~structural": true,
+              arbitrary: { constraint: { minLength: 1 } }
+            },
+            aborted: false
+          }]
+        }
+      }
+    })
   })
 
   it("resolves alias chains when combining a reference", () => {
@@ -81,25 +123,30 @@ describe("fromJsonSchemaMultiDocument2 parity", () => {
       }
     }))
 
-    deepStrictEqual(
-      omitDefaultExpected(canonicalize(document)),
-      omitDefaultExpected(canonicalize({
-        representations: [{
-          _tag: "Suspend",
-          checks: [],
-          annotations: { description: "root" },
-          thunk: { _tag: "Reference", $ref: "A" }
-        }],
-        references: {
-          A: { _tag: "Reference", $ref: "B" },
-          B: { _tag: "Reference", $ref: "C" },
-          C: {
-            _tag: "Number",
-            checks: [{ _tag: "Filter", representation: { id: "effect/schema/isFinite", payload: null } }]
-          }
+    deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
+      representations: [{
+        _tag: "Suspend",
+        checks: [],
+        annotations: { description: "root" },
+        thunk: { _tag: "Reference", $ref: "A" }
+      }],
+      references: {
+        A: { _tag: "Reference", $ref: "B" },
+        B: { _tag: "Reference", $ref: "C" },
+        C: {
+          _tag: "Number",
+          checks: [{
+            _tag: "Filter",
+            annotations: {
+              representation: { id: "effect/schema/isFinite", payload: null },
+              expected: "a finite number",
+              arbitrary: { constraint: { noInfinity: true, noNaN: true } }
+            },
+            aborted: false
+          }]
         }
-      }))
-    )
+      }
+    })
   })
 
   it("tracks recursive definitions independently", () => {
@@ -112,27 +159,26 @@ describe("fromJsonSchemaMultiDocument2 parity", () => {
       }
     }))
 
-    deepStrictEqual(
-      omitDefaultExpected(canonicalize(document)),
-      omitDefaultExpected(canonicalize({
-        representations: [
-          { _tag: "Reference", $ref: "A" },
-          { _tag: "Reference", $ref: "B" }
-        ],
-        references: {
-          A: {
-            _tag: "Suspend",
-            annotations: { identifier: "A" },
-            thunk: { _tag: "Reference", $ref: "A" }
-          },
-          B: {
-            _tag: "Suspend",
-            annotations: { identifier: "B" },
-            thunk: { _tag: "Reference", $ref: "B" }
-          }
+    deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
+      representations: [
+        { _tag: "Reference", $ref: "A" },
+        { _tag: "Reference", $ref: "B" }
+      ],
+      references: {
+        A: {
+          _tag: "Suspend",
+          annotations: { identifier: "A" },
+          checks: [],
+          thunk: { _tag: "Reference", $ref: "A" }
+        },
+        B: {
+          _tag: "Suspend",
+          annotations: { identifier: "B" },
+          checks: [],
+          thunk: { _tag: "Reference", $ref: "B" }
         }
-      }))
-    )
+      }
+    })
   })
 
   it("throws when a reference that must be resolved is missing", () => {

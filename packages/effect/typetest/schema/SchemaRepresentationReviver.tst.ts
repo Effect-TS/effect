@@ -39,6 +39,9 @@ describe("SchemaRepresentation revivers", () => {
     // @ts-expect-error Expected 2 arguments, but got 1.
     SchemaRepresentation.toSchema(document)
     // @ts-expect-error Expected 2 arguments, but got 1.
-    SchemaRepresentation.toSchemaMultiDocument({ representations: [], references: {} })
+    SchemaRepresentation.toSchemaMultiDocument({
+      representations: [{ _tag: "String", checks: [] }],
+      references: {}
+    })
   })
 })

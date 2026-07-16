@@ -1,0 +1,35 @@
+import { assert, describe, it } from "@effect/vitest"
+import { Schema, SchemaRepresentation } from "effect"
+
+describe("SchemaRepresentation.toJsonMultiDocument", () => {
+  it("encodes every root in order", () => {
+    const document = SchemaRepresentation.fromASTs([Schema.String.ast, Schema.Number.ast])
+
+    assert.deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
+      representations: [
+        { _tag: "String", checks: [] },
+        { _tag: "Number", checks: [] }
+      ],
+      references: {}
+    })
+  })
+
+  it("encodes shared references once", () => {
+    const shared = Schema.String.annotate({ identifier: "Shared" })
+    const document = SchemaRepresentation.fromASTs([shared.ast, shared.ast])
+
+    assert.deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
+      representations: [
+        { _tag: "Reference", $ref: "Shared" },
+        { _tag: "Reference", $ref: "Shared" }
+      ],
+      references: {
+        Shared: {
+          _tag: "String",
+          annotations: { identifier: "Shared" },
+          checks: []
+        }
+      }
+    })
+  })
+})
