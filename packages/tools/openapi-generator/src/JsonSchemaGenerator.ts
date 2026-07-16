@@ -27,6 +27,12 @@ type Source = "openapi-3.0" | "openapi-3.1"
 
 interface GenerateOptions {
   readonly onEnter?: ((js: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
+  readonly onWarning?:
+    | ((warning: {
+      readonly code: "invalid-schema-example-dropped"
+      readonly message: string
+    }) => void)
+    | undefined
 }
 
 interface GenerateHttpApiOptions extends GenerateOptions {
@@ -196,13 +202,19 @@ export function make() {
       return
     }
 
+    const sanitizedSchemas = new WeakMap<JsonSchema.JsonSchema, JsonSchema.JsonSchema>()
     const multiDocument: SchemaRepresentation.MultiDocument = SchemaRepresentation.fromJsonSchemaMultiDocument({
       dialect: "draft-2020-12",
       schemas,
       definitions
     }, {
       onEnter(js) {
-        const out = { ...js }
+        let out = sanitizedSchemas.get(js)
+        if (out === undefined) {
+          out = dropInvalidExamples(js, options?.onWarning)
+          sanitizedSchemas.set(js, out)
+        }
+        out = { ...out }
         if (out.type === "object" && out.additionalProperties === undefined) {
           out.additionalProperties = false
         }
@@ -217,6 +229,81 @@ export function make() {
   }
 
   return { addSchema, generate, generateHttpApi } as const
+}
+
+function dropInvalidExamples(
+  schema: JsonSchema.JsonSchema,
+  onWarning: GenerateOptions["onWarning"]
+): JsonSchema.JsonSchema {
+  if (!Array.isArray(schema.examples)) return schema
+
+  const types = getSchemaTypes(schema.type)
+  if (types === undefined) return schema
+
+  const examples = schema.examples.filter((example) => {
+    if (types.some((type) => matchesType(example, type))) return true
+
+    onWarning?.({
+      code: "invalid-schema-example-dropped",
+      message: `Dropped an example value of type "${
+        getValueType(example)
+      }" because it is incompatible with schema type ${formatTypes(types)}.`
+    })
+    return false
+  })
+
+  if (examples.length === schema.examples.length) return schema
+
+  const out = { ...schema }
+  if (examples.length === 0) {
+    delete out.examples
+  } else {
+    out.examples = examples
+  }
+  return out
+}
+
+function getSchemaTypes(type: unknown): ReadonlyArray<JsonSchema.Type> | undefined {
+  if (isSchemaType(type)) return [type]
+  if (Array.isArray(type) && type.length > 0 && type.every(isSchemaType)) return type
+}
+
+function isSchemaType(type: unknown): type is JsonSchema.Type {
+  return type === "string" ||
+    type === "number" ||
+    type === "integer" ||
+    type === "boolean" ||
+    type === "array" ||
+    type === "object" ||
+    type === "null"
+}
+
+function matchesType(value: unknown, type: JsonSchema.Type): boolean {
+  switch (type) {
+    case "string":
+    case "boolean":
+      return typeof value === type
+    case "number":
+      return typeof value === "number" && Number.isFinite(value)
+    case "integer":
+      return typeof value === "number" && Number.isInteger(value)
+    case "array":
+      return Array.isArray(value)
+    case "object":
+      return value !== null && typeof value === "object" && !Array.isArray(value)
+    case "null":
+      return value === null
+  }
+}
+
+function getValueType(value: unknown): string {
+  if (value === null) return "null"
+  if (Array.isArray(value)) return "array"
+  return typeof value
+}
+
+function formatTypes(types: ReadonlyArray<JsonSchema.Type>): string {
+  return types.map((type) => `"${type}"`).join(" or ")
 }
 
 function fromSchemaOpenApi(source: Source, jsonSchema: JsonSchema.JsonSchema) {
