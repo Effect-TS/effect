@@ -4083,20 +4083,14 @@ export interface DijkstraConfig<E> {
   cost: (edgeData: E) => number
 }
 
-const validateEdgeWeights = <N, E, T extends Kind = "directed">(
+const collectEdgeWeights = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
-  cost: (edgeData: E) => number,
-  algorithm: string,
-  options: { readonly allowNegative: boolean }
+  cost: (edgeData: E) => number
 ): Map<EdgeIndex, number> => {
   const impl = graphImpl(graph)
   const edgeWeights = new Map<EdgeIndex, number>()
-  const message = `${algorithm} requires finite${options.allowNegative ? "" : " non-negative"} edge weights`
   for (const [edgeIndex, edgeData] of impl.edges) {
     const weight = cost(edgeData.data)
-    if (!Number.isFinite(weight) || (!options.allowNegative && weight < 0)) {
-      throw new GraphError({ message })
-    }
     edgeWeights.set(edgeIndex, weight)
   }
   return edgeWeights
@@ -4162,7 +4156,13 @@ export const dijkstra: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = validateEdgeWeights(graph, config.cost, "Dijkstra's algorithm", { allowNegative: false })
+  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
+    const weight = config.cost(edgeData)
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new GraphError({ message: "Dijkstra's algorithm requires finite non-negative edge weights" })
+    }
+    return weight
+  })
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -4345,7 +4345,13 @@ export const floydWarshall: {
   cost: (edgeData: E) => number
 ): AllPairsResult<E> => {
   const impl = graphImpl(graph)
-  const edgeWeights = validateEdgeWeights(graph, cost, "Floyd-Warshall algorithm", { allowNegative: true })
+  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
+    const weight = cost(edgeData)
+    if (!Number.isFinite(weight)) {
+      throw new GraphError({ message: "Floyd-Warshall algorithm requires finite edge weights" })
+    }
+    return weight
+  })
   // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
   const allNodes = Array.from(impl.nodes.keys())
 
@@ -4558,7 +4564,13 @@ export const astar: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = validateEdgeWeights(graph, config.cost, "A* algorithm", { allowNegative: false })
+  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
+    const weight = config.cost(edgeData)
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new GraphError({ message: "A* algorithm requires finite non-negative edge weights" })
+    }
+    return weight
+  })
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -4780,7 +4792,13 @@ export const bellmanFord: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = validateEdgeWeights(graph, config.cost, "Bellman-Ford algorithm", { allowNegative: true })
+  const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
+    const weight = config.cost(edgeData)
+    if (!Number.isFinite(weight)) {
+      throw new GraphError({ message: "Bellman-Ford algorithm requires finite edge weights" })
+    }
+    return weight
+  })
 
   // Initialize distances and predecessors
   const distances = new Map<NodeIndex, number>()
