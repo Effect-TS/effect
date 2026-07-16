@@ -1792,10 +1792,13 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
   // Transform existing edge data in place
   for (const [index, edgeData] of mutable.edges) {
     const newData = f(edgeData.data)
-    mutable.edges.set(index, {
-      ...edgeData,
-      data: newData
-    })
+    mutable.edges.set(
+      index,
+      new Edge({
+        ...edgeData,
+        data: newData
+      })
+    )
   }
 }
 
@@ -1968,10 +1971,13 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
     const result = f(edgeData.data)
     if (Option.isSome(result)) {
       // Transform edge data
-      mutable.edges.set(index, {
-        ...edgeData,
-        data: result.value
-      })
+      mutable.edges.set(
+        index,
+        new Edge({
+          ...edgeData,
+          data: result.value
+        })
+      )
     } else {
       // Mark for removal
       edgesToRemove.push(index)

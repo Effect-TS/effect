@@ -1132,9 +1132,23 @@ describe("Graph", () => {
       const edge1 = Graph.getEdge(graph, edgeBC!)
       const edge2 = Graph.getEdge(graph, edgeCA!)
 
-      expect(assertSomeEdge(edge0).data).toBe(20)
-      expect(assertSomeEdge(edge1).data).toBe(40)
-      expect(assertSomeEdge(edge2).data).toBe(60)
+      assertSome(edge0, new Graph.Edge({ source: 0, target: 1, data: 20 }))
+      assertSome(edge1, new Graph.Edge({ source: 1, target: 2, data: 40 }))
+      assertSome(edge2, new Graph.Edge({ source: 2, target: 0, data: 60 }))
+      strictEqual(edge0.value instanceof Graph.Edge, true)
+      strictEqual(edge1.value instanceof Graph.Edge, true)
+      strictEqual(edge2.value instanceof Graph.Edge, true)
+
+      const expected = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, a, b, 20)
+        Graph.addEdge(mutable, b, c, 40)
+        Graph.addEdge(mutable, c, a, 60)
+      })
+
+      strictEqual(Equal.equals(graph, expected), true)
     })
 
     it("should modify graph in place during construction", () => {
@@ -1370,11 +1384,25 @@ describe("Graph", () => {
       const edge1 = Graph.getEdge(graph, 1)
       const edge2 = Graph.getEdge(graph, 2)
 
-      expect(assertSomeEdge(edge1).data).toBe(30) // 15 * 2
-      expect(assertSomeEdge(edge2).data).toBe(50) // 25 * 2
+      assertSome(edge1, new Graph.Edge({ source: 1, target: 2, data: 30 })) // 15 * 2
+      assertSome(edge2, new Graph.Edge({ source: 2, target: 0, data: 50 })) // 25 * 2
+      strictEqual(edge1.value instanceof Graph.Edge, true)
+      strictEqual(edge2.value instanceof Graph.Edge, true)
 
       // Filtered out edge should not exist
       expect(Graph.getEdge(graph, 0)).toEqual(Option.none())
+
+      const expected = Graph.directed<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        const removed = Graph.addEdge(mutable, a, b, 5)
+        Graph.addEdge(mutable, b, c, 30)
+        Graph.addEdge(mutable, c, a, 50)
+        Graph.removeEdge(mutable, removed)
+      })
+
+      strictEqual(Equal.equals(graph, expected), true)
     })
 
     it("should update adjacency lists when removing edges", () => {
