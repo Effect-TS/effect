@@ -3308,6 +3308,39 @@ describe("Graph", () => {
       expect(result.costs.get(0)?.get(0)).toEqual([])
     })
 
+    it("should preserve null edge data in direct paths", () => {
+      const graph = Graph.directed<string, null>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, a, b, null)
+      })
+
+      const result = Graph.floydWarshall(graph, () => 1)
+
+      assert.strictEqual(result.distances.get(0)?.get(1), 1)
+      assert.deepStrictEqual(result.paths.get(0)?.get(1), [0, 1])
+      assert.deepStrictEqual(result.costs.get(0)?.get(1), [null])
+    })
+
+    it("should preserve null edge data in multihop paths", () => {
+      type EdgeData = null | { readonly weight: number }
+
+      const graph = Graph.directed<string, EdgeData>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        const c = Graph.addNode(mutable, "C")
+        Graph.addEdge(mutable, a, b, null)
+        Graph.addEdge(mutable, b, c, null)
+        Graph.addEdge(mutable, a, c, { weight: 10 })
+      })
+
+      const result = Graph.floydWarshall(graph, (edge) => edge === null ? 1 : edge.weight)
+
+      assert.strictEqual(result.distances.get(0)?.get(2), 2)
+      assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 1, 2])
+      assert.deepStrictEqual(result.costs.get(0)?.get(2), [null, null])
+    })
+
     it("should detect negative cycles", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")

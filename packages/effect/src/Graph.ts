@@ -4345,7 +4345,7 @@ export const floydWarshall: {
   // Initialize distance matrix
   const distances = new Map<NodeIndex, Map<NodeIndex, number>>()
   const next = new Map<NodeIndex, Map<NodeIndex, NodeIndex | null>>()
-  const edgeMatrix = new Map<NodeIndex, Map<NodeIndex, E | null>>()
+  const edgeMatrix = new Map<NodeIndex, Map<NodeIndex, E>>()
 
   // Initialize with infinity for all pairs
   for (const i of allNodes) {
@@ -4356,7 +4356,6 @@ export const floydWarshall: {
     for (const j of allNodes) {
       distances.get(i)!.set(j, i === j ? 0 : Infinity)
       next.get(i)!.set(j, null)
-      edgeMatrix.get(i)!.set(j, null)
     }
   }
 
@@ -4433,9 +4432,9 @@ export const floydWarshall: {
           const nextNode = next.get(current)!.get(j)!
           if (nextNode === null) break
 
-          const edgeData = edgeMatrix.get(current)!.get(nextNode)!
-          if (edgeData !== null) {
-            weights.push(edgeData)
+          const edgeRow = edgeMatrix.get(current)!
+          if (edgeRow.has(nextNode)) {
+            weights.push(edgeRow.get(nextNode) as E)
           }
 
           current = nextNode
