@@ -345,7 +345,7 @@ Build http clients with the `HttpClient` module.
 
 ## Working with child processes
 
-Use the `effect/unstable/process` modules to define child processes and run them with `ChildProcessSpawner.
+Use the `effect/unstable/process` modules to define child processes and run them with `ChildProcessSpawner`.
 
 - **[Working with child processes](./ai-docs/src/60_child-process/10_working-with-child-processes.ts)**: This example shows how to collect process output, compose pipelines, and stream long-running command output.
 
