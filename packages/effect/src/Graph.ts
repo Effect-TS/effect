@@ -4774,15 +4774,6 @@ export const bellmanFord: {
     throw missingNode(config.target)
   }
 
-  // Early return if source equals target
-  if (config.source === config.target) {
-    return Option.some({
-      path: [config.source],
-      distance: 0,
-      costs: []
-    })
-  }
-
   // Initialize distances and predecessors
   const distances = new Map<NodeIndex, number>()
   const previous = new Map<NodeIndex, { node: NodeIndex; edgeData: E } | null>()

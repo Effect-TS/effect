@@ -3214,6 +3214,36 @@ describe("Graph", () => {
       assertSome(result, { path: [0], distance: 0, costs: [] })
     })
 
+    it("should detect a directed negative self-loop when source equals target", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const node = Graph.addNode(mutable, "A")
+        Graph.addEdge(mutable, node, node, -1)
+      })
+
+      const result = Graph.bellmanFord(graph, {
+        source: 0,
+        target: 0,
+        cost: (edge) => edge
+      })
+
+      assertNone(result)
+    })
+
+    it("should detect an undirected negative self-loop when source equals target", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const node = Graph.addNode(mutable, "A")
+        Graph.addEdge(mutable, node, node, -1)
+      })
+
+      const result = Graph.bellmanFord(graph, {
+        source: 0,
+        target: 0,
+        cost: (edge) => edge
+      })
+
+      assertNone(result)
+    })
+
     it("should detect negative cycles", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")
