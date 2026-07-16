@@ -4038,7 +4038,7 @@ export const stronglyConnectedComponents = <N, E>(
  * `costs` contains original edge data, not the numeric output of the cost
  * function unless the edge data is numeric.
  *
- * @see {@link dijkstra} for shortest paths with non-negative edge costs
+ * @see {@link dijkstra} for shortest paths with finite non-negative edge costs
  * @see {@link astar} for heuristic shortest-path search
  * @see {@link bellmanFord} for shortest paths that may include negative edge weights
  * @see {@link AllPairsResult} for the all-pairs shortest-path result shape
@@ -4058,17 +4058,17 @@ export interface PathResult<E> {
  * **When to use**
  *
  * Use when configuring `dijkstra` to find a shortest path between two existing
- * node indices with non-negative edge costs.
+ * node indices with finite non-negative edge costs.
  *
  * **Details**
  *
  * Specifies the source and target node indices, plus a cost function that maps
- * each edge's data to a non-negative numeric weight.
+ * each edge's data to a finite non-negative numeric weight.
  *
  * **Gotchas**
  *
  * `dijkstra` throws a `GraphError` when either endpoint does not exist or when
- * the cost function returns a negative weight.
+ * the cost function returns a negative or non-finite weight.
  *
  * @see {@link dijkstra} for the algorithm that consumes this configuration
  * @see {@link AstarConfig} for heuristic shortest-path search
@@ -4083,17 +4083,19 @@ export interface DijkstraConfig<E> {
   cost: (edgeData: E) => number
 }
 
-const validateNonNegativeEdgeWeights = <N, E, T extends Kind = "directed">(
+const validateEdgeWeights = <N, E, T extends Kind = "directed">(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   cost: (edgeData: E) => number,
-  algorithm: string
+  algorithm: string,
+  options: { readonly allowNegative: boolean }
 ): Map<EdgeIndex, number> => {
   const impl = graphImpl(graph)
   const edgeWeights = new Map<EdgeIndex, number>()
+  const message = `${algorithm} requires finite${options.allowNegative ? "" : " non-negative"} edge weights`
   for (const [edgeIndex, edgeData] of impl.edges) {
     const weight = cost(edgeData.data)
-    if (weight < 0 || Number.isNaN(weight)) {
-      throw new GraphError({ message: `${algorithm} requires non-negative edge weights` })
+    if (!Number.isFinite(weight) || (!options.allowNegative && weight < 0)) {
+      throw new GraphError({ message })
     }
     edgeWeights.set(edgeIndex, weight)
   }
@@ -4106,9 +4108,9 @@ const validateNonNegativeEdgeWeights = <N, E, T extends Kind = "directed">(
  *
  * **Details**
  *
- * Edge costs must be non-negative. Returns `Option.none()` when the target is
- * not reachable, and throws a `GraphError` when either endpoint is missing or a
- * negative edge cost is encountered.
+ * Edge costs must be finite and non-negative. Returns `Option.none()` when the
+ * target is not reachable, and throws a `GraphError` when either endpoint is
+ * missing or an edge cost is negative or non-finite.
  *
  * **Example** (Finding shortest paths with Dijkstra)
  *
@@ -4160,7 +4162,7 @@ export const dijkstra: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = validateNonNegativeEdgeWeights(graph, config.cost, "Dijkstra's algorithm")
+  const edgeWeights = validateEdgeWeights(graph, config.cost, "Dijkstra's algorithm", { allowNegative: false })
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -4304,8 +4306,9 @@ export interface AllPairsResult<E> {
  * **Details**
  *
  * Computes distances, reconstructed node paths, and edge-data paths for every
- * source and target pair in O(V^3) time. Negative edge weights are allowed, but
- * a `GraphError` is thrown if any negative cycle is detected.
+ * source and target pair in O(V^3) time. Finite negative edge weights are
+ * allowed, but a `GraphError` is thrown if any edge weight is non-finite or if
+ * any negative cycle is detected.
  *
  * **Example** (Finding all-pairs shortest paths)
  *
@@ -4342,6 +4345,7 @@ export const floydWarshall: {
   cost: (edgeData: E) => number
 ): AllPairsResult<E> => {
   const impl = graphImpl(graph)
+  const edgeWeights = validateEdgeWeights(graph, cost, "Floyd-Warshall algorithm", { allowNegative: true })
   // Get all nodes for Floyd-Warshall algorithm (needs array for nested iteration)
   const allNodes = Array.from(impl.nodes.keys())
 
@@ -4362,8 +4366,8 @@ export const floydWarshall: {
   }
 
   // Set edge weights
-  for (const [, edgeData] of impl.edges) {
-    const weight = cost(edgeData.data)
+  for (const [edgeIndex, edgeData] of impl.edges) {
+    const weight = edgeWeights.get(edgeIndex)!
     const i = edgeData.source
     const j = edgeData.target
 
@@ -4469,8 +4473,9 @@ export const floydWarshall: {
  *
  * **Details**
  *
- * Specifies the source and target node indices, an edge-cost function, and a
- * heuristic that estimates the remaining cost from a node to the target.
+ * Specifies the source and target node indices, an edge-cost function that maps
+ * edge data to finite non-negative weights, and a heuristic that estimates the
+ * remaining cost from a node to the target.
  *
  * @see {@link astar} for the algorithm that consumes this configuration
  * @see {@link DijkstraConfig} for shortest paths without a heuristic
@@ -4492,10 +4497,10 @@ export interface AstarConfig<E, N> {
  *
  * **Details**
  *
- * The edge-cost function must return non-negative weights, and the heuristic
- * should be consistent to preserve shortest-path guarantees. Returns
+ * The edge-cost function must return finite non-negative weights, and the
+ * heuristic should be consistent to preserve shortest-path guarantees. Returns
  * `Option.none()` when the target is not reachable, and throws a `GraphError`
- * when either endpoint is missing or a negative edge cost is encountered.
+ * when either endpoint is missing or an edge cost is negative or non-finite.
  *
  * **Example** (Finding shortest paths with A-star)
  *
@@ -4553,7 +4558,7 @@ export const astar: {
     throw missingNode(config.target)
   }
 
-  const edgeWeights = validateNonNegativeEdgeWeights(graph, config.cost, "A* algorithm")
+  const edgeWeights = validateEdgeWeights(graph, config.cost, "A* algorithm", { allowNegative: false })
 
   // Early return if source equals target
   if (config.source === config.target) {
@@ -4699,10 +4704,10 @@ export const astar: {
  * **Details**
  *
  * Specifies the source and target node indices, plus a cost function that maps
- * each edge's data to a numeric weight.
+ * each edge's data to a finite numeric weight.
  *
  * @see {@link bellmanFord} for the algorithm that consumes this configuration
- * @see {@link DijkstraConfig} for non-negative edge costs
+ * @see {@link DijkstraConfig} for finite non-negative edge costs
  * @see {@link AstarConfig} for heuristic shortest-path search
  *
  * @category models
@@ -4720,9 +4725,10 @@ export interface BellmanFordConfig<E> {
  *
  * **Details**
  *
- * Negative edge weights are allowed. Returns `Option.none()` when the target is
- * unreachable or when a negative cycle affects the path to the target. Throws a
- * `GraphError` when either endpoint is missing.
+ * Finite negative edge weights are allowed. Returns `Option.none()` when the
+ * target is unreachable or when a negative cycle affects the path to the target.
+ * Throws a `GraphError` when either endpoint is missing or an edge weight is
+ * non-finite.
  *
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
@@ -4774,6 +4780,8 @@ export const bellmanFord: {
     throw missingNode(config.target)
   }
 
+  const edgeWeights = validateEdgeWeights(graph, config.cost, "Bellman-Ford algorithm", { allowNegative: true })
+
   // Initialize distances and predecessors
   const distances = new Map<NodeIndex, number>()
   const previous = new Map<NodeIndex, { node: NodeIndex; edgeData: E } | null>()
@@ -4786,8 +4794,8 @@ export const bellmanFord: {
 
   // Collect all edges for relaxation
   const edges: Array<{ source: NodeIndex; target: NodeIndex; weight: number; edgeData: E }> = []
-  for (const [, edgeData] of impl.edges) {
-    const weight = config.cost(edgeData.data)
+  for (const [edgeIndex, edgeData] of impl.edges) {
+    const weight = edgeWeights.get(edgeIndex)!
     edges.push({
       source: edgeData.source,
       target: edgeData.target,

@@ -19,6 +19,24 @@ const makeReversedUndirectedPath = () =>
     Graph.addEdge(mutable, c, b, 1)
   })
 
+const makeSingleEdgeGraph = (weight: number) =>
+  Graph.directed<string, number>((mutable) => {
+    const source = Graph.addNode(mutable, "source")
+    const target = Graph.addNode(mutable, "target")
+    Graph.addEdge(mutable, source, target, weight)
+  })
+
+const nonFiniteEdgeWeights = [NaN, Infinity, -Infinity] as const
+
+const assertGraphError = (thunk: () => void, message: string) => {
+  throws(thunk, (error) => {
+    strictEqual(error instanceof Graph.GraphError, true)
+    if (error instanceof Graph.GraphError) {
+      strictEqual(error.message, message)
+    }
+  })
+}
+
 type SetNode = { readonly id: string; readonly label: string }
 
 class SetNodeKey implements Equal.Equal {
@@ -2963,8 +2981,24 @@ describe("Graph", () => {
           cost: (edge) => edge
         })
       ).toThrow(
-        "Dijkstra's algorithm requires non-negative edge weights"
+        "Dijkstra's algorithm requires finite non-negative edge weights"
       )
+    })
+
+    it("should throw for non-finite weights", () => {
+      for (const weight of nonFiniteEdgeWeights) {
+        const graph = makeSingleEdgeGraph(weight)
+
+        assertGraphError(
+          () =>
+            Graph.dijkstra(graph, {
+              source: 0,
+              target: 1,
+              cost: (edge) => edge
+            }),
+          "Dijkstra's algorithm requires finite non-negative edge weights"
+        )
+      }
     })
 
     it("should throw for negative weights before early target termination", () => {
@@ -2983,7 +3017,7 @@ describe("Graph", () => {
           target: 1,
           cost: (edge) => edge
         })
-      ).toThrow("Dijkstra's algorithm requires non-negative edge weights")
+      ).toThrow("Dijkstra's algorithm requires finite non-negative edge weights")
     })
 
     it("should validate weights before returning same source and target", () => {
@@ -2998,7 +3032,7 @@ describe("Graph", () => {
           target: 0,
           cost: (edge) => edge
         })
-      ).toThrow("Dijkstra's algorithm requires non-negative edge weights")
+      ).toThrow("Dijkstra's algorithm requires finite non-negative edge weights")
     })
 
     it("should throw for non-existent nodes", () => {
@@ -3109,7 +3143,24 @@ describe("Graph", () => {
           cost: (edge) => edge,
           heuristic
         })
-      ).toThrow("A* algorithm requires non-negative edge weights")
+      ).toThrow("A* algorithm requires finite non-negative edge weights")
+    })
+
+    it("should throw for non-finite weights", () => {
+      for (const weight of nonFiniteEdgeWeights) {
+        const graph = makeSingleEdgeGraph(weight)
+
+        assertGraphError(
+          () =>
+            Graph.astar(graph, {
+              source: 0,
+              target: 1,
+              cost: (edge) => edge,
+              heuristic: () => 0
+            }),
+          "A* algorithm requires finite non-negative edge weights"
+        )
+      }
     })
 
     it("should throw for negative weights before early target termination", () => {
@@ -3129,7 +3180,7 @@ describe("Graph", () => {
           cost: (edge) => edge,
           heuristic: () => 0
         })
-      ).toThrow("A* algorithm requires non-negative edge weights")
+      ).toThrow("A* algorithm requires finite non-negative edge weights")
     })
 
     it("should validate weights before returning same source and target", () => {
@@ -3145,7 +3196,7 @@ describe("Graph", () => {
           cost: (edge) => edge,
           heuristic: () => 0
         })
-      ).toThrow("A* algorithm requires non-negative edge weights")
+      ).toThrow("A* algorithm requires finite non-negative edge weights")
     })
 
     it("should traverse undirected edges in reverse storage direction", () => {
@@ -3212,6 +3263,22 @@ describe("Graph", () => {
       })
 
       assertSome(result, { path: [0], distance: 0, costs: [] })
+    })
+
+    it("should throw for non-finite weights", () => {
+      for (const weight of nonFiniteEdgeWeights) {
+        const graph = makeSingleEdgeGraph(weight)
+
+        assertGraphError(
+          () =>
+            Graph.bellmanFord(graph, {
+              source: 0,
+              target: 1,
+              cost: (edge) => edge
+            }),
+          "Bellman-Ford algorithm requires finite edge weights"
+        )
+      }
     })
 
     it("should detect a directed negative self-loop when source equals target", () => {
@@ -3344,6 +3411,17 @@ describe("Graph", () => {
       expect(result.distances.get(0)?.get(0)).toBe(0)
       expect(result.paths.get(0)?.get(0)).toEqual([0])
       expect(result.costs.get(0)?.get(0)).toEqual([])
+    })
+
+    it("should throw for non-finite weights", () => {
+      for (const weight of nonFiniteEdgeWeights) {
+        const graph = makeSingleEdgeGraph(weight)
+
+        assertGraphError(
+          () => Graph.floydWarshall(graph, (edge) => edge),
+          "Floyd-Warshall algorithm requires finite edge weights"
+        )
+      }
     })
 
     it("should preserve null edge data in direct paths", () => {
