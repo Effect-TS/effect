@@ -3539,6 +3539,26 @@ describe("Graph", () => {
   })
 
   describe("Iterator Base Methods", () => {
+    const staleTraversalNodeCount = 20000
+
+    const makeSparseMutableGraph = () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        for (let i = 0; i < staleTraversalNodeCount; i++) {
+          Graph.addNode(mutable, String(i))
+        }
+      })
+      return {
+        mutable: Graph.beginMutation(graph),
+        start: Array.from({ length: staleTraversalNodeCount }, (_, index) => index)
+      }
+    }
+
+    const removeNodes = (mutable: Graph.MutableDirectedGraph<string, number>, nodes: Array<Graph.NodeIndex>) => {
+      for (const node of nodes) {
+        Graph.removeNode(mutable, node)
+      }
+    }
+
     it("should provide values() method for DFS iterator", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")
@@ -3597,6 +3617,15 @@ describe("Graph", () => {
       const entries = Array.from(Graph.entries(bfsIterator))
 
       expect(entries).toEqual([[0, "A"], [1, "B"], [2, "C"]])
+    })
+
+    it("should skip stale BFS nodes without recursion", () => {
+      const { mutable, start } = makeSparseMutableGraph()
+      const iterator = Graph.indices(Graph.bfs(mutable, { start }))[Symbol.iterator]()
+
+      removeNodes(mutable, start)
+
+      assert.strictEqual(iterator.next().done, true)
     })
 
     it("should limit DFS traversal by radius", () => {
@@ -3687,6 +3716,15 @@ describe("Graph", () => {
 
       const entries = Array.from(Graph.entries(topoIterator))
       expect(entries).toEqual([[0, "A"], [1, "B"], [2, "C"]])
+    })
+
+    it("should skip stale topological sort nodes without recursion", () => {
+      const { mutable, start } = makeSparseMutableGraph()
+      const iterator = Graph.indices(Graph.topo(mutable))[Symbol.iterator]()
+
+      removeNodes(mutable, start)
+
+      assert.strictEqual(iterator.next().done, true)
     })
 
     it("should prioritize valid initials and still include all nodes", () => {
@@ -3791,6 +3829,15 @@ describe("Graph", () => {
       const entries = Array.from(Graph.entries(dfsPostIterator))
 
       expect(entries).toEqual([[2, "C"], [1, "B"], [0, "A"]]) // Postorder: children before parents
+    })
+
+    it("should skip stale DFS postorder nodes without recursion", () => {
+      const { mutable, start } = makeSparseMutableGraph()
+      const iterator = Graph.indices(Graph.dfsPostOrder(mutable, { start }))[Symbol.iterator]()
+
+      removeNodes(mutable, start)
+
+      assert.strictEqual(iterator.next().done, true)
     })
 
     it("should traverse undirected edges in reverse storage direction", () => {

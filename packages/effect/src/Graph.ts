@@ -5379,7 +5379,7 @@ export const bfs: {
             if (Option.isSome(nodeData)) {
               return { done: false, value: f(current, nodeData.value) }
             }
-            return nextMapped()
+            continue
           }
         }
 
@@ -5553,7 +5553,7 @@ export const topo: {
             if (Option.isSome(nodeData)) {
               return { done: false, value: f(current, nodeData.value) }
             }
-            return nextMapped()
+            continue
           }
         }
 
@@ -5675,7 +5675,7 @@ export const dfsPostOrder: {
               if (Option.isSome(nodeData)) {
                 return { done: false, value: f(nodeToEmit, nodeData.value) }
               }
-              return nextMapped()
+              continue
             }
           }
         }
