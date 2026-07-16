@@ -438,6 +438,21 @@ describe("Stream", () => {
       assertTrue(Chunk.isEmpty(result))
     }))
 
+  for (const strategy of ["dropping", "sliding"] as const) {
+    it.effect(`asyncPush - signals the end with a bounded ${strategy} buffer`, () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.asyncPush<number>((emit) => {
+          emit.single(42)
+          emit.end()
+          return Effect.void
+        }, { bufferSize: 1, strategy }).pipe(
+          Stream.runCollect,
+          Effect.timeout("1 second")
+        )
+        deepStrictEqual(Array.from(result), [42])
+      }))
+  }
+
   it.effect("asyncPush - handles errors", () =>
     Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")
