@@ -2131,8 +2131,41 @@ export class Objects extends Base {
     // ---------------------------------------------
     // handle empty struct
     // ---------------------------------------------
+    const makeUnexpectedKeyPointer = (
+      key: string | symbol,
+      input?: unknown,
+      options?: ParseOptions
+    ) => new SchemaIssue.Pointer([key], new SchemaIssue.UnexpectedKey(ast, input, options))
+
     if (!hasProperties && !indexCount) {
-      return fromRefinement(ast, Predicate.isNotNullish)
+      return (input, options) => {
+        if (input === InternalParser.missing) {
+          return Effect.succeed(InternalParser.missing)
+        }
+        if (!Predicate.isNotNullish(input)) {
+          return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
+        }
+        // Only plain objects have "excess properties"; other non-nullish values
+        // (strings, numbers, arrays) pass through unchanged since {} accepts them.
+        if (!Predicate.isObject(input)) {
+          return Effect.succeed(input)
+        }
+        // "preserve" keeps the input (and all its properties) as-is.
+        if (options.onExcessProperty === "preserve") {
+          return Effect.succeed(input)
+        }
+        if (options.onExcessProperty === "error") {
+          const keys = Reflect.ownKeys(input)
+          if (Arr.isArrayNonEmpty(keys)) {
+            const issues = options.errors === "all"
+              ? Arr.map(keys, (key) => makeUnexpectedKeyPointer(key, input, options))
+              : [makeUnexpectedKeyPointer(keys[0], input, options)] as const
+            return Effect.fail(new SchemaIssue.Composite(ast, issues, options))
+          }
+        }
+        // "ignore" (or "error" with no excess keys): strip everything to an empty object.
+        return Effect.succeed({})
+      }
     }
 
     let properties: Array<ParsedProperty> | undefined
@@ -2212,7 +2245,7 @@ export class Objects extends Base {
       }
 
       // If the input is not a record, return early with an error
-      if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
+      if (!Predicate.isObject(input)) {
         return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       if (!properties) {
