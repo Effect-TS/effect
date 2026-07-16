@@ -3944,10 +3944,6 @@ export const Json = new Declaration(
       payload: null
     },
     toJsonSchema: () => ({}),
-    toCode: () => ({
-      runtime: "Schema.Json",
-      Type: "Schema.Json"
-    }),
     expected: "JSON value",
     toCodecJson: () => new Link(unknown, SchemaTransformation.passthrough()),
     toArbitrary: () => (fc: typeof FastCheck) => fc.jsonValue()
@@ -3964,11 +3960,7 @@ export const MutableJson = annotate(Json, {
     id: "effect/schema/MutableJson",
     payload: null
   },
-  toJsonSchema: () => ({}),
-  toCode: () => ({
-    runtime: "Schema.MutableJson",
-    Type: "Schema.MutableJson"
-  })
+  toJsonSchema: () => ({})
 })
 
 /** @internal */

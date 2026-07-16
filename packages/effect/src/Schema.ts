@@ -16366,11 +16366,6 @@ export interface JsonObject {
  * @since 4.0.0
  */
 export const Json: Codec<Json> = make(SchemaAST.annotate(SchemaAST.Json, {
-  representation: {
-    id: "effect/schema/Json",
-    payload: null
-  },
-  toJsonSchema: () => ({}),
   toCode: () => ({
     runtime: "Schema.Json",
     Type: "Schema.Json"
@@ -16436,11 +16431,6 @@ export interface MutableJsonObject {
  * @since 4.0.0
  */
 export const MutableJson: Codec<MutableJson> = make(SchemaAST.annotate(SchemaAST.MutableJson, {
-  representation: {
-    id: "effect/schema/MutableJson",
-    payload: null
-  },
-  toJsonSchema: () => ({}),
   toCode: () => ({
     runtime: "Schema.MutableJson",
     Type: "Schema.MutableJson"
