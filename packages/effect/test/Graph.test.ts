@@ -492,32 +492,6 @@ describe("Graph", () => {
       strictEqual(Graph.isGraph([]), false)
     })
 
-    it("should identify directed graphs", () => {
-      const directedGraph = Graph.directed<string, number>()
-      const undirectedGraph = Graph.undirected<string, number>()
-      const mutableDirectedGraph = Graph.beginMutation(directedGraph)
-      const mutableUndirectedGraph = Graph.beginMutation(undirectedGraph)
-
-      strictEqual(Graph.isDirectedGraph(directedGraph), true)
-      strictEqual(Graph.isDirectedGraph(mutableDirectedGraph), true)
-      strictEqual(Graph.isDirectedGraph(undirectedGraph), false)
-      strictEqual(Graph.isDirectedGraph(mutableUndirectedGraph), false)
-      strictEqual(Graph.isDirectedGraph({}), false)
-    })
-
-    it("should identify undirected graphs", () => {
-      const directedGraph = Graph.directed<string, number>()
-      const undirectedGraph = Graph.undirected<string, number>()
-      const mutableDirectedGraph = Graph.beginMutation(directedGraph)
-      const mutableUndirectedGraph = Graph.beginMutation(undirectedGraph)
-
-      strictEqual(Graph.isUndirectedGraph(directedGraph), false)
-      strictEqual(Graph.isUndirectedGraph(mutableDirectedGraph), false)
-      strictEqual(Graph.isUndirectedGraph(undirectedGraph), true)
-      strictEqual(Graph.isUndirectedGraph(mutableUndirectedGraph), true)
-      strictEqual(Graph.isUndirectedGraph({}), false)
-    })
-
     it("should be iterable using for...of syntax", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         Graph.addNode(mutable, "Node A")

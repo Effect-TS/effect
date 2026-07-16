@@ -458,54 +458,6 @@ export function isGraph(u: unknown): boolean {
 }
 
 /**
- * Returns `true` if a value has the graph runtime type identifier and is
- * directed.
- *
- * **When to use**
- *
- * Use to narrow an unknown graph value before relying on directed graph
- * semantics.
- *
- * **Gotchas**
- *
- * This guard checks the shared graph runtime type identifier and does not
- * distinguish immutable graphs from mutable graphs.
- *
- * @category guards
- * @since 4.0.0
- */
-export function isDirectedGraph<N = unknown, E = unknown, U = never>(
-  u: U | Graph<N, E, Kind> | MutableGraph<N, E, Kind>
-): u is Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
-export function isDirectedGraph(u: unknown): boolean {
-  return isGraph(u) && u.type === "directed"
-}
-
-/**
- * Returns `true` if a value has the graph runtime type identifier and is
- * undirected.
- *
- * **When to use**
- *
- * Use to narrow an unknown graph value before relying on undirected graph
- * semantics.
- *
- * **Gotchas**
- *
- * This guard checks the shared graph runtime type identifier and does not
- * distinguish immutable graphs from mutable graphs.
- *
- * @category guards
- * @since 4.0.0
- */
-export function isUndirectedGraph<N = unknown, E = unknown, U = never>(
-  u: U | Graph<N, E, Kind> | MutableGraph<N, E, Kind>
-): u is Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
-export function isUndirectedGraph(u: unknown): boolean {
-  return isGraph(u) && u.type === "undirected"
-}
-
-/**
  * Creates a graph constructor for the specified graph kind.
  *
  * **When to use**

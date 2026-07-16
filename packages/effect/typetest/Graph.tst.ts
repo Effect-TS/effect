@@ -72,27 +72,27 @@ describe("Graph", () => {
       >()
     }
 
-    const directedInput = hole<unknown>()
-    if (Graph.isDirectedGraph(directedInput)) {
-      expect(directedInput).type.toBe<
-        Graph.Graph<unknown, unknown, "directed"> | Graph.MutableGraph<unknown, unknown, "directed">
-      >()
-    }
-
-    const undirectedInput = hole<unknown>()
-    if (Graph.isUndirectedGraph(undirectedInput)) {
-      expect(undirectedInput).type.toBe<
-        Graph.Graph<unknown, unknown, "undirected"> | Graph.MutableGraph<unknown, unknown, "undirected">
-      >()
-    }
-
     const known = hole<
       | Graph.UndirectedGraph<string, number>
       | Graph.MutableUndirectedGraph<string, number>
       | { readonly _tag: "other" }
     >()
-    if (Graph.isUndirectedGraph(known)) {
+    if (Graph.isGraph(known)) {
       expect(known).type.toBe<Graph.UndirectedGraph<string, number> | Graph.MutableUndirectedGraph<string, number>>()
+    }
+
+    const mixed = hole<
+      | Graph.DirectedGraph<string, number>
+      | Graph.UndirectedGraph<string, number>
+      | Graph.MutableDirectedGraph<string, number>
+      | Graph.MutableUndirectedGraph<string, number>
+      | { readonly _tag: "other" }
+    >()
+    if (Graph.isGraph(mixed)) {
+      expect(mixed.type).type.toBe<Graph.Kind>()
+      if (mixed.type === "undirected") {
+        expect(mixed.type).type.toBe<"undirected">()
+      }
     }
   })
 
