@@ -343,6 +343,8 @@ export const make: (options?: {
   })
   const forUpdate = sql.onDialectOrElse({
     sqlite: () => sql.literal(""),
+    // SQL Server uses table hints instead of a trailing FOR UPDATE clause.
+    mssql: () => sql.literal(""),
     orElse: () => sql.literal("FOR UPDATE")
   })
 
