@@ -4038,7 +4038,7 @@ export const stronglyConnectedComponents = <N, E>(
  * `costs` contains original edge data, not the numeric output of the cost
  * function unless the edge data is numeric.
  *
- * @see {@link dijkstra} for shortest paths with finite non-negative edge costs
+ * @see {@link dijkstra} for shortest paths with non-negative edge costs
  * @see {@link astar} for heuristic shortest-path search
  * @see {@link bellmanFord} for shortest paths that may include negative edge weights
  * @see {@link AllPairsResult} for the all-pairs shortest-path result shape
@@ -4058,17 +4058,18 @@ export interface PathResult<E> {
  * **When to use**
  *
  * Use when configuring `dijkstra` to find a shortest path between two existing
- * node indices with finite non-negative edge costs.
+ * node indices with non-negative edge costs.
  *
  * **Details**
  *
  * Specifies the source and target node indices, plus a cost function that maps
- * each edge's data to a finite non-negative numeric weight.
+ * each edge's data to a non-negative numeric weight. `Infinity` is allowed and
+ * behaves like an impassable edge.
  *
  * **Gotchas**
  *
  * `dijkstra` throws a `GraphError` when either endpoint does not exist or when
- * the cost function returns a negative or non-finite weight.
+ * the cost function returns a negative weight or `NaN`.
  *
  * @see {@link dijkstra} for the algorithm that consumes this configuration
  * @see {@link AstarConfig} for heuristic shortest-path search
@@ -4102,9 +4103,10 @@ const collectEdgeWeights = <N, E, T extends Kind = "directed">(
  *
  * **Details**
  *
- * Edge costs must be finite and non-negative. Returns `Option.none()` when the
- * target is not reachable, and throws a `GraphError` when either endpoint is
- * missing or an edge cost is negative or non-finite.
+ * Edge costs must be non-negative and not `NaN`. `Infinity` is allowed and
+ * behaves like an impassable edge. Returns `Option.none()` when the target is
+ * not reachable, and throws a `GraphError` when either endpoint is missing or an
+ * edge cost is negative or `NaN`.
  *
  * **Example** (Finding shortest paths with Dijkstra)
  *
@@ -4158,8 +4160,8 @@ export const dijkstra: {
 
   const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
     const weight = config.cost(edgeData)
-    if (!Number.isFinite(weight) || weight < 0) {
-      throw new GraphError({ message: "Dijkstra's algorithm requires finite non-negative edge weights" })
+    if (Number.isNaN(weight) || weight < 0) {
+      throw new GraphError({ message: "Dijkstra's algorithm requires non-negative edge weights" })
     }
     return weight
   })
@@ -4306,9 +4308,9 @@ export interface AllPairsResult<E> {
  * **Details**
  *
  * Computes distances, reconstructed node paths, and edge-data paths for every
- * source and target pair in O(V^3) time. Finite negative edge weights are
- * allowed, but a `GraphError` is thrown if any edge weight is non-finite or if
- * any negative cycle is detected.
+ * source and target pair in O(V^3) time. Negative edge weights are allowed, and
+ * `Infinity` behaves like an impassable edge. A `GraphError` is thrown if any
+ * edge weight is `NaN` or `-Infinity`, or if any negative cycle is detected.
  *
  * **Example** (Finding all-pairs shortest paths)
  *
@@ -4347,8 +4349,8 @@ export const floydWarshall: {
   const impl = graphImpl(graph)
   const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
     const weight = cost(edgeData)
-    if (!Number.isFinite(weight)) {
-      throw new GraphError({ message: "Floyd-Warshall algorithm requires finite edge weights" })
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights" })
     }
     return weight
   })
@@ -4480,7 +4482,7 @@ export const floydWarshall: {
  * **Details**
  *
  * Specifies the source and target node indices, an edge-cost function that maps
- * edge data to finite non-negative weights, and a heuristic that estimates the
+ * edge data to non-negative weights, and a heuristic that estimates the
  * remaining cost from a node to the target.
  *
  * @see {@link astar} for the algorithm that consumes this configuration
@@ -4503,10 +4505,11 @@ export interface AstarConfig<E, N> {
  *
  * **Details**
  *
- * The edge-cost function must return finite non-negative weights, and the
- * heuristic should be consistent to preserve shortest-path guarantees. Returns
+ * The edge-cost function must return non-negative weights and not `NaN`.
+ * `Infinity` is allowed and behaves like an impassable edge. The heuristic
+ * should be consistent to preserve shortest-path guarantees. Returns
  * `Option.none()` when the target is not reachable, and throws a `GraphError`
- * when either endpoint is missing or an edge cost is negative or non-finite.
+ * when either endpoint is missing or an edge cost is negative or `NaN`.
  *
  * **Example** (Finding shortest paths with A-star)
  *
@@ -4566,8 +4569,8 @@ export const astar: {
 
   const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
     const weight = config.cost(edgeData)
-    if (!Number.isFinite(weight) || weight < 0) {
-      throw new GraphError({ message: "A* algorithm requires finite non-negative edge weights" })
+    if (Number.isNaN(weight) || weight < 0) {
+      throw new GraphError({ message: "A* algorithm requires non-negative edge weights" })
     }
     return weight
   })
@@ -4716,10 +4719,10 @@ export const astar: {
  * **Details**
  *
  * Specifies the source and target node indices, plus a cost function that maps
- * each edge's data to a finite numeric weight.
+ * each edge's data to a numeric weight.
  *
  * @see {@link bellmanFord} for the algorithm that consumes this configuration
- * @see {@link DijkstraConfig} for finite non-negative edge costs
+ * @see {@link DijkstraConfig} for non-negative edge costs
  * @see {@link AstarConfig} for heuristic shortest-path search
  *
  * @category models
@@ -4737,10 +4740,10 @@ export interface BellmanFordConfig<E> {
  *
  * **Details**
  *
- * Finite negative edge weights are allowed. Returns `Option.none()` when the
- * target is unreachable or when a negative cycle affects the path to the target.
- * Throws a `GraphError` when either endpoint is missing or an edge weight is
- * non-finite.
+ * Negative edge weights are allowed, and `Infinity` behaves like an impassable
+ * edge. Returns `Option.none()` when the target is unreachable or when a
+ * negative cycle affects the path to the target. Throws a `GraphError` when
+ * either endpoint is missing or an edge weight is `NaN` or `-Infinity`.
  *
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
@@ -4794,8 +4797,8 @@ export const bellmanFord: {
 
   const edgeWeights = collectEdgeWeights(graph, (edgeData) => {
     const weight = config.cost(edgeData)
-    if (!Number.isFinite(weight)) {
-      throw new GraphError({ message: "Bellman-Ford algorithm requires finite edge weights" })
+    if (Number.isNaN(weight) || weight === -Infinity) {
+      throw new GraphError({ message: "Bellman-Ford algorithm does not support NaN or -Infinity edge weights" })
     }
     return weight
   })

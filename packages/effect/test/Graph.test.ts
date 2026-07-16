@@ -26,7 +26,7 @@ const makeSingleEdgeGraph = (weight: number) =>
     Graph.addEdge(mutable, source, target, weight)
   })
 
-const nonFiniteEdgeWeights = [NaN, Infinity, -Infinity] as const
+const unsupportedEdgeWeights = [NaN, -Infinity] as const
 
 const assertGraphError = (thunk: () => void, message: string) => {
   throws(thunk, (error) => {
@@ -2981,12 +2981,12 @@ describe("Graph", () => {
           cost: (edge) => edge
         })
       ).toThrow(
-        "Dijkstra's algorithm requires finite non-negative edge weights"
+        "Dijkstra's algorithm requires non-negative edge weights"
       )
     })
 
-    it("should throw for non-finite weights", () => {
-      for (const weight of nonFiniteEdgeWeights) {
+    it("should throw for NaN and negative infinity weights", () => {
+      for (const weight of unsupportedEdgeWeights) {
         const graph = makeSingleEdgeGraph(weight)
 
         assertGraphError(
@@ -2996,9 +2996,21 @@ describe("Graph", () => {
               target: 1,
               cost: (edge) => edge
             }),
-          "Dijkstra's algorithm requires finite non-negative edge weights"
+          "Dijkstra's algorithm requires non-negative edge weights"
         )
       }
+    })
+
+    it("should treat infinity weights as unreachable", () => {
+      const graph = makeSingleEdgeGraph(Infinity)
+
+      const result = Graph.dijkstra(graph, {
+        source: 0,
+        target: 1,
+        cost: (edge) => edge
+      })
+
+      assertNone(result)
     })
 
     it("should throw for negative weights before early target termination", () => {
@@ -3017,7 +3029,7 @@ describe("Graph", () => {
           target: 1,
           cost: (edge) => edge
         })
-      ).toThrow("Dijkstra's algorithm requires finite non-negative edge weights")
+      ).toThrow("Dijkstra's algorithm requires non-negative edge weights")
     })
 
     it("should validate weights before returning same source and target", () => {
@@ -3032,7 +3044,7 @@ describe("Graph", () => {
           target: 0,
           cost: (edge) => edge
         })
-      ).toThrow("Dijkstra's algorithm requires finite non-negative edge weights")
+      ).toThrow("Dijkstra's algorithm requires non-negative edge weights")
     })
 
     it("should throw for non-existent nodes", () => {
@@ -3143,11 +3155,11 @@ describe("Graph", () => {
           cost: (edge) => edge,
           heuristic
         })
-      ).toThrow("A* algorithm requires finite non-negative edge weights")
+      ).toThrow("A* algorithm requires non-negative edge weights")
     })
 
-    it("should throw for non-finite weights", () => {
-      for (const weight of nonFiniteEdgeWeights) {
+    it("should throw for NaN and negative infinity weights", () => {
+      for (const weight of unsupportedEdgeWeights) {
         const graph = makeSingleEdgeGraph(weight)
 
         assertGraphError(
@@ -3158,9 +3170,22 @@ describe("Graph", () => {
               cost: (edge) => edge,
               heuristic: () => 0
             }),
-          "A* algorithm requires finite non-negative edge weights"
+          "A* algorithm requires non-negative edge weights"
         )
       }
+    })
+
+    it("should treat infinity weights as unreachable", () => {
+      const graph = makeSingleEdgeGraph(Infinity)
+
+      const result = Graph.astar(graph, {
+        source: 0,
+        target: 1,
+        cost: (edge) => edge,
+        heuristic: () => 0
+      })
+
+      assertNone(result)
     })
 
     it("should throw for negative weights before early target termination", () => {
@@ -3180,7 +3205,7 @@ describe("Graph", () => {
           cost: (edge) => edge,
           heuristic: () => 0
         })
-      ).toThrow("A* algorithm requires finite non-negative edge weights")
+      ).toThrow("A* algorithm requires non-negative edge weights")
     })
 
     it("should validate weights before returning same source and target", () => {
@@ -3196,7 +3221,7 @@ describe("Graph", () => {
           cost: (edge) => edge,
           heuristic: () => 0
         })
-      ).toThrow("A* algorithm requires finite non-negative edge weights")
+      ).toThrow("A* algorithm requires non-negative edge weights")
     })
 
     it("should traverse undirected edges in reverse storage direction", () => {
@@ -3265,8 +3290,8 @@ describe("Graph", () => {
       assertSome(result, { path: [0], distance: 0, costs: [] })
     })
 
-    it("should throw for non-finite weights", () => {
-      for (const weight of nonFiniteEdgeWeights) {
+    it("should throw for NaN and negative infinity weights", () => {
+      for (const weight of unsupportedEdgeWeights) {
         const graph = makeSingleEdgeGraph(weight)
 
         assertGraphError(
@@ -3276,9 +3301,21 @@ describe("Graph", () => {
               target: 1,
               cost: (edge) => edge
             }),
-          "Bellman-Ford algorithm requires finite edge weights"
+          "Bellman-Ford algorithm does not support NaN or -Infinity edge weights"
         )
       }
+    })
+
+    it("should treat infinity weights as unreachable", () => {
+      const graph = makeSingleEdgeGraph(Infinity)
+
+      const result = Graph.bellmanFord(graph, {
+        source: 0,
+        target: 1,
+        cost: (edge) => edge
+      })
+
+      assertNone(result)
     })
 
     it("should detect a directed negative self-loop when source equals target", () => {
@@ -3413,15 +3450,25 @@ describe("Graph", () => {
       expect(result.costs.get(0)?.get(0)).toEqual([])
     })
 
-    it("should throw for non-finite weights", () => {
-      for (const weight of nonFiniteEdgeWeights) {
+    it("should throw for NaN and negative infinity weights", () => {
+      for (const weight of unsupportedEdgeWeights) {
         const graph = makeSingleEdgeGraph(weight)
 
         assertGraphError(
           () => Graph.floydWarshall(graph, (edge) => edge),
-          "Floyd-Warshall algorithm requires finite edge weights"
+          "Floyd-Warshall algorithm does not support NaN or -Infinity edge weights"
         )
       }
+    })
+
+    it("should treat infinity weights as unreachable", () => {
+      const graph = makeSingleEdgeGraph(Infinity)
+
+      const result = Graph.floydWarshall(graph, (edge) => edge)
+
+      expect(result.distances.get(0)?.get(1)).toBe(Infinity)
+      expect(result.paths.get(0)?.get(1)).toBeNull()
+      expect(result.costs.get(0)?.get(1)).toEqual([])
     })
 
     it("should preserve null edge data in direct paths", () => {

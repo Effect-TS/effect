@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reject non-finite edge weights in Graph shortest-path algorithms.
+Reject `NaN` and `-Infinity` edge weights in Graph shortest-path algorithms.
