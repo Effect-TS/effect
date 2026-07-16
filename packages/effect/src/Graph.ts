@@ -3807,8 +3807,8 @@ const getTraversalNeighbors = <N, E, T extends Kind>(
   return Array.from(neighbors)
 }
 
-const getTraversableNeighbor = <E, T extends Kind>(
-  graph: { readonly type: T },
+const getTraversableNeighbor = <N, E, T extends Kind>(
+  graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   current: NodeIndex,
   edge: Edge<E>
 ): NodeIndex => graph.type === "undirected" && edge.target === current ? edge.source : edge.target
