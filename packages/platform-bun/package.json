@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
-    "multipasta": "^0.2.7"
+    "multipasta": "^0.2.8"
   },
   "devDependencies": {
     "@effect/cluster": "workspace:^",
