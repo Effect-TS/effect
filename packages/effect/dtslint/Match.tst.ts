@@ -84,6 +84,15 @@ describe("Match", () => {
   })
 
   describe("when", () => {
+    it("rejects unknown object pattern properties", () => {
+      pipe(
+        Match.value(hole<{ _tag: "Transfer"; renamedValue: "foo" } | null>()),
+        // @ts-expect-error: Type 'string' is not assignable to type 'never'
+        Match.when({ _tag: "Transfer", value: "foo" }, () => {}),
+        Match.orElse(() => {})
+      )
+    })
+
     it("schema exhaustive-literal", () => {
       expect(
         pipe(
