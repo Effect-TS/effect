@@ -220,7 +220,7 @@ export const makeMemory = Effect.gen(function*() {
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) => {
       acquired = Array.from(shardIds)
-      return Effect.succeed(Array.from(shardIds))
+      return Effect.succeed(acquired)
     },
     refresh: () => Effect.sync(() => acquired),
     release: () => Effect.void,

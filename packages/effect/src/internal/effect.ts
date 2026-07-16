@@ -851,10 +851,12 @@ export const fiberInterruptAll = <A extends Iterable<Fiber.Fiber<any, any>>>(
 ): Effect.Effect<void> =>
   withFiber((parent) => {
     const annotations = fiberStackAnnotations(parent)
+    let fiberArr = Arr.empty<Fiber.Fiber<any, any>>()
     for (const fiber of fibers) {
       fiber.interruptUnsafe(parent.id, annotations)
+      fiberArr.push(fiber)
     }
-    return asVoid(fiberAwaitAll(fibers))
+    return asVoid(fiberAwaitAll(fiberArr))
   })
 
 /** @internal */
@@ -867,8 +869,12 @@ export const fiberInterruptAllAs: {
 ): Effect.Effect<void> =>
   withFiber((parent) => {
     const annotations = fiberStackAnnotations(parent)
-    for (const fiber of fibers) fiber.interruptUnsafe(fiberId, annotations)
-    return asVoid(fiberAwaitAll(fibers))
+    const fiberArr = Arr.empty<Fiber.Fiber<any, any>>()
+    for (const fiber of fibers) {
+      fiber.interruptUnsafe(fiberId, annotations)
+      fiberArr.push(fiber)
+    }
+    return asVoid(fiberAwaitAll(fiberArr))
   }))
 
 /** @internal */

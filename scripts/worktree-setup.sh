@@ -6,7 +6,6 @@ corepack install
 pnpm install
 
 # setup repositories
-git clone --depth 1 https://github.com/effect-ts/effect.git .repos/effect-old
 git clone --depth 1 https://github.com/tstyche/tstyche.org.git .repos/tstyche.org
 
 cat << EOF >> AGENTS.md
@@ -14,9 +13,7 @@ cat << EOF >> AGENTS.md
 ## Learning about "effect" v3
 
 If you need to learn more about the old version of effect (version 3.x), you can
-access the archived repository here:
-
-\`.repos/effect-old\`
+access the "v3" branch.
 
 ## Learning about the "tstyche" testing framework
 

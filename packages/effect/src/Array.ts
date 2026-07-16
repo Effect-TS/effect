@@ -2507,7 +2507,7 @@ export const rotate: {
       const [f, s] = splitAtNonEmpty(input, -m)
       return appendAll(s, f)
     } else {
-      return rotate(self, m - len)
+      return rotate(input, m - len)
     }
   }
   return []

@@ -2393,8 +2393,38 @@ export const cartesianWith: {
   <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C>
 } = dual(
   3,
-  <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C> =>
-    flatMap(self, (a) => map(that, (b) => f(a, b)))
+  <A, B, C>(self: Iterable<A>, that: Iterable<B>, f: (a: A, b: B) => C): Iterable<C> => ({
+    [Symbol.iterator]() {
+      const cache: Array<B> = []
+      let iterator: Iterator<B> | undefined
+      let done = false
+      const replay: Iterable<B> = {
+        [Symbol.iterator]() {
+          let index = 0
+          return {
+            next(): IteratorResult<B> {
+              if (index < cache.length) {
+                return { done: false, value: cache[index++] }
+              }
+              if (done) {
+                return { done: true, value: undefined }
+              }
+              iterator ??= that[Symbol.iterator]()
+              const result = iterator.next()
+              if (result.done) {
+                done = true
+                return { done: true, value: undefined }
+              }
+              cache.push(result.value)
+              index++
+              return result
+            }
+          }
+        }
+      }
+      return flatMap(self, (a) => map(replay, (b) => f(a, b)))[Symbol.iterator]()
+    }
+  })
 )
 
 /**
