@@ -39,10 +39,6 @@ describe("Multipart", () => {
 
   it.effect("fails when a limit is exceeded even if the whole body arrives in one chunk", () =>
     Effect.gen(function*() {
-      // A raw body delivered as a single chunk makes the parser reach the
-      // max-parts error and end-of-input within one pump, so `onDone` used to
-      // clobber the captured failure and the violation was swallowed.
-      // https://github.com/Effect-TS/effect/issues/6392
       const boundary = "----testboundary"
       const part = (name: string) =>
         `--${boundary}\r\n` +
@@ -50,8 +46,6 @@ describe("Multipart", () => {
         `Content-Type: text/plain\r\n\r\n${name}\r\n`
       const body = part("a") + part("b") + part("c") + `--${boundary}--\r\n`
 
-      // `Effect.flip` surfaces the expected failure as the success channel; if
-      // the stream wrongly completes instead, `flip` fails and the test fails.
       const error = yield* Stream.make(new TextEncoder().encode(body)).pipe(
         Stream.pipeThroughChannel(
           Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })

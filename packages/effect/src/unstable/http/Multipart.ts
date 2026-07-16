@@ -452,11 +452,6 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
           exit = Option.some(Exit.fail(convertError(error_)))
         },
         onDone() {
-          // The parser keeps running after signalling a limit/parse error and
-          // always calls `onDone` at the end. Only record normal completion if
-          // no failure was captured, otherwise `onDone` clobbers the error and
-          // the violation is silently swallowed (single-pump bodies always hit
-          // this). See https://github.com/Effect-TS/effect/issues/6392.
           if (Option.isNone(exit)) {
             exit = Option.some(Exit.fail(Cause.Done()))
           }
