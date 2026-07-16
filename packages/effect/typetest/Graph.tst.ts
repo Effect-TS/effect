@@ -8,8 +8,20 @@ interface Node {
   readonly id: string
 }
 
+interface Animal {
+  readonly name: string
+}
+
+interface Dog extends Animal {
+  readonly breed: string
+}
+
 declare const directedNodes: Graph.DirectedGraph<Node, number>
 declare const undirectedNodes: Graph.UndirectedGraph<Node, number>
+declare const dogGraph: Graph.DirectedGraph<Dog, 1>
+declare const animalGraph: Graph.DirectedGraph<Animal, number>
+declare const dogMutableGraph: Graph.MutableDirectedGraph<Dog, 1>
+declare const animalMutableGraph: Graph.MutableDirectedGraph<Animal, number>
 
 describe("Graph", () => {
   it("make", () => {
@@ -24,6 +36,32 @@ describe("Graph", () => {
         expect(mutable).type.toBe<Graph.MutableUndirectedGraph<string, number>>()
       })
     ).type.toBe<Graph.UndirectedGraph<string, number>>()
+  })
+
+  it("opaque interface", () => {
+    expect(Graph.nodes(directed)).type.toBe<Graph.NodeWalker<string>>()
+    expect(Graph.edges(directed)).type.toBe<Graph.EdgeWalker<number>>()
+
+    // @ts-expect-error Property 'nodes' does not exist on type 'DirectedGraph<string, number>'
+    const _nodes: unknown = directed.nodes
+    // @ts-expect-error Property 'edges' does not exist on type 'DirectedGraph<string, number>'
+    const _edges: unknown = directed.edges
+    // @ts-expect-error Property 'adjacency' does not exist on type 'DirectedGraph<string, number>'
+    const _adjacency: unknown = directed.adjacency
+    // @ts-expect-error Property 'nodes' does not exist on type 'MutableGraph<string, number, "directed">'
+    const _mutableNodes: unknown = Graph.beginMutation(directed).nodes
+
+    expect(_nodes).type.toBe<unknown>()
+    expect(_edges).type.toBe<unknown>()
+    expect(_adjacency).type.toBe<unknown>()
+    expect(_mutableNodes).type.toBe<unknown>()
+  })
+
+  it("variance", () => {
+    expect(dogGraph).type.toBeAssignableTo<Graph.DirectedGraph<Animal, number>>()
+    expect(animalGraph).type.not.toBeAssignableTo<Graph.DirectedGraph<Dog, 1>>()
+    expect(dogMutableGraph).type.not.toBeAssignableTo<Graph.MutableDirectedGraph<Animal, number>>()
+    expect(animalMutableGraph).type.not.toBeAssignableTo<Graph.MutableDirectedGraph<Dog, 1>>()
   })
 
   it("compose", () => {

@@ -1799,8 +1799,7 @@ describe("Graph", () => {
         expect(Graph.edgeCount(mutable)).toBe(1)
 
         // Verify second edge still exists
-        const edge2Data = mutable.edges.get(edge2)
-        expect(edge2Data).toBeDefined()
+        assertSome(Graph.getEdge(mutable, edge2), new Graph.Edge({ source: nodeA, target: nodeB, data: 20 }))
       })
 
       expect(Graph.edgeCount(result)).toBe(1)
