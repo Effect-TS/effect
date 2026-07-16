@@ -2753,6 +2753,18 @@ export interface GraphVizOptions<N, E> {
   readonly graphName?: string
 }
 
+const dotKeywords = new Set(["node", "edge", "graph", "digraph", "subgraph", "strict"])
+
+const dotBareIdRegex = /^(?:[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*|-?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?))$/
+
+const escapeDotQuotedString = (value: string): string =>
+  value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"").replace(/\r\n|\r|\n/g, "\\n")
+
+const toDotId = (value: string): string =>
+  dotBareIdRegex.test(value) && !dotKeywords.has(value.toLowerCase()) ? value : `"${escapeDotQuotedString(value)}"`
+
+const toGraphVizLabel = (value: string): string => escapeDotQuotedString(value)
+
 /**
  * Exports a graph to GraphViz DOT format for visualization.
  *
@@ -2808,17 +2820,17 @@ export const toGraphViz: {
   const edgeOperator = isDirected ? "->" : "--"
 
   const lines: Array<string> = []
-  lines.push(`${graphType} ${graphName} {`)
+  lines.push(`${graphType} ${toDotId(graphName)} {`)
 
   // Add nodes
   for (const [nodeIndex, nodeData] of graph.nodes) {
-    const label = nodeLabel(nodeData).replace(/"/g, "\\\"")
+    const label = toGraphVizLabel(nodeLabel(nodeData))
     lines.push(`  "${nodeIndex}" [label="${label}"];`)
   }
 
   // Add edges
   for (const [, edgeData] of graph.edges) {
-    const label = edgeLabel(edgeData.data).replace(/"/g, "\\\"")
+    const label = toGraphVizLabel(edgeLabel(edgeData.data))
     lines.push(`  "${edgeData.source}" ${edgeOperator} "${edgeData.target}" [label="${label}"];`)
   }
 

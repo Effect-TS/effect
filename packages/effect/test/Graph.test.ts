@@ -2099,6 +2099,37 @@ describe("Graph", () => {
       expect(dot).toContain("\"0\" -> \"1\" [label=\"Edge \\\"1\\\"\"];")
     })
 
+    it("should quote unsafe graph names", () => {
+      const graph = Graph.directed<string, string>()
+
+      strictEqual(Graph.toGraphViz(graph, { graphName: "My Graph" }), "digraph \"My Graph\" {\n}")
+      strictEqual(Graph.toGraphViz(graph, { graphName: "" }), "digraph \"\" {\n}")
+      strictEqual(Graph.toGraphViz(graph, { graphName: "graph" }), "digraph \"graph\" {\n}")
+      strictEqual(Graph.toGraphViz(graph, { graphName: "Node" }), "digraph \"Node\" {\n}")
+      strictEqual(Graph.toGraphViz(graph, { graphName: "My \"Graph\"" }), "digraph \"My \\\"Graph\\\"\" {\n}")
+    })
+
+    it("should escape labels as literal text", () => {
+      const graph = Graph.directed<string, string>((mutable) => {
+        const nodeA = Graph.addNode(mutable, "C:\\new\\path")
+        const nodeB = Graph.addNode(mutable, "Line 1\nLine 2")
+        Graph.addEdge(mutable, nodeA, nodeB, "edge\\label\nnext")
+      })
+
+      const dot = Graph.toGraphViz(graph)
+
+      strictEqual(
+        dot,
+        [
+          "digraph G {",
+          "  \"0\" [label=\"C:\\\\new\\\\path\"];",
+          "  \"1\" [label=\"Line 1\\nLine 2\"];",
+          "  \"0\" -> \"1\" [label=\"edge\\\\label\\nnext\"];",
+          "}"
+        ].join("\n")
+      )
+    })
+
     it("should demonstrate graph visualization", () => {
       // Create a simple directed graph representing a dependency graph
       const graph = Graph.directed<string, string>((mutable) => {
