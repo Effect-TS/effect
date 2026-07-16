@@ -435,11 +435,36 @@ function assertMutable<N, E, T extends Kind = "directed">(
 
 /**
  * Returns `true` if a value has the graph runtime type identifier, narrowing
- * it to a `Graph`.
+ * it to an immutable or mutable graph.
  *
  * **When to use**
  *
  * Use to narrow an unknown value before treating it as a graph value.
+ *
+ * **Gotchas**
+ *
+ * This guard checks the shared graph runtime type identifier and does not
+ * distinguish immutable graphs from mutable graphs or directed graphs from
+ * undirected graphs.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export function isGraph<N = unknown, E = unknown, T extends Kind = Kind, U = never>(
+  u: U | Graph<N, E, T> | MutableGraph<N, E, T>
+): u is Graph<N, E, T> | MutableGraph<N, E, T>
+export function isGraph(u: unknown): boolean {
+  return hasProperty(u, TypeId)
+}
+
+/**
+ * Returns `true` if a value has the graph runtime type identifier and is
+ * directed.
+ *
+ * **When to use**
+ *
+ * Use to narrow an unknown graph value before relying on directed graph
+ * semantics.
  *
  * **Gotchas**
  *
@@ -449,7 +474,36 @@ function assertMutable<N, E, T extends Kind = "directed">(
  * @category guards
  * @since 4.0.0
  */
-export const isGraph = (u: unknown): u is Graph<unknown, unknown> => hasProperty(u, TypeId)
+export function isDirectedGraph<N = unknown, E = unknown, U = never>(
+  u: U | Graph<N, E, Kind> | MutableGraph<N, E, Kind>
+): u is Graph<N, E, "directed"> | MutableGraph<N, E, "directed">
+export function isDirectedGraph(u: unknown): boolean {
+  return isGraph(u) && u.type === "directed"
+}
+
+/**
+ * Returns `true` if a value has the graph runtime type identifier and is
+ * undirected.
+ *
+ * **When to use**
+ *
+ * Use to narrow an unknown graph value before relying on undirected graph
+ * semantics.
+ *
+ * **Gotchas**
+ *
+ * This guard checks the shared graph runtime type identifier and does not
+ * distinguish immutable graphs from mutable graphs.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export function isUndirectedGraph<N = unknown, E = unknown, U = never>(
+  u: U | Graph<N, E, Kind> | MutableGraph<N, E, Kind>
+): u is Graph<N, E, "undirected"> | MutableGraph<N, E, "undirected">
+export function isUndirectedGraph(u: unknown): boolean {
+  return isGraph(u) && u.type === "undirected"
+}
 
 /**
  * Creates a graph constructor for the specified graph kind.

@@ -471,17 +471,51 @@ describe("Graph", () => {
       const directedGraph = Graph.directed<string, number>()
       const undirectedGraph = Graph.undirected<string, number>()
 
-      expect(Graph.isGraph(directedGraph)).toBe(true)
-      expect(Graph.isGraph(undirectedGraph)).toBe(true)
+      strictEqual(Graph.isGraph(directedGraph), true)
+      strictEqual(Graph.isGraph(undirectedGraph), true)
+    })
+
+    it("should return true for mutable graph instances", () => {
+      const directedGraph = Graph.beginMutation(Graph.directed<string, number>())
+      const undirectedGraph = Graph.beginMutation(Graph.undirected<string, number>())
+
+      strictEqual(Graph.isGraph(directedGraph), true)
+      strictEqual(Graph.isGraph(undirectedGraph), true)
     })
 
     it("should return false for non-graph values", () => {
-      expect(Graph.isGraph({})).toBe(false)
-      expect(Graph.isGraph(null)).toBe(false)
-      expect(Graph.isGraph(undefined)).toBe(false)
-      expect(Graph.isGraph("string")).toBe(false)
-      expect(Graph.isGraph(42)).toBe(false)
-      expect(Graph.isGraph([])).toBe(false)
+      strictEqual(Graph.isGraph({}), false)
+      strictEqual(Graph.isGraph(null), false)
+      strictEqual(Graph.isGraph(undefined), false)
+      strictEqual(Graph.isGraph("string"), false)
+      strictEqual(Graph.isGraph(42), false)
+      strictEqual(Graph.isGraph([]), false)
+    })
+
+    it("should identify directed graphs", () => {
+      const directedGraph = Graph.directed<string, number>()
+      const undirectedGraph = Graph.undirected<string, number>()
+      const mutableDirectedGraph = Graph.beginMutation(directedGraph)
+      const mutableUndirectedGraph = Graph.beginMutation(undirectedGraph)
+
+      strictEqual(Graph.isDirectedGraph(directedGraph), true)
+      strictEqual(Graph.isDirectedGraph(mutableDirectedGraph), true)
+      strictEqual(Graph.isDirectedGraph(undirectedGraph), false)
+      strictEqual(Graph.isDirectedGraph(mutableUndirectedGraph), false)
+      strictEqual(Graph.isDirectedGraph({}), false)
+    })
+
+    it("should identify undirected graphs", () => {
+      const directedGraph = Graph.directed<string, number>()
+      const undirectedGraph = Graph.undirected<string, number>()
+      const mutableDirectedGraph = Graph.beginMutation(directedGraph)
+      const mutableUndirectedGraph = Graph.beginMutation(undirectedGraph)
+
+      strictEqual(Graph.isUndirectedGraph(directedGraph), false)
+      strictEqual(Graph.isUndirectedGraph(mutableDirectedGraph), false)
+      strictEqual(Graph.isUndirectedGraph(undirectedGraph), true)
+      strictEqual(Graph.isUndirectedGraph(mutableUndirectedGraph), true)
+      strictEqual(Graph.isUndirectedGraph({}), false)
     })
 
     it("should be iterable using for...of syntax", () => {
