@@ -279,37 +279,17 @@ export const make: (options?: {
         ON target.message_id = source.message_id
         WHEN NOT MATCHED THEN
           INSERT ${sql.insert(row)}
-        OUTPUT
-          inserted.id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.id, r.kind, r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_id,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.kind
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_kind,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.payload
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_payload,
-          CASE
-            WHEN inserted.id IS NULL THEN (
-              SELECT r.sequence
-              FROM ${repliesTableSql} r
-              WHERE r.id = target.last_reply_id
-            )
-          END as reply_sequence;
-      `,
+        OUTPUT inserted.id;
+      `.pipe(Effect.flatMap((rows) => {
+        // inserted a new row
+        if (rows.length > 0) return Effect.succeed([])
+        return sql`
+          SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+          FROM ${messagesTableSql} m
+          LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+          WHERE m.message_id = ${message_id}
+        `
+      })),
     orElse: () => (row, message_id) =>
       sql`
         SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
@@ -713,8 +693,8 @@ const migrations = (options?: {
               entity_id VARCHAR(255) NOT NULL,
               kind INT NOT NULL,
               tag VARCHAR(50),
-              payload TEXT,
-              headers TEXT,
+              payload NVARCHAR(MAX),
+              headers NVARCHAR(MAX),
               trace_id VARCHAR(32),
               span_id VARCHAR(16),
               sampled BIT,
@@ -723,8 +703,7 @@ const migrations = (options?: {
               reply_id BIGINT,
               last_reply_id BIGINT,
               last_read DATETIME,
-              deliver_at BIGINT,
-              UNIQUE (message_id)
+              deliver_at BIGINT
             )
           `,
         mysql: () =>
@@ -868,11 +847,9 @@ const migrations = (options?: {
               rowid BIGINT IDENTITY(1,1),
               kind INT,
               request_id BIGINT NOT NULL,
-              payload TEXT NOT NULL,
+              payload NVARCHAR(MAX) NOT NULL,
               sequence INT,
-              acked BIT NOT NULL DEFAULT 0,
-              CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence)
+              acked BIT NOT NULL DEFAULT 0
             )
           `,
         mysql: () =>
@@ -978,6 +955,91 @@ const migrations = (options?: {
         orElse: () =>
           // sqlite
           Effect.void
+      })
+    }),
+    "0003_mssql_schema_fixes": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+      const repliesTableSql = sql(repliesTable)
+      const messageIdUniqueIndex = `${messagesTable}_message_id_idx`
+      const oneExitUniqueIndex = `${repliesTable}_one_exit`
+      const sequenceUniqueIndex = `${repliesTable}_sequence`
+
+      // SQL Server unique constraints treat NULLs as equal, unlike the other
+      // dialects, so the inline constraints created by 0001 reject rows that
+      // are legal everywhere else: the second message without a primary key
+      // (message_id NULL) and the second chunk reply of a request (kind
+      // NULL). Replace them with filtered unique indexes covering only
+      // non-NULL keys; the sequence key receives the same filtered treatment
+      // to match the other dialects' nullable-unique semantics. The
+      // message_id constraint from 0001 was anonymous, so it is looked up by
+      // shape before being dropped.
+      //
+      // 0001 also declared the payload and headers columns as TEXT, which is
+      // deprecated and has no conversion from BIT, the type the client binds
+      // NULL parameters as. Convert them to NVARCHAR(MAX).
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            DECLARE @constraint_name sysname;
+            DECLARE @drop_constraint_sql nvarchar(max);
+
+            SELECT @constraint_name = kc.name
+            FROM sys.key_constraints AS kc
+            WHERE kc.parent_object_id = OBJECT_ID(N'${messagesTableSql}')
+              AND kc.type = 'UQ'
+              AND EXISTS (
+                SELECT 1
+                FROM sys.index_columns AS ic
+                INNER JOIN sys.columns AS c
+                  ON c.object_id = ic.object_id
+                  AND c.column_id = ic.column_id
+                WHERE ic.object_id = kc.parent_object_id
+                  AND ic.index_id = kc.unique_index_id
+                  AND ic.is_included_column = 0
+                  AND ic.key_ordinal > 0
+                GROUP BY ic.object_id, ic.index_id
+                HAVING COUNT(*) = 1
+                  AND MAX(CASE WHEN c.name = N'message_id' THEN 1 ELSE 0 END) = 1
+              );
+
+            IF @constraint_name IS NOT NULL
+            BEGIN
+              SET @drop_constraint_sql = N'ALTER TABLE ${messagesTableSql} DROP CONSTRAINT ' + QUOTENAME(@constraint_name);
+              EXEC sp_executesql @drop_constraint_sql;
+            END;
+
+            IF EXISTS (SELECT * FROM sys.key_constraints WHERE name = ${oneExitUniqueIndex} AND parent_object_id = OBJECT_ID(N'${repliesTableSql}'))
+            ALTER TABLE ${repliesTableSql} DROP CONSTRAINT ${sql(oneExitUniqueIndex)};
+
+            IF EXISTS (SELECT * FROM sys.key_constraints WHERE name = ${sequenceUniqueIndex} AND parent_object_id = OBJECT_ID(N'${repliesTableSql}'))
+            ALTER TABLE ${repliesTableSql} DROP CONSTRAINT ${sql(sequenceUniqueIndex)};
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${messageIdUniqueIndex} AND object_id = OBJECT_ID(N'${messagesTableSql}'))
+            CREATE UNIQUE INDEX ${sql(messageIdUniqueIndex)}
+            ON ${messagesTableSql} (message_id)
+            WHERE message_id IS NOT NULL;
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${oneExitUniqueIndex} AND object_id = OBJECT_ID(N'${repliesTableSql}'))
+            CREATE UNIQUE INDEX ${sql(oneExitUniqueIndex)}
+            ON ${repliesTableSql} (request_id, kind)
+            WHERE kind IS NOT NULL;
+
+            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = ${sequenceUniqueIndex} AND object_id = OBJECT_ID(N'${repliesTableSql}'))
+            CREATE UNIQUE INDEX ${sql(sequenceUniqueIndex)}
+            ON ${repliesTableSql} (request_id, sequence)
+            WHERE sequence IS NOT NULL;
+
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'${messagesTableSql}') AND name = N'payload' AND system_type_id = TYPE_ID(N'text'))
+            ALTER TABLE ${messagesTableSql} ALTER COLUMN payload NVARCHAR(MAX);
+
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'${messagesTableSql}') AND name = N'headers' AND system_type_id = TYPE_ID(N'text'))
+            ALTER TABLE ${messagesTableSql} ALTER COLUMN headers NVARCHAR(MAX);
+
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'${repliesTableSql}') AND name = N'payload' AND system_type_id = TYPE_ID(N'text'))
+            ALTER TABLE ${repliesTableSql} ALTER COLUMN payload NVARCHAR(MAX) NOT NULL;
+          `,
+        orElse: () => Effect.void
       })
     })
   })
