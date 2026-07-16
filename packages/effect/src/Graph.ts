@@ -450,12 +450,9 @@ function assertMutable<N, E, T extends Kind = "directed">(
  * @category guards
  * @since 4.0.0
  */
-export function isGraph<N = unknown, E = unknown, T extends Kind = Kind, U = never>(
+export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = never>(
   u: U | Graph<N, E, T> | MutableGraph<N, E, T>
-): u is Graph<N, E, T> | MutableGraph<N, E, T>
-export function isGraph(u: unknown): boolean {
-  return hasProperty(u, TypeId)
-}
+): u is Graph<N, E, T> | MutableGraph<N, E, T> => hasProperty(u, TypeId)
 
 /**
  * Creates a graph constructor for the specified graph kind.
