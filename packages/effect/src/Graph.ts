@@ -3578,17 +3578,17 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
       }
 
       visited.add(startNode)
-      const stack: Array<{ node: NodeIndex; parentEdge: EdgeIndex | null }> = [{ node: startNode, parentEdge: null }]
+      const stack: Array<{ node: NodeIndex; incoming: EdgeIndex | null }> = [{ node: startNode, incoming: null }]
 
       while (stack.length > 0) {
-        const { node, parentEdge } = stack.pop()!
+        const { node, incoming } = stack.pop()!
         const adjacencyList = impl.adjacency.get(node)
         if (adjacencyList === undefined) {
           continue
         }
 
         for (const edgeIndex of adjacencyList) {
-          if (edgeIndex === parentEdge) {
+          if (edgeIndex === incoming) {
             continue
           }
           const edge = impl.edges.get(edgeIndex)
@@ -3598,7 +3598,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
           const neighbor = getTraversableNeighbor(graph, node, edge)
           if (!visited.has(neighbor)) {
             visited.add(neighbor)
-            stack.push({ node: neighbor, parentEdge: edgeIndex })
+            stack.push({ node: neighbor, incoming: edgeIndex })
           } else {
             impl.acyclic = Option.some(false)
             return false
