@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Graph.toGraphViz` to quote unsafe DOT graph names and escape labels as literal text.
+Fix `Graph.toGraphViz` to quote DOT graph names and escape labels as literal text.
