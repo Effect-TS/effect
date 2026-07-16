@@ -16710,14 +16710,6 @@ export declare namespace Annotations {
     readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined
     readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined
     readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined
-    readonly generation?:
-      | {
-        readonly runtime: string
-        readonly Type: string
-        readonly Encoded?: string | undefined
-        readonly importDeclaration?: string | undefined
-      }
-      | undefined
     /**
      * Used to collect sentinels from a Declaration SchemaAST.
      *

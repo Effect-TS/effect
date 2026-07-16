@@ -54,10 +54,6 @@ describe("fromJsonSchemaDocument", () => {
               "id": "effect/schema/Json",
               "payload": null
             },
-            "generation": {
-              "runtime": "Schema.Json",
-              "Type": "Schema.Json"
-            },
             "expected": "JSON value"
           },
           "typeParameters": [],
@@ -84,10 +80,6 @@ describe("fromJsonSchemaDocument", () => {
             "representation": {
               "id": "effect/schema/Json",
               "payload": null
-            },
-            "generation": {
-              "runtime": "Schema.Json",
-              "Type": "Schema.Json"
             },
             "expected": "JSON value",
             "title": "a",
@@ -200,10 +192,6 @@ describe("fromJsonSchemaDocument", () => {
               "representation": {
                 "id": "effect/schema/Json",
                 "payload": null
-              },
-              "generation": {
-                "runtime": "Schema.Json",
-                "Type": "Schema.Json"
               },
               "expected": "JSON value"
             },
@@ -443,10 +431,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -508,10 +492,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
                       },
                       "expected": "JSON value"
                     },
@@ -621,10 +601,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -686,10 +662,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
                       },
                       "expected": "JSON value"
                     },
@@ -1408,10 +1380,6 @@ describe("fromJsonSchemaDocument", () => {
                     "id": "effect/schema/Json",
                     "payload": null
                   },
-                  "generation": {
-                    "runtime": "Schema.Json",
-                    "Type": "Schema.Json"
-                  },
                   "expected": "JSON value"
                 },
                 "typeParameters": [],
@@ -1596,10 +1564,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "generation": {
-                      "runtime": "Schema.Json",
-                      "Type": "Schema.Json"
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1648,10 +1612,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "generation": {
-                      "runtime": "Schema.Json",
-                      "Type": "Schema.Json"
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1697,10 +1657,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "generation": {
-                      "runtime": "Schema.Json",
-                      "Type": "Schema.Json"
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1736,10 +1692,6 @@ describe("fromJsonSchemaDocument", () => {
                     "representation": {
                       "id": "effect/schema/Json",
                       "payload": null
-                    },
-                    "generation": {
-                      "runtime": "Schema.Json",
-                      "Type": "Schema.Json"
                     },
                     "expected": "JSON value"
                   },
@@ -2088,10 +2040,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2145,10 +2093,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
                       },
                       "expected": "JSON value"
                     },
@@ -2232,10 +2176,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2293,10 +2233,6 @@ describe("fromJsonSchemaDocument", () => {
                       "representation": {
                         "id": "effect/schema/Json",
                         "payload": null
-                      },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
                       },
                       "expected": "JSON value"
                     },
@@ -2418,10 +2354,6 @@ describe("fromJsonSchemaDocument", () => {
                         "id": "effect/schema/Json",
                         "payload": null
                       },
-                      "generation": {
-                        "runtime": "Schema.Json",
-                        "Type": "Schema.Json"
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2517,10 +2449,6 @@ describe("fromJsonSchemaDocument", () => {
                   "id": "effect/schema/Json",
                   "payload": null
                 },
-                "generation": {
-                  "runtime": "Schema.Json",
-                  "Type": "Schema.Json"
-                },
                 "expected": "JSON value"
               },
               "typeParameters": [],
@@ -2532,10 +2460,6 @@ describe("fromJsonSchemaDocument", () => {
                 "representation": {
                   "id": "effect/schema/Json",
                   "payload": null
-                },
-                "generation": {
-                  "runtime": "Schema.Json",
-                  "Type": "Schema.Json"
                 },
                 "expected": "JSON value"
               },
@@ -2584,10 +2508,6 @@ describe("fromJsonSchemaDocument", () => {
               "representation": {
                 "id": "effect/schema/Json",
                 "payload": null
-              },
-              "generation": {
-                "runtime": "Schema.Json",
-                "Type": "Schema.Json"
               },
               "expected": "JSON value"
             },
@@ -2886,10 +2806,6 @@ describe("fromJsonSchemaDocument", () => {
                   "representation": {
                     "id": "effect/schema/Json",
                     "payload": null
-                  },
-                  "generation": {
-                    "runtime": "Schema.Json",
-                    "Type": "Schema.Json"
                   },
                   "expected": "JSON value"
                 },
@@ -4417,10 +4333,6 @@ describe("fromJsonSchemaDocument", () => {
                       "id": "effect/schema/Json",
                       "payload": null
                     },
-                    "generation": {
-                      "runtime": "Schema.Json",
-                      "Type": "Schema.Json"
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -5079,10 +4991,6 @@ describe("fromJsonSchemaDocument", () => {
                   "id": "effect/schema/Json",
                   "payload": null
                 },
-                "generation": {
-                  "runtime": "Schema.Json",
-                  "Type": "Schema.Json"
-                },
                 "expected": "JSON value",
                 "title": "a",
                 "description": "b"
@@ -5122,10 +5030,6 @@ describe("fromJsonSchemaDocument", () => {
                   "id": "effect/schema/Json",
                   "payload": null
                 },
-                "generation": {
-                  "runtime": "Schema.Json",
-                  "Type": "Schema.Json"
-                },
                 "expected": "JSON value",
                 "title": "a",
                 "default": "c"
@@ -5155,10 +5059,6 @@ describe("fromJsonSchemaDocument", () => {
                 "representation": {
                   "id": "effect/schema/Json",
                   "payload": null
-                },
-                "generation": {
-                  "runtime": "Schema.Json",
-                  "Type": "Schema.Json"
                 },
                 "expected": "JSON value",
                 "title": "a",

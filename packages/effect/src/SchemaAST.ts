@@ -3935,10 +3935,6 @@ export const Json = new Declaration(
       Effect.succeed(input) :
       Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input))),
   {
-    generation: {
-      runtime: `Schema.Json`,
-      Type: `Schema.Json`
-    },
     representation: {
       id: "effect/schema/Json",
       payload: null
@@ -3952,10 +3948,6 @@ export const Json = new Declaration(
 
 /** @internal */
 export const MutableJson = annotate(Json, {
-  generation: {
-    runtime: `Schema.MutableJson`,
-    Type: `Schema.MutableJson`
-  },
   representation: {
     id: "effect/schema/MutableJson",
     payload: null
