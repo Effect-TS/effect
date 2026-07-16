@@ -86,6 +86,23 @@ export interface Public {
     expect(run(cwd, "packages/foo/src/Internal.ts")).toEqual([])
   })
 
+  it("reports public re-exports of @internal exports", () => {
+    const cwd = writeFixture({
+      "packages/foo/src/Internal.ts": `/** @internal */
+export const internal = 1
+`,
+      "packages/foo/src/Public.ts": `import { internal } from "./Internal.ts"
+
+export { internal }
+`
+    })
+
+    expect(run(cwd, "packages/foo/src/Public.ts")).toEqual([
+      `Do not re-export @internal export "internal" from a public module`
+    ])
+    expect(run(cwd, "packages/foo/src/Internal.ts")).toEqual([])
+  })
+
   it("ignores @internal class member type signatures", () => {
     const cwd = writeFixture({
       "packages/foo/src/Internal.ts": `/** @internal */
