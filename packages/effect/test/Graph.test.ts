@@ -2629,6 +2629,36 @@ describe("Graph", () => {
       expect(Graph.isAcyclic(graph)).toBe(true)
     })
 
+    it("should treat a single undirected edge as acyclic", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, a, b, 1)
+      })
+
+      strictEqual(Graph.isAcyclic(graph), true)
+    })
+
+    it("should detect parallel undirected edges as a cycle", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        const b = Graph.addNode(mutable, "B")
+        Graph.addEdge(mutable, a, b, 1)
+        Graph.addEdge(mutable, a, b, 2)
+      })
+
+      strictEqual(Graph.isAcyclic(graph), false)
+    })
+
+    it("should detect undirected self-loops as cycles", () => {
+      const graph = Graph.undirected<string, number>((mutable) => {
+        const a = Graph.addNode(mutable, "A")
+        Graph.addEdge(mutable, a, a, 1)
+      })
+
+      strictEqual(Graph.isAcyclic(graph), false)
+    })
+
     it("should detect cycles in undirected graphs", () => {
       const graph = Graph.undirected<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")

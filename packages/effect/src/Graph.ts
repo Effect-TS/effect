@@ -3529,7 +3529,8 @@ export type TraversalDirection = Direction | "undirected"
  *
  * Uses depth-first search to detect back edges, which indicate cycles.
  * For directed graphs, any back edge creates a cycle. For undirected graphs,
- * a back edge that doesn't go to the immediate parent creates a cycle.
+ * a back edge that doesn't use the same edge used to enter the current node
+ * creates a cycle.
  *
  * **Example** (Checking cycles)
  *
@@ -3577,17 +3578,28 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
       }
 
       visited.add(startNode)
-      const stack: Array<{ node: NodeIndex; parent: NodeIndex | null }> = [{ node: startNode, parent: null }]
+      const stack: Array<{ node: NodeIndex; parentEdge: EdgeIndex | null }> = [{ node: startNode, parentEdge: null }]
 
       while (stack.length > 0) {
-        const { node, parent } = stack.pop()!
-        const nodeNeighbors = getUndirectedNeighbors(graph as any, node)
+        const { node, parentEdge } = stack.pop()!
+        const adjacencyList = impl.adjacency.get(node)
+        if (adjacencyList === undefined) {
+          continue
+        }
 
-        for (const neighbor of nodeNeighbors) {
+        for (const edgeIndex of adjacencyList) {
+          if (edgeIndex === parentEdge) {
+            continue
+          }
+          const edge = impl.edges.get(edgeIndex)
+          if (edge === undefined) {
+            continue
+          }
+          const neighbor = getTraversableNeighbor(graph, node, edge)
           if (!visited.has(neighbor)) {
             visited.add(neighbor)
-            stack.push({ node: neighbor, parent: node })
-          } else if (neighbor !== parent) {
+            stack.push({ node: neighbor, parentEdge: edgeIndex })
+          } else {
             impl.acyclic = Option.some(false)
             return false
           }
