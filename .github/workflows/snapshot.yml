@@ -1,7 +1,7 @@
 name: Snapshot
 on:
   pull_request:
-    branches: [v3, next-minor, next-major]
+    branches: [v3, v3/next-minor]
   workflow_dispatch:
 
 permissions: {}

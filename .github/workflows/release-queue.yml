@@ -3,9 +3,9 @@ on:
   issue_comment:
     types: [created]
   pull_request_target:
-    branches: [v3, next-minor, next-major]
+    branches: [v3, v3/next-minor]
   push:
-    branches: [v3, next-minor, next-major]
+    branches: [v3, v3/next-minor]
 
 permissions: {}
 
@@ -35,9 +35,11 @@ jobs:
         if: github.event.pull_request
         env:
           GITHUB_TOKEN: ${{ secrets.EFFECT_BOT_GH }}
-      - uses: tim-smart/next-release-action@main
+      - uses: Effect-TS/next-release-action@main
         with:
           github_token: ${{ secrets.EFFECT_BOT_GH }}
           packages: effect,@effect/platform
+          base_branch: v3
+          eligible_branches: v3/next-minor
           git_user: effect-bot
           git_email: tech-ops@effectful.co
