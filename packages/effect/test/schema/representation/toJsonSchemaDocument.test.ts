@@ -275,25 +275,6 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     )
   })
 
-  it("skips an accessor extension annotation without evaluating it", () => {
-    let reads = 0
-    const annotations: Record<string, unknown> = { kept: true }
-    Object.defineProperty(annotations, "accessor", {
-      enumerable: true,
-      get() {
-        reads++
-        return "not read"
-      }
-    })
-    const output = SchemaRepresentation.toJsonSchemaDocument({
-      representation: { _tag: "String", annotations, checks: [] },
-      references: {}
-    }, { includeAnnotationKey: () => true })
-
-    assert.deepStrictEqual(output.schema, { type: "string", kept: true })
-    assert.strictEqual(reads, 0)
-  })
-
   it("uses a check fragment when the base JSON Schema is empty", () => {
     assert.deepStrictEqual(
       compile({

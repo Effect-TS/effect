@@ -1,6 +1,6 @@
 import { JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "../../utils/assert.ts"
 
 function toSchemaFromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
@@ -30,18 +30,6 @@ describe("fromJsonSchemaDocument", () => {
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
   }
-
-  it("reports an invalid JSON Schema document at the schema path", () => {
-    throws(
-      () =>
-        SchemaRepresentation.fromJsonSchemaDocument({
-          dialect: "draft-2020-12",
-          schema: { type: "string", invalid: undefined },
-          definitions: {}
-        }),
-      `Invalid schema representation document\n  at ["schema"]`
-    )
-  })
 
   it("{}", () => {
     assertFromJsonSchema(

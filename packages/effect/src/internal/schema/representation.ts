@@ -18,85 +18,21 @@ type NodeAnnotations = SchemaRepresentation.Declaration["annotations"]
 type FilterAnnotations = SchemaRepresentation.Filter["annotations"]
 type KeyAnnotations = SchemaRepresentation.Element["annotations"]
 type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
-type RebindRepresentation<A> =
-  & Omit<A, "representation">
-  & { readonly representation?: RepresentationAnnotation | undefined }
-
-type ArrayDataResult =
-  | { readonly _tag: "Success"; readonly values: ReadonlyArray<unknown> }
-  | { readonly _tag: "Failure" }
-
-function invalidStructuralValue(path: Path): never {
-  throw errorWithPath("Invalid structural value", path)
-}
-
-function isDataDescriptor(descriptor: PropertyDescriptor | undefined): descriptor is PropertyDescriptor & {
-  readonly value: unknown
-} {
-  return descriptor !== undefined && Object.hasOwn(descriptor, "value")
-}
-
-function readArrayData(input: ReadonlyArray<unknown>): ArrayDataResult {
-  if (Object.getPrototypeOf(input) !== Array.prototype) {
-    return { _tag: "Failure" }
-  }
-
-  const descriptors = Object.getOwnPropertyDescriptors(input)
-  const length = Object.getOwnPropertyDescriptor(input, "length")
-  if (
-    !isDataDescriptor(length) ||
-    typeof length.value !== "number" ||
-    !Number.isSafeInteger(length.value) ||
-    length.value < 0 ||
-    length.enumerable !== false ||
-    length.configurable !== false ||
-    length.writable !== true ||
-    Reflect.ownKeys(descriptors).length !== length.value + 1
-  ) {
-    return { _tag: "Failure" }
-  }
-
-  const values = new Array<unknown>(length.value)
-  for (let index = 0; index < length.value; index++) {
-    const descriptor = descriptors[index]
-    if (!isDataDescriptor(descriptor) || descriptor.enumerable !== true) {
-      return { _tag: "Failure" }
-    }
-    values[index] = descriptor.value
-  }
-  return { _tag: "Success", values }
-}
-
-function projectArray<A, B>(
-  input: ReadonlyArray<A>,
-  path: Path,
-  f: (value: A, path: Path) => B
-): ReadonlyArray<B> {
-  return input.map((value, index) => f(value, [...path, index]))
-}
 
 function annotationsField<A>(annotations: A | undefined): { readonly annotations?: A | undefined } {
   return annotations === undefined ? {} : { annotations }
 }
 
 function projectRepresentationAnnotation(
-  input: RepresentationAnnotation,
-  path: Path,
-  ancestors: ReadonlySet<object>
+  input: RepresentationAnnotation
 ): RepresentationAnnotation {
   if (input.schemas === undefined) return { id: input.id, payload: input.payload }
-  const schemas = projectArray(
-    input.schemas,
-    [...path, "schemas"],
-    (representation, representationPath) => projectRepresentation(representation, representationPath, ancestors)
-  )
+  const schemas = input.schemas.map(projectRepresentation)
   return { id: input.id, payload: input.payload, schemas }
 }
 
 function projectAnnotationBag(
   input: Readonly<Record<string, unknown>> | undefined,
-  path: Path,
-  ancestors: ReadonlySet<object>,
   excludedKeys: ReadonlySet<string> = new Set()
 ): NodeAnnotations {
   if (input === undefined) return undefined
@@ -105,11 +41,7 @@ function projectAnnotationBag(
   for (const [key, value] of Object.entries(input)) {
     if (value === undefined || excludedKeys.has(key)) continue
     if (key === "representation") {
-      const representation = projectRepresentationAnnotation(
-        value as RepresentationAnnotation,
-        [...path, key],
-        ancestors
-      )
+      const representation = projectRepresentationAnnotation(value as RepresentationAnnotation)
       InternalRecord.set(out, "representation", representation)
     } else {
       if (SchemaAST.isJson(value)) InternalRecord.set(out, key, value)
@@ -121,56 +53,10 @@ function projectAnnotationBag(
     : out as NonNullable<NodeAnnotations>
 }
 
-function projectNodeAnnotations(
-  input: NodeAnnotations | undefined,
-  path: Path,
-  ancestors: ReadonlySet<object>,
-  excludedKeys?: ReadonlySet<string>
-): NodeAnnotations | undefined {
-  return projectAnnotationBag(input, path, ancestors, excludedKeys)
-}
-
-function projectFilterAnnotations(
-  input: FilterAnnotations | undefined,
-  path: Path,
-  ancestors: ReadonlySet<object>
-): FilterAnnotations | undefined {
-  return projectAnnotationBag(input, path, ancestors) as FilterAnnotations
-}
-
-function projectKeyAnnotations(
-  input: KeyAnnotations | undefined,
-  path: Path,
-  ancestors: ReadonlySet<object>
-): KeyAnnotations | undefined {
-  const annotations = projectAnnotationBag(input, path, ancestors)
-  return annotations as KeyAnnotations | undefined
-}
-
-function projectChecks(
-  checks: ReadonlyArray<SchemaRepresentation.Check>,
-  path: Path,
-  ancestors: ReadonlySet<object>
-): ReadonlyArray<SchemaRepresentation.Check> {
-  return projectArray(checks, path, (check, checkPath) => projectCheck(check, checkPath, ancestors))
-}
-
-function projectCheck(
-  check: SchemaRepresentation.Check,
-  path: Path,
-  ancestors: ReadonlySet<object>
-): SchemaRepresentation.Check {
-  if (ancestors.has(check)) return invalidStructuralValue(path)
-  const nextAncestors = new Set(ancestors)
-  nextAncestors.add(check)
-
+function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.Check {
   switch (check._tag) {
     case "Filter": {
-      const annotations = projectFilterAnnotations(
-        check.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
+      const annotations = projectAnnotationBag(check.annotations) as FilterAnnotations
       return {
         _tag: "Filter",
         aborted: check.aborted,
@@ -178,18 +64,11 @@ function projectCheck(
       }
     }
     case "FilterGroup": {
-      const annotations = projectFilterAnnotations(
-        check.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(check.checks, [...path, "checks"], nextAncestors)
+      const annotations = projectAnnotationBag(check.annotations) as FilterAnnotations
+      const checks = Arr.map(check.checks, projectCheck)
       return {
         _tag: "FilterGroup",
-        checks: checks as readonly [
-          SchemaRepresentation.Check,
-          ...Array<SchemaRepresentation.Check>
-        ],
+        checks,
         ...annotationsField(annotations)
       }
     }
@@ -197,29 +76,15 @@ function projectCheck(
 }
 
 function projectRepresentation(
-  representation: SchemaRepresentation.Representation,
-  path: Path,
-  ancestors: ReadonlySet<object> = new Set()
+  representation: SchemaRepresentation.Representation
 ): SchemaRepresentation.Representation {
-  if (ancestors.has(representation)) return invalidStructuralValue(path)
-  const nextAncestors = new Set(ancestors)
-  nextAncestors.add(representation)
-
   switch (representation._tag) {
     case "Reference":
       return representation
     case "Declaration": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const typeParameters = projectArray(
-        representation.typeParameters,
-        [...path, "typeParameters"],
-        (typeParameter, typeParameterPath) => projectRepresentation(typeParameter, typeParameterPath, nextAncestors)
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
+      const annotations = projectAnnotationBag(representation.annotations)
+      const typeParameters = representation.typeParameters.map(projectRepresentation)
+      const checks = representation.checks.map(projectCheck)
       return {
         _tag: "Declaration",
         typeParameters,
@@ -228,12 +93,8 @@ function projectRepresentation(
       }
     }
     case "Suspend": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const thunk = projectRepresentation(representation.thunk, [...path, "thunk"], nextAncestors)
+      const annotations = projectAnnotationBag(representation.annotations)
+      const thunk = projectRepresentation(representation.thunk)
       return {
         _tag: "Suspend",
         checks: [],
@@ -252,12 +113,8 @@ function projectRepresentation(
     case "BigInt":
     case "Symbol":
     case "ObjectKeyword": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
       return {
         _tag: representation._tag,
         checks,
@@ -265,16 +122,14 @@ function projectRepresentation(
       } as SchemaRepresentation.Representation
     }
     case "String": {
-      const annotations = projectNodeAnnotations(
+      const annotations = projectAnnotationBag(
         representation.annotations,
-        [...path, "annotations"],
-        nextAncestors,
         new Set(["contentMediaType", "contentSchema"])
       )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
+      const checks = representation.checks.map(projectCheck)
       const contentSchema = representation.contentSchema === undefined
         ? undefined
-        : projectRepresentation(representation.contentSchema, [...path, "contentSchema"], nextAncestors)
+        : projectRepresentation(representation.contentSchema)
       return {
         _tag: "String",
         checks,
@@ -286,12 +141,8 @@ function projectRepresentation(
       }
     }
     case "Literal": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
       return {
         _tag: "Literal",
         literal: representation.literal,
@@ -300,12 +151,8 @@ function projectRepresentation(
       }
     }
     case "UniqueSymbol": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
       return {
         _tag: "UniqueSymbol",
         symbol: representation.symbol,
@@ -314,12 +161,8 @@ function projectRepresentation(
       }
     }
     case "Enum": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
       return {
         _tag: "Enum",
         enums: representation.enums,
@@ -328,17 +171,9 @@ function projectRepresentation(
       }
     }
     case "TemplateLiteral": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
-      const parts = projectArray(
-        representation.parts,
-        [...path, "parts"],
-        (part, partPath) => projectRepresentation(part, partPath, nextAncestors)
-      )
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
+      const parts = representation.parts.map(projectRepresentation)
       return {
         _tag: "TemplateLiteral",
         parts,
@@ -347,33 +182,18 @@ function projectRepresentation(
       }
     }
     case "Arrays": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
-      const elements = projectArray<
-        SchemaRepresentation.Element,
-        SchemaRepresentation.Element
-      >(representation.elements, [...path, "elements"], (element, elementPath) => {
-        const type = projectRepresentation(element.type, [...elementPath, "type"], nextAncestors)
-        const elementAnnotations = projectKeyAnnotations(
-          element.annotations,
-          [...elementPath, "annotations"],
-          nextAncestors
-        )
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
+      const elements = representation.elements.map((element) => {
+        const type = projectRepresentation(element.type)
+        const elementAnnotations = projectAnnotationBag(element.annotations) as KeyAnnotations
         return {
           isOptional: element.isOptional,
           type,
           ...annotationsField(elementAnnotations)
         }
       })
-      const rest = projectArray(
-        representation.rest,
-        [...path, "rest"],
-        (rest, restPath) => projectRepresentation(rest, restPath, nextAncestors)
-      )
+      const rest = representation.rest.map(projectRepresentation)
       return {
         _tag: "Arrays",
         elements,
@@ -383,25 +203,12 @@ function projectRepresentation(
       }
     }
     case "Objects": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
-      const propertySignatures = projectArray<
-        SchemaRepresentation.PropertySignature,
-        SchemaRepresentation.PropertySignature
-      >(
-        representation.propertySignatures,
-        [...path, "propertySignatures"],
-        (property, propertyPath) => {
-          const type = projectRepresentation(property.type, [...propertyPath, "type"], nextAncestors)
-          const propertyAnnotations = projectKeyAnnotations(
-            property.annotations,
-            [...propertyPath, "annotations"],
-            nextAncestors
-          )
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
+      const propertySignatures = representation.propertySignatures.map(
+        (property): SchemaRepresentation.PropertySignature => {
+          const type = projectRepresentation(property.type)
+          const propertyAnnotations = projectAnnotationBag(property.annotations) as KeyAnnotations
           return {
             name: property.name,
             type,
@@ -411,15 +218,10 @@ function projectRepresentation(
           }
         }
       )
-      const indexSignatures = projectArray<
-        SchemaRepresentation.IndexSignature,
-        SchemaRepresentation.IndexSignature
-      >(
-        representation.indexSignatures,
-        [...path, "indexSignatures"],
-        (index, indexPath) => {
-          const parameter = projectRepresentation(index.parameter, [...indexPath, "parameter"], nextAncestors)
-          const type = projectRepresentation(index.type, [...indexPath, "type"], nextAncestors)
+      const indexSignatures = representation.indexSignatures.map(
+        (index): SchemaRepresentation.IndexSignature => {
+          const parameter = projectRepresentation(index.parameter)
+          const type = projectRepresentation(index.type)
           return { parameter, type }
         }
       )
@@ -432,17 +234,9 @@ function projectRepresentation(
       }
     }
     case "Union": {
-      const annotations = projectNodeAnnotations(
-        representation.annotations,
-        [...path, "annotations"],
-        nextAncestors
-      )
-      const checks = projectChecks(representation.checks, [...path, "checks"], nextAncestors)
-      const types = projectArray(
-        representation.types,
-        [...path, "types"],
-        (type, typePath) => projectRepresentation(type, typePath, nextAncestors)
-      )
+      const annotations = projectAnnotationBag(representation.annotations)
+      const checks = representation.checks.map(projectCheck)
+      const types = representation.types.map(projectRepresentation)
       return {
         _tag: "Union",
         types,
@@ -454,13 +248,10 @@ function projectRepresentation(
   }
 }
 
-function projectReferences(
-  references: SchemaRepresentation.References,
-  path: Path
-): SchemaRepresentation.References {
+function projectReferences(references: SchemaRepresentation.References): SchemaRepresentation.References {
   const out: Record<string, SchemaRepresentation.Representation> = {}
   for (const [key, value] of Object.entries(references)) {
-    const representation = projectRepresentation(value, [...path, key])
+    const representation = projectRepresentation(value)
     InternalRecord.set(out, key, representation)
   }
   return out
@@ -470,8 +261,8 @@ function projectReferences(
 export function projectDocument(
   document: SchemaRepresentation.Document
 ): SchemaRepresentation.Document {
-  const representation = projectRepresentation(document.representation, ["representation"])
-  const references = projectReferences(document.references, ["references"])
+  const representation = projectRepresentation(document.representation)
+  const references = projectReferences(document.references)
   return { representation, references }
 }
 
@@ -479,19 +270,9 @@ export function projectDocument(
 export function projectMultiDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.MultiDocument {
-  const representations = projectArray(
-    document.representations,
-    ["representations"],
-    (representation, path) => projectRepresentation(representation, path)
-  )
-  const references = projectReferences(document.references, ["references"])
-  return {
-    representations: representations as readonly [
-      SchemaRepresentation.Representation,
-      ...Array<SchemaRepresentation.Representation>
-    ],
-    references
-  }
+  const representations = Arr.map(document.representations, projectRepresentation)
+  const references = projectReferences(document.references)
+  return { representations, references }
 }
 
 type Representation = SchemaRepresentation.Representation
@@ -1160,12 +941,9 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function enter(input: unknown, path: Path): JsonSchema.JsonSchema | undefined {
+  function enter(input: unknown): JsonSchema.JsonSchema | undefined {
     if (typeof input !== "object" || input === null || Array.isArray(input)) {
       return undefined
-    }
-    if (!SchemaAST.isJson(input)) {
-      throw errorWithPath("Invalid schema representation document", path)
     }
     const schema = input as JsonSchema.JsonSchema
     return options?.onEnter === undefined ? schema : options.onEnter(schema)
@@ -1175,7 +953,7 @@ function translateJsonSchemaMultiDocument(
     if (input === false) {
       return { _tag: "Never", checks: [] }
     }
-    const schema = enter(input, path)
+    const schema = enter(input)
     if (schema === undefined) {
       return { _tag: "Unknown", checks: [] }
     }
@@ -1550,23 +1328,17 @@ function collectJsonSchemaAnnotations(
   if (typeof contentMediaType === "string") out.contentMediaType = contentMediaType
 
   if (options?.includeAnnotationKey !== undefined) {
-    const descriptors = Object.getOwnPropertyDescriptors(annotations)
-    for (const key of Reflect.ownKeys(descriptors)) {
+    for (const [key, value] of Object.entries(annotations)) {
       if (
-        typeof key !== "string" ||
         key.startsWith("~") ||
         jsonSchemaExcludedAnnotationKeys.has(key) ||
         !options.includeAnnotationKey(key)
       ) {
         continue
       }
-      const descriptor = descriptors[key]
-      if (!isDataDescriptor(descriptor) || descriptor.enumerable !== true || descriptor.value === undefined) {
-        continue
-      }
-      const value = getJsonSchemaAnnotation(descriptor.value)
-      if (value !== undefined) {
-        out[key] = value
+      const annotation = getJsonSchemaAnnotation(value)
+      if (annotation !== undefined) {
+        out[key] = annotation
       }
     }
   }
@@ -2027,10 +1799,7 @@ function renderNumber(value: number): string {
   return globalThis.String(value)
 }
 
-function renderEmittableAnnotation(
-  input: unknown,
-  ancestors: ReadonlySet<object> = new Set()
-): string | undefined {
+function renderEmittableAnnotation(input: unknown): string | undefined {
   if (input === null) return "null"
   if (typeof input === "string") return JSON.stringify(input)
   if (typeof input === "boolean") return globalThis.String(input)
@@ -2040,31 +1809,20 @@ function renderEmittableAnnotation(
     const key = globalThis.Symbol.keyFor(input)
     return key === undefined ? undefined : `Symbol.for(${JSON.stringify(key)})`
   }
-  if (typeof input !== "object" || ancestors.has(input)) return undefined
-
-  const nextAncestors = new Set(ancestors)
-  nextAncestors.add(input)
+  if (typeof input !== "object") return undefined
   if (Array.isArray(input)) {
-    const data = readArrayData(input)
-    if (data._tag === "Failure") return undefined
     const values: Array<string> = []
-    for (const value of data.values) {
-      const rendered = renderEmittableAnnotation(value, nextAncestors)
+    for (const value of input) {
+      const rendered = renderEmittableAnnotation(value)
       if (rendered === undefined) return undefined
       values.push(rendered)
     }
     return `[${values.join(", ")}]`
   }
 
-  const prototype = Object.getPrototypeOf(input)
-  if (prototype !== Object.prototype && prototype !== null) return undefined
   const entries: Array<string> = []
-  const descriptors = Object.getOwnPropertyDescriptors(input)
-  for (const key of Reflect.ownKeys(descriptors)) {
-    if (typeof key !== "string") return undefined
-    const descriptor = descriptors[key]
-    if (!isDataDescriptor(descriptor) || descriptor.enumerable !== true) return undefined
-    const rendered = renderEmittableAnnotation(descriptor.value, nextAncestors)
+  for (const [key, value] of Object.entries(input)) {
+    const rendered = renderEmittableAnnotation(value)
     if (rendered === undefined) return undefined
     entries.push(`${JSON.stringify(key)}: ${rendered}`)
   }
@@ -2076,20 +1834,14 @@ function renderAnnotations(
 ): string | undefined {
   if (annotations === undefined) return undefined
   const entries: Array<string> = []
-  const descriptors = Object.getOwnPropertyDescriptors(annotations)
-  for (const key of Reflect.ownKeys(descriptors)) {
+  for (const [key, value] of Object.entries(annotations)) {
     if (
-      typeof key !== "string" ||
       key.startsWith("~") ||
       codeAnnotationExcludedKeys.has(key)
     ) {
       continue
     }
-    const descriptor = descriptors[key]
-    if (!isDataDescriptor(descriptor) || descriptor.enumerable !== true || descriptor.value === undefined) {
-      continue
-    }
-    const rendered = renderEmittableAnnotation(descriptor.value)
+    const rendered = renderEmittableAnnotation(value)
     if (rendered !== undefined) {
       entries.push(`${JSON.stringify(key)}: ${rendered}`)
     }
@@ -3028,7 +2780,10 @@ function lowerASTs(
   function convertRepresentationSchemas<A extends Schema.Annotations.Annotations>(
     annotations: A | undefined,
     stripStringContent: boolean
-  ): RebindRepresentation<A> | undefined {
+  ):
+    | Omit<A, "representation"> & { readonly representation?: RepresentationAnnotation | undefined }
+    | undefined
+  {
     if (annotations === undefined) {
       return undefined
     }
@@ -3052,6 +2807,6 @@ function lowerASTs(
       out = rest
     }
 
-    return out as RebindRepresentation<A>
+    return out as Omit<A, "representation"> & { readonly representation?: RepresentationAnnotation | undefined }
   }
 }

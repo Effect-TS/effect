@@ -389,30 +389,6 @@ describe("SchemaRepresentation.toJson", () => {
     )
   })
 
-  it("rejects representation cycles", () => {
-    const cyclic: any = { _tag: "Union", types: [], mode: "anyOf", checks: [] }
-    cyclic.types.push(cyclic)
-
-    throws(
-      () => SchemaRepresentation.toJson({ representation: cyclic, references: {} }),
-      `Invalid structural value\n  at ["representation"]["types"][0]`
-    )
-  })
-
-  it("rejects check cycles", () => {
-    const cyclic: any = { _tag: "FilterGroup", checks: [] }
-    cyclic.checks.push(cyclic)
-
-    throws(
-      () =>
-        SchemaRepresentation.toJson({
-          representation: { _tag: "String", checks: [cyclic] },
-          references: {}
-        }),
-      `Invalid structural value\n  at ["representation"]["checks"][0]["checks"][0]`
-    )
-  })
-
   it("encodes recursive references", () => {
     let schema: Schema.Codec<unknown>
     schema = Schema.suspend((): Schema.Codec<unknown> => schema)
