@@ -495,10 +495,10 @@ const make = Effect.gen(function*() {
             }
             // Process is still running, kill it
             return yield* killWithTimeout((command, childProcess, signal) =>
-              Effect.catch(
-                killProcessGroup(command, childProcess, signal),
-                () => killProcess(command, childProcess, signal)
-              ).pipe(Effect.andThen(Deferred.await(exitSignal)))
+              killProcessGroup(command, childProcess, signal).pipe(
+                Effect.catch(() => killProcess(command, childProcess, signal)),
+                Effect.andThen(Deferred.await(exitSignal))
+              )
             ).pipe(
               Effect.ignore
             )
@@ -541,10 +541,10 @@ const make = Effect.gen(function*() {
         const kill = (options?: ChildProcess.KillOptions | undefined) => {
           const killWithTimeout = withTimeout(childProcess, cmd, options)
           return killWithTimeout((command, childProcess, signal) =>
-            Effect.catch(
-              killProcessGroup(command, childProcess, signal),
-              () => killProcess(command, childProcess, signal)
-            ).pipe(Effect.andThen(Deferred.await(exitSignal)))
+            killProcessGroup(command, childProcess, signal).pipe(
+              Effect.catch(() => killProcess(command, childProcess, signal)),
+              Effect.andThen(Deferred.await(exitSignal))
+            )
           ).pipe(
             Effect.asVoid
           )

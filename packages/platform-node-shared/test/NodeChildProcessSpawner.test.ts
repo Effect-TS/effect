@@ -466,6 +466,7 @@ describe("NodeChildProcessSpawner", () => {
             const ready = path.join(directory, "ready")
             const handle = yield* ChildProcess.make("node", [
               "-e",
+              // Installing a listener suppresses Node's default SIGTERM exit so the test exercises force-kill escalation.
               "process.on('SIGTERM', () => {}); require('node:fs').writeFileSync(process.argv[1], ''); setInterval(() => {}, 1000)",
               ready
             ], {
@@ -507,6 +508,7 @@ describe("NodeChildProcessSpawner", () => {
             const completed = yield* Effect.scoped(Effect.gen(function*() {
               yield* ChildProcess.make("node", [
                 "-e",
+                // Installing a listener suppresses Node's default SIGTERM exit so the test exercises force-kill escalation.
                 "process.on('SIGTERM', () => {}); require('node:fs').writeFileSync(process.argv[1], ''); setTimeout(() => process.exit(0), 2000)",
                 ready
               ], {
