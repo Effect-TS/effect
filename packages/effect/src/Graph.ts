@@ -3357,22 +3357,22 @@ const formatMermaidNode = (
  *     name: "MyApp",
  *     version: "1.0.0",
  *     type: "library"
- *   })
+ *   } satisfies Dependency)
  *   const react = Graph.addNode(mutable, {
  *     name: "React",
  *     version: "18.0.0",
  *     type: "framework"
- *   })
+ *   } satisfies Dependency)
  *   const lodash = Graph.addNode(mutable, {
  *     name: "Lodash",
  *     version: "4.17.0",
  *     type: "library"
- *   })
+ *   } satisfies Dependency)
  *   const webpack = Graph.addNode(mutable, {
  *     name: "Webpack",
  *     version: "5.0.0",
  *     type: "tool"
- *   })
+ *   } satisfies Dependency)
  *
  *   Graph.addEdge(mutable, app, react, "depends on")
  *   Graph.addEdge(mutable, app, lodash, "depends on")
