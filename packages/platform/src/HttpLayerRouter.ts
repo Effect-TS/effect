@@ -58,7 +58,7 @@ export interface HttpRouter {
   readonly prefixed: (prefix: string) => HttpRouter
 
   readonly add: <E, R>(
-    method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
+    method: HttpMethod.HttpMethod | "*",
     path: PathInput,
     handler:
       | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
@@ -299,7 +299,7 @@ export const use = <A, E, R>(
  * @category HttpRouter
  */
 export const add = <E, R>(
-  method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
+  method: HttpMethod.HttpMethod | "*",
   path: PathInput,
   handler:
     | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
@@ -442,7 +442,7 @@ const makeRoute = <E, R>(options: {
  * @category Route
  */
 export const route = <E, R>(
-  method: "*" | "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS",
+  method: HttpMethod.HttpMethod | "*",
   path: PathInput,
   handler:
     | Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>

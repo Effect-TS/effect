@@ -70,6 +70,7 @@
  * @since 1.0.0
  */
 import type * as HttpClientError from "@effect/platform/HttpClientError"
+import * as HttpMethod from "@effect/platform/HttpMethod"
 import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
 import type { ParseError } from "effect/ParseResult"
@@ -145,7 +146,7 @@ export const isAiError = (u: unknown): u is AiError => Predicate.hasProperty(u, 
  * @category Schemas
  */
 export const HttpRequestDetails = Schema.Struct({
-  method: Schema.Literal("GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS"),
+  method: Schema.Literal(...HttpMethod.all),
   url: Schema.String,
   urlParams: Schema.Array(Schema.Tuple(Schema.String, Schema.String)),
   hash: Schema.Option(Schema.String),

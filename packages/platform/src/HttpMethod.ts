@@ -10,6 +10,17 @@ export type HttpMethod =
   | "PATCH"
   | "HEAD"
   | "OPTIONS"
+  | "PROPFIND"
+  | "PROPPATCH"
+  | "MKCOL"
+  | "COPY"
+  | "MOVE"
+  | "LOCK"
+  | "UNLOCK"
+  | "TRACE"
+  | "SEARCH"
+  | "REPORT"
+  | "MKCALENDAR"
 
 /**
  * @since 1.0.0
@@ -20,7 +31,7 @@ export declare namespace HttpMethod {
    * @since 1.0.0
    * @category models
    */
-  export type NoBody = "GET" | "HEAD" | "OPTIONS"
+  export type NoBody = "GET" | "HEAD" | "OPTIONS" | "TRACE"
 
   /**
    * @since 1.0.0
@@ -32,12 +43,32 @@ export declare namespace HttpMethod {
 /**
  * @since 1.0.0
  */
-export const hasBody = (method: HttpMethod): boolean => method !== "GET" && method !== "HEAD" && method !== "OPTIONS"
+export const hasBody = (method: HttpMethod): boolean =>
+  method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE"
 
 /**
  * @since 1.0.0
  */
-export const all: ReadonlySet<HttpMethod> = new Set(["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+export const all: ReadonlySet<HttpMethod> = new Set([
+  "GET",
+  "POST",
+  "PUT",
+  "DELETE",
+  "PATCH",
+  "HEAD",
+  "OPTIONS",
+  "PROPFIND",
+  "PROPPATCH",
+  "MKCOL",
+  "COPY",
+  "MOVE",
+  "LOCK",
+  "UNLOCK",
+  "TRACE",
+  "SEARCH",
+  "REPORT",
+  "MKCALENDAR"
+])
 
 /**
  * Tests if a value is a `HttpMethod`.
