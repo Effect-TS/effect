@@ -115,6 +115,47 @@ export const A = B
 `)
   })
 
+  it("hoists recursive definitions referenced by earlier recursive definitions", () => {
+    const generator = JsonSchemaGenerator.make()
+    generator.addSchema("A", { $ref: "#/components/schemas/ResourcesNetworkCard" })
+    const definitions = {
+      ResourcesNetworkCard: {
+        type: "object",
+        properties: {
+          sriov: {
+            $ref: "#/components/schemas/ResourcesNetworkCardSRIOV"
+          }
+        },
+        additionalProperties: false
+      },
+      ResourcesNetworkCardSRIOV: {
+        type: "object",
+        properties: {
+          vfs: {
+            type: "array",
+            items: {
+              $ref: "#/components/schemas/ResourcesNetworkCard"
+            }
+          }
+        },
+        additionalProperties: false
+      }
+    }
+
+    const result = generator.generate("openapi-3.1", definitions, false)
+    const recursiveDeclaration =
+      "export const ResourcesNetworkCardSRIOV = Schema.suspend((): Schema.Codec<ResourcesNetworkCardSRIOV> => __recursive_ResourcesNetworkCardSRIOV)"
+
+    expect(result).toContain(recursiveDeclaration)
+    expect(result).toContain("const __recursive_ResourcesNetworkCardSRIOV =")
+    expect(result.indexOf(recursiveDeclaration)).toBeLessThan(
+      result.indexOf("export const ResourcesNetworkCard =")
+    )
+    expect(result.indexOf("export const ResourcesNetworkCard =")).toBeLessThan(
+      result.indexOf("const __recursive_ResourcesNetworkCardSRIOV =")
+    )
+  })
+
   it("renders recursive definitions before non-recursive references for runtime generation", () => {
     const generator = JsonSchemaGenerator.make()
     generator.addSchema("A", { $ref: "#/components/schemas/ErrorResponse" })

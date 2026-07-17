@@ -285,12 +285,24 @@ function collectForwardReferencedRecursives(
   recursives: ReadonlyArray<readonly [string, SchemaRepresentation.Code]>
 ): Set<string> {
   const recursiveNames = new Set(recursives.map(([name]) => name))
+  const recursiveIndexes = new Map(recursives.map(([name], index) => [name, index]))
   const referenced = new Set<string>()
 
   for (const { code } of nonRecursives) {
     for (const token of code.runtime.matchAll(tokenPattern)) {
       const identifier = token[0]
       if (recursiveNames.has(identifier)) {
+        referenced.add(identifier)
+      }
+    }
+  }
+
+  for (let index = 0; index < recursives.length; index++) {
+    const [, code] = recursives[index]
+    for (const token of code.runtime.matchAll(tokenPattern)) {
+      const identifier = token[0]
+      const referencedIndex = recursiveIndexes.get(identifier)
+      if (referencedIndex !== undefined && referencedIndex > index) {
         referenced.add(identifier)
       }
     }
