@@ -6,12 +6,20 @@ import type { SqlError } from "@effect/sql/SqlError"
 import type { DrizzleConfig } from "drizzle-orm"
 import { QueryPromise } from "drizzle-orm/query-promise"
 import { SQLiteSelectBase } from "drizzle-orm/sqlite-core"
-import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy"
+import type { AsyncBatchRemoteCallback, AsyncRemoteCallback, SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy"
 import { drizzle } from "drizzle-orm/sqlite-proxy"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import { makeRemoteCallback, patch } from "./internal/patch.js"
+
+const makeRemoteBatchCallback = (callback: AsyncRemoteCallback): AsyncBatchRemoteCallback => async (queries) => {
+  const results = []
+  for (const query of queries) {
+    results.push(await callback(query.sql, query.params, query.method))
+  }
+  return results
+}
 
 /**
  * @since 1.0.0
@@ -21,7 +29,8 @@ export const make = <TSchema extends Record<string, unknown> = Record<string, ne
   config?: Omit<DrizzleConfig<TSchema>, "logger">
 ): Effect.Effect<SqliteRemoteDatabase<TSchema>, never, Client.SqlClient> =>
   Effect.gen(function*() {
-    const db = drizzle(yield* makeRemoteCallback, config)
+    const callback = yield* makeRemoteCallback
+    const db = drizzle(callback, makeRemoteBatchCallback(callback), config)
     return db
   })
 
@@ -33,7 +42,8 @@ export const makeWithConfig: (config: DrizzleConfig) => Effect.Effect<SqliteRemo
   config
 ) =>
   Effect.gen(function*() {
-    const db = drizzle(yield* makeRemoteCallback, config)
+    const callback = yield* makeRemoteCallback
+    const db = drizzle(callback, makeRemoteBatchCallback(callback), config)
     return db
   })
 

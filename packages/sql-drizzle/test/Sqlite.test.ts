@@ -55,6 +55,23 @@ describe("SqliteDrizzle", () => {
       assert.deepStrictEqual(results, [{ id: 1, name: "Alice", snakeCase: "snake" }])
     }).pipe(Effect.provide(ORM.Client)))
 
+  it.effect("batch", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const db = yield* SqliteDrizzle.SqliteDrizzle
+      yield* sql`CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, snake_case TEXT)`
+      const results = yield* Effect.promise(() =>
+        db.batch([
+          db.insert(users).values({ name: "Alice", snakeCase: "snake" }).returning(),
+          db.select().from(users)
+        ])
+      )
+      assert.deepStrictEqual(results, [
+        [{ id: 1, name: "Alice", snakeCase: "snake" }],
+        [{ id: 1, name: "Alice", snakeCase: "snake" }]
+      ])
+    }).pipe(Effect.provide(SqliteDrizzleLive)))
+
   it.effect("remote callback", () =>
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
