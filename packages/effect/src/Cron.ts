@@ -150,8 +150,9 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
 }
 
 function toPojo(cron: Cron): Record<string, unknown> {
-  return {
+  const out: Record<string, unknown> = {
     tz: cron.tz,
+    and: cron.and,
     seconds: Arr.fromIterable(cron.seconds),
     minutes: Arr.fromIterable(cron.minutes),
     hours: Arr.fromIterable(cron.hours),
@@ -159,6 +160,7 @@ function toPojo(cron: Cron): Record<string, unknown> {
     months: Arr.fromIterable(cron.months),
     weekdays: Arr.fromIterable(cron.weekdays)
   }
+  return out
 }
 
 const CronProto = {
@@ -179,15 +181,7 @@ const CronProto = {
     )
   },
   toObject(this: Cron) {
-    return {
-      tz: this.tz,
-      seconds: Arr.fromIterable(this.seconds),
-      minutes: Arr.fromIterable(this.minutes),
-      hours: Arr.fromIterable(this.hours),
-      days: Arr.fromIterable(this.days),
-      months: Arr.fromIterable(this.months),
-      weekdays: Arr.fromIterable(this.weekdays)
-    }
+    return toPojo(this)
   },
   toString(this: Cron) {
     return `Cron(${format(toPojo(this))})`
