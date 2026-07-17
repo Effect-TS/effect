@@ -19,7 +19,7 @@ import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
-import { hasProperty, isPromiseLike } from "./Predicate.ts"
+import { hasProperty } from "./Predicate.ts"
 import type { Covariant, Invariant, Mutable } from "./Types.ts"
 
 const TypeId = "~effect/collections/Graph"
@@ -639,13 +639,11 @@ export const endMutation = <N, E, T extends Kind = "directed">(
 /** @internal */
 const mutateScoped = <N, E, T extends Kind>(
   mutable: MutableGraph<N, E, T>,
-  f: (mutable: MutableGraph<N, E, T>) => unknown
+  f: (mutable: MutableGraph<N, E, T>) => undefined
 ): Graph<N, E, T> => {
   let graph: Graph<N, E, T>
   try {
-    if (isPromiseLike(f(mutable))) {
-      throw new GraphError({ message: "Graph mutation callbacks must be synchronous" })
-    }
+    f(mutable)
   } finally {
     graph = endMutation(mutable)
   }
