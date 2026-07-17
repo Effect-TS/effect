@@ -165,7 +165,7 @@ export declare namespace Tag {
 }
 
 /**
- * Creates a new `Tag` instance with an optional key parameter.
+ * Creates a new `Tag` instance with the specified key.
  *
  * @example
  * ```ts
