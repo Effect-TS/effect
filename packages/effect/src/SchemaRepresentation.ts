@@ -5,6 +5,7 @@
  */
 import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
 import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
+import * as InternalRepresentationJson from "./internal/schema/representationJson.ts"
 import * as InternalToCodeDocument from "./internal/schema/toCodeDocument.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
@@ -784,7 +785,7 @@ export function toCodeDocument(document: MultiDocument): CodeDocument {
  * @category schemas
  * @since 4.0.0
  */
-export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalFromRepresentation
+export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalRepresentationJson
   .getPersistedDocumentFromJson()
 
 /**
@@ -804,7 +805,7 @@ export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalFro
  * @category schemas
  * @since 4.0.0
  */
-export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = InternalFromRepresentation
+export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = InternalRepresentationJson
   .getPersistedMultiDocumentFromJson()
 
 /**
@@ -826,7 +827,7 @@ export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = I
  * @since 4.0.0
  */
 export function toJson(document: Document): Schema.Json {
-  return InternalFromRepresentation.toJson(document)
+  return InternalRepresentationJson.toJson(document)
 }
 
 /**
@@ -848,7 +849,7 @@ export function toJson(document: Document): Schema.Json {
  * @since 4.0.0
  */
 export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
-  return InternalFromRepresentation.toJsonMultiDocument(document)
+  return InternalRepresentationJson.toJsonMultiDocument(document)
 }
 
 /**
@@ -870,7 +871,7 @@ export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
  * @since 4.0.0
  */
 export function fromJson(input: Schema.Json): Document {
-  return InternalFromRepresentation.fromJson(input)
+  return InternalRepresentationJson.fromJson(input)
 }
 
 /**
@@ -892,7 +893,7 @@ export function fromJson(input: Schema.Json): Document {
  * @since 4.0.0
  */
 export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
-  return InternalFromRepresentation.fromJsonMultiDocument(input)
+  return InternalRepresentationJson.fromJsonMultiDocument(input)
 }
 
 /**
