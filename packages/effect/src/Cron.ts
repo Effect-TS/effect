@@ -783,21 +783,36 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     (next: number, current: number) => next < current :
     (next: number, current: number) => next > current
 
-  const utc = tz !== undefined && dateTime.isTimeZoneNamed(tz) && tz.id === "UTC"
-  const adjustDst = utc ? constVoid : (current: Date) => {
-    const adjusted = dateTime.makeZonedUnsafe(current, {
+  const start = dateTime.toEpochMillis(zoned)
+  const result = dateTime.mutate(zoned, (current) => {
+    const earlier = dateTime.makeZonedUnsafe(current, {
       timeZone: zoned.zone,
       adjustForTimeZone: true,
-      disambiguation: reverse ? "later" : undefined
-    }).pipe(dateTime.toDate)
-
-    const drift = current.getTime() - adjusted.getTime()
-    if (reverse ? drift !== 0 : drift > 0) {
-      current.setTime(reverse ? adjusted.getTime() : current.getTime() + drift)
+      disambiguation: "earlier"
+    })
+    const later = dateTime.makeZonedUnsafe(current, {
+      timeZone: zoned.zone,
+      adjustForTimeZone: true,
+      disambiguation: "later"
+    })
+    const earlierTime = dateTime.toEpochMillis(earlier)
+    const laterTime = dateTime.toEpochMillis(later)
+    if (earlierTime !== laterTime && start === laterTime) {
+      const laterOffset = dateTime.zonedOffset(later)
+      let low = earlierTime
+      let high = laterTime
+      while (low + 1 < high) {
+        const middle = Math.floor((low + high) / 2)
+        const offset = dateTime.makeZonedUnsafe(middle, { timeZone: zoned.zone }).pipe(dateTime.zonedOffset)
+        if (offset === laterOffset) {
+          high = middle
+        } else {
+          low = middle
+        }
+      }
+      const foldStart = dateTime.makeZonedUnsafe(high, { timeZone: zoned.zone }).pipe(dateTime.toDate)
+      current.setTime(foldStart.getTime() + laterTime - earlierTime - (reverse ? 0 : 1_000))
     }
-  }
-
-  const result = dateTime.mutate(zoned, (current) => {
     current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
 
     for (let i = 0; i < 10_000; i++) {
@@ -806,12 +821,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
         const nextSecond = table.second[currentSecond]
         if (nextSecond === undefined) {
           current.setUTCMinutes(current.getUTCMinutes() + tick, boundary.second)
-          adjustDst(current)
           continue
         }
         if (needsStep(nextSecond, currentSecond)) {
           current.setUTCSeconds(nextSecond)
-          adjustDst(current)
           continue
         }
       }
@@ -821,12 +834,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
         const nextMinute = table.minute[currentMinute]
         if (nextMinute === undefined) {
           current.setUTCHours(current.getUTCHours() + tick, boundary.minute, boundary.second)
-          adjustDst(current)
           continue
         }
         if (needsStep(nextMinute, currentMinute)) {
           current.setUTCMinutes(nextMinute, boundary.second)
-          adjustDst(current)
           continue
         }
       }
@@ -837,12 +848,10 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
         if (nextHour === undefined) {
           current.setUTCDate(current.getUTCDate() + tick)
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-          adjustDst(current)
           continue
         }
         if (needsStep(nextHour, currentHour)) {
           current.setUTCHours(nextHour, boundary.minute, boundary.second)
-          adjustDst(current)
           continue
         }
       }
@@ -854,7 +863,6 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
           if (!matchesDay || !matchesWeekday) {
             current.setUTCDate(current.getUTCDate() + tick)
             current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-            adjustDst(current)
             continue
           }
         } else {
@@ -908,7 +916,6 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
           if (addDays !== 0) {
             current.setUTCDate(current.getUTCDate() + addDays)
             current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-            adjustDst(current)
             continue
           }
         }
@@ -928,19 +935,37 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
           current.setUTCFullYear(current.getUTCFullYear() + tick)
           current.setUTCMonth(boundary.month, clampBoundaryDay(boundary.month))
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-          adjustDst(current)
           continue
         }
         if (needsStep(nextMonth, currentMonth)) {
           const targetMonthIndex = nextMonth - 1
           current.setUTCMonth(targetMonthIndex, clampBoundaryDay(targetMonthIndex))
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-          adjustDst(current)
           continue
         }
       }
 
-      return
+      const candidate = dateTime.makeZonedUnsafe(current, {
+        timeZone: zoned.zone,
+        adjustForTimeZone: true,
+        disambiguation: "earlier"
+      })
+      const candidateWallTime = dateTime.toDate(candidate).getTime()
+      if (candidateWallTime !== current.getTime()) {
+        const adjusted = reverse ? candidate : dateTime.makeZonedUnsafe(current, {
+          timeZone: zoned.zone,
+          adjustForTimeZone: true,
+          disambiguation: "later"
+        })
+        current.setTime(dateTime.toDate(adjusted).getTime())
+        continue
+      }
+
+      const candidateTime = dateTime.toEpochMillis(candidate)
+      if ((reverse ? candidateTime < start : candidateTime > start) && match(cron, candidate)) {
+        return
+      }
+      current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
     }
 
     throw new Error("Unable to find cron date")
