@@ -5009,8 +5009,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
     visit: <U>(f: (index: T, data: N) => U) => Iterable<U>
   ) {
     this.visit = visit
-    const iterable = visit((index, data) => [index, data] as [T, N])
-    this[Symbol.iterator] = () => iterable[Symbol.iterator]()
+    this[Symbol.iterator] = () => visit((index, data) => [index, data] as [T, N])[Symbol.iterator]()
   }
 }
 

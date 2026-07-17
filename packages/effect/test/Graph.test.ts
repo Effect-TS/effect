@@ -4219,6 +4219,37 @@ describe("Graph", () => {
 
       assert.deepStrictEqual(Array.from(walker), [[0, "A"], [1, "B"]])
     })
+
+    it("should create fresh iterators for generator-backed walkers", () => {
+      const walker = new Graph.Walker<number, string>(function*(f) {
+        yield f(0, "A")
+        yield f(1, "B")
+      })
+
+      const assertRepeated = <A>(iterable: Iterable<A>, expected: Array<A>) => {
+        assert.deepStrictEqual(Array.from(iterable), expected)
+        assert.deepStrictEqual(Array.from(iterable), expected)
+      }
+
+      assertRepeated(walker, [[0, "A"], [1, "B"]])
+      assert.deepStrictEqual(Array.from(walker.visit((index, data) => `${index}:${data}`)), ["0:A", "1:B"])
+      assert.deepStrictEqual(Array.from(walker.visit((index, data) => `${index}:${data}`)), ["0:A", "1:B"])
+      assert.deepStrictEqual(Array.from(Graph.indices(walker)), [0, 1])
+      assert.deepStrictEqual(Array.from(Graph.indices(walker)), [0, 1])
+      assert.deepStrictEqual(Array.from(Graph.values(walker)), ["A", "B"])
+      assert.deepStrictEqual(Array.from(Graph.values(walker)), ["A", "B"])
+      assert.deepStrictEqual(Array.from(Graph.entries(walker)), [[0, "A"], [1, "B"]])
+      assert.deepStrictEqual(Array.from(Graph.entries(walker)), [[0, "A"], [1, "B"]])
+
+      const left = walker[Symbol.iterator]()
+      const right = walker[Symbol.iterator]()
+      assert.deepStrictEqual(left.next(), { done: false, value: [0, "A"] })
+      assert.deepStrictEqual(right.next(), { done: false, value: [0, "A"] })
+      assert.deepStrictEqual(left.next(), { done: false, value: [1, "B"] })
+      assert.deepStrictEqual(right.next(), { done: false, value: [1, "B"] })
+      assert.deepStrictEqual(left.next(), { done: true, value: undefined })
+      assert.deepStrictEqual(right.next(), { done: true, value: undefined })
+    })
   })
 
   describe("NodeIterable abstraction", () => {
