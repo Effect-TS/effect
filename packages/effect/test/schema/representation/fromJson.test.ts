@@ -228,7 +228,7 @@ describe("SchemaRepresentation.fromJson", () => {
       SchemaRepresentation.fromJson({
         representation: {
           _tag: "Literal",
-          literal: { _tag: "BigInt", value: "1" },
+          literal: "1",
           checks: []
         },
         references: {}
@@ -244,7 +244,7 @@ describe("SchemaRepresentation.fromJson", () => {
     const document = SchemaRepresentation.fromJson({
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "-0" },
+        literal: -0,
         checks: []
       },
       references: {}
@@ -259,7 +259,7 @@ describe("SchemaRepresentation.fromJson", () => {
     const document = SchemaRepresentation.fromJson({
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "NaN" },
+        literal: "NaN",
         checks: []
       },
       references: {}
@@ -274,7 +274,7 @@ describe("SchemaRepresentation.fromJson", () => {
     const document = SchemaRepresentation.fromJson({
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "Infinity" },
+        literal: "Infinity",
         checks: []
       },
       references: {}
@@ -289,7 +289,7 @@ describe("SchemaRepresentation.fromJson", () => {
     const document = SchemaRepresentation.fromJson({
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "-Infinity" },
+        literal: "-Infinity",
         checks: []
       },
       references: {}
@@ -305,7 +305,7 @@ describe("SchemaRepresentation.fromJson", () => {
       SchemaRepresentation.fromJson({
         representation: {
           _tag: "UniqueSymbol",
-          symbol: { _tag: "GlobalSymbol", key: "acme/schema/key" },
+          symbol: "Symbol(acme/schema/key)",
           checks: []
         },
         references: {}
@@ -321,27 +321,9 @@ describe("SchemaRepresentation.fromJson", () => {
     )
   })
 
-  it("does not coerce decimal strings", () => {
-    const input = {
-      representation: { _tag: "Literal", literal: "1", checks: [] },
-      references: {}
-    } as const
-
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
-  })
-
   it("does not coerce strings resembling symbols", () => {
     const input = {
       representation: { _tag: "Literal", literal: "Symbol(a)", checks: [] },
-      references: {}
-    } as const
-
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
-  })
-
-  it("does not coerce strings resembling exceptional numbers", () => {
-    const input = {
-      representation: { _tag: "Literal", literal: "NaN", checks: [] },
       references: {}
     } as const
 
@@ -370,36 +352,6 @@ describe("SchemaRepresentation.fromJson", () => {
     )
   })
 
-  it("rejects non-canonical bigint envelopes", () => {
-    throws(
-      () =>
-        SchemaRepresentation.fromJson({
-          representation: {
-            _tag: "Literal",
-            literal: { _tag: "BigInt", value: "01" },
-            checks: []
-          },
-          references: {}
-        }),
-      `Expected number | { readonly "_tag": "ExceptionalNumber", ... }, got {"_tag":"BigInt","value":"01"}\n  at ["representation"]["literal"]\nExpected <filter>, got "01"\n  at ["representation"]["literal"]["value"]`
-    )
-  })
-
-  it("rejects invalid exceptional-number envelopes", () => {
-    throws(
-      () =>
-        SchemaRepresentation.fromJson({
-          representation: {
-            _tag: "Literal",
-            literal: { _tag: "ExceptionalNumber", value: "0" },
-            checks: []
-          },
-          references: {}
-        }),
-      `Expected "-0" | "NaN" | "Infinity" | "-Infinity", got "0"\n  at ["representation"]["literal"]["value"]`
-    )
-  })
-
   it("rejects empty references", () => {
     throws(
       () =>
@@ -407,7 +359,7 @@ describe("SchemaRepresentation.fromJson", () => {
           representation: { _tag: "Reference", $ref: "" },
           references: {}
         }),
-      `Expected <filter>, got ""\n  at ["representation"]["$ref"]`
+      `Expected a value with a length of at least 1, got ""\n  at ["representation"]["$ref"]`
     )
   })
 
@@ -437,7 +389,7 @@ describe("SchemaRepresentation.fromJson", () => {
   it("does not invoke toJSON", () => {
     let calls = 0
     const input = {
-      representation: { _tag: "String", checks: [] },
+      representation: { _tag: "String", checks: [], unexpected: true },
       references: {},
       toJSON() {
         calls++

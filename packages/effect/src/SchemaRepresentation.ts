@@ -769,46 +769,6 @@ export function toCodeDocument(document: MultiDocument): CodeDocument {
 }
 
 /**
- * Schema for persisted single-root representation documents encoded as JSON.
- *
- * **When to use**
- *
- * Use when you need to inspect or transport the persisted representation without reviving runtime callbacks.
- *
- * **Gotchas**
- *
- * Extended structural primitives use tagged JSON envelopes. Payloads and generic annotations remain ordinary JSON.
- *
- * @see {@link MultiDocumentFromJson} for documents with multiple roots
- * @see {@link toJson} for projecting a live document before encoding it
- *
- * @category schemas
- * @since 4.0.0
- */
-export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalRepresentationJson
-  .getPersistedDocumentFromJson()
-
-/**
- * Schema for persisted multi-root representation documents encoded as JSON.
- *
- * **When to use**
- *
- * Use when you need to inspect or transport multiple persisted roots that share references.
- *
- * **Gotchas**
- *
- * Decoding validates persisted data but does not reconstruct schemas or runtime callbacks.
- *
- * @see {@link DocumentFromJson} for a single-root document
- * @see {@link toJsonMultiDocument} for projecting a live multi-document before encoding it
- *
- * @category schemas
- * @since 4.0.0
- */
-export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = InternalRepresentationJson
-  .getPersistedMultiDocumentFromJson()
-
-/**
  * Projects a live single-root representation document and encodes it as JSON.
  *
  * **When to use**
@@ -820,7 +780,6 @@ export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = I
  * Generic annotations that are not JSON are omitted. Invalid persistence identities and unsupported structural values throw an `Error` containing their representation path.
  *
  * @see {@link toRepresentation} for constructing the live document
- * @see {@link DocumentFromJson} for direct access to the document codec
  * @see {@link toJsonMultiDocument} for documents with multiple roots
  *
  * @category encoding
@@ -842,7 +801,6 @@ export function toJson(document: Document): Schema.Json {
  * The root order and shared reference keys are preserved, while non-JSON generic annotations are omitted.
  *
  * @see {@link toRepresentations} for constructing the live multi-document
- * @see {@link MultiDocumentFromJson} for direct access to the multi-document codec
  * @see {@link toJson} for a single-root document
  *
  * @category encoding

@@ -7,12 +7,20 @@ describe("SchemaRepresentation.fromJsonMultiDocument", () => {
     const input = {
       representations: [
         { _tag: "String", checks: [] },
-        { _tag: "Number", checks: [] }
+        { _tag: "Number", checks: [] },
+        { _tag: "Literal", literal: "1", checks: [] }
       ],
       references: {}
     } as const
 
-    assert.deepStrictEqual(SchemaRepresentation.fromJsonMultiDocument(input), input)
+    assert.deepStrictEqual(SchemaRepresentation.fromJsonMultiDocument(input), {
+      representations: [
+        { _tag: "String", checks: [] },
+        { _tag: "Number", checks: [] },
+        { _tag: "Literal", literal: 1n, checks: [] }
+      ],
+      references: {}
+    })
   })
 
   it("decodes shared references", () => {

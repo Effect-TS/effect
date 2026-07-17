@@ -16,21 +16,6 @@ describe("SchemaRepresentation persisted wire", () => {
     >()
   })
 
-  it("exposes codecs for documents", () => {
-    expect(SchemaRepresentation.DocumentFromJson).type.toBe<
-      Schema.Codec<
-        SchemaRepresentation.Document,
-        Schema.Json
-      >
-    >()
-    expect(SchemaRepresentation.MultiDocumentFromJson).type.toBe<
-      Schema.Codec<
-        SchemaRepresentation.MultiDocument,
-        Schema.Json
-      >
-    >()
-  })
-
   it("keeps projection explicit for single and multi documents", () => {
     expect(SchemaRepresentation.toJson).type.toBe<
       (document: SchemaRepresentation.Document) => Schema.Json

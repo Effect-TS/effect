@@ -3,6 +3,17 @@ import { Schema, SchemaAST, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 describe("SchemaRepresentation.toJson", () => {
+  it("rejects invalid documents", () => {
+    throws(
+      () =>
+        SchemaRepresentation.toJson({
+          representation: { _tag: "Reference", $ref: "" },
+          references: {}
+        }),
+      `Expected a value with a length of at least 1, got ""\n  at ["representation"]["$ref"]`
+    )
+  })
+
   it("requires representation when persisting a Filter", () => {
     throws(
       () =>
@@ -284,7 +295,7 @@ describe("SchemaRepresentation.toJson", () => {
       {
         representation: {
           _tag: "Literal",
-          literal: { _tag: "BigInt", value: "1" },
+          literal: "1",
           checks: []
         },
         references: {}
@@ -298,7 +309,7 @@ describe("SchemaRepresentation.toJson", () => {
       {
         representation: {
           _tag: "Literal",
-          literal: { _tag: "ExceptionalNumber", value: "-0" },
+          literal: -0,
           checks: []
         },
         references: {}
@@ -315,7 +326,7 @@ describe("SchemaRepresentation.toJson", () => {
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "NaN" },
+        literal: "NaN",
         checks: []
       },
       references: {}
@@ -331,7 +342,7 @@ describe("SchemaRepresentation.toJson", () => {
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "Infinity" },
+        literal: "Infinity",
         checks: []
       },
       references: {}
@@ -347,7 +358,7 @@ describe("SchemaRepresentation.toJson", () => {
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
       representation: {
         _tag: "Literal",
-        literal: { _tag: "ExceptionalNumber", value: "-Infinity" },
+        literal: "-Infinity",
         checks: []
       },
       references: {}
@@ -362,7 +373,7 @@ describe("SchemaRepresentation.toJson", () => {
       {
         representation: {
           _tag: "UniqueSymbol",
-          symbol: { _tag: "GlobalSymbol", key: "acme/schema/key" },
+          symbol: "Symbol(acme/schema/key)",
           checks: []
         },
         references: {}
@@ -376,7 +387,7 @@ describe("SchemaRepresentation.toJson", () => {
         SchemaRepresentation.toJson(
           SchemaRepresentation.toRepresentation(Schema.UniqueSymbol(Symbol("local")).ast)
         ),
-      `Expected <filter>, got Symbol(local)\n  at ["representation"]["symbol"]`
+      `cannot serialize to string, Symbol is not registered\n  at ["representation"]["symbol"]`
     )
   })
 

@@ -3,12 +3,17 @@ import { Schema, SchemaRepresentation } from "effect"
 
 describe("SchemaRepresentation.toJsonMultiDocument", () => {
   it("encodes every root in order", () => {
-    const document = SchemaRepresentation.toRepresentations([Schema.String.ast, Schema.Number.ast])
+    const document = SchemaRepresentation.toRepresentations([
+      Schema.String.ast,
+      Schema.Number.ast,
+      Schema.Literal(1n).ast
+    ])
 
     assert.deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
       representations: [
         { _tag: "String", checks: [] },
-        { _tag: "Number", checks: [] }
+        { _tag: "Number", checks: [] },
+        { _tag: "Literal", literal: "1", checks: [] }
       ],
       references: {}
     })

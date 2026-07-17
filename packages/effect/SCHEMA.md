@@ -6165,7 +6165,7 @@ Use it when you need to:
 At a high level:
 
 - `toRepresentation` / `toRepresentations` turn a schema AST into a `Document` / `MultiDocument`
-- `DocumentFromJson` (schema) round-trip that document through JSON
+- `toJson` / `fromJson` round-trip that document through JSON
 - `fromRepresentation` rebuilds a runtime `Schema` from the stored representation
 - `toJsonSchemaDocument` produces a Draft 2020-12 JSON Schema document
 - `toCodeDocument` prepares data for code generation (via `toMultiDocument`)
@@ -6177,13 +6177,13 @@ flowchart TD
     JS["JSON Schema (draft-07, draft-2020-12, openapi-3.0, openapi-3.1)"] -->JSD
     JD --> JS
     JD["JsonSchema.Document"] -->|fromJsonSchemaDocument|D
-    D <--> |"DocumentFromJson (schema)"|JSON
+    D <--> |"toJson / fromJson"|JSON
     D --> |toJsonSchemaDocument|JD
     D --> |fromRepresentation|S
     MD --> |toCodeDocument|CodeDocument["CodeDocument"]
     D --> |toMultiDocument|MD
     MD --> |toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
-    MD <--> |"MultiDocumentFromJson (schema)"|JSON
+    MD <--> |"toJsonMultiDocument / fromJsonMultiDocument"|JSON
 ```
 
 ## The data model
