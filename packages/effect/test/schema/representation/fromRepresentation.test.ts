@@ -21,8 +21,8 @@ function revive(
   schema: Schema.Top,
   revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = []
 ): Schema.Top {
-  return SchemaRepresentation.toSchema(
-    SchemaRepresentation.fromJson(SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast))),
+  return SchemaRepresentation.fromRepresentation(
+    SchemaRepresentation.fromJson(SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(schema.ast))),
     { revivers }
   )
 }
@@ -31,9 +31,9 @@ function assertRepresentationRoundtrip(
   schema: Schema.Top,
   revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = []
 ): Schema.Top {
-  const expected = SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast))
-  const revived = SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(expected), { revivers })
-  assert.deepStrictEqual(SchemaRepresentation.toJson(SchemaRepresentation.fromAST(revived.ast)), expected)
+  const expected = SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(schema.ast))
+  const revived = SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(expected), { revivers })
+  assert.deepStrictEqual(SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(revived.ast)), expected)
   return revived
 }
 
@@ -50,11 +50,11 @@ function errorFrom(run: () => unknown): Error {
 
 function filterJson(): Schema.Json {
   return SchemaRepresentation.toJson(
-    SchemaRepresentation.fromAST(Schema.String.check(minLengthCheck(2)).ast)
+    SchemaRepresentation.toRepresentation(Schema.String.check(minLengthCheck(2)).ast)
   )
 }
 
-describe("SchemaRepresentation.toSchema", () => {
+describe("SchemaRepresentation.fromRepresentation", () => {
   it("revives Null", () => {
     assertRepresentationRoundtrip(Schema.Null)
   })
@@ -169,7 +169,7 @@ describe("SchemaRepresentation.toSchema", () => {
   })
 
   it("revives an empty Union as Never", () => {
-    const schema = SchemaRepresentation.toSchema({
+    const schema = SchemaRepresentation.fromRepresentation({
       representation: { _tag: "Union", types: [], mode: "anyOf", checks: [] },
       references: {}
     }, { revivers: [] })
@@ -197,7 +197,7 @@ describe("SchemaRepresentation.toSchema", () => {
         children: [{ name: "child", children: [] }]
       }
     )
-    assert.strictEqual(SchemaRepresentation.fromAST(schema.ast).representation._tag, "Reference")
+    assert.strictEqual(SchemaRepresentation.toRepresentation(schema.ast).representation._tag, "Reference")
   })
 
   it("restores node annotations", () => {
@@ -207,7 +207,7 @@ describe("SchemaRepresentation.toSchema", () => {
 
   it("restores tuple element annotations", () => {
     const schema = revive(Schema.Tuple([Schema.String.annotateKey({ description: "element" })]))
-    const representation = SchemaRepresentation.fromAST(schema.ast).representation
+    const representation = SchemaRepresentation.toRepresentation(schema.ast).representation
     assert.strictEqual(representation._tag, "Arrays")
     if (representation._tag === "Arrays") {
       assert.strictEqual(representation.elements[0].annotations?.description, "element")
@@ -216,7 +216,7 @@ describe("SchemaRepresentation.toSchema", () => {
 
   it("restores property annotations", () => {
     const schema = revive(Schema.Struct({ value: Schema.String.annotateKey({ description: "property" }) }))
-    const representation = SchemaRepresentation.fromAST(schema.ast).representation
+    const representation = SchemaRepresentation.toRepresentation(schema.ast).representation
     assert.strictEqual(representation._tag, "Objects")
     if (representation._tag === "Objects") {
       assert.strictEqual(representation.propertySignatures[0].annotations?.description, "property")
@@ -251,7 +251,7 @@ describe("SchemaRepresentation.toSchema", () => {
     })
     const schema = revive(encoded)
     assert.deepStrictEqual(Schema.decodeUnknownSync(schema as Schema.Codec<unknown>)("{\"value\":1}"), { value: 1 })
-    const document = SchemaRepresentation.fromAST(SchemaAST.toEncoded(schema.ast))
+    const document = SchemaRepresentation.toRepresentation(SchemaAST.toEncoded(schema.ast))
     assert.strictEqual(document.representation._tag, "Reference")
     if (document.representation._tag === "Reference") {
       const representation = document.references[document.representation.$ref]
@@ -303,7 +303,7 @@ describe("SchemaRepresentation.toSchema", () => {
       payloadSchema: Schema.Null,
       revive: () => Schema.makeFilterGroup([Schema.makeFilter<string>((value) => value !== "blocked")])
     }
-    const schema = SchemaRepresentation.toSchema(document, { revivers: [reviver] }) as Schema.Codec<unknown>
+    const schema = SchemaRepresentation.fromRepresentation(document, { revivers: [reviver] }) as Schema.Codec<unknown>
     assert.strictEqual(Schema.decodeUnknownSync(schema)("allowed"), "allowed")
     assert.strictEqual(Schema.decodeUnknownResult(schema)("blocked")._tag, "Failure")
   })
@@ -331,7 +331,9 @@ describe("SchemaRepresentation.toSchema", () => {
 
   it("reports a missing reviver", () => {
     assert.strictEqual(
-      errorFrom(() => SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), { revivers: [] }))
+      errorFrom(() =>
+        SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(filterJson()), { revivers: [] })
+      )
         .message,
       `Missing reviver for ${filterId}\n  at ["representation"]["checks"][0]["representation"]`
     )
@@ -340,7 +342,7 @@ describe("SchemaRepresentation.toSchema", () => {
   it("rejects duplicate reviver IDs", () => {
     assert.strictEqual(
       errorFrom(() =>
-        SchemaRepresentation.toSchema({
+        SchemaRepresentation.fromRepresentation({
           representation: { _tag: "String", checks: [] },
           references: {}
         }, { revivers: [minLengthReviver, minLengthReviver] })
@@ -354,7 +356,7 @@ describe("SchemaRepresentation.toSchema", () => {
     json.representation.checks[0].representation.payload = { minimum: "two" }
     assert.strictEqual(
       errorFrom(() =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
+        SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
           revivers: [minLengthReviver]
         })
       ).message,
@@ -372,7 +374,7 @@ describe("SchemaRepresentation.toSchema", () => {
     }
     assert.strictEqual(
       errorFrom(() =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
+        SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(filterJson()), {
           revivers: [reviver]
         })
       ),
@@ -383,7 +385,7 @@ describe("SchemaRepresentation.toSchema", () => {
   it("requires a representation identity on a Filter", () => {
     assert.strictEqual(
       errorFrom(() =>
-        SchemaRepresentation.toSchema(
+        SchemaRepresentation.fromRepresentation(
           {
             representation: { _tag: "String", checks: [{ _tag: "Filter", aborted: false }] },
             references: {}
@@ -398,7 +400,7 @@ describe("SchemaRepresentation.toSchema", () => {
   it("requires a representation identity on a Declaration", () => {
     assert.strictEqual(
       errorFrom(() =>
-        SchemaRepresentation.toSchema(
+        SchemaRepresentation.fromRepresentation(
           {
             representation: { _tag: "Declaration", typeParameters: [], checks: [] },
             references: {}
@@ -413,7 +415,7 @@ describe("SchemaRepresentation.toSchema", () => {
   it("reports an invalid reference", () => {
     assert.strictEqual(
       errorFrom(() =>
-        SchemaRepresentation.toSchema({
+        SchemaRepresentation.fromRepresentation({
           representation: { _tag: "Reference", $ref: "Missing" },
           references: {}
         }, { revivers: [] })

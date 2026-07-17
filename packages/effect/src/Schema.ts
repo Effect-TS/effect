@@ -37,10 +37,11 @@ import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
-import * as InternalArbitrary from "./internal/schema/arbitrary.ts"
-import * as InternalEquivalence from "./internal/schema/equivalence.ts"
-import * as InternalRepresentation from "./internal/schema/representation.ts"
 import * as InternalSchema from "./internal/schema/schema.ts"
+import * as InternalArbitrary from "./internal/schema/toArbitrary.ts"
+import * as InternalEquivalence from "./internal/schema/toEquivalence.ts"
+import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
+import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
 import * as JsonPatch from "./JsonPatch.ts"
 import * as JsonSchema from "./JsonSchema.ts"
 import { remainder } from "./Number.ts"
@@ -15479,7 +15480,7 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  * @since 4.0.0
  */
 export function toRepresentation(schema: Constraint): SchemaRepresentation.Document {
-  return InternalRepresentation.fromAST(schema.ast)
+  return InternalToRepresentation.toRepresentation(schema.ast)
 }
 
 // -----------------------------------------------------------------------------
@@ -15583,8 +15584,8 @@ export function toJsonSchemaDocument(
   schema: Constraint,
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
-  const document = InternalRepresentation.fromEncodedAST(schema.ast)
-  return InternalRepresentation.toJsonSchemaDocument(document, options)
+  const document = InternalToRepresentation.toRepresentation(schema.ast, true)
+  return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
 
 // -----------------------------------------------------------------------------

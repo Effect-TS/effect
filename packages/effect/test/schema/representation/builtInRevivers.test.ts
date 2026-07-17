@@ -22,16 +22,16 @@ function assertFilterReviver<T>(input: {
     ...(input.schemas === undefined ? undefined : { schemas: input.schemas })
   })
 
-  const document = SchemaRepresentation.fromAST(input.schema.ast)
+  const document = SchemaRepresentation.toRepresentation(input.schema.ast)
   const json = SchemaRepresentation.toJson(document)
-  const revived = SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
+  const revived = SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
     revivers: [input.reviver, ...(input.dependencies ?? [])]
   }) as Schema.Codec<unknown>
 
   assert.strictEqual(Schema.decodeUnknownResult(revived)(input.valid)._tag, "Success")
   assert.strictEqual(Schema.decodeUnknownResult(revived)(input.invalid)._tag, "Failure")
   assert.deepStrictEqual(
-    SchemaRepresentation.toJson(SchemaRepresentation.fromAST(revived.ast)),
+    SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(revived.ast)),
     json
   )
   const revivedCheck = revived.ast.checks?.at(-1)
@@ -56,14 +56,14 @@ function assertDeclarationReviver(input: {
     payload: input.payload
   })
 
-  const document = SchemaRepresentation.fromAST(input.schema.ast)
+  const document = SchemaRepresentation.toRepresentation(input.schema.ast)
   const json = SchemaRepresentation.toJson(document)
-  const revived = SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
+  const revived = SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
     revivers: [input.reviver, ...(input.dependencies ?? [])]
   })
 
   assert.deepStrictEqual(
-    SchemaRepresentation.toJson(SchemaRepresentation.fromAST(revived.ast)),
+    SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(revived.ast)),
     json
   )
   assert.strictEqual(
@@ -304,7 +304,7 @@ function expectInvalidPayload(json: Schema.Json, reviver: SchemaRepresentation.A
     "payload"
   ])
   throws(
-    () => SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), { revivers: [reviver] }),
+    () => SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), { revivers: [reviver] }),
     `Invalid representation payload for ${reviver.id}\n  at ${path}`
   )
 }
@@ -416,7 +416,7 @@ describe("SchemaRepresentation built-in number revivers", () => {
 
   it("rejects a non-numeric isMultipleOf payload", () => {
     const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.fromAST(Schema.Number.check(Schema.isMultipleOf(2)).ast)
+      SchemaRepresentation.toRepresentation(Schema.Number.check(Schema.isMultipleOf(2)).ast)
     ) as any
     json.representation.checks[0].representation.payload.divisor = "2"
 
@@ -425,7 +425,7 @@ describe("SchemaRepresentation built-in number revivers", () => {
 
   it("rejects a non-canonical isBetween payload", () => {
     const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.fromAST(
+      SchemaRepresentation.toRepresentation(
         Schema.Number.check(Schema.isBetween({ minimum: 1, maximum: 3 })).ast
       )
     ) as any
@@ -518,13 +518,13 @@ describe("SchemaRepresentation built-in BigInt revivers", () => {
 
   it("rejects non-canonical decimal payloads", () => {
     const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.fromAST(Schema.BigInt.check(Schema.isGreaterThanBigInt(1n)).ast)
+      SchemaRepresentation.toRepresentation(Schema.BigInt.check(Schema.isGreaterThanBigInt(1n)).ast)
     ) as any
     json.representation.checks[0].representation.payload.exclusiveMinimum = "01"
 
     throws(
       () =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
+        SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
           revivers: [Schema.isGreaterThanBigIntReviver]
         }),
       `Invalid representation payload for effect/schema/isGreaterThanBigInt\n  at ["representation"]["checks"][0]["representation"]["payload"]`

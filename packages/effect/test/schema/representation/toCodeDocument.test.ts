@@ -37,7 +37,7 @@ describe("toCodeDocument", () => {
   function assertSchema(input: {
     readonly schema: Schema.Constraint
   }, expected: Expected) {
-    const multiDocument = SchemaRepresentation.fromASTs([input.schema.ast])
+    const multiDocument = SchemaRepresentation.toRepresentations([input.schema.ast])
     assertMultiDocument(multiDocument, expected)
   }
 
@@ -53,7 +53,7 @@ describe("toCodeDocument", () => {
             : js
       }
     )
-    assertMultiDocument(SchemaRepresentation.fromASTs([schema.ast]), expected)
+    assertMultiDocument(SchemaRepresentation.toRepresentations([schema.ast]), expected)
   }
 
   function assertMultiDocument(

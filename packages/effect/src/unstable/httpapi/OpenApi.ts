@@ -14,7 +14,8 @@ import * as Context from "../../Context.ts"
 import * as Equal from "../../Equal.ts"
 import { constFalse } from "../../Function.ts"
 import * as InternalRecord from "../../internal/record.ts"
-import * as InternalRepresentation from "../../internal/schema/representation.ts"
+import * as InternalToJsonSchemaDocument from "../../internal/schema/toJsonSchemaDocument.ts"
+import * as InternalToRepresentation from "../../internal/schema/toRepresentation.ts"
 import * as JsonPatch from "../../JsonPatch.ts"
 import { escapeToken } from "../../JsonPointer.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
@@ -218,7 +219,7 @@ type CompileSchemas = (
 
 const compileSchemas: CompileSchemas = (asts) =>
   JsonSchema.toMultiDocumentOpenApi3_1(
-    InternalRepresentation.toJsonSchemaMultiDocument(InternalRepresentation.fromEncodedASTs(asts))
+    InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(InternalToRepresentation.toRepresentations(asts, true))
   )
 
 /**

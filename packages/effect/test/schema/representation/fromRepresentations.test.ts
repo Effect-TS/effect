@@ -5,9 +5,9 @@ function decode(schema: Schema.Top, input: unknown): unknown {
   return Schema.decodeUnknownSync(schema as Schema.Codec<unknown>)(input)
 }
 
-describe("SchemaRepresentation.toSchemaMultiDocument", () => {
+describe("SchemaRepresentation.fromRepresentations", () => {
   it("preserves root order", () => {
-    const document = SchemaRepresentation.toSchemaMultiDocument({
+    const document = SchemaRepresentation.fromRepresentations({
       representations: [
         { _tag: "String", checks: [] },
         { _tag: "Boolean", checks: [] },
@@ -22,7 +22,7 @@ describe("SchemaRepresentation.toSchemaMultiDocument", () => {
   })
 
   it("revives unreachable definitions", () => {
-    const document = SchemaRepresentation.toSchemaMultiDocument({
+    const document = SchemaRepresentation.fromRepresentations({
       representations: [{ _tag: "String", checks: [] }],
       references: { Unused: { _tag: "Number", checks: [] } }
     }, { revivers: [] })
@@ -32,7 +32,7 @@ describe("SchemaRepresentation.toSchemaMultiDocument", () => {
   })
 
   it("preserves aliases as distinct reference wrappers", () => {
-    const document = SchemaRepresentation.toSchemaMultiDocument({
+    const document = SchemaRepresentation.fromRepresentations({
       representations: [{ _tag: "Reference", $ref: "Alias" }],
       references: {
         Value: { _tag: "String", checks: [] },
@@ -44,14 +44,14 @@ describe("SchemaRepresentation.toSchemaMultiDocument", () => {
     assert.strictEqual(document.definitions.Value.ast._tag, "Suspend")
     assert.strictEqual(document.definitions.Alias.ast._tag, "Suspend")
     assert.strictEqual(decode(document.schemas[0], "value"), "value")
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(document.schemas[0].ast).representation, {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(document.schemas[0].ast).representation, {
       _tag: "Reference",
       $ref: "Alias"
     })
   })
 
   it("revives recursive definitions", () => {
-    const document = SchemaRepresentation.toSchemaMultiDocument({
+    const document = SchemaRepresentation.fromRepresentations({
       representations: [{ _tag: "Reference", $ref: "Recursive" }],
       references: {
         Recursive: {

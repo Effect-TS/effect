@@ -13,7 +13,7 @@ function fromJsonSchemaRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.Document {
-  return SchemaRepresentation.fromAST(SchemaRepresentation.fromJsonSchemaDocument(document, options).ast)
+  return SchemaRepresentation.toRepresentation(SchemaRepresentation.fromJsonSchemaDocument(document, options).ast)
 }
 
 describe("fromJsonSchemaDocument", () => {
@@ -26,7 +26,7 @@ describe("fromJsonSchemaDocument", () => {
   ) {
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
     const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, input.options)
-    const document = SchemaRepresentation.fromAST(schema.ast)
+    const document = SchemaRepresentation.toRepresentation(schema.ast)
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
   }

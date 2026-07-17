@@ -243,7 +243,7 @@ v4
 ```ts
 import { Schema, SchemaRepresentation } from "effect"
 
-const doc = SchemaRepresentation.fromAST(Schema.String.ast)
+const doc = SchemaRepresentation.toRepresentation(Schema.String.ast)
 const multi = SchemaRepresentation.toMultiDocument(doc)
 const codeDoc = SchemaRepresentation.toCodeDocument(multi)
 console.log(codeDoc.codes[0].Type)

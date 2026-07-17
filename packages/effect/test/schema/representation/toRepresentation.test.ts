@@ -1,93 +1,93 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaAST, SchemaRepresentation } from "effect"
 
-describe("SchemaRepresentation.fromAST", () => {
+describe("SchemaRepresentation.toRepresentation", () => {
   it("converts Null", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Null.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Null.ast), {
       representation: { _tag: "Null", checks: [] },
       references: {}
     })
   })
 
   it("converts Undefined", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Undefined.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Undefined.ast), {
       representation: { _tag: "Undefined", checks: [] },
       references: {}
     })
   })
 
   it("converts Void", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Void.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Void.ast), {
       representation: { _tag: "Void", checks: [] },
       references: {}
     })
   })
 
   it("converts Never", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Never.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Never.ast), {
       representation: { _tag: "Never", checks: [] },
       references: {}
     })
   })
 
   it("converts Unknown", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Unknown.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Unknown.ast), {
       representation: { _tag: "Unknown", checks: [] },
       references: {}
     })
   })
 
   it("converts Any", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Any.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Any.ast), {
       representation: { _tag: "Any", checks: [] },
       references: {}
     })
   })
 
   it("converts String", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.String.ast), {
       representation: { _tag: "String", checks: [] },
       references: {}
     })
   })
 
   it("converts Number", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Number.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Number.ast), {
       representation: { _tag: "Number", checks: [] },
       references: {}
     })
   })
 
   it("converts Boolean", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Boolean.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Boolean.ast), {
       representation: { _tag: "Boolean", checks: [] },
       references: {}
     })
   })
 
   it("converts BigInt", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.BigInt.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.BigInt.ast), {
       representation: { _tag: "BigInt", checks: [] },
       references: {}
     })
   })
 
   it("converts Symbol", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Symbol.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Symbol.ast), {
       representation: { _tag: "Symbol", checks: [] },
       references: {}
     })
   })
 
   it("converts ObjectKeyword", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.ObjectKeyword.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.ObjectKeyword.ast), {
       representation: { _tag: "ObjectKeyword", checks: [] },
       references: {}
     })
   })
 
   it("converts a literal", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Literal("value").ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Literal("value").ast), {
       representation: { _tag: "Literal", literal: "value", checks: [] },
       references: {}
     })
@@ -95,14 +95,14 @@ describe("SchemaRepresentation.fromAST", () => {
 
   it("converts a global unique symbol", () => {
     const symbol = Symbol.for("value")
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.UniqueSymbol(symbol).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.UniqueSymbol(symbol).ast), {
       representation: { _tag: "UniqueSymbol", symbol, checks: [] },
       references: {}
     })
   })
 
   it("converts an enum", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Enum({ A: "a", One: 1 }).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Enum({ A: "a", One: 1 }).ast), {
       representation: {
         _tag: "Enum",
         enums: [["A", "a"], ["One", 1]],
@@ -114,7 +114,7 @@ describe("SchemaRepresentation.fromAST", () => {
 
   it("converts a template literal", () => {
     assert.deepStrictEqual(
-      SchemaRepresentation.fromAST(Schema.TemplateLiteral(["prefix-", Schema.String, Schema.Number]).ast),
+      SchemaRepresentation.toRepresentation(Schema.TemplateLiteral(["prefix-", Schema.String, Schema.Number]).ast),
       {
         representation: {
           _tag: "TemplateLiteral",
@@ -136,7 +136,7 @@ describe("SchemaRepresentation.fromAST", () => {
       [Schema.Boolean]
     )
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: {
         _tag: "Arrays",
         elements: [
@@ -160,7 +160,7 @@ describe("SchemaRepresentation.fromAST", () => {
       [Schema.Record(Schema.Symbol, Schema.BigInt)]
     )
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: {
         _tag: "Objects",
         propertySignatures: [
@@ -194,7 +194,7 @@ describe("SchemaRepresentation.fromAST", () => {
   })
 
   it("converts a union", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.Union([Schema.String, Schema.Number]).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Union([Schema.String, Schema.Number]).ast), {
       representation: {
         _tag: "Union",
         types: [
@@ -209,7 +209,7 @@ describe("SchemaRepresentation.fromAST", () => {
   })
 
   it("uses the type side of a transformation", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.NumberFromString.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.NumberFromString.ast), {
       representation: { _tag: "Number", checks: [] },
       references: {}
     })
@@ -217,7 +217,7 @@ describe("SchemaRepresentation.fromAST", () => {
 
   it("uses the encoded side only when the caller projects it", () => {
     assert.deepStrictEqual(
-      SchemaRepresentation.fromAST(SchemaAST.toEncoded(Schema.NumberFromString.ast)),
+      SchemaRepresentation.toRepresentation(SchemaAST.toEncoded(Schema.NumberFromString.ast)),
       {
         representation: {
           _tag: "String",
@@ -231,7 +231,7 @@ describe("SchemaRepresentation.fromAST", () => {
 
   it("preserves brands", () => {
     assert.deepStrictEqual(
-      SchemaRepresentation.fromAST(Schema.String.pipe(Schema.brand("A"), Schema.brand("B")).ast),
+      SchemaRepresentation.toRepresentation(Schema.String.pipe(Schema.brand("A"), Schema.brand("B")).ast),
       {
         representation: {
           _tag: "String",
@@ -256,7 +256,7 @@ describe("SchemaRepresentation.fromAST", () => {
       toJsonSchema
     })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: {
         _tag: "Declaration",
         typeParameters: [],
@@ -276,7 +276,7 @@ describe("SchemaRepresentation.fromAST", () => {
   })
 
   it("converts declaration type parameters", () => {
-    const representation = SchemaRepresentation.fromAST(Schema.Option(Schema.Number).ast).representation
+    const representation = SchemaRepresentation.toRepresentation(Schema.Option(Schema.Number).ast).representation
 
     assert.strictEqual(representation._tag, "Declaration")
     if (representation._tag !== "Declaration") return
@@ -298,7 +298,7 @@ describe("SchemaRepresentation.fromAST", () => {
       marker
     }).abort()
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(filter).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.String.check(filter).ast), {
       representation: {
         _tag: "String",
         checks: [{
@@ -323,7 +323,7 @@ describe("SchemaRepresentation.fromAST", () => {
   it("preserves filters without persistence metadata", () => {
     const filter = Schema.makeFilter<string>(() => true, { expected: "custom" })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(filter).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.String.check(filter).ast), {
       representation: {
         _tag: "String",
         checks: [{
@@ -339,7 +339,7 @@ describe("SchemaRepresentation.fromAST", () => {
   it("preserves a filter without annotations", () => {
     const filter = Schema.makeFilter<string>(() => true)
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(filter).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.String.check(filter).ast), {
       representation: {
         _tag: "String",
         checks: [{ _tag: "Filter", aborted: false }]
@@ -353,7 +353,7 @@ describe("SchemaRepresentation.fromAST", () => {
     const second = Schema.makeFilter<string>(() => true, { expected: "second" })
     const group = Schema.makeFilterGroup([first, second], { description: "group" })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.String.check(group).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.String.check(group).ast), {
       representation: {
         _tag: "String",
         checks: [{
@@ -373,7 +373,7 @@ describe("SchemaRepresentation.fromAST", () => {
     const schema = Schema.Record(Schema.String, Schema.Number).check(
       Schema.isPropertyNames(Schema.String.check(Schema.isPattern(/^[A-Z]/)))
     )
-    const representation = SchemaRepresentation.fromAST(schema.ast).representation
+    const representation = SchemaRepresentation.toRepresentation(schema.ast).representation
 
     assert.strictEqual(representation._tag, "Objects")
     if (representation._tag !== "Objects") return
@@ -406,7 +406,7 @@ describe("SchemaRepresentation.fromAST", () => {
   })
 
   it("converts checks on arrays", () => {
-    const representation = SchemaRepresentation.fromAST(
+    const representation = SchemaRepresentation.toRepresentation(
       Schema.Array(Schema.String).check(Schema.isMinLength(1)).ast
     ).representation
 
@@ -420,7 +420,7 @@ describe("SchemaRepresentation.fromAST", () => {
   })
 
   it("converts checks on objects", () => {
-    const representation = SchemaRepresentation.fromAST(
+    const representation = SchemaRepresentation.toRepresentation(
       Schema.Record(Schema.String, Schema.Number).check(Schema.isMinProperties(1)).ast
     ).representation
 
@@ -435,7 +435,7 @@ describe("SchemaRepresentation.fromAST", () => {
 
   it("promotes string content annotations to structural fields", () => {
     const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
-    const document = SchemaRepresentation.fromAST(schema)
+    const document = SchemaRepresentation.toRepresentation(schema)
 
     assert.deepStrictEqual(document, {
       representation: {
@@ -466,7 +466,7 @@ describe("SchemaRepresentation.fromAST", () => {
     const marker = () => "element"
     const schema = Schema.Tuple([Schema.String.annotateKey({ description: "element", marker })])
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: {
         _tag: "Arrays",
         elements: [{
@@ -487,7 +487,7 @@ describe("SchemaRepresentation.fromAST", () => {
       value: Schema.String.annotateKey({ description: "property", marker })
     })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: {
         _tag: "Objects",
         propertySignatures: [{
@@ -507,7 +507,7 @@ describe("SchemaRepresentation.fromAST", () => {
   it("extracts a named schema into references", () => {
     const schema = Schema.String.annotate({ identifier: "Value", description: "value" })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: { _tag: "Reference", $ref: "Value" },
       references: {
         Value: {
@@ -520,7 +520,7 @@ describe("SchemaRepresentation.fromAST", () => {
   })
 
   it("converts a non-recursive suspend", () => {
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Schema.suspend(() => Schema.String).ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.suspend(() => Schema.String).ast), {
       representation: {
         _tag: "Suspend",
         thunk: { _tag: "String", checks: [] },
@@ -538,7 +538,7 @@ describe("SchemaRepresentation.fromAST", () => {
       next: Schema.optionalKey(Schema.suspend((): Schema.Codec<Node> => Node))
     }).annotate({ identifier: "Node" })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(Node.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Node.ast), {
       representation: { _tag: "Reference", $ref: "Node" },
       references: {
         Node: {
@@ -575,7 +575,7 @@ describe("SchemaRepresentation.fromAST", () => {
       next: Schema.optionalKey(Schema.suspend((): Schema.Codec<Second> => Second))
     }).annotate({ identifier: "Node" })
 
-    const document = SchemaRepresentation.fromAST(Schema.Tuple([First, Second]).ast)
+    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([First, Second]).ast)
     assert.deepStrictEqual(document.representation, {
       _tag: "Arrays",
       elements: [
@@ -591,7 +591,7 @@ describe("SchemaRepresentation.fromAST", () => {
   it("reuses the class reference", () => {
     class User extends Schema.Class<User>("User")({ name: Schema.String }) {}
 
-    const document = SchemaRepresentation.fromAST(Schema.Tuple([User, User]).ast)
+    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([User, User]).ast)
     assert.deepStrictEqual(document.representation, {
       _tag: "Arrays",
       elements: [
@@ -608,7 +608,7 @@ describe("SchemaRepresentation.fromAST", () => {
     let schema: Schema.Codec<unknown>
     schema = Schema.suspend((): Schema.Codec<unknown> => schema)
 
-    assert.deepStrictEqual(SchemaRepresentation.fromAST(schema.ast), {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
       representation: { _tag: "Reference", $ref: "Suspend_" },
       references: {
         Suspend_: {

@@ -468,7 +468,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         return { minimum: 0 }
       }
     })
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.Number.check(Schema.isInt(), dependent).ast
     )
 
@@ -481,7 +481,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
 
   it("compiles the isPattern and Option vertical slice", () => {
     const pattern = SchemaRepresentation.toJsonSchemaDocument(
-      SchemaRepresentation.fromAST(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
+      SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
     )
     assert.deepStrictEqual(pattern, {
       dialect: "draft-2020-12",
@@ -493,7 +493,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     })
 
     const option = SchemaRepresentation.toJsonSchemaDocument(
-      SchemaRepresentation.fromAST(Schema.Option(Schema.String).ast)
+      SchemaRepresentation.toRepresentation(Schema.Option(Schema.String).ast)
     )
     assert.deepStrictEqual(option.schema, {
       anyOf: [
@@ -619,10 +619,10 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
   })
 
   it("compiles every member of a union index-signature parameter", () => {
-    const template = SchemaRepresentation.fromAST(
+    const template = SchemaRepresentation.toRepresentation(
       Schema.TemplateLiteral(["a", Schema.String]).ast
     ).representation
-    const pattern = SchemaRepresentation.fromAST(
+    const pattern = SchemaRepresentation.toRepresentation(
       Schema.String.check(Schema.isPattern(/^b/)).ast
     ).representation
     const document: SchemaRepresentation.Document = {

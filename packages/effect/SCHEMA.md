@@ -6164,22 +6164,22 @@ Use it when you need to:
 
 At a high level:
 
-- `fromAST` / `fromASTs` turn a schema AST into a `Document` / `MultiDocument`
+- `toRepresentation` / `toRepresentations` turn a schema AST into a `Document` / `MultiDocument`
 - `DocumentFromJson` (schema) round-trip that document through JSON
-- `toSchema` rebuilds a runtime `Schema` from the stored representation
+- `fromRepresentation` rebuilds a runtime `Schema` from the stored representation
 - `toJsonSchemaDocument` produces a Draft 2020-12 JSON Schema document
 - `toCodeDocument` prepares data for code generation (via `toMultiDocument`)
 
 ```mermaid
 flowchart TD
-    S[Schema] -->|fromAST|D{"SchemaRepresentation.Document"}
-    S -->|fromASTs|MD{"SchemaRepresentation.MultiDocument"}
+    S[Schema] -->|toRepresentation|D{"SchemaRepresentation.Document"}
+    S -->|toRepresentations|MD{"SchemaRepresentation.MultiDocument"}
     JS["JSON Schema (draft-07, draft-2020-12, openapi-3.0, openapi-3.1)"] -->JSD
     JD --> JS
     JD["JsonSchema.Document"] -->|fromJsonSchemaDocument|D
     D <--> |"DocumentFromJson (schema)"|JSON
     D --> |toJsonSchemaDocument|JD
-    D --> |toSchema|S
+    D --> |fromRepresentation|S
     MD --> |toCodeDocument|CodeDocument["CodeDocument"]
     D --> |toMultiDocument|MD
     MD --> |toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
@@ -6225,7 +6225,7 @@ Schemas that rely on transformations cannot be round-tripped, including:
 - `Schema.encodeTo(...)`
 - custom codecs or any schema that changes how values are encoded/decoded
 
-If you serialize a transformed schema, the transformation logic will be lost. When you rebuild it with `toSchema`, you will only get the structural schema.
+If you serialize a transformed schema, the transformation logic will be lost. When you rebuild it with `fromRepresentation`, you will only get the structural schema.
 
 > **Aside** (Why transformations are excluded)
 >
@@ -6259,7 +6259,7 @@ In practice, documentation annotations like `title` and `description` are preser
 
 Some runtime schemas are represented as `Declaration` nodes. Rebuilding them requires a "reviver" function.
 
-`toSchema` ships with a default reviver (`toSchemaDefaultReviver`) that recognizes a fixed set of constructors, including:
+`fromRepresentation` ships with a default reviver (`toSchemaDefaultReviver`) that recognizes a fixed set of constructors, including:
 
 - `effect/Option`, `effect/Result`, `effect/Exit`, ...
 - `ReadonlyMap`, `ReadonlySet`
@@ -6267,7 +6267,7 @@ Some runtime schemas are represented as `Declaration` nodes. Rebuilding them req
 - `FormData`, `URLSearchParams`, `Uint8Array`
 - `DateTime.Utc`, `effect/Duration`
 
-If your document contains other declarations, pass a custom `reviver` to `toSchema`.
+If your document contains other declarations, pass a custom `reviver` to `fromRepresentation`.
 
 ## JSON round-tripping
 
@@ -6280,9 +6280,9 @@ Internally, these functions use a canonical JSON codec for `Document$`. This is 
 
 ## Rebuilding runtime schemas
 
-### `toSchema`
+### `fromRepresentation`
 
-`toSchema(document)` walks the representation tree and recreates a runtime schema.
+`fromRepresentation(document)` walks the representation tree and recreates a runtime schema.
 
 What it does:
 
@@ -6295,7 +6295,7 @@ What it does:
 If you need custom handling for declarations:
 
 ```ts
-SchemaRepresentation.toSchema(document, {
+SchemaRepresentation.fromRepresentation(document, {
   reviver: (declaration, recur) => {
     // Return a runtime schema to override how a Declaration is rebuilt.
     // Return undefined to fall back to the default behavior.

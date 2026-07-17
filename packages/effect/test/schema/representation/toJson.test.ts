@@ -28,7 +28,7 @@ describe("SchemaRepresentation.toJson", () => {
     }).abort()
 
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(Schema.String.check(filter).ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.String.check(filter).ast)),
       {
         representation: {
           _tag: "String",
@@ -59,7 +59,7 @@ describe("SchemaRepresentation.toJson", () => {
     })
 
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(schema.ast)),
       {
         representation: {
           _tag: "Declaration",
@@ -76,7 +76,7 @@ describe("SchemaRepresentation.toJson", () => {
   })
 
   it("preserves JSON annotations", () => {
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.String.annotate({ values: ["1", "Symbol(a)", "NaN"] }).ast
     )
 
@@ -92,7 +92,7 @@ describe("SchemaRepresentation.toJson", () => {
 
   it("preserves shared JSON annotation values", () => {
     const shared = { value: "shared" }
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.String.annotate({ value: { left: shared, right: shared } }).ast
     )
 
@@ -114,7 +114,7 @@ describe("SchemaRepresentation.toJson", () => {
   it("omits a cyclic annotation atomically", () => {
     const cyclic: { self?: unknown } = {}
     cyclic.self = cyclic
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.String.annotate({ cyclic, title: "kept" }).ast
     )
 
@@ -130,7 +130,7 @@ describe("SchemaRepresentation.toJson", () => {
 
   it("omits a sparse-array annotation atomically", () => {
     const sparse = new Array<unknown>(1)
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.String.annotate({ sparse, title: "kept" }).ast
     )
 
@@ -145,7 +145,7 @@ describe("SchemaRepresentation.toJson", () => {
   })
 
   it("omits an annotation containing bigint atomically", () => {
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.String.annotate({ invalid: { value: 1n }, title: "kept" }).ast
     )
 
@@ -160,7 +160,7 @@ describe("SchemaRepresentation.toJson", () => {
   })
 
   it("omits an annotation containing undefined atomically", () => {
-    const document = SchemaRepresentation.fromAST(
+    const document = SchemaRepresentation.toRepresentation(
       Schema.String.annotate({ invalid: { value: undefined }, title: "kept" }).ast
     )
 
@@ -182,7 +182,7 @@ describe("SchemaRepresentation.toJson", () => {
         return "value"
       }
     })
-    const document = SchemaRepresentation.fromAST(Schema.String.annotate({ accessor }).ast)
+    const document = SchemaRepresentation.toRepresentation(Schema.String.annotate({ accessor }).ast)
 
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
       representation: {
@@ -204,7 +204,7 @@ describe("SchemaRepresentation.toJson", () => {
     const group = Schema.makeFilterGroup([first, second], { description: "both" })
 
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(Schema.String.check(group).ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.String.check(group).ast)),
       {
         representation: {
           _tag: "String",
@@ -236,7 +236,7 @@ describe("SchemaRepresentation.toJson", () => {
     ])
 
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(schema.ast)),
       {
         representation: {
           _tag: "Arrays",
@@ -259,7 +259,7 @@ describe("SchemaRepresentation.toJson", () => {
     })
 
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(schema.ast)),
       {
         representation: {
           _tag: "Objects",
@@ -280,7 +280,7 @@ describe("SchemaRepresentation.toJson", () => {
 
   it("encodes bigint structural values", () => {
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(Schema.Literal(1n).ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.Literal(1n).ast)),
       {
         representation: {
           _tag: "Literal",
@@ -294,7 +294,7 @@ describe("SchemaRepresentation.toJson", () => {
 
   it("encodes negative zero structural values", () => {
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(Schema.Literal(-0).ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.Literal(-0).ast)),
       {
         representation: {
           _tag: "Literal",
@@ -357,7 +357,7 @@ describe("SchemaRepresentation.toJson", () => {
   it("encodes global symbols", () => {
     assert.deepStrictEqual(
       SchemaRepresentation.toJson(
-        SchemaRepresentation.fromAST(Schema.UniqueSymbol(Symbol.for("acme/schema/key")).ast)
+        SchemaRepresentation.toRepresentation(Schema.UniqueSymbol(Symbol.for("acme/schema/key")).ast)
       ),
       {
         representation: {
@@ -374,7 +374,7 @@ describe("SchemaRepresentation.toJson", () => {
     throws(
       () =>
         SchemaRepresentation.toJson(
-          SchemaRepresentation.fromAST(Schema.UniqueSymbol(Symbol("local")).ast)
+          SchemaRepresentation.toRepresentation(Schema.UniqueSymbol(Symbol("local")).ast)
         ),
       `Expected <filter>, got Symbol(local)\n  at ["representation"]["symbol"]`
     )
@@ -385,7 +385,7 @@ describe("SchemaRepresentation.toJson", () => {
     schema = Schema.suspend((): Schema.Codec<unknown> => schema)
 
     assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast)),
+      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(schema.ast)),
       {
         representation: { _tag: "Reference", $ref: "Suspend_" },
         references: {
@@ -401,7 +401,7 @@ describe("SchemaRepresentation.toJson", () => {
 
   it("encodes structural string content schemas", () => {
     const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
-    const document = SchemaRepresentation.fromAST(schema)
+    const document = SchemaRepresentation.toRepresentation(schema)
 
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
       representation: {

@@ -3,7 +3,7 @@ import { Schema, SchemaRepresentation } from "effect"
 
 describe("SchemaRepresentation.toJsonMultiDocument", () => {
   it("encodes every root in order", () => {
-    const document = SchemaRepresentation.fromASTs([Schema.String.ast, Schema.Number.ast])
+    const document = SchemaRepresentation.toRepresentations([Schema.String.ast, Schema.Number.ast])
 
     assert.deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
       representations: [
@@ -16,7 +16,7 @@ describe("SchemaRepresentation.toJsonMultiDocument", () => {
 
   it("encodes shared references once", () => {
     const shared = Schema.String.annotate({ identifier: "Shared" })
-    const document = SchemaRepresentation.fromASTs([shared.ast, shared.ast])
+    const document = SchemaRepresentation.toRepresentations([shared.ast, shared.ast])
 
     assert.deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
       representations: [

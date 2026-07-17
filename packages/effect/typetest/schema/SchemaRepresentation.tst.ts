@@ -3,10 +3,10 @@ import { describe, expect, it } from "tstyche"
 
 describe("SchemaRepresentation persisted wire", () => {
   it("exposes exact construction signatures", () => {
-    expect(SchemaRepresentation.fromAST).type.toBe<
+    expect(SchemaRepresentation.toRepresentation).type.toBe<
       (ast: SchemaAST.AST) => SchemaRepresentation.Document
     >()
-    expect(SchemaRepresentation.fromASTs).type.toBe<
+    expect(SchemaRepresentation.toRepresentations).type.toBe<
       (
         asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
       ) => SchemaRepresentation.MultiDocument

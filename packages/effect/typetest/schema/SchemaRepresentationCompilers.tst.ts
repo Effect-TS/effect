@@ -21,8 +21,8 @@ describe("SchemaRepresentation compilers", () => {
   })
 
   it("distinguishes live compiler inputs and their outputs", () => {
-    const document = SchemaRepresentation.fromAST(Schema.String.ast)
-    const multiDocument = SchemaRepresentation.fromASTs([Schema.String.ast])
+    const document = SchemaRepresentation.toRepresentation(Schema.String.ast)
+    const multiDocument = SchemaRepresentation.toRepresentations([Schema.String.ast])
 
     expect(SchemaRepresentation.toJsonSchemaDocument(document)).type.toBe<
       JsonSchema.Document<"draft-2020-12">

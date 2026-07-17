@@ -1,6 +1,5 @@
 import * as Arr from "../../Array.ts"
 import * as Effect from "../../Effect.ts"
-import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
@@ -9,12 +8,7 @@ import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
-import {
-  fromJsonSchemaDocument as translateJsonSchemaDocument,
-  fromJsonSchemaMultiDocument as translateJsonSchemaMultiDocument,
-  projectDocument,
-  projectMultiDocument
-} from "./representation.ts"
+import { projectDocument, projectMultiDocument } from "./toRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
 
@@ -657,7 +651,7 @@ function revivePersisted(
 }
 
 /** @internal */
-export function toSchema(
+export function fromRepresentation(
   document: Document,
   revivers: ReadonlyArray<SchemaRepresentation.AnyReviver>
 ): Schema.Top {
@@ -670,7 +664,7 @@ export function toSchema(
 }
 
 /** @internal */
-export function toSchemaMultiDocument(
+export function fromRepresentations(
   document: MultiDocument,
   revivers: ReadonlyArray<SchemaRepresentation.AnyReviver>
 ): SchemaRepresentation.SchemaMultiDocument {
@@ -689,48 +683,4 @@ export function fromJsonMultiDocument(
   input: Schema.Json
 ): MultiDocument {
   return Schema.decodeSync(getPersistedCodecs().multiDocument)(input)
-}
-
-function jsonSchemaReviverMap(): ReadonlyMap<string, SchemaRepresentation.AnyReviver> {
-  const revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = [
-    Schema.JsonReviver,
-    Schema.isPatternReviver,
-    Schema.isFiniteReviver,
-    Schema.isGreaterThanReviver,
-    Schema.isGreaterThanOrEqualToReviver,
-    Schema.isLessThanReviver,
-    Schema.isLessThanOrEqualToReviver,
-    Schema.isMultipleOfReviver,
-    Schema.isIntReviver,
-    Schema.isMinLengthReviver,
-    Schema.isMaxLengthReviver,
-    Schema.isMinPropertiesReviver,
-    Schema.isMaxPropertiesReviver,
-    Schema.isPropertyNamesReviver,
-    Schema.isUniqueReviver
-  ]
-  return new Map(revivers.map((reviver) => [reviver.id, reviver]))
-}
-
-/** @internal */
-export function fromJsonSchemaDocument(
-  document: JsonSchema.Document<"draft-2020-12">,
-  options?: SchemaRepresentation.FromJsonSchemaOptions
-): Schema.Top {
-  const translated = translateJsonSchemaDocument(document, options)
-  return revivePersisted(
-    [translated.representation],
-    translated.references,
-    jsonSchemaReviverMap(),
-    true
-  ).schemas[0]
-}
-
-/** @internal */
-export function fromJsonSchemaMultiDocument(
-  document: JsonSchema.MultiDocument<"draft-2020-12">,
-  options?: SchemaRepresentation.FromJsonSchemaOptions
-): SchemaRepresentation.SchemaMultiDocument {
-  const translated = translateJsonSchemaMultiDocument(document, options)
-  return revivePersisted(translated.representations, translated.references, jsonSchemaReviverMap(), false)
 }

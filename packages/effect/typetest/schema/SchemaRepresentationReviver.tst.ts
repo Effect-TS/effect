@@ -20,13 +20,13 @@ describe("SchemaRepresentation revivers", () => {
     expect(SchemaRepresentation.fromJsonMultiDocument).type.toBe<
       (input: Schema.Json) => SchemaRepresentation.MultiDocument
     >()
-    expect(SchemaRepresentation.toSchema).type.toBe<
+    expect(SchemaRepresentation.fromRepresentation).type.toBe<
       (
         document: SchemaRepresentation.Document,
         options: { readonly revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> }
       ) => Schema.Top
     >()
-    expect(SchemaRepresentation.toSchemaMultiDocument).type.toBe<
+    expect(SchemaRepresentation.fromRepresentations).type.toBe<
       (
         document: SchemaRepresentation.MultiDocument,
         options: { readonly revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> }
@@ -35,9 +35,9 @@ describe("SchemaRepresentation revivers", () => {
 
     const document = SchemaRepresentation.fromJson({ representation: { _tag: "String", checks: [] }, references: {} })
     // @ts-expect-error Expected 2 arguments, but got 1.
-    SchemaRepresentation.toSchema(document)
+    SchemaRepresentation.fromRepresentation(document)
     // @ts-expect-error Expected 2 arguments, but got 1.
-    SchemaRepresentation.toSchemaMultiDocument({
+    SchemaRepresentation.fromRepresentations({
       representations: [{ _tag: "String", checks: [] }],
       references: {}
     })

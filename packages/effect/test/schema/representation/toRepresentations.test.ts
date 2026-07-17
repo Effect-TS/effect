@@ -1,9 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaRepresentation } from "effect"
 
-describe("SchemaRepresentation.fromASTs", () => {
+describe("SchemaRepresentation.toRepresentations", () => {
   it("preserves root order", () => {
-    const document = SchemaRepresentation.fromASTs([
+    const document = SchemaRepresentation.toRepresentations([
       Schema.String.ast,
       Schema.Number.ast,
       Schema.Boolean.ast
@@ -21,7 +21,7 @@ describe("SchemaRepresentation.fromASTs", () => {
 
   it("shares a named reference between roots", () => {
     const shared = Schema.String.annotate({ identifier: "Shared" })
-    const document = SchemaRepresentation.fromASTs([shared.ast, shared.ast])
+    const document = SchemaRepresentation.toRepresentations([shared.ast, shared.ast])
 
     assert.deepStrictEqual(document, {
       representations: [
@@ -41,7 +41,7 @@ describe("SchemaRepresentation.fromASTs", () => {
   it("assigns distinct references to different schemas with the same identifier", () => {
     const first = Schema.String.annotate({ identifier: "Value", description: "first" })
     const second = Schema.Number.annotate({ identifier: "Value", description: "second" })
-    const document = SchemaRepresentation.fromASTs([first.ast, second.ast])
+    const document = SchemaRepresentation.toRepresentations([first.ast, second.ast])
 
     assert.deepStrictEqual(document, {
       representations: [
@@ -66,7 +66,7 @@ describe("SchemaRepresentation.fromASTs", () => {
   it("reuses a reference for equivalent schemas with the same identifier", () => {
     const first = Schema.String.annotate({ identifier: "Value" })
     const second = Schema.String.annotate({ identifier: "Value" })
-    const document = SchemaRepresentation.fromASTs([first.ast, second.ast])
+    const document = SchemaRepresentation.toRepresentations([first.ast, second.ast])
 
     assert.deepStrictEqual(document, {
       representations: [

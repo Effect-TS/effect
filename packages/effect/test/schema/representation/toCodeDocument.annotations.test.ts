@@ -42,7 +42,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
   })
 
   it("compiles the isPattern and Option vertical slice", () => {
-    const document = SchemaRepresentation.fromASTs([
+    const document = SchemaRepresentation.toRepresentations([
       Schema.String.check(Schema.isPattern(/^a+$/)).ast,
       Schema.Option(Schema.String).ast
     ])
@@ -98,7 +98,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
   })
 
   it("emits supported annotation trees atomically", () => {
-    const document = SchemaRepresentation.fromASTs([
+    const document = SchemaRepresentation.toRepresentations([
       Schema.String.annotate({
         emitted: {
           bigint: 1n,

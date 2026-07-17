@@ -23,7 +23,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     const A = Schema.String.annotate({ identifier: "id", description: "a" })
     const B = Schema.String.annotate({ identifier: "id", description: "b" })
     const C = Schema.Tuple([A, B])
-    const multiDocument = SchemaRepresentation.fromASTs([A.ast, B.ast, C.ast])
+    const multiDocument = SchemaRepresentation.toRepresentations([A.ast, B.ast, C.ast])
     const jsonMultiDocument = SchemaRepresentation.toJsonSchemaMultiDocument(multiDocument)
     assert.deepStrictEqual(jsonMultiDocument, {
       dialect: "draft-2020-12",
@@ -183,7 +183,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       indexSignatures: [{ parameter, type: StringRepresentation }],
       checks: []
     })
-    const pattern = SchemaRepresentation.fromAST(
+    const pattern = SchemaRepresentation.toRepresentation(
       Schema.String.check(Schema.isPattern(/^a/)).ast
     ).representation
     const output = SchemaRepresentation.toJsonSchemaMultiDocument({

@@ -3,8 +3,11 @@
  *
  * @since 4.0.0
  */
-import * as InternalRepresentation from "./internal/schema/representation.ts"
-import * as InternalRepresentationSchema from "./internal/schema/representationSchema.ts"
+import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
+import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
+import * as InternalToCodeDocument from "./internal/schema/toCodeDocument.ts"
+import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
+import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
 import type * as Schema from "./Schema.ts"
 import type * as SchemaAST from "./SchemaAST.ts"
@@ -598,7 +601,7 @@ export interface Code {
  * @category constructors
  * @since 4.0.0
  */
-export const makeCode: (runtime: string, Type: string) => Code = InternalRepresentation.makeCode
+export const makeCode: (runtime: string, Type: string) => Code = InternalToCodeDocument.makeCode
 
 /**
  * Auxiliary source artifact emitted while generating schema code.
@@ -646,8 +649,8 @@ export interface CodeDocument {
  * @category constructors
  * @since 4.0.0
  */
-export function fromAST(ast: SchemaAST.AST): Document {
-  return InternalRepresentation.fromAST(ast)
+export function toRepresentation(ast: SchemaAST.AST): Document {
+  return InternalToRepresentation.toRepresentation(ast)
 }
 
 /**
@@ -656,10 +659,10 @@ export function fromAST(ast: SchemaAST.AST): Document {
  * @category constructors
  * @since 4.0.0
  */
-export function fromASTs(
+export function toRepresentations(
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
 ): MultiDocument {
-  return InternalRepresentation.fromASTs(asts)
+  return InternalToRepresentation.toRepresentations(asts)
 }
 
 /**
@@ -673,14 +676,14 @@ export function fromASTs(
  *
  * Every schema is projected to its encoded side. Definitions are preserved even when no root reaches them.
  *
- * @see {@link fromASTs} for converting AST roots without an explicit definition map
+ * @see {@link toRepresentations} for converting AST roots without an explicit definition map
  * @see {@link toCodeDocument} for generating code from the result
  *
  * @category constructors
  * @since 4.0.0
  */
 export function fromSchemaMultiDocument(document: SchemaMultiDocument): MultiDocument {
-  return InternalRepresentation.fromSchemaMultiDocument(document)
+  return InternalToRepresentation.fromSchemaMultiDocument(document)
 }
 
 /**
@@ -720,7 +723,7 @@ export function toJsonSchemaDocument(
   document: Document,
   options?: Schema.ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
-  return InternalRepresentation.toJsonSchemaDocument(document, options)
+  return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
 
 /**
@@ -743,7 +746,7 @@ export function toJsonSchemaMultiDocument(
   document: MultiDocument,
   options?: Schema.ToJsonSchemaOptions
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
-  return InternalRepresentation.toJsonSchemaMultiDocument(document, options)
+  return InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(document, options)
 }
 
 /**
@@ -761,7 +764,7 @@ export function toJsonSchemaMultiDocument(
  * @since 4.0.0
  */
 export function toCodeDocument(document: MultiDocument): CodeDocument {
-  return InternalRepresentation.toCodeDocument(document)
+  return InternalToCodeDocument.toCodeDocument(document)
 }
 
 /**
@@ -781,7 +784,7 @@ export function toCodeDocument(document: MultiDocument): CodeDocument {
  * @category schemas
  * @since 4.0.0
  */
-export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalRepresentationSchema
+export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalFromRepresentation
   .getPersistedDocumentFromJson()
 
 /**
@@ -801,7 +804,7 @@ export const DocumentFromJson: Schema.Codec<Document, Schema.Json> = InternalRep
  * @category schemas
  * @since 4.0.0
  */
-export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = InternalRepresentationSchema
+export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = InternalFromRepresentation
   .getPersistedMultiDocumentFromJson()
 
 /**
@@ -809,13 +812,13 @@ export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = I
  *
  * **When to use**
  *
- * Use when you need a stable JSON value for storage or transport after calling `fromAST`.
+ * Use when you need a stable JSON value for storage or transport after calling `toRepresentation`.
  *
  * **Gotchas**
  *
  * Generic annotations that are not JSON are omitted. Invalid persistence identities and unsupported structural values throw an `Error` containing their representation path.
  *
- * @see {@link fromAST} for constructing the live document
+ * @see {@link toRepresentation} for constructing the live document
  * @see {@link DocumentFromJson} for direct access to the document codec
  * @see {@link toJsonMultiDocument} for documents with multiple roots
  *
@@ -823,7 +826,7 @@ export const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = I
  * @since 4.0.0
  */
 export function toJson(document: Document): Schema.Json {
-  return InternalRepresentationSchema.toJson(document)
+  return InternalFromRepresentation.toJson(document)
 }
 
 /**
@@ -837,7 +840,7 @@ export function toJson(document: Document): Schema.Json {
  *
  * The root order and shared reference keys are preserved, while non-JSON generic annotations are omitted.
  *
- * @see {@link fromASTs} for constructing the live multi-document
+ * @see {@link toRepresentations} for constructing the live multi-document
  * @see {@link MultiDocumentFromJson} for direct access to the multi-document codec
  * @see {@link toJson} for a single-root document
  *
@@ -845,7 +848,7 @@ export function toJson(document: Document): Schema.Json {
  * @since 4.0.0
  */
 export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
-  return InternalRepresentationSchema.toJsonMultiDocument(document)
+  return InternalFromRepresentation.toJsonMultiDocument(document)
 }
 
 /**
@@ -853,21 +856,21 @@ export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
  *
  * **When to use**
  *
- * Use when reading a representation document from storage or transport before inspecting it or passing it to `toSchema`.
+ * Use when reading a representation document from storage or transport before inspecting it or passing it to `fromRepresentation`.
  *
  * **Gotchas**
  *
  * Invalid documents throw a schema decoding error. Decoding does not reconstruct runtime callbacks.
  *
  * @see {@link toJson} for encoding a document
- * @see {@link toSchema} for reconstructing a runtime schema
+ * @see {@link fromRepresentation} for reconstructing a runtime schema
  * @see {@link fromJsonMultiDocument} for multiple roots sharing references
  *
  * @category decoding
  * @since 4.0.0
  */
 export function fromJson(input: Schema.Json): Document {
-  return InternalRepresentationSchema.fromJson(input)
+  return InternalFromRepresentation.fromJson(input)
 }
 
 /**
@@ -875,21 +878,21 @@ export function fromJson(input: Schema.Json): Document {
  *
  * **When to use**
  *
- * Use when reading multiple representation roots that share references before inspecting them or passing them to `toSchemaMultiDocument`.
+ * Use when reading multiple representation roots that share references before inspecting them or passing them to `fromRepresentations`.
  *
  * **Gotchas**
  *
  * Invalid documents throw a schema decoding error. Decoding does not reconstruct runtime callbacks.
  *
  * @see {@link toJsonMultiDocument} for encoding a multi-document
- * @see {@link toSchemaMultiDocument} for reconstructing runtime schemas
+ * @see {@link fromRepresentations} for reconstructing runtime schemas
  * @see {@link fromJson} for a single root
  *
  * @category decoding
  * @since 4.0.0
  */
 export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
-  return InternalRepresentationSchema.fromJsonMultiDocument(input)
+  return InternalFromRepresentation.fromJsonMultiDocument(input)
 }
 
 /**
@@ -904,16 +907,16 @@ export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
  * Revivers are resolved locally by `id`; none are installed implicitly. Reviver results are used directly, and exceptions raised by a reviver pass through unchanged.
  *
  * @see {@link fromJson} for decoding a persisted document
- * @see {@link toSchemaMultiDocument} for multiple roots sharing references
+ * @see {@link fromRepresentations} for multiple roots sharing references
  *
  * @category transforming
  * @since 4.0.0
  */
-export function toSchema(
+export function fromRepresentation(
   document: Document,
   options: { readonly revivers: ReadonlyArray<AnyReviver> }
 ): Schema.Top {
-  return InternalRepresentationSchema.toSchema(document, options.revivers)
+  return InternalFromRepresentation.fromRepresentation(document, options.revivers)
 }
 
 /**
@@ -928,16 +931,16 @@ export function toSchema(
  * Every definition is revived, including definitions not reachable from a root. Revivers are resolved locally by `id`; none are installed implicitly.
  *
  * @see {@link fromJsonMultiDocument} for decoding a persisted multi-document
- * @see {@link toSchema} for a single root
+ * @see {@link fromRepresentation} for a single root
  *
  * @category transforming
  * @since 4.0.0
  */
-export function toSchemaMultiDocument(
+export function fromRepresentations(
   document: MultiDocument,
   options: { readonly revivers: ReadonlyArray<AnyReviver> }
 ): SchemaMultiDocument {
-  return InternalRepresentationSchema.toSchemaMultiDocument(document, options.revivers)
+  return InternalFromRepresentation.fromRepresentations(document, options.revivers)
 }
 
 /**
@@ -952,7 +955,7 @@ export function toSchemaMultiDocument(
  * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
- * @see {@link fromAST} for converting the result to a representation document
+ * @see {@link toRepresentation} for converting the result to a representation document
  *
  * @category constructors
  * @since 4.0.0
@@ -961,7 +964,7 @@ export function fromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: FromJsonSchemaOptions
 ): Schema.Top {
-  return InternalRepresentationSchema.fromJsonSchemaDocument(document, options)
+  return InternalFromJsonSchemaDocument.fromJsonSchemaDocument(document, options)
 }
 
 /**
@@ -985,5 +988,5 @@ export function fromJsonSchemaMultiDocument(
   document: JsonSchema.MultiDocument<"draft-2020-12">,
   options?: FromJsonSchemaOptions
 ): SchemaMultiDocument {
-  return InternalRepresentationSchema.fromJsonSchemaMultiDocument(document, options)
+  return InternalFromJsonSchemaDocument.fromJsonSchemaMultiDocument(document, options)
 }
