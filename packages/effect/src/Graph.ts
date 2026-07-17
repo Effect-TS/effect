@@ -1490,9 +1490,9 @@ export const addNode = <N, E, T extends Kind = "directed">(
  * @since 3.18.0
  */
 export const getNode: {
-  <N, E, T extends Kind = "directed">(
-    nodeIndex: NodeIndex
-  ): (graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Option.Option<N>
+  (nodeIndex: NodeIndex): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<N>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     nodeIndex: NodeIndex
@@ -2523,9 +2523,9 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  * @since 3.18.0
  */
 export const getEdge: {
-  <E>(
-    edgeIndex: EdgeIndex
-  ): <N, T extends Kind = "directed">(graph: Graph<N, E, T> | MutableGraph<N, E, T>) => Option.Option<Edge<E>>
+  (edgeIndex: EdgeIndex): <N, E, T extends Kind = "directed">(
+    graph: Graph<N, E, T> | MutableGraph<N, E, T>
+  ) => Option.Option<Edge<E>>
   <N, E, T extends Kind = "directed">(
     graph: Graph<N, E, T> | MutableGraph<N, E, T>,
     edgeIndex: EdgeIndex

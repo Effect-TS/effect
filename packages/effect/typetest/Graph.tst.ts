@@ -1,4 +1,4 @@
-import { Graph, hole, pipe } from "effect"
+import { Graph, hole, type Option, pipe } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const directed: Graph.DirectedGraph<string, number>
@@ -62,6 +62,21 @@ describe("Graph", () => {
     expect(animalGraph).type.not.toBeAssignableTo<Graph.DirectedGraph<Dog, 1>>()
     expect(dogMutableGraph).type.not.toBeAssignableTo<Graph.MutableDirectedGraph<Animal, number>>()
     expect(animalMutableGraph).type.not.toBeAssignableTo<Graph.MutableDirectedGraph<Dog, 1>>()
+  })
+
+  it("standalone data-last getters", () => {
+    const getNode = Graph.getNode(0)
+    const getEdge = Graph.getEdge(0)
+
+    expect(getNode(directed)).type.toBe<Option.Option<string>>()
+    expect(getNode(undirected)).type.toBe<Option.Option<string>>()
+    expect(getNode(Graph.beginMutation(directed))).type.toBe<Option.Option<string>>()
+    expect(getNode(Graph.beginMutation(undirected))).type.toBe<Option.Option<string>>()
+
+    expect(getEdge(directed)).type.toBe<Option.Option<Graph.Edge<number>>>()
+    expect(getEdge(undirected)).type.toBe<Option.Option<Graph.Edge<number>>>()
+    expect(getEdge(Graph.beginMutation(directed))).type.toBe<Option.Option<Graph.Edge<number>>>()
+    expect(getEdge(Graph.beginMutation(undirected))).type.toBe<Option.Option<Graph.Edge<number>>>()
   })
 
   it("guards", () => {
