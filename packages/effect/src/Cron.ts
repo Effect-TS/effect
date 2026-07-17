@@ -906,7 +906,7 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
                   day = table.day[previous.getUTCDate()]
                 }
                 if (day === undefined) {
-                  throw new Error("Unable to find prev cron date")
+                  throw new Error("Unable to find cron date")
                 }
                 previous.setUTCDate(day)
                 b = (previous.getTime() - current.getTime()) / 86_400_000
@@ -961,7 +961,7 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
       return
     }
 
-    throw new Error("Unable to find " + direction + " cron date")
+    throw new Error("Unable to find cron date")
   })
 
   return dateTime.toDateUtc(result)
