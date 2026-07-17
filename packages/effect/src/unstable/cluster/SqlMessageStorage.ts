@@ -420,10 +420,13 @@ export const make: (options?: {
         ) AS t
       `
     },
+    // Keep the VALUES column as VARCHAR so SQL Server can seek the shard_id index.
     mssql: () => (shardIds: ReadonlyArray<string>, now: number) =>
       sql<{ readonly next_deliver_at: bigint | null }>`
         SELECT MIN(l.next_at) AS next_deliver_at
-        FROM (VALUES ${sql.literal(shardIds.map((id) => `(${wrapString(id)})`).join(","))}) AS s(shard_id)
+        FROM (VALUES ${
+        sql.literal(shardIds.map((id) => `(CAST(${wrapString(id)} AS VARCHAR(50)))`).join(","))
+      }) AS s(shard_id)
         CROSS APPLY (
           SELECT TOP 1 deliver_at AS next_at
           FROM ${messagesTableSql}
