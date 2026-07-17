@@ -14,9 +14,6 @@ import * as InternalAnnotations from "./annotations.ts"
 import * as InternalSchema from "./schema.ts"
 
 type Path = ReadonlyArray<string | number>
-type NodeAnnotations = SchemaRepresentation.Declaration["annotations"]
-type FilterAnnotations = SchemaRepresentation.Filter["annotations"]
-type KeyAnnotations = SchemaRepresentation.Element["annotations"]
 type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
 
 function annotationsField<A>(annotations: A | undefined): { readonly annotations?: A | undefined } {
@@ -34,7 +31,7 @@ function projectRepresentationAnnotation(
 function projectAnnotationBag(
   input: Readonly<Record<string, unknown>> | undefined,
   stripStringContent = false
-): NodeAnnotations {
+): Schema.Annotations.Annotations | undefined {
   if (input === undefined) return undefined
 
   const out: Record<string, unknown> = {}
@@ -50,7 +47,7 @@ function projectAnnotationBag(
 
   return Object.keys(out).length === 0
     ? undefined
-    : out as NonNullable<NodeAnnotations>
+    : out
 }
 
 function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.Check {
@@ -63,7 +60,7 @@ function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.C
         _tag: "Filter",
         aborted: check.aborted,
         ...(representation === undefined ? undefined : { representation }),
-        ...annotationsField(projectAnnotationBag(check.annotations) as FilterAnnotations)
+        ...annotationsField(projectAnnotationBag(check.annotations))
       }
     }
     case "FilterGroup": {
@@ -74,7 +71,7 @@ function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.C
         _tag: "FilterGroup",
         checks: Arr.map(check.checks, projectCheck),
         ...(representation === undefined ? undefined : { representation }),
-        ...annotationsField(projectAnnotationBag(check.annotations) as FilterAnnotations)
+        ...annotationsField(projectAnnotationBag(check.annotations))
       }
     }
   }
@@ -168,7 +165,7 @@ function projectRepresentation(
         elements: representation.elements.map((element) => ({
           isOptional: element.isOptional,
           type: projectRepresentation(element.type),
-          ...annotationsField(projectAnnotationBag(element.annotations) as KeyAnnotations)
+          ...annotationsField(projectAnnotationBag(element.annotations))
         })),
         rest: representation.rest.map(projectRepresentation),
         checks,
@@ -182,7 +179,7 @@ function projectRepresentation(
           isOptional: property.isOptional,
           isMutable: property.isMutable,
           type: projectRepresentation(property.type),
-          ...annotationsField(projectAnnotationBag(property.annotations) as KeyAnnotations)
+          ...annotationsField(projectAnnotationBag(property.annotations))
         })
       )
       const indexSignatures = representation.indexSignatures.map(
@@ -323,7 +320,7 @@ function jsonSchemaFilter(
 
 function jsonSchemaAnnotations(
   schema: JsonSchema.JsonSchema
-): NodeAnnotations | undefined {
+): Schema.Annotations.Annotations | undefined {
   const annotations: Record<string, Schema.Json> = {}
   if (typeof schema.title === "string") annotations.title = schema.title
   if (typeof schema.description === "string") annotations.description = schema.description
@@ -338,7 +335,7 @@ function jsonSchemaAnnotations(
 
 function annotateJsonSchemaRepresentation(
   representation: ImportedJsonSchemaRepresentation,
-  annotations: NodeAnnotations | undefined
+  annotations: Schema.Annotations.Annotations | undefined
 ): ImportedJsonSchemaRepresentation {
   if (annotations === undefined) {
     return representation
@@ -361,7 +358,7 @@ function annotateJsonSchemaRepresentation(
 }
 
 function jsonDeclaration(
-  annotations: NodeAnnotations | undefined
+  annotations: Schema.Annotations.Annotations | undefined
 ): Representation {
   return {
     _tag: "Declaration",
@@ -480,14 +477,14 @@ function translateJsonSchemaMultiDocument(
 
   function annotationsOf(
     representation: ImportedJsonSchemaRepresentation
-  ): NodeAnnotations | undefined {
+  ): Schema.Annotations.Annotations | undefined {
     return representation._tag === "Reference" ? undefined : representation.annotations
   }
 
   function mergeAnnotations(
-    left: NodeAnnotations | undefined,
-    right: NodeAnnotations | undefined
-  ): NodeAnnotations | undefined {
+    left: Schema.Annotations.Annotations | undefined,
+    right: Schema.Annotations.Annotations | undefined
+  ): Schema.Annotations.Annotations | undefined {
     if (left === undefined) return right
     if (right === undefined) return left
     return { ...left, ...right }
@@ -506,7 +503,7 @@ function translateJsonSchemaMultiDocument(
 
   function asChecks(
     checks: ReadonlyArray<Check>,
-    annotations: NodeAnnotations | undefined
+    annotations: Schema.Annotations.Annotations | undefined
   ): ReadonlyArray<Check> | undefined {
     if (checks.length === 0) return undefined
     if (annotations === undefined) return checks
@@ -526,7 +523,7 @@ function translateJsonSchemaMultiDocument(
   function combineChecks(
     left: ReadonlyArray<Check>,
     right: ReadonlyArray<Check>,
-    annotations: NodeAnnotations | undefined
+    annotations: Schema.Annotations.Annotations | undefined
   ): ReadonlyArray<Check> | undefined {
     const checks = asChecks(right, annotations)
     return checks === undefined ? undefined : [...left, ...checks]
@@ -539,7 +536,7 @@ function translateJsonSchemaMultiDocument(
   function combineNumberChecks(
     left: ReadonlyArray<Check>,
     right: ReadonlyArray<Check>,
-    annotations: NodeAnnotations | undefined
+    annotations: Schema.Annotations.Annotations | undefined
   ): ReadonlyArray<Check> | undefined {
     if (left.some((check) => checkId(check) === "effect/schema/isFinite")) {
       right = right.filter((check) => checkId(check) !== "effect/schema/isFinite")
@@ -553,7 +550,7 @@ function translateJsonSchemaMultiDocument(
   function combineArrayChecks(
     left: ReadonlyArray<Check>,
     right: ReadonlyArray<Check>,
-    annotations: NodeAnnotations | undefined
+    annotations: Schema.Annotations.Annotations | undefined
   ): ReadonlyArray<Check> | undefined {
     if (left.some((check) => checkId(check) === "effect/schema/isUnique")) {
       right = right.filter((check) => checkId(check) !== "effect/schema/isUnique")
@@ -2561,15 +2558,14 @@ function lowerASTs(
         return {
           _tag: ast._tag,
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "String": {
-        const contentMediaType = ast.annotations?.contentMediaType
-        const contentSchema = ast.annotations?.contentSchema
+        const { contentMediaType, contentSchema, ...annotations } = ast.annotations ?? {}
         return {
           _tag: "String",
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations, true),
+          ...(Object.keys(annotations).length === 0 ? undefined : { annotations }),
           ...(typeof contentMediaType === "string" ? { contentMediaType } : undefined),
           ...(SchemaAST.isAST(contentSchema) ? { contentSchema: recur(SchemaAST.toType(contentSchema)) } : undefined)
         }
@@ -2579,62 +2575,64 @@ function lowerASTs(
         return {
           _tag: ast._tag,
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "Literal":
         return {
           _tag: "Literal",
           literal: ast.literal,
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "UniqueSymbol":
         return {
           _tag: "UniqueSymbol",
           symbol: ast.symbol,
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "Enum":
         return {
           _tag: "Enum",
           enums: ast.enums,
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "TemplateLiteral":
         return {
           _tag: "TemplateLiteral",
           parts: ast.parts.map((ast) => recur(ast)),
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "Arrays":
         return {
           _tag: "Arrays",
           elements: ast.elements.map((element) => {
             const projected = encoded ? SchemaAST.getLastEncoding(element) : element
+            const annotations = projected.context?.annotations
             return {
               isOptional: SchemaAST.isOptional(projected),
               type: recur(element),
-              ...fromKeyAnnotations(projected.context?.annotations)
+              ...(annotations === undefined ? undefined : { annotations })
             }
           }),
           rest: ast.rest.map((ast) => recur(ast)),
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "Objects":
         return {
           _tag: "Objects",
           propertySignatures: ast.propertySignatures.map((property) => {
             const projected = encoded ? SchemaAST.getLastEncoding(property.type) : property.type
+            const annotations = projected.context?.annotations
             return {
               name: property.name,
               type: recur(property.type),
               isOptional: SchemaAST.isOptional(projected),
               isMutable: SchemaAST.isMutable(projected),
-              ...fromKeyAnnotations(projected.context?.annotations)
+              ...(annotations === undefined ? undefined : { annotations })
             }
           }),
           indexSignatures: ast.indexSignatures.map((index) => ({
@@ -2642,7 +2640,7 @@ function lowerASTs(
             type: recur(index.type)
           })),
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "Union":
         return {
@@ -2650,14 +2648,14 @@ function lowerASTs(
           types: InternalSchema.jsonReorder(ast.types).map((ast) => recur(ast)),
           mode: ast.mode,
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
       case "Suspend":
         return {
           _tag: "Suspend",
           checks: [],
           thunk: recur(ast.thunk()),
-          ...fromNodeAnnotations(ast.annotations)
+          ...annotationsField(ast.annotations)
         }
     }
   }
@@ -2685,25 +2683,6 @@ function lowerASTs(
           ...fromRepresentationAnnotations(check.annotations)
         }
     }
-  }
-
-  function fromNodeAnnotations(
-    annotations: Schema.Annotations.Annotations | undefined,
-    stripStringContent: boolean = false
-  ): { readonly annotations: NodeAnnotations } | undefined {
-    if (annotations === undefined) return undefined
-    const { representation: _, ...rest } = annotations
-    if (stripStringContent) {
-      const { contentMediaType: _, contentSchema: __, ...annotations } = rest
-      return Object.keys(annotations).length === 0 ? undefined : { annotations }
-    }
-    return Object.keys(rest).length === 0 ? undefined : { annotations: rest }
-  }
-
-  function fromKeyAnnotations(
-    annotations: Schema.Annotations.Key<unknown> | undefined
-  ): { readonly annotations: KeyAnnotations } | undefined {
-    return annotations === undefined ? undefined : { annotations }
   }
 
   function fromRepresentationAnnotations<

@@ -21,10 +21,6 @@ export interface RepresentationAnnotation<S> {
   readonly schemas?: ReadonlyArray<S> | undefined
 }
 
-type NodeAnnotations = Schema.Annotations.Annotations
-type FilterAnnotations = Omit<Schema.Annotations.Filter, "representation">
-type KeyAnnotations = Schema.Annotations.Key<unknown>
-
 /**
  * Input passed to JSON Schema compiler annotations.
  *
@@ -146,7 +142,7 @@ export declare namespace Generation {
 export interface Declaration {
   readonly _tag: "Declaration"
   readonly representation?: RepresentationAnnotation<Representation> | undefined
-  readonly annotations?: NodeAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly typeParameters: ReadonlyArray<Representation>
   readonly checks: ReadonlyArray<Check>
 }
@@ -159,7 +155,7 @@ export interface Declaration {
  */
 export interface Suspend {
   readonly _tag: "Suspend"
-  readonly annotations?: NodeAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly checks: readonly []
   readonly thunk: Representation
 }
@@ -177,7 +173,7 @@ export interface Reference {
 
 interface Keyword<Tag extends string> {
   readonly _tag: Tag
-  readonly annotations?: NodeAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly checks: ReadonlyArray<Check>
 }
 
@@ -321,7 +317,7 @@ export interface TemplateLiteral extends Keyword<"TemplateLiteral"> {
 export interface Element {
   readonly isOptional: boolean
   readonly type: Representation
-  readonly annotations?: KeyAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
 }
 
 /**
@@ -346,7 +342,7 @@ export interface PropertySignature {
   readonly type: Representation
   readonly isOptional: boolean
   readonly isMutable: boolean
-  readonly annotations?: KeyAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
 }
 
 /**
@@ -429,7 +425,7 @@ export type Check = Filter | FilterGroup
 export interface Filter {
   readonly _tag: "Filter"
   readonly representation?: RepresentationAnnotation<Representation> | undefined
-  readonly annotations?: FilterAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly aborted: boolean
 }
 
@@ -442,7 +438,7 @@ export interface Filter {
 export interface FilterGroup {
   readonly _tag: "FilterGroup"
   readonly representation?: RepresentationAnnotation<Representation> | undefined
-  readonly annotations?: FilterAnnotations | undefined
+  readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly checks: readonly [Check, ...Array<Check>]
 }
 

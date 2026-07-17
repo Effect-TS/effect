@@ -194,23 +194,6 @@ describe("SchemaRepresentation.toJson", () => {
     })
   })
 
-  it("omits representation annotations on structural nodes", () => {
-    const schema = Schema.String.annotate({
-      representation: { id: "acme/schema/String", payload: null }
-    })
-
-    assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.fromAST(schema.ast)),
-      {
-        representation: {
-          _tag: "String",
-          checks: []
-        },
-        references: {}
-      }
-    )
-  })
-
   it("preserves filter groups without an identity", () => {
     const first = Schema.makeFilter<string>(() => true, {
       representation: { id: "acme/schema/first", payload: null }

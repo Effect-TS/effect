@@ -22,7 +22,6 @@ type Representation = SchemaRepresentation.Representation
 type Check = SchemaRepresentation.Check
 type Document = SchemaRepresentation.Document
 type MultiDocument = SchemaRepresentation.MultiDocument
-type NodeAnnotations = SchemaRepresentation.Declaration["annotations"]
 type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<Representation>
 
 type PersistedCodecs = {
@@ -483,7 +482,7 @@ function revivePersisted(
 
   function annotateNode(
     schema: Schema.Top,
-    annotations: NodeAnnotations | undefined
+    annotations: Schema.Annotations.Annotations | undefined
   ): Schema.Top {
     return annotations === undefined ? schema : schema.annotate(annotations)
   }
