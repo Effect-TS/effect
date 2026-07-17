@@ -7552,7 +7552,7 @@ export function isInt(annotations?: Annotations.Filter) {
 export function isInt32(annotations?: Annotations.Filter) {
   return new SchemaAST.FilterGroup(
     [
-      isInt(annotations),
+      isInt(),
       isBetween({ minimum: -2147483648, maximum: 2147483647 })
     ],
     {
