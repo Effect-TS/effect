@@ -562,6 +562,75 @@ describe("Cron", () => {
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), e.pipe(DateTime.formatIsoZoned))
   })
 
+  it("skips nonexistent occurrences in named time zones", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const after = new Date("2024-03-30T02:30:00.000+01:00")
+    const result = next(cron, after)
+
+    deepStrictEqual(result, new Date("2024-04-01T02:30:00.000+02:00"))
+    assertTrue(result > after)
+    assertTrue(Cron.match(cron, result))
+  })
+
+  it("next remains strict when started in the second fall-back occurrence", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const after = new Date("2024-10-27T02:00:00.000+01:00")
+    const result = next(cron, after)
+
+    deepStrictEqual(result, new Date("2024-10-28T02:30:00.000+01:00"))
+    assertTrue(result > after)
+    assertTrue(Cron.match(cron, result))
+  })
+
+  it("prev finds preferred occurrences before the second fall-back occurrence", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const before = new Date("2024-10-27T02:00:00.000+01:00")
+    const result = prev(cron, before)
+
+    deepStrictEqual(result, new Date("2024-10-27T02:30:00.000+02:00"))
+    assertTrue(result < before)
+    assertTrue(Cron.match(cron, result))
+  })
+
+  it("prev skips nonexistent occurrences when traversing a spring gap", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const before = new Date("2024-03-31T03:00:00.000+02:00")
+    const result = prev(cron, before)
+
+    deepStrictEqual(result, new Date("2024-03-30T02:30:00.000+01:00"))
+    assertTrue(result < before)
+    assertTrue(Cron.match(cron, result))
+  })
+
+  it("handles large named-zone gaps and folds", () => {
+    const apia = Cron.parseUnsafe("0 0 12 * * *", "Pacific/Apia")
+    const beforeApiaGap = new Date("2011-12-29T12:00:00.000-10:00")
+    const afterApiaGap = new Date("2011-12-31T12:00:00.000+14:00")
+    const apiaNext = next(apia, beforeApiaGap)
+    const apiaPrev = prev(apia, afterApiaGap)
+
+    deepStrictEqual(apiaNext, afterApiaGap)
+    deepStrictEqual(apiaPrev, beforeApiaGap)
+    assertTrue(apiaNext > beforeApiaGap)
+    assertTrue(apiaPrev < afterApiaGap)
+    assertTrue(Cron.match(apia, apiaNext))
+    assertTrue(Cron.match(apia, apiaPrev))
+
+    const kwajalein = Cron.parseUnsafe("0 0 12 * * *", "Pacific/Kwajalein")
+    const secondFoldOccurrence = new Date("1969-09-30T01:00:00.000-12:00")
+    const kwajaleinNext = next(kwajalein, secondFoldOccurrence)
+
+    deepStrictEqual(kwajaleinNext, new Date("1969-10-01T12:00:00.000-12:00"))
+    assertTrue(kwajaleinNext > secondFoldOccurrence)
+    assertTrue(Cron.match(kwajalein, kwajaleinNext))
+
+    const everySecond = Cron.parseUnsafe("* * * * * *", "Pacific/Kwajalein")
+    const afterFold = next(everySecond, secondFoldOccurrence)
+    deepStrictEqual(afterFold, new Date("1969-10-01T00:00:00.000-12:00"))
+    assertTrue(afterFold > secondFoldOccurrence)
+    assertTrue(Cron.match(everySecond, afterFold))
+  })
+
   it("handles utc timezone", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const make = (date: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(date))
