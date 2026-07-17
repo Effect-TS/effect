@@ -110,6 +110,41 @@ describe("HttpApiBuilder", () => {
 
         expect<Layer.Services<typeof handlers>>().type.toBe<HttpRouterRequest<"Requires", UserRepository>>()
       })
+
+      it("distributes multi-service handler requirements into per-service markers", () => {
+        class UserRepository extends Context.Service<UserRepository, {}>()("UserRepository") {}
+        class UserPreferences extends Context.Service<UserPreferences, {}>()("UserPreferences") {}
+        const Api = HttpApi.make("api").add(
+          HttpApiGroup.make("users").add(
+            HttpApiEndpoint.get("getUser", "/users/:id", {
+              success: Schema.String
+            })
+          )
+        )
+
+        const handlers = HttpApiBuilder.group(
+          Api,
+          "users",
+          (handlers) =>
+            handlers.handle(
+              "getUser",
+              Effect.fnUntraced(function*() {
+                yield* UserRepository
+                yield* UserPreferences
+                return "user"
+              })
+            )
+        )
+
+        // A single combined marker would not be eliminated by middleware layers,
+        // which provide per-service markers via `Request.From<"Requires", Provides>`.
+        type Requirements =
+          | HttpRouterRequest<"Requires", UserRepository>
+          | HttpRouterRequest<"Requires", UserPreferences>
+
+        expect<Layer.Services<typeof handlers>>().type.toBeAssignableTo<Requirements>()
+        expect<Layer.Services<typeof handlers>>().type.toBeAssignableFrom<Requirements>()
+      })
     })
 
     describe("handleAll", () => {
