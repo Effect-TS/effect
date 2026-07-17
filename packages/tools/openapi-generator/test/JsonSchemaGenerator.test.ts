@@ -1,5 +1,5 @@
 import * as JsonSchemaGenerator from "@effect/openapi-generator/JsonSchemaGenerator"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 
 describe("JsonSchemaGenerator", () => {
   it("schema & no definitions", () => {
@@ -168,6 +168,46 @@ export const A = B
     expect(httpApiResult).toContain("const __recursive_ErrorDetails =")
     expect(httpApiResult.indexOf(recursiveDeclaration)).toBeLessThan(
       httpApiResult.indexOf("export const ErrorResponse =")
+    )
+  })
+
+  it("declares mutually recursive forward references before runtime initialization", () => {
+    const generator = JsonSchemaGenerator.make()
+    generator.addSchema("Root", { $ref: "#/components/schemas/ResourcesNetworkCard" })
+    const definitions = {
+      ResourcesNetworkCard: {
+        type: "object",
+        properties: {
+          sriov: { $ref: "#/components/schemas/ResourcesNetworkCardSRIOV" }
+        },
+        additionalProperties: false
+      },
+      ResourcesNetworkCardSRIOV: {
+        type: "object",
+        properties: {
+          vfs: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ResourcesNetworkCard" }
+          }
+        },
+        additionalProperties: false
+      }
+    }
+    const recursiveDeclaration =
+      "export const ResourcesNetworkCardSRIOV = Schema.suspend((): Schema.Codec<ResourcesNetworkCardSRIOV> => __recursive_ResourcesNetworkCardSRIOV)"
+
+    const runtimeResult = generator.generate("openapi-3.1", definitions, false)
+    assert.include(runtimeResult, recursiveDeclaration)
+    assert.isBelow(
+      runtimeResult.indexOf(recursiveDeclaration),
+      runtimeResult.indexOf("export const ResourcesNetworkCard =")
+    )
+
+    const httpApiResult = generator.generateHttpApi("openapi-3.1", definitions)
+    assert.include(httpApiResult, recursiveDeclaration)
+    assert.isBelow(
+      httpApiResult.indexOf(recursiveDeclaration),
+      httpApiResult.indexOf("export const ResourcesNetworkCard =")
     )
   })
 })
