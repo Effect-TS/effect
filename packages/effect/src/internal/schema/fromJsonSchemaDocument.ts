@@ -10,8 +10,6 @@ import { fromRepresentation, fromRepresentations } from "./fromRepresentation.ts
 type Path = ReadonlyArray<string | number>
 type Representation = SchemaRepresentation.Representation
 type Check = SchemaRepresentation.Check
-type Document = SchemaRepresentation.Document
-type MultiDocument = SchemaRepresentation.MultiDocument
 
 type ImportedJsonSchemaRepresentation = Extract<Representation, {
   readonly _tag:
@@ -29,7 +27,7 @@ type ImportedJsonSchemaRepresentation = Extract<Representation, {
     | "Union"
 }>
 
-const jsonSchemaTypes: ReadonlySet<string> = new Set([
+const jsonSchemaTypes = new Set([
   "null",
   "string",
   "number",
@@ -57,22 +55,14 @@ function isImportedJsonSchemaType(input: unknown): input is JsonSchema.Type {
 }
 
 function inferJsonSchemaType(schema: JsonSchema.JsonSchema): JsonSchema.Type | undefined {
-  if (jsonSchemaStringKeys.some((key) => schema[key] !== undefined)) {
-    return "string"
-  }
-  if (jsonSchemaNumberKeys.some((key) => schema[key] !== undefined)) {
-    return "number"
-  }
-  if (jsonSchemaObjectKeys.some((key) => schema[key] !== undefined)) {
-    return "object"
-  }
-  if (jsonSchemaArrayKeys.some((key) => schema[key] !== undefined)) {
-    return "array"
-  }
+  if (jsonSchemaStringKeys.some((key) => schema[key] !== undefined)) return "string"
+  if (jsonSchemaNumberKeys.some((key) => schema[key] !== undefined)) return "number"
+  if (jsonSchemaObjectKeys.some((key) => schema[key] !== undefined)) return "object"
+  if (jsonSchemaArrayKeys.some((key) => schema[key] !== undefined)) return "array"
 }
 
 function jsonSchemaReferenceKey($ref: string): string | undefined {
-  const token = $ref.split("/").at(-1)!
+  const token = $ref.slice($ref.lastIndexOf("/") + 1)
   return token.length === 0 ? undefined : unescapeToken(token)
 }
 
@@ -111,9 +101,7 @@ function annotateJsonSchemaRepresentation(
   representation: ImportedJsonSchemaRepresentation,
   annotations: Schema.Annotations.Annotations | undefined
 ): ImportedJsonSchemaRepresentation {
-  if (annotations === undefined) {
-    return representation
-  }
+  if (annotations === undefined) return representation
   if (representation._tag === "Reference") {
     return {
       _tag: "Suspend",
@@ -207,15 +195,13 @@ function translateJsonSchemaMultiDocument(
   document: JsonSchema.MultiDocument<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions,
   singleRoot = false
-): MultiDocument {
+): SchemaRepresentation.MultiDocument {
   const definitionCache = new Map<string, ImportedJsonSchemaRepresentation>()
   const definitionsInProgress = new Set<string>()
 
   function translateDefinition(key: string, path: Path): ImportedJsonSchemaRepresentation {
     const cached = definitionCache.get(key)
-    if (cached !== undefined) {
-      return cached
-    }
+    if (cached !== undefined) return cached
     if (!Object.hasOwn(document.definitions, key) || definitionsInProgress.has(key)) {
       throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
     }
@@ -234,8 +220,7 @@ function translateJsonSchemaMultiDocument(
     if (seen.has(reference.$ref)) {
       throw errorWithPath(`Invalid reference ${reference.$ref}`, [...path, "$ref"])
     }
-    const nextSeen = new Set(seen)
-    nextSeen.add(reference.$ref)
+    const nextSeen = new Set(seen).add(reference.$ref)
     const representation = translateDefinition(reference.$ref, path)
     if (representation._tag === "Reference") {
       return resolveReference(representation, path, nextSeen)
@@ -693,23 +678,17 @@ function translateJsonSchemaMultiDocument(
       }
     }
 
-    if (Array.isArray(schema.anyOf)) {
-      const union: ImportedJsonSchemaRepresentation = {
-        _tag: "Union",
-        types: schema.anyOf.map((member, index) => recur(member, [...path, "anyOf", index])),
-        mode: "anyOf",
-        checks: []
+    for (const mode of ["anyOf", "oneOf"] as const) {
+      const members = schema[mode]
+      if (Array.isArray(members)) {
+        const union: ImportedJsonSchemaRepresentation = {
+          _tag: "Union",
+          types: members.map((member, index) => recur(member, [...path, mode, index])),
+          mode,
+          checks: []
+        }
+        representation = combine(union, representation, [...path, mode])
       }
-      representation = combine(union, representation, [...path, "anyOf"])
-    }
-    if (Array.isArray(schema.oneOf)) {
-      const union: ImportedJsonSchemaRepresentation = {
-        _tag: "Union",
-        types: schema.oneOf.map((member, index) => recur(member, [...path, "oneOf", index])),
-        mode: "oneOf",
-        checks: []
-      }
-      representation = combine(union, representation, [...path, "oneOf"])
     }
     return representation
   }
@@ -770,14 +749,13 @@ function translateJsonSchemaMultiDocument(
             : { contentSchema: recur(schema.contentSchema, [...path, "contentSchema"]) })
         }
       case "number":
-        return {
-          _tag: "Number",
-          checks: [jsonSchemaFilter("effect/schema/isFinite", null), ...collectNumberChecks(schema)]
-        }
       case "integer":
         return {
           _tag: "Number",
-          checks: [jsonSchemaFilter("effect/schema/isInt", null), ...collectNumberChecks(schema)]
+          checks: [
+            jsonSchemaFilter(type === "number" ? "effect/schema/isFinite" : "effect/schema/isInt", null),
+            ...collectNumberChecks(schema)
+          ]
         }
       case "boolean":
         return { _tag: "Boolean", checks: [] }
@@ -952,7 +930,7 @@ function translateJsonSchemaMultiDocument(
 function toRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
-): Document {
+): SchemaRepresentation.Document {
   const translated = translateJsonSchemaMultiDocument(
     {
       dialect: document.dialect,
@@ -966,14 +944,6 @@ function toRepresentation(
     representation: translated.representations[0],
     references: translated.references
   }
-}
-
-/** @internal */
-function toRepresentations(
-  document: JsonSchema.MultiDocument<"draft-2020-12">,
-  options?: SchemaRepresentation.FromJsonSchemaOptions
-): MultiDocument {
-  return translateJsonSchemaMultiDocument(document, options)
 }
 
 const jsonSchemaRevivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = [
@@ -1007,5 +977,5 @@ export function fromJsonSchemaMultiDocument(
   document: JsonSchema.MultiDocument<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.SchemaMultiDocument {
-  return fromRepresentations(toRepresentations(document, options), jsonSchemaRevivers)
+  return fromRepresentations(translateJsonSchemaMultiDocument(document, options), jsonSchemaRevivers)
 }
