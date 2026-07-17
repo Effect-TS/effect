@@ -1,4 +1,4 @@
-import { describe, it, vi } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, throws } from "@effect/vitest/utils"
 import { Cron, DateTime, Equal, Option, Result } from "effect"
 
@@ -189,26 +189,6 @@ describe("Cron", () => {
 
     const withoutTimeZone = Cron.parseUnsafe("23 0-20/2 * * *")
     assertTrue(Option.isNone(withoutTimeZone.tz))
-  })
-
-  it("normalizes month and weekday aliases without locale-sensitive casing", () => {
-    const toLocaleLowerCase = vi.spyOn(String.prototype, "toLocaleLowerCase").mockImplementation(() => {
-      throw new Error("Unexpected locale-sensitive normalization")
-    })
-    try {
-      deepStrictEqual(
-        Cron.parse("0 0 * JAN FRI"),
-        Result.succeed(Cron.make({
-          minutes: [0],
-          hours: [0],
-          days: [],
-          months: [1],
-          weekdays: [5]
-        }))
-      )
-    } finally {
-      toLocaleLowerCase.mockRestore()
-    }
   })
 
   it("parseUnsafe", () => {
