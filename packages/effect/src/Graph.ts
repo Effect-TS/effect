@@ -5557,6 +5557,10 @@ export const topo: {
           }
         }
 
+        if (remaining.size > 0) {
+          throw new GraphError({ message: "Cannot perform topological sort on cyclic graph" })
+        }
+
         return { done: true, value: undefined } as const
       }
 

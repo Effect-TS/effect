@@ -3727,6 +3727,39 @@ describe("Graph", () => {
       assert.strictEqual(iterator.next().done, true)
     })
 
+    it("should reject cycles introduced before topological iteration", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+      }))
+      const walker = Graph.topo(mutable)
+
+      Graph.addEdge(mutable, 0, 1, 1)
+      Graph.addEdge(mutable, 1, 0, 2)
+
+      assertGraphError(
+        () => Array.from(Graph.indices(walker)),
+        "Cannot perform topological sort on cyclic graph"
+      )
+    })
+
+    it("should use fresh graph state for each topological iteration", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, number>((graph) => {
+        Graph.addNode(graph, "A")
+        Graph.addNode(graph, "B")
+      }))
+      const walker = Graph.topo(mutable)
+
+      assert.deepStrictEqual(Array.from(Graph.indices(walker)), [0, 1])
+      Graph.addEdge(mutable, 0, 1, 1)
+      Graph.addEdge(mutable, 1, 0, 2)
+
+      assertGraphError(
+        () => Array.from(Graph.indices(walker)),
+        "Cannot perform topological sort on cyclic graph"
+      )
+    })
+
     it("should prioritize valid initials and still include all nodes", () => {
       const graph = Graph.directed<string, number>((mutable) => {
         const a = Graph.addNode(mutable, "A")
