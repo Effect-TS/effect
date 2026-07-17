@@ -264,16 +264,15 @@ describe("Cron", () => {
       })
     }
 
-    deepStrictEqual(
-      Cron.make({
-        minutes: [],
-        hours: [],
-        days: [],
-        months: [],
-        weekdays: [7]
-      }).weekdays,
-      new Set([0])
-    )
+    const normalized = Cron.make({
+      minutes: [],
+      hours: [],
+      days: [],
+      months: [],
+      weekdays: [7]
+    })
+    deepStrictEqual(normalized.seconds, new Set([0]))
+    deepStrictEqual(normalized.weekdays, new Set([0]))
   })
 
   it("make treats weekday 7 as Sunday when matching", () => {
