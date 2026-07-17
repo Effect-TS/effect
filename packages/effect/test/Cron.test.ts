@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertFalse, assertTrue, deepStrictEqual, throws } from "@effect/vitest/utils"
-import { Cron, DateTime, Equal, Option, Result } from "effect"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { Cron, DateTime, Equal, Hash, HashSet, Option, Result } from "effect"
 
 const match = (input: Cron.Cron | string, date: DateTime.DateTime.Input) =>
   Cron.match(Cron.isCron(input) ? input : Cron.parseUnsafe(input), date)
@@ -494,8 +494,20 @@ describe("Cron", () => {
 
   it("equal", () => {
     const cron = Cron.parseUnsafe("23 0-20/2 * * 0")
+    const utc = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
+    const anotherUtc = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
+    const berlin = Cron.parseUnsafe("23 0-20/2 * * 0", "Europe/Berlin")
     assertTrue(Equal.equals(cron, cron))
     assertTrue(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 * * 0")))
+    assertTrue(Cron.equals(utc, anotherUtc))
+    assertTrue(Cron.Equivalence(utc, anotherUtc))
+    assertTrue(Equal.equals(utc, anotherUtc))
+    strictEqual(Hash.hash(utc), Hash.hash(anotherUtc))
+    strictEqual(HashSet.size(HashSet.make(cron, utc, anotherUtc, berlin)), 3)
+    assertFalse(Cron.equals(cron, utc))
+    assertFalse(Cron.Equivalence(utc, berlin))
+    assertFalse(Equal.equals(cron, utc))
+    assertFalse(Equal.equals(utc, berlin))
     assertFalse(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 * * 1")))
     assertFalse(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 * * 0-6")))
     assertFalse(Equal.equals(cron, Cron.parseUnsafe("23 0-20/2 1 * 0")))

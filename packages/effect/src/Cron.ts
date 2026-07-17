@@ -997,8 +997,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
 }
 
 /**
- * Equivalence instance for comparing the field restrictions of two `Cron`
- * schedules.
+ * Equivalence instance for comparing two `Cron` schedules.
  *
  * **When to use**
  *
@@ -1007,8 +1006,8 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  *
  * **Details**
  *
- * This comparison checks seconds, minutes, hours, days, months, and weekdays.
- * It does not compare the optional timezone.
+ * This comparison checks the optional timezone, day matching mode, seconds,
+ * minutes, hours, days, months, and weekdays.
  *
  * **Example** (Comparing schedules with equivalence)
  *
@@ -1040,6 +1039,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  * @since 2.0.0
  */
 export const Equivalence: Equ.Equivalence<Cron> = Equ.make((self, that) =>
+  Equal.equals(self.tz, that.tz) &&
   self.and === that.and &&
   restrictionsEquals(self.seconds, that.seconds) &&
   restrictionsEquals(self.minutes, that.minutes) &&
@@ -1054,17 +1054,17 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
   restrictionsArrayEquals(Arr.fromIterable(self), Arr.fromIterable(that))
 
 /**
- * Checks whether two `Cron` instances have the same field restrictions.
+ * Checks whether two `Cron` instances have equal timezone values and field
+ * restrictions.
  *
  * **When to use**
  *
- * Use to directly compare whether two cron schedules have the same field
- * restrictions.
+ * Use to directly compare two cron schedules, including their timezones.
  *
  * **Details**
  *
- * The comparison checks seconds, minutes, hours, days, months, and weekdays.
- * It does not compare the optional timezone.
+ * The comparison checks the optional timezone, day matching mode, seconds,
+ * minutes, hours, days, months, and weekdays.
  *
  * **Example** (Checking schedule equality)
  *
