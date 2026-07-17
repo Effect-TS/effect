@@ -210,13 +210,46 @@ export const updateAs = dual<
   readonly fiberRef: FiberRef.FiberRef<A>
   readonly value: A
 }) => {
+  const newStack = updatedStack(self.locals, fiberId, fiberRef, value)
+  if (newStack === undefined) {
+    return self
+  }
   if (self.locals.size === 0) {
-    return new FiberRefsImpl(new Map([[fiberRef, [[fiberId, value] as const]]]))
+    return new FiberRefsImpl(new Map([[fiberRef, newStack]]))
   }
   const locals = new Map(self.locals)
-  unsafeUpdateAs(locals, fiberId, fiberRef, value)
+  locals.set(fiberRef, newStack)
   return new FiberRefsImpl(locals)
 })
+
+const updatedStack = (
+  locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>,
+  fiberId: FiberId.Single,
+  fiberRef: FiberRef.FiberRef<any>,
+  value: any
+): Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]> | undefined => {
+  const oldStack: ReadonlyArray<readonly [FiberId.Single, any]> = locals.get(fiberRef) ?? []
+  if (Arr.isNonEmptyReadonlyArray(oldStack)) {
+    const [currentId, currentValue] = Arr.headNonEmpty(oldStack)
+    if (currentId[Equal.symbol](fiberId)) {
+      if (Equal.equals(currentValue, value)) {
+        return undefined
+      } else {
+        return [
+          [fiberId, value] as const,
+          ...oldStack.slice(1)
+        ]
+      }
+    } else {
+      return [
+        [fiberId, value] as const,
+        ...oldStack
+      ]
+    }
+  }
+
+  return [[fiberId, value] as const]
+}
 
 const unsafeUpdateAs = (
   locals: Map<FiberRef.FiberRef<any>, Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]>>,
@@ -224,31 +257,10 @@ const unsafeUpdateAs = (
   fiberRef: FiberRef.FiberRef<any>,
   value: any
 ) => {
-  const oldStack: ReadonlyArray<readonly [FiberId.Single, any]> = locals.get(fiberRef) ?? []
-  let newStack: Arr.NonEmptyReadonlyArray<readonly [FiberId.Single, any]> | undefined
-
-  if (Arr.isNonEmptyReadonlyArray(oldStack)) {
-    const [currentId, currentValue] = Arr.headNonEmpty(oldStack)
-    if (currentId[Equal.symbol](fiberId)) {
-      if (Equal.equals(currentValue, value)) {
-        return
-      } else {
-        newStack = [
-          [fiberId, value] as const,
-          ...oldStack.slice(1)
-        ]
-      }
-    } else {
-      newStack = [
-        [fiberId, value] as const,
-        ...oldStack
-      ]
-    }
-  } else {
-    newStack = [[fiberId, value] as const]
+  const newStack = updatedStack(locals, fiberId, fiberRef, value)
+  if (newStack !== undefined) {
+    locals.set(fiberRef, newStack)
   }
-
-  locals.set(fiberRef, newStack)
 }
 
 /** @internal */

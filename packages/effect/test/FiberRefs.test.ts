@@ -33,6 +33,32 @@ describe("FiberRefs", () => {
     deepStrictEqual(FiberRefs.get(newParentFiberRefs, FiberRef.interruptedCause), Option.some(Cause.empty))
   })
 
+  it("updateAs reuses unchanged FiberRefs for the same fiber", () => {
+    const fiberId = FiberId.make(1, 0) as FiberId.Runtime
+    const childId = FiberId.make(2, 1) as FiberId.Runtime
+    const fiberRef = FiberRef.unsafeMake(0)
+    const fiberRefs = FiberRefs.updateAs(FiberRefs.empty(), {
+      fiberId,
+      fiberRef,
+      value: 1
+    })
+
+    const unchanged = FiberRefs.updateAs(fiberRefs, {
+      fiberId,
+      fiberRef,
+      value: 1
+    })
+    strictEqual(unchanged, fiberRefs)
+
+    const childFiberRefs = FiberRefs.updateAs(fiberRefs, {
+      fiberId: childId,
+      fiberRef,
+      value: 1
+    })
+    assertTrue(childFiberRefs !== fiberRefs)
+    strictEqual(childFiberRefs.locals.get(fiberRef)?.length, 2)
+  })
+
   describe("currentLogAnnotations", () => {
     it("doesnt leak", () => {
       Effect.void.pipe(Effect.annotateLogs("test", "abc"), Effect.runSync)
