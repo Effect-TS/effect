@@ -181,6 +181,22 @@ export namespace Vitest {
 export const addEqualityTesters: () => void = internal.addEqualityTesters
 
 /**
+ * Registers a callback before all tests in the current suite. If the callback
+ * returns an `Effect`, the `Effect` is run and awaited.
+ *
+ * @since 1.0.0
+ */
+export const beforeAll: typeof V.beforeAll = internal.beforeAll
+
+/**
+ * Registers a callback before each test in the current suite. If the callback
+ * returns an `Effect`, the `Effect` is run and awaited.
+ *
+ * @since 1.0.0
+ */
+export const beforeEach: typeof V.beforeEach = internal.beforeEach
+
+/**
  * @since 1.0.0
  */
 export const effect: Vitest.Tester<TestServices.TestServices> = internal.effect

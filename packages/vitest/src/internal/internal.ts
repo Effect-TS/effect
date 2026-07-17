@@ -59,6 +59,14 @@ const runPromise = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A,
 const runTest = (ctx?: Vitest.TestContext) => <E, A>(effect: Effect.Effect<A, E>) => runPromise(ctx)(effect)
 
 /** @internal */
+const runHook = <Args extends Array<unknown>>(hook: (...args: Args) => unknown) => (...args: Args): unknown => {
+  const result = hook(...args)
+  return Effect.isEffect(result)
+    ? runPromise()(result as Effect.Effect<unknown, unknown>)
+    : result
+}
+
+/** @internal */
 const TestEnv = TestEnvironment.TestContext.pipe(
   Layer.provide(Logger.remove(Logger.defaultLogger))
 )
@@ -78,6 +86,12 @@ function customTester(this: TesterContext, a: unknown, b: unknown, customTesters
 export const addEqualityTesters = () => {
   V.expect.addEqualityTesters([customTester])
 }
+
+/** @internal */
+export const beforeAll: typeof V.beforeAll = (fn, timeout) => V.beforeAll(runHook(fn), timeout)
+
+/** @internal */
+export const beforeEach: typeof V.beforeEach = (fn, timeout) => V.beforeEach(runHook(fn), timeout)
 
 /** @internal */
 const testOptions = (timeout?: number | V.TestOptions) => typeof timeout === "number" ? { timeout } : timeout ?? {}
