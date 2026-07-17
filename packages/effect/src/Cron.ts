@@ -884,7 +884,7 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
             const nextWeekday = table.weekday[currentWeekday]
             if (nextWeekday === undefined) {
               a = reverse ?
-                currentWeekday - 7 + boundary.weekday :
+                boundary.weekday - 7 - currentWeekday :
                 7 - currentWeekday + boundary.weekday
             } else {
               a = nextWeekday - currentWeekday

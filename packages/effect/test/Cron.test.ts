@@ -425,6 +425,30 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, sunday), new Date("2025-10-17T01:00:00.000Z"))
   })
 
+  it("prev wraps a later weekday into the previous week", () => {
+    const cron = Cron.parseUnsafe("0 0 * * SAT", DateTime.zoneMakeNamedUnsafe("UTC"))
+    const thursday = new Date("2025-10-23T12:00:00.000Z")
+    deepStrictEqual(prev(cron, thursday), new Date("2025-10-18T00:00:00.000Z"))
+  })
+
+  it("prev weekday wrapping returns matching instants strictly before the input", () => {
+    const cron = Cron.parseUnsafe("0 0 * * SAT", DateTime.zoneMakeNamedUnsafe("UTC"))
+    for (
+      const input of [
+        new Date("2025-10-19T12:00:00.000Z"),
+        new Date("2025-10-20T12:00:00.000Z"),
+        new Date("2025-10-21T12:00:00.000Z"),
+        new Date("2025-10-22T12:00:00.000Z"),
+        new Date("2025-10-23T12:00:00.000Z"),
+        new Date("2025-10-24T12:00:00.000Z")
+      ]
+    ) {
+      const result = prev(cron, input)
+      assertTrue(result < input)
+      assertTrue(Cron.match(cron, result))
+    }
+  })
+
   it("prev chooses the preferred occurrence in DST fall-back", () => {
     const make = (s: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(s))
     const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
