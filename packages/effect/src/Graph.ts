@@ -321,11 +321,11 @@ export type MutableUndirectedGraph<N, E> = MutableGraph<N, E, "undirected">
 
 /** @internal */
 const edgeEquals = (type: Kind, self: Edge<any>, that: Edge<any>): boolean =>
-  Equal.equals(self.data, that.data) &&
   (type === "directed"
     ? self.source === that.source && self.target === that.target
     : (self.source === that.source && self.target === that.target) ||
-      (self.source === that.target && self.target === that.source))
+      (self.source === that.target && self.target === that.source)) &&
+  Equal.equals(self.data, that.data)
 
 /** @internal */
 const edgeHash = (type: Kind, edge: Edge<any>): number =>
