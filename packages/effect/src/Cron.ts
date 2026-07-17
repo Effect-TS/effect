@@ -1262,7 +1262,7 @@ const splitRange = (input: string, aliases?: Record<string, number>): [number, n
 }
 
 function aliasOrValue(field: string, aliases?: Record<string, number>): number {
-  return aliases?.[field.toLocaleLowerCase()] ?? (decimalRegex.test(field) ? Number(field) : NaN)
+  return aliases?.[String.toLowerCase(field)] ?? (decimalRegex.test(field) ? Number(field) : NaN)
 }
 
 const decimalRegex = /^\d+$/
