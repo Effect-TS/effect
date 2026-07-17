@@ -64,8 +64,8 @@ const makeItProxy = <Methods extends object>(
       if (property in overrides) {
         return Reflect.get(overrides, property)
       }
-      const value = Reflect.get(target, property, receiver)
-      return typeof value === "function" ? value.bind(target) : value
+      // do not bind: binding would strip vitest's static helpers (e.g. `describe.each`)
+      return Reflect.get(target, property, receiver)
     }
   })
 

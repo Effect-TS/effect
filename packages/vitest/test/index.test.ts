@@ -43,6 +43,17 @@ it.effect.skipIf(false)("effect skipIf (false)", () => Effect.sync(() => expect(
 it.effect.runIf(true)("effect runIf (true)", () => Effect.sync(() => expect(1).toEqual(1)))
 it.effect.runIf(false)("effect runIf (false)", () => Effect.die("not run anyway"))
 
+// chained helpers
+
+it.describe.each(["foo", "bar"] as const)("describe.each %s", (text) => {
+  it.effect("runs an Effect test", () =>
+    Effect.sync(() => {
+      assert.include(["foo", "bar"], text)
+    }))
+})
+
+it.skip.each([1])("skip.each %s", () => assert.fail("skipped anyway"))
+
 // The following test is expected to fail because it simulates a test timeout.
 // Be aware that eventual "failure" of the test is only logged out.
 it.live.fails("interrupts on timeout", (ctx) =>
