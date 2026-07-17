@@ -246,6 +246,37 @@ describe("HttpClient", () => {
     })
   })
 
+  describe("ClientRequest headers", () => {
+    it("removeHeader removes a header without mutating the original request", () => {
+      const original = HttpClientRequest.get("https://example.com").pipe(
+        HttpClientRequest.setHeaders({
+          "Content-Length": "5",
+          "X-Test": "ok"
+        })
+      )
+      const request = original.pipe(HttpClientRequest.removeHeader("CONTENT-LENGTH"))
+
+      deepStrictEqual({ ...request.headers }, { "x-test": "ok" })
+      deepStrictEqual({ ...original.headers }, { "content-length": "5", "x-test": "ok" })
+    })
+
+    it("updateHeaders transforms the complete header set", () => {
+      const original = HttpClientRequest.get("https://example.com").pipe(
+        HttpClientRequest.setHeaders({
+          "Content-Length": "5",
+          "X-Test": "ok"
+        })
+      )
+      const request = HttpClientRequest.updateHeaders(
+        original,
+        (headers) => pipe(headers, Headers.remove("content-length"), Headers.set("x-next", "yes"))
+      )
+
+      deepStrictEqual({ ...request.headers }, { "x-test": "ok", "x-next": "yes" })
+      deepStrictEqual({ ...original.headers }, { "content-length": "5", "x-test": "ok" })
+    })
+  })
+
   it.effect("matchStatus", () =>
     Effect.gen(function*() {
       const jp = yield* JsonPlaceholder

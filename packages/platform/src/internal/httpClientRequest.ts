@@ -167,6 +167,31 @@ export const setHeaders = dual<
     self.body
   ))
 
+/** @internal */
+export const updateHeaders = dual<
+  (
+    f: (headers: Headers.Headers) => Headers.Headers
+  ) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (
+    self: ClientRequest.HttpClientRequest,
+    f: (headers: Headers.Headers) => Headers.Headers
+  ) => ClientRequest.HttpClientRequest
+>(2, (self, f) =>
+  makeInternal(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    f(self.headers),
+    self.body
+  ))
+
+/** @internal */
+export const removeHeader = dual<
+  (key: string) => (self: ClientRequest.HttpClientRequest) => ClientRequest.HttpClientRequest,
+  (self: ClientRequest.HttpClientRequest, key: string) => ClientRequest.HttpClientRequest
+>(2, (self, key) => updateHeaders(self, Headers.remove(key)))
+
 const stringOrRedacted = (value: string | Redacted.Redacted): string =>
   typeof value === "string" ? value : Redacted.value(value)
 

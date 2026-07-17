@@ -168,6 +168,24 @@ export const setHeaders: {
  * @since 1.0.0
  * @category combinators
  */
+export const updateHeaders: {
+  (f: (headers: Headers.Headers) => Headers.Headers): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, f: (headers: Headers.Headers) => Headers.Headers): HttpClientRequest
+} = internal.updateHeaders
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const removeHeader: {
+  (key: string): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, key: string): HttpClientRequest
+} = internal.removeHeader
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const basicAuth: {
   (username: string | Redacted, password: string | Redacted): (self: HttpClientRequest) => HttpClientRequest
   (self: HttpClientRequest, username: string | Redacted, password: string | Redacted): HttpClientRequest
