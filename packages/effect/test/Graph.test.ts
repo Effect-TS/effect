@@ -166,6 +166,42 @@ describe("Graph", () => {
 
       strictEqual(Equal.equals(left, right), false)
     })
+
+    it("uses stable reference equality and hashing for mutable graphs", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, string>())
+      const initialHash = Hash.hash(mutable)
+
+      strictEqual(Equal.equals(mutable, mutable), true)
+      const source = Graph.addNode(mutable, "A")
+      const target = Graph.addNode(mutable, "B")
+      Graph.addEdge(mutable, source, target, "edge")
+
+      strictEqual(Hash.hash(mutable), initialHash)
+      strictEqual(Equal.equals(mutable, mutable), true)
+    })
+
+    it("does not structurally compare independently constructed mutable graphs", () => {
+      const graph = makeGraph("directed", [[0, 1, "edge"]])
+      const left = Graph.beginMutation(graph)
+      const right = Graph.beginMutation(graph)
+
+      strictEqual(Equal.equals(left, right), false)
+      strictEqual(Equal.equals(right, left), false)
+    })
+
+    it("restores structural equality and hashing after finalization", () => {
+      const mutable = Graph.beginMutation(Graph.directed<string, string>())
+      Hash.hash(mutable)
+      const source = Graph.addNode(mutable, "A")
+      const target = Graph.addNode(mutable, "B")
+      Graph.addEdge(mutable, source, target, "edge")
+
+      const graph = Graph.endMutation(mutable)
+      const expected = makeGraph("directed", [[0, 1, "edge"]])
+
+      strictEqual(Equal.equals(graph, expected), true)
+      strictEqual(Hash.hash(graph), Hash.hash(expected))
+    })
   })
 
   describe("set operations", () => {

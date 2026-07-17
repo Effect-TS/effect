@@ -512,7 +512,7 @@ export const make =
     }
 
     graph.mutable = true
-    const mutable = graph as unknown as MutableGraph<N, E, T>
+    const mutable = Equal.byReferenceUnsafe(graph as unknown as MutableGraph<N, E, T>)
     return mutateScoped(mutable, mutate)
   }
 
@@ -604,7 +604,7 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
   mutable.acyclic = source.acyclic
   mutable.mutable = true
 
-  return mutable as unknown as MutableGraph<N, E, T>
+  return Equal.byReferenceUnsafe(mutable as unknown as MutableGraph<N, E, T>)
 }
 
 /**
