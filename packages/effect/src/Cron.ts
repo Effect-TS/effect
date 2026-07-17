@@ -897,6 +897,8 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
             if (nextDay === undefined) {
               if (reverse) {
                 const previous = new Date(current)
+                // Day zero is the previous month's last day. These two probes cover every
+                // valid day-of-month.
                 previous.setUTCDate(0)
                 let day = table.day[previous.getUTCDate()]
                 if (day === undefined) {
