@@ -5,10 +5,8 @@ import { throws } from "../../utils/assert.ts"
 const filterId = "acme/schema/minLength"
 
 const minLengthReviver: SchemaRepresentation.FilterReviver<{ readonly minimum: number }> = {
-  _tag: "Filter",
   id: filterId,
   payloadSchema: Schema.Struct({ minimum: Schema.Number }),
-  schemasArity: 0,
   revive: ({ annotations, payload }) => minLengthCheck(payload.minimum, annotations)
 }
 
@@ -290,17 +288,19 @@ describe("SchemaRepresentation.toSchema", () => {
         _tag: "String",
         checks: [{
           _tag: "FilterGroup",
-          annotations: { representation: { id: groupId, payload: null } },
-          checks: [{ _tag: "Filter", aborted: false }]
+          representation: { id: groupId, payload: null },
+          checks: [{
+            _tag: "Filter",
+            representation: { id: filterId, payload: { minimum: 1 } },
+            aborted: false
+          }]
         }]
       },
       references: {}
     })
     const reviver: SchemaRepresentation.FilterGroupReviver<null> = {
-      _tag: "FilterGroup",
       id: groupId,
       payloadSchema: Schema.Null,
-      schemasArity: 0,
       revive: () => Schema.makeFilterGroup([Schema.makeFilter<string>((value) => value !== "blocked")])
     }
     const schema = SchemaRepresentation.toSchema(document, { revivers: [reviver] }) as Schema.Codec<unknown>
@@ -316,11 +316,8 @@ describe("SchemaRepresentation.toSchema", () => {
       { representation: { id, payload: { label: "Box" }, schemas: [Schema.String.ast] } }
     )
     const reviver: SchemaRepresentation.DeclarationReviver<{ readonly label: string }> = {
-      _tag: "Declaration",
       id,
       payloadSchema: Schema.Struct({ label: Schema.String }),
-      schemasArity: 1,
-      typeParametersArity: 0,
       revive: ({ annotations, payload, schemas }) =>
         Schema.declare<{ readonly value: string }>(
           (input): input is { readonly value: string } =>
@@ -336,7 +333,7 @@ describe("SchemaRepresentation.toSchema", () => {
     assert.strictEqual(
       errorFrom(() => SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), { revivers: [] }))
         .message,
-      `Missing reviver for ${filterId}\n  at ["representation"]["checks"][0]["annotations"]["representation"]`
+      `Missing reviver for ${filterId}\n  at ["representation"]["checks"][0]["representation"]`
     )
   })
 
@@ -352,102 +349,16 @@ describe("SchemaRepresentation.toSchema", () => {
     )
   })
 
-  it("rejects an invalid declared schemasArity", () => {
-    assert.strictEqual(
-      errorFrom(() =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
-          revivers: [{ ...minLengthReviver, schemasArity: -1 }]
-        })
-      ).message,
-      `Invalid schemasArity for ${filterId}\n  at ["revivers"][0]["schemasArity"]`
-    )
-  })
-
-  it("rejects an invalid effective schemas arity", () => {
-    assert.strictEqual(
-      errorFrom(() =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
-          revivers: [{ ...minLengthReviver, schemasArity: 1 }]
-        })
-      ).message,
-      `Invalid schemas arity for ${filterId}: expected 1, got 0\n  at ["representation"]["checks"][0]["annotations"]["representation"]["schemas"]`
-    )
-  })
-
-  it("rejects an invalid declared typeParametersArity", () => {
-    const id = "acme/schema/Declaration"
-    const reviver: SchemaRepresentation.DeclarationReviver<null> = {
-      _tag: "Declaration",
-      id,
-      payloadSchema: Schema.Null,
-      schemasArity: 0,
-      typeParametersArity: 0.5,
-      revive: () => Schema.String
-    }
-    assert.strictEqual(
-      errorFrom(() =>
-        SchemaRepresentation.toSchema({
-          representation: { _tag: "String", checks: [] },
-          references: {}
-        }, { revivers: [reviver] })
-      ).message,
-      `Invalid typeParametersArity for ${id}\n  at ["revivers"][0]["typeParametersArity"]`
-    )
-  })
-
-  it("rejects an invalid effective type parameters arity", () => {
-    const id = "acme/schema/Declaration"
-    const declaration = Schema.declare<string>((input): input is string => typeof input === "string", {
-      representation: { id, payload: null }
-    })
-    const reviver: SchemaRepresentation.DeclarationReviver<null> = {
-      _tag: "Declaration",
-      id,
-      payloadSchema: Schema.Null,
-      schemasArity: 0,
-      typeParametersArity: 1,
-      revive: () => Schema.String
-    }
-    assert.strictEqual(
-      errorFrom(() =>
-        SchemaRepresentation.toSchema(
-          SchemaRepresentation.fromJson(SchemaRepresentation.toJson(SchemaRepresentation.fromAST(declaration.ast))),
-          { revivers: [reviver] }
-        )
-      ).message,
-      `Invalid type parameters arity for ${id}: expected 1, got 0\n  at ["representation"]["typeParameters"]`
-    )
-  })
-
   it("rejects an invalid reviver payload", () => {
     const json = filterJson() as any
-    json.representation.checks[0].annotations.representation.payload = { minimum: "two" }
+    json.representation.checks[0].representation.payload = { minimum: "two" }
     assert.strictEqual(
       errorFrom(() =>
         SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
           revivers: [minLengthReviver]
         })
       ).message,
-      `Invalid representation payload for ${filterId}\n  at ["representation"]["checks"][0]["annotations"]["representation"]["payload"]`
-    )
-  })
-
-  it("rejects a reviver of the wrong kind", () => {
-    const wrongKind: SchemaRepresentation.DeclarationReviver<{ readonly minimum: number }> = {
-      _tag: "Declaration",
-      id: filterId,
-      payloadSchema: Schema.Struct({ minimum: Schema.Number }),
-      schemasArity: 0,
-      typeParametersArity: 0,
-      revive: () => Schema.String
-    }
-    assert.strictEqual(
-      errorFrom(() =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(filterJson()), {
-          revivers: [wrongKind]
-        })
-      ).message,
-      `Invalid reviver kind for ${filterId}\n  at ["representation"]["checks"][0]["annotations"]["representation"]`
+      `Invalid representation payload for ${filterId}\n  at ["representation"]["checks"][0]["representation"]["payload"]`
     )
   })
 
@@ -473,14 +384,14 @@ describe("SchemaRepresentation.toSchema", () => {
     assert.strictEqual(
       errorFrom(() =>
         SchemaRepresentation.toSchema(
-          SchemaRepresentation.fromJson({
+          {
             representation: { _tag: "String", checks: [{ _tag: "Filter", aborted: false }] },
             references: {}
-          }),
+          },
           { revivers: [] }
         )
       ).message,
-      `Missing representation annotation\n  at ["representation"]["checks"][0]["annotations"]["representation"]`
+      `Missing representation annotation\n  at ["representation"]["checks"][0]["representation"]`
     )
   })
 
@@ -488,14 +399,14 @@ describe("SchemaRepresentation.toSchema", () => {
     assert.strictEqual(
       errorFrom(() =>
         SchemaRepresentation.toSchema(
-          SchemaRepresentation.fromJson({
+          {
             representation: { _tag: "Declaration", typeParameters: [], checks: [] },
             references: {}
-          }),
+          },
           { revivers: [] }
         )
       ).message,
-      `Missing representation annotation\n  at ["representation"]["annotations"]["representation"]`
+      `Missing representation annotation\n  at ["representation"]["representation"]`
     )
   })
 

@@ -261,12 +261,12 @@ describe("SchemaRepresentation.fromAST", () => {
         _tag: "Declaration",
         typeParameters: [],
         checks: [],
+        representation: {
+          id: "acme/schema/Custom",
+          payload: null,
+          schemas: [{ _tag: "Number", checks: [] }]
+        },
         annotations: {
-          representation: {
-            id: "acme/schema/Custom",
-            payload: null,
-            schemas: [{ _tag: "Number", checks: [] }]
-          },
           toCode,
           toJsonSchema
         }
@@ -303,12 +303,12 @@ describe("SchemaRepresentation.fromAST", () => {
         _tag: "String",
         checks: [{
           _tag: "Filter",
+          representation: {
+            id: "acme/schema/Custom",
+            payload: { minimum: 1 },
+            schemas: [{ _tag: "Number", checks: [] }]
+          },
           annotations: {
-            representation: {
-              id: "acme/schema/Custom",
-              payload: { minimum: 1 },
-              schemas: [{ _tag: "Number", checks: [] }]
-            },
             toCode,
             toJsonSchema,
             marker
@@ -380,7 +380,7 @@ describe("SchemaRepresentation.fromAST", () => {
     const check = representation.checks[0]
     assert.strictEqual(check._tag, "Filter")
     if (check._tag !== "Filter") return
-    const dependency = check.annotations?.representation?.schemas?.[0]
+    const dependency = check.representation?.schemas?.[0]
     assert.isDefined(dependency)
     assert.deepStrictEqual(
       SchemaRepresentation.toJson({ representation: dependency, references: {} }),
@@ -389,13 +389,13 @@ describe("SchemaRepresentation.fromAST", () => {
           _tag: "String",
           checks: [{
             _tag: "Filter",
+            representation: {
+              id: "effect/schema/isPattern",
+              payload: { source: "^[A-Z]", flags: "" }
+            },
             annotations: {
               arbitrary: { constraint: { patterns: ["^[A-Z]"] } },
-              expected: "a string matching the RegExp ^[A-Z]",
-              representation: {
-                id: "effect/schema/isPattern",
-                payload: { source: "^[A-Z]", flags: "" }
-              }
+              expected: "a string matching the RegExp ^[A-Z]"
             },
             aborted: false
           }]
@@ -413,7 +413,7 @@ describe("SchemaRepresentation.fromAST", () => {
     assert.strictEqual(representation._tag, "Arrays")
     if (representation._tag !== "Arrays") return
     assert.strictEqual(representation.checks.length, 1)
-    assert.deepStrictEqual(representation.checks[0].annotations?.representation, {
+    assert.deepStrictEqual(representation.checks[0].representation, {
       id: "effect/schema/isMinLength",
       payload: { minLength: 1 }
     })
@@ -427,7 +427,7 @@ describe("SchemaRepresentation.fromAST", () => {
     assert.strictEqual(representation._tag, "Objects")
     if (representation._tag !== "Objects") return
     assert.strictEqual(representation.checks.length, 1)
-    assert.deepStrictEqual(representation.checks[0].annotations?.representation, {
+    assert.deepStrictEqual(representation.checks[0].representation, {
       id: "effect/schema/isMinProperties",
       payload: { minProperties: 1 }
     })

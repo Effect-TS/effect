@@ -37,11 +37,11 @@ describe("fromJsonSchemaDocument", () => {
       {
         "representation": {
           "_tag": "Declaration",
+          "representation": {
+            "id": "effect/schema/Json",
+            "payload": null
+          },
           "annotations": {
-            "representation": {
-              "id": "effect/schema/Json",
-              "payload": null
-            },
             "expected": "JSON value"
           },
           "typeParameters": [],
@@ -64,11 +64,11 @@ describe("fromJsonSchemaDocument", () => {
       {
         "representation": {
           "_tag": "Declaration",
+          "representation": {
+            "id": "effect/schema/Json",
+            "payload": null
+          },
           "annotations": {
-            "representation": {
-              "id": "effect/schema/Json",
-              "payload": null
-            },
             "expected": "JSON value",
             "title": "a",
             "description": "b",
@@ -176,11 +176,11 @@ describe("fromJsonSchemaDocument", () => {
         {
           "representation": {
             "_tag": "Declaration",
+            "representation": {
+              "id": "effect/schema/Json",
+              "payload": null
+            },
             "annotations": {
-              "representation": {
-                "id": "effect/schema/Json",
-                "payload": null
-              },
               "expected": "JSON value"
             },
             "typeParameters": [],
@@ -414,11 +414,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -438,11 +438,11 @@ describe("fromJsonSchemaDocument", () => {
                     "checks": [
                       {
                         "_tag": "Filter",
+                        "representation": {
+                          "id": "effect/schema/isFinite",
+                          "payload": null
+                        },
                         "annotations": {
-                          "representation": {
-                            "id": "effect/schema/isFinite",
-                            "payload": null
-                          },
                           "expected": "a finite number",
                           "arbitrary": {
                             "constraint": {
@@ -476,11 +476,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -584,11 +584,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -608,11 +608,11 @@ describe("fromJsonSchemaDocument", () => {
                     "checks": [
                       {
                         "_tag": "Filter",
+                        "representation": {
+                          "id": "effect/schema/isFinite",
+                          "payload": null
+                        },
                         "annotations": {
-                          "representation": {
-                            "id": "effect/schema/isFinite",
-                            "payload": null
-                          },
                           "expected": "a finite number",
                           "arbitrary": {
                             "constraint": {
@@ -646,11 +646,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -706,13 +706,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -739,13 +739,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at most 1",
                     "~structural": true,
                     "arbitrary": {
@@ -772,14 +772,14 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPattern",
+                    "payload": {
+                      "source": "a*",
+                      "flags": ""
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isPattern",
-                      "payload": {
-                        "source": "a*",
-                        "flags": ""
-                      }
-                    },
                     "expected": "a string matching the RegExp a*",
                     "arbitrary": {
                       "constraint": {
@@ -804,14 +804,14 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPattern",
+                    "payload": {
+                      "source": "a*",
+                      "flags": ""
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isPattern",
-                      "payload": {
-                        "source": "a*",
-                        "flags": ""
-                      }
-                    },
                     "expected": "a string matching the RegExp a*",
                     "arbitrary": {
                       "constraint": {
@@ -842,11 +842,11 @@ describe("fromJsonSchemaDocument", () => {
             "checks": [
               {
                 "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isFinite",
+                  "payload": null
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/isFinite",
-                    "payload": null
-                  },
                   "expected": "a finite number",
                   "arbitrary": {
                     "constraint": {
@@ -874,11 +874,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -891,13 +891,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThanOrEqualTo",
+                    "payload": {
+                      "minimum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isGreaterThanOrEqualTo",
-                      "payload": {
-                        "minimum": 1
-                      }
-                    },
                     "expected": "a value greater than or equal to 1"
                   },
                   "aborted": false
@@ -918,11 +918,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -935,13 +935,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThanOrEqualTo",
+                    "payload": {
+                      "maximum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isLessThanOrEqualTo",
-                      "payload": {
-                        "maximum": 1
-                      }
-                    },
                     "expected": "a value less than or equal to 1"
                   },
                   "aborted": false
@@ -962,11 +962,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -979,13 +979,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThan",
+                    "payload": {
+                      "exclusiveMinimum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isGreaterThan",
-                      "payload": {
-                        "exclusiveMinimum": 1
-                      }
-                    },
                     "expected": "a value greater than 1"
                   },
                   "aborted": false
@@ -1006,11 +1006,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -1023,13 +1023,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThan",
+                    "payload": {
+                      "exclusiveMaximum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isLessThan",
-                      "payload": {
-                        "exclusiveMaximum": 1
-                      }
-                    },
                     "expected": "a value less than 1"
                   },
                   "aborted": false
@@ -1050,11 +1050,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -1067,13 +1067,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMultipleOf",
+                    "payload": {
+                      "divisor": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMultipleOf",
-                      "payload": {
-                        "divisor": 1
-                      }
-                    },
                     "expected": "a value that is a multiple of 1"
                   },
                   "aborted": false
@@ -1097,11 +1097,11 @@ describe("fromJsonSchemaDocument", () => {
             "checks": [
               {
                 "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isInt",
+                  "payload": null
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/isInt",
-                    "payload": null
-                  },
                   "expected": "an integer",
                   "arbitrary": {
                     "constraint": {
@@ -1128,11 +1128,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -1144,13 +1144,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThanOrEqualTo",
+                    "payload": {
+                      "minimum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isGreaterThanOrEqualTo",
-                      "payload": {
-                        "minimum": 1
-                      }
-                    },
                     "expected": "a value greater than or equal to 1"
                   },
                   "aborted": false
@@ -1171,11 +1171,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -1187,13 +1187,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThanOrEqualTo",
+                    "payload": {
+                      "maximum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isLessThanOrEqualTo",
-                      "payload": {
-                        "maximum": 1
-                      }
-                    },
                     "expected": "a value less than or equal to 1"
                   },
                   "aborted": false
@@ -1214,11 +1214,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -1230,13 +1230,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThan",
+                    "payload": {
+                      "exclusiveMinimum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isGreaterThan",
-                      "payload": {
-                        "exclusiveMinimum": 1
-                      }
-                    },
                     "expected": "a value greater than 1"
                   },
                   "aborted": false
@@ -1257,11 +1257,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -1273,13 +1273,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThan",
+                    "payload": {
+                      "exclusiveMaximum": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isLessThan",
-                      "payload": {
-                        "exclusiveMaximum": 1
-                      }
-                    },
                     "expected": "a value less than 1"
                   },
                   "aborted": false
@@ -1300,11 +1300,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -1316,13 +1316,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMultipleOf",
+                    "payload": {
+                      "divisor": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMultipleOf",
-                      "payload": {
-                        "divisor": 1
-                      }
-                    },
                     "expected": "a value that is a multiple of 1"
                   },
                   "aborted": false
@@ -1363,11 +1363,11 @@ describe("fromJsonSchemaDocument", () => {
             "rest": [
               {
                 "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/Json",
-                    "payload": null
-                  },
                   "expected": "JSON value"
                 },
                 "typeParameters": [],
@@ -1491,11 +1491,11 @@ describe("fromJsonSchemaDocument", () => {
                 "checks": [
                   {
                     "_tag": "Filter",
+                    "representation": {
+                      "id": "effect/schema/isFinite",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/isFinite",
-                        "payload": null
-                      },
                       "expected": "a finite number",
                       "arbitrary": {
                         "constraint": {
@@ -1525,13 +1525,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -1547,11 +1547,11 @@ describe("fromJsonSchemaDocument", () => {
               "rest": [
                 {
                   "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/Json",
-                      "payload": null
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1573,13 +1573,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at most 1",
                     "~structural": true,
                     "arbitrary": {
@@ -1595,11 +1595,11 @@ describe("fromJsonSchemaDocument", () => {
               "rest": [
                 {
                   "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/Json",
-                      "payload": null
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1621,11 +1621,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isUnique",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isUnique",
-                      "payload": null
-                    },
                     "expected": "an array with unique items",
                     "arbitrary": {
                       "constraint": {
@@ -1640,11 +1640,11 @@ describe("fromJsonSchemaDocument", () => {
               "rest": [
                 {
                   "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/Json",
-                      "payload": null
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1676,11 +1676,11 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 "type": {
                   "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/Json",
-                      "payload": null
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -1849,14 +1849,14 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isPattern",
+                        "payload": {
+                          "source": "a*",
+                          "flags": ""
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isPattern",
-                          "payload": {
-                            "source": "a*",
-                            "flags": ""
-                          }
-                        },
                         "expected": "a string matching the RegExp a*",
                         "arbitrary": {
                           "constraint": {
@@ -1903,14 +1903,14 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isPattern",
+                        "payload": {
+                          "source": "a*",
+                          "flags": ""
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isPattern",
-                          "payload": {
-                            "source": "a*",
-                            "flags": ""
-                          }
-                        },
                         "expected": "a string matching the RegExp a*",
                         "arbitrary": {
                           "constraint": {
@@ -1935,14 +1935,14 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isPattern",
+                        "payload": {
+                          "source": "b*",
+                          "flags": ""
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isPattern",
-                          "payload": {
-                            "source": "b*",
-                            "flags": ""
-                          }
-                        },
                         "expected": "a string matching the RegExp b*",
                         "arbitrary": {
                           "constraint": {
@@ -1961,11 +1961,11 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isFinite",
+                        "payload": null
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isFinite",
-                          "payload": null
-                        },
                         "expected": "a finite number",
                         "arbitrary": {
                           "constraint": {
@@ -1996,13 +1996,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinProperties",
+                    "payload": {
+                      "minProperties": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinProperties",
-                      "payload": {
-                        "minProperties": 1
-                      }
-                    },
                     "expected": "a value with at least 1 entry",
                     "~structural": true,
                     "arbitrary": {
@@ -2023,11 +2023,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2050,13 +2050,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxProperties",
+                    "payload": {
+                      "maxProperties": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxProperties",
-                      "payload": {
-                        "maxProperties": 1
-                      }
-                    },
                     "expected": "a value with at most 1 entry",
                     "~structural": true,
                     "arbitrary": {
@@ -2077,11 +2077,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2111,39 +2111,39 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
-                  "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isPropertyNames",
-                      "payload": null,
-                      "schemas": [
-                        {
-                          "_tag": "String",
-                          "checks": [
-                            {
-                              "_tag": "Filter",
-                              "annotations": {
-                                "representation": {
-                                  "id": "effect/schema/isPattern",
-                                  "payload": {
-                                    "source": "^[A-Z]",
-                                    "flags": ""
-                                  }
-                                },
-                                "expected": "a string matching the RegExp ^[A-Z]",
-                                "arbitrary": {
-                                  "constraint": {
-                                    "patterns": [
-                                      "^[A-Z]"
-                                    ]
-                                  }
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "String",
+                        "checks": [
+                          {
+                            "_tag": "Filter",
+                            "representation": {
+                              "id": "effect/schema/isPattern",
+                              "payload": {
+                                "source": "^[A-Z]",
+                                "flags": ""
+                              }
+                            },
+                            "annotations": {
+                              "expected": "a string matching the RegExp ^[A-Z]",
+                              "arbitrary": {
+                                "constraint": {
+                                  "patterns": [
+                                    "^[A-Z]"
+                                  ]
                                 }
-                              },
-                              "aborted": false
-                            }
-                          ]
-                        }
-                      ]
-                    },
+                              }
+                            },
+                            "aborted": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "annotations": {
                     "expected": "an object with property names matching the schema",
                     "~structural": true
                   },
@@ -2159,11 +2159,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2191,17 +2191,17 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "Never",
+                        "checks": []
+                      }
+                    ]
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isPropertyNames",
-                      "payload": null,
-                      "schemas": [
-                        {
-                          "_tag": "Never",
-                          "checks": []
-                        }
-                      ]
-                    },
                     "expected": "an object with property names matching the schema",
                     "~structural": true
                   },
@@ -2217,11 +2217,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2251,39 +2251,39 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
-                  "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isPropertyNames",
-                      "payload": null,
-                      "schemas": [
-                        {
-                          "_tag": "String",
-                          "checks": [
-                            {
-                              "_tag": "Filter",
-                              "annotations": {
-                                "representation": {
-                                  "id": "effect/schema/isPattern",
-                                  "payload": {
-                                    "source": "^[A-Z]",
-                                    "flags": ""
-                                  }
-                                },
-                                "expected": "a string matching the RegExp ^[A-Z]",
-                                "arbitrary": {
-                                  "constraint": {
-                                    "patterns": [
-                                      "^[A-Z]"
-                                    ]
-                                  }
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "String",
+                        "checks": [
+                          {
+                            "_tag": "Filter",
+                            "representation": {
+                              "id": "effect/schema/isPattern",
+                              "payload": {
+                                "source": "^[A-Z]",
+                                "flags": ""
+                              }
+                            },
+                            "annotations": {
+                              "expected": "a string matching the RegExp ^[A-Z]",
+                              "arbitrary": {
+                                "constraint": {
+                                  "patterns": [
+                                    "^[A-Z]"
+                                  ]
                                 }
-                              },
-                              "aborted": false
-                            }
-                          ]
-                        }
-                      ]
-                    },
+                              }
+                            },
+                            "aborted": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "annotations": {
                     "expected": "an object with property names matching the schema",
                     "~structural": true
                   },
@@ -2291,37 +2291,37 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
-                  "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isPropertyNames",
-                      "payload": null,
-                      "schemas": [
-                        {
-                          "_tag": "String",
-                          "checks": [
-                            {
-                              "_tag": "Filter",
-                              "annotations": {
-                                "representation": {
-                                  "id": "effect/schema/isMinLength",
-                                  "payload": {
-                                    "minLength": 2
-                                  }
-                                },
-                                "expected": "a value with a length of at least 2",
-                                "~structural": true,
-                                "arbitrary": {
-                                  "constraint": {
-                                    "minLength": 2
-                                  }
+                  "representation": {
+                    "id": "effect/schema/isPropertyNames",
+                    "payload": null,
+                    "schemas": [
+                      {
+                        "_tag": "String",
+                        "checks": [
+                          {
+                            "_tag": "Filter",
+                            "representation": {
+                              "id": "effect/schema/isMinLength",
+                              "payload": {
+                                "minLength": 2
+                              }
+                            },
+                            "annotations": {
+                              "expected": "a value with a length of at least 2",
+                              "~structural": true,
+                              "arbitrary": {
+                                "constraint": {
+                                  "minLength": 2
                                 }
-                              },
-                              "aborted": false
-                            }
-                          ]
-                        }
-                      ]
-                    },
+                              }
+                            },
+                            "aborted": false
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "annotations": {
                     "expected": "an object with property names matching the schema",
                     "~structural": true
                   },
@@ -2337,11 +2337,11 @@ describe("fromJsonSchemaDocument", () => {
                   },
                   "type": {
                     "_tag": "Declaration",
+                    "representation": {
+                      "id": "effect/schema/Json",
+                      "payload": null
+                    },
                     "annotations": {
-                      "representation": {
-                        "id": "effect/schema/Json",
-                        "payload": null
-                      },
                       "expected": "JSON value"
                     },
                     "typeParameters": [],
@@ -2432,11 +2432,11 @@ describe("fromJsonSchemaDocument", () => {
           "types": [
             {
               "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
               "annotations": {
-                "representation": {
-                  "id": "effect/schema/Json",
-                  "payload": null
-                },
                 "expected": "JSON value"
               },
               "typeParameters": [],
@@ -2444,11 +2444,11 @@ describe("fromJsonSchemaDocument", () => {
             },
             {
               "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
               "annotations": {
-                "representation": {
-                  "id": "effect/schema/Json",
-                  "payload": null
-                },
                 "expected": "JSON value"
               },
               "typeParameters": [],
@@ -2492,11 +2492,11 @@ describe("fromJsonSchemaDocument", () => {
         {
           "representation": {
             "_tag": "Declaration",
+            "representation": {
+              "id": "effect/schema/Json",
+              "payload": null
+            },
             "annotations": {
-              "representation": {
-                "id": "effect/schema/Json",
-                "payload": null
-              },
               "expected": "JSON value"
             },
             "typeParameters": [],
@@ -2728,13 +2728,13 @@ describe("fromJsonSchemaDocument", () => {
             "checks": [
               {
                 "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMinLength",
+                  "payload": {
+                    "minLength": 1
+                  }
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/isMinLength",
-                    "payload": {
-                      "minLength": 1
-                    }
-                  },
                   "expected": "a value with a length of at least 1",
                   "~structural": true,
                   "arbitrary": {
@@ -2747,13 +2747,13 @@ describe("fromJsonSchemaDocument", () => {
               },
               {
                 "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMaxLength",
+                  "payload": {
+                    "maxLength": 2
+                  }
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/isMaxLength",
-                    "payload": {
-                      "maxLength": 2
-                    }
-                  },
                   "expected": "a value with a length of at most 2",
                   "~structural": true,
                   "arbitrary": {
@@ -2790,11 +2790,11 @@ describe("fromJsonSchemaDocument", () => {
             "rest": [
               {
                 "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/Json",
-                    "payload": null
-                  },
                   "expected": "JSON value"
                 },
                 "typeParameters": [],
@@ -2988,13 +2988,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3028,13 +3028,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3073,13 +3073,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3141,13 +3141,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3183,13 +3183,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 2
-                      }
-                    },
                     "expected": "a value with a length of at most 2",
                     "~structural": true,
                     "arbitrary": {
@@ -3202,13 +3202,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3247,13 +3247,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 2
-                      }
-                    },
                     "expected": "a value with a length of at most 2",
                     "~structural": true,
                     "arbitrary": {
@@ -3266,13 +3266,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3311,13 +3311,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 2
-                      }
-                    },
                     "expected": "a value with a length of at most 2",
                     "~structural": true,
                     "arbitrary": {
@@ -3330,13 +3330,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3371,13 +3371,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3390,13 +3390,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 2
-                      }
-                    },
                     "expected": "a value with a length of at most 2",
                     "~structural": true,
                     "arbitrary": {
@@ -3436,13 +3436,13 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMinLength",
+                        "payload": {
+                          "minLength": 1
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isMinLength",
-                          "payload": {
-                            "minLength": 1
-                          }
-                        },
                         "expected": "a value with a length of at least 1",
                         "~structural": true,
                         "arbitrary": {
@@ -3455,13 +3455,13 @@ describe("fromJsonSchemaDocument", () => {
                     },
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMaxLength",
+                        "payload": {
+                          "maxLength": 2
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isMaxLength",
-                          "payload": {
-                            "maxLength": 2
-                          }
-                        },
                         "expected": "a value with a length of at most 2",
                         "~structural": true,
                         "arbitrary": {
@@ -3497,13 +3497,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -3516,13 +3516,13 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMaxLength",
+                    "payload": {
+                      "maxLength": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMaxLength",
-                      "payload": {
-                        "maxLength": 2
-                      }
-                    },
                     "expected": "a value with a length of at most 2",
                     "~structural": true,
                     "arbitrary": {
@@ -3563,13 +3563,13 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMinLength",
+                        "payload": {
+                          "minLength": 1
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isMinLength",
-                          "payload": {
-                            "minLength": 1
-                          }
-                        },
                         "expected": "a value with a length of at least 1",
                         "~structural": true,
                         "arbitrary": {
@@ -3582,13 +3582,13 @@ describe("fromJsonSchemaDocument", () => {
                     },
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isMaxLength",
+                        "payload": {
+                          "maxLength": 2
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isMaxLength",
-                          "payload": {
-                            "maxLength": 2
-                          }
-                        },
                         "expected": "a value with a length of at most 2",
                         "~structural": true,
                         "arbitrary": {
@@ -3729,11 +3729,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -3767,11 +3767,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -3784,11 +3784,11 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -3822,11 +3822,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -3839,11 +3839,11 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -3855,26 +3855,26 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isGreaterThanOrEqualTo",
+                    "payload": {
+                      "minimum": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isGreaterThanOrEqualTo",
-                      "payload": {
-                        "minimum": 2
-                      }
-                    },
                     "expected": "a value greater than or equal to 2"
                   },
                   "aborted": false
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isLessThanOrEqualTo",
+                    "payload": {
+                      "maximum": 2
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isLessThanOrEqualTo",
-                      "payload": {
-                        "maximum": 2
-                      }
-                    },
                     "expected": "a value less than or equal to 2"
                   },
                   "aborted": false
@@ -3902,11 +3902,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -3918,11 +3918,11 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -3956,11 +3956,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -3979,26 +3979,26 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isGreaterThanOrEqualTo",
+                        "payload": {
+                          "minimum": 1
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isGreaterThanOrEqualTo",
-                          "payload": {
-                            "minimum": 1
-                          }
-                        },
                         "expected": "a value greater than or equal to 1"
                       },
                       "aborted": false
                     },
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isLessThanOrEqualTo",
+                        "payload": {
+                          "maximum": 2
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isLessThanOrEqualTo",
-                          "payload": {
-                            "maximum": 2
-                          }
-                        },
                         "expected": "a value less than or equal to 2",
                         "description": "c"
                       },
@@ -4030,11 +4030,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isFinite",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isFinite",
-                      "payload": null
-                    },
                     "expected": "a finite number",
                     "arbitrary": {
                       "constraint": {
@@ -4053,26 +4053,26 @@ describe("fromJsonSchemaDocument", () => {
                   "checks": [
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isGreaterThanOrEqualTo",
+                        "payload": {
+                          "minimum": 1
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isGreaterThanOrEqualTo",
-                          "payload": {
-                            "minimum": 1
-                          }
-                        },
                         "expected": "a value greater than or equal to 1"
                       },
                       "aborted": false
                     },
                     {
                       "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isLessThanOrEqualTo",
+                        "payload": {
+                          "maximum": 2
+                        }
+                      },
                       "annotations": {
-                        "representation": {
-                          "id": "effect/schema/isLessThanOrEqualTo",
-                          "payload": {
-                            "maximum": 2
-                          }
-                        },
                         "expected": "a value less than or equal to 2"
                       },
                       "aborted": false
@@ -4081,11 +4081,11 @@ describe("fromJsonSchemaDocument", () => {
                 },
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isInt",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isInt",
-                      "payload": null
-                    },
                     "expected": "an integer",
                     "arbitrary": {
                       "constraint": {
@@ -4297,11 +4297,11 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isUnique",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isUnique",
-                      "payload": null
-                    },
                     "expected": "an array with unique items",
                     "arbitrary": {
                       "constraint": {
@@ -4316,11 +4316,11 @@ describe("fromJsonSchemaDocument", () => {
               "rest": [
                 {
                   "_tag": "Declaration",
+                  "representation": {
+                    "id": "effect/schema/Json",
+                    "payload": null
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/Json",
-                      "payload": null
-                    },
                     "expected": "JSON value"
                   },
                   "typeParameters": [],
@@ -4585,13 +4585,13 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [
                 {
                   "_tag": "Filter",
+                  "representation": {
+                    "id": "effect/schema/isMinLength",
+                    "payload": {
+                      "minLength": 1
+                    }
+                  },
                   "annotations": {
-                    "representation": {
-                      "id": "effect/schema/isMinLength",
-                      "payload": {
-                        "minLength": 1
-                      }
-                    },
                     "expected": "a value with a length of at least 1",
                     "~structural": true,
                     "arbitrary": {
@@ -4699,13 +4699,13 @@ describe("fromJsonSchemaDocument", () => {
             "checks": [
               {
                 "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMinLength",
+                  "payload": {
+                    "minLength": 1
+                  }
+                },
                 "annotations": {
-                  "representation": {
-                    "id": "effect/schema/isMinLength",
-                    "payload": {
-                      "minLength": 1
-                    }
-                  },
                   "expected": "a value with a length of at least 1",
                   "~structural": true,
                   "arbitrary": {
@@ -4974,11 +4974,11 @@ describe("fromJsonSchemaDocument", () => {
           {
             "representation": {
               "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
               "annotations": {
-                "representation": {
-                  "id": "effect/schema/Json",
-                  "payload": null
-                },
                 "expected": "JSON value",
                 "title": "a",
                 "description": "b"
@@ -5013,11 +5013,11 @@ describe("fromJsonSchemaDocument", () => {
           {
             "representation": {
               "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
               "annotations": {
-                "representation": {
-                  "id": "effect/schema/Json",
-                  "payload": null
-                },
                 "expected": "JSON value",
                 "title": "a",
                 "default": "c"
@@ -5043,11 +5043,11 @@ describe("fromJsonSchemaDocument", () => {
           {
             "representation": {
               "_tag": "Declaration",
+              "representation": {
+                "id": "effect/schema/Json",
+                "payload": null
+              },
               "annotations": {
-                "representation": {
-                  "id": "effect/schema/Json",
-                  "payload": null
-                },
                 "expected": "JSON value",
                 "title": "a",
                 "description": "b",

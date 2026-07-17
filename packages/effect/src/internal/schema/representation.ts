@@ -26,26 +26,26 @@ function annotationsField<A>(annotations: A | undefined): { readonly annotations
 function projectRepresentationAnnotation(
   input: RepresentationAnnotation
 ): RepresentationAnnotation {
-  if (input.schemas === undefined) return { id: input.id, payload: input.payload }
-  const schemas = input.schemas.map(projectRepresentation)
-  return { id: input.id, payload: input.payload, schemas }
+  return input.schemas === undefined
+    ? input
+    : { ...input, schemas: input.schemas.map(projectRepresentation) }
 }
 
 function projectAnnotationBag(
   input: Readonly<Record<string, unknown>> | undefined,
-  excludedKeys: ReadonlySet<string> = new Set()
+  stripStringContent = false
 ): NodeAnnotations {
   if (input === undefined) return undefined
 
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(input)) {
-    if (value === undefined || excludedKeys.has(key)) continue
-    if (key === "representation") {
-      const representation = projectRepresentationAnnotation(value as RepresentationAnnotation)
-      InternalRecord.set(out, "representation", representation)
-    } else {
-      if (SchemaAST.isJson(value)) InternalRecord.set(out, key, value)
+    if (
+      value === undefined ||
+      (stripStringContent && (key === "contentMediaType" || key === "contentSchema"))
+    ) {
+      continue
     }
+    if (SchemaAST.isJson(value)) InternalRecord.set(out, key, value)
   }
 
   return Object.keys(out).length === 0
@@ -56,20 +56,25 @@ function projectAnnotationBag(
 function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.Check {
   switch (check._tag) {
     case "Filter": {
-      const annotations = projectAnnotationBag(check.annotations) as FilterAnnotations
+      const representation = check.representation === undefined
+        ? undefined
+        : projectRepresentationAnnotation(check.representation)
       return {
         _tag: "Filter",
         aborted: check.aborted,
-        ...annotationsField(annotations)
+        ...(representation === undefined ? undefined : { representation }),
+        ...annotationsField(projectAnnotationBag(check.annotations) as FilterAnnotations)
       }
     }
     case "FilterGroup": {
-      const annotations = projectAnnotationBag(check.annotations) as FilterAnnotations
-      const checks = Arr.map(check.checks, projectCheck)
+      const representation = check.representation === undefined
+        ? undefined
+        : projectRepresentationAnnotation(check.representation)
       return {
         _tag: "FilterGroup",
-        checks,
-        ...annotationsField(annotations)
+        checks: Arr.map(check.checks, projectCheck),
+        ...(representation === undefined ? undefined : { representation }),
+        ...annotationsField(projectAnnotationBag(check.annotations) as FilterAnnotations)
       }
     }
   }
@@ -78,30 +83,29 @@ function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.C
 function projectRepresentation(
   representation: SchemaRepresentation.Representation
 ): SchemaRepresentation.Representation {
+  if (representation._tag === "Reference") return representation
+
+  const annotations = projectAnnotationBag(representation.annotations, representation._tag === "String")
+  const checks = representation.checks.map(projectCheck)
+
   switch (representation._tag) {
-    case "Reference":
-      return representation
-    case "Declaration": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const typeParameters = representation.typeParameters.map(projectRepresentation)
-      const checks = representation.checks.map(projectCheck)
+    case "Declaration":
       return {
         _tag: "Declaration",
-        typeParameters,
+        ...(representation.representation === undefined
+          ? undefined
+          : { representation: projectRepresentationAnnotation(representation.representation) }),
+        typeParameters: representation.typeParameters.map(projectRepresentation),
         checks,
         ...annotationsField(annotations)
       }
-    }
-    case "Suspend": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const thunk = projectRepresentation(representation.thunk)
+    case "Suspend":
       return {
         _tag: "Suspend",
         checks: [],
-        thunk,
+        thunk: projectRepresentation(representation.thunk),
         ...annotationsField(annotations)
       }
-    }
     case "Null":
     case "Undefined":
     case "Void":
@@ -112,118 +116,80 @@ function projectRepresentation(
     case "Boolean":
     case "BigInt":
     case "Symbol":
-    case "ObjectKeyword": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
+    case "ObjectKeyword":
       return {
         _tag: representation._tag,
         checks,
         ...annotationsField(annotations)
-      } as SchemaRepresentation.Representation
-    }
-    case "String": {
-      const annotations = projectAnnotationBag(
-        representation.annotations,
-        new Set(["contentMediaType", "contentSchema"])
-      )
-      const checks = representation.checks.map(projectCheck)
-      const contentSchema = representation.contentSchema === undefined
-        ? undefined
-        : projectRepresentation(representation.contentSchema)
-      return {
-        _tag: "String",
-        checks,
-        ...annotationsField(annotations),
-        ...(representation.contentMediaType === undefined
-          ? undefined
-          : { contentMediaType: representation.contentMediaType }),
-        ...(contentSchema === undefined ? undefined : { contentSchema })
       }
-    }
-    case "Literal": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
+    case "Literal":
       return {
         _tag: "Literal",
         literal: representation.literal,
         checks,
         ...annotationsField(annotations)
       }
-    }
-    case "UniqueSymbol": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
+    case "UniqueSymbol":
       return {
         _tag: "UniqueSymbol",
         symbol: representation.symbol,
         checks,
         ...annotationsField(annotations)
       }
-    }
-    case "Enum": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
+    case "Enum":
       return {
         _tag: "Enum",
         enums: representation.enums,
         checks,
         ...annotationsField(annotations)
       }
-    }
-    case "TemplateLiteral": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
-      const parts = representation.parts.map(projectRepresentation)
+    case "String":
+      return {
+        _tag: "String",
+        checks,
+        ...(representation.contentMediaType === undefined
+          ? undefined
+          : { contentMediaType: representation.contentMediaType }),
+        ...(representation.contentSchema === undefined
+          ? undefined
+          : { contentSchema: projectRepresentation(representation.contentSchema) }),
+        ...annotationsField(annotations)
+      }
+    case "TemplateLiteral":
       return {
         _tag: "TemplateLiteral",
-        parts,
+        parts: representation.parts.map(projectRepresentation),
         checks,
         ...annotationsField(annotations)
       }
-    }
     case "Arrays": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
-      const elements = representation.elements.map((element) => {
-        const type = projectRepresentation(element.type)
-        const elementAnnotations = projectAnnotationBag(element.annotations) as KeyAnnotations
-        return {
-          isOptional: element.isOptional,
-          type,
-          ...annotationsField(elementAnnotations)
-        }
-      })
-      const rest = representation.rest.map(projectRepresentation)
       return {
         _tag: "Arrays",
-        elements,
-        rest,
+        elements: representation.elements.map((element) => ({
+          isOptional: element.isOptional,
+          type: projectRepresentation(element.type),
+          ...annotationsField(projectAnnotationBag(element.annotations) as KeyAnnotations)
+        })),
+        rest: representation.rest.map(projectRepresentation),
         checks,
         ...annotationsField(annotations)
       }
     }
     case "Objects": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
       const propertySignatures = representation.propertySignatures.map(
-        (property): SchemaRepresentation.PropertySignature => {
-          const type = projectRepresentation(property.type)
-          const propertyAnnotations = projectAnnotationBag(property.annotations) as KeyAnnotations
-          return {
-            name: property.name,
-            type,
-            isOptional: property.isOptional,
-            isMutable: property.isMutable,
-            ...annotationsField(propertyAnnotations)
-          }
-        }
+        (property): SchemaRepresentation.PropertySignature => ({
+          name: property.name,
+          isOptional: property.isOptional,
+          isMutable: property.isMutable,
+          type: projectRepresentation(property.type),
+          ...annotationsField(projectAnnotationBag(property.annotations) as KeyAnnotations)
+        })
       )
       const indexSignatures = representation.indexSignatures.map(
-        (index): SchemaRepresentation.IndexSignature => {
-          const parameter = projectRepresentation(index.parameter)
-          const type = projectRepresentation(index.type)
-          return { parameter, type }
-        }
+        (index): SchemaRepresentation.IndexSignature => ({
+          parameter: projectRepresentation(index.parameter),
+          type: projectRepresentation(index.type)
+        })
       )
       return {
         _tag: "Objects",
@@ -233,18 +199,14 @@ function projectRepresentation(
         ...annotationsField(annotations)
       }
     }
-    case "Union": {
-      const annotations = projectAnnotationBag(representation.annotations)
-      const checks = representation.checks.map(projectCheck)
-      const types = representation.types.map(projectRepresentation)
+    case "Union":
       return {
         _tag: "Union",
-        types,
+        types: representation.types.map(projectRepresentation),
         mode: representation.mode,
         checks,
         ...annotationsField(annotations)
       }
-    }
   }
 }
 
@@ -351,12 +313,10 @@ function jsonSchemaFilter(
   return {
     _tag: "Filter",
     aborted: false,
-    annotations: {
-      representation: {
-        id,
-        payload,
-        ...(schemas === undefined ? undefined : { schemas })
-      }
+    representation: {
+      id,
+      payload,
+      ...(schemas === undefined ? undefined : { schemas })
     }
   }
 }
@@ -405,13 +365,13 @@ function jsonDeclaration(
 ): Representation {
   return {
     _tag: "Declaration",
+    representation: {
+      id: "effect/schema/Json",
+      payload: null
+    },
     annotations: {
       ...annotations,
-      expected: "JSON value",
-      representation: {
-        id: "effect/schema/Json",
-        payload: null
-      }
+      expected: "JSON value"
     },
     checks: [],
     typeParameters: []
@@ -458,20 +418,16 @@ function unknownJsonSchemas(representation: Representation): Representation {
 }
 
 function unknownJsonSchemaCheck(check: Check): Check {
-  const annotations = check.annotations
-  const representation = annotations?.representation
+  const representation = check.representation
   const schemas = representation?.schemas
   if (representation === undefined || schemas === undefined) {
     return check
   }
   return {
     ...check,
-    annotations: {
-      ...annotations,
-      representation: {
-        ...representation,
-        schemas: schemas.map(unknownJsonSchemas)
-      }
+    representation: {
+      ...representation,
+      schemas: schemas.map(unknownJsonSchemas)
     }
   }
 }
@@ -548,25 +504,16 @@ function translateJsonSchemaMultiDocument(
     )
   }
 
-  function hasOrdinaryCheckAnnotations(
-    annotations: FilterAnnotations | undefined
-  ): boolean {
-    return annotations !== undefined && Object.keys(annotations).some((key) => key !== "representation")
-  }
-
   function asChecks(
     checks: ReadonlyArray<Check>,
     annotations: NodeAnnotations | undefined
   ): ReadonlyArray<Check> | undefined {
     if (checks.length === 0) return undefined
     if (annotations === undefined) return checks
-    if (checks.length === 1 && !hasOrdinaryCheckAnnotations(checks[0].annotations)) {
+    if (checks.length === 1 && checks[0].annotations === undefined) {
       return [{
         ...checks[0],
-        annotations: {
-          ...checks[0].annotations,
-          ...annotations
-        }
+        annotations
       }]
     }
     return [{
@@ -586,7 +533,7 @@ function translateJsonSchemaMultiDocument(
   }
 
   function checkId(check: Check): string | undefined {
-    return check._tag === "Filter" ? check.annotations?.representation?.id : undefined
+    return check._tag === "Filter" ? check.representation?.id : undefined
   }
 
   function combineNumberChecks(
@@ -618,7 +565,7 @@ function translateJsonSchemaMultiDocument(
     if (check._tag === "FilterGroup") {
       return check.checks.every((check) => satisfiesPrimitiveCheck(check, value))
     }
-    const representation = check.annotations!.representation!
+    const representation = check.representation!
     const payload = representation.payload as Record<string, any>
     switch (representation.id) {
       case "effect/schema/isMinLength":
@@ -1284,13 +1231,6 @@ const jsonSchemaExcludedAnnotationKeys: ReadonlySet<string> = new Set([
   "expected"
 ])
 
-function getDataAnnotation(
-  annotations: Schema.Annotations.Annotations | undefined,
-  key: string
-): unknown {
-  return annotations?.[key]
-}
-
 function getJsonSchemaAnnotation(input: unknown): Schema.Json | undefined {
   return SchemaAST.isJson(input) ? input : undefined
 }
@@ -1304,27 +1244,27 @@ function collectJsonSchemaAnnotations(
   }
 
   const out: JsonSchema.JsonSchema = {}
-  const title = getDataAnnotation(annotations, "title")
+  const title = annotations.title
   if (typeof title === "string") out.title = title
-  const description = getDataAnnotation(annotations, "description")
-  const expected = getDataAnnotation(annotations, "expected")
+  const description = annotations.description
+  const expected = annotations.expected
   if (typeof description === "string") out.description = description
   else if (options?.generateDescriptions === true && typeof expected === "string") out.description = expected
 
-  const defaultValue = getJsonSchemaAnnotation(getDataAnnotation(annotations, "default"))
+  const defaultValue = getJsonSchemaAnnotation(annotations.default)
   if (defaultValue !== undefined) out.default = defaultValue
-  const examples = getDataAnnotation(annotations, "examples")
+  const examples = annotations.examples
   const validExamples = Array.isArray(examples) ? getJsonSchemaAnnotation(examples) : undefined
   if (validExamples !== undefined) out.examples = validExamples
-  const readOnly = getDataAnnotation(annotations, "readOnly")
+  const readOnly = annotations.readOnly
   if (typeof readOnly === "boolean") out.readOnly = readOnly
-  const writeOnly = getDataAnnotation(annotations, "writeOnly")
+  const writeOnly = annotations.writeOnly
   if (typeof writeOnly === "boolean") out.writeOnly = writeOnly
-  const format = getDataAnnotation(annotations, "format")
+  const format = annotations.format
   if (typeof format === "string") out.format = format
-  const contentEncoding = getDataAnnotation(annotations, "contentEncoding")
+  const contentEncoding = annotations.contentEncoding
   if (typeof contentEncoding === "string") out.contentEncoding = contentEncoding
-  const contentMediaType = getDataAnnotation(annotations, "contentMediaType")
+  const contentMediaType = annotations.contentMediaType
   if (typeof contentMediaType === "string") out.contentMediaType = contentMediaType
 
   if (options?.includeAnnotationKey !== undefined) {
@@ -1425,14 +1365,11 @@ function compileJsonSchema(
   return { dialect: "draft-2020-12", schemas, definitions }
 
   function annotationSchemas(
-    annotations: Schema.Annotations.Annotations | undefined,
+    representation: RepresentationAnnotation | undefined,
     path: Path
   ): ReadonlyArray<JsonSchema.JsonSchema> {
-    const representation = getDataAnnotation(annotations, "representation") as
-      | SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
-      | undefined
     const schemas = representation?.schemas ?? []
-    return schemas.map((schema, index) => recur(schema, [...path, "representation", "schemas", index]))
+    return schemas.map((schema, index) => recur(schema, [...path, "schemas", index]))
   }
 
   function compileCheck(
@@ -1441,9 +1378,9 @@ function compileJsonSchema(
     path: Path
   ): JsonSchema.JsonSchema | undefined {
     const annotations = check.annotations
-    const callback = getDataAnnotation(annotations, "toJsonSchema")
+    const callback = annotations?.toJsonSchema
     if (callback !== undefined) {
-      const schemas = annotationSchemas(annotations, [...path, "annotations"])
+      const schemas = annotationSchemas(check.representation, [...path, "representation"])
       const fragment = (callback as SchemaRepresentation.ToJsonSchema.Check)({ type, schemas })
       const ordinary = collectJsonSchemaAnnotations(annotations, options)
       return ordinary === undefined ? fragment : { ...fragment, ...ordinary }
@@ -1506,7 +1443,7 @@ function compileJsonSchema(
       case "UniqueSymbol":
         return { type: "string", allOf: [{ pattern: "^Symbol\\((.*)\\)$" }] }
       case "Declaration": {
-        const callback = getDataAnnotation(representation.annotations, "toJsonSchema")
+        const callback = representation.annotations?.toJsonSchema
         const callbackPath = [...path, "annotations", "toJsonSchema"]
         if (callback === undefined) {
           throw errorWithPath("Missing JSON Schema callback", callbackPath)
@@ -1514,7 +1451,7 @@ function compileJsonSchema(
         const typeParameters = representation.typeParameters.map((typeParameter, index) =>
           recur(typeParameter, [...path, "typeParameters", index])
         )
-        const schemas = annotationSchemas(representation.annotations, [...path, "annotations"])
+        const schemas = annotationSchemas(representation.representation, [...path, "representation"])
         return (callback as SchemaRepresentation.ToJsonSchema.Declaration)({ typeParameters, schemas })
       }
       case "Suspend":
@@ -1927,10 +1864,7 @@ export function topologicalSort(
     const visited = new WeakSet<object>()
     const stack: Array<SchemaRepresentation.Representation> = [root]
 
-    function pushAnnotationSchemas(annotations: Schema.Annotations.Annotations | undefined): void {
-      const representation = getDataAnnotation(annotations, "representation") as
-        | SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
-        | undefined
+    function pushRepresentationSchemas(representation: RepresentationAnnotation | undefined): void {
       if (representation?.schemas !== undefined) stack.push(...representation.schemas)
     }
 
@@ -1938,7 +1872,7 @@ export function topologicalSort(
       checks: ReadonlyArray<SchemaRepresentation.Check>
     ): void {
       for (const check of checks) {
-        pushAnnotationSchemas(check.annotations)
+        pushRepresentationSchemas(check.representation)
         if (check._tag === "FilterGroup") pushChecks(check.checks)
       }
     }
@@ -1952,10 +1886,10 @@ export function topologicalSort(
         continue
       }
 
-      pushAnnotationSchemas(representation.annotations)
       pushChecks(representation.checks)
       switch (representation._tag) {
         case "Declaration":
+          pushRepresentationSchemas(representation.representation)
           stack.push(...representation.typeParameters)
           break
         case "Suspend":
@@ -2144,14 +2078,11 @@ function compileCodeDocument(
   }
 
   function annotationSchemas(
-    annotations: Schema.Annotations.Annotations | undefined,
+    representation: RepresentationAnnotation | undefined,
     path: Path
   ): ReadonlyArray<SchemaRepresentation.Code> {
-    const representation = getDataAnnotation(annotations, "representation") as
-      | SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
-      | undefined
     const schemas = representation?.schemas ?? []
-    return schemas.map((schema, index) => recur(schema, [...path, "representation", "schemas", index]))
+    return schemas.map((schema, index) => recur(schema, [...path, "schemas", index]))
   }
 
   function checkBrands(
@@ -2160,7 +2091,7 @@ function compileCodeDocument(
     const own = InternalAnnotations.collectBrands(check.annotations)
     if (
       check._tag === "FilterGroup" &&
-      getDataAnnotation(check.annotations, "toCode") === undefined
+      check.annotations?.toCode === undefined
     ) {
       return [...own, ...check.checks.flatMap(checkBrands)]
     }
@@ -2191,11 +2122,11 @@ function compileCodeDocument(
     check: SchemaRepresentation.Check,
     path: Path
   ): string {
-    const callback = getDataAnnotation(check.annotations, "toCode")
+    const callback = check.annotations?.toCode
     const callbackPath = [...path, "annotations", "toCode"]
     let runtime: string
     if (callback !== undefined) {
-      const schemas = annotationSchemas(check.annotations, [...path, "annotations"])
+      const schemas = annotationSchemas(check.representation, [...path, "representation"])
       const output = (callback as SchemaRepresentation.Generation.Check)({ schemas })
       addImports(output.importDeclarations ?? [])
       runtime = output.runtime
@@ -2294,7 +2225,7 @@ function compileCodeDocument(
   ): SchemaRepresentation.Code {
     switch (representation._tag) {
       case "Declaration": {
-        const callback = getDataAnnotation(representation.annotations, "toCode")
+        const callback = representation.annotations?.toCode
         const callbackPath = [...path, "annotations", "toCode"]
         if (callback === undefined) {
           throw errorWithPath("Missing toCode callback", callbackPath)
@@ -2302,7 +2233,7 @@ function compileCodeDocument(
         const typeParameters = representation.typeParameters.map((typeParameter, index) =>
           recur(typeParameter, [...path, "typeParameters", index])
         )
-        const schemas = annotationSchemas(representation.annotations, [...path, "annotations"])
+        const schemas = annotationSchemas(representation.representation, [...path, "representation"])
         const output = (callback as SchemaRepresentation.Generation.Declaration)({ typeParameters, schemas })
         addImports(output.importDeclarations ?? [])
         return makeCode(output.runtime, output.Type)
@@ -2616,7 +2547,7 @@ function lowerASTs(
           _tag: "Declaration",
           typeParameters: ast.typeParameters.map((ast) => recur(ast)),
           checks: fromChecks(ast.checks),
-          ...fromNodeAnnotations(ast.annotations)
+          ...fromRepresentationAnnotations(ast.annotations)
         }
       case "Null":
       case "Undefined":
@@ -2745,13 +2676,13 @@ function lowerASTs(
         return {
           _tag: "Filter",
           aborted: check.aborted,
-          ...fromFilterAnnotations(check.annotations)
+          ...fromRepresentationAnnotations(check.annotations)
         }
       case "FilterGroup":
         return {
           _tag: "FilterGroup",
           checks: Arr.map(check.checks, fromCheck),
-          ...fromFilterAnnotations(check.annotations)
+          ...fromRepresentationAnnotations(check.annotations)
         }
     }
   }
@@ -2760,15 +2691,13 @@ function lowerASTs(
     annotations: Schema.Annotations.Annotations | undefined,
     stripStringContent: boolean = false
   ): { readonly annotations: NodeAnnotations } | undefined {
-    const converted = convertRepresentationSchemas(annotations, stripStringContent)
-    return converted === undefined ? undefined : { annotations: converted }
-  }
-
-  function fromFilterAnnotations(
-    annotations: Schema.Annotations.Filter | undefined
-  ): { readonly annotations: FilterAnnotations } | undefined {
-    const converted = convertRepresentationSchemas(annotations, false)
-    return converted === undefined ? undefined : { annotations: converted }
+    if (annotations === undefined) return undefined
+    const { representation: _, ...rest } = annotations
+    if (stripStringContent) {
+      const { contentMediaType: _, contentSchema: __, ...annotations } = rest
+      return Object.keys(annotations).length === 0 ? undefined : { annotations }
+    }
+    return Object.keys(rest).length === 0 ? undefined : { annotations: rest }
   }
 
   function fromKeyAnnotations(
@@ -2777,36 +2706,24 @@ function lowerASTs(
     return annotations === undefined ? undefined : { annotations }
   }
 
-  function convertRepresentationSchemas<A extends Schema.Annotations.Annotations>(
-    annotations: A | undefined,
-    stripStringContent: boolean
-  ):
-    | Omit<A, "representation"> & { readonly representation?: RepresentationAnnotation | undefined }
-    | undefined
-  {
-    if (annotations === undefined) {
-      return undefined
+  function fromRepresentationAnnotations<
+    A extends Schema.Annotations.Annotations & {
+      readonly representation?: SchemaRepresentation.RepresentationAnnotation<SchemaAST.AST> | undefined
     }
-
-    let out: Record<string, unknown> = annotations
-    const representation = annotations.representation as
-      | SchemaRepresentation.RepresentationAnnotation<SchemaAST.AST>
-      | undefined
-    if (representation?.schemas !== undefined) {
-      out = {
-        ...out,
-        representation: {
-          ...representation,
-          schemas: representation.schemas.map((schema) => recur(SchemaAST.toType(schema)))
-        }
-      }
+  >(annotations: A | undefined): {
+    readonly representation?: RepresentationAnnotation | undefined
+    readonly annotations?: Omit<A, "representation"> | undefined
+  } {
+    if (annotations === undefined) return {}
+    const { representation, ...ordinary } = annotations
+    const projected = representation === undefined
+      ? undefined
+      : representation.schemas === undefined
+      ? representation as RepresentationAnnotation
+      : { ...representation, schemas: representation.schemas.map((schema) => recur(SchemaAST.toType(schema))) }
+    return {
+      ...(projected === undefined ? undefined : { representation: projected }),
+      ...(Object.keys(ordinary).length === 0 ? undefined : { annotations: ordinary })
     }
-
-    if (stripStringContent && ("contentMediaType" in out || "contentSchema" in out)) {
-      const { contentMediaType: _, contentSchema: __, ...rest } = out
-      out = rest
-    }
-
-    return out as Omit<A, "representation"> & { readonly representation?: RepresentationAnnotation | undefined }
   }
 }

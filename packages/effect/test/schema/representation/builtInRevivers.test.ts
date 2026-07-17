@@ -300,7 +300,6 @@ function expectInvalidPayload(json: Schema.Json, reviver: SchemaRepresentation.A
     "representation",
     "checks",
     0,
-    "annotations",
     "representation",
     "payload"
   ])
@@ -419,7 +418,7 @@ describe("SchemaRepresentation built-in number revivers", () => {
     const json = SchemaRepresentation.toJson(
       SchemaRepresentation.fromAST(Schema.Number.check(Schema.isMultipleOf(2)).ast)
     ) as any
-    json.representation.checks[0].annotations.representation.payload.divisor = "2"
+    json.representation.checks[0].representation.payload.divisor = "2"
 
     expectInvalidPayload(json, Schema.isMultipleOfReviver)
   })
@@ -430,7 +429,7 @@ describe("SchemaRepresentation built-in number revivers", () => {
         Schema.Number.check(Schema.isBetween({ minimum: 1, maximum: 3 })).ast
       )
     ) as any
-    json.representation.checks[0].annotations.representation.payload.exclusiveMinimum = false
+    json.representation.checks[0].representation.payload.exclusiveMinimum = false
 
     expectInvalidPayload(json, Schema.isBetweenReviver)
   })
@@ -521,14 +520,14 @@ describe("SchemaRepresentation built-in BigInt revivers", () => {
     const json = SchemaRepresentation.toJson(
       SchemaRepresentation.fromAST(Schema.BigInt.check(Schema.isGreaterThanBigInt(1n)).ast)
     ) as any
-    json.representation.checks[0].annotations.representation.payload.exclusiveMinimum = "01"
+    json.representation.checks[0].representation.payload.exclusiveMinimum = "01"
 
     throws(
       () =>
         SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
           revivers: [Schema.isGreaterThanBigIntReviver]
         }),
-      `Invalid representation payload for effect/schema/isGreaterThanBigInt\n  at ["representation"]["checks"][0]["annotations"]["representation"]["payload"]`
+      `Invalid representation payload for effect/schema/isGreaterThanBigInt\n  at ["representation"]["checks"][0]["representation"]["payload"]`
     )
   })
 })
@@ -784,22 +783,6 @@ describe("SchemaRepresentation built-in object revivers", () => {
       id: "effect/schema/isPropertiesLengthBetween",
       payload: { minimum: 1, maximum: 3 }
     })
-  })
-
-  it("rejects missing isPropertyNames dependencies", () => {
-    const names = Schema.String.check(Schema.isPattern(/^[A-Z]/))
-    const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.fromAST(Schema.Any.check(Schema.isPropertyNames(names)).ast)
-    ) as any
-    delete json.representation.checks[0].annotations.representation.schemas
-
-    throws(
-      () =>
-        SchemaRepresentation.toSchema(SchemaRepresentation.fromJson(json), {
-          revivers: [Schema.isPropertyNamesReviver]
-        }),
-      `Invalid schemas arity for effect/schema/isPropertyNames: expected 1, got 0\n  at ["representation"]["checks"][0]["annotations"]["representation"]["schemas"]`
-    )
   })
 })
 

@@ -51,4 +51,20 @@ describe("SchemaRepresentation persisted wire", () => {
       (runtime: string, Type: string) => SchemaRepresentation.Code
     >()
   })
+
+  it("keeps representation metadata separate from annotations", () => {
+    const declaration = null as unknown as SchemaRepresentation.Declaration
+    const filter = null as unknown as SchemaRepresentation.Filter
+    const group = null as unknown as SchemaRepresentation.FilterGroup
+
+    expect(declaration.representation).type.toBe<
+      SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation> | undefined
+    >()
+    expect(filter.representation).type.toBe<
+      SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation> | undefined
+    >()
+    expect(group.representation).type.toBe<
+      SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation> | undefined
+    >()
+  })
 })

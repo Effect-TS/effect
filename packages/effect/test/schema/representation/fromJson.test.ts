@@ -165,9 +165,8 @@ describe("SchemaRepresentation.fromJson", () => {
     const input = {
       representation: {
         _tag: "Declaration",
-        annotations: {
-          representation: { id: "acme/schema/Value", payload: null }
-        },
+        representation: { id: "acme/schema/Value", payload: null },
+        annotations: {},
         typeParameters: [{ _tag: "String", checks: [] }],
         checks: []
       },
@@ -182,9 +181,8 @@ describe("SchemaRepresentation.fromJson", () => {
         _tag: "String",
         checks: [{
           _tag: "Filter",
-          annotations: {
-            representation: { id: "acme/schema/filter", payload: null }
-          },
+          representation: { id: "acme/schema/filter", payload: null },
+          annotations: {},
           aborted: true
         }]
       },
@@ -201,9 +199,8 @@ describe("SchemaRepresentation.fromJson", () => {
           _tag: "FilterGroup",
           checks: [{
             _tag: "Filter",
-            annotations: {
-              representation: { id: "acme/schema/filter", payload: null }
-            },
+            representation: { id: "acme/schema/filter", payload: null },
+            annotations: {},
             aborted: false
           }]
         }]
@@ -351,19 +348,26 @@ describe("SchemaRepresentation.fromJson", () => {
     assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
   })
 
-  it("decodes representation annotations on structural nodes", () => {
-    const input = {
-      representation: {
-        _tag: "String",
-        annotations: {
-          representation: { id: "acme/schema/String", payload: null }
-        },
-        checks: []
-      },
-      references: {}
-    } as const
+  it("requires representation on persisted Filters", () => {
+    throws(
+      () =>
+        SchemaRepresentation.fromJson({
+          representation: { _tag: "String", checks: [{ _tag: "Filter", aborted: false }] },
+          references: {}
+        }),
+      `Missing key\n  at ["representation"]["checks"][0]["representation"]`
+    )
+  })
 
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
+  it("requires representation on persisted Declarations", () => {
+    throws(
+      () =>
+        SchemaRepresentation.fromJson({
+          representation: { _tag: "Declaration", typeParameters: [], checks: [] },
+          references: {}
+        }),
+      `Missing key\n  at ["representation"]["representation"]`
+    )
   })
 
   it("rejects non-canonical bigint envelopes", () => {

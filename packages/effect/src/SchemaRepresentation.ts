@@ -21,12 +21,8 @@ export interface RepresentationAnnotation<S> {
   readonly schemas?: ReadonlyArray<S> | undefined
 }
 
-type RebindRepresentation<A, S> =
-  & Omit<A, "representation">
-  & { readonly representation?: RepresentationAnnotation<S> | undefined }
-
-type NodeAnnotations = RebindRepresentation<Schema.Annotations.Annotations, Representation>
-type FilterAnnotations = RebindRepresentation<Schema.Annotations.Filter, Representation>
+type NodeAnnotations = Schema.Annotations.Annotations
+type FilterAnnotations = Omit<Schema.Annotations.Filter, "representation">
 type KeyAnnotations = Schema.Annotations.Key<unknown>
 
 /**
@@ -149,6 +145,7 @@ export declare namespace Generation {
  */
 export interface Declaration {
   readonly _tag: "Declaration"
+  readonly representation?: RepresentationAnnotation<Representation> | undefined
   readonly annotations?: NodeAnnotations | undefined
   readonly typeParameters: ReadonlyArray<Representation>
   readonly checks: ReadonlyArray<Check>
@@ -431,6 +428,7 @@ export type Check = Filter | FilterGroup
  */
 export interface Filter {
   readonly _tag: "Filter"
+  readonly representation?: RepresentationAnnotation<Representation> | undefined
   readonly annotations?: FilterAnnotations | undefined
   readonly aborted: boolean
 }
@@ -443,6 +441,7 @@ export interface Filter {
  */
 export interface FilterGroup {
   readonly _tag: "FilterGroup"
+  readonly representation?: RepresentationAnnotation<Representation> | undefined
   readonly annotations?: FilterAnnotations | undefined
   readonly checks: readonly [Check, ...Array<Check>]
 }
@@ -499,7 +498,6 @@ export interface SchemaMultiDocument {
 export interface ReviverBase<P> {
   readonly id: string
   readonly payloadSchema: Schema.Decoder<P>
-  readonly schemasArity: number
 }
 
 /**
@@ -509,8 +507,6 @@ export interface ReviverBase<P> {
  * @since 4.0.0
  */
 export interface DeclarationReviver<P> extends ReviverBase<P> {
-  readonly _tag: "Declaration"
-  readonly typeParametersArity: number
   readonly revive: (input: {
     readonly payload: P
     readonly schemas: ReadonlyArray<Schema.Top>
@@ -526,7 +522,6 @@ export interface DeclarationReviver<P> extends ReviverBase<P> {
  * @since 4.0.0
  */
 export interface FilterReviver<P> extends ReviverBase<P> {
-  readonly _tag: "Filter"
   readonly revive: (input: {
     readonly payload: P
     readonly schemas: ReadonlyArray<Schema.Top>
@@ -541,7 +536,6 @@ export interface FilterReviver<P> extends ReviverBase<P> {
  * @since 4.0.0
  */
 export interface FilterGroupReviver<P> extends ReviverBase<P> {
-  readonly _tag: "FilterGroup"
   readonly revive: (input: {
     readonly payload: P
     readonly schemas: ReadonlyArray<Schema.Top>

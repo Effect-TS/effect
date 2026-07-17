@@ -96,11 +96,11 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           _tag: "String",
           checks: [{
             _tag: "Filter",
+            representation: {
+              id: "effect/schema/isMinLength",
+              payload: { minLength: 1 }
+            },
             annotations: {
-              representation: {
-                id: "effect/schema/isMinLength",
-                payload: { minLength: 1 }
-              },
               expected: "a value with a length of at least 1",
               "~structural": true,
               arbitrary: { constraint: { minLength: 1 } }
@@ -137,8 +137,8 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
           _tag: "Number",
           checks: [{
             _tag: "Filter",
+            representation: { id: "effect/schema/isFinite", payload: null },
             annotations: {
-              representation: { id: "effect/schema/isFinite", payload: null },
               expected: "a finite number",
               arbitrary: { constraint: { noInfinity: true, noNaN: true } }
             },

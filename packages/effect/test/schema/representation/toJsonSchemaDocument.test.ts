@@ -559,12 +559,12 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         checks: [{
           _tag: "Filter",
           aborted: false,
+          representation: {
+            id: "acme/schema/propertyNames",
+            payload: null,
+            schemas: [StringRepresentation]
+          },
           annotations: {
-            representation: {
-              id: "acme/schema/propertyNames",
-              payload: null,
-              schemas: [StringRepresentation]
-            },
             toJsonSchema: ({ schemas }: SchemaRepresentation.ToJsonSchema.CheckInput) => ({
               propertyNames: schemas[0]
             })
@@ -586,12 +586,12 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         _tag: "Declaration",
         typeParameters: [StringRepresentation],
         checks: [],
+        representation: {
+          id: "acme/schema/Box",
+          payload: null,
+          schemas: [NumberRepresentation]
+        },
         annotations: {
-          representation: {
-            id: "acme/schema/Box",
-            payload: null,
-            schemas: [NumberRepresentation]
-          },
           toJsonSchema: ({
             schemas,
             typeParameters

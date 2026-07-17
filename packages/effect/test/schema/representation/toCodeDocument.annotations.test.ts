@@ -69,12 +69,12 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     const check = (name: string): SchemaRepresentation.Filter => ({
       _tag: "Filter",
       aborted: false,
+      representation: {
+        id: `acme/schema/${name}`,
+        payload: null,
+        schemas: [StringRepresentation]
+      },
       annotations: {
-        representation: {
-          id: `acme/schema/${name}`,
-          payload: null,
-          schemas: [StringRepresentation]
-        },
         toCode: ({ schemas }: SchemaRepresentation.Generation.CheckInput) => ({
           runtime: `Custom.${name}(${schemas[0].runtime})`,
           importDeclarations: [`import * as Custom from "acme/Custom"`]
@@ -211,12 +211,12 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
       _tag: "Declaration",
       typeParameters: [StringRepresentation],
       checks: [],
+      representation: {
+        id: "acme/schema/Box",
+        payload: null,
+        schemas: [NumberRepresentation]
+      },
       annotations: {
-        representation: {
-          id: "acme/schema/Box",
-          payload: null,
-          schemas: [NumberRepresentation]
-        },
         toCode: ({
           schemas,
           typeParameters
@@ -462,8 +462,8 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     const filter: SchemaRepresentation.Filter = {
       _tag: "Filter",
       aborted: false,
+      representation: { id: "acme/schema/filter", payload: null, schemas: [reference("C")] },
       annotations: {
-        representation: { id: "acme/schema/filter", payload: null, schemas: [reference("C")] },
         toCode: () => ({ runtime: "Schema.makeFilter(() => true)" })
       }
     }
@@ -476,8 +476,8 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         D: {
           _tag: "Declaration",
           typeParameters: [reference("A")],
+          representation: { id: "acme/schema/declaration", payload: null, schemas: [reference("B")] },
           annotations: {
-            representation: { id: "acme/schema/declaration", payload: null, schemas: [reference("B")] },
             toCode: () => ({ runtime: "Schema.String", Type: "string" })
           },
           checks: [{ _tag: "FilterGroup", checks: [filter] }]

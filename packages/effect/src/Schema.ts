@@ -6541,10 +6541,8 @@ function makeFilterReviver<P>(
   revive: (payload: P, annotations: Annotations.Filter | undefined) => SchemaAST.Filter<any>
 ): SchemaRepresentation.FilterReviver<P> {
   return {
-    _tag: "Filter",
     id,
     payloadSchema,
-    schemasArity: 0,
     revive: ({ annotations, payload }) => revive(payload, annotations)
   }
 }
@@ -6554,11 +6552,8 @@ function makeNullaryDeclarationReviver(
   schema: Top
 ): SchemaRepresentation.DeclarationReviver<null> {
   return {
-    _tag: "Declaration",
     id,
     payloadSchema: Null,
-    schemasArity: 0,
-    typeParametersArity: 0,
     revive: ({ annotations }) => annotations === undefined ? schema : schema.annotate(annotations)
   }
 }
@@ -6682,10 +6677,8 @@ export const isPatternReviver: SchemaRepresentation.FilterReviver<{
   readonly source: string
   readonly flags: string
 }> = {
-  _tag: "Filter",
   id: "effect/schema/isPattern",
   payloadSchema: IsPatternPayload,
-  schemasArity: 0,
   revive: ({ annotations, payload }) => isPattern(new globalThis.RegExp(payload.source, payload.flags), annotations)
 }
 
@@ -9678,10 +9671,8 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  * @since 4.0.0
  */
 export const isPropertyNamesReviver: SchemaRepresentation.FilterReviver<null> = {
-  _tag: "Filter",
   id: "effect/schema/isPropertyNames",
   payloadSchema: Null,
-  schemasArity: 1,
   revive: ({ annotations, schemas }) => isPropertyNames(schemas[0], annotations)
 }
 
@@ -9933,11 +9924,8 @@ export function Option<A extends Constraint>(value: A): Option<A> {
  * @since 4.0.0
  */
 export const OptionReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/Option",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 1,
   revive: ({ annotations, typeParameters }) => {
     const schema = Option(typeParameters[0])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -10294,11 +10282,8 @@ export function Result<A extends Constraint, E extends Constraint>(
  * @since 4.0.0
  */
 export const ResultReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/Result",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 2,
   revive: ({ annotations, typeParameters }) => {
     const schema = Result(typeParameters[0], typeParameters[1])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -10471,11 +10456,8 @@ export function Redacted<S extends Constraint>(value: S, options?: {
  * @since 4.0.0
  */
 export const RedactedReviver: SchemaRepresentation.DeclarationReviver<RedactedRepresentationPayload> = {
-  _tag: "Declaration",
   id: "effect/schema/Redacted",
   payloadSchema: RedactedRepresentationPayload,
-  schemasArity: 0,
-  typeParametersArity: 1,
   revive: ({ annotations, payload, typeParameters }) => {
     const schema = Redacted(typeParameters[0], payload ?? undefined)
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -10734,11 +10716,8 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
  * @since 4.0.0
  */
 export const CauseReasonReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/CauseReason",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 2,
   revive: ({ annotations, typeParameters }) => {
     const schema = CauseReason(typeParameters[0], typeParameters[1])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -10902,11 +10881,8 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
  * @since 4.0.0
  */
 export const CauseReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/Cause",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 2,
   revive: ({ annotations, typeParameters }) => {
     const schema = Cause(typeParameters[0], typeParameters[1])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -11078,11 +11054,8 @@ export function Error(options?: ErrorOptions): Error {
  * @since 4.0.0
  */
 export const ErrorReviver: SchemaRepresentation.DeclarationReviver<ErrorRepresentationPayload> = {
-  _tag: "Declaration",
   id: "effect/schema/Error",
   payloadSchema: ErrorRepresentationPayload,
-  schemasArity: 0,
-  typeParametersArity: 0,
   revive: ({ annotations, payload }) => {
     const schema = Error(payload ?? undefined)
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -11347,11 +11320,8 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
  * @since 4.0.0
  */
 export const ExitReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/Exit",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 3,
   revive: ({ annotations, typeParameters }) => {
     const schema = Exit(typeParameters[0], typeParameters[1], typeParameters[2])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -11566,11 +11536,8 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
  * @since 4.0.0
  */
 export const ReadonlyMapReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/ReadonlyMap",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 2,
   revive: ({ annotations, typeParameters }) => {
     const schema = ReadonlyMap(typeParameters[0], typeParameters[1])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -11692,11 +11659,8 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
  * @since 4.0.0
  */
 export const HashMapReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/HashMap",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 2,
   revive: ({ annotations, typeParameters }) => {
     const schema = HashMap(typeParameters[0], typeParameters[1])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -11810,11 +11774,8 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
  * @since 4.0.0
  */
 export const ReadonlySetReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/ReadonlySet",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 1,
   revive: ({ annotations, typeParameters }) => {
     const schema = ReadonlySet(typeParameters[0])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -11928,11 +11889,8 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
  * @since 4.0.0
  */
 export const HashSetReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/HashSet",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 1,
   revive: ({ annotations, typeParameters }) => {
     const schema = HashSet(typeParameters[0])
     return annotations === undefined ? schema : schema.annotate(annotations)
@@ -12053,11 +12011,8 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
  * @since 4.0.0
  */
 export const ChunkReviver: SchemaRepresentation.DeclarationReviver<null> = {
-  _tag: "Declaration",
   id: "effect/schema/Chunk",
   payloadSchema: Null,
-  schemasArity: 0,
-  typeParametersArity: 1,
   revive: ({ annotations, typeParameters }) => {
     const schema = Chunk(typeParameters[0])
     return annotations === undefined ? schema : schema.annotate(annotations)

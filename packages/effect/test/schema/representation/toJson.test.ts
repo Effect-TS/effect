@@ -3,6 +3,17 @@ import { Schema, SchemaAST, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 describe("SchemaRepresentation.toJson", () => {
+  it("requires representation when persisting a Filter", () => {
+    throws(
+      () =>
+        SchemaRepresentation.toJson({
+          representation: { _tag: "String", checks: [{ _tag: "Filter", aborted: false }] },
+          references: {}
+        }),
+      `Missing key\n  at ["representation"]["checks"][0]["representation"]`
+    )
+  })
+
   it("removes live callbacks from a custom filter", () => {
     const filter = Schema.makeFilter<string>(() => true, {
       description: "custom",
@@ -23,13 +34,13 @@ describe("SchemaRepresentation.toJson", () => {
           _tag: "String",
           checks: [{
             _tag: "Filter",
+            representation: {
+              id: "acme/schema/custom",
+              payload: { minimum: 1 },
+              schemas: [{ _tag: "Number", checks: [] }]
+            },
             annotations: {
-              description: "custom",
-              representation: {
-                id: "acme/schema/custom",
-                payload: { minimum: 1 },
-                schemas: [{ _tag: "Number", checks: [] }]
-              }
+              description: "custom"
             },
             aborted: true
           }]
@@ -52,9 +63,9 @@ describe("SchemaRepresentation.toJson", () => {
       {
         representation: {
           _tag: "Declaration",
+          representation: { id: "acme/schema/custom", payload: null },
           annotations: {
-            description: "custom",
-            representation: { id: "acme/schema/custom", payload: null }
+            description: "custom"
           },
           typeParameters: [],
           checks: []
@@ -183,7 +194,7 @@ describe("SchemaRepresentation.toJson", () => {
     })
   })
 
-  it("preserves representation annotations on structural nodes", () => {
+  it("omits representation annotations on structural nodes", () => {
     const schema = Schema.String.annotate({
       representation: { id: "acme/schema/String", payload: null }
     })
@@ -193,9 +204,6 @@ describe("SchemaRepresentation.toJson", () => {
       {
         representation: {
           _tag: "String",
-          annotations: {
-            representation: { id: "acme/schema/String", payload: null }
-          },
           checks: []
         },
         references: {}
@@ -223,12 +231,12 @@ describe("SchemaRepresentation.toJson", () => {
             checks: [
               {
                 _tag: "Filter",
-                annotations: { representation: { id: "acme/schema/first", payload: null } },
+                representation: { id: "acme/schema/first", payload: null },
                 aborted: false
               },
               {
                 _tag: "Filter",
-                annotations: { representation: { id: "acme/schema/second", payload: null } },
+                representation: { id: "acme/schema/second", payload: null },
                 aborted: true
               }
             ]

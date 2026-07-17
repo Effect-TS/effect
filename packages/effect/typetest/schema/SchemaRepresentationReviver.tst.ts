@@ -4,10 +4,8 @@ import { describe, expect, it } from "tstyche"
 describe("SchemaRepresentation revivers", () => {
   it("accepts concrete payload revivers at the erased collection boundary", () => {
     const reviver: SchemaRepresentation.FilterReviver<{ readonly source: string }> = {
-      _tag: "Filter",
       id: "acme/schema/isPattern",
       payloadSchema: Schema.Struct({ source: Schema.String }),
-      schemasArity: 0,
       revive: ({ payload, annotations }) => Schema.isPattern(new RegExp(payload.source), annotations)
     }
     const revivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = [reviver]
