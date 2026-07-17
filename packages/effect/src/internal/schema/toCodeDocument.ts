@@ -13,17 +13,9 @@ export function makeCode(runtime: string, Type: string): SchemaRepresentation.Co
   return { runtime, Type }
 }
 
-const codeAnnotationExcludedKeys: ReadonlySet<string> = new Set([
+const codeAnnotationExcludedKeys = new Set([
   "representation",
-  "toJsonSchema",
-  "toCode",
   "arbitrary",
-  "toArbitrary",
-  "toEquivalence",
-  "toFormatter",
-  "toCodec",
-  "toCodecJson",
-  "toCodecIso",
   "identifier",
   "brands",
   "contentMediaType",
@@ -74,16 +66,9 @@ function renderAnnotations(
   if (annotations === undefined) return undefined
   const entries: Array<string> = []
   for (const [key, value] of Object.entries(annotations)) {
-    if (
-      key.startsWith("~") ||
-      codeAnnotationExcludedKeys.has(key)
-    ) {
-      continue
-    }
+    if (key.startsWith("~") || codeAnnotationExcludedKeys.has(key)) continue
     const rendered = renderEmittableAnnotation(value)
-    if (rendered !== undefined) {
-      entries.push(`${JSON.stringify(key)}: ${rendered}`)
-    }
+    if (rendered !== undefined) entries.push(`${JSON.stringify(key)}: ${rendered}`)
   }
   return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`
 }
@@ -121,10 +106,9 @@ function isSimpleLiveLiteral(
 }
 
 function toTypeParts(parts: ReadonlyArray<SchemaRepresentation.Representation>): ReadonlyArray<string> {
-  if (parts.length === 0) return [""]
-  const [first, ...rest] = parts
-  const suffixes = toTypeParts(rest)
-  return toTypePart(first).flatMap((prefix) => suffixes.map((suffix) => prefix + suffix))
+  let out = [""]
+  for (const part of parts) out = out.flatMap((prefix) => toTypePart(part).map((suffix) => prefix + suffix))
+  return out
 }
 
 function toTypePart(part: SchemaRepresentation.Representation): ReadonlyArray<string> {
@@ -228,22 +212,19 @@ export function topologicalSort(
   const recursive = new Set<string>()
   const state = new Map<string, 0 | 1 | 2>()
   const stack: Array<string> = []
-  const stackIndexes = new Map<string, number>()
 
   function visit(identifier: string): void {
     const current = state.get(identifier) ?? 0
     if (current === 1) {
-      const start = stackIndexes.get(identifier)!
+      const start = stack.indexOf(identifier)
       for (let index = start; index < stack.length; index++) recursive.add(stack[index])
       return
     }
     if (current === 2) return
     state.set(identifier, 1)
-    stackIndexes.set(identifier, stack.length)
     stack.push(identifier)
     for (const dependency of dependencies.get(identifier)!) visit(dependency)
     stack.pop()
-    stackIndexes.delete(identifier)
     state.set(identifier, 2)
   }
 
@@ -288,7 +269,8 @@ export function topologicalSort(
   return { nonRecursives, recursives }
 }
 
-function compileCodeDocument(
+/** @internal */
+export function toCodeDocument(
   document: SchemaRepresentation.MultiDocument
 ): SchemaRepresentation.CodeDocument {
   const artifacts: Array<SchemaRepresentation.Artifact> = []
@@ -344,10 +326,6 @@ function compileCodeDocument(
     }
   }
 
-  function addImports(importDeclarations: ReadonlyArray<string>): void {
-    for (const importDeclaration of importDeclarations) addImport(importDeclaration)
-  }
-
   function addSymbol(symbol: symbol): string {
     const identifier = freshIdentifier("_symbol")
     const key = globalThis.Symbol.keyFor(symbol)
@@ -365,27 +343,11 @@ function compileCodeDocument(
     return identifier
   }
 
-  function addEnum(representation: SchemaRepresentation.Enum): string {
-    const identifier = freshIdentifier("_Enum")
-    artifacts.push({
-      _tag: "Enum",
-      identifier,
-      code: makeCode(
-        `enum ${identifier} { ${
-          representation.enums.map(([name, value]) => `${JSON.stringify(name)} = ${renderLiteral(value)}`).join(", ")
-        } }`,
-        `typeof ${identifier}`
-      )
-    })
-    return identifier
-  }
-
   function annotationSchemas(
     representation: RepresentationAnnotation | undefined,
     path: Path
   ): ReadonlyArray<SchemaRepresentation.Code> {
-    const schemas = representation?.schemas ?? []
-    return schemas.map((schema, index) => recur(schema, [...path, "schemas", index]))
+    return representation?.schemas?.map((schema, index) => recur(schema, [...path, "schemas", index])) ?? []
   }
 
   function checkBrands(
@@ -426,15 +388,14 @@ function compileCodeDocument(
     path: Path
   ): string {
     const callback = check.annotations?.toCode
-    const callbackPath = [...path, "annotations", "toCode"]
     let runtime: string
     if (callback !== undefined) {
       const schemas = annotationSchemas(check.representation, [...path, "representation"])
       const output = (callback as SchemaRepresentation.Generation.Check)({ schemas })
-      addImports(output.importDeclarations ?? [])
+      for (const importDeclaration of output.importDeclarations ?? []) addImport(importDeclaration)
       runtime = output.runtime
     } else if (check._tag === "Filter") {
-      throw errorWithPath("Missing toCode callback", callbackPath)
+      throw errorWithPath("Missing toCode callback", [...path, "annotations", "toCode"])
     } else {
       runtime = `Schema.makeFilterGroup([${
         check.checks.map((child, index) => compileCheck(child, [...path, "checks", index])).join(", ")
@@ -490,7 +451,7 @@ function compileCodeDocument(
       path,
       !isJson
     )
-    if (!isJson || contentSchema === undefined) return source
+    if (!isJson) return source
     addImport(`import * as SchemaTransformation from "effect/SchemaTransformation"`)
     return makeCode(
       `(<S extends Schema.Top>(contentSchema: S) => ${source.runtime}.pipe(Schema.decodeTo(contentSchema, SchemaTransformation.fromJsonString)))(${contentSchema.runtime})`,
@@ -529,16 +490,15 @@ function compileCodeDocument(
     switch (representation._tag) {
       case "Declaration": {
         const callback = representation.annotations?.toCode
-        const callbackPath = [...path, "annotations", "toCode"]
         if (callback === undefined) {
-          throw errorWithPath("Missing toCode callback", callbackPath)
+          throw errorWithPath("Missing toCode callback", [...path, "annotations", "toCode"])
         }
         const typeParameters = representation.typeParameters.map((typeParameter, index) =>
           recur(typeParameter, [...path, "typeParameters", index])
         )
         const schemas = annotationSchemas(representation.representation, [...path, "representation"])
         const output = (callback as SchemaRepresentation.Generation.Declaration)({ typeParameters, schemas })
-        addImports(output.importDeclarations ?? [])
+        for (const importDeclaration of output.importDeclarations ?? []) addImport(importDeclaration)
         return makeCode(output.runtime, output.Type)
       }
       case "Suspend": {
@@ -578,7 +538,19 @@ function compileCodeDocument(
       case "ObjectKeyword":
         return makeCode("Schema.ObjectKeyword", "object")
       case "Enum": {
-        const identifier = addEnum(representation)
+        const identifier = freshIdentifier("_Enum")
+        artifacts.push({
+          _tag: "Enum",
+          identifier,
+          code: makeCode(
+            `enum ${identifier} { ${
+              representation.enums.map(([name, value]) => `${JSON.stringify(name)} = ${renderLiteral(value)}`).join(
+                ", "
+              )
+            } }`,
+            `typeof ${identifier}`
+          )
+        })
         return makeCode(`Schema.Enum(${identifier})`, `typeof ${identifier}`)
       }
       case "TemplateLiteral": {
@@ -587,10 +559,15 @@ function compileCodeDocument(
         return makeCode(`Schema.TemplateLiteral([${parts.map((part) => part.runtime).join(", ")}])`, Type)
       }
       case "Arrays": {
-        const elements = representation.elements.map((element, index) => ({
-          ...element,
-          type: recur(element.type, [...path, "elements", index, "type"])
-        }))
+        const elements = representation.elements.map((element, index) => {
+          const type = recur(element.type, [...path, "elements", index, "type"])
+          return makeCode(
+            `${element.isOptional ? "Schema.optionalKey(" : ""}${type.runtime}${element.isOptional ? ")" : ""}${
+              runtimeAnnotate(element.annotations, "annotateKey")
+            }`,
+            `${type.Type}${element.isOptional ? "?" : ""}`
+          )
+        })
         const rest = representation.rest.map((item, index) => recur(item, [...path, "rest", index]))
         if (Arr.isArrayNonEmpty(rest)) {
           const item = rest[0]
@@ -599,34 +576,24 @@ function compileCodeDocument(
           }
           const post = rest.slice(1)
           return makeCode(
-            `Schema.TupleWithRest(Schema.Tuple([${
-              elements.map((element) =>
-                `${element.isOptional ? "Schema.optionalKey(" : ""}${element.type.runtime}${
-                  element.isOptional ? ")" : ""
-                }${runtimeAnnotate(element.annotations, "annotateKey")}`
-              ).join(", ")
-            }]), [${rest.map((item) => item.runtime).join(", ")}])`,
-            `readonly [${
-              elements.map((element) => `${element.type.Type}${element.isOptional ? "?" : ""}`).join(", ")
-            }, ...Array<${item.Type}>${post.length > 0 ? `, ${post.map((item) => item.Type).join(", ")}` : ""}]`
+            `Schema.TupleWithRest(Schema.Tuple([${elements.map((element) => element.runtime).join(", ")}]), [${
+              rest.map((item) => item.runtime).join(", ")
+            }])`,
+            `readonly [${elements.map((element) => element.Type).join(", ")}, ...Array<${item.Type}>${
+              post.length > 0 ? `, ${post.map((item) => item.Type).join(", ")}` : ""
+            }]`
           )
         }
         return makeCode(
-          `Schema.Tuple([${
-            elements.map((element) =>
-              `${element.isOptional ? "Schema.optionalKey(" : ""}${element.type.runtime}${
-                element.isOptional ? ")" : ""
-              }${runtimeAnnotate(element.annotations, "annotateKey")}`
-            ).join(", ")
-          }])`,
-          `readonly [${elements.map((element) => `${element.type.Type}${element.isOptional ? "?" : ""}`).join(", ")}]`
+          `Schema.Tuple([${elements.map((element) => element.runtime).join(", ")}])`,
+          `readonly [${elements.map((element) => element.Type).join(", ")}]`
         )
       }
       case "Objects": {
         const properties = representation.propertySignatures.map((property, index) => {
           const isSymbol = typeof property.name === "symbol"
           const name = isSymbol
-            ? addSymbol(property.name as symbol)
+            ? addSymbol(property.name)
             : formatPropertyKey(property.name)
           const type = recur(property.type, [...path, "propertySignatures", index, "type"])
           let runtime = type.runtime
@@ -643,10 +610,12 @@ function compileCodeDocument(
           parameter: recur(signature.parameter, [...path, "indexSignatures", index, "parameter"]),
           type: recur(signature.type, [...path, "indexSignatures", index, "type"])
         }))
+        const propertyRuntimes = properties.map((property) => property.runtime).join(", ")
+        const propertyTypes = properties.map((property) => property.Type).join(", ")
         if (indexSignatures.length === 0) {
           return makeCode(
-            `Schema.Struct({ ${properties.map((property) => property.runtime).join(", ")} })`,
-            `{ ${properties.map((property) => property.Type).join(", ")} }`
+            `Schema.Struct({ ${propertyRuntimes} })`,
+            `{ ${propertyTypes} }`
           )
         }
         if (properties.length === 0 && indexSignatures.length === 1) {
@@ -663,12 +632,8 @@ function compileCodeDocument(
           `readonly [x: ${signature.parameter.Type}]: ${signature.type.Type}`
         ).join(", ")
         return makeCode(
-          `Schema.StructWithRest(Schema.Struct({ ${
-            properties.map((property) => property.runtime).join(", ")
-          } }), [${indexRuntimes}])`,
-          `{ ${properties.map((property) => property.Type).join(", ")}${
-            properties.length > 0 ? ", " : ""
-          }${indexTypes} }`
+          `Schema.StructWithRest(Schema.Struct({ ${propertyRuntimes} }), [${indexRuntimes}])`,
+          `{ ${propertyTypes}${properties.length > 0 ? ", " : ""}${indexTypes} }`
         )
       }
       case "Union": {
@@ -688,11 +653,4 @@ function compileCodeDocument(
       }
     }
   }
-}
-
-/** @internal */
-export function toCodeDocument(
-  document: SchemaRepresentation.MultiDocument
-): SchemaRepresentation.CodeDocument {
-  return compileCodeDocument(document)
 }
