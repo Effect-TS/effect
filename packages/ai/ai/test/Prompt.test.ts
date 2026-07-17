@@ -29,6 +29,102 @@ describe("Prompt", () => {
       ])
       assert.deepStrictEqual(prompt, expected)
     })
+
+    it("preserves metadata on non-streaming response parts", () => {
+      const parts = [
+        Response.makePart("text", {
+          text: "Hello",
+          metadata: { test: { value: "text" } }
+        }),
+        Response.makePart("reasoning", {
+          text: "Thinking",
+          metadata: { test: { value: "reasoning" } }
+        }),
+        Response.makePart("tool-call", {
+          id: "call_1",
+          name: "get_time",
+          params: {},
+          providerExecuted: false,
+          metadata: { test: { value: "tool-call" } }
+        }),
+        Response.makePart("tool-result", {
+          id: "call_1",
+          name: "get_time",
+          isFailure: false,
+          result: "10:30 AM",
+          encodedResult: "10:30 AM",
+          providerExecuted: false,
+          metadata: { test: { value: "tool-result" } }
+        })
+      ]
+
+      const prompt = Prompt.fromResponseParts(parts)
+
+      assert.deepStrictEqual(
+        prompt,
+        Prompt.make([
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Hello", options: { test: { value: "text" } } },
+              { type: "reasoning", text: "Thinking", options: { test: { value: "reasoning" } } },
+              {
+                type: "tool-call",
+                id: "call_1",
+                name: "get_time",
+                params: {},
+                providerExecuted: false,
+                options: { test: { value: "tool-call" } }
+              }
+            ]
+          },
+          {
+            role: "tool",
+            content: [{
+              type: "tool-result",
+              id: "call_1",
+              name: "get_time",
+              isFailure: false,
+              result: "10:30 AM",
+              providerExecuted: false,
+              options: { test: { value: "tool-result" } }
+            }]
+          }
+        ])
+      )
+    })
+
+    it("preserves metadata accumulated from streaming response parts", () => {
+      const parts = [
+        Response.makePart("text-start", {
+          id: "1",
+          metadata: { test: { value: "text" } }
+        }),
+        Response.makePart("text-delta", { id: "1", delta: "Hello" }),
+        Response.makePart("text-end", { id: "1" }),
+        Response.makePart("reasoning-start", { id: "2" }),
+        Response.makePart("reasoning-delta", { id: "2", delta: "Thinking" }),
+        Response.makePart("reasoning-delta", {
+          id: "2",
+          delta: "",
+          metadata: { test: { value: "reasoning" } }
+        }),
+        Response.makePart("reasoning-end", { id: "2" })
+      ]
+
+      const prompt = Prompt.fromResponseParts(parts)
+
+      assert.deepStrictEqual(
+        prompt,
+        Prompt.make([{
+          role: "assistant",
+          content: [
+            { type: "text", text: "Hello", options: { test: { value: "text" } } },
+            { type: "reasoning", text: "Thinking", options: { test: { value: "reasoning" } } }
+          ]
+        }])
+      )
+    })
   })
 
   describe("merge", () => {
