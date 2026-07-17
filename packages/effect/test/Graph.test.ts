@@ -167,6 +167,73 @@ describe("Graph", () => {
       strictEqual(Equal.equals(left, right), false)
     })
 
+    it("compares future node allocation", () => {
+      const left = Graph.directed<string, string>()
+      const right = Graph.directed<string, string>((mutable) => {
+        const node = Graph.addNode(mutable, "removed")
+        Graph.removeNode(mutable, node)
+      })
+
+      strictEqual(Graph.nodeCount(left), Graph.nodeCount(right))
+      strictEqual(Graph.edgeCount(left), Graph.edgeCount(right))
+      strictEqual(Equal.equals(left, right), false)
+      strictEqual(Hash.hash(left) === Hash.hash(right), false)
+
+      let leftNode: Graph.NodeIndex | undefined
+      let rightNode: Graph.NodeIndex | undefined
+      Graph.mutate(left, (mutable) => {
+        leftNode = Graph.addNode(mutable, "next")
+      })
+      Graph.mutate(right, (mutable) => {
+        rightNode = Graph.addNode(mutable, "next")
+      })
+
+      strictEqual(leftNode, 0)
+      strictEqual(rightNode, 1)
+    })
+
+    it("compares future edge allocation", () => {
+      const left = makeGraph("directed", [])
+      const right = Graph.directed<string, string>((mutable) => {
+        const source = Graph.addNode(mutable, "A")
+        const target = Graph.addNode(mutable, "B")
+        const edge = Graph.addEdge(mutable, source, target, "removed")
+        Graph.removeEdge(mutable, edge)
+      })
+
+      assert.deepStrictEqual(Array.from(left), Array.from(right))
+      assert.deepStrictEqual(Array.from(Graph.edges(left)), Array.from(Graph.edges(right)))
+      strictEqual(Equal.equals(left, right), false)
+      strictEqual(Hash.hash(left) === Hash.hash(right), false)
+
+      let leftEdge: Graph.EdgeIndex | undefined
+      let rightEdge: Graph.EdgeIndex | undefined
+      Graph.mutate(left, (mutable) => {
+        leftEdge = Graph.addEdge(mutable, 0, 1, "next")
+      })
+      Graph.mutate(right, (mutable) => {
+        rightEdge = Graph.addEdge(mutable, 0, 1, "next")
+      })
+
+      strictEqual(leftEdge, 0)
+      strictEqual(rightEdge, 1)
+    })
+
+    it("preserves allocator equality and hashing through an empty mutation", () => {
+      const graph = Graph.directed<string, string>((mutable) => {
+        const source = Graph.addNode(mutable, "A")
+        const target = Graph.addNode(mutable, "B")
+        const removed = Graph.addNode(mutable, "removed")
+        Graph.removeNode(mutable, removed)
+        const edge = Graph.addEdge(mutable, source, target, "removed")
+        Graph.removeEdge(mutable, edge)
+      })
+      const clone = Graph.mutate(graph, () => {})
+
+      strictEqual(Equal.equals(graph, clone), true)
+      strictEqual(Hash.hash(graph), Hash.hash(clone))
+    })
+
     it("uses stable reference equality and hashing for mutable graphs", () => {
       const mutable = Graph.beginMutation(Graph.directed<string, string>())
       const initialHash = Hash.hash(mutable)
