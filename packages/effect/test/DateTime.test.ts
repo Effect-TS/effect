@@ -368,6 +368,16 @@ describe("DateTime", () => {
       ))
   })
 
+  describe("toEpochSeconds", () => {
+    it("converts milliseconds to whole seconds", () => {
+      strictEqual(DateTime.toEpochSeconds(DateTime.unsafeMake(1_999)), 1)
+    })
+
+    it("floors timestamps before the Unix epoch", () => {
+      strictEqual(DateTime.toEpochSeconds(DateTime.unsafeMake(-1)), -1)
+    })
+  })
+
   describe("removeTime", () => {
     it("removes time", () => {
       const dt = DateTime.unsafeMakeZoned("2024-01-01T01:00:00Z", {

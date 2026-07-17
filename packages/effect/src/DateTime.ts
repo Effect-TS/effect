@@ -939,6 +939,14 @@ export const zonedOffsetIso: (self: Zoned) => string = Internal.zonedOffsetIso
 export const toEpochMillis: (self: DateTime) => number = Internal.toEpochMillis
 
 /**
+ * Get the whole seconds since the Unix epoch of a `DateTime`.
+ *
+ * @since 3.22.0
+ * @category conversions
+ */
+export const toEpochSeconds: (self: DateTime) => number = Internal.toEpochSeconds
+
+/**
  * Remove the time aspect of a `DateTime`, first adjusting for the time
  * zone. It will return a `DateTime.Utc` only containing the date.
  *
