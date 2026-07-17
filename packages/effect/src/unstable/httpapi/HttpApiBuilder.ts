@@ -171,7 +171,7 @@ type HandlerRequirements<
 > =
   | HttpApiEndpoint.Middleware<Endpoint>
   | HttpApiEndpoint.MiddlewareServices<Endpoint>
-  | ([R] extends [never] ? never : HttpRouter.Request<"Requires", R>)
+  | ([R] extends [never] ? never : HttpRouter.Request.From<"Requires", R>)
 
 interface HandlerOptions {
   readonly uninterruptible?: boolean | undefined
