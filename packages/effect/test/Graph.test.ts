@@ -105,6 +105,69 @@ describe("Graph", () => {
     })
   })
 
+  describe("equality and hashing", () => {
+    const makeGraph = (
+      type: Graph.Kind,
+      edges: ReadonlyArray<readonly [Graph.NodeIndex, Graph.NodeIndex, string]>
+    ) =>
+      Graph.make(type)<string, string>((mutable) => {
+        Graph.addNode(mutable, "A")
+        Graph.addNode(mutable, "B")
+        for (const [source, target, data] of edges) {
+          Graph.addEdge(mutable, source, target, data)
+        }
+      })
+
+    it("treats undirected edge endpoints as unordered", () => {
+      const left = makeGraph("undirected", [[0, 1, "edge"]])
+      const right = makeGraph("undirected", [[1, 0, "edge"]])
+
+      strictEqual(Equal.equals(left, right), true)
+      strictEqual(Equal.equals(right, left), true)
+      strictEqual(Hash.hash(left), Hash.hash(right))
+    })
+
+    it("keeps directed edge endpoints ordered", () => {
+      const left = makeGraph("directed", [[0, 1, "edge"]])
+      const right = makeGraph("directed", [[1, 0, "edge"]])
+
+      strictEqual(Equal.equals(left, right), false)
+      strictEqual(Equal.equals(right, left), false)
+    })
+
+    it("compares undirected edge data", () => {
+      const left = makeGraph("undirected", [[0, 1, "left"]])
+      const right = makeGraph("undirected", [[1, 0, "right"]])
+
+      strictEqual(Equal.equals(left, right), false)
+    })
+
+    it("keeps parallel edges paired by edge index", () => {
+      const left = makeGraph("undirected", [[0, 1, "first"], [0, 1, "second"]])
+      const reversed = makeGraph("undirected", [[1, 0, "first"], [1, 0, "second"]])
+      const reordered = makeGraph("undirected", [[1, 0, "second"], [1, 0, "first"]])
+
+      strictEqual(Equal.equals(left, reversed), true)
+      strictEqual(Hash.hash(left), Hash.hash(reversed))
+      strictEqual(Equal.equals(left, reordered), false)
+    })
+
+    it("handles undirected self-loops", () => {
+      const left = makeGraph("undirected", [[0, 0, "loop"]])
+      const right = makeGraph("undirected", [[0, 0, "loop"]])
+
+      strictEqual(Equal.equals(left, right), true)
+      strictEqual(Hash.hash(left), Hash.hash(right))
+    })
+
+    it("keeps Graph.Edge endpoint equality ordered", () => {
+      const left = new Graph.Edge({ source: 0, target: 1, data: "edge" })
+      const right = new Graph.Edge({ source: 1, target: 0, data: "edge" })
+
+      strictEqual(Equal.equals(left, right), false)
+    })
+  })
+
   describe("set operations", () => {
     const makeLeft = () =>
       Graph.directed<{ readonly id: string; readonly label: string }, string>((mutable) => {
