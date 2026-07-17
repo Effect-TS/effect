@@ -1,7 +1,4 @@
-import * as Effect from "../../Effect.ts"
-import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
-import type * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { projectDocument, projectMultiDocument } from "./toRepresentation.ts"
@@ -262,29 +259,9 @@ function makePersistedCodecs(): PersistedCodecs {
     references: Schema.Record(Schema.String, RepresentationRef)
   }) as unknown as Schema.Codec<MultiDocument, Schema.Json>
 
-  function exactParseOptions(options: SchemaAST.ParseOptions): SchemaAST.ParseOptions {
-    return { ...options, onExcessProperty: "error" }
-  }
-
-  function makePersistedCodec<A>(wire: Schema.Codec<A, Schema.Json>): Schema.Codec<A, Schema.Json> {
-    const target = Schema.declare<A>((_): _ is A => true)
-    return Schema.Json.pipe(
-      Schema.decodeTo(target, {
-        decode: SchemaGetter.transformOrFail<A, Schema.Json>((input, options) => {
-          const decoded = Schema.decodeUnknownResult(wire, exactParseOptions(options))(input)
-          return Result.isFailure(decoded) ? Effect.fail(decoded.failure.issue) : Effect.succeed(decoded.success)
-        }),
-        encode: SchemaGetter.transformOrFail<Schema.Json, A>((input, options) => {
-          const encoded = Schema.encodeUnknownResult(wire, exactParseOptions(options))(input)
-          return Result.isFailure(encoded) ? Effect.fail(encoded.failure.issue) : Effect.succeed(encoded.success)
-        })
-      })
-    )
-  }
-
   return {
-    document: makePersistedCodec(PersistedDocumentWire),
-    multiDocument: makePersistedCodec(PersistedMultiDocumentWire)
+    document: PersistedDocumentWire,
+    multiDocument: PersistedMultiDocumentWire
   }
 }
 

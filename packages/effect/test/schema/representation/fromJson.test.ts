@@ -422,7 +422,7 @@ describe("SchemaRepresentation.fromJson", () => {
           },
           references: {}
         } as never),
-      `Expected JSON value, got {"representation":{"_tag":"String","annotations":{"invalid":1n},"checks":[]},"references":{}}`
+      `Expected JSON value, got 1n\n  at ["representation"]["annotations"]["invalid"]`
     )
   })
 
@@ -430,7 +430,7 @@ describe("SchemaRepresentation.fromJson", () => {
     const input = () => undefined
     throws(
       () => SchemaRepresentation.fromJson(input as never),
-      `Expected JSON value, got () => void 0`
+      `Expected object, got () => void 0`
     )
   })
 
@@ -445,9 +445,12 @@ describe("SchemaRepresentation.fromJson", () => {
       }
     }
 
-    throws(
-      () => SchemaRepresentation.fromJson(input as never),
-      `Expected JSON value, got {"representation":{"_tag":"String","checks":[]},"references":{},"toJSON":toJSON() {\n        calls++;\n        return null;\n      }}`
+    assert.deepStrictEqual(
+      SchemaRepresentation.fromJson(input as never),
+      {
+        representation: { _tag: "String", checks: [] },
+        references: {}
+      }
     )
     assert.strictEqual(calls, 0)
   })

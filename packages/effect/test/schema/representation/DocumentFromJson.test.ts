@@ -40,12 +40,26 @@ describe("SchemaRepresentation.DocumentFromJson", () => {
     )
   })
 
+  it("ignores excess properties by default", () => {
+    assert.deepStrictEqual(
+      Schema.decodeUnknownSync(SchemaRepresentation.DocumentFromJson)({
+        representation: { _tag: "String", checks: [], unexpected: true },
+        references: {},
+        unexpected: true
+      }),
+      {
+        representation: { _tag: "String", checks: [] },
+        references: {}
+      }
+    )
+  })
+
   it("reports decoding failures as SchemaError", () => {
     const result = Schema.decodeUnknownResult(SchemaRepresentation.DocumentFromJson)(() => undefined)
 
     assert.strictEqual(result._tag, "Failure")
     if (result._tag !== "Failure") return
-    assert.strictEqual(result.failure.message, "Expected JSON value, got () => void 0")
+    assert.strictEqual(result.failure.message, "Expected object, got () => void 0")
   })
 
   it("reports encoding failures as SchemaError", () => {
