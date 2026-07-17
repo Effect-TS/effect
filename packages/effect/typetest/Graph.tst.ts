@@ -36,6 +36,26 @@ describe("Graph", () => {
         expect(mutable).type.toBe<Graph.MutableUndirectedGraph<string, number>>()
       })
     ).type.toBe<Graph.UndirectedGraph<string, number>>()
+
+    expect(Graph.make("directed")<string, number>).type.not.toBeCallableWith(async () => {})
+    expect(Graph.make("undirected")<string, number>).type.not.toBeCallableWith(() => Promise.resolve())
+  })
+
+  it("mutation callbacks must be synchronous", () => {
+    expect(Graph.directed<string, number>).type.not.toBeCallableWith(async () => {})
+    expect(Graph.undirected<string, number>).type.not.toBeCallableWith(() => Promise.resolve())
+    expect(Graph.mutate).type.not.toBeCallableWith(directed, async () => {})
+    expect(Graph.mutate).type.not.toBeCallableWith(async () => {})
+
+    expect(Graph.mutate(directed, (mutable) => {
+      expect(mutable).type.toBe<Graph.MutableDirectedGraph<string, number>>()
+    })).type.toBe<Graph.DirectedGraph<string, number>>()
+    expect(pipe(
+      directed,
+      Graph.mutate((mutable) => {
+        expect(mutable).type.toBe<Graph.MutableDirectedGraph<string, number>>()
+      })
+    )).type.toBe<Graph.DirectedGraph<string, number>>()
   })
 
   it("opaque interface", () => {

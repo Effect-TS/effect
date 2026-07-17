@@ -862,6 +862,38 @@ describe("Graph", () => {
       expect(Graph.nodeCount(result)).toBe(0)
       expect(Graph.edgeCount(result)).toBe(0)
     })
+
+    it("should reject PromiseLike callbacks and finalize the mutable graph", () => {
+      let mutable: Graph.MutableDirectedGraph<string, number> | undefined
+      const callback = ((graph: Graph.MutableDirectedGraph<string, number>) => {
+        mutable = graph
+        /* oxlint-disable-next-line no-thenable */
+        return { then() {} }
+      }) as unknown as (graph: Graph.MutableDirectedGraph<string, number>) => undefined
+
+      assertGraphError(
+        () => Graph.mutate(Graph.directed<string, number>(), callback),
+        "Graph mutation callbacks must be synchronous"
+      )
+      assertGraphError(() => Graph.addNode(mutable!, "late"), "Graph is not mutable")
+    })
+
+    it("should finalize the mutable graph when the callback throws", () => {
+      let mutable: Graph.MutableDirectedGraph<string, number> | undefined
+      const error = new Error("boom")
+
+      throws(
+        () =>
+          Graph.mutate(Graph.directed<string, number>(), (graph) => {
+            mutable = graph
+            throw error
+          }),
+        (cause) => {
+          strictEqual(cause, error)
+        }
+      )
+      assertGraphError(() => Graph.addNode(mutable!, "late"), "Graph is not mutable")
+    })
   })
 
   describe("addNode", () => {
