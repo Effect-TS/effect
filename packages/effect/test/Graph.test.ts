@@ -3799,7 +3799,7 @@ describe("Graph", () => {
     it("should throw for undirected graphs", () => {
       const graph = makeReversedUndirectedPath()
 
-      expect(() => Graph.topo(graph)).toThrow("Cannot perform topological sort on undirected graph")
+      expect(() => Graph.topo(graph as any)).toThrow("Cannot perform topological sort on undirected graph")
     })
 
     it("should handle corrupted graph state during topological sort", () => {
