@@ -257,7 +257,9 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  * days, months, and weekdays the schedule should match. Empty arrays mean
  * "match all" for that time unit. When both days and weekdays are restricted,
  * the default matches either field; set `and: true` to require both fields to
- * match.
+ * match. Weekdays range from `0` (Sunday) to `7` (also Sunday). The constructor
+ * throws a `RangeError` when a field contains a non-integer or out-of-range
+ * value.
  *
  * **Example** (Creating schedules from constraints)
  *
@@ -363,12 +365,12 @@ export const make = (values: {
   readonly tz?: DateTime.TimeZone | undefined
 }): Cron => {
   const o: Mutable<Cron> = Object.create(CronProto)
-  o.seconds = new Set(Arr.sort(values.seconds ?? [0], N.Order))
-  o.minutes = new Set(Arr.sort(values.minutes, N.Order))
-  o.hours = new Set(Arr.sort(values.hours, N.Order))
-  o.days = new Set(Arr.sort(values.days, N.Order))
-  o.months = new Set(Arr.sort(values.months, N.Order))
-  o.weekdays = new Set(Arr.sort(values.weekdays, N.Order))
+  o.seconds = makeRestrictions("seconds", values.seconds ?? [0], 0, 59)
+  o.minutes = makeRestrictions("minutes", values.minutes, 0, 59)
+  o.hours = makeRestrictions("hours", values.hours, 0, 23)
+  o.days = makeRestrictions("days", values.days, 1, 31)
+  o.months = makeRestrictions("months", values.months, 1, 12)
+  o.weekdays = makeRestrictions("weekdays", values.weekdays, 0, 7, (value) => value === 7 ? 0 : value)
   o.and = values.and === true
   o.tz = Option.fromUndefinedOr(values.tz)
 
@@ -416,6 +418,23 @@ export const make = (values: {
   }
 
   return o
+}
+
+const makeRestrictions = (
+  field: string,
+  values: Iterable<number>,
+  min: number,
+  max: number,
+  normalize: (value: number) => number = (value) => value
+): Set<number> => {
+  const restrictions: Array<number> = []
+  for (const value of values) {
+    if (!Number.isInteger(value) || value < min || value > max) {
+      throw new RangeError(`Cron.make: ${field} must contain only integers between ${min} and ${max}`)
+    }
+    restrictions.push(normalize(value))
+  }
+  return new Set(Arr.sort(restrictions, N.Order))
 }
 
 const lookupTable = (

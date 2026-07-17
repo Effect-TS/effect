@@ -235,6 +235,75 @@ describe("Cron", () => {
     deepStrictEqual(Cron.next(andCron, new Date("2024-01-02T00:00:00.000Z")), new Date("2024-04-01T00:00:00.000Z"))
   })
 
+  it("make validates field values and normalizes weekday 7", () => {
+    const make = (field: string, value: number) =>
+      Cron.make({
+        minutes: field === "minutes" ? [value] : [],
+        hours: field === "hours" ? [value] : [],
+        days: field === "days" ? [value] : [],
+        months: field === "months" ? [value] : [],
+        weekdays: field === "weekdays" ? [value] : [],
+        seconds: field === "seconds" ? [value] : []
+      })
+
+    for (
+      const [field, value] of [
+        ["seconds", 60],
+        ["minutes", -1],
+        ["hours", 24],
+        ["days", 0],
+        ["months", 13],
+        ["weekdays", 8],
+        ["seconds", 0.5],
+        ["minutes", NaN]
+      ] as const
+    ) {
+      throws(() => make(field, value), (error) => {
+        assertTrue(error instanceof RangeError)
+        return undefined
+      })
+    }
+
+    deepStrictEqual(
+      Cron.make({
+        minutes: [],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: [7]
+      }).weekdays,
+      new Set([0])
+    )
+  })
+
+  it("make treats weekday 7 as Sunday when matching", () => {
+    const cron = Cron.make({
+      minutes: [0],
+      hours: [0],
+      days: [],
+      months: [],
+      weekdays: [7],
+      tz: DateTime.zoneMakeNamedUnsafe("UTC")
+    })
+
+    assertTrue(Cron.match(cron, new Date("2024-01-07T00:00:00.000Z")))
+    assertFalse(Cron.match(cron, new Date("2024-01-08T00:00:00.000Z")))
+  })
+
+  it("make treats weekday 7 as Sunday when stepping", () => {
+    const cron = Cron.make({
+      minutes: [0],
+      hours: [0],
+      days: [],
+      months: [],
+      weekdays: [7],
+      tz: DateTime.zoneMakeNamedUnsafe("UTC")
+    })
+
+    deepStrictEqual(Cron.next(cron, new Date("2024-01-05T00:00:00.000Z")), new Date("2024-01-07T00:00:00.000Z"))
+    deepStrictEqual(Cron.prev(cron, new Date("2024-01-08T00:00:00.000Z")), new Date("2024-01-07T00:00:00.000Z"))
+  })
+
   it("match", () => {
     assertTrue(match("5 0 * 8 *", new Date("2024-08-01 00:05:00")))
     assertFalse(match("5 0 * 8 *", new Date("2024-09-01 00:05:00")))
