@@ -9,9 +9,13 @@ import * as InternalRecord from "../record.ts"
 
 type Path = ReadonlyArray<string | number>
 
-type Document = SchemaRepresentation.Document
-type MultiDocument = SchemaRepresentation.MultiDocument
-type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
+/** @internal */
+export function fromRepresentations(
+  document: SchemaRepresentation.MultiDocument,
+  revivers: ReadonlyArray<SchemaRepresentation.AnyReviver>
+): SchemaRepresentation.SchemaMultiDocument {
+  return revivePersisted(document.representations, document.references, makeReviverMap(revivers), false)
+}
 
 class ReferenceSlot {
   body: Schema.Top | undefined
@@ -60,7 +64,7 @@ function revivePersisted(
   }
 
   function resolveReviver<R extends SchemaRepresentation.AnyReviver>(
-    representation: RepresentationAnnotation,
+    representation: SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>,
     path: Path
   ): R {
     const reviver = reviverMap.get(representation.id)
@@ -71,7 +75,7 @@ function revivePersisted(
   }
 
   function decodePayload(
-    representation: RepresentationAnnotation,
+    representation: SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>,
     reviver: SchemaRepresentation.AnyReviver,
     path: Path
   ): any {
@@ -100,9 +104,8 @@ function revivePersisted(
     }
     const reviver = resolveReviver<SchemaRepresentation.DeclarationReviver<any>>(representation, representationPath)
     const payload = decodePayload(representation, reviver, [...representationPath, "payload"])
-    const schemas = reviveSchemas(representation.schemas ?? [], [...representationPath, "schemas"])
     const typeParameters = reviveSchemas(declaration.typeParameters, [...path, "typeParameters"])
-    const schema = reviver.revive({ payload, schemas, typeParameters, annotations: declaration.annotations })
+    const schema = reviver.revive({ payload, typeParameters, annotations: declaration.annotations })
     return appendChecks(schema, declaration.checks, [...path, "checks"])
   }
 
@@ -338,7 +341,7 @@ function revivePersisted(
 
 /** @internal */
 export function fromRepresentation(
-  document: Document,
+  document: SchemaRepresentation.Document,
   revivers: ReadonlyArray<SchemaRepresentation.AnyReviver>
 ): Schema.Top {
   return revivePersisted(
@@ -347,12 +350,4 @@ export function fromRepresentation(
     makeReviverMap(revivers),
     true
   ).schemas[0]
-}
-
-/** @internal */
-export function fromRepresentations(
-  document: MultiDocument,
-  revivers: ReadonlyArray<SchemaRepresentation.AnyReviver>
-): SchemaRepresentation.SchemaMultiDocument {
-  return revivePersisted(document.representations, document.references, makeReviverMap(revivers), false)
 }

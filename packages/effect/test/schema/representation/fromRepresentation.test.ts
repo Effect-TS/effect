@@ -318,11 +318,11 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     const reviver: SchemaRepresentation.DeclarationReviver<{ readonly label: string }> = {
       id,
       payloadSchema: Schema.Struct({ label: Schema.String }),
-      revive: ({ annotations, payload, schemas }) =>
+      revive: ({ annotations, payload }) =>
         Schema.declare<{ readonly value: string }>(
           (input): input is { readonly value: string } =>
             typeof input === "object" && input !== null && typeof (input as any).value === "string",
-          { ...annotations, representation: { id, payload, schemas: schemas.map((schema) => schema.ast) } }
+          { ...annotations, representation: { id, payload, schemas: [Schema.String.ast] } }
         )
     }
     const schema = assertRepresentationRoundtrip(Box, [reviver]) as Schema.Codec<unknown>

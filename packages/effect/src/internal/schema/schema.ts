@@ -6,9 +6,49 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import { SchemaError } from "../../SchemaError.ts"
 import type { Issue } from "../../SchemaIssue.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
+import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 
 /** @internal */
 export const TypeId = "~effect/Schema/Schema"
+
+/** @internal */
+export function makeDeclarationReviver<P>(
+  id: string,
+  payloadSchema: Schema.Decoder<P>,
+  revive: SchemaRepresentation.DeclarationReviver<P>["revive"]
+): SchemaRepresentation.DeclarationReviver<P> {
+  return {
+    id,
+    payloadSchema,
+    revive
+  }
+}
+
+/** @internal */
+export function makeFilterReviver<P>(
+  id: string,
+  payloadSchema: Schema.Decoder<P>,
+  revive: SchemaRepresentation.FilterReviver<P>["revive"]
+): SchemaRepresentation.FilterReviver<P> {
+  return {
+    id,
+    payloadSchema,
+    revive
+  }
+}
+
+/** @internal */
+export function makeFilterGroupReviver<P>(
+  id: string,
+  payloadSchema: Schema.Decoder<P>,
+  revive: SchemaRepresentation.FilterGroupReviver<P>["revive"]
+): SchemaRepresentation.FilterGroupReviver<P> {
+  return {
+    id,
+    payloadSchema,
+    revive
+  }
+}
 
 const SchemaProto = {
   [TypeId]: TypeId,

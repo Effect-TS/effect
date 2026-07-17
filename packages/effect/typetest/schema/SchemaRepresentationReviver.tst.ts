@@ -2,6 +2,38 @@ import { Schema, SchemaRepresentation } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("SchemaRepresentation revivers", () => {
+  it("infers payload types from reviver constructors", () => {
+    const declaration = SchemaRepresentation.makeDeclarationReviver(
+      "acme/schema/Box",
+      Schema.Struct({ label: Schema.String }),
+      ({ payload }) => {
+        expect(payload).type.toBe<{ readonly label: string }>()
+        return Schema.String
+      }
+    )
+    expect(declaration).type.toBe<SchemaRepresentation.DeclarationReviver<{ readonly label: string }>>()
+
+    const filter = SchemaRepresentation.makeFilterReviver(
+      "acme/schema/minLength",
+      Schema.Struct({ minimum: Schema.Number }),
+      ({ annotations, payload }) => {
+        expect(payload).type.toBe<{ readonly minimum: number }>()
+        return Schema.isMinLength(payload.minimum, annotations)
+      }
+    )
+    expect(filter).type.toBe<SchemaRepresentation.FilterReviver<{ readonly minimum: number }>>()
+
+    const filterGroup = SchemaRepresentation.makeFilterGroupReviver(
+      "acme/schema/nonEmpty",
+      Schema.Null,
+      ({ annotations, payload }) => {
+        expect(payload).type.toBe<null>()
+        return Schema.makeFilterGroup([Schema.isMinLength(1)], annotations)
+      }
+    )
+    expect(filterGroup).type.toBe<SchemaRepresentation.FilterGroupReviver<null>>()
+  })
+
   it("accepts concrete payload revivers at the erased collection boundary", () => {
     const reviver: SchemaRepresentation.FilterReviver<{ readonly source: string }> = {
       id: "acme/schema/isPattern",

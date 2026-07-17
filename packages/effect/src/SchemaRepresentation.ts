@@ -6,6 +6,7 @@
 import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
 import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
 import * as InternalRepresentationJson from "./internal/schema/representationJson.ts"
+import * as InternalSchema from "./internal/schema/schema.ts"
 import * as InternalToCodeDocument from "./internal/schema/toCodeDocument.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
@@ -490,26 +491,16 @@ export interface SchemaMultiDocument {
 }
 
 /**
- * Base contract shared by revivers.
- *
- * @category models
- * @since 4.0.0
- */
-export interface ReviverBase<P> {
-  readonly id: string
-  readonly payloadSchema: Schema.Decoder<P>
-}
-
-/**
  * Reviver for a declaration.
  *
  * @category models
  * @since 4.0.0
  */
-export interface DeclarationReviver<P> extends ReviverBase<P> {
+export interface DeclarationReviver<P> {
+  readonly id: string
+  readonly payloadSchema: Schema.Decoder<P>
   readonly revive: (input: {
     readonly payload: P
-    readonly schemas: ReadonlyArray<Schema.Top>
     readonly typeParameters: ReadonlyArray<Schema.Top>
     readonly annotations: Schema.Annotations.Annotations | undefined
   }) => Schema.Top
@@ -521,7 +512,9 @@ export interface DeclarationReviver<P> extends ReviverBase<P> {
  * @category models
  * @since 4.0.0
  */
-export interface FilterReviver<P> extends ReviverBase<P> {
+export interface FilterReviver<P> {
+  readonly id: string
+  readonly payloadSchema: Schema.Decoder<P>
   readonly revive: (input: {
     readonly payload: P
     readonly schemas: ReadonlyArray<Schema.Top>
@@ -535,7 +528,9 @@ export interface FilterReviver<P> extends ReviverBase<P> {
  * @category models
  * @since 4.0.0
  */
-export interface FilterGroupReviver<P> extends ReviverBase<P> {
+export interface FilterGroupReviver<P> {
+  readonly id: string
+  readonly payloadSchema: Schema.Decoder<P>
   readonly revive: (input: {
     readonly payload: P
     readonly schemas: ReadonlyArray<Schema.Top>
@@ -566,6 +561,42 @@ export type Reviver<P> = DeclarationReviver<P> | CheckReviver<P>
  * @since 4.0.0
  */
 export type AnyReviver = Reviver<any>
+
+/**
+ * Creates a declaration reviver while inferring its payload type from `payloadSchema`.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeDeclarationReviver: <P>(
+  id: string,
+  payloadSchema: Schema.Decoder<P>,
+  revive: DeclarationReviver<P>["revive"]
+) => DeclarationReviver<P> = InternalSchema.makeDeclarationReviver
+
+/**
+ * Creates a filter reviver while inferring its payload type from `payloadSchema`.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeFilterReviver: <P>(
+  id: string,
+  payloadSchema: Schema.Decoder<P>,
+  revive: FilterReviver<P>["revive"]
+) => FilterReviver<P> = InternalSchema.makeFilterReviver
+
+/**
+ * Creates a filter group reviver while inferring its payload type from `payloadSchema`.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeFilterGroupReviver: <P>(
+  id: string,
+  payloadSchema: Schema.Decoder<P>,
+  revive: FilterGroupReviver<P>["revive"]
+) => FilterGroupReviver<P> = InternalSchema.makeFilterGroupReviver
 
 /**
  * Options for importing JSON Schema Draft 2020-12 documents.
