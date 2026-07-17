@@ -10,7 +10,7 @@ import { errorWithPath } from "../errors.ts"
 type Path = ReadonlyArray<string | number>
 type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
 
-const jsonSchemaExcludedAnnotationKeys: ReadonlySet<string> = new Set([
+const jsonSchemaExcludedAnnotationKeys = new Set([
   "title",
   "description",
   "default",
@@ -36,17 +36,11 @@ const jsonSchemaExcludedAnnotationKeys: ReadonlySet<string> = new Set([
   "expected"
 ])
 
-function getJsonSchemaAnnotation(input: unknown): Schema.Json | undefined {
-  return SchemaAST.isJson(input) ? input : undefined
-}
-
 function collectJsonSchemaAnnotations(
   annotations: Schema.Annotations.Annotations | undefined,
   options: Schema.ToJsonSchemaOptions | undefined
 ): JsonSchema.JsonSchema | undefined {
-  if (annotations === undefined) {
-    return undefined
-  }
+  if (annotations === undefined) return undefined
 
   const out: JsonSchema.JsonSchema = {}
   const title = annotations.title
@@ -56,11 +50,10 @@ function collectJsonSchemaAnnotations(
   if (typeof description === "string") out.description = description
   else if (options?.generateDescriptions === true && typeof expected === "string") out.description = expected
 
-  const defaultValue = getJsonSchemaAnnotation(annotations.default)
-  if (defaultValue !== undefined) out.default = defaultValue
+  const defaultValue = annotations.default
+  if (SchemaAST.isJson(defaultValue)) out.default = defaultValue
   const examples = annotations.examples
-  const validExamples = Array.isArray(examples) ? getJsonSchemaAnnotation(examples) : undefined
-  if (validExamples !== undefined) out.examples = validExamples
+  if (Array.isArray(examples) && SchemaAST.isJson(examples)) out.examples = examples
   const readOnly = annotations.readOnly
   if (typeof readOnly === "boolean") out.readOnly = readOnly
   const writeOnly = annotations.writeOnly
@@ -81,10 +74,7 @@ function collectJsonSchemaAnnotations(
       ) {
         continue
       }
-      const annotation = getJsonSchemaAnnotation(value)
-      if (annotation !== undefined) {
-        out[key] = annotation
-      }
+      if (SchemaAST.isJson(value)) out[key] = value
     }
   }
 
@@ -100,7 +90,11 @@ function extractJsonSchemaNumberType(schema: JsonSchema.JsonSchema): {
   let type: JsonSchemaNumberType | undefined = schema.type === "number" || schema.type === "integer"
     ? schema.type
     : undefined
-  let out = type === undefined ? schema : Object.fromEntries(Object.entries(schema).filter(([key]) => key !== "type"))
+  let out = schema
+  if (type !== undefined) {
+    out = { ...schema }
+    delete out.type
+  }
   if (Array.isArray(out.allOf)) {
     const members: Array<JsonSchema.JsonSchema> = []
     let changed = false
@@ -133,13 +127,13 @@ function appendJsonSchema(
   const rightKeys = Object.keys(right)
   if (rightKeys.length === 0) return left
   const leftType = left.type === "number" || left.type === "integer" ? left.type : undefined
-  if (leftType !== undefined || isJsonSchemaNumberEncoding(left)) {
+  const isNumberEncoding = isJsonSchemaNumberEncoding(left)
+  if (leftType !== undefined || isNumberEncoding) {
     const extracted = extractJsonSchemaNumberType(right)
     if (extracted.type !== undefined) {
       const type = leftType === "integer" || extracted.type === "integer" ? "integer" : "number"
-      const base = isJsonSchemaNumberEncoding(left)
-        ? { ...Object.fromEntries(Object.entries(left).filter(([key]) => key !== "anyOf")), type }
-        : { ...left, type }
+      const base: JsonSchema.JsonSchema = { ...left, type }
+      if (isNumberEncoding) delete base.anyOf
       return Object.keys(extracted.schema).length === 0 ? base : appendJsonSchema(base, extracted.schema)
     }
   }
@@ -173,8 +167,7 @@ function compileJsonSchema(
     representation: RepresentationAnnotation | undefined,
     path: Path
   ): ReadonlyArray<JsonSchema.JsonSchema> {
-    const schemas = representation?.schemas ?? []
-    return schemas.map((schema, index) => recur(schema, [...path, "schemas", index]))
+    return representation?.schemas?.map((schema, index) => recur(schema, [...path, "schemas", index])) ?? []
   }
 
   function compileCheck(
@@ -195,12 +188,9 @@ function compileJsonSchema(
     const children = check.checks
       .map((child, index) => compileCheck(child, type, [...path, "checks", index]))
       .filter((child): child is JsonSchema.JsonSchema => child !== undefined)
-    if (children.length === 0) {
-      return undefined
-    }
+    if (children.length === 0) return undefined
     const ordinary = collectJsonSchemaAnnotations(annotations, options)
-    const fragment: JsonSchema.JsonSchema = { allOf: children }
-    return ordinary === undefined ? fragment : { ...fragment, ...ordinary }
+    return ordinary === undefined ? { allOf: children } : { allOf: children, ...ordinary }
   }
 
   function recur(
@@ -241,6 +231,7 @@ function compileJsonSchema(
         return { anyOf: [{ type: "object" }, { type: "array" }] }
       case "Void":
       case "Undefined":
+      case "Null":
         return { type: "null" }
       case "BigInt":
         return { type: "string", allOf: [{ pattern: "^-?\\d+$" }] }
@@ -249,9 +240,8 @@ function compileJsonSchema(
         return { type: "string", allOf: [{ pattern: "^Symbol\\((.*)\\)$" }] }
       case "Declaration": {
         const callback = representation.annotations?.toJsonSchema
-        const callbackPath = [...path, "annotations", "toJsonSchema"]
         if (callback === undefined) {
-          throw errorWithPath("Missing JSON Schema callback", callbackPath)
+          throw errorWithPath("Missing JSON Schema callback", [...path, "annotations", "toJsonSchema"])
         }
         const typeParameters = representation.typeParameters.map((typeParameter, index) =>
           recur(typeParameter, [...path, "typeParameters", index])
@@ -261,8 +251,6 @@ function compileJsonSchema(
       }
       case "Suspend":
         return recur(representation.thunk, [...path, "thunk"])
-      case "Null":
-        return { type: "null" }
       case "Never":
         return { not: {} }
       case "String": {
@@ -296,7 +284,7 @@ function compileJsonSchema(
           enum: [literal],
           title
         }))
-        return representation.enums.length === 0 ? { not: {} } : { anyOf: types }
+        return types.length === 0 ? { not: {} } : { anyOf: types }
       }
       case "TemplateLiteral":
         return { type: "string", pattern: `^${representation.parts.map(getPartPattern).join("")}$` }
@@ -349,7 +337,7 @@ function compileJsonSchema(
           properties[property.name] = annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
           if (!property.isOptional) required.push(property.name)
         }
-        if (Object.keys(properties).length > 0) out.properties = properties
+        if (representation.propertySignatures.length > 0) out.properties = properties
         if (required.length > 0) out.required = required
         out.additionalProperties = options?.additionalProperties ?? false
         const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
@@ -407,8 +395,7 @@ function compileJsonSchema(
           throw errorWithPath(`Invalid reference ${parameter.$ref}`, [...path, "$ref"])
         }
         if (seenReferences.has(parameter.$ref)) return []
-        const next = new Set(seenReferences)
-        next.add(parameter.$ref)
+        const next = new Set(seenReferences).add(parameter.$ref)
         return getParameterPatterns(references[parameter.$ref], ["references", parameter.$ref], next)
       }
       case "String":
