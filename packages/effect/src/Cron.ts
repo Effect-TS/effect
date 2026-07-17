@@ -896,22 +896,15 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
             const nextDay = table.day[currentDay]
             if (nextDay === undefined) {
               if (reverse) {
-                let year = current.getUTCFullYear()
-                let month = current.getUTCMonth() - 1
-                let daysBack = currentDay
+                const previous = new Date(current)
                 while (true) {
-                  if (month < 0) {
-                    year--
-                    month = 11
-                  }
-                  const monthDays = daysInMonth(new Date(Date.UTC(year, month, 1)))
-                  const day = table.day[monthDays]
+                  previous.setUTCDate(0)
+                  const day = table.day[previous.getUTCDate()]
                   if (day !== undefined) {
-                    b = -(daysBack + monthDays - day)
+                    previous.setUTCDate(day)
+                    b = (previous.getTime() - current.getTime()) / 86_400_000
                     break
                   }
-                  daysBack += monthDays
-                  month--
                 }
               } else {
                 b = daysInMonth(current) - currentDay + boundary.day
