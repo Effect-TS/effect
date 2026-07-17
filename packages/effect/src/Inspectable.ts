@@ -229,6 +229,8 @@ export const stringifyCircular = (obj: unknown, whitespace?: number | string | u
           : cache.push(value) && (redactableState.fiberRefs !== undefined && isRedactable(value)
             ? value[symbolRedactable](redactableState.fiberRefs)
             : value)
+        : typeof value === "bigint"
+        ? String(value) + "n"
         : value,
     whitespace
   )

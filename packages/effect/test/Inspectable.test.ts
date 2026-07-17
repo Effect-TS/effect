@@ -151,6 +151,12 @@ describe("Inspectable", () => {
     })
   })
 
+  describe("stringifyCircular", () => {
+    it("serializes bigint values", () => {
+      strictEqual(Inspectable.stringifyCircular({ value: 123n }), `{"value":"123n"}`)
+    })
+  })
+
   describe("toString", () => {
     it("primitives", () => {
       strictEqual(Inspectable.format(null), "null")
