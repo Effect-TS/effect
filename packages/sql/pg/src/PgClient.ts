@@ -222,47 +222,46 @@ export const makeClient = (
 ): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   fromClient({
     ...options,
-    acquire: Effect.gen(function*() {
-      const client = new Pg.Client({
-        connectionString: options.url ? Redacted.value(options.url) : undefined,
-        user: options.username,
-        host: options.host,
-        database: options.database,
-        password: options.password ? Redacted.value(options.password) : undefined,
-        ssl: options.ssl,
-        port: options.port,
-        ...(options.stream ? { stream: options.stream } : {}),
-        application_name: options.applicationName ?? "@effect/sql-pg",
-        types: options.types
-      })
-      yield* Effect.acquireRelease(
-        Effect.tryPromise({
-          try: () => client.query("SELECT 1"),
-          catch: (cause) => new SqlError({ reason: classifyError(cause, "PgClient: Failed to connect", "connect") })
-        }),
-        () =>
-          Effect.promise(() => client.end()).pipe(
-            Effect.timeoutOption(1000)
-          ),
-        { interruptible: true }
-      ).pipe(
-        Effect.timeoutOrElse({
-          duration: options.connectTimeout ?? Duration.seconds(5),
-          orElse: () =>
-            Effect.fail(
-              new SqlError({
-                reason: new ConnectionError({
-                  cause: new Error("Connection timed out"),
-                  message: "PgClient: Connection timed out",
-                  operation: "connect"
-                })
+    acquire: Effect.acquireRelease(
+      Effect.tryPromise({
+        try: async () => {
+          const client = new Pg.Client({
+            connectionString: options.url ? Redacted.value(options.url) : undefined,
+            user: options.username,
+            host: options.host,
+            database: options.database,
+            password: options.password ? Redacted.value(options.password) : undefined,
+            ssl: options.ssl,
+            port: options.port,
+            ...(options.stream ? { stream: options.stream } : {}),
+            application_name: options.applicationName ?? "@effect/sql-pg",
+            types: options.types
+          })
+          await client.connect()
+          return client
+        },
+        catch: (cause) => new SqlError({ reason: classifyError(cause, "PgClient: Failed to connect", "connect") })
+      }),
+      (client) =>
+        Effect.promise(() => client.end()).pipe(
+          Effect.timeoutOption(1000)
+        ),
+      { interruptible: true }
+    ).pipe(
+      Effect.timeoutOrElse({
+        duration: options.connectTimeout ?? Duration.seconds(5),
+        orElse: () =>
+          Effect.fail(
+            new SqlError({
+              reason: new ConnectionError({
+                cause: new Error("Connection timed out"),
+                message: "PgClient: Connection timed out",
+                operation: "connect"
               })
-            )
-        })
-      )
-
-      return client
-    }),
+            })
+          )
+      })
+    ),
     acquireForStream: options.acquireForStream ?? false
   })
 
