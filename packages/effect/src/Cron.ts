@@ -254,12 +254,12 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  * **Details**
  *
  * Constructs a cron schedule by specifying which seconds, minutes, hours,
- * days, months, and weekdays the schedule should match. Empty arrays mean
- * "match all" for that time unit. When both days and weekdays are restricted,
- * the default matches either field; set `and: true` to require both fields to
- * match. Weekdays range from `0` (Sunday) to `7` (also Sunday). The constructor
- * throws a `RangeError` when a field contains a non-integer or out-of-range
- * value.
+ * days, months, and weekdays the schedule should match. Empty arrays leave a
+ * time unit unrestricted. If only days or weekdays are restricted, that field
+ * must match. When both are restricted, the default matches either field; set
+ * `and: true` to require both fields to match. Weekdays range from `0` (Sunday)
+ * to `7` (also Sunday). The constructor throws a `RangeError` when a field
+ * contains a non-integer or out-of-range value.
  *
  * **Example** (Creating schedules from constraints)
  *
@@ -528,7 +528,7 @@ const CronParseErrorTypeId = "~effect/time/Cron/CronParseError"
  * @see {@link parse} for the parser that returns this error in `Result.fail`
  * @see {@link isCronParseError} for narrowing unknown values to this error type
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class CronParseError extends Data.TaggedError("CronParseError")<{
@@ -588,7 +588,9 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  * The expression may contain five fields, where seconds default to `0`, or six
  * fields including seconds. Fields support `*`, comma-separated values, ranges,
  * steps, and month or weekday aliases. Invalid expressions fail with
- * `CronParseError`.
+ * `CronParseError`. When both the day-of-month and weekday fields are
+ * restricted, a date matches if either field matches. When either field starts
+ * with `*`, both fields must match; an unrestricted field always matches.
  *
  * **Example** (Parsing cron expressions)
  *
@@ -693,17 +695,20 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  *
  * **Details**
  *
- * Seconds, minutes, hours, months, and the optional timezone are checked
- * directly. For day constraints, an empty `days` or `weekdays` set means that
- * field matches every value; when both sets are non-empty, a date matches if
- * either the day-of-month or weekday matches.
+ * The schedule's timezone determines which calendar fields are read from the
+ * input; the host system's timezone is used when the schedule has no timezone.
+ * Seconds, minutes, hours, and months are checked against their restrictions;
+ * an empty set leaves that field unrestricted. If only `days` or `weekdays` is
+ * restricted, that field must match. If both are restricted, either may match
+ * unless the schedule was created with `and: true`, which requires both to
+ * match.
  *
  * **Example** (Matching dates against a schedule)
  *
  * ```ts
  * import { Cron, Result } from "effect"
  *
- * const cron = Result.getOrThrow(Cron.parse("0 0 4 8-14 * *"))
+ * const cron = Result.getOrThrow(Cron.parse("0 0 4 8-14 * *", "UTC"))
  *
  * // Check if specific dates match
  * const matches1 = Cron.match(cron, new Date("2021-01-08T04:00:00Z"))
@@ -785,12 +790,12 @@ const daysInMonth = (date: Date): number =>
  * ```ts
  * import { Cron, Result } from "effect"
  *
- * const cron = Result.getOrThrow(Cron.parse("0 0 4 8-14 * *"))
+ * const cron = Result.getOrThrow(Cron.parse("0 0 4 8-14 * *", "UTC"))
  *
  * // Get next run after a specific date
  * const after = new Date("2021-01-01T00:00:00Z")
  * const nextRun = Cron.next(cron, after)
- * console.log(nextRun) // 2021-01-08T04:00:00.000Z
+ * console.log(nextRun.toISOString()) // 2021-01-08T04:00:00.000Z
  *
  * // Get next run from current time
  * const nextFromNow = Cron.next(cron)
@@ -1022,14 +1027,14 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
  * ```ts
  * import { Cron, Result } from "effect"
  *
- * const cron = Result.getOrThrow(Cron.parse("0 0 9 * * 1-5")) // 9 AM weekdays
+ * const cron = Result.getOrThrow(Cron.parse("0 0 9 * * 1-5", "UTC")) // 9 AM weekdays
  *
  * // Get first 5 occurrences
- * const iterator = Cron.sequence(cron, new Date("2023-01-01"))
- * const next5 = Array.from({ length: 5 }, () => iterator.next().value)
+ * const iterator = Cron.sequence(cron, new Date("2023-01-01T00:00:00Z"))
+ * const next5 = Array.from({ length: 5 }, () => iterator.next().value.toISOString())
  *
  * console.log(next5)
- * // [Mon Jan 02 2023 09:00:00, Tue Jan 03 2023 09:00:00, ...]
+ * // ["2023-01-02T09:00:00.000Z", "2023-01-03T09:00:00.000Z", ...]
  * ```
  *
  * @see {@link next} for computing one next occurrence
@@ -1044,7 +1049,8 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
 }
 
 /**
- * Equivalence instance for comparing two `Cron` schedules.
+ * Equivalence instance for comparing the timezone, field restrictions, and
+ * day-matching mode of two `Cron` schedules.
  *
  * **When to use**
  *
@@ -1053,8 +1059,8 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  *
  * **Details**
  *
- * This comparison checks the optional timezone, day matching mode, seconds,
- * minutes, hours, days, months, and weekdays.
+ * This comparison checks the optional timezone, the `and` day-matching mode,
+ * seconds, minutes, hours, days, months, and weekdays.
  *
  * **Example** (Comparing schedules with equivalence)
  *
@@ -1101,17 +1107,18 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
   restrictionsArrayEquals(Arr.fromIterable(self), Arr.fromIterable(that))
 
 /**
- * Checks whether two `Cron` instances have equal timezone values and field
- * restrictions.
+ * Checks whether two `Cron` instances have equal timezone values, field
+ * restrictions, and day-matching modes.
  *
  * **When to use**
  *
- * Use to directly compare two cron schedules, including their timezones.
+ * Use to directly compare two cron schedules, including their timezones and
+ * day-matching modes.
  *
  * **Details**
  *
- * The comparison checks the optional timezone, day matching mode, seconds,
- * minutes, hours, days, months, and weekdays.
+ * The comparison checks the optional timezone, the `and` day-matching mode,
+ * seconds, minutes, hours, days, months, and weekdays.
  *
  * **Example** (Checking schedule equality)
  *
@@ -1240,7 +1247,9 @@ const parseSegment = (
         return Result.fail(new CronParseError({ message: `Expected step value to be greater than 0`, input }))
       }
       if (step > options.max) {
-        return Result.fail(new CronParseError({ message: `Expected step value to be less than ${options.max}`, input }))
+        return Result.fail(
+          new CronParseError({ message: `Expected step value to be less than or equal to ${options.max}`, input })
+        )
       }
     }
 

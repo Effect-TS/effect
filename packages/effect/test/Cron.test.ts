@@ -165,6 +165,10 @@ describe("Cron", () => {
     assertTrue(Result.isFailure(invalidDayTail))
     deepStrictEqual(invalidDayTail.failure.message, "Expected a value between 1 and 31")
 
+    const invalidMinuteStep = Cron.parse("*/60 * * * *")
+    assertTrue(Result.isFailure(invalidMinuteStep))
+    deepStrictEqual(invalidMinuteStep.failure.message, "Expected step value to be less than or equal to 59")
+
     for (
       const invalid of [
         "0,,5 * * * *",
