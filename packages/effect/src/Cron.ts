@@ -897,16 +897,14 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
             if (nextDay === undefined) {
               if (reverse) {
                 const previous = new Date(current)
-                let day: number | undefined
-                for (let i = 0; i < 2; i++) {
+                previous.setUTCDate(0)
+                let day = table.day[previous.getUTCDate()]
+                if (day === undefined) {
                   previous.setUTCDate(0)
                   day = table.day[previous.getUTCDate()]
-                  if (day !== undefined) {
-                    break
-                  }
                 }
                 if (day === undefined) {
-                  throw new Error("Unable to find " + direction + " cron date")
+                  throw new Error("Unable to find prev cron date")
                 }
                 previous.setUTCDate(day)
                 b = (previous.getTime() - current.getTime()) / 86_400_000
