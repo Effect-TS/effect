@@ -72,6 +72,53 @@ export type NodeIndex = number
  */
 export type EdgeIndex = number
 
+interface PriorityQueueEntry {
+  readonly node: NodeIndex
+  readonly priority: number
+  readonly sequence: number
+}
+
+const priorityQueueLessThan = (self: PriorityQueueEntry, that: PriorityQueueEntry): boolean =>
+  self.priority < that.priority || (self.priority === that.priority && self.sequence < that.sequence)
+
+const priorityQueueOffer = (queue: Array<PriorityQueueEntry>, entry: PriorityQueueEntry): void => {
+  let index = queue.length
+  queue.push(entry)
+  while (index > 0) {
+    const parent = (index - 1) >>> 1
+    if (!priorityQueueLessThan(entry, queue[parent])) {
+      break
+    }
+    queue[index] = queue[parent]
+    index = parent
+  }
+  queue[index] = entry
+}
+
+const priorityQueueTake = (queue: Array<PriorityQueueEntry>): PriorityQueueEntry | undefined => {
+  const first = queue[0]
+  const last = queue.pop()
+  if (last === undefined || queue.length === 0) {
+    return first
+  }
+  let index = 0
+  while (true) {
+    const left = index * 2 + 1
+    if (left >= queue.length) {
+      break
+    }
+    const right = left + 1
+    const child = right < queue.length && priorityQueueLessThan(queue[right], queue[left]) ? right : left
+    if (!priorityQueueLessThan(queue[child], last)) {
+      break
+    }
+    queue[index] = queue[child]
+    index = child
+  }
+  queue[index] = last
+  return first
+}
+
 /**
  * Represents edge data containing source, target, and user data.
  *
@@ -4175,21 +4222,12 @@ export const dijkstra: {
     previous.set(node, null)
   }
 
-  // Simple priority queue using array (can be optimized with proper heap)
-  const priorityQueue: Array<{ node: NodeIndex; distance: number }> = [
-    { node: config.source, distance: 0 }
-  ]
+  const priorityQueue: Array<PriorityQueueEntry> = []
+  let sequence = 0
+  priorityQueueOffer(priorityQueue, { node: config.source, priority: 0, sequence: sequence++ })
 
   while (priorityQueue.length > 0) {
-    // Find minimum distance node (priority queue extract-min)
-    let minIndex = 0
-    for (let i = 1; i < priorityQueue.length; i++) {
-      if (priorityQueue[i].distance < priorityQueue[minIndex].distance) {
-        minIndex = i
-      }
-    }
-
-    const current = priorityQueue.splice(minIndex, 1)[0]
+    const current = priorityQueueTake(priorityQueue)!
     const currentNode = current.node
 
     // Skip if already visited (can happen with duplicate entries)
@@ -4226,7 +4264,7 @@ export const dijkstra: {
 
             // Add to priority queue if not visited
             if (!visited.has(neighbor)) {
-              priorityQueue.push({ node: neighbor, distance: newDistance })
+              priorityQueueOffer(priorityQueue, { node: neighbor, priority: newDistance, sequence: sequence++ })
             }
           }
         }
@@ -4596,21 +4634,16 @@ export const astar: {
     fScore.set(config.source, h)
   }
 
-  // Priority queue using f-score (total estimated cost)
-  const openSet: Array<{ node: NodeIndex; fScore: number }> = [
-    { node: config.source, fScore: fScore.get(config.source)! }
-  ]
+  const openSet: Array<PriorityQueueEntry> = []
+  let sequence = 0
+  priorityQueueOffer(openSet, {
+    node: config.source,
+    priority: fScore.get(config.source)!,
+    sequence: sequence++
+  })
 
   while (openSet.length > 0) {
-    // Find node with lowest f-score
-    let minIndex = 0
-    for (let i = 1; i < openSet.length; i++) {
-      if (openSet[i].fScore < openSet[minIndex].fScore) {
-        minIndex = i
-      }
-    }
-
-    const current = openSet.splice(minIndex, 1)[0]
+    const current = priorityQueueTake(openSet)!
     const currentNode = current.node
 
     // Skip if already visited
@@ -4655,7 +4688,7 @@ export const astar: {
 
               // Add to open set if not visited
               if (!visited.has(neighbor)) {
-                openSet.push({ node: neighbor, fScore: f })
+                priorityQueueOffer(openSet, { node: neighbor, priority: f, sequence: sequence++ })
               }
             }
           }

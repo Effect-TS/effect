@@ -2926,6 +2926,50 @@ describe("Graph", () => {
       assertSome(result, { path: [nodeA!, nodeB!, nodeC!], distance: 7, costs: [5, 2] })
     })
 
+    it("should preserve insertion order for equal priorities", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const first = Graph.addNode(mutable, "first")
+        const second = Graph.addNode(mutable, "second")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, first, 1)
+        Graph.addEdge(mutable, source, second, 1)
+        Graph.addEdge(mutable, first, target, 1)
+        Graph.addEdge(mutable, second, target, 1)
+      })
+
+      const result = Graph.dijkstra(graph, {
+        source: 0,
+        target: 3,
+        cost: (edge) => edge
+      })
+
+      assertSome(result, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+    })
+
+    it("should skip stale priority queue entries", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const improved = Graph.addNode(mutable, "improved")
+        const shortcut = Graph.addNode(mutable, "shortcut")
+        const middle = Graph.addNode(mutable, "middle")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, improved, 10)
+        Graph.addEdge(mutable, source, shortcut, 1)
+        Graph.addEdge(mutable, shortcut, improved, 1)
+        Graph.addEdge(mutable, improved, middle, 20)
+        Graph.addEdge(mutable, middle, target, 20)
+      })
+
+      const result = Graph.dijkstra(graph, {
+        source: 0,
+        target: 4,
+        cost: (edge) => edge
+      })
+
+      assertSome(result, { path: [0, 2, 1, 3, 4], distance: 42, costs: [1, 1, 20, 20] })
+    })
+
     it("should return None for unreachable nodes", () => {
       let nodeA: Graph.NodeIndex
       let nodeB: Graph.NodeIndex
@@ -3097,6 +3141,52 @@ describe("Graph", () => {
       })
 
       assertSome(result, { path: [nodeA!, nodeB!, nodeC!], distance: 2, costs: [1, 1] })
+    })
+
+    it("should preserve insertion order for equal priorities", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const first = Graph.addNode(mutable, "first")
+        const second = Graph.addNode(mutable, "second")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, first, 1)
+        Graph.addEdge(mutable, source, second, 1)
+        Graph.addEdge(mutable, first, target, 1)
+        Graph.addEdge(mutable, second, target, 1)
+      })
+
+      const result = Graph.astar(graph, {
+        source: 0,
+        target: 3,
+        cost: (edge) => edge,
+        heuristic: () => 0
+      })
+
+      assertSome(result, { path: [0, 1, 3], distance: 2, costs: [1, 1] })
+    })
+
+    it("should skip stale open set entries", () => {
+      const graph = Graph.directed<string, number>((mutable) => {
+        const source = Graph.addNode(mutable, "source")
+        const improved = Graph.addNode(mutable, "improved")
+        const shortcut = Graph.addNode(mutable, "shortcut")
+        const middle = Graph.addNode(mutable, "middle")
+        const target = Graph.addNode(mutable, "target")
+        Graph.addEdge(mutable, source, improved, 10)
+        Graph.addEdge(mutable, source, shortcut, 1)
+        Graph.addEdge(mutable, shortcut, improved, 1)
+        Graph.addEdge(mutable, improved, middle, 20)
+        Graph.addEdge(mutable, middle, target, 20)
+      })
+
+      const result = Graph.astar(graph, {
+        source: 0,
+        target: 4,
+        cost: (edge) => edge,
+        heuristic: () => 0
+      })
+
+      assertSome(result, { path: [0, 2, 1, 3, 4], distance: 42, costs: [1, 1, 20, 20] })
     })
 
     it("should return None for unreachable nodes", () => {
