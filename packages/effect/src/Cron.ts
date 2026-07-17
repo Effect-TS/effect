@@ -796,6 +796,8 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
   const tick = reverse ? -1 : 1
   const table = cron[direction]
   const boundary = reverse ? cron.last : cron.first
+  const lastMatchingDayInMonth = (year: number, month: number): number | undefined =>
+    table.day[daysInMonth(new Date(Date.UTC(year, month, 1)))]
 
   const needsStep = reverse ?
     (next: number, current: number) => next < current :
@@ -896,10 +898,23 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
             const nextDay = table.day[currentDay]
             if (nextDay === undefined) {
               if (reverse) {
-                const prevMonthDays = daysInMonth(
-                  new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 0))
-                )
-                b = -(currentDay + (prevMonthDays - boundary.day))
+                let year = current.getUTCFullYear()
+                let month = current.getUTCMonth() - 1
+                let daysBack = currentDay
+                while (true) {
+                  if (month < 0) {
+                    year--
+                    month = 11
+                  }
+                  const monthDays = daysInMonth(new Date(Date.UTC(year, month, 1)))
+                  const day = table.day[monthDays]
+                  if (day !== undefined) {
+                    b = -(daysBack + monthDays - day)
+                    break
+                  }
+                  daysBack += monthDays
+                  month--
+                }
               } else {
                 b = daysInMonth(current) - currentDay + boundary.day
               }
@@ -925,6 +940,35 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
       if (cron.months.size !== 0) {
         const currentMonth = current.getUTCMonth() + 1
         const nextMonth = table.month[currentMonth]
+        if (reverse && cron.days.size !== 0 && cron.weekdays.size === 0 && nextMonth !== currentMonth) {
+          let year = current.getUTCFullYear()
+          let month = nextMonth === undefined ? boundary.month : nextMonth - 1
+          if (nextMonth === undefined) {
+            year--
+          }
+          let found = false
+          for (let i = 0; i < 400 * cron.months.size; i++) {
+            const day = lastMatchingDayInMonth(year, month)
+            if (day !== undefined) {
+              current.setUTCFullYear(year, month, day)
+              current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
+              adjustDst(current)
+              found = true
+              break
+            }
+            do {
+              month--
+              if (month < 0) {
+                year--
+                month = 11
+              }
+            } while (!cron.months.has(month + 1))
+          }
+          if (!found) {
+            throw new Error("Unable to find " + direction + " cron date")
+          }
+          continue
+        }
         const clampBoundaryDay = (targetMonthIndex: number): number => {
           if (cron.days.size !== 0 && cron.weekdays.size === 0) {
             return boundary.day

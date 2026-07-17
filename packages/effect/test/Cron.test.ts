@@ -468,6 +468,40 @@ describe("Cron", () => {
     deepStrictEqual(prev(cron, from), new Date("2024-01-31T00:00:00.000Z"))
   })
 
+  it("prev skips an invalid day in the immediately preceding month", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cron = Cron.parseUnsafe("0 0 31 * *", tz)
+    const from = new Date("2024-03-15T00:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2024-01-31T00:00:00.000Z"))
+  })
+
+  it("prev finds the previous leap day", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cron = Cron.parseUnsafe("0 0 29 2 *", tz)
+    const from = new Date("2024-01-01T00:00:00.000Z")
+    deepStrictEqual(prev(cron, from), new Date("2020-02-29T00:00:00.000Z"))
+  })
+
+  it("prev day-of-month rollovers preserve match and ordering invariants", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cases = [
+      [Cron.parseUnsafe("0 0 31 * *", tz), new Date("2024-03-15T00:00:00.000Z")],
+      [Cron.parseUnsafe("0 0 29 2 *", tz), new Date("2024-01-01T00:00:00.000Z")]
+    ] as const
+
+    for (const [cron, from] of cases) {
+      const result = prev(cron, from)
+      assertTrue(Cron.match(cron, result))
+      assertTrue(result < from)
+    }
+  })
+
+  it("prev terminates for an impossible day and month combination", () => {
+    const tz = DateTime.zoneMakeNamedUnsafe("UTC")
+    const cron = Cron.parseUnsafe("0 0 30 2 *", tz)
+    throws(() => prev(cron, new Date("2024-03-01T00:00:00.000Z")))
+  })
+
   it("prev clamps to the last valid day when rolling back a month with only month constraints", () => {
     const tz = DateTime.zoneMakeNamedUnsafe("UTC")
     const cron = Cron.parseUnsafe("0 0 0 * FEB *", tz)
