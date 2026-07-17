@@ -1013,7 +1013,10 @@ export const makeProtocolSocket = (options?: {
         }
         currentError = new RpcClientError({
           reason: "Protocol",
-          message: "Error in socket",
+          message: Option.match(error, {
+            onNone: () => "Error in socket",
+            onSome: (error) => `Socket ${error.message}`
+          }),
           cause: Cause.squash(cause)
         })
         return writeResponse({
