@@ -41,16 +41,12 @@ function projectCheckRepresentationAnnotation(
 }
 
 function projectAnnotationBag(
-  input: Readonly<Record<string, unknown>> | undefined,
-  stripStringContent = false
+  input: Readonly<Record<string, unknown>> | undefined
 ): Schema.Annotations.Annotations | undefined {
   if (input === undefined) return undefined
 
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(input)) {
-    if (stripStringContent && (key === "contentMediaType" || key === "contentSchema")) {
-      continue
-    }
     if (SchemaAST.isJson(value)) InternalRecord.set(out, key, value)
   }
 
@@ -88,7 +84,7 @@ function projectRepresentation(
 ): SchemaRepresentation.Representation {
   if (representation._tag === "Reference") return representation
 
-  const annotations = projectAnnotationBag(representation.annotations, representation._tag === "String")
+  const annotations = projectAnnotationBag(representation.annotations)
 
   if (representation._tag === "Suspend") {
     return {
@@ -100,20 +96,6 @@ function projectRepresentation(
   }
 
   const checks = representation.checks.map(projectCheck)
-  if (representation._tag === "String") {
-    return {
-      _tag: "String",
-      checks,
-      ...(representation.contentMediaType === undefined
-        ? undefined
-        : { contentMediaType: representation.contentMediaType }),
-      ...(representation.contentSchema === undefined
-        ? undefined
-        : { contentSchema: projectRepresentation(representation.contentSchema) }),
-      ...annotationsField(annotations)
-    }
-  }
-
   const fields = { checks, ...annotationsField(annotations) }
 
   switch (representation._tag) {
@@ -132,6 +114,7 @@ function projectRepresentation(
     case "Never":
     case "Unknown":
     case "Any":
+    case "String":
     case "Number":
     case "Boolean":
     case "BigInt":
@@ -364,6 +347,7 @@ function lowerASTs(
       case "Never":
       case "Unknown":
       case "Any":
+      case "String":
       case "Boolean":
       case "Number":
       case "BigInt":
@@ -374,16 +358,6 @@ function lowerASTs(
           checks,
           ...annotationsField(ast.annotations)
         }
-      case "String": {
-        const { contentMediaType, contentSchema, ...annotations } = ast.annotations ?? {}
-        return {
-          _tag: "String",
-          checks,
-          ...(Object.keys(annotations).length === 0 ? undefined : { annotations }),
-          ...(typeof contentMediaType === "string" ? { contentMediaType } : undefined),
-          ...(SchemaAST.isAST(contentSchema) ? { contentSchema: recur(SchemaAST.toType(contentSchema)) } : undefined)
-        }
-      }
       case "Literal":
         return {
           _tag: "Literal",

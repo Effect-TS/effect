@@ -2462,13 +2462,15 @@ describe("fromJsonSchemaDocument", () => {
     )
   })
 
-  it("imports format and contentEncoding annotations", () => {
+  it("imports built-in JSON Schema annotations", () => {
     assertFromJsonSchema(
       {
         schema: {
           type: "string",
           format: "email",
-          contentEncoding: "base64"
+          contentEncoding: "base64",
+          contentMediaType: "application/json",
+          contentSchema: { type: "number" }
         }
       },
       {
@@ -2476,7 +2478,9 @@ describe("fromJsonSchemaDocument", () => {
           "_tag": "String",
           "annotations": {
             "format": "email",
-            "contentEncoding": "base64"
+            "contentEncoding": "base64",
+            "contentMediaType": "application/json",
+            "contentSchema": { "type": "number" }
           },
           "checks": []
         },
@@ -4760,31 +4764,21 @@ describe("fromJsonSchemaDocument", () => {
       }
     })
 
-    it("merges string content, overlapping properties and index signatures", () => {
+    it("merges string annotations, overlapping properties and index signatures", () => {
       const string = fromJsonSchemaRepresentation(
         JsonSchema.fromSchemaDraft2020_12({
           allOf: [
-            { type: "string", contentMediaType: "text/plain" },
+            { type: "string", contentMediaType: "application/json" },
             { type: "string", contentSchema: { type: "number" } }
           ]
         })
       )
       strictEqual(string.representation._tag, "String")
       if (string.representation._tag === "String") {
-        strictEqual(string.representation.contentMediaType, "text/plain")
-        strictEqual(string.representation.contentSchema?._tag, "Number")
-      }
-
-      const leftContentSchema = fromJsonSchemaRepresentation(
-        JsonSchema.fromSchemaDraft2020_12({
-          type: "string",
-          contentSchema: { type: "number" },
-          allOf: [{ type: "string" }]
+        deepStrictEqual(string.representation.annotations, {
+          contentMediaType: "application/json",
+          contentSchema: { type: "number" }
         })
-      )
-      strictEqual(leftContentSchema.representation._tag, "String")
-      if (leftContentSchema.representation._tag === "String") {
-        strictEqual(leftContentSchema.representation.contentSchema?._tag, "Number")
       }
 
       const object = toSchemaFromJsonSchemaDocument(

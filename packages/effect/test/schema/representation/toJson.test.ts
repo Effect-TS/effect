@@ -410,25 +410,16 @@ describe("SchemaRepresentation.toJson", () => {
     )
   })
 
-  it("encodes structural string content schemas", () => {
+  it("encodes fromJsonString annotations", () => {
     const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
     const document = SchemaRepresentation.toRepresentation(schema)
 
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
       representation: {
         _tag: "String",
-        annotations: { expected: "a string that will be decoded as JSON" },
-        contentMediaType: "application/json",
-        contentSchema: {
-          _tag: "Objects",
-          propertySignatures: [{
-            name: "value",
-            type: { _tag: "Number", checks: [] },
-            isOptional: false,
-            isMutable: false
-          }],
-          indexSignatures: [],
-          checks: []
+        annotations: {
+          contentMediaType: "application/json",
+          expected: "a string that will be decoded as JSON"
         },
         checks: []
       },

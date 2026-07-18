@@ -54,13 +54,7 @@ const SuspendSchema = Schema.Struct({
   checks: Schema.Tuple([]),
   thunk: RepresentationSchema
 })
-const StringSchema = Schema.Struct({
-  _tag: Schema.tag("String"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
-  contentMediaType: Schema.optional(Schema.String),
-  contentSchema: Schema.optional(RepresentationSchema)
-})
+const StringSchema = keywordSchema("String")
 const LiteralSchema = Schema.Struct({
   _tag: Schema.tag("Literal"),
   annotations: Schema.optional(AnnotationsSchema),

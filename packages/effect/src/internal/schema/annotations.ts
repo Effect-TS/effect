@@ -43,7 +43,6 @@ export const annotationExcludedKeys = new Set([
   "representation",
   "arbitrary",
   "brands",
-  "contentSchema",
   "toJsonSchema",
   "toCode",
   "toArbitrary",

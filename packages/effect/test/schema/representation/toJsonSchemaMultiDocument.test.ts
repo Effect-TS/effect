@@ -60,7 +60,8 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
           annotations: {
             format: "email",
             contentEncoding: "base64",
-            contentMediaType: "text/plain"
+            contentMediaType: "application/json",
+            contentSchema: { type: "string" }
           },
           checks: []
         },
@@ -79,7 +80,8 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         type: "string",
         format: "email",
         contentEncoding: "base64",
-        contentMediaType: "text/plain"
+        contentMediaType: "application/json",
+        contentSchema: { type: "string" }
       },
       { oneOf: [{ type: "string" }, { type: "boolean" }] }
     ])

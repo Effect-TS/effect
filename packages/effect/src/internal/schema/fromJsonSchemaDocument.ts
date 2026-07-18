@@ -2,6 +2,7 @@ import { unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
 import * as Schema from "../../Schema.ts"
+import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
@@ -94,6 +95,8 @@ function jsonSchemaAnnotations(
   if (typeof schema.writeOnly === "boolean") annotations.writeOnly = schema.writeOnly
   if (typeof schema.format === "string") annotations.format = schema.format
   if (typeof schema.contentEncoding === "string") annotations.contentEncoding = schema.contentEncoding
+  if (typeof schema.contentMediaType === "string") annotations.contentMediaType = schema.contentMediaType
+  if (SchemaAST.isJson(schema.contentSchema)) annotations.contentSchema = schema.contentSchema
   return Object.keys(annotations).length === 0 ? undefined : annotations
 }
 
@@ -143,10 +146,6 @@ function unknownJsonSchemas(representation: Representation): Representation {
       return jsonDeclaration(representation.annotations)
     case "Suspend":
       return { ...representation, thunk: unknownJsonSchemas(representation.thunk) }
-    case "String":
-      return representation.contentSchema === undefined
-        ? representation
-        : { ...representation, contentSchema: unknownJsonSchemas(representation.contentSchema) }
     case "Arrays":
       return {
         ...representation,
@@ -433,8 +432,7 @@ function translateJsonSchemaMultiDocument(
 
   function isUnconstrainedString(representation: Representation): boolean {
     return representation._tag === "String" && representation.checks.length === 0 &&
-      representation.annotations === undefined && representation.contentMediaType === undefined &&
-      representation.contentSchema === undefined
+      representation.annotations === undefined
   }
 
   function combineIndexSignatures(
@@ -527,13 +525,7 @@ function translateJsonSchemaMultiDocument(
         return annotateJsonSchemaRepresentation(
           {
             _tag: "String",
-            checks: stringChecks ?? left.checks,
-            ...(right.contentMediaType ?? left.contentMediaType) === undefined
-              ? undefined
-              : { contentMediaType: right.contentMediaType ?? left.contentMediaType },
-            ...(right.contentSchema ?? left.contentSchema) === undefined
-              ? undefined
-              : { contentSchema: right.contentSchema ?? left.contentSchema }
+            checks: stringChecks ?? left.checks
           },
           mergeAnnotations(left.annotations, stringChecks === undefined ? right.annotations : undefined)
         )
@@ -742,11 +734,7 @@ function translateJsonSchemaMultiDocument(
       case "string":
         return {
           _tag: "String",
-          checks: collectStringChecks(schema),
-          ...(typeof schema.contentMediaType === "string" ? { contentMediaType: schema.contentMediaType } : undefined),
-          ...(schema.contentSchema === undefined
-            ? undefined
-            : { contentSchema: recur(schema.contentSchema, [...path, "contentSchema"]) })
+          checks: collectStringChecks(schema)
         }
       case "number":
       case "integer":

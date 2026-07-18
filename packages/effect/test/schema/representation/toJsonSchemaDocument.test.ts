@@ -782,48 +782,6 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     )
   })
 
-  it("compiles String contentSchema structurally", () => {
-    const document: SchemaRepresentation.Document = {
-      representation: {
-        _tag: "String",
-        contentMediaType: "application/json",
-        contentSchema: {
-          _tag: "Objects",
-          propertySignatures: [{
-            name: "value",
-            type: NumberRepresentation,
-            isOptional: false,
-            isMutable: false
-          }],
-          indexSignatures: [],
-          checks: []
-        },
-        checks: []
-      },
-      references: {}
-    }
-
-    assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaDocument(document).schema, {
-      type: "string",
-      contentMediaType: "application/json",
-      contentSchema: {
-        type: "object",
-        properties: {
-          value: {
-            anyOf: [
-              { type: "number" },
-              { type: "string", enum: ["NaN"] },
-              { type: "string", enum: ["Infinity"] },
-              { type: "string", enum: ["-Infinity"] }
-            ]
-          }
-        },
-        required: ["value"],
-        additionalProperties: false
-      }
-    })
-  })
-
   it("reports missing references with their document path", () => {
     const document: SchemaRepresentation.Document = {
       representation: { _tag: "Reference", $ref: "Missing" },

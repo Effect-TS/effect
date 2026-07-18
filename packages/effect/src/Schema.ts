@@ -12714,12 +12714,6 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * The resulting schema first parses the input string as JSON, and then runs the
  * provided schema on the parsed result.
  *
- * JSON Schema generation:
- *
- * When using `fromJsonString` with `draft-2020-12` or `openApi3.1`, the
- * resulting schema will be a JSON Schema with a `contentSchema` property that
- * contains the JSON Schema for the given schema.
- *
  * **Example** (Decoding JSON strings with a schema)
  *
  * ```ts
@@ -12732,39 +12726,6 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * // => { a: 1 }
  * ```
  *
- * **Example** (Emitting JSON Schema for a JSON string decoder)
- *
- * ```ts
- * import { Schema } from "effect"
- *
- * const original = Schema.Struct({ a: Schema.String })
- * const schema = Schema.fromJsonString(original)
- *
- * const document = Schema.toJsonSchemaDocument(schema)
- *
- * console.log(JSON.stringify(document, null, 2))
- * // {
- * //   "source": "draft-2020-12",
- * //   "schema": {
- * //     "type": "string",
- * //     "contentMediaType": "application/json",
- * //     "contentSchema": {
- * //       "type": "object",
- * //       "properties": {
- * //         "a": {
- * //           "type": "string"
- * //         }
- * //       },
- * //       "required": [
- * //         "a"
- * //       ],
- * //       "additionalProperties": false
- * //     }
- * //   },
- * //   "definitions": {}
- * // }
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -12774,8 +12735,7 @@ export function fromJsonString<S extends Constraint>(schema: S): fromJsonString<
     // Give the transport wrapper its own name so the decoded payload keeps its identifier.
     identifier: identifier === undefined ? undefined : `${identifier}JsonString`,
     expected: "a string that will be decoded as JSON",
-    contentMediaType: "application/json",
-    contentSchema: SchemaAST.toEncoded(schema.ast)
+    contentMediaType: "application/json"
   }).pipe(decodeTo(schema, SchemaTransformation.fromJsonString))
 }
 
@@ -16252,6 +16212,7 @@ export declare namespace Annotations {
     readonly format?: string | undefined
     readonly contentEncoding?: string | undefined
     readonly contentMediaType?: string | undefined
+    readonly contentSchema?: Json | undefined
   }
 
   /**

@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaAST, SchemaRepresentation } from "effect"
+import { Schema, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 const filterId = "acme/schema/minLength"
@@ -241,26 +241,6 @@ describe("SchemaRepresentation.fromRepresentation", () => {
         schemas: [Schema.Number.ast]
       }
     }))
-  })
-
-  it("revives String contentSchema in the same reference environment", () => {
-    const content = Schema.Struct({ value: Schema.Number }).annotate({ identifier: "Payload" })
-    const encoded = Schema.String.annotate({
-      contentMediaType: "application/json",
-      contentSchema: SchemaAST.toEncoded(content.ast)
-    })
-    const schema = revive(encoded)
-    assert.deepStrictEqual(Schema.decodeUnknownSync(schema as Schema.Codec<unknown>)("{\"value\":1}"), { value: 1 })
-    const document = SchemaRepresentation.toRepresentation(SchemaAST.toEncoded(schema.ast))
-    assert.strictEqual(document.representation._tag, "Reference")
-    if (document.representation._tag === "Reference") {
-      const representation = document.references[document.representation.$ref]
-      assert.strictEqual(representation._tag, "String")
-      if (representation._tag === "String") {
-        assert.strictEqual(representation.contentMediaType, "application/json")
-        assert.strictEqual(representation.contentSchema?._tag, "Reference")
-      }
-    }
   })
 
   it("revives a Filter", () => {

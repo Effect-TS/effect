@@ -25,7 +25,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
     )
   })
 
-  it("preserves a shared JSON content schema", () => {
+  it("preserves contentSchema as an annotation without traversing it", () => {
     const document = SchemaRepresentation.fromSchemaMultiDocument(
       SchemaRepresentation.fromJsonSchemaMultiDocument({
         dialect: "draft-2020-12",
@@ -45,13 +45,14 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
       })
     )
 
-    assert.strictEqual(document.representations[0]._tag, "Reference")
-    assert.deepStrictEqual(Object.keys(document.references), ["PayloadJsonString", "Payload"])
-    const content = document.references.PayloadJsonString
+    const content = document.representations[0]
     assert.strictEqual(content._tag, "String")
+    assert.deepStrictEqual(Object.keys(document.references), ["Payload"])
     if (content._tag === "String") {
-      assert.strictEqual(content.contentMediaType, "application/json")
-      assert.deepStrictEqual(content.contentSchema, { _tag: "Reference", $ref: "Payload" })
+      assert.deepStrictEqual(content.annotations, {
+        contentMediaType: "application/json",
+        contentSchema: { $ref: "#/$defs/Payload" }
+      })
     }
   })
 

@@ -269,57 +269,12 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     )
   })
 
-  it("composes application/json content schemas once and emits required imports", () => {
-    const contentSchema: SchemaRepresentation.Representation = {
-      _tag: "Objects",
-      propertySignatures: [{
-        name: "value",
-        type: NumberRepresentation,
-        isOptional: false,
-        isMutable: false
-      }],
-      indexSignatures: [],
-      checks: []
-    }
-    const document: SchemaRepresentation.MultiDocument = {
-      representations: [{
-        _tag: "String",
-        contentMediaType: "application/json",
-        contentSchema,
-        annotations: { description: "encoded payload", brands: ["Encoded"] },
-        checks: [{
-          _tag: "Filter",
-          aborted: false,
-          annotations: { toCode: () => ({ runtime: "Custom.validJson()" }) }
-        }]
-      }],
-      references: {}
-    }
-
-    const output = SchemaRepresentation.toCodeDocument(document)
-    const runtime = output.codes[0].runtime
-    assertInclude(runtime, "<S extends Schema.Top>(contentSchema: S)")
-    assertInclude(runtime, "SchemaAST.toEncoded(contentSchema.ast)")
-    assertInclude(runtime, "SchemaTransformation.fromJsonString")
-    assertInclude(runtime, ".check(Custom.validJson())")
-    assert.strictEqual(runtime.split(`Schema.Struct({ "value": Schema.Number })`).length - 1, 1)
-    assert.strictEqual(output.codes[0].Type, `{ readonly "value": number }`)
-    assert.deepStrictEqual(output.artifacts, [
-      { _tag: "Import", importDeclaration: `import * as SchemaAST from "effect/SchemaAST"` },
-      {
-        _tag: "Import",
-        importDeclaration: `import * as SchemaTransformation from "effect/SchemaTransformation"`
-      }
-    ])
-  })
-
-  it("generates non-JSON content schemas, optional pre-rest elements and numeric properties", () => {
+  it("generates content media types, optional pre-rest elements and numeric properties", () => {
     const output = SchemaRepresentation.toCodeDocument({
       representations: [
         {
           _tag: "String",
-          contentMediaType: "text/plain",
-          contentSchema: NumberRepresentation,
+          annotations: { contentMediaType: "text/plain" },
           checks: []
         },
         {
@@ -348,8 +303,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
 
     assert.deepStrictEqual(output.codes, [
       {
-        runtime:
-          `Schema.String.annotate({ "contentMediaType": "text/plain", "contentSchema": SchemaAST.toEncoded(Schema.Number.ast) })`,
+        runtime: `Schema.String.annotate({ "contentMediaType": "text/plain" })`,
         Type: "string"
       },
       {
@@ -361,10 +315,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         Type: `{ readonly 1: boolean }`
       }
     ])
-    assert.deepStrictEqual(output.artifacts, [{
-      _tag: "Import",
-      importDeclaration: `import * as SchemaAST from "effect/SchemaAST"`
-    }])
+    assert.deepStrictEqual(output.artifacts, [])
   })
 
   it("emits references that are not reachable from a root", () => {
@@ -545,26 +496,6 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assert.deepStrictEqual(
       output.references.nonRecursives.map((entry) => entry.$ref),
       ["A", "B", "C"]
-    )
-  })
-
-  it("orders a String contentSchema reference before its owner", () => {
-    const output = SchemaRepresentation.toCodeDocument({
-      representations: [StringRepresentation],
-      references: {
-        Content: NumberRepresentation,
-        Encoded: {
-          _tag: "String",
-          contentMediaType: "application/json",
-          contentSchema: { _tag: "Reference", $ref: "Content" },
-          checks: []
-        }
-      }
-    })
-
-    assert.deepStrictEqual(
-      output.references.nonRecursives.map((entry) => entry.$ref),
-      ["Content", "Encoded"]
     )
   })
 

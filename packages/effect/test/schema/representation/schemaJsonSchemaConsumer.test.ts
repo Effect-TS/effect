@@ -87,22 +87,14 @@ describe("Schema JSON Schema consumer", () => {
     })
   })
 
-  it("preserves structural JSON content schemas after encoded projection", () => {
+  it("emits JSON content media types after encoded projection", () => {
     const schema = Schema.fromJsonString(Schema.Struct({
       value: Schema.FiniteFromString
     }))
 
     assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
       type: "string",
-      contentMediaType: "application/json",
-      contentSchema: {
-        type: "object",
-        properties: {
-          value: { type: "string" }
-        },
-        required: ["value"],
-        additionalProperties: false
-      }
+      contentMediaType: "application/json"
     })
   })
 

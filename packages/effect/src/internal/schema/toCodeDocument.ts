@@ -175,9 +175,6 @@ export function topologicalSort(
         case "Suspend":
           stack.push(representation.thunk)
           break
-        case "String":
-          if (representation.contentSchema !== undefined) stack.push(representation.contentSchema)
-          break
         case "TemplateLiteral":
           stack.push(...representation.parts)
           break
@@ -417,41 +414,6 @@ export function toCodeDocument(
     return makeCode(runtime, Type)
   }
 
-  function recurString(
-    representation: SchemaRepresentation.String,
-    path: Path
-  ): SchemaRepresentation.Code {
-    const contentSchema = representation.contentSchema === undefined
-      ? undefined
-      : recur(representation.contentSchema, [...path, "contentSchema"])
-    const isJson = representation.contentMediaType === "application/json" && contentSchema !== undefined
-    const structuralAnnotations: Array<string> = []
-    if (representation.contentMediaType !== undefined) {
-      structuralAnnotations.push(`"contentMediaType": ${JSON.stringify(representation.contentMediaType)}`)
-    }
-    if (contentSchema !== undefined) {
-      addImport(`import * as SchemaAST from "effect/SchemaAST"`)
-      structuralAnnotations.push(
-        `"contentSchema": SchemaAST.toEncoded(${isJson ? "contentSchema" : contentSchema.runtime}.ast)`
-      )
-    }
-    const structural = structuralAnnotations.length === 0
-      ? ""
-      : `.annotate({ ${structuralAnnotations.join(", ")} })`
-    const source = applyNode(
-      makeCode(`Schema.String${structural}`, "string"),
-      representation,
-      path,
-      !isJson
-    )
-    if (!isJson) return source
-    addImport(`import * as SchemaTransformation from "effect/SchemaTransformation"`)
-    return makeCode(
-      `(<S extends Schema.Top>(contentSchema: S) => ${source.runtime}.pipe(Schema.decodeTo(contentSchema, SchemaTransformation.fromJsonString)))(${contentSchema.runtime})`,
-      contentSchema.Type
-    )
-  }
-
   function recur(
     representation: SchemaRepresentation.Representation,
     path: Path
@@ -469,15 +431,11 @@ export function toCodeDocument(
       }
       return makeCode(identifier, identifier)
     }
-    if (representation._tag === "String") return recurString(representation, path)
     return applyNode(on(representation, path), representation, path)
   }
 
   function on(
-    representation: Exclude<
-      SchemaRepresentation.Representation,
-      SchemaRepresentation.Reference | SchemaRepresentation.String
-    >,
+    representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>,
     path: Path
   ): SchemaRepresentation.Code {
     switch (representation._tag) {
@@ -511,6 +469,8 @@ export function toCodeDocument(
         return makeCode("Schema.Unknown", "unknown")
       case "Any":
         return makeCode("Schema.Any", "any")
+      case "String":
+        return makeCode("Schema.String", "string")
       case "Number":
         return makeCode("Schema.Number", "number")
       case "Boolean":

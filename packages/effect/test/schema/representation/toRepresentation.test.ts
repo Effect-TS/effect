@@ -428,7 +428,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
-  it("promotes string content annotations to structural fields", () => {
+  it("preserves fromJsonString annotations", () => {
     const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
     const document = SchemaRepresentation.toRepresentation(schema)
 
@@ -436,20 +436,9 @@ describe("SchemaRepresentation.toRepresentation", () => {
       representation: {
         _tag: "String",
         annotations: {
+          contentMediaType: "application/json",
           expected: "a string that will be decoded as JSON",
           identifier: undefined
-        },
-        contentMediaType: "application/json",
-        contentSchema: {
-          _tag: "Objects",
-          propertySignatures: [{
-            name: "value",
-            type: { _tag: "Number", checks: [] },
-            isOptional: false,
-            isMutable: false
-          }],
-          indexSignatures: [],
-          checks: []
         },
         checks: []
       },

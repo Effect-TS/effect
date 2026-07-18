@@ -1,9 +1,8 @@
 import * as Arr from "../../Array.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
-import * as SchemaAST from "../../SchemaAST.ts"
+import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
-import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 
@@ -182,42 +181,6 @@ function revivePersisted(
     )
   }
 
-  function reviveString(
-    representation: SchemaRepresentation.String,
-    path: Path
-  ): Schema.Top {
-    const contentSchema = representation.contentSchema === undefined
-      ? undefined
-      : recur(representation.contentSchema, [...path, "contentSchema"])
-    const ordinary = representation.annotations
-    const isJson = representation.contentMediaType === "application/json" && contentSchema !== undefined
-    const contentIdentifier = isJson ? SchemaAST.resolveIdentifier(contentSchema.ast) : undefined
-    const annotations = ordinary === undefined &&
-        representation.contentMediaType === undefined &&
-        contentSchema === undefined
-      ? undefined
-      : {
-        ...ordinary,
-        ...(representation.contentMediaType === undefined
-          ? undefined
-          : { contentMediaType: representation.contentMediaType }),
-        ...(contentSchema === undefined
-          ? undefined
-          : { contentSchema: SchemaAST.toEncoded(contentSchema.ast) }),
-        ...(ordinary?.identifier !== undefined || contentIdentifier === undefined
-          ? undefined
-          : { identifier: `${contentIdentifier}JsonString` })
-      }
-    const source = appendChecks(
-      annotations === undefined ? Schema.String : Schema.String.annotate(annotations),
-      representation.checks,
-      [...path, "checks"]
-    )
-    return isJson
-      ? source.pipe(Schema.decodeTo(contentSchema, SchemaTransformation.fromJsonString))
-      : source
-  }
-
   function recur(
     representation: SchemaRepresentation.Representation,
     path: Path
@@ -249,7 +212,7 @@ function revivePersisted(
       case "Any":
         return finishStructural(Schema.Any, representation, path)
       case "String":
-        return reviveString(representation, path)
+        return finishStructural(Schema.String, representation, path)
       case "Number":
         return finishStructural(Schema.Number, representation, path)
       case "Boolean":

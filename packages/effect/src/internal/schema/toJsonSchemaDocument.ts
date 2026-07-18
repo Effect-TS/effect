@@ -23,7 +23,8 @@ const jsonSchemaAnnotationExcludedKeys = new Set([
   "writeOnly",
   "format",
   "contentEncoding",
-  "contentMediaType"
+  "contentMediaType",
+  "contentSchema"
 ])
 
 function collectJsonSchemaAnnotations(
@@ -54,6 +55,8 @@ function collectJsonSchemaAnnotations(
   if (typeof contentEncoding === "string") out.contentEncoding = contentEncoding
   const contentMediaType = annotations.contentMediaType
   if (typeof contentMediaType === "string") out.contentMediaType = contentMediaType
+  const contentSchema = annotations.contentSchema
+  if (SchemaAST.isJson(contentSchema)) out.contentSchema = contentSchema
 
   if (options?.includeAnnotationKey !== undefined) {
     for (const [key, value] of Object.entries(annotations)) {
@@ -234,16 +237,8 @@ function compileJsonSchema(
         return recur(representation.thunk, [...path, "thunk"])
       case "Never":
         return { not: {} }
-      case "String": {
-        const out: JsonSchema.JsonSchema = { type: "string" }
-        if (representation.contentMediaType !== undefined) {
-          out.contentMediaType = representation.contentMediaType
-        }
-        if (representation.contentSchema !== undefined) {
-          out.contentSchema = recur(representation.contentSchema, [...path, "contentSchema"])
-        }
-        return out
-      }
+      case "String":
+        return { type: "string" }
       case "Number":
         return {
           anyOf: [

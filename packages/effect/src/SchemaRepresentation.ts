@@ -220,10 +220,7 @@ export interface Any extends Keyword<"Any"> {}
  * @category models
  * @since 4.0.0
  */
-export interface String extends Keyword<"String"> {
-  readonly contentMediaType?: string | undefined
-  readonly contentSchema?: Representation | undefined
-}
+export interface String extends Keyword<"String"> {}
 
 /**
  * A number representation.

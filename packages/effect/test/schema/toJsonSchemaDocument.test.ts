@@ -77,6 +77,24 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
+  it("emits built-in JSON Schema annotations", () => {
+    assertJsonSchemaDocument(
+      Schema.String.annotate({
+        description: "encoded payload",
+        contentMediaType: "application/json",
+        contentSchema: { type: "number" }
+      }),
+      {
+        schema: {
+          type: "string",
+          description: "encoded payload",
+          contentMediaType: "application/json",
+          contentSchema: { type: "number" }
+        }
+      }
+    )
+  })
+
   describe("options", () => {
     it("generateDescriptions: true", () => {
       assertJsonSchemaDocument(
@@ -234,31 +252,6 @@ describe("toJsonSchemaDocument", () => {
             }
           },
           { includeAnnotationKey: (_key) => false }
-        )
-      })
-
-      it("does not overwrite generated contentSchema with the raw annotation", () => {
-        assertJsonSchemaDocument(
-          Schema.fromJsonString(Schema.Struct({
-            a: Schema.String
-          })),
-          {
-            schema: {
-              "type": "string",
-              "contentMediaType": "application/json",
-              "contentSchema": {
-                "type": "object",
-                "properties": {
-                  "a": {
-                    "type": "string"
-                  }
-                },
-                "required": ["a"],
-                "additionalProperties": false
-              }
-            }
-          },
-          { includeAnnotationKey: (key) => key === "contentSchema" }
         )
       })
 
@@ -3543,10 +3536,7 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "contentMediaType": "application/json",
-            "contentSchema": {
-              "type": "string"
-            }
+            "contentMediaType": "application/json"
           }
         }
       )
@@ -3564,24 +3554,9 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyEventJsonString"
           },
           definitions: {
-            "MyEvent": {
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "value"
-              ],
-              "additionalProperties": false
-            },
             "MyEventJsonString": {
               "type": "string",
-              "contentMediaType": "application/json",
-              "contentSchema": {
-                "$ref": "#/$defs/MyEvent"
-              }
+              "contentMediaType": "application/json"
             }
           }
         }
@@ -3603,54 +3578,9 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyWireEvent"
           },
           definitions: {
-            "MyEvent": {
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "value"
-              ],
-              "additionalProperties": false
-            },
             "MyWireEvent": {
               "type": "string",
-              "contentMediaType": "application/json",
-              "contentSchema": {
-                "$ref": "#/$defs/MyEvent"
-              }
-            }
-          }
-        }
-      )
-    })
-
-    it("nested fromJsonString", () => {
-      assertJsonSchemaDocument(
-        Schema.fromJsonString(Schema.Struct({
-          a: Schema.fromJsonString(Schema.FiniteFromString)
-        })),
-        {
-          schema: {
-            "type": "string",
-            "contentMediaType": "application/json",
-            "contentSchema": {
-              "additionalProperties": false,
-              "properties": {
-                "a": {
-                  "contentMediaType": "application/json",
-                  "contentSchema": {
-                    "type": "string"
-                  },
-                  "type": "string"
-                }
-              },
-              "required": [
-                "a"
-              ],
-              "type": "object"
+              "contentMediaType": "application/json"
             }
           }
         }

@@ -210,19 +210,6 @@ describe("SchemaRepresentation.fromJson", () => {
     assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
   })
 
-  it("decodes String content schemas", () => {
-    const input = {
-      representation: {
-        _tag: "String",
-        contentMediaType: "application/json",
-        contentSchema: { _tag: "Number", checks: [] },
-        checks: []
-      },
-      references: {}
-    } as const
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
-  })
-
   it("decodes bigint structural values", () => {
     assert.deepStrictEqual(
       SchemaRepresentation.fromJson({
