@@ -156,7 +156,7 @@ describe("Command arguments", () => {
       expect(errorText).toMatchInlineSnapshot(`
         "
         ERROR
-          Invalid value for argument <count>: "not-a-number". Expected: Failed to parse integer: Expected an integer, got NaN"
+          Invalid value for argument <count>: "not-a-number". Expected a string representing a finite number, got "not-a-number""
       `)
     }).pipe(Effect.provide(TestLayer)))
 

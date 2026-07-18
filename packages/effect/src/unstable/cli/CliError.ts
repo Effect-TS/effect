@@ -359,16 +359,25 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
   /**
    * Formats the invalid flag or argument value with the expected input.
    *
+   * **Details**
+   *
+   * When `expected` is already a complete `Expected ...` sentence (e.g. a
+   * schema decode message), it is appended as-is instead of being prefixed
+   * with another `Expected:` label.
+   *
    * @since 4.0.0
    */
   override get message() {
+    const expectation = this.expected.startsWith("Expected ")
+      ? this.expected
+      : `Expected: ${this.expected}`
     if (this.kind === "argument") {
-      return `Invalid value for argument <${this.option}>: "${this.value}". Expected: ${this.expected}`
+      return `Invalid value for argument <${this.option}>: "${this.value}". ${expectation}`
     }
     if (this.value.length === 0) {
-      return `Missing value for flag --${this.option}. Expected: ${this.expected}`
+      return `Missing value for flag --${this.option}. ${expectation}`
     }
-    return `Invalid value for flag --${this.option}: "${this.value}". Expected: ${this.expected}`
+    return `Invalid value for flag --${this.option}: "${this.value}". ${expectation}`
   }
 }
 

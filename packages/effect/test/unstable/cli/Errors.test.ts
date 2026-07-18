@@ -147,4 +147,34 @@ describe("Command errors", () => {
       assert.strictEqual(output, "")
     })
   })
+
+  describe("InvalidValue", () => {
+    it("labels a bare expected description", () => {
+      const error = new CliError.InvalidValue({
+        option: "size",
+        value: "bogus",
+        expected: `"small" | "medium" | "large"`,
+        kind: "flag"
+      })
+
+      assert.strictEqual(
+        error.message,
+        `Invalid value for flag --size: "bogus". Expected: "small" | "medium" | "large"`
+      )
+    })
+
+    it("does not double the prefix for an Expected sentence", () => {
+      const error = new CliError.InvalidValue({
+        option: "count",
+        value: "3.14",
+        expected: "Expected an integer, got 3.14",
+        kind: "argument"
+      })
+
+      assert.strictEqual(
+        error.message,
+        `Invalid value for argument <count>: "3.14". Expected an integer, got 3.14`
+      )
+    })
+  })
 })

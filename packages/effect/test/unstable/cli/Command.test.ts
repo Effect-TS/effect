@@ -271,6 +271,27 @@ describe("Command", () => {
         }).pipe(Effect.provide(TestLayer)))
     }
 
+    it.effect("should render invalid choice values without doubling the Expected prefix", () =>
+      Effect.gen(function*() {
+        let invoked = false
+        const command = Command.make("demo", {
+          size: Flag.choice("size", ["small", "medium", "large"])
+        }, () =>
+          Effect.sync(() => {
+            invoked = true
+          }))
+
+        yield* Command.runWith(command, { version: "1.0.0" })(["--size", "bogus"]).pipe(Effect.ignore)
+
+        const stderr = yield* TestConsole.errorLines
+        assert.isFalse(invoked)
+        assert.isTrue(
+          stderr.some((line) =>
+            String(line).includes(`Invalid value for flag --size: "bogus". Expected: "small" | "medium" | "large"`)
+          )
+        )
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should execute handler with parsed config", () =>
       Effect.gen(function*() {
         const path = yield* Path.Path

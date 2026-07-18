@@ -304,7 +304,7 @@ export const choice = <A>(
     if (choiceMap.has(value)) {
       return Effect.succeed(choiceMap.get(value)!)
     }
-    return Effect.fail(`Expected ${validChoices}, got ${format(value)}`)
+    return Effect.fail(validChoices)
   })
   return Object.assign(primitive, { choiceKeys: choices.map(([key]) => key) })
 }

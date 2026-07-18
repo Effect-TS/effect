@@ -214,9 +214,9 @@ describe("Primitive", () => {
           colorChoice,
           ["yellow", "purple", ""],
           [
-            `Expected "red" | "green" | "blue", got "yellow"`,
-            `Expected "red" | "green" | "blue", got "purple"`,
-            `Expected "red" | "green" | "blue", got ""`
+            `"red" | "green" | "blue"`,
+            `"red" | "green" | "blue"`,
+            `"red" | "green" | "blue"`
           ]
         ))
 
