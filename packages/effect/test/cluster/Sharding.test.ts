@@ -1,5 +1,19 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Array, Cause, Clock, DateTime, Effect, Exit, Fiber, Layer, MutableRef, Option, Queue, Stream } from "effect"
+import {
+  Array,
+  Cause,
+  Clock,
+  DateTime,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Layer,
+  MutableRef,
+  Option,
+  Queue,
+  Stream
+} from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterError,
@@ -212,6 +226,57 @@ describe.concurrent("Sharding", () => {
       const exit = fiber.pollUnsafe()
       assert(exit && Exit.isSuccess(exit))
     }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("arms a deadline wake before reading due messages", () =>
+    Effect.gen(function*() {
+      const blockedReadComplete = yield* Deferred.make<void>()
+      const releaseBlockedRead = yield* Deferred.make<void>()
+      let blockNextReadAfterQuery = false
+
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const client = makeClient("1")
+
+        const now = yield* Clock.currentTimeMillis
+        blockNextReadAfterQuery = true
+        const fiber = yield* client.GetUserScheduled({
+          id: 1,
+          deliverAt: DateTime.makeUnsafe(now + 200)
+        }).pipe(Effect.forkChild)
+
+        yield* Deferred.await(blockedReadComplete)
+        yield* TestClock.adjust(200)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+
+        yield* Deferred.succeed(releaseBlockedRead, undefined)
+        yield* TestClock.adjust(1)
+
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        const exit = fiber.pollUnsafe()
+        assert(exit && Exit.isSuccess(exit))
+      }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          unprocessedMessages(shardIds) {
+            return storage.unprocessedMessages(shardIds).pipe(
+              Effect.tap(() => {
+                if (!blockNextReadAfterQuery) {
+                  return Effect.void
+                }
+                blockNextReadAfterQuery = false
+                return Deferred.succeed(blockedReadComplete, undefined).pipe(
+                  Effect.andThen(Deferred.await(releaseBlockedRead))
+                )
+              })
+            )
+          }
+        })),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(TestShardingConfig)
+      )))
+    }))
 
   it.effect("wakes for each scheduled deadline independently", () =>
     Effect.gen(function*() {

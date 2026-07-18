@@ -405,10 +405,8 @@ export const make: (options?: {
 
   const getNextDeliverAt = sql.onDialectOrElse({
     mysql: () => (shardIds: ReadonlyArray<string>, now: number) => {
-      const shards = sql.literal(
-        shardIds.map((id, i) => i === 0 ? `SELECT ${wrapString(id)} AS shard_id` : `SELECT ${wrapString(id)}`).join(
-          " UNION ALL "
-        )
+      const shards = sql.join(" UNION ALL ", false)(
+        shardIds.map((id, i) => i === 0 ? sql`SELECT ${id} AS shard_id` : sql`SELECT ${id}`)
       )
       return sql<{ readonly next_deliver_at: bigint | null }>`
         SELECT MIN(t.next_at) AS next_deliver_at FROM (
@@ -424,9 +422,7 @@ export const make: (options?: {
     mssql: () => (shardIds: ReadonlyArray<string>, now: number) =>
       sql<{ readonly next_deliver_at: bigint | null }>`
         SELECT MIN(l.next_at) AS next_deliver_at
-        FROM (VALUES ${
-        sql.literal(shardIds.map((id) => `(CAST(${wrapString(id)} AS VARCHAR(50)))`).join(","))
-      }) AS s(shard_id)
+        FROM (VALUES ${sql.csv(shardIds.map((id) => sql`(CAST(${id} AS VARCHAR(50)))`))}) AS s(shard_id)
         CROSS APPLY (
           SELECT TOP 1 deliver_at AS next_at
           FROM ${messagesTableSql}
@@ -438,7 +434,7 @@ export const make: (options?: {
       sql<{ readonly next_deliver_at: bigint | null }>`
         SELECT MIN(deliver_at) AS next_deliver_at
         FROM ${messagesTableSql}
-        WHERE shard_id IN (${sql.literal(shardIds.map(wrapString).join(","))})
+        WHERE ${sql.in("shard_id", shardIds)}
         AND processed = ${sqlFalse}
         AND deliver_at > ${sql.literal(String(now))}
       `

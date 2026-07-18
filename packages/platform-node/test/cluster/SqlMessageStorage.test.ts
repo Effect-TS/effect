@@ -202,6 +202,25 @@ describe("SqlMessageStorage", () => {
           assert.deepStrictEqual(next, Option.some(later))
         }))
 
+      it.effect("nextDeliverAt binds quote-bearing shard groups", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const shard = ShardId.make("quote's-group", 1)
+          const now = yield* Clock.currentTimeMillis
+          const deadline = now + 60_000
+          const request = yield* makeRequest({
+            rpc: ScheduledRpc,
+            payload: new ScheduledPayload({ id: 1, deliverAt: DateTime.makeUnsafe(deadline) }),
+            shardId: shard
+          })
+          yield* storage.saveRequest(request)
+
+          const next = yield* storage.nextDeliverAt([shard])
+          expect(next).toEqual(Option.some(deadline))
+        }))
+
       it.effect("repliesFor", () =>
         Effect.gen(function*() {
           yield* truncate

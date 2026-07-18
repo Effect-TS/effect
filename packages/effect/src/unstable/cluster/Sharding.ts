@@ -598,10 +598,10 @@ const make = Effect.gen(function*() {
           pendingNotifications.forEach((entry) => removableNotifications.add(entry))
         }
 
+        yield* rediscoverStorageWake
         messages = yield* storage.unprocessedMessages(acquiredShards)
         index = 0
         yield* processMessages
-        yield* rediscoverStorageWake
 
         if (removableNotifications.size > 0) {
           removableNotifications.forEach(({ message, resume }) => {
