@@ -480,10 +480,10 @@ export const get: {
               return effect.void
             }
             const ttl = self.timeToLive(exit, key)
-            if (Duration.isFinite(ttl)) {
-              entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
-            } else if (Duration.isZero(ttl)) {
+            if (Duration.isZero(ttl)) {
               MutableHashMap.remove(self.map, key)
+            } else if (Duration.isFinite(ttl)) {
+              entry.expiresAt = fiber.getRef(effect.ClockRef).currentTimeMillisUnsafe() + Duration.toMillis(ttl)
             }
             return effect.void
           }),
