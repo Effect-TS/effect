@@ -368,7 +368,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
    * @since 4.0.0
    */
   override get message() {
-    const expectation = this.expected.startsWith("Expected ")
+    const expectation = this.expected.startsWith("Expected ") || this.expected.startsWith("Expected:")
       ? this.expected
       : `Expected: ${this.expected}`
     if (this.kind === "argument") {

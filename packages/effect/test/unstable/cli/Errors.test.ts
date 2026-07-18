@@ -175,6 +175,18 @@ describe("Command errors", () => {
         error.message,
         `Invalid value for argument <count>: "3.14". Expected an integer, got 3.14`
       )
+
+      const labeled = new CliError.InvalidValue({
+        option: "count",
+        value: "x",
+        expected: "Expected: an integer",
+        kind: "flag"
+      })
+
+      assert.strictEqual(
+        labeled.message,
+        `Invalid value for flag --count: "x". Expected: an integer`
+      )
     })
   })
 })
