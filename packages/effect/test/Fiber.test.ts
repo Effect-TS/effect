@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Latch, Scope } from "effect"
+import { Effect, Exit, Fiber, Latch } from "effect"
 
 describe("Fiber", () => {
   it("is a fiber", async () => {
