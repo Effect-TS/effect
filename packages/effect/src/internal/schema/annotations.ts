@@ -35,3 +35,21 @@ export const getExpected = memoize((ast: SchemaAST.AST): string => {
 export function collectBrands(annotations: Schema.Annotations.Annotations | undefined): ReadonlyArray<string> {
   return annotations !== undefined && Array.isArray(annotations.brands) ? annotations.brands : []
 }
+
+/** @internal */
+export const annotationExcludedKeys = new Set([
+  "~sentinels",
+  "~structural",
+  "representation",
+  "arbitrary",
+  "brands",
+  "contentSchema",
+  "toJsonSchema",
+  "toCode",
+  "toArbitrary",
+  "toEquivalence",
+  "toFormatter",
+  "toCodec",
+  "toCodecJson",
+  "toCodecIso"
+])

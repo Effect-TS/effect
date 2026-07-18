@@ -16657,7 +16657,9 @@ export declare namespace Annotations {
     /**
      * Used to collect sentinels from a Declaration SchemaAST.
      *
-     * @internal
+     * **Details**
+     *
+     * Reserved to internal use only.
      */
     readonly "~sentinels"?: ReadonlyArray<SchemaAST.Sentinel> | undefined
   }
@@ -16714,6 +16716,8 @@ export declare namespace Annotations {
      * the contents.
      *
      * **Details**
+     *
+     * Reserved to internal use only.
      *
      * Example: `minLength` on an array is a structural filter.
      */

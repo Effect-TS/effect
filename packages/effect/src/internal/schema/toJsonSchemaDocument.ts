@@ -6,11 +6,13 @@ import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
+import * as InternalAnnotations from "./annotations.ts"
 
 type Path = ReadonlyArray<string | number>
 type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
 
-const jsonSchemaExcludedAnnotationKeys = new Set([
+const jsonSchemaAnnotationExcludedKeys = new Set([
+  ...InternalAnnotations.annotationExcludedKeys,
   "title",
   "description",
   "default",
@@ -19,21 +21,7 @@ const jsonSchemaExcludedAnnotationKeys = new Set([
   "writeOnly",
   "format",
   "contentEncoding",
-  "contentMediaType",
-  "contentSchema",
-  "representation",
-  "toJsonSchema",
-  "toCode",
-  "arbitrary",
-  "toArbitrary",
-  "toEquivalence",
-  "toFormatter",
-  "toCodec",
-  "toCodecJson",
-  "toCodecIso",
-  "identifier",
-  "brands",
-  "expected"
+  "contentMediaType"
 ])
 
 function collectJsonSchemaAnnotations(
@@ -68,8 +56,7 @@ function collectJsonSchemaAnnotations(
   if (options?.includeAnnotationKey !== undefined) {
     for (const [key, value] of Object.entries(annotations)) {
       if (
-        key.startsWith("~") ||
-        jsonSchemaExcludedAnnotationKeys.has(key) ||
+        jsonSchemaAnnotationExcludedKeys.has(key) ||
         !options.includeAnnotationKey(key)
       ) {
         continue

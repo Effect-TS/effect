@@ -782,11 +782,10 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         _tag: "String",
         annotations: {
           description: "text",
-          identifier: "Internal",
+          identifier: "id",
           representation: { id: "acme/schema/String", payload: null },
           toCode: () => ({ runtime: "ignored" }),
           toJsonSchema: () => ({ title: "ignored" }),
-          "~internal": "ignored",
           "x-custom": { enabled: true },
           "x-invalid": () => "ignored"
         },
@@ -802,6 +801,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
       {
         type: "string",
         description: "text",
+        identifier: "id",
         "x-custom": { enabled: true }
       }
     )

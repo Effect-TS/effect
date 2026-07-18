@@ -13,14 +13,6 @@ export function makeCode(runtime: string, Type: string): SchemaRepresentation.Co
   return { runtime, Type }
 }
 
-const codeAnnotationExcludedKeys = new Set([
-  "representation",
-  "arbitrary",
-  "brands",
-  "contentMediaType",
-  "contentSchema"
-])
-
 function renderNumber(value: number): string {
   if (Object.is(value, -0)) return "-0"
   if (Number.isNaN(value)) return "NaN"
@@ -65,7 +57,7 @@ function renderAnnotations(
   if (annotations === undefined) return undefined
   const entries: Array<string> = []
   for (const [key, value] of Object.entries(annotations)) {
-    if (key.startsWith("~") || codeAnnotationExcludedKeys.has(key)) continue
+    if (InternalAnnotations.annotationExcludedKeys.has(key)) continue
     const rendered = renderEmittableAnnotation(value)
     if (rendered !== undefined) entries.push(`${JSON.stringify(key)}: ${rendered}`)
   }
