@@ -502,17 +502,6 @@ const fiberIdStore = { id: 0 }
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
-// returned by getCont when a deferred self-interrupt is pending, so the
-// interrupt preempts whatever continuation the completing op was about to run
-const deferredInterruptCont: any = {
-  [contA](_value: unknown, fiber: FiberImpl) {
-    return failCause(fiber._interruptedCause!)
-  },
-  [contE](_cause: unknown, fiber: FiberImpl) {
-    return failCause(fiber._interruptedCause!)
-  }
-}
-
 /** @internal */
 export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
@@ -523,7 +512,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.setContext(context)
     this.id = ++fiberIdStore.id
     this.currentOpCount = 0
-    this.currentLoopCount = 0
     this.interruptible = interruptible
     this._stack = []
     this._observers = []
@@ -541,7 +529,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   readonly id: number
   interruptible: boolean
   currentOpCount: number
-  currentLoopCount: number
   readonly _stack: Array<Primitive>
   readonly _observers: Array<(exit: Exit.Exit<A, E>) => void>
   _exit: Exit.Exit<A, E> | undefined
@@ -601,9 +588,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       : cause
     if (this.interruptible) {
       if (this._running) {
-        // the fiber is mid-runLoop on this call stack; recursing into evaluate
-        // would corrupt the continuation stack, so let the active loop deliver
-        // the interrupt at the next op boundary
         this._deferredInterrupt = true
       } else {
         this.evaluate(failCause(this._interruptedCause) as any)
@@ -648,18 +632,11 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     let yielding = false
     let current: Primitive | Yield = effect
     this.currentOpCount = 0
-    const currentLoop = ++this.currentLoopCount
     try {
       while (true) {
         if (this._deferredInterrupt) {
-          // a self-interrupt arrived inside the previous op, which returned an
-          // effect without consulting the continuation stack; deliver before
-          // evaluating it so a not-yet-entered uninterruptible region stays
-          // unentered
           this._deferredInterrupt = false
-          if (this.interruptible) {
-            current = failCause(this._interruptedCause!) as any
-          }
+          current = failCause(this._interruptedCause!) as any
         }
         this.currentOpCount++
         if (
@@ -674,26 +651,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         current = this.currentTracerContext
           ? this.currentTracerContext(current as any, this)
           : (current as any)[evaluate](this)
-        if (currentLoop !== this.currentLoopCount) {
-          // another effect has taken over the loop,
-          return Yield
-        } else if (current === Yield) {
+        if (current === Yield) {
           const yielded = this._yielded!
           if (ExitTypeId in yielded) {
             this._deferredInterrupt = false
             this._yielded = undefined
             return yielded
-          }
-          if (this._deferredInterrupt) {
-            this._deferredInterrupt = false
-            if (this.interruptible) {
-              // cancel the just-registered async callback and deliver the
-              // interrupt instead of suspending
-              this._yielded = undefined
-              ;(yielded as () => void)()
-              current = failCause(this._interruptedCause!) as any
-              continue
-            }
+          } else if (this._deferredInterrupt) {
+            this._yielded = undefined
+            yielded()
+            continue
           }
           return Yield
         }
@@ -713,15 +680,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     | undefined
   {
     if (this._deferredInterrupt) {
-      // an interrupt arrived mid-op on this call stack; deliver it before
-      // consuming any continuation frame, exactly as if it had preempted the
-      // op that triggered it - unless the fiber has since become
-      // uninterruptible, in which case `_interruptedCause` stays pending and
-      // is redelivered by setInterruptible on restore
       this._deferredInterrupt = false
-      if (this.interruptible) {
-        return deferredInterruptCont
-      }
+      return deferredInterruptCont
     }
     while (true) {
       const op = this._stack.pop()
@@ -763,6 +723,15 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
   get currentSpanLocal(): Tracer.Span | undefined {
     return this.currentSpan?._tag === "Span" ? this.currentSpan : undefined
+  }
+}
+
+const deferredInterruptCont: any = {
+  [contA](_value: unknown, fiber: FiberImpl) {
+    return failCause(fiber._interruptedCause!)
+  },
+  [contE](_cause: unknown, fiber: FiberImpl) {
+    return failCause(fiber._interruptedCause!)
   }
 }
 
