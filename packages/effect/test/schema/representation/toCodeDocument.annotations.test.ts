@@ -395,6 +395,20 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assert.strictEqual(output.references.nonRecursives[0].$ref, "Abc")
   })
 
+  it("preserves a lowercase identifier annotation", () => {
+    const schema = Schema.Struct({ a: Schema.String }).annotate({ identifier: "hello" })
+    const output = SchemaRepresentation.toCodeDocument(
+      SchemaRepresentation.toMultiDocument(Schema.toRepresentation(schema))
+    )
+    assert.deepStrictEqual(output.references.nonRecursives[0], {
+      $ref: "Hello",
+      code: {
+        runtime: `Schema.Struct({ "a": Schema.String }).annotate({ "identifier": "hello" })`,
+        Type: `{ readonly "a": string }`
+      }
+    })
+  })
+
   it("preserves an uppercase reference identifier", () => {
     const output = SchemaRepresentation.toCodeDocument({
       representations: [StringRepresentation],

@@ -16,7 +16,6 @@ export function makeCode(runtime: string, Type: string): SchemaRepresentation.Co
 const codeAnnotationExcludedKeys = new Set([
   "representation",
   "arbitrary",
-  "identifier",
   "brands",
   "contentMediaType",
   "contentSchema"

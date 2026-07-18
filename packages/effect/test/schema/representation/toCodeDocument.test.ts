@@ -336,7 +336,7 @@ describe("toCodeDocument", () => {
           nonRecursives: [
             {
               $ref: "ID",
-              code: makeCode(`Schema.String`, "string")
+              code: makeCode(`Schema.String.annotate({ "identifier": "ID" })`, "string")
             }
           ]
         }
@@ -1431,7 +1431,7 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) })`,
+              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<A> => A)) }).annotate({ "identifier": "A" })`,
               `{ readonly "a"?: A }`
             )
           }
@@ -1455,7 +1455,7 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<Suspend_> => Suspend_)) })`,
+              `Schema.Struct({ "a": Schema.optionalKey(Schema.suspend((): Schema.Codec<Suspend_> => Suspend_)) }).annotate({ "identifier": "A" })`,
               `{ readonly "a"?: Suspend_ }`
             ),
             Suspend_: makeCode(
@@ -1480,7 +1480,7 @@ describe("toCodeDocument", () => {
         references: {
           recursives: {
             A: makeCode(
-              `Schema.suspend((): Schema.Codec<Objects_> => Objects_)`,
+              `Schema.suspend((): Schema.Codec<Objects_> => Objects_).annotate({ "identifier": "A" })`,
               `Objects_`
             ),
             Objects_: makeCode(
@@ -1731,7 +1731,10 @@ describe("toCodeDocument", () => {
         references: {
           nonRecursives: [{
             $ref: "A",
-            code: makeCode(`Schema.suspend((): Schema.Codec<string> => Schema.String)`, "string")
+            code: makeCode(
+              `Schema.suspend((): Schema.Codec<string> => Schema.String).annotate({ "identifier": "A" })`,
+              "string"
+            )
           }]
         }
       })
@@ -1774,7 +1777,7 @@ describe("toCodeDocument", () => {
             {
               $ref: "A",
               code: makeCode(
-                `Schema.suspend((): Schema.Codec<{ readonly "b": number, readonly "a": string }> => Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String }))`,
+                `Schema.suspend((): Schema.Codec<{ readonly "b": number, readonly "a": string }> => Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String })).annotate({ "identifier": "A" })`,
                 `{ readonly "b": number, readonly "a": string }`
               )
             }
