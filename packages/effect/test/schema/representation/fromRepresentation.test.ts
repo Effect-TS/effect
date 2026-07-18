@@ -313,7 +313,7 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     const Box = Schema.declare<{ readonly value: string }>(
       (input): input is { readonly value: string } =>
         typeof input === "object" && input !== null && typeof (input as any).value === "string",
-      { representation: { id, payload: { label: "Box" }, schemas: [Schema.String.ast] } }
+      { representation: { id, payload: { label: "Box" } } }
     )
     const reviver: SchemaRepresentation.DeclarationReviver<{ readonly label: string }> = {
       id,
@@ -322,7 +322,7 @@ describe("SchemaRepresentation.fromRepresentation", () => {
         Schema.declare<{ readonly value: string }>(
           (input): input is { readonly value: string } =>
             typeof input === "object" && input !== null && typeof (input as any).value === "string",
-          { ...annotations, representation: { id, payload, schemas: [Schema.String.ast] } }
+          { ...annotations, representation: { id, payload } }
         )
     }
     const schema = assertRepresentationRoundtrip(Box, [reviver]) as Schema.Codec<unknown>

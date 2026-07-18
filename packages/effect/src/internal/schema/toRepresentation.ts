@@ -24,15 +24,17 @@ export function toRepresentations(
   return lowerASTs(encoded ? asts : Arr.map(asts, (ast) => SchemaAST.toType(ast)), [], encoded)
 }
 
-type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
+type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
+  SchemaRepresentation.Representation
+>
 
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
   return annotations === undefined ? undefined : { annotations }
 }
 
-function projectRepresentationAnnotation(
-  input: RepresentationAnnotation
-): RepresentationAnnotation {
+function projectCheckRepresentationAnnotation(
+  input: CheckRepresentationAnnotation
+): CheckRepresentationAnnotation {
   return input.schemas === undefined
     ? input
     : { ...input, schemas: input.schemas.map(projectRepresentation) }
@@ -60,7 +62,7 @@ function projectAnnotationBag(
 function projectCheck(check: SchemaRepresentation.Check): SchemaRepresentation.Check {
   const representation = check.representation === undefined
     ? undefined
-    : projectRepresentationAnnotation(check.representation)
+    : projectCheckRepresentationAnnotation(check.representation)
   const fields = {
     ...(representation === undefined ? undefined : { representation }),
     ...annotationsField(projectAnnotationBag(check.annotations))
@@ -120,7 +122,7 @@ function projectRepresentation(
         _tag: "Declaration",
         ...(representation.representation === undefined
           ? undefined
-          : { representation: projectRepresentationAnnotation(representation.representation) }),
+          : { representation: representation.representation }),
         typeParameters: representation.typeParameters.map(projectRepresentation),
         ...fields
       }
@@ -354,7 +356,7 @@ function lowerASTs(
           _tag: "Declaration",
           typeParameters: ast.typeParameters.map((ast) => recur(ast)),
           checks,
-          ...fromRepresentationAnnotations(ast.annotations)
+          ...fromDeclarationAnnotations(ast.annotations)
         }
       case "Null":
       case "Undefined":
@@ -479,23 +481,39 @@ function lowerASTs(
         return {
           _tag: "Filter",
           aborted: check.aborted,
-          ...fromRepresentationAnnotations(check.annotations)
+          ...fromCheckAnnotations(check.annotations)
         }
       case "FilterGroup":
         return {
           _tag: "FilterGroup",
           checks: Arr.map(check.checks, fromCheck),
-          ...fromRepresentationAnnotations(check.annotations)
+          ...fromCheckAnnotations(check.annotations)
         }
     }
   }
 
-  function fromRepresentationAnnotations<
+  function fromDeclarationAnnotations<
     A extends Schema.Annotations.Annotations & {
-      readonly representation?: SchemaRepresentation.RepresentationAnnotation<SchemaAST.AST> | undefined
+      readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined
     }
   >(annotations: A | undefined): {
-    readonly representation?: RepresentationAnnotation | undefined
+    readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined
+    readonly annotations?: Omit<A, "representation"> | undefined
+  } | undefined {
+    if (annotations === undefined) return undefined
+    const { representation, ...ordinary } = annotations
+    return {
+      ...(representation === undefined ? undefined : { representation }),
+      ...(Object.keys(ordinary).length === 0 ? undefined : { annotations: ordinary })
+    }
+  }
+
+  function fromCheckAnnotations<
+    A extends Schema.Annotations.Annotations & {
+      readonly representation?: SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST> | undefined
+    }
+  >(annotations: A | undefined): {
+    readonly representation?: CheckRepresentationAnnotation | undefined
     readonly annotations?: Omit<A, "representation"> | undefined
   } | undefined {
     if (annotations === undefined) return undefined
@@ -503,7 +521,7 @@ function lowerASTs(
     const projected = representation === undefined
       ? undefined
       : representation.schemas === undefined
-      ? representation as RepresentationAnnotation
+      ? representation as CheckRepresentationAnnotation
       : { ...representation, schemas: representation.schemas.map((schema) => recur(SchemaAST.toType(schema))) }
     return {
       ...(projected === undefined ? undefined : { representation: projected }),

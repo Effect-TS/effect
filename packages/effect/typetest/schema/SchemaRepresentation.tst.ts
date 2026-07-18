@@ -43,13 +43,13 @@ describe("SchemaRepresentation persisted wire", () => {
     const group = null as unknown as SchemaRepresentation.FilterGroup
 
     expect(declaration.representation).type.toBe<
-      SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation> | undefined
+      SchemaRepresentation.RepresentationAnnotation | undefined
     >()
     expect(filter.representation).type.toBe<
-      SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation> | undefined
+      SchemaRepresentation.CheckRepresentationAnnotation<SchemaRepresentation.Representation> | undefined
     >()
     expect(group.representation).type.toBe<
-      SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation> | undefined
+      SchemaRepresentation.CheckRepresentationAnnotation<SchemaRepresentation.Representation> | undefined
     >()
   })
 })

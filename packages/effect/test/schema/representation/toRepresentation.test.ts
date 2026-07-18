@@ -243,17 +243,14 @@ describe("SchemaRepresentation.toRepresentation", () => {
     )
   })
 
-  it("preserves declaration callbacks and representation dependencies", () => {
+  it("preserves declaration code callbacks", () => {
     const toCode: SchemaRepresentation.Generation.Declaration = () => ({ runtime: "Custom", Type: "string" })
-    const toJsonSchema: SchemaRepresentation.ToJsonSchema.Declaration = () => ({ type: "string" })
     const schema = Schema.declare<string>((input): input is string => typeof input === "string", {
       representation: {
         id: "acme/schema/Custom",
-        payload: null,
-        schemas: [Schema.Number.ast]
+        payload: null
       },
-      toCode,
-      toJsonSchema
+      toCode
     })
 
     assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
@@ -263,12 +260,10 @@ describe("SchemaRepresentation.toRepresentation", () => {
         checks: [],
         representation: {
           id: "acme/schema/Custom",
-          payload: null,
-          schemas: [{ _tag: "Number", checks: [] }]
+          payload: null
         },
         annotations: {
-          toCode,
-          toJsonSchema
+          toCode
         }
       },
       references: {}

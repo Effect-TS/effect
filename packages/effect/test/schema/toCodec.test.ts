@@ -35,6 +35,11 @@ describe("Serializers", () => {
       strictEqual(serializer.schema, schema)
     })
 
+    it("treats Json as canonical", () => {
+      strictEqual(Schema.toCodecJson(Schema.Json).ast, Schema.Json.ast)
+      strictEqual(Schema.toCodecJson(Schema.MutableJson).ast, Schema.MutableJson.ast)
+    })
+
     it("should reorder the types in the Union based on the encoded side", async () => {
       const schema = Schema.Union([
         Schema.String,
@@ -65,15 +70,12 @@ describe("Serializers", () => {
       })
 
       describe("Declaration", () => {
-        it("instanceOf without annotations", async () => {
+        it("instanceOf without annotations", () => {
           const schema = Schema.instanceOf(URL)
-          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
-
-          const encoding = asserts.encoding()
-          await encoding.succeed(new URL("https://effect.website"), null)
-
-          const decoding = asserts.decoding()
-          await decoding.fail("https://effect.website/", `Expected null, got "https://effect.website/"`)
+          throws(
+            () => Schema.toCodecJson(schema),
+            "Missing toCodecJson or toCodec annotation"
+          )
         })
 
         describe("instanceOf with annotation", () => {
@@ -1625,6 +1627,11 @@ describe("Serializers", () => {
         const serializer = Schema.toCodecStringTree(schema)
         strictEqual(serializer.ast, Schema.toCodecStringTree(serializer).ast)
       })
+
+      it("Unknown", () => {
+        const serializer = Schema.toCodecStringTree(Schema.Unknown)
+        strictEqual(serializer.ast, Schema.toCodecStringTree(serializer).ast)
+      })
     })
 
     describe("schemas without encoding", () => {
@@ -1641,15 +1648,31 @@ describe("Serializers", () => {
         })
       })
 
-      it("Declaration", async () => {
+      it("Declaration", () => {
         const schema = Schema.instanceOf(URL)
-        const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
+        throws(
+          () => Schema.toCodecStringTree(schema),
+          "Missing structural codec for StringTree"
+        )
+      })
+
+      it("Json", async () => {
+        const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(Schema.Json))
 
         const encoding = asserts.encoding()
-        await encoding.succeed(new URL("https://effect.website"), undefined)
+        await encoding.succeed("a")
+        await encoding.succeed(["a"])
+        await encoding.succeed({ a: "a" })
+        await encoding.fail(1, `Expected StringTree, got 1`)
+        await encoding.fail(true, `Expected StringTree, got true`)
+        await encoding.fail(null, `Expected StringTree, got null`)
+        await encoding.fail({ a: 1 }, `Expected StringTree, got {"a":1}`)
 
         const decoding = asserts.decoding()
-        await decoding.fail("https://effect.website/", `Expected undefined, got "https://effect.website/"`)
+        await decoding.succeed("a")
+        await decoding.succeed(["a"])
+        await decoding.succeed({ a: "a" })
+        await decoding.fail(undefined, `Expected JSON value, got undefined`)
       })
 
       it("Unknown", async () => {
@@ -2407,12 +2430,10 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         )
 
         const decoding = asserts.decoding()
-        // Error: message only
         await decoding.succeed(
           { message: "a" },
           new Error("a")
         )
-        // Error: message and name
         await decoding.succeed(
           { name: "b", message: "a" },
           (() => {
@@ -2421,7 +2442,6 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
             return err
           })()
         )
-        // Error: message, name, and stack
         await decoding.succeed(
           { name: "b", message: "a", stack: "c" },
           (() => {
@@ -2696,16 +2716,19 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
     }
 
     describe("Schemas without annotations", () => {
-      it("Declaration", async () => {
-        await assertXml(Schema.instanceOf(URL), new URL("https://effect.website"), "<root/>")
+      it("Declaration", () => {
+        throws(
+          () => Schema.toEncoderXml(Schema.instanceOf(URL)),
+          "Missing structural codec for StringTree"
+        )
       })
 
       it("Unknown", async () => {
-        await assertXml(Schema.Unknown, "value", "<root/>")
+        await assertXml(Schema.Unknown, "value", "<root>value</root>")
       })
 
       it("ObjectKeyword", async () => {
-        await assertXml(Schema.ObjectKeyword, { a: "value" }, "<root/>")
+        await assertXml(Schema.ObjectKeyword, { a: "value" }, "<root>\n  <a>value</a>\n</root>")
       })
     })
 

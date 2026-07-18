@@ -8,7 +8,11 @@ const RepresentationSchema = Schema.suspend(
 
 const RepresentationAnnotationSchema = Schema.Struct({
   id: Schema.NonEmptyString,
-  payload: Schema.Json,
+  payload: Schema.Json
+})
+
+const CheckRepresentationAnnotationSchema = Schema.Struct({
+  ...RepresentationAnnotationSchema.fields,
   schemas: Schema.optional(Schema.Array(RepresentationSchema))
 })
 
@@ -17,13 +21,13 @@ const AnnotationsSchema = Schema.Record(Schema.String, Schema.Json)
 const CheckSchema = Schema.suspend((): Schema.Codec<SchemaRepresentation.Check> => CheckUnion)
 const FilterSchema = Schema.Struct({
   _tag: Schema.tag("Filter"),
-  representation: RepresentationAnnotationSchema,
+  representation: CheckRepresentationAnnotationSchema,
   annotations: Schema.optional(AnnotationsSchema),
   aborted: Schema.Boolean
 })
 const FilterGroupSchema = Schema.Struct({
   _tag: Schema.tag("FilterGroup"),
-  representation: Schema.optional(RepresentationAnnotationSchema),
+  representation: Schema.optional(CheckRepresentationAnnotationSchema),
   annotations: Schema.optional(AnnotationsSchema),
   checks: Schema.NonEmptyArray(CheckSchema)
 })

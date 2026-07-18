@@ -6,7 +6,9 @@ import { errorWithPath } from "../errors.ts"
 import * as InternalAnnotations from "./annotations.ts"
 
 type Path = ReadonlyArray<string | number>
-type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
+type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
+  SchemaRepresentation.Representation
+>
 
 /** @internal */
 export function makeCode(runtime: string, Type: string): SchemaRepresentation.Code {
@@ -142,7 +144,7 @@ export function topologicalSort(
     const visited = new WeakSet<object>()
     const stack: Array<SchemaRepresentation.Representation> = [root]
 
-    function pushRepresentationSchemas(representation: RepresentationAnnotation | undefined): void {
+    function pushRepresentationSchemas(representation: CheckRepresentationAnnotation | undefined): void {
       if (representation?.schemas !== undefined) stack.push(...representation.schemas)
     }
 
@@ -335,7 +337,7 @@ export function toCodeDocument(
   }
 
   function annotationSchemas(
-    representation: RepresentationAnnotation | undefined,
+    representation: CheckRepresentationAnnotation | undefined,
     path: Path
   ): ReadonlyArray<SchemaRepresentation.Code> {
     return representation?.schemas?.map((schema, index) => recur(schema, [...path, "schemas", index])) ?? []
@@ -487,8 +489,7 @@ export function toCodeDocument(
         const typeParameters = representation.typeParameters.map((typeParameter, index) =>
           recur(typeParameter, [...path, "typeParameters", index])
         )
-        const schemas = annotationSchemas(representation.representation, [...path, "representation"])
-        const output = (callback as SchemaRepresentation.Generation.Declaration)({ typeParameters, schemas })
+        const output = (callback as SchemaRepresentation.Generation.Declaration)({ typeParameters })
         for (const importDeclaration of output.importDeclarations ?? []) addImport(importDeclaration)
         return makeCode(output.runtime, output.Type)
       }

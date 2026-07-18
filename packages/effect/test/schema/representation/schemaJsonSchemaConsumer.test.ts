@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { throws } from "../../utils/assert.ts"
 
 describe("Schema JSON Schema consumer", () => {
   it("keeps toRepresentation on the type side and projects the encoded side for JSON Schema", () => {
@@ -107,7 +106,7 @@ describe("Schema JSON Schema consumer", () => {
     })
   })
 
-  it("reports compiler failures with their representation path", () => {
+  it("approximates declarations without a JSON codec", () => {
     const schema = Schema.declare((input): input is string => typeof input === "string", {
       representation: {
         id: "test/schema/opaqueString",
@@ -115,9 +114,10 @@ describe("Schema JSON Schema consumer", () => {
       }
     })
 
-    throws(
-      () => Schema.toJsonSchemaDocument(schema),
-      `Missing JSON Schema callback\n  at ["representation"]["annotations"]["toJsonSchema"]`
-    )
+    assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema), {
+      dialect: "draft-2020-12",
+      schema: {},
+      definitions: {}
+    })
   })
 })

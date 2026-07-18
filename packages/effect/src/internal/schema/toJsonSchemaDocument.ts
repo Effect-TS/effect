@@ -9,7 +9,9 @@ import { errorWithPath } from "../errors.ts"
 import * as InternalAnnotations from "./annotations.ts"
 
 type Path = ReadonlyArray<string | number>
-type RepresentationAnnotation = SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>
+type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
+  SchemaRepresentation.Representation
+>
 
 const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.annotationExcludedKeys,
@@ -151,7 +153,7 @@ function compileJsonSchema(
   return { dialect: "draft-2020-12", schemas, definitions }
 
   function annotationSchemas(
-    representation: RepresentationAnnotation | undefined,
+    representation: CheckRepresentationAnnotation | undefined,
     path: Path
   ): ReadonlyArray<JsonSchema.JsonSchema> {
     return representation?.schemas?.map((schema, index) => recur(schema, [...path, "schemas", index])) ?? []
@@ -226,15 +228,7 @@ function compileJsonSchema(
       case "UniqueSymbol":
         return { type: "string", allOf: [{ pattern: "^Symbol\\((.*)\\)$" }] }
       case "Declaration": {
-        const callback = representation.annotations?.toJsonSchema
-        if (callback === undefined) {
-          throw errorWithPath("Missing JSON Schema callback", [...path, "annotations", "toJsonSchema"])
-        }
-        const typeParameters = representation.typeParameters.map((typeParameter, index) =>
-          recur(typeParameter, [...path, "typeParameters", index])
-        )
-        const schemas = annotationSchemas(representation.representation, [...path, "representation"])
-        return (callback as SchemaRepresentation.ToJsonSchema.Declaration)({ typeParameters, schemas })
+        return {}
       }
       case "Suspend":
         return recur(representation.thunk, [...path, "thunk"])

@@ -206,23 +206,19 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     )
   })
 
-  it("passes type parameters and dependencies to declaration callbacks", () => {
+  it("passes type parameters to declaration callbacks", () => {
     const declaration: SchemaRepresentation.Representation = {
       _tag: "Declaration",
       typeParameters: [StringRepresentation],
       checks: [],
       representation: {
         id: "acme/schema/Box",
-        payload: null,
-        schemas: [NumberRepresentation]
+        payload: null
       },
       annotations: {
-        toCode: ({
-          schemas,
-          typeParameters
-        }: SchemaRepresentation.Generation.DeclarationInput) => ({
-          runtime: `Custom.box(${typeParameters[0].runtime}, ${schemas[0].runtime})`,
-          Type: `Custom.Box<${typeParameters[0].Type}, ${schemas[0].Type}>`,
+        toCode: ({ typeParameters }: SchemaRepresentation.Generation.DeclarationInput) => ({
+          runtime: `Custom.box(${typeParameters[0].runtime})`,
+          Type: `Custom.Box<${typeParameters[0].Type}>`,
           importDeclarations: [`import * as Custom from "acme/Custom"`]
         })
       }
@@ -233,8 +229,8 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     })
 
     assert.deepStrictEqual(output.codes, [{
-      runtime: "Custom.box(Schema.String, Schema.Number)",
-      Type: "Custom.Box<string, number>"
+      runtime: "Custom.box(Schema.String)",
+      Type: "Custom.Box<string>"
     }])
   })
 
@@ -490,7 +486,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         D: {
           _tag: "Declaration",
           typeParameters: [reference("A")],
-          representation: { id: "acme/schema/declaration", payload: null, schemas: [reference("B")] },
+          representation: { id: "acme/schema/declaration", payload: null },
           annotations: {
             toCode: () => ({ runtime: "Schema.String", Type: "string" })
           },

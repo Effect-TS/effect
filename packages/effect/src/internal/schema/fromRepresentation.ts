@@ -64,7 +64,7 @@ function revivePersisted(
   }
 
   function resolveReviver<R extends SchemaRepresentation.AnyReviver>(
-    representation: SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>,
+    representation: SchemaRepresentation.RepresentationAnnotation,
     path: Path
   ): R {
     const reviver = reviverMap.get(representation.id)
@@ -75,7 +75,7 @@ function revivePersisted(
   }
 
   function decodePayload(
-    representation: SchemaRepresentation.RepresentationAnnotation<SchemaRepresentation.Representation>,
+    representation: SchemaRepresentation.RepresentationAnnotation,
     reviver: SchemaRepresentation.AnyReviver,
     path: Path
   ): any {

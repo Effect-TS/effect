@@ -20,9 +20,18 @@ import type * as SchemaAST from "./SchemaAST.ts"
  * @category annotations
  * @since 4.0.0
  */
-export interface RepresentationAnnotation<S> {
+export interface RepresentationAnnotation {
   readonly id: string
   readonly payload: Schema.Json
+}
+
+/**
+ * Open persistence identity and schema dependencies carried by opaque checks.
+ *
+ * @category annotations
+ * @since 4.0.0
+ */
+export interface CheckRepresentationAnnotation<S> extends RepresentationAnnotation {
   readonly schemas?: ReadonlyArray<S> | undefined
 }
 
@@ -44,31 +53,12 @@ export declare namespace ToJsonSchema {
   }
 
   /**
-   * Input for a declaration compiler.
-   *
-   * @category models
-   * @since 4.0.0
-   */
-  export interface DeclarationInput {
-    readonly typeParameters: ReadonlyArray<JsonSchema.JsonSchema>
-    readonly schemas: ReadonlyArray<JsonSchema.JsonSchema>
-  }
-
-  /**
    * JSON Schema compiler for a check.
    *
    * @category models
    * @since 4.0.0
    */
   export type Check = (input: CheckInput) => JsonSchema.JsonSchema
-
-  /**
-   * JSON Schema compiler for a declaration.
-   *
-   * @category models
-   * @since 4.0.0
-   */
-  export type Declaration = (input: DeclarationInput) => JsonSchema.JsonSchema
 }
 
 /**
@@ -85,7 +75,6 @@ export declare namespace Generation {
    */
   export interface DeclarationInput {
     readonly typeParameters: ReadonlyArray<Code>
-    readonly schemas: ReadonlyArray<Code>
   }
 
   /**
@@ -146,7 +135,7 @@ export declare namespace Generation {
  */
 export interface Declaration {
   readonly _tag: "Declaration"
-  readonly representation?: RepresentationAnnotation<Representation> | undefined
+  readonly representation?: RepresentationAnnotation | undefined
   readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly typeParameters: ReadonlyArray<Representation>
   readonly checks: ReadonlyArray<Check>
@@ -429,7 +418,7 @@ export type Check = Filter | FilterGroup
  */
 export interface Filter {
   readonly _tag: "Filter"
-  readonly representation?: RepresentationAnnotation<Representation> | undefined
+  readonly representation?: CheckRepresentationAnnotation<Representation> | undefined
   readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly aborted: boolean
 }
@@ -442,7 +431,7 @@ export interface Filter {
  */
 export interface FilterGroup {
   readonly _tag: "FilterGroup"
-  readonly representation?: RepresentationAnnotation<Representation> | undefined
+  readonly representation?: CheckRepresentationAnnotation<Representation> | undefined
   readonly annotations?: Schema.Annotations.Annotations | undefined
   readonly checks: readonly [Check, ...Array<Check>]
 }
@@ -740,11 +729,11 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * **When to use**
  *
- * Use when you need JSON Schema output from a representation whose custom declarations and checks carry compiler annotations.
+ * Use when you need JSON Schema output from a representation whose checks carry compiler annotations.
  *
  * **Gotchas**
  *
- * Check compilation is best-effort, but opaque declarations require a `toJsonSchema` callback. Callback results are used directly, and exceptions raised by the callback pass through unchanged.
+ * Opaque declarations are represented by an unconstrained JSON Schema. Check callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *

@@ -9843,27 +9843,6 @@ export function Option<A extends Constraint>(value: A): Option<A> {
         id: "effect/schema/Option",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        anyOf: [
-          {
-            type: "object",
-            properties: {
-              _tag: { type: "string", enum: ["Some"] },
-              value: typeParameters[0]
-            },
-            required: ["_tag", "value"],
-            additionalProperties: false
-          },
-          {
-            type: "object",
-            properties: {
-              _tag: { type: "string", enum: ["None"] }
-            },
-            required: ["_tag"],
-            additionalProperties: false
-          }
-        ]
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Option(${typeParameters[0].runtime})`,
         Type: `Option.Option<${typeParameters[0].Type}>`,
@@ -10192,28 +10171,6 @@ export function Result<A extends Constraint, E extends Constraint>(
         id: "effect/schema/Result",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        anyOf: [
-          {
-            type: "object",
-            properties: {
-              _tag: { type: "string", enum: ["Success"] },
-              success: typeParameters[0]
-            },
-            required: ["_tag", "success"],
-            additionalProperties: false
-          },
-          {
-            type: "object",
-            properties: {
-              _tag: { type: "string", enum: ["Failure"] },
-              failure: typeParameters[1]
-            },
-            required: ["_tag", "failure"],
-            additionalProperties: false
-          }
-        ]
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Result(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `Result.Result<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
@@ -10399,7 +10356,6 @@ export function Redacted<S extends Constraint>(value: S, options?: {
         id: "effect/schema/Redacted",
         payload: normalizedOptions ?? null
       },
-      toJsonSchema: ({ typeParameters }) => typeParameters[0],
       toCode: ({ typeParameters }) => ({
         runtime: normalizedOptions !== undefined
           ? `Schema.Redacted(${typeParameters[0].runtime}, ${format(normalizedOptions)})`
@@ -10549,58 +10505,6 @@ export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
   readonly fiberId: number | undefined
 }
 
-function causeReasonJsonSchema(
-  error: JsonSchema.JsonSchema,
-  defect: JsonSchema.JsonSchema
-): JsonSchema.JsonSchema {
-  return {
-    anyOf: [
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["Fail"] },
-          error
-        },
-        required: ["_tag", "error"],
-        additionalProperties: false
-      },
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["Die"] },
-          defect
-        },
-        required: ["_tag", "defect"],
-        additionalProperties: false
-      },
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["Interrupt"] },
-          fiberId: {
-            anyOf: [
-              { type: "number" },
-              { type: "null" }
-            ]
-          }
-        },
-        required: ["_tag", "fiberId"],
-        additionalProperties: false
-      }
-    ]
-  }
-}
-
-function causeJsonSchema(
-  error: JsonSchema.JsonSchema,
-  defect: JsonSchema.JsonSchema
-): JsonSchema.JsonSchema {
-  return {
-    type: "array",
-    items: causeReasonJsonSchema(error, defect)
-  }
-}
-
 /**
  * Creates a schema for `Cause.Reason` values using separate schemas for typed
  * failures and unexpected defects.
@@ -10656,7 +10560,6 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
         id: "effect/schema/CauseReason",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => causeReasonJsonSchema(typeParameters[0], typeParameters[1]),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.CauseReason(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `Cause.Failure<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
@@ -10834,7 +10737,6 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
         id: "effect/schema/Cause",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => causeJsonSchema(typeParameters[0], typeParameters[1]),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Cause(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `Cause.Cause<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
@@ -10976,20 +10878,6 @@ const getErrorOptions = (key: ErrorOptionsKey): NormalizedErrorOptions | undefin
 
 const errorSchemaCache: Array<Error | undefined> = []
 
-function errorJsonSchema(): JsonSchema.JsonSchema {
-  return {
-    type: "object",
-    properties: {
-      message: { type: "string" },
-      name: { type: "string" },
-      stack: { type: "string" },
-      cause: {}
-    },
-    required: ["message"],
-    additionalProperties: false
-  }
-}
-
 /**
  * Schema for JavaScript `Error` objects.
  *
@@ -11017,7 +10905,6 @@ export function Error(options?: ErrorOptions): Error {
       id: "effect/schema/Error",
       payload: normalizedOptions ?? null
     },
-    toJsonSchema: errorJsonSchema,
     toCode: () => ({
       runtime: normalizedOptions !== undefined ? `Schema.Error(${format(normalizedOptions)})` : `Schema.Error()`,
       Type: `globalThis.Error`
@@ -11210,28 +11097,6 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
         id: "effect/schema/Exit",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        anyOf: [
-          {
-            type: "object",
-            properties: {
-              _tag: { type: "string", enum: ["Success"] },
-              value: typeParameters[0]
-            },
-            required: ["_tag", "value"],
-            additionalProperties: false
-          },
-          {
-            type: "object",
-            properties: {
-              _tag: { type: "string", enum: ["Failure"] },
-              cause: causeJsonSchema(typeParameters[1], typeParameters[2])
-            },
-            required: ["_tag", "cause"],
-            additionalProperties: false
-          }
-        ]
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Exit(${typeParameters[0].runtime}, ${typeParameters[1].runtime}, ${
           typeParameters[2].runtime
@@ -11475,15 +11340,6 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
         id: "effect/schema/ReadonlyMap",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        type: "array",
-        items: {
-          type: "array",
-          prefixItems: [typeParameters[0], typeParameters[1]],
-          minItems: 2,
-          maxItems: 2
-        }
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.ReadonlyMap(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `globalThis.ReadonlyMap<${typeParameters[0].Type}, ${typeParameters[1].Type}>`
@@ -11597,15 +11453,6 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
         id: "effect/schema/HashMap",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        type: "array",
-        items: {
-          type: "array",
-          prefixItems: [typeParameters[0], typeParameters[1]],
-          minItems: 2,
-          maxItems: 2
-        }
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.HashMap(${typeParameters[0].runtime}, ${typeParameters[1].runtime})`,
         Type: `HashMap.HashMap<${typeParameters[0].Type}, ${typeParameters[1].Type}>`,
@@ -11717,10 +11564,6 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
         id: "effect/schema/ReadonlySet",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        type: "array",
-        items: typeParameters[0]
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.ReadonlySet(${typeParameters[0].runtime})`,
         Type: `globalThis.ReadonlySet<${typeParameters[0].Type}>`
@@ -11832,10 +11675,6 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
         id: "effect/schema/HashSet",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        type: "array",
-        items: typeParameters[0]
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.HashSet(${typeParameters[0].runtime})`,
         Type: `HashSet.HashSet<${typeParameters[0].Type}>`
@@ -11954,10 +11793,6 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
         id: "effect/schema/Chunk",
         payload: null
       },
-      toJsonSchema: ({ typeParameters }) => ({
-        type: "array",
-        items: typeParameters[0]
-      }),
       toCode: ({ typeParameters }) => ({
         runtime: `Schema.Chunk(${typeParameters[0].runtime})`,
         Type: `Chunk.Chunk<${typeParameters[0].Type}>`
@@ -12035,15 +11870,6 @@ export const RegExp: RegExp = instanceOf(
       id: "effect/schema/RegExp",
       payload: null
     },
-    toJsonSchema: () => ({
-      type: "object",
-      properties: {
-        source: { type: "string" },
-        flags: { type: "string" }
-      },
-      required: ["source", "flags"],
-      additionalProperties: false
-    }),
     toCode: () => ({
       runtime: `Schema.RegExp`,
       Type: `globalThis.RegExp`
@@ -12142,7 +11968,6 @@ export const URL: URL = instanceOf(
       id: "effect/schema/URL",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.URL`,
       Type: `globalThis.URL`
@@ -12282,7 +12107,6 @@ export const Date: Date = instanceOf(
       id: "effect/schema/Date",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.Date`,
       Type: `globalThis.Date`
@@ -12433,47 +12257,6 @@ export interface Duration extends declare<Duration_.Duration> {
   readonly "Rebuild": Duration
 }
 
-function durationJsonSchema(): JsonSchema.JsonSchema {
-  return {
-    anyOf: [
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["Infinity"] }
-        },
-        required: ["_tag"],
-        additionalProperties: false
-      },
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["NegativeInfinity"] }
-        },
-        required: ["_tag"],
-        additionalProperties: false
-      },
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["Nanos"] },
-          value: { type: "string", allOf: [{ pattern: "^-?\\d+$" }] }
-        },
-        required: ["_tag", "value"],
-        additionalProperties: false
-      },
-      {
-        type: "object",
-        properties: {
-          _tag: { type: "string", enum: ["Millis"] },
-          value: { type: "integer" }
-        },
-        required: ["_tag", "value"],
-        additionalProperties: false
-      }
-    ]
-  }
-}
-
 /**
  * Schema for `Duration` values.
  *
@@ -12502,7 +12285,6 @@ export const Duration: Duration = declare(
       id: "effect/schema/Duration",
       payload: null
     },
-    toJsonSchema: durationJsonSchema,
     toCode: () => ({
       runtime: `Schema.Duration`,
       Type: `Duration.Duration`,
@@ -12782,7 +12564,6 @@ export const BigDecimal: BigDecimal = declare(
       id: "effect/schema/BigDecimal",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.BigDecimal`,
       Type: `BigDecimal.BigDecimal`,
@@ -12998,30 +12779,6 @@ export function fromJsonString<S extends Constraint>(schema: S): fromJsonString<
   }).pipe(decodeTo(schema, SchemaTransformation.fromJsonString))
 }
 
-function fileJsonSchema(): JsonSchema.JsonSchema {
-  return {
-    type: "object",
-    properties: {
-      data: {
-        type: "string",
-        allOf: [{ pattern: "^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$" }]
-      },
-      type: { type: "string" },
-      name: { type: "string" },
-      lastModified: {
-        anyOf: [
-          { type: "number" },
-          { type: "string", enum: ["NaN"] },
-          { type: "string", enum: ["Infinity"] },
-          { type: "string", enum: ["-Infinity"] }
-        ]
-      }
-    },
-    required: ["data", "type", "name", "lastModified"],
-    additionalProperties: false
-  }
-}
-
 /**
  * Type-level representation of {@link File}.
  *
@@ -13048,7 +12805,6 @@ export const File: File = instanceOf(globalThis.File, {
     id: "effect/schema/File",
     payload: null
   },
-  toJsonSchema: fileJsonSchema,
   toCode: () => ({
     runtime: `Schema.File`,
     Type: `globalThis.File`
@@ -13115,42 +12871,6 @@ export const FileReviver = makeFixedDeclarationReviver(
   File
 )
 
-function formDataJsonSchema(): JsonSchema.JsonSchema {
-  return {
-    type: "array",
-    items: {
-      type: "array",
-      prefixItems: [
-        { type: "string" },
-        {
-          anyOf: [
-            {
-              type: "object",
-              properties: {
-                _tag: { type: "string", enum: ["String"] },
-                value: { type: "string" }
-              },
-              required: ["_tag", "value"],
-              additionalProperties: false
-            },
-            {
-              type: "object",
-              properties: {
-                _tag: { type: "string", enum: ["File"] },
-                value: fileJsonSchema()
-              },
-              required: ["_tag", "value"],
-              additionalProperties: false
-            }
-          ]
-        }
-      ],
-      minItems: 2,
-      maxItems: 2
-    }
-  }
-}
-
 /**
  * Type-level representation of {@link FormData}.
  *
@@ -13177,7 +12897,6 @@ export const FormData: FormData = instanceOf(globalThis.FormData, {
     id: "effect/schema/FormData",
     payload: null
   },
-  toJsonSchema: formDataJsonSchema,
   toCode: () => ({
     runtime: `Schema.FormData`,
     Type: `globalThis.FormData`
@@ -13358,7 +13077,6 @@ export const URLSearchParams: URLSearchParams = instanceOf(globalThis.URLSearchP
     id: "effect/schema/URLSearchParams",
     payload: null
   },
-  toJsonSchema: () => ({ type: "string" }),
   toCode: () => ({
     runtime: `Schema.URLSearchParams`,
     Type: `globalThis.URLSearchParams`
@@ -13907,7 +13625,6 @@ export const Uint8Array: Uint8Array = instanceOf(globalThis.Uint8Array<ArrayBuff
     id: "effect/schema/Uint8Array",
     payload: null
   },
-  toJsonSchema: () => ({ type: "string", format: "byte", contentEncoding: "base64" }),
   toCode: () => ({
     runtime: `Schema.Uint8Array`,
     Type: `globalThis.Uint8Array`
@@ -14073,7 +13790,6 @@ export const DateTimeUtc: DateTimeUtc = declare(
       id: "effect/schema/DateTimeUtc",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.DateTimeUtc`,
       Type: `DateTime.Utc`,
@@ -14260,14 +13976,6 @@ export const TimeZoneOffset: TimeZoneOffset = declare(
       id: "effect/schema/TimeZoneOffset",
       payload: null
     },
-    toJsonSchema: () => ({
-      anyOf: [
-        { type: "number" },
-        { type: "string", enum: ["NaN"] },
-        { type: "string", enum: ["Infinity"] },
-        { type: "string", enum: ["-Infinity"] }
-      ]
-    }),
     toCode: () => ({
       runtime: `Schema.TimeZoneOffset`,
       Type: `DateTime.TimeZone.Offset`,
@@ -14334,7 +14042,6 @@ export const TimeZoneNamed: TimeZoneNamed = declare(
       id: "effect/schema/TimeZoneNamed",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.TimeZoneNamed`,
       Type: `DateTime.TimeZone.Named`,
@@ -14436,7 +14143,6 @@ export const TimeZone: TimeZone = declare(
       id: "effect/schema/TimeZone",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.TimeZone`,
       Type: `DateTime.TimeZone`,
@@ -14543,7 +14249,6 @@ export const DateTimeZoned: DateTimeZoned = declare(
       id: "effect/schema/DateTimeZoned",
       payload: null
     },
-    toJsonSchema: () => ({ type: "string" }),
     toCode: () => ({
       runtime: `Schema.DateTimeZoned`,
       Type: `DateTime.Zoned`,
@@ -15556,14 +15261,16 @@ export interface ToJsonSchemaOptions {
  *
  * The `options` parameter controls generation details such as additional
  * properties and synthesized check descriptions; it does not change the draft
- * target.
+ * target. Declarations are lowered through their `toCodecJson` or `toCodec`
+ * annotation when available before the representation document is compiled.
  *
  * **Gotchas**
  *
  * JSON Schema generation is best-effort. Some Effect schema semantics cannot
  * be represented exactly in JSON Schema, and importing an emitted JSON Schema
  * may produce an equivalent approximation rather than the original schema
- * shape.
+ * shape. Opaque declarations without a structural codec are represented by an
+ * unconstrained JSON Schema.
  *
  * @category converting
  * @since 4.0.0
@@ -15572,7 +15279,7 @@ export function toJsonSchemaDocument(
   schema: Constraint,
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
-  const document = InternalToRepresentation.toRepresentation(schema.ast, true)
+  const document = InternalToRepresentation.toRepresentation(toJsonSchemaTop(schema.ast), true)
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
 
@@ -15612,6 +15319,12 @@ export interface toCodecJson<S extends Constraint> extends
  * Derives a canonical JSON codec from a schema. The encoded form is `Json`, and
  * decoding produces the schema's `Type`.
  *
+ * **Gotchas**
+ *
+ * Declarations must define a `toCodecJson` or `toCodec` annotation. A
+ * `toCodecJson` callback can return `undefined` when the declaration is already
+ * in canonical JSON form.
+ *
  * @category Canonical Codecs
  * @since 4.0.0
  */
@@ -15628,15 +15341,12 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
   switch (ast._tag) {
     case "Declaration": {
       const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
-      if (Predicate.isFunction(getLink)) {
-        const tps = SchemaAST.isDeclaration(ast)
-          ? ast.typeParameters.map((tp) => InternalSchema.make(SchemaAST.toEncoded(tp)))
-          : []
-        const link = getLink(tps)
-        const to = recur(link.to)
-        return SchemaAST.replaceEncoding(ast, to === link.to ? [link] : [new SchemaAST.Link(to, link.transformation)])
+      if (!Predicate.isFunction(getLink)) {
+        throw new globalThis.Error("Missing toCodecJson or toCodec annotation", { cause: ast })
       }
-      return SchemaAST.replaceEncoding(ast, [SchemaAST.unknownToNull])
+      const typeParameters = ast.typeParameters.map((tp) => InternalSchema.make(SchemaAST.toEncoded(tp)))
+      const link = getLink(typeParameters)
+      return link === undefined ? ast : SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, recur)])
     }
     case "Unknown":
     case "ObjectKeyword":
@@ -15679,6 +15389,33 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
   return ast
 }
 
+const toJsonSchemaTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+  const out = toJsonSchemaBase(ast, toJsonSchemaTop)
+  return out !== ast && SchemaAST.isOptional(ast) ? SchemaAST.optionalKeyLastLink(out) : out
+})
+
+function toJsonSchemaBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
+  switch (ast._tag) {
+    case "Declaration": {
+      const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
+      if (!Predicate.isFunction(getLink)) return ast
+      const typeParameters = ast.typeParameters.map((tp) => InternalSchema.make(SchemaAST.toEncoded(tp)))
+      const link = getLink(typeParameters)
+      if (link === undefined) return ast
+      const to = recur(link.to)
+      const context = ast.context === undefined ? to : SchemaAST.replaceContext(to, ast.context)
+      const annotations = ast.annotations === undefined ? context : SchemaAST.annotate(context, ast.annotations)
+      return SchemaAST.appendChecks(annotations, ast.checks)
+    }
+    case "Arrays":
+    case "Objects":
+    case "Union":
+    case "Suspend":
+      return ast.recur(recur)
+  }
+  return ast
+}
+
 /**
  * Derives an isomorphism codec from a schema. The encoded form is the
  * schema's `Iso` type — the intermediate representation used for round-tripping.
@@ -15701,8 +15438,7 @@ function toCodecIsoBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Schem
       const getLink = ast.annotations?.toCodecIso ?? ast.annotations?.toCodec
       if (Predicate.isFunction(getLink)) {
         const link = getLink(ast.typeParameters.map((tp) => InternalSchema.make(tp)))
-        const to = recur(link.to)
-        return SchemaAST.replaceEncoding(ast, to === link.to ? [link] : [new SchemaAST.Link(to, link.transformation)])
+        return SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, recur)])
       }
       return ast
     }
@@ -15756,10 +15492,11 @@ export interface toCodecStringTree<S extends Constraint> extends
  * Converts a schema to the StringTree canonical codec, where every leaf value
  * becomes a string while preserving the original structure.
  *
- * **Details**
+ * **Gotchas**
  *
- * Declarations are converted to `undefined` (unless they have a
- * `toCodecJson` or `toCodec` annotation).
+ * Declarations must provide a structural `toCodecStringTree`, `toCodecJson`, or
+ * `toCodec` encoding. A callback can return `undefined` when the declaration is
+ * already in canonical StringTree form.
  *
  * @category Canonical Codecs
  * @since 4.0.0
@@ -15960,16 +15697,20 @@ function serializerTree(
 ): SchemaAST.AST {
   switch (ast._tag) {
     case "Declaration": {
-      const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
-      if (Predicate.isFunction(getLink)) {
-        const tps = SchemaAST.isDeclaration(ast)
-          ? ast.typeParameters.map((tp) => make(recur(SchemaAST.toEncoded(tp))))
-          : []
-        const link = getLink(tps)
-        const to = recur(link.to)
-        return SchemaAST.replaceEncoding(ast, to === link.to ? [link] : [new SchemaAST.Link(to, link.transformation)])
+      const typeParameters = ast.typeParameters.map((tp) => make(recur(SchemaAST.toEncoded(tp))))
+      const getStringTreeLink = ast.annotations?.toCodecStringTree
+      if (Predicate.isFunction(getStringTreeLink)) {
+        const link = getStringTreeLink(typeParameters)
+        if (link === undefined) return ast
+        return SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, recur)])
       }
-      return onMissingAnnotation(ast)
+      const getJsonLink = ast.annotations?.toCodecJson
+      const jsonLink = Predicate.isFunction(getJsonLink) ? getJsonLink(typeParameters) : undefined
+      const getLink = jsonLink === undefined ? ast.annotations?.toCodec : undefined
+      const link = jsonLink ?? (Predicate.isFunction(getLink) ? getLink(typeParameters) : undefined)
+      return link === undefined
+        ? onMissingAnnotation(ast)
+        : SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, recur)])
     }
     case "Null":
       return SchemaAST.replaceEncoding(ast, [nullToString])
@@ -16039,20 +15780,14 @@ const serializerStringTree = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
   if (isSerializerArrayFromSingle(ast)) {
     return ast
   }
-  const out = serializerTree(ast, serializerStringTree, (ast) => SchemaAST.replaceEncoding(ast, [unknownToUndefined]))
+  const out = serializerTree(ast, serializerStringTree, (ast) => {
+    throw new globalThis.Error("Missing structural codec for StringTree", { cause: ast })
+  })
   if (out !== ast && SchemaAST.isOptional(ast)) {
     return SchemaAST.optionalKeyLastLink(out)
   }
   return out
 })
-
-const unknownToUndefined = new SchemaAST.Link(
-  SchemaAST.undefined,
-  new SchemaTransformation.Transformation(
-    SchemaGetter.passthrough(),
-    SchemaGetter.transform(() => undefined)
-  )
-)
 
 const toArrayFromSingleInputElement = (ast: SchemaAST.AST): SchemaAST.AST =>
   SchemaAST.isOptional(ast) ? SchemaAST.optionalKey(SchemaAST.unknown) : SchemaAST.unknown
@@ -16638,14 +16373,16 @@ export declare namespace Annotations {
     extends Bottom<T, TypeParameters>
   {
     readonly representation?:
-      | SchemaRepresentation.RepresentationAnnotation<SchemaAST.AST>
+      | SchemaRepresentation.RepresentationAnnotation
       | undefined
-    readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Declaration | undefined
     readonly toCodec?:
       | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link)
       | undefined
     readonly toCodecJson?:
-      | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link)
+      | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined)
+      | undefined
+    readonly toCodecStringTree?:
+      | ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined)
       | undefined
     readonly toCodecIso?:
       | ((typeParameters: TypeParameters.Type<TypeParameters>) => SchemaAST.Link)
@@ -16674,7 +16411,7 @@ export declare namespace Annotations {
    */
   export interface Filter extends Augment {
     readonly representation?:
-      | SchemaRepresentation.RepresentationAnnotation<SchemaAST.AST>
+      | SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST>
       | undefined
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
     readonly toCode?: SchemaRepresentation.Generation.Check | undefined

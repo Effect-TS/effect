@@ -306,12 +306,10 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     )
   })
 
-  it("combines a direct number callback with an integer check", () => {
+  it("lets a check refine number to integer", () => {
     assert.deepStrictEqual(
       compile({
-        _tag: "Declaration",
-        typeParameters: [],
-        annotations: { toJsonSchema: () => ({ type: "number" }) },
+        _tag: "Number",
         checks: [{
           _tag: "Filter",
           aborted: false,
@@ -479,7 +477,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     assert.strictEqual(receivedType, "integer")
   })
 
-  it("compiles the isPattern and Option vertical slice", () => {
+  it("compiles the isPattern vertical slice", () => {
     const pattern = SchemaRepresentation.toJsonSchemaDocument(
       SchemaRepresentation.toRepresentation(Schema.String.check(Schema.isPattern(/^[a-z]+$/i)).ast)
     )
@@ -490,31 +488,6 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         allOf: [{ pattern: "^[a-z]+$" }]
       },
       definitions: {}
-    })
-
-    const option = SchemaRepresentation.toJsonSchemaDocument(
-      SchemaRepresentation.toRepresentation(Schema.Option(Schema.String).ast)
-    )
-    assert.deepStrictEqual(option.schema, {
-      anyOf: [
-        {
-          type: "object",
-          properties: {
-            _tag: { type: "string", enum: ["Some"] },
-            value: { type: "string" }
-          },
-          required: ["_tag", "value"],
-          additionalProperties: false
-        },
-        {
-          type: "object",
-          properties: {
-            _tag: { type: "string", enum: ["None"] }
-          },
-          required: ["_tag"],
-          additionalProperties: false
-        }
-      ]
     })
   })
 
@@ -580,7 +553,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     })
   })
 
-  it("passes type parameters and dependencies to declaration callbacks", () => {
+  it("approximates declarations", () => {
     const document: SchemaRepresentation.Document = {
       representation: {
         _tag: "Declaration",
@@ -588,34 +561,13 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         checks: [],
         representation: {
           id: "acme/schema/Box",
-          payload: null,
-          schemas: [NumberRepresentation]
-        },
-        annotations: {
-          toJsonSchema: ({
-            schemas,
-            typeParameters
-          }: SchemaRepresentation.ToJsonSchema.DeclarationInput) => ({
-            allOf: [typeParameters[0], schemas[0]]
-          })
+          payload: null
         }
       },
       references: {}
     }
 
-    assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaDocument(document).schema, {
-      allOf: [
-        { type: "string" },
-        {
-          anyOf: [
-            { type: "number" },
-            { type: "string", enum: ["NaN"] },
-            { type: "string", enum: ["Infinity"] },
-            { type: "string", enum: ["-Infinity"] }
-          ]
-        }
-      ]
-    })
+    assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaDocument(document).schema, {})
   })
 
   it("compiles every member of a union index-signature parameter", () => {
@@ -804,21 +756,6 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         identifier: "id",
         "x-custom": { enabled: true }
       }
-    )
-  })
-
-  it("reports missing declaration callbacks", () => {
-    const missing: SchemaRepresentation.Document = {
-      representation: {
-        _tag: "Declaration",
-        typeParameters: [],
-        checks: []
-      },
-      references: {}
-    }
-    expectError(
-      () => SchemaRepresentation.toJsonSchemaDocument(missing),
-      `Missing JSON Schema callback\n  at ["representation"]["annotations"]["toJsonSchema"]`
     )
   })
 

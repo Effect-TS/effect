@@ -3137,14 +3137,17 @@ export function appendChecks<A extends AST>(ast: A, checks: Checks | undefined):
   return replaceChecks(ast, combineChecks(ast.checks, checks))
 }
 
+/** @internal */
+export function mapLink(link: Link, f: (ast: AST) => AST): Link {
+  const to = f(link.to)
+  return to === link.to ? link : new Link(to, link.transformation)
+}
+
 function updateLastLink(encoding: Encoding, f: (ast: AST) => AST): Encoding {
   const links = encoding
   const last = links[links.length - 1]
-  const to = f(last.to)
-  if (to !== last.to) {
-    return Arr.append(encoding.slice(0, encoding.length - 1), new Link(to, last.transformation))
-  }
-  return encoding
+  const out = mapLink(last, f)
+  return out === last ? encoding : Arr.append(encoding.slice(0, encoding.length - 1), out)
 }
 
 /** @internal */
@@ -3939,9 +3942,9 @@ export const Json = new Declaration(
       id: "effect/schema/Json",
       payload: null
     },
-    toJsonSchema: () => ({}),
     expected: "JSON value",
-    toCodecJson: () => new Link(unknown, SchemaTransformation.passthrough()),
+    toCodecJson: () => undefined,
+    toCodecStringTree: () => unknownToStringTree,
     toArbitrary: () => (fc: typeof FastCheck) => fc.jsonValue()
   }
 )
@@ -3951,18 +3954,8 @@ export const MutableJson = annotate(Json, {
   representation: {
     id: "effect/schema/MutableJson",
     payload: null
-  },
-  toJsonSchema: () => ({})
+  }
 })
-
-/** @internal */
-export const unknownToNull = new Link(
-  null_,
-  new SchemaTransformation.Transformation(
-    SchemaGetter.passthrough(),
-    SchemaGetter.transform(() => null)
-  )
-)
 
 /** @internal */
 export const unknownToJson = new Link(
@@ -4005,7 +3998,7 @@ const StringTree = new Declaration(
     isStringTree(input) ?
       Effect.succeed(input) :
       Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input))),
-  { expected: "StringTree" }
+  { expected: "StringTree", toCodecStringTree: () => undefined }
 )
 
 /** @internal */

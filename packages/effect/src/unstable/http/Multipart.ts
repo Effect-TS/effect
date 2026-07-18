@@ -299,10 +299,8 @@ export const PersistedFileSchema: PersistedFileSchema = Schema.declare(
   {
     representation: {
       id: "effect/http/PersistedFile",
-      payload: null,
-      schemas: [PersistedFileEncoded.ast]
+      payload: null
     },
-    toJsonSchema: ({ schemas }) => schemas[0],
     toCode: () => ({
       runtime: "Multipart.PersistedFileSchema",
       Type: "Multipart.PersistedFile",

@@ -85,48 +85,6 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     ])
   })
 
-  it("composes annotated reference wrappers and ignores callback-free groups", () => {
-    const output = SchemaRepresentation.toJsonSchemaMultiDocument({
-      representations: [
-        {
-          _tag: "Declaration",
-          typeParameters: [],
-          annotations: {
-            description: "alias",
-            toJsonSchema: () => ({ $ref: "#/$defs/Value" })
-          },
-          checks: [{
-            _tag: "Filter",
-            aborted: false,
-            annotations: { toJsonSchema: () => ({ minLength: 1 }) }
-          }]
-        },
-        {
-          _tag: "String",
-          checks: [{
-            _tag: "FilterGroup",
-            checks: [
-              { _tag: "Filter", aborted: false },
-              { _tag: "Filter", aborted: false }
-            ]
-          }]
-        }
-      ],
-      references: { Value: StringRepresentation }
-    })
-
-    assert.deepStrictEqual(output.schemas, [
-      {
-        allOf: [
-          { $ref: "#/$defs/Value", description: "alias" },
-          { minLength: 1 }
-        ]
-      },
-      { type: "string" }
-    ])
-    assert.deepStrictEqual(output.definitions, { Value: { type: "string" } })
-  })
-
   it("uses group overrides without visiting children and otherwise falls back to allOf", () => {
     let visits = 0
     const child: SchemaRepresentation.Filter = {
