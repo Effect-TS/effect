@@ -3539,6 +3539,16 @@ Expected a value with a size of at most 2, got Map([["a",1],["b",NaN],["c",3]])`
         await make.succeed({}, { a: -1 })
       })
 
+      it("should construct a Class field from a plain object", () => {
+        class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
+        const schema = Schema.Struct({
+          a: A.pipe(Schema.withConstructorDefault(Effect.succeed(A.make({ a: "default" }))))
+        })
+
+        const result = schema.make({ a: { a: "a" } })
+        assertTrue(result.a instanceof A)
+      })
+
       describe("nested defaults", () => {
         it("Struct", async () => {
           const schema = Schema.Struct({
