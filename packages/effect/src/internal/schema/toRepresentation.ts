@@ -313,8 +313,7 @@ function lowerASTs(
 
   function recur(
     ast: SchemaAST.AST,
-    ownedReference?: string,
-    inheritedIdentifier?: string
+    ownedReference?: string
   ): SchemaRepresentation.Representation {
     let found = referenceMap.get(ast)
     if (found === undefined && SchemaAST.isSuspend(ast)) {
@@ -328,16 +327,14 @@ function lowerASTs(
       return { _tag: "Reference", $ref: found }
     }
 
-    let identifier = inheritedIdentifier
     if (encoded) {
       const projected = SchemaAST.getLastEncoding(ast)
-      identifier = InternalAnnotations.resolveIdentifier(ast) ?? identifier
       if (projected !== ast) {
-        return recur(projected, ownedReference, identifier)
+        return recur(projected, ownedReference)
       }
     }
 
-    identifier = ownedReference === undefined ? identifier ?? InternalAnnotations.resolveIdentifier(ast) : undefined
+    const identifier = ownedReference === undefined ? InternalAnnotations.resolveIdentifier(ast) : undefined
     if (identifier !== undefined) {
       const reference = generateReference(identifier)
       referenceMap.set(ast, reference)

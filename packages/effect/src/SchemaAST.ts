@@ -1382,10 +1382,7 @@ export class Number extends Base {
   }
   /** @internal */
   toCodecStringTree(): AST {
-    if (
-      this.checks &&
-      (hasCheck(this.checks, "effect/schema/isFinite") || hasCheck(this.checks, "effect/schema/isInt"))
-    ) {
+    if (this.toCodecJson() === this) {
       return replaceEncoding(this, [finiteToString])
     }
     return replaceEncoding(this, [numberToString])
@@ -1396,16 +1393,11 @@ export class Number extends Base {
   }
 }
 
-// oxlint-disable-next-line only-used-in-recursion - @gcanti what's this? :-)
 function hasCheck(checks: ReadonlyArray<Check<unknown>>, id: string): boolean {
-  return checks.some((c) => {
-    switch (c._tag) {
-      case "Filter":
-        return c.annotations?.representation?.id === id
-      case "FilterGroup":
-        return hasCheck(c.checks, id)
-    }
-  })
+  return checks.some((check) =>
+    check.annotations?.representation?.id === id ||
+    (check._tag === "FilterGroup" && hasCheck(check.checks, id))
+  )
 }
 
 /**
@@ -2780,20 +2772,6 @@ const parseUnion = iterateEager<{
   }
 })
 
-const nonFiniteLiterals = new Union([
-  new Literal("Infinity"),
-  new Literal("-Infinity"),
-  new Literal("NaN")
-], "anyOf")
-
-const numberToJson = new Link(
-  new Union([number, nonFiniteLiterals], "anyOf"),
-  new SchemaTransformation.Transformation(
-    SchemaGetter.Number(),
-    SchemaGetter.transform((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))
-  )
-)
-
 function formatIsMutable(isMutable: boolean | undefined): string {
   return isMutable ? "" : "readonly "
 }
@@ -3019,6 +2997,46 @@ export function makeFilterByGuard<T extends E, E>(
   )
 }
 
+/** @internal */
+export function isFinite(annotations?: Schema.Annotations.Filter) {
+  return makeFilter(
+    (n: number) => globalThis.Number.isFinite(n),
+    {
+      expected: "a finite number",
+      representation: {
+        id: "effect/schema/isFinite",
+        payload: null
+      },
+      toJsonSchema: () => ({ type: "number" }),
+      toCode: () => ({ runtime: "Schema.isFinite()" }),
+      arbitrary: {
+        constraint: {
+          noInfinity: true,
+          noNaN: true
+        }
+      },
+      ...annotations
+    }
+  )
+}
+
+const nonFiniteLiterals = new Union([
+  new Literal("Infinity"),
+  new Literal("-Infinity"),
+  new Literal("NaN")
+], "anyOf")
+
+/** @internal */
+export const finite = appendChecks(number, [isFinite()])
+
+const numberToJson = new Link(
+  new Union([finite, nonFiniteLiterals], "anyOf"),
+  new SchemaTransformation.Transformation(
+    SchemaGetter.Number(),
+    SchemaGetter.transform((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))
+  )
+)
+
 /**
  * Creates a {@link Filter} that validates strings by running `RegExp.test`.
  *
@@ -3156,6 +3174,11 @@ export function applyToLastLink(f: (ast: AST) => AST) {
 }
 
 /** @internal */
+export function replaceContextLastLink<A extends AST>(ast: A, context: Context): A {
+  return applyToLastLink((ast) => replaceContext(ast, context))(ast)
+}
+
+/** @internal */
 export function applyToSelfOrLastLinkEncoding(f: (ast: AST) => AST) {
   function out(ast: AST): AST {
     return ast.encoding ? replaceEncoding(ast, updateLastLink(ast.encoding, out)) : f(ast)
@@ -3230,8 +3253,7 @@ export function annotateKey<A extends AST>(ast: A, annotations: Schema.Annotatio
   return replaceContext(ast, context)
 }
 
-/** @internal */
-export const optionalKeyLastLink = applyToLastLink(optionalKey)
+const optionalKeyLastLink = applyToLastLink(optionalKey)
 
 /**
  * Marks an AST node's property key as optional by setting
@@ -3603,19 +3625,6 @@ const parameterFromPropertyKey = applyToSelfOrLastLinkEncoding((ast) => {
   }
 })
 
-/** @internal */
-export const parameterFromString = applyToSelfOrLastLinkEncoding((ast) => {
-  switch (ast._tag) {
-    default:
-      return ast
-    case "Symbol":
-    case "UniqueSymbol":
-      return ast.toCodecStringTree()
-    case "Union":
-      return ast.recur(parameterFromString)
-  }
-})
-
 const partFromString = applyToSelfOrLastLinkEncoding((ast) => {
   switch (ast._tag) {
     default:
@@ -3960,6 +3969,15 @@ export const MutableJson = annotate(Json, {
 /** @internal */
 export const unknownToJson = new Link(
   Json,
+  SchemaTransformation.passthrough()
+)
+
+/** @internal */
+export const objectKeywordToJson = new Link(
+  new Union([
+    new Arrays(false, [], [Json]),
+    new Objects([], [new IndexSignature(string, Json, undefined)])
+  ], "anyOf"),
   SchemaTransformation.passthrough()
 )
 

@@ -11,6 +11,7 @@ function assertFilterReviver<T>(input: {
   readonly dependencies?: ReadonlyArray<SchemaRepresentation.AnyReviver>
   readonly valid: unknown
   readonly invalid: unknown
+  readonly hasToJsonSchema?: boolean
 }): void {
   const check = input.schema.ast.checks?.at(-1)
   assert.isDefined(check)
@@ -39,7 +40,10 @@ function assertFilterReviver<T>(input: {
   assert.strictEqual(revivedCheck._tag, "Filter")
   if (revivedCheck._tag !== "Filter") return
   assert.strictEqual(revivedCheck.annotations?.representation?.id, input.id)
-  assert.strictEqual(typeof revivedCheck.annotations?.toJsonSchema, "function")
+  assert.strictEqual(
+    typeof revivedCheck.annotations?.toJsonSchema,
+    input.hasToJsonSchema === false ? "undefined" : "function"
+  )
   assert.strictEqual(typeof revivedCheck.annotations?.toCode, "function")
 }
 
@@ -546,7 +550,8 @@ describe("SchemaRepresentation built-in Date revivers", () => {
       payload: null,
       reviver: Schema.isDateValidReviver,
       valid: date(0),
-      invalid: date(Number.NaN)
+      invalid: date(Number.NaN),
+      hasToJsonSchema: false
     })
   })
 

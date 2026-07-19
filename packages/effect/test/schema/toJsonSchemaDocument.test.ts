@@ -65,14 +65,14 @@ describe("toJsonSchemaDocument", () => {
       const a = Symbol.for("effect/Schema/test/a")
       assertUnsupportedSchema(
         Schema.Struct({ [a]: Schema.String }),
-        `Invalid schema representation document\n  at ["representation"]["propertySignatures"][0]["name"]`
+        "Objects property names must be strings"
       )
     })
 
     it("Record: unsupported index signature parameter", () => {
       assertUnsupportedSchema(
         Schema.Record(Schema.Symbol, Schema.Finite),
-        `Invalid schema representation document\n  at ["representation"]["indexSignatures"][0]["parameter"]`
+        "Objects index signature parameters must not contain symbols"
       )
     })
   })
@@ -118,6 +118,31 @@ describe("toJsonSchemaDocument", () => {
             },
             required: ["value"],
             additionalProperties: false
+          }
+        }
+      }
+    )
+  })
+
+  it("preserves shared canonical schemas with references", () => {
+    assertJsonSchemaDocument(
+      Schema.Struct({ left: Schema.Number, right: Schema.Number }),
+      {
+        schema: {
+          type: "object",
+          properties: {
+            left: { $ref: "#/$defs/Union_" },
+            right: { $ref: "#/$defs/Union_" }
+          },
+          required: ["left", "right"],
+          additionalProperties: false
+        },
+        definitions: {
+          Union_: {
+            anyOf: [
+              { type: "number" },
+              { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+            ]
           }
         }
       }
@@ -505,6 +530,12 @@ describe("toJsonSchemaDocument", () => {
   })
 
   describe("Declaration", () => {
+    it("opaque Declaration", () => {
+      assertJsonSchemaDocument(Schema.instanceOf(URL), {
+        schema: {}
+      })
+    })
+
     it("Date", () => {
       const schema = Schema.Date
       assertJsonSchemaDocument(schema, {
@@ -518,10 +549,7 @@ describe("toJsonSchemaDocument", () => {
       const schema = Schema.DateValid
       assertJsonSchemaDocument(schema, {
         schema: {
-          "type": "string",
-          "allOf": [
-            { "format": "date-time" }
-          ]
+          "type": "string"
         }
       })
     })
@@ -726,9 +754,7 @@ describe("toJsonSchemaDocument", () => {
     assertJsonSchemaDocument(
       schema.annotate({ description: "a" }),
       {
-        schema: {
-          "description": "a"
-        }
+        schema: {}
       }
     )
   })
@@ -747,8 +773,7 @@ describe("toJsonSchemaDocument", () => {
       schema.annotate({ description: "a" }),
       {
         schema: {
-          "type": "null",
-          "description": "a"
+          "type": "null"
         }
       }
     )
@@ -768,8 +793,7 @@ describe("toJsonSchemaDocument", () => {
       schema.annotate({ description: "a" }),
       {
         schema: {
-          "type": "null",
-          "description": "a"
+          "type": "null"
         }
       }
     )
@@ -1395,9 +1419,7 @@ describe("toJsonSchemaDocument", () => {
           schema: {
             "anyOf": [
               { "type": "number" },
-              { "type": "string", "enum": ["NaN"] },
-              { "type": "string", "enum": ["Infinity"] },
-              { "type": "string", "enum": ["-Infinity"] }
+              { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
             ]
           }
         }
@@ -1408,11 +1430,32 @@ describe("toJsonSchemaDocument", () => {
           schema: {
             "anyOf": [
               { "type": "number" },
-              { "type": "string", "enum": ["NaN"] },
-              { "type": "string", "enum": ["Infinity"] },
-              { "type": "string", "enum": ["-Infinity"] }
-            ],
-            "description": "a"
+              { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
+            ]
+          }
+        }
+      )
+    })
+
+    it("Number & annotateKey", () => {
+      assertJsonSchemaDocument(
+        Schema.Struct({
+          value: Schema.Number.annotateKey({ description: "the field" })
+        }),
+        {
+          schema: {
+            type: "object",
+            properties: {
+              value: {
+                anyOf: [
+                  { type: "number" },
+                  { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+                ],
+                allOf: [{ description: "the field" }]
+              }
+            },
+            required: ["value"],
+            additionalProperties: false
           }
         }
       )
@@ -1661,7 +1704,7 @@ describe("toJsonSchemaDocument", () => {
     assertJsonSchemaDocument(
       schema,
       {
-        schema: { anyOf: [{ type: "object" }, { type: "array" }] }
+        schema: { anyOf: [{ type: "array" }, { type: "object" }] }
       }
     )
     assertJsonSchemaDocument(
@@ -1669,10 +1712,9 @@ describe("toJsonSchemaDocument", () => {
       {
         schema: {
           "anyOf": [
-            { "type": "object" },
-            { "type": "array" }
-          ],
-          "description": "a"
+            { "type": "array" },
+            { "type": "object" }
+          ]
         }
       }
     )
@@ -1764,8 +1806,7 @@ describe("toJsonSchemaDocument", () => {
         {
           schema: {
             "type": "string",
-            "enum": ["1"],
-            "description": "a"
+            "enum": ["1"]
           }
         }
       )
@@ -3571,7 +3612,7 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("preserves the content schema identifier", () => {
+    it("does not inherit the content schema identifier", () => {
       const MyEvent = Schema.Struct({
         value: Schema.String
       }).annotate({ identifier: "MyEvent" })
@@ -3580,13 +3621,8 @@ describe("toJsonSchemaDocument", () => {
         Schema.fromJsonString(MyEvent),
         {
           schema: {
-            "$ref": "#/$defs/MyEvent"
-          },
-          definitions: {
-            "MyEvent": {
-              "type": "string",
-              "contentMediaType": "application/json"
-            }
+            "type": "string",
+            "contentMediaType": "application/json"
           }
         }
       )
@@ -3625,17 +3661,12 @@ describe("toJsonSchemaDocument", () => {
       A,
       {
         schema: {
-          "$ref": "#/$defs/A"
-        },
-        definitions: {
-          A: {
-            "type": "object",
-            "properties": {
-              "a": { "type": "string" }
-            },
-            "required": ["a"],
-            "additionalProperties": false
-          }
+          "type": "object",
+          "properties": {
+            "a": { "type": "string" }
+          },
+          "required": ["a"],
+          "additionalProperties": false
         }
       }
     )
@@ -3647,17 +3678,12 @@ describe("toJsonSchemaDocument", () => {
     }) {}
     assertJsonSchemaDocument(E, {
       schema: {
-        "$ref": "#/$defs/E"
-      },
-      definitions: {
-        E: {
-          "type": "object",
-          "properties": {
-            "a": { "type": "string" }
-          },
-          "required": ["a"],
-          "additionalProperties": false
-        }
+        "type": "object",
+        "properties": {
+          "a": { "type": "string" }
+        },
+        "required": ["a"],
+        "additionalProperties": false
       }
     })
   })

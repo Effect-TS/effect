@@ -6573,7 +6573,6 @@ export function isTrimmed(annotations?: Annotations.Filter) {
     (s: string) => s.trim() === s,
     {
       expected: "a string with no leading or trailing whitespace",
-
       representation: {
         id: "effect/schema/isTrimmed",
         payload: null
@@ -6847,7 +6846,6 @@ export function isUUID(version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, annotations?: An
     regExp,
     {
       expected: version ? `a UUID v${version}` : "a UUID",
-
       representation: {
         id: "effect/schema/isUUID",
         payload: { version: version ?? null }
@@ -6910,7 +6908,6 @@ export function isGUID(annotations?: Annotations.Filter) {
     GUID_REGEXP,
     {
       expected: "a GUID",
-
       representation: {
         id: "effect/schema/isGUID",
         payload: null
@@ -7017,7 +7014,6 @@ export function isBase64(annotations?: Annotations.Filter) {
     regExp,
     {
       expected: "a base64 encoded string",
-
       representation: {
         id: "effect/schema/isBase64",
         payload: null
@@ -7072,7 +7068,6 @@ export function isBase64Url(annotations?: Annotations.Filter) {
     regExp,
     {
       expected: "a base64url encoded string",
-
       representation: {
         id: "effect/schema/isBase64Url",
         payload: null
@@ -7126,7 +7121,6 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
     (s: string) => s.startsWith(startsWith),
     {
       expected: `a string starting with ${formatted}`,
-
       representation: {
         id: "effect/schema/isStartsWith",
         payload: { startsWith }
@@ -7183,7 +7177,6 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
     (s: string) => s.endsWith(endsWith),
     {
       expected: `a string ending with ${formatted}`,
-
       representation: {
         id: "effect/schema/isEndsWith",
         payload: { endsWith }
@@ -7240,7 +7233,6 @@ export function isIncludes(includes: string, annotations?: Annotations.Filter) {
     (s: string) => s.includes(includes),
     {
       expected: `a string including ${formatted}`,
-
       representation: {
         id: "effect/schema/isIncludes",
         payload: { includes }
@@ -7297,7 +7289,6 @@ export function isUppercased(annotations?: Annotations.Filter) {
     (s: string) => s.toUpperCase() === s,
     {
       expected: "a string with all characters in uppercase",
-
       representation: {
         id: "effect/schema/isUppercased",
         payload: null
@@ -7352,7 +7343,6 @@ export function isLowercased(annotations?: Annotations.Filter) {
     (s: string) => s.toLowerCase() === s,
     {
       expected: "a string with all characters in lowercase",
-
       representation: {
         id: "effect/schema/isLowercased",
         payload: null
@@ -7407,7 +7397,6 @@ export function isCapitalized(annotations?: Annotations.Filter) {
     (s: string) => s.charAt(0).toUpperCase() === s.charAt(0),
     {
       expected: "a string with the first character in uppercase",
-
       representation: {
         id: "effect/schema/isCapitalized",
         payload: null
@@ -7462,7 +7451,6 @@ export function isUncapitalized(annotations?: Annotations.Filter) {
     (s: string) => s.charAt(0).toLowerCase() === s.charAt(0),
     {
       expected: "a string with the first character in lowercase",
-
       representation: {
         id: "effect/schema/isUncapitalized",
         payload: null
@@ -7530,28 +7518,7 @@ const IsBetweenPayload = Struct({
  * @category Number checks
  * @since 4.0.0
  */
-export function isFinite(annotations?: Annotations.Filter) {
-  return makeFilter(
-    (n: number) => globalThis.Number.isFinite(n),
-    {
-      expected: "a finite number",
-
-      representation: {
-        id: "effect/schema/isFinite",
-        payload: null
-      },
-      toJsonSchema: () => ({ type: "number" }),
-      toCode: () => ({ runtime: "Schema.isFinite()" }),
-      arbitrary: {
-        constraint: {
-          noInfinity: true,
-          noNaN: true
-        }
-      },
-      ...annotations
-    }
-  )
-}
+export const isFinite: (annotations?: Annotations.Filter) => SchemaAST.Filter<number> = SchemaAST.isFinite
 
 /**
  * Reviver for persisted `isFinite` checks.
@@ -8086,7 +8053,6 @@ export const isMultipleOf = makeIsMultipleOf({
   zero: 0,
   annotate: (divisor) => ({
     expected: `a value that is a multiple of ${divisor}`,
-
     representation: {
       id: "effect/schema/isMultipleOf",
       payload: { divisor }
@@ -8139,7 +8105,6 @@ export function isInt(annotations?: Annotations.Filter) {
     (n: number) => globalThis.Number.isSafeInteger(n),
     {
       expected: "an integer",
-
       representation: {
         id: "effect/schema/isInt",
         payload: null
@@ -8287,12 +8252,10 @@ export function isDateValid(annotations?: Annotations.Filter) {
     (date) => !isNaN(date.getTime()),
     {
       expected: "a valid date",
-
       representation: {
         id: "effect/schema/isDateValid",
         payload: null
       },
-      toJsonSchema: () => ({ format: "date-time" }),
       toCode: () => ({ runtime: "Schema.isDateValid()" }),
       arbitrary: {
         constraint: {
@@ -8995,7 +8958,6 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
     (input) => input.length >= minLength,
     {
       expected: `a value with a length of at least ${minLength}`,
-
       representation: {
         id: "effect/schema/isMinLength",
         payload: { minLength }
@@ -9082,7 +9044,6 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
     (input) => input.length <= maxLength,
     {
       expected: `a value with a length of at most ${maxLength}`,
-
       representation: {
         id: "effect/schema/isMaxLength",
         payload: { maxLength }
@@ -9222,7 +9183,6 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
     (input) => input.size >= minSize,
     {
       expected: `a value with a size of at least ${minSize}`,
-
       representation: {
         id: "effect/schema/isMinSize",
         payload: { minSize }
@@ -9286,7 +9246,6 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
     (input) => input.size <= maxSize,
     {
       expected: `a value with a size of at most ${maxSize}`,
-
       representation: {
         id: "effect/schema/isMaxSize",
         payload: { maxSize }
@@ -9426,7 +9385,6 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
     (input) => Reflect.ownKeys(input).length >= minProperties,
     {
       expected: `a value with at least ${minProperties === 1 ? "1 entry" : `${minProperties} entries`}`,
-
       representation: {
         id: "effect/schema/isMinProperties",
         payload: { minProperties }
@@ -9489,7 +9447,6 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
     (input) => Reflect.ownKeys(input).length <= maxProperties,
     {
       expected: `a value with at most ${maxProperties === 1 ? "1 entry" : `${maxProperties} entries`}`,
-
       representation: {
         id: "effect/schema/isMaxProperties",
         payload: { maxProperties }
@@ -9633,7 +9590,6 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
     },
     {
       expected: "an object with property names matching the schema",
-
       representation: {
         id: "effect/schema/isPropertyNames",
         payload: null,
@@ -9687,7 +9643,6 @@ export function isUnique<T>(annotations?: Annotations.Filter) {
     (input) => Arr.dedupeWith(input, equivalence).length === input.length,
     {
       expected: "an array with unique items",
-
       representation: {
         id: "effect/schema/isUnique",
         payload: null
@@ -13176,7 +13131,7 @@ export interface Finite extends Number {
  * @category Number
  * @since 3.10.0
  */
-export const Finite: Finite = Number.check(isFinite())
+export const Finite: Finite = make(SchemaAST.finite)
 
 /**
  * Type-level representation of {@link Int}.
@@ -15236,7 +15191,7 @@ export function toJsonSchemaDocument(
   schema: Constraint,
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
-  const document = InternalToRepresentation.toRepresentation(toJsonSchemaTop(schema.ast), true)
+  const document = InternalToRepresentation.toRepresentation(toCodecJsonTop(schema.ast), true)
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
 
@@ -15278,7 +15233,9 @@ export interface toCodecJson<S extends Constraint> extends
  *
  * **Gotchas**
  *
- * Declarations must define a `toCodecJson` or `toCodec` annotation. A
+ * Declarations without a `toCodecJson` or `toCodec` annotation use `Json` as
+ * their encoded schema. This keeps codec construction total, but encoding or
+ * decoding can still fail when declaration values are not JSON values. A
  * `toCodecJson` callback can return `undefined` when the declaration is already
  * in canonical JSON form.
  *
@@ -15291,23 +15248,47 @@ export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
 
 const toCodecJsonTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
   const out = toCodecJsonBase(ast, toCodecJsonTop)
-  return out !== ast && SchemaAST.isOptional(ast) ? SchemaAST.optionalKeyLastLink(out) : out
+  const context = ast.context
+  if (out === ast || context === undefined) return out
+  return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
 })
+
+function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
+  return context.defaultValue === undefined ?
+    context :
+    new SchemaAST.Context(context.isOptional, context.isMutable, undefined, context.annotations)
+}
+
+function containsSymbolKey(ast: SchemaAST.AST): boolean {
+  const projected = SchemaAST.getLastEncoding(ast)
+  return projected._tag === "Symbol" ||
+    (projected._tag === "Union" && projected.types.some(containsSymbolKey))
+}
+
+function validateCanonicalObjectKeys(ast: SchemaAST.Objects): void {
+  if (ast.propertySignatures.some((ps) => typeof ps.name !== "string")) {
+    throw new globalThis.Error("Objects property names must be strings", { cause: ast })
+  }
+  if (ast.indexSignatures.some((is) => containsSymbolKey(is.parameter))) {
+    throw new globalThis.Error("Objects index signature parameters must not contain symbols", { cause: ast })
+  }
+}
 
 function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
   switch (ast._tag) {
     case "Declaration": {
       const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
       if (!Predicate.isFunction(getLink)) {
-        throw new globalThis.Error("Missing toCodecJson or toCodec annotation", { cause: ast })
+        return SchemaAST.replaceEncoding(ast, [SchemaAST.unknownToJson])
       }
       const typeParameters = ast.typeParameters.map((tp) => InternalSchema.make(SchemaAST.toEncoded(tp)))
       const link = getLink(typeParameters)
       return link === undefined ? ast : SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, recur)])
     }
     case "Unknown":
-    case "ObjectKeyword":
       return SchemaAST.replaceEncoding(ast, [SchemaAST.unknownToJson])
+    case "ObjectKeyword":
+      return SchemaAST.replaceEncoding(ast, [SchemaAST.objectKeywordToJson])
     case "Undefined":
     case "Void":
     case "Literal":
@@ -15318,10 +15299,8 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
     case "BigInt":
       return ast.toCodecStringTree()
     case "Objects": {
-      if (ast.propertySignatures.some((ps) => typeof ps.name !== "string")) {
-        throw new globalThis.Error("Objects property names must be strings", { cause: ast })
-      }
-      return ast.recur(recur, SchemaAST.parameterFromString)
+      validateCanonicalObjectKeys(ast)
+      return ast.recur(recur, identity)
     }
     case "Union": {
       const sortedTypes = InternalSchema.jsonReorder(ast.types)
@@ -15346,33 +15325,6 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
   return ast
 }
 
-const toJsonSchemaTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  const out = toJsonSchemaBase(ast, toJsonSchemaTop)
-  return out !== ast && SchemaAST.isOptional(ast) ? SchemaAST.optionalKeyLastLink(out) : out
-})
-
-function toJsonSchemaBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
-  switch (ast._tag) {
-    case "Declaration": {
-      const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
-      if (!Predicate.isFunction(getLink)) return ast
-      const typeParameters = ast.typeParameters.map((tp) => InternalSchema.make(SchemaAST.toEncoded(tp)))
-      const link = getLink(typeParameters)
-      if (link === undefined) return ast
-      const to = recur(link.to)
-      const context = ast.context === undefined ? to : SchemaAST.replaceContext(to, ast.context)
-      const annotations = ast.annotations === undefined ? context : SchemaAST.annotate(context, ast.annotations)
-      return SchemaAST.appendChecks(annotations, ast.checks)
-    }
-    case "Arrays":
-    case "Objects":
-    case "Union":
-    case "Suspend":
-      return ast.recur(recur)
-  }
-  return ast
-}
-
 /**
  * Derives an isomorphism codec from a schema. The encoded form is the
  * schema's `Iso` type — the intermediate representation used for round-tripping.
@@ -15386,7 +15338,9 @@ export function toCodecIso<S extends Constraint>(schema: S): Codec<S["Type"], S[
 
 const toCodecIsoTop = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
   const out = toCodecIsoBase(ast, toCodecIsoTop)
-  return out !== ast && SchemaAST.isOptional(ast) ? SchemaAST.optionalKeyLastLink(out) : out
+  return out !== ast && ast.context !== undefined ?
+    SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context)) :
+    out
 })
 
 function toCodecIsoBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
@@ -15684,10 +15638,8 @@ function serializerTree(
     case "BigInt":
       return ast.toCodecStringTree()
     case "Objects": {
-      if (ast.propertySignatures.some((ps) => typeof ps.name !== "string")) {
-        throw new globalThis.Error("Objects property names must be strings", { cause: ast })
-      }
-      return ast.recur(recur, SchemaAST.parameterFromString)
+      validateCanonicalObjectKeys(ast)
+      return ast.recur(recur, identity)
     }
     case "Union": {
       const sortedTypes = treeReorder(ast.types)
@@ -15740,8 +15692,8 @@ const serializerStringTree = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
   const out = serializerTree(ast, serializerStringTree, (ast) => {
     throw new globalThis.Error("Missing structural codec for StringTree", { cause: ast })
   })
-  if (out !== ast && SchemaAST.isOptional(ast)) {
-    return SchemaAST.optionalKeyLastLink(out)
+  if (out !== ast && ast.context !== undefined) {
+    return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context))
   }
   return out
 })

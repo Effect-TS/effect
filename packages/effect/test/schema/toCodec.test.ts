@@ -8,6 +8,7 @@ import {
   Redacted,
   Result,
   Schema,
+  SchemaAST,
   SchemaGetter,
   SchemaIssue,
   SchemaParser,
@@ -70,12 +71,15 @@ describe("Serializers", () => {
       })
 
       describe("Declaration", () => {
-        it("instanceOf without annotations", () => {
+        it("instanceOf without annotations", async () => {
           const schema = Schema.instanceOf(URL)
-          throws(
-            () => Schema.toCodecJson(schema),
-            "Missing toCodecJson or toCodec annotation"
+          const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+          await asserts.encoding().fail(
+            new URL("https://example.com"),
+            "Expected JSON value, got https://example.com/"
           )
+          await asserts.decoding().fail({}, "Expected <Declaration>, got {}")
         })
 
         describe("instanceOf with annotation", () => {
@@ -263,13 +267,13 @@ describe("Serializers", () => {
         await encoding.succeed({ a: "a", b: 1, c: true })
         await encoding.succeed(["a", 1, true])
         await encoding.fail("a", `Expected object | array | function, got "a"`)
-        await encoding.fail({ a: 1n }, `Expected JSON value, got {"a":1n}`)
+        await encoding.fail({ a: 1n }, `Expected JSON value, got 1n\n  at ["a"]`)
 
         const decoding = asserts.decoding()
         await decoding.succeed({ a: "a", b: 1, c: true })
         await decoding.succeed(["a", 1, true])
-        await decoding.fail("a", `Expected object | array | function, got "a"`)
-        await decoding.fail({ a: 1n }, `Expected JSON value, got {"a":1n}`)
+        await decoding.fail("a", `Expected array | object, got "a"`)
+        await decoding.fail({ a: 1n }, `Expected JSON value, got 1n\n  at ["a"]`)
       })
 
       it("Undefined", async () => {
@@ -308,6 +312,37 @@ describe("Serializers", () => {
       })
 
       describe("Number", () => {
+        it("reuses the Finite AST in the canonical encoding", () => {
+          const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(Schema.Number).ast)
+          strictEqual(encoded._tag, "Union")
+          if (encoded._tag === "Union") {
+            strictEqual(encoded.types[0], SchemaAST.finite)
+            strictEqual(encoded.types[0], Schema.Finite.ast)
+          }
+        })
+
+        it("does not propagate constructor defaults to the canonical encoding", () => {
+          const schema = Schema.Struct({
+            a: Schema.Number.pipe(
+              Schema.optionalKey,
+              Schema.mutableKey,
+              Schema.annotateKey({ description: "a" }),
+              Schema.withConstructorDefault(Effect.succeed(0))
+            )
+          })
+          const ast = Schema.toCodecJson(schema).ast
+          strictEqual(ast._tag, "Objects")
+          if (ast._tag === "Objects") {
+            const type = ast.propertySignatures[0].type
+            assertTrue(type.context?.defaultValue !== undefined)
+            const encoded = SchemaAST.getLastEncoding(type)
+            strictEqual(encoded.context?.isOptional, true)
+            strictEqual(encoded.context?.isMutable, true)
+            strictEqual(encoded.context?.defaultValue, undefined)
+            deepStrictEqual(encoded.context?.annotations, { description: "a" })
+          }
+        })
+
         it("Number", async () => {
           const schema = Schema.Number
           const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
@@ -327,9 +362,9 @@ describe("Serializers", () => {
           await decoding.succeed("Infinity", Infinity)
           await decoding.succeed("-Infinity", -Infinity)
           await decoding.succeed("NaN", NaN)
-          await decoding.succeed(Infinity)
-          await decoding.succeed(-Infinity)
-          await decoding.succeed(NaN)
+          await decoding.fail(Infinity, "Expected a finite number, got Infinity")
+          await decoding.fail(-Infinity, "Expected a finite number, got -Infinity")
+          await decoding.fail(NaN, "Expected a finite number, got NaN")
           await decoding.fail(null, `Expected number | "Infinity" | "-Infinity" | "NaN", got null`)
           await decoding.fail("a", `Expected "Infinity" | "-Infinity" | "NaN", got "a"`)
         })
@@ -406,9 +441,9 @@ describe("Serializers", () => {
             await decoding.succeed("Infinity", Infinity)
             await decoding.fail("-Infinity", `Expected a value greater than or equal to 1, got -Infinity`)
             await decoding.fail("NaN", `Expected a value greater than or equal to 1, got NaN`)
-            await decoding.succeed(Infinity)
-            await decoding.fail(-Infinity, `Expected a value greater than or equal to 1, got -Infinity`)
-            await decoding.fail(NaN, `Expected a value greater than or equal to 1, got NaN`)
+            await decoding.fail(Infinity, "Expected a finite number, got Infinity")
+            await decoding.fail(-Infinity, "Expected a finite number, got -Infinity")
+            await decoding.fail(NaN, "Expected a finite number, got NaN")
             await decoding.fail(null, `Expected number | "Infinity" | "-Infinity" | "NaN", got null`)
             await decoding.fail("a", `Expected "Infinity" | "-Infinity" | "NaN", got "a"`)
           })
@@ -673,21 +708,23 @@ describe("Serializers", () => {
         })
       })
 
-      it("Record(Symbol, Date)", async () => {
+      it("Record(Symbol, Date)", () => {
         const schema = Schema.Record(Schema.Symbol, Schema.Date)
+        throws(
+          () => Schema.toCodecJson(schema),
+          "Objects index signature parameters must not contain symbols"
+        )
+      })
+
+      it("Struct with an explicitly encoded Symbol property name", async () => {
+        const field = Symbol.for("field")
+        const schema = Schema.Struct({
+          [field]: Schema.String
+        }).pipe(Schema.encodeKeys({ [field]: "field" }))
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
-        const encoding = asserts.encoding()
-        await encoding.succeed(
-          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") },
-          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" }
-        )
-
-        const decoding = asserts.decoding()
-        await decoding.succeed(
-          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" },
-          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") }
-        )
+        await asserts.encoding().succeed({ [field]: "a" }, { field: "a" })
+        await asserts.decoding().succeed({ field: "a" }, { [field]: "a" })
       })
 
       describe("Tuple", () => {
@@ -1575,11 +1612,58 @@ describe("Serializers", () => {
     })
   })
 
+  describe("toCodecIso", () => {
+    it("does not propagate constructor defaults to the canonical encoding", () => {
+      const schema = Schema.Struct({
+        a: Schema.URL.pipe(
+          Schema.overrideToCodecIso(Schema.String, SchemaTransformation.urlFromString),
+          Schema.optionalKey,
+          Schema.mutableKey,
+          Schema.annotateKey({ description: "a" }),
+          Schema.withConstructorDefault(Effect.succeed(new URL("https://example.com")))
+        )
+      })
+      const ast = Schema.toCodecIso(schema).ast
+      strictEqual(ast._tag, "Objects")
+      if (ast._tag === "Objects") {
+        const type = ast.propertySignatures[0].type
+        assertTrue(type.context?.defaultValue !== undefined)
+        const encoded = SchemaAST.getLastEncoding(type)
+        strictEqual(encoded.context?.isOptional, true)
+        strictEqual(encoded.context?.isMutable, true)
+        strictEqual(encoded.context?.defaultValue, undefined)
+        deepStrictEqual(encoded.context?.annotations, { description: "a" })
+      }
+    })
+  })
+
   describe("toCodecStringTree", () => {
     it("exposes the source schema", () => {
       const schema = Schema.FiniteFromString
       const serializer = Schema.toCodecStringTree(schema)
       strictEqual(serializer.schema, schema)
+    })
+
+    it("does not propagate constructor defaults to the canonical encoding", () => {
+      const schema = Schema.Struct({
+        a: Schema.Number.pipe(
+          Schema.optionalKey,
+          Schema.mutableKey,
+          Schema.annotateKey({ description: "a" }),
+          Schema.withConstructorDefault(Effect.succeed(0))
+        )
+      })
+      const ast = Schema.toCodecStringTree(schema).ast
+      strictEqual(ast._tag, "Objects")
+      if (ast._tag === "Objects") {
+        const type = ast.propertySignatures[0].type
+        assertTrue(type.context?.defaultValue !== undefined)
+        const encoded = SchemaAST.getLastEncoding(type)
+        strictEqual(encoded.context?.isOptional, true)
+        strictEqual(encoded.context?.isMutable, true)
+        strictEqual(encoded.context?.defaultValue, undefined)
+        deepStrictEqual(encoded.context?.annotations, { description: "a" })
+      }
     })
 
     it("should reorder the types in the Union based on the encoded side", async () => {
@@ -2159,21 +2243,23 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         })
       })
 
-      it("Record(Symbol, Date)", async () => {
+      it("Record(Symbol, Date)", () => {
         const schema = Schema.Record(Schema.Symbol, Schema.Date)
+        throws(
+          () => Schema.toCodecStringTree(schema),
+          "Objects index signature parameters must not contain symbols"
+        )
+      })
+
+      it("Struct with an explicitly encoded Symbol property name", async () => {
+        const field = Symbol.for("field")
+        const schema = Schema.Struct({
+          [field]: Schema.String
+        }).pipe(Schema.encodeKeys({ [field]: "field" }))
         const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
 
-        const encoding = asserts.encoding()
-        await encoding.succeed(
-          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") },
-          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" }
-        )
-
-        const decoding = asserts.decoding()
-        await decoding.succeed(
-          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" },
-          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") }
-        )
+        await asserts.encoding().succeed({ [field]: "a" }, { field: "a" })
+        await asserts.decoding().succeed({ field: "a" }, { [field]: "a" })
       })
 
       describe("Tuple", () => {
@@ -3147,17 +3233,11 @@ line2</root>`
       )
     })
 
-    it("Record with Symbol Keys", async () => {
-      const sym1 = Symbol.for("key1")
-      const sym2 = Symbol.for("key2")
+    it("Record with Symbol Keys", () => {
       const schema = Schema.Record(Schema.Symbol, Schema.String)
-      await assertXml(
-        schema,
-        { [sym1]: "value1", [sym2]: "value2" },
-        `<root>
-  <Symbol_key1_ data-name="Symbol(key1)">value1</Symbol_key1_>
-  <Symbol_key2_ data-name="Symbol(key2)">value2</Symbol_key2_>
-</root>`
+      throws(
+        () => Schema.toEncoderXml(schema),
+        "Objects index signature parameters must not contain symbols"
       )
     })
 
