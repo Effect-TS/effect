@@ -410,7 +410,7 @@ export const get: {
         MutableHashMap.set(self.map, key, oentry.value)
         return oentry.value.await()
       }
-      const entry = makeEntry(fiber, self.lookup(key))
+      const entry = new EntryImpl(fiber, self.lookup(key))
       entry.fiber.addObserver((exit) => {
         if (effect.exitHasInterrupts(exit)) {
           MutableHashMap.remove(self.map, key)
@@ -431,14 +431,21 @@ export const get: {
     })
 )
 
-const makeEntry = <A, E, R>(
-  parent: Fiber.Fiber<unknown, unknown>,
-  valueEffect: Effect.Effect<A, E, R>
-): Entry<A, E> => ({
-  expiresAt: undefined,
-  awaiters: 0,
-  fiber: effect.forkUnsafe(parent, valueEffect, true, true),
-  await() {
+class EntryImpl<A, E> implements Entry<A, E> {
+  expiresAt: number | undefined
+  awaiters: number
+  fiber: Fiber.Fiber<A, E>
+
+  constructor(
+    parent: Fiber.Fiber<unknown, unknown>,
+    valueEffect: Effect.Effect<A, E, any>
+  ) {
+    this.fiber = effect.forkUnsafe(parent, valueEffect, true, true)
+    this.awaiters = 0
+    this.expiresAt = undefined
+  }
+
+  await(): Effect.Effect<A, E> {
     const exit = this.fiber.pollUnsafe()
     if (exit) return exit
     this.awaiters++
@@ -448,7 +455,7 @@ const makeEntry = <A, E, R>(
       return effect.fiberInterrupt(this.fiber)
     })
   }
-})
+}
 
 const hasExpired = <A, E>(entry: Entry<A, E>, fiber: Fiber.Fiber<unknown, unknown>): boolean => {
   if (entry.expiresAt === undefined) {
@@ -734,7 +741,7 @@ export const set: {
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key, value: A): Effect.Effect<void> =>
     core.withFiber((fiber) => {
       const exit = core.exitSucceed(value)
-      const entry = makeEntry(fiber, exit)
+      const entry = new EntryImpl(fiber, exit)
       const ttl = self.timeToLive(exit, key)
       if (Duration.isZero(ttl)) {
         MutableHashMap.remove(self.map, key)
@@ -1091,7 +1098,7 @@ export const refresh: {
   2,
   <Key, A, E, R>(self: Cache<Key, A, E, R>, key: Key): Effect.Effect<A, E, R> =>
     core.withFiber((fiber) => {
-      const entry = makeEntry(fiber, self.lookup(key))
+      const entry = new EntryImpl(fiber, self.lookup(key))
       const existing = getImpl(self, key, fiber, false) !== undefined
       if (!existing) {
         MutableHashMap.set(self.map, key, entry)
