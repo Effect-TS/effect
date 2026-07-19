@@ -66,9 +66,9 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
           Exit.succeed(new User({ id: 2, name: "Jane" }))
         ])
       }).pipe(
-        flakyTest,
         Effect.provide(layer),
-        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void)
+        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void),
+        flakyTest
       ))
 
     it.effect("requireServicesAt: 'lookup' requires lookup services at get-time", () =>
@@ -96,16 +96,16 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
         assert.deepStrictEqual(result2, new User({ id: 2, name: "second" }))
         assert.deepStrictEqual(result3, new User({ id: 1, name: "first" }))
       }).pipe(
-        flakyTest,
         Effect.provide(layer),
-        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void)
+        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void),
+        flakyTest
       ))
   })
 
 const flakyTest = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.timeoutOrElse({
-      duration: "10 seconds",
+      duration: "45 seconds",
       orElse: () => Effect.void
     })
   )
