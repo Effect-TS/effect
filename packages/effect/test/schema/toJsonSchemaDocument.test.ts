@@ -95,6 +95,35 @@ describe("toJsonSchemaDocument", () => {
     )
   })
 
+  it("preserves shared non-trivial schemas with references", () => {
+    const shared = Schema.Struct({ value: Schema.String })
+
+    assertJsonSchemaDocument(
+      Schema.Struct({ left: shared, right: shared }),
+      {
+        schema: {
+          type: "object",
+          properties: {
+            left: { $ref: "#/$defs/Objects_" },
+            right: { $ref: "#/$defs/Objects_" }
+          },
+          required: ["left", "right"],
+          additionalProperties: false
+        },
+        definitions: {
+          Objects_: {
+            type: "object",
+            properties: {
+              value: { type: "string" }
+            },
+            required: ["value"],
+            additionalProperties: false
+          }
+        }
+      }
+    )
+  })
+
   describe("options", () => {
     it("generateDescriptions: true", () => {
       assertJsonSchemaDocument(

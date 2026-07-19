@@ -243,6 +243,8 @@ function lowerASTs(
   const referenceMap = new Map<SchemaAST.AST, string>()
   const uniqueReferences = new Set(externalDefinitions.map((definition) => definition.key))
   const visiting = new Set<SchemaAST.AST>()
+  const visited = new Set<SchemaAST.AST>()
+  const shared = new Set<SchemaAST.AST>()
   const externalBodyReferences = new Map<SchemaAST.AST, string | null>()
 
   for (const definition of externalDefinitions) {
@@ -253,6 +255,9 @@ function lowerASTs(
       externalBodyReferences.has(definition.body) ? null : definition.key
     )
   }
+
+  for (const ast of asts) visit(ast)
+  for (const definition of externalDefinitions) visit(definition.body)
 
   const representations = Arr.map(asts, (ast) => recur(ast))
 
@@ -270,6 +275,40 @@ function lowerASTs(
     }
     uniqueReferences.add(candidate)
     return candidate
+  }
+
+  function visit(input: SchemaAST.AST): void {
+    const ast = encoded ? SchemaAST.getLastEncoding(input) : input
+    if (visited.has(ast)) {
+      if (ast._tag === "Arrays" || ast._tag === "Objects" || ast._tag === "Union") shared.add(ast)
+      return
+    }
+    visited.add(ast)
+    visitChecks(ast.checks)
+    switch (ast._tag) {
+      case "Declaration":
+      case "Arrays":
+      case "Objects":
+      case "Union":
+        ast.recur((child) => {
+          visit(child)
+          return child
+        })
+        break
+      case "TemplateLiteral":
+        ast.parts.forEach(visit)
+        break
+      case "Suspend":
+        visit(ast.thunk())
+        break
+    }
+  }
+
+  function visitChecks(checks: SchemaAST.Checks | undefined): void {
+    checks?.forEach((check) => {
+      check.annotations?.representation?.schemas?.forEach((schema) => visit(SchemaAST.toType(schema)))
+      if (check._tag === "FilterGroup") visitChecks(check.checks)
+    })
   }
 
   function recur(
@@ -309,6 +348,13 @@ function lowerASTs(
         return { _tag: "Reference", $ref: identifier }
       }
       references[reference] = representation
+      return { _tag: "Reference", $ref: reference }
+    }
+
+    if (ownedReference === undefined && shared.has(ast)) {
+      const reference = generateReference(`${ast._tag}_`)
+      referenceMap.set(ast, reference)
+      references[reference] = on(ast)
       return { _tag: "Reference", $ref: reference }
     }
 

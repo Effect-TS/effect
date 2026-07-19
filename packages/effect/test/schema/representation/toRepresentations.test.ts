@@ -38,6 +38,31 @@ describe("SchemaRepresentation.toRepresentations", () => {
     })
   })
 
+  it("shares an anonymous non-trivial schema between roots", () => {
+    const shared = Schema.Struct({ value: Schema.String })
+    const document = SchemaRepresentation.toRepresentations([shared.ast, shared.ast])
+
+    assert.deepStrictEqual(document, {
+      representations: [
+        { _tag: "Reference", $ref: "Objects_" },
+        { _tag: "Reference", $ref: "Objects_" }
+      ],
+      references: {
+        Objects_: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "value",
+            type: { _tag: "String", checks: [] },
+            isOptional: false,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        }
+      }
+    })
+  })
+
   it("assigns distinct references to different schemas with the same identifier", () => {
     const first = Schema.String.annotate({ identifier: "Value", description: "first" })
     const second = Schema.Number.annotate({ identifier: "Value", description: "second" })

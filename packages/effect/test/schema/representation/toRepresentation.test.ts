@@ -400,6 +400,27 @@ describe("SchemaRepresentation.toRepresentation", () => {
     )
   })
 
+  it("extracts shared representation dependencies of filters", () => {
+    const shared = Schema.Struct({ value: Schema.String })
+    const filter = Schema.makeFilter<string>(() => true, {
+      representation: {
+        id: "acme/schema/Custom",
+        payload: null,
+        schemas: [shared.ast, shared.ast]
+      }
+    })
+    const document = SchemaRepresentation.toRepresentation(Schema.String.check(filter).ast)
+    const representation = document.representation
+
+    assert.strictEqual(representation._tag, "String")
+    if (representation._tag !== "String") return
+    assert.deepStrictEqual(representation.checks[0].representation?.schemas, [
+      { _tag: "Reference", $ref: "Objects_" },
+      { _tag: "Reference", $ref: "Objects_" }
+    ])
+    assert.deepStrictEqual(Object.keys(document.references), ["Objects_"])
+  })
+
   it("converts checks on arrays", () => {
     const representation = SchemaRepresentation.toRepresentation(
       Schema.Array(Schema.String).check(Schema.isMinLength(1)).ast
@@ -485,6 +506,84 @@ describe("SchemaRepresentation.toRepresentation", () => {
       },
       references: {}
     })
+  })
+
+  it("extracts shared Objects, Arrays, and Union schemas into references", () => {
+    const object = Schema.Struct({ value: Schema.String })
+    const array = Schema.Array(Schema.Number)
+    const union = Schema.Union([Schema.String, Schema.Number])
+    const document = SchemaRepresentation.toRepresentation(
+      Schema.Tuple([object, object, array, array, union, union]).ast
+    )
+
+    assert.deepStrictEqual(document, {
+      representation: {
+        _tag: "Arrays",
+        elements: [
+          { type: { _tag: "Reference", $ref: "Objects_" }, isOptional: false },
+          { type: { _tag: "Reference", $ref: "Objects_" }, isOptional: false },
+          { type: { _tag: "Reference", $ref: "Arrays_" }, isOptional: false },
+          { type: { _tag: "Reference", $ref: "Arrays_" }, isOptional: false },
+          { type: { _tag: "Reference", $ref: "Union_" }, isOptional: false },
+          { type: { _tag: "Reference", $ref: "Union_" }, isOptional: false }
+        ],
+        rest: [],
+        checks: []
+      },
+      references: {
+        Objects_: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "value",
+            type: { _tag: "String", checks: [] },
+            isOptional: false,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        },
+        Arrays_: {
+          _tag: "Arrays",
+          elements: [],
+          rest: [{ _tag: "Number", checks: [] }],
+          checks: []
+        },
+        Union_: {
+          _tag: "Union",
+          types: [
+            { _tag: "String", checks: [] },
+            { _tag: "Number", checks: [] }
+          ],
+          mode: "anyOf",
+          checks: []
+        }
+      }
+    })
+  })
+
+  it("does not extract structurally equivalent schemas with distinct ASTs", () => {
+    const first = Schema.Struct({ value: Schema.String })
+    const second = Schema.Struct({ value: Schema.String })
+    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([first, second]).ast)
+
+    assert.deepStrictEqual(document.references, {})
+  })
+
+  it("does not extract a child solely because its shared parent is reused", () => {
+    const child = Schema.Struct({ value: Schema.String })
+    const parent = Schema.Struct({ child })
+    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([parent, parent]).ast)
+
+    assert.deepStrictEqual(Object.keys(document.references), ["Objects_"])
+  })
+
+  it("does not extract shared trivial or Suspend schemas", () => {
+    const suspend = Schema.suspend(() => Schema.String)
+    const document = SchemaRepresentation.toRepresentation(
+      Schema.Tuple([Schema.String, Schema.String, suspend, suspend]).ast
+    )
+
+    assert.deepStrictEqual(document.references, {})
   })
 
   it("extracts a named schema into references", () => {
