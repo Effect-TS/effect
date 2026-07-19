@@ -25,10 +25,7 @@ import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
-import {
-  appendPreResponseHandlerUnsafe as appendPreResponseHandlerUnsafeInternal,
-  requestPreResponseHandlers
-} from "./internal/preResponseHandler.ts"
+import * as preResponseHandler from "./internal/preResponseHandler.ts"
 
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
@@ -49,7 +46,7 @@ export const toHandled = <E, R, EH, RH>(
       const fiber = Fiber.getCurrent()!
       reportCauseUnsafe(fiber, cause)
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-      const handler = requestPreResponseHandlers.get(request.source)
+      const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
       const cont = cause.reasons.length === 0 ? Effect.succeed(response) : Effect.failCause(cause)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
@@ -72,7 +69,7 @@ export const toHandled = <E, R, EH, RH>(
     onSuccess: (response) => {
       const fiber = Fiber.getCurrent()!
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-      const handler = requestPreResponseHandlers.get(request.source)
+      const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
       if (handler === undefined) {
         ;(request as any)[handledSymbol] = true
         return Effect.mapEager(handleResponse(request, response), () => response)
@@ -204,7 +201,7 @@ export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Ef
 export const appendPreResponseHandlerUnsafe: (
   request: HttpServerRequest,
   handler: PreResponseHandler
-) => void = appendPreResponseHandlerUnsafeInternal
+) => void = preResponseHandler.appendPreResponseHandlerUnsafe
 
 /**
  * Runs an effect after registering a pre-response handler for the current HTTP server request.
