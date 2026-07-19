@@ -359,12 +359,6 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
   /**
    * Formats the invalid flag or argument value with the expected input.
    *
-   * **Details**
-   *
-   * When `expected` is already a complete `Expected ...` sentence (e.g. a
-   * schema decode message), it is appended as-is instead of being prefixed
-   * with another `Expected:` label.
-   *
    * @since 4.0.0
    */
   override get message() {
