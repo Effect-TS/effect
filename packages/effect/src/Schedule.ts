@@ -839,6 +839,12 @@ const maxDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
  * Returns a new `Schedule` that recurs on the specified `Cron` schedule and
  * outputs the duration between recurrences.
  *
+ * **Details**
+ *
+ * In a named time zone, nonexistent occurrences catch up at their later
+ * interpretation and repeated occurrences run once at their earlier
+ * interpretation.
+ *
  * **Example** (Scheduling work with cron expressions)
  *
  * ```ts
@@ -976,7 +982,7 @@ export const cron: {
       return Cause.done(Duration.zero)
     }
     return effect.sync(() => {
-      const next = Cron.next(cron, now).getTime()
+      const next = Cron.next(cron, now, { gap: "later", fold: "earlier" }).getTime()
       const duration = Duration.millis(next - now)
       return [duration, duration]
     })

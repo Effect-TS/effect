@@ -89,7 +89,7 @@ export const make = <E, R>(options: {
     `ClusterCron/${options.name}`,
     Effect.gen(function*() {
       const now = yield* DateTime.now
-      const next = DateTime.fromDateUnsafe(Cron.next(options.cron, now))
+      const next = DateTime.fromDateUnsafe(Cron.next(options.cron, now, { gap: "later", fold: "earlier" }))
       const entityId = options.calculateNextRunFromPrevious ? "initial" : DateTime.formatIso(next)
       const client = (yield* CronEntity.client)(entityId)
       yield* client.run({ dateTime: next }, { discard: true })
@@ -123,7 +123,8 @@ export const make = <E, R>(options: {
             const now = yield* DateTime.now
             const next = DateTime.fromDateUnsafe(Cron.next(
               options.cron,
-              options.calculateNextRunFromPrevious ? request.payload.dateTime : now
+              options.calculateNextRunFromPrevious ? request.payload.dateTime : now,
+              { gap: "later", fold: "earlier" }
             ))
             const client = makeClient(DateTime.formatIso(next))
             return yield* client.run({ dateTime: next }, { discard: true }).pipe(

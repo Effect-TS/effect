@@ -117,6 +117,128 @@ export interface Cron extends Pipeable, Equal.Equal, Inspectable {
   }
 }
 
+/**
+ * A scheduled wall-clock candidate and its possible interpretations in the
+ * cron time zone.
+ *
+ * **Details**
+ *
+ * An exact candidate has one matching instant, a gap has no matching instant,
+ * and a fold has two matching instants. Gap candidates retain the earlier and
+ * later DateTime interpretations so consumers can choose a catch-up policy.
+ *
+ * @see {@link nextCandidate} for finding candidates in forward order
+ * @see {@link prevCandidate} for finding candidates in reverse order
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Candidate = ExactCandidate | GapCandidate | FoldCandidate
+
+/**
+ * Common wall-clock fields shared by all candidate variants.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface CandidateBase {
+  /** The local wall-clock fields selected by the cron expression. */
+  readonly scheduled: DateTime.DateTime.Parts
+}
+
+/**
+ * A candidate with one matching instant.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ExactCandidate extends CandidateBase {
+  readonly _tag: "Exact"
+  readonly date: Date
+}
+
+/**
+ * A nonexistent wall-clock candidate caused by a forward offset transition.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface GapCandidate extends CandidateBase {
+  readonly _tag: "Gap"
+  readonly earlier: Date
+  readonly later: Date
+}
+
+/**
+ * A repeated wall-clock candidate with two matching instants.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface FoldCandidate extends CandidateBase {
+  readonly _tag: "Fold"
+  readonly earlier: Date
+  readonly later: Date
+  /** The transition instant at which the second pass through the repeated interval begins. */
+  readonly start: Date
+  /** The first instant after the repeated wall-clock interval. */
+  readonly end: Date
+}
+
+/**
+ * Shared gap and fold policies for cron traversal.
+ *
+ * **Details**
+ *
+ * `gap` defaults to `"skip"`, and `fold` defaults to `"both"`. These defaults
+ * make `next` and `prev` return only literal matching instants. Use `"later"`
+ * gaps and `"earlier"` folds for catch-up and run-once scheduler behavior.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface TraversalOptions {
+  readonly gap?: "skip" | "earlier" | "later" | undefined
+  readonly fold?: "both" | "earlier" | "later" | undefined
+}
+
+/**
+ * Matches a `Candidate` by handling its exact, gap, and fold variants.
+ *
+ * **When to use**
+ *
+ * Use when applying a traversal or scheduling policy to a candidate returned
+ * by {@link nextCandidate} or {@link prevCandidate}.
+ *
+ * @category pattern matching
+ * @since 4.0.0
+ */
+export const matchCandidate: {
+  <A, B, C>(options: {
+    readonly onExact: (candidate: ExactCandidate) => A
+    readonly onGap: (candidate: GapCandidate) => B
+    readonly onFold: (candidate: FoldCandidate) => C
+  }): (self: Candidate) => A | B | C
+  <A, B, C>(self: Candidate, options: {
+    readonly onExact: (candidate: ExactCandidate) => A
+    readonly onGap: (candidate: GapCandidate) => B
+    readonly onFold: (candidate: FoldCandidate) => C
+  }): A | B | C
+} = dual(2, <A, B, C>(self: Candidate, options: {
+  readonly onExact: (candidate: ExactCandidate) => A
+  readonly onGap: (candidate: GapCandidate) => B
+  readonly onFold: (candidate: FoldCandidate) => C
+}): A | B | C => {
+  switch (self._tag) {
+    case "Exact":
+      return options.onExact(self)
+    case "Gap":
+      return options.onGap(self)
+    case "Fold":
+      return options.onFold(self)
+  }
+})
+
 function toPojo(cron: Cron): Record<string, unknown> {
   const out: Record<string, unknown> = {
     tz: cron.tz,
@@ -701,6 +823,180 @@ export const match = (cron: Cron, date: DateTime.DateTime.Input): boolean => {
 const daysInMonth = (date: Date): number =>
   new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate()
 
+const candidateFromWallTime = (wallTime: Date, zone: DateTime.TimeZone): Candidate => {
+  const scheduled: DateTime.DateTime.Parts = {
+    millisecond: wallTime.getUTCMilliseconds(),
+    second: wallTime.getUTCSeconds(),
+    minute: wallTime.getUTCMinutes(),
+    hour: wallTime.getUTCHours(),
+    day: wallTime.getUTCDate(),
+    month: wallTime.getUTCMonth() + 1,
+    year: wallTime.getUTCFullYear()
+  }
+  const earlier = dateTime.makeZonedUnsafe(wallTime, {
+    timeZone: zone,
+    adjustForTimeZone: true,
+    disambiguation: "earlier"
+  })
+  const later = dateTime.makeZonedUnsafe(wallTime, {
+    timeZone: zone,
+    adjustForTimeZone: true,
+    disambiguation: "later"
+  })
+  const earlierDate = dateTime.toDateUtc(earlier)
+  const laterDate = dateTime.toDateUtc(later)
+  if (earlierDate.getTime() === laterDate.getTime()) {
+    return { _tag: "Exact", scheduled, date: earlierDate }
+  }
+  if (dateTime.toDate(earlier).getTime() === wallTime.getTime()) {
+    const bounds = foldBounds(earlierDate, laterDate, zone)
+    return {
+      _tag: "Fold",
+      scheduled,
+      earlier: earlierDate,
+      later: laterDate,
+      start: bounds.start,
+      end: bounds.end
+    }
+  }
+  return { _tag: "Gap", scheduled, earlier: earlierDate, later: laterDate }
+}
+
+const foldBounds = (earlier: Date, later: Date, zone: DateTime.TimeZone): {
+  readonly start: Date
+  readonly end: Date
+} => {
+  const earlierTime = earlier.getTime()
+  const laterTime = later.getTime()
+  const laterOffset = dateTime.makeZonedUnsafe(later, { timeZone: zone }).pipe(dateTime.zonedOffset)
+  let low = earlierTime
+  let high = laterTime
+  // The fold interpretations straddle exactly one offset transition. Find its
+  // first instant, then move from the repeated interval's start to its end.
+  while (low + 1 < high) {
+    const middle = Math.floor((low + high) / 2)
+    const offset = dateTime.makeZonedUnsafe(middle, { timeZone: zone }).pipe(dateTime.zonedOffset)
+    if (offset === laterOffset) {
+      high = middle
+    } else {
+      low = middle
+    }
+  }
+  return {
+    start: new Date(high),
+    end: new Date(high + laterTime - earlierTime)
+  }
+}
+
+const foldEndWallTime = (candidate: FoldCandidate, zone: DateTime.TimeZone): Date => {
+  return dateTime.makeZonedUnsafe(candidate.end, { timeZone: zone }).pipe(dateTime.toDate)
+}
+
+const foldStartWallTime = (candidate: FoldCandidate, zone: DateTime.TimeZone): Date => {
+  return dateTime.makeZonedUnsafe(candidate.start, { timeZone: zone }).pipe(dateTime.toDate)
+}
+
+const nextInFold = (
+  cron: Cron,
+  cursor: DateTime.DateTime.Input,
+  cursorTime: number,
+  fold: FoldCandidate,
+  policy: TraversalOptions["fold"]
+): Date | undefined => {
+  const duration = fold.later.getTime() - fold.earlier.getTime()
+  if (cursorTime < fold.start.getTime()) {
+    if (policy !== "later") {
+      const candidate = stepCronCandidate(cron, cursor, "next", false, false)
+      if (candidate._tag === "Fold" && candidate.earlier.getTime() > cursorTime) {
+        return candidate.earlier
+      }
+      if (policy === "earlier") return undefined
+    }
+    const candidate = stepCronCandidate(
+      cron,
+      new Date(fold.start.getTime() - duration - 1_000),
+      "next",
+      false,
+      false
+    )
+    return candidate._tag === "Fold" ? candidate.later : undefined
+  }
+  if (policy === "earlier") return undefined
+  const candidate = stepCronCandidate(cron, cursor, "next", false, false)
+  return candidate._tag === "Fold" && candidate.later.getTime() > cursorTime ? candidate.later : undefined
+}
+
+const prevInFold = (
+  cron: Cron,
+  cursor: DateTime.DateTime.Input,
+  cursorTime: number,
+  fold: FoldCandidate,
+  policy: TraversalOptions["fold"]
+): Date | undefined => {
+  if (cursorTime >= fold.start.getTime()) {
+    if (policy !== "earlier") {
+      const candidate = stepCronCandidate(cron, cursor, "prev", false, false)
+      if (candidate._tag === "Fold" && candidate.later.getTime() < cursorTime) {
+        return candidate.later
+      }
+      if (policy === "later") return undefined
+    }
+    const candidate = stepCronCandidate(cron, fold.end, "prev", false, false)
+    return candidate._tag === "Fold" ? candidate.earlier : undefined
+  }
+  if (policy === "later") return undefined
+  const candidate = stepCronCandidate(cron, cursor, "prev", false, false)
+  return candidate._tag === "Fold" && candidate.earlier.getTime() < cursorTime ? candidate.earlier : undefined
+}
+
+/**
+ * Returns the next scheduled wall-clock candidate and all of its time-zone
+ * interpretations.
+ *
+ * **When to use**
+ *
+ * Use when you need to choose how nonexistent or repeated local times should
+ * be handled instead of using the literal matching behavior of {@link next}.
+ *
+ * **Details**
+ *
+ * The result distinguishes exact times, forward-transition gaps, and
+ * backward-transition folds. A fold may contain one instant before and one
+ * instant after the supplied date/time.
+ *
+ * @see {@link prevCandidate} for reverse candidate traversal
+ * @see {@link next} for the next literal matching instant
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const nextCandidate = (cron: Cron, after?: DateTime.DateTime.Input): Candidate =>
+  stepCronCandidate(cron, after, "next")
+
+/**
+ * Returns the previous scheduled wall-clock candidate and all of its time-zone
+ * interpretations.
+ *
+ * **When to use**
+ *
+ * Use when you need to choose how nonexistent or repeated local times should
+ * be handled instead of using the literal matching behavior of {@link prev}.
+ *
+ * **Details**
+ *
+ * The result distinguishes exact times, forward-transition gaps, and
+ * backward-transition folds. A fold may contain one instant before and one
+ * instant after the supplied date/time.
+ *
+ * @see {@link nextCandidate} for forward candidate traversal
+ * @see {@link prev} for the previous literal matching instant
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const prevCandidate = (cron: Cron, before?: DateTime.DateTime.Input): Candidate =>
+  stepCronCandidate(cron, before, "prev")
+
 /**
  * Returns the next scheduled date/time for the given Cron instance.
  *
@@ -711,9 +1007,11 @@ const daysInMonth = (date: Date): number =>
  *
  * **Details**
  *
- * Searches for the next date and time when the cron schedule should trigger,
- * starting after the specified date/time or after the current time when no
- * date is provided.
+ * Searches for the next literal matching instant, starting after the supplied
+ * date/time or after the current time when no date is provided. Nonexistent
+ * wall times are skipped, while both instants of a repeated wall time are
+ * returned in chronological order. Pass `TraversalOptions` to select a
+ * different gap or fold policy.
  *
  * **Example** (Finding the next occurrence)
  *
@@ -733,13 +1031,64 @@ const daysInMonth = (date: Date): number =>
  * ```
  *
  * @see {@link prev} for finding the previous scheduled occurrence
+ * @see {@link nextCandidate} for inspecting gaps and folds
+ * @see {@link TraversalOptions} for configuring gap and fold handling
  * @see {@link sequence} for iterating future scheduled occurrences
  *
  * @category getters
  * @since 2.0.0
  */
-export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  return stepCron(cron, now, "next")
+export const next = (cron: Cron, after?: DateTime.DateTime.Input, options?: TraversalOptions): Date => {
+  return nextWithOptions(cron, after ?? new Date(), options ?? {})
+}
+
+const nextWithOptions = (
+  cron: Cron,
+  initial: DateTime.DateTime.Input,
+  options: TraversalOptions
+): Date => {
+  let cursor = initial
+  const initialZoned = dateTime.makeZonedUnsafe(cursor, { timeZone: Option.getOrUndefined(cron.tz) })
+  const initialTime = dateTime.toEpochMillis(initialZoned)
+  const initialCandidate = candidateFromWallTime(dateTime.toDate(initialZoned), initialZoned.zone)
+  if (initialCandidate._tag === "Fold") {
+    const result = nextInFold(cron, cursor, initialTime, initialCandidate, options.fold)
+    if (result !== undefined) return result
+    cursor = new Date(initialCandidate.end.getTime() - 1_000)
+  }
+  while (true) {
+    const candidate = stepCronCandidate(cron, cursor, "next")
+    const cursorTime = dateTime.makeZonedUnsafe(cursor, {
+      timeZone: Option.getOrUndefined(cron.tz)
+    }).pipe(dateTime.toEpochMillis)
+    const result = matchCandidate(candidate, {
+      onExact: (candidate) => candidate.date,
+      onGap: (candidate) => {
+        const selected = options.gap === "earlier" ?
+          candidate.earlier :
+          options.gap === "later"
+          ? candidate.later
+          : undefined
+        if (selected !== undefined && selected.getTime() > cursorTime) {
+          return selected
+        }
+        if (match(cron, candidate.later)) {
+          return candidate.later
+        }
+        cursor = candidate.later
+        return undefined
+      },
+      onFold: (candidate) => {
+        const selected = options.fold === "later" ? candidate.later : candidate.earlier
+        if (selected.getTime() > cursorTime) return selected
+        cursor = candidate.later
+        return undefined
+      }
+    })
+    if (result !== undefined) {
+      return result
+    }
+  }
 }
 
 /**
@@ -753,6 +1102,9 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  * **Details**
  *
  * When no date/time is provided, the search starts from the current time.
+ * Nonexistent wall times are skipped, while both instants of a repeated wall
+ * time are returned in reverse chronological order. Pass `TraversalOptions`
+ * to select a different gap or fold policy.
  *
  * **Gotchas**
  *
@@ -760,15 +1112,73 @@ export const next = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
  * the result is the earlier occurrence.
  *
  * @see {@link next} for finding the next scheduled occurrence
+ * @see {@link prevCandidate} for inspecting gaps and folds
+ * @see {@link TraversalOptions} for configuring gap and fold handling
  *
  * @category getters
  * @since 3.20.0
  */
-export const prev = (cron: Cron, now?: DateTime.DateTime.Input): Date => {
-  return stepCron(cron, now, "prev")
+export const prev = (cron: Cron, before?: DateTime.DateTime.Input, options?: TraversalOptions): Date => {
+  return prevWithOptions(cron, before ?? new Date(), options ?? {})
 }
 
-const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, direction: "next" | "prev"): Date => {
+const prevWithOptions = (
+  cron: Cron,
+  initial: DateTime.DateTime.Input,
+  options: TraversalOptions
+): Date => {
+  let cursor = initial
+  const initialZoned = dateTime.makeZonedUnsafe(cursor, { timeZone: Option.getOrUndefined(cron.tz) })
+  const initialTime = dateTime.toEpochMillis(initialZoned)
+  const initialCandidate = candidateFromWallTime(dateTime.toDate(initialZoned), initialZoned.zone)
+  if (initialCandidate._tag === "Fold") {
+    const result = prevInFold(cron, cursor, initialTime, initialCandidate, options.fold)
+    if (result !== undefined) return result
+    const duration = initialCandidate.later.getTime() - initialCandidate.earlier.getTime()
+    cursor = new Date(initialCandidate.start.getTime() - duration)
+  }
+  while (true) {
+    const candidate = stepCronCandidate(cron, cursor, "prev")
+    const cursorTime = dateTime.makeZonedUnsafe(cursor, {
+      timeZone: Option.getOrUndefined(cron.tz)
+    }).pipe(dateTime.toEpochMillis)
+    const result = matchCandidate(candidate, {
+      onExact: (candidate) => candidate.date,
+      onGap: (candidate) => {
+        const selected = options.gap === "earlier" ?
+          candidate.earlier :
+          options.gap === "later"
+          ? candidate.later
+          : undefined
+        if (selected !== undefined && selected.getTime() < cursorTime) {
+          return selected
+        }
+        if (match(cron, candidate.earlier)) {
+          return candidate.earlier
+        }
+        cursor = candidate.earlier
+        return undefined
+      },
+      onFold: (candidate) => {
+        const selected = options.fold === "earlier" ? candidate.earlier : candidate.later
+        if (selected.getTime() < cursorTime) return selected
+        cursor = candidate.earlier
+        return undefined
+      }
+    })
+    if (result !== undefined) {
+      return result
+    }
+  }
+}
+
+const stepCronCandidate = (
+  cron: Cron,
+  now: DateTime.DateTime.Input | undefined,
+  direction: "next" | "prev",
+  includeCurrentFold = true,
+  scanCurrentFold = true
+): Candidate => {
   const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.makeZonedUnsafe(now ?? new Date(), {
     timeZone: tz
@@ -784,194 +1194,164 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
     (next: number, current: number) => next > current
 
   const start = dateTime.toEpochMillis(zoned)
-  const result = dateTime.mutate(zoned, (current) => {
-    const earlier = dateTime.makeZonedUnsafe(current, {
-      timeZone: zoned.zone,
-      adjustForTimeZone: true,
-      disambiguation: "earlier"
-    })
-    const later = dateTime.makeZonedUnsafe(current, {
-      timeZone: zoned.zone,
-      adjustForTimeZone: true,
-      disambiguation: "later"
-    })
-    const earlierTime = dateTime.toEpochMillis(earlier)
-    const laterTime = dateTime.toEpochMillis(later)
-    if (earlierTime !== laterTime && start === laterTime) {
-      const laterOffset = dateTime.zonedOffset(later)
-      let low = earlierTime
-      let high = laterTime
-      while (low + 1 < high) {
-        const middle = Math.floor((low + high) / 2)
-        const offset = dateTime.makeZonedUnsafe(middle, { timeZone: zoned.zone }).pipe(dateTime.zonedOffset)
-        if (offset === laterOffset) {
-          high = middle
-        } else {
-          low = middle
-        }
-      }
-      const foldStart = dateTime.makeZonedUnsafe(high, { timeZone: zoned.zone }).pipe(dateTime.toDate)
-      current.setTime(foldStart.getTime() + laterTime - earlierTime - (reverse ? 0 : 1_000))
+  const current = dateTime.toDate(zoned)
+  const currentCandidate = candidateFromWallTime(current, zoned.zone)
+  if (
+    includeCurrentFold && current.getUTCMilliseconds() === 0 && currentCandidate._tag === "Fold" && match(cron, zoned)
+  ) {
+    if (reverse ? currentCandidate.earlier.getTime() < start : currentCandidate.later.getTime() > start) {
+      return currentCandidate
     }
+  }
+  if (
+    scanCurrentFold && !reverse && current.getUTCMilliseconds() === 0 && currentCandidate._tag === "Fold" &&
+    currentCandidate.earlier.getTime() === start
+  ) {
+    current.setTime(foldStartWallTime(currentCandidate, zoned.zone).getTime() - 1_000)
+  }
+  if (scanCurrentFold && reverse && currentCandidate._tag === "Fold" && currentCandidate.later.getTime() === start) {
+    current.setTime(foldEndWallTime(currentCandidate, zoned.zone).getTime())
+  }
+  if (reverse && current.getUTCMilliseconds() > 0) {
+    current.setUTCMilliseconds(0)
+  } else {
     current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
+  }
 
-    for (let i = 0; i < 10_000; i++) {
-      if (cron.seconds.size !== 0) {
-        const currentSecond = current.getUTCSeconds()
-        const nextSecond = table.second[currentSecond]
-        if (nextSecond === undefined) {
-          current.setUTCMinutes(current.getUTCMinutes() + tick, boundary.second)
-          continue
-        }
-        if (needsStep(nextSecond, currentSecond)) {
-          current.setUTCSeconds(nextSecond)
-          continue
-        }
+  for (let i = 0; i < 10_000; i++) {
+    if (cron.seconds.size !== 0) {
+      const currentSecond = current.getUTCSeconds()
+      const nextSecond = table.second[currentSecond]
+      if (nextSecond === undefined) {
+        current.setUTCMinutes(current.getUTCMinutes() + tick, boundary.second)
+        continue
       }
-
-      if (cron.minutes.size !== 0) {
-        const currentMinute = current.getUTCMinutes()
-        const nextMinute = table.minute[currentMinute]
-        if (nextMinute === undefined) {
-          current.setUTCHours(current.getUTCHours() + tick, boundary.minute, boundary.second)
-          continue
-        }
-        if (needsStep(nextMinute, currentMinute)) {
-          current.setUTCMinutes(nextMinute, boundary.second)
-          continue
-        }
+      if (needsStep(nextSecond, currentSecond)) {
+        current.setUTCSeconds(nextSecond)
+        continue
       }
+    }
 
-      if (cron.hours.size !== 0) {
-        const currentHour = current.getUTCHours()
-        const nextHour = table.hour[currentHour]
-        if (nextHour === undefined) {
+    if (cron.minutes.size !== 0) {
+      const currentMinute = current.getUTCMinutes()
+      const nextMinute = table.minute[currentMinute]
+      if (nextMinute === undefined) {
+        current.setUTCHours(current.getUTCHours() + tick, boundary.minute, boundary.second)
+        continue
+      }
+      if (needsStep(nextMinute, currentMinute)) {
+        current.setUTCMinutes(nextMinute, boundary.second)
+        continue
+      }
+    }
+
+    if (cron.hours.size !== 0) {
+      const currentHour = current.getUTCHours()
+      const nextHour = table.hour[currentHour]
+      if (nextHour === undefined) {
+        current.setUTCDate(current.getUTCDate() + tick)
+        current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
+        continue
+      }
+      if (needsStep(nextHour, currentHour)) {
+        current.setUTCHours(nextHour, boundary.minute, boundary.second)
+        continue
+      }
+    }
+
+    if (cron.weekdays.size !== 0 || cron.days.size !== 0) {
+      if (cron.and) {
+        const matchesDay = cron.days.size === 0 || cron.days.has(current.getUTCDate())
+        const matchesWeekday = cron.weekdays.size === 0 || cron.weekdays.has(current.getUTCDay())
+        if (!matchesDay || !matchesWeekday) {
           current.setUTCDate(current.getUTCDate() + tick)
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
           continue
         }
-        if (needsStep(nextHour, currentHour)) {
-          current.setUTCHours(nextHour, boundary.minute, boundary.second)
-          continue
+      } else {
+        let a: number = reverse ? -Infinity : Infinity
+        let b: number = reverse ? -Infinity : Infinity
+
+        if (cron.weekdays.size !== 0) {
+          const currentWeekday = current.getUTCDay()
+          const nextWeekday = table.weekday[currentWeekday]
+          if (nextWeekday === undefined) {
+            a = reverse ?
+              boundary.weekday - 7 - currentWeekday :
+              7 - currentWeekday + boundary.weekday
+          } else {
+            a = nextWeekday - currentWeekday
+          }
         }
-      }
 
-      if (cron.weekdays.size !== 0 || cron.days.size !== 0) {
-        if (cron.and) {
-          const matchesDay = cron.days.size === 0 || cron.days.has(current.getUTCDate())
-          const matchesWeekday = cron.weekdays.size === 0 || cron.weekdays.has(current.getUTCDay())
-          if (!matchesDay || !matchesWeekday) {
-            current.setUTCDate(current.getUTCDate() + tick)
-            current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-            continue
-          }
-        } else {
-          let a: number = reverse ? -Infinity : Infinity
-          let b: number = reverse ? -Infinity : Infinity
-
-          if (cron.weekdays.size !== 0) {
-            const currentWeekday = current.getUTCDay()
-            const nextWeekday = table.weekday[currentWeekday]
-            if (nextWeekday === undefined) {
-              a = reverse ?
-                boundary.weekday - 7 - currentWeekday :
-                7 - currentWeekday + boundary.weekday
-            } else {
-              a = nextWeekday - currentWeekday
-            }
-          }
-
-          if (cron.days.size !== 0 && a !== 0) {
-            const currentDay = current.getUTCDate()
-            const nextDay = table.day[currentDay]
-            if (nextDay === undefined) {
-              if (reverse) {
-                const previous = new Date(current)
-                // Day zero is the previous month's last day. These two probes cover every
-                // valid day-of-month.
+        if (cron.days.size !== 0 && a !== 0) {
+          const currentDay = current.getUTCDate()
+          const nextDay = table.day[currentDay]
+          if (nextDay === undefined) {
+            if (reverse) {
+              const previous = new Date(current)
+              // Day zero is the previous month's last day. These two probes cover every
+              // valid day-of-month.
+              previous.setUTCDate(0)
+              let day = table.day[previous.getUTCDate()]
+              if (day === undefined) {
                 previous.setUTCDate(0)
-                let day = table.day[previous.getUTCDate()]
-                if (day === undefined) {
-                  previous.setUTCDate(0)
-                  day = table.day[previous.getUTCDate()]
-                }
-                if (day === undefined) {
-                  throw new Error("Unable to find cron date")
-                }
-                previous.setUTCDate(day)
-                b = (previous.getTime() - current.getTime()) / 86_400_000
-              } else {
-                b = daysInMonth(current) - currentDay + boundary.day
+                day = table.day[previous.getUTCDate()]
               }
-            } else if (!reverse && nextDay > daysInMonth(current)) {
-              // The next matching day does not exist in the current month. Setting it
-              // directly would overflow and skip earlier matching days next month.
-              b = daysInMonth(current) - currentDay + boundary.day
+              if (day === undefined) {
+                throw new Error("Unable to find cron date")
+              }
+              previous.setUTCDate(day)
+              b = (previous.getTime() - current.getTime()) / 86_400_000
             } else {
-              b = nextDay - currentDay
+              b = daysInMonth(current) - currentDay + boundary.day
             }
+          } else if (!reverse && nextDay > daysInMonth(current)) {
+            // The next matching day does not exist in the current month. Setting it
+            // directly would overflow and skip earlier matching days next month.
+            b = daysInMonth(current) - currentDay + boundary.day
+          } else {
+            b = nextDay - currentDay
           }
+        }
 
-          const addDays = reverse ? Math.max(a, b) : Math.min(a, b)
-          if (addDays !== 0) {
-            current.setUTCDate(current.getUTCDate() + addDays)
-            current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-            continue
-          }
-        }
-      }
-
-      if (cron.months.size !== 0) {
-        const currentMonth = current.getUTCMonth() + 1
-        const nextMonth = table.month[currentMonth]
-        const clampBoundaryDay = (targetMonthIndex: number): number => {
-          const maxDayInMonth = daysInMonth(new Date(Date.UTC(current.getUTCFullYear(), targetMonthIndex + 1, 0)))
-          if (cron.days.size !== 0 && cron.weekdays.size === 0) {
-            return reverse ? table.day[maxDayInMonth] ?? maxDayInMonth : boundary.day
-          }
-          return reverse ? maxDayInMonth : 1
-        }
-        if (nextMonth === undefined) {
-          current.setUTCFullYear(current.getUTCFullYear() + tick)
-          current.setUTCMonth(boundary.month, clampBoundaryDay(boundary.month))
-          current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
-          continue
-        }
-        if (needsStep(nextMonth, currentMonth)) {
-          const targetMonthIndex = nextMonth - 1
-          current.setUTCMonth(targetMonthIndex, clampBoundaryDay(targetMonthIndex))
+        const addDays = reverse ? Math.max(a, b) : Math.min(a, b)
+        if (addDays !== 0) {
+          current.setUTCDate(current.getUTCDate() + addDays)
           current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
           continue
         }
       }
-
-      const candidate = dateTime.makeZonedUnsafe(current, {
-        timeZone: zoned.zone,
-        adjustForTimeZone: true,
-        disambiguation: "earlier"
-      })
-      const candidateWallTime = dateTime.toDate(candidate).getTime()
-      if (candidateWallTime !== current.getTime()) {
-        const adjusted = reverse ? candidate : dateTime.makeZonedUnsafe(current, {
-          timeZone: zoned.zone,
-          adjustForTimeZone: true,
-          disambiguation: "later"
-        })
-        current.setTime(dateTime.toDate(adjusted).getTime())
-        continue
-      }
-
-      const candidateTime = dateTime.toEpochMillis(candidate)
-      if ((reverse ? candidateTime < start : candidateTime > start) && match(cron, candidate)) {
-        return
-      }
-      current.setUTCSeconds(current.getUTCSeconds() + tick, 0)
     }
 
-    throw new Error("Unable to find cron date")
-  })
+    if (cron.months.size !== 0) {
+      const currentMonth = current.getUTCMonth() + 1
+      const nextMonth = table.month[currentMonth]
+      const clampBoundaryDay = (targetMonthIndex: number): number => {
+        const maxDayInMonth = daysInMonth(new Date(Date.UTC(current.getUTCFullYear(), targetMonthIndex + 1, 0)))
+        if (cron.days.size !== 0 && cron.weekdays.size === 0) {
+          return reverse ? table.day[maxDayInMonth] ?? maxDayInMonth : boundary.day
+        }
+        return reverse ? maxDayInMonth : 1
+      }
+      if (nextMonth === undefined) {
+        current.setUTCFullYear(current.getUTCFullYear() + tick)
+        current.setUTCMonth(boundary.month, clampBoundaryDay(boundary.month))
+        current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
+        continue
+      }
+      if (needsStep(nextMonth, currentMonth)) {
+        const targetMonthIndex = nextMonth - 1
+        current.setUTCMonth(targetMonthIndex, clampBoundaryDay(targetMonthIndex))
+        current.setUTCHours(boundary.hour, boundary.minute, boundary.second)
+        continue
+      }
+    }
 
-  return dateTime.toDateUtc(result)
+    return candidateFromWallTime(current, zoned.zone)
+  }
+
+  throw new Error("Unable to find " + direction + " cron date")
 }
 
 /**

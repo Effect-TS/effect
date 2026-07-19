@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Fix `Cron.next` and `Cron.prev` to preserve strict ordering and return only matching occurrences across named time zone gaps and folds.
+Add `Cron.nextCandidate` and `Cron.prevCandidate` for inspecting exact, gap, and fold candidates. `Cron.next` and `Cron.prev` now return only literal matching instants, while cron schedules retain catch-up and run-once behavior.

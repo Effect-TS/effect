@@ -235,8 +235,14 @@ describe("Cron", () => {
     assertFalse(Cron.match(andCron, new Date("2024-01-08T00:00:00.000Z")))
     assertTrue(Cron.match(andCron, new Date("2024-01-01T00:00:00.000Z")))
     assertFalse(Equal.equals(orCron, andCron))
-    deepStrictEqual(Cron.next(orCron, new Date("2024-01-02T00:00:00.000Z")), new Date("2024-01-08T00:00:00.000Z"))
-    deepStrictEqual(Cron.next(andCron, new Date("2024-01-02T00:00:00.000Z")), new Date("2024-04-01T00:00:00.000Z"))
+    deepStrictEqual(
+      Cron.next(orCron, new Date("2024-01-02T00:00:00.000Z")),
+      new Date("2024-01-08T00:00:00.000Z")
+    )
+    deepStrictEqual(
+      Cron.next(andCron, new Date("2024-01-02T00:00:00.000Z")),
+      new Date("2024-04-01T00:00:00.000Z")
+    )
   })
 
   it("make validates field values and normalizes weekday 7", () => {
@@ -521,12 +527,12 @@ describe("Cron", () => {
     }
   })
 
-  it("prev chooses the preferred occurrence in DST fall-back", () => {
+  it("prev chooses the latest literal occurrence in DST fall-back", () => {
     const make = (s: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(s))
     const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
     const before = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]")
     const result = DateTime.makeZonedUnsafe(prev(cron, before), { timeZone: "Europe/Berlin" })
-    deepStrictEqual(result.pipe(DateTime.formatIsoZoned), "2024-10-27T02:30:00.000+02:00[Europe/Berlin]")
+    deepStrictEqual(result.pipe(DateTime.formatIsoZoned), "2024-10-27T02:30:00.000+01:00[Europe/Berlin]")
   })
 
   it("prev respects combined day-of-month and weekday constraints", () => {
@@ -678,10 +684,9 @@ describe("Cron", () => {
     // At 3:00 AM +02:00, clocks "fall back" to 2:00 AM +01:00
     // This means times from 2:00-2:59 AM occur twice (ambiguous period)
     //
-    // Correct "once" mode behavior for cron:
+    // Literal occurrence behavior for cron:
     // - Include all normal times (00:30, 01:30)
-    // - Return first occurrence only of ambiguous times (02:30 +02:00)
-    // - Skip second occurrence of ambiguous times (02:30 +01:00)
+    // - Return both real occurrences of ambiguous times
     // - Continue normally after transition (03:30 +01:00)
 
     const make = (date: string): DateTime.Zoned => Option.getOrThrow(DateTime.makeZonedFromString(date))
@@ -694,8 +699,8 @@ describe("Cron", () => {
     const a = make("2024-10-27T00:30:00.000+02:00[Europe/Berlin]") // Normal time
     const b = make("2024-10-27T01:30:00.000+02:00[Europe/Berlin]") // Normal time (not ambiguous)
     const c = make("2024-10-27T02:30:00.000+02:00[Europe/Berlin]") // First occurrence during DST
-    const d = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]") // Standard time (skips 2nd 02:30)
-    const e = make("2024-10-27T04:30:00.000+01:00[Europe/Berlin]") // Standard time
+    const d = make("2024-10-27T02:30:00.000+01:00[Europe/Berlin]") // Second occurrence during standard time
+    const e = make("2024-10-27T03:30:00.000+01:00[Europe/Berlin]") // Normal time after transition
 
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), a.pipe(DateTime.formatIsoZoned))
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), b.pipe(DateTime.formatIsoZoned))
@@ -704,73 +709,241 @@ describe("Cron", () => {
     deepStrictEqual(next().pipe(DateTime.formatIsoZoned), e.pipe(DateTime.formatIsoZoned))
   })
 
-  it("skips nonexistent occurrences in named time zones", () => {
+  it("classifies exact, gap, and fold candidates", () => {
     const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
-    const after = new Date("2024-03-30T02:30:00.000+01:00")
-    const result = next(cron, after)
+    const scheduled = (year: number, month: number, day: number): DateTime.DateTime.Parts => ({
+      year,
+      month,
+      day,
+      hour: 2,
+      minute: 30,
+      second: 0,
+      millisecond: 0
+    })
 
-    deepStrictEqual(result, new Date("2024-04-01T02:30:00.000+02:00"))
-    assertTrue(result > after)
-    assertTrue(Cron.match(cron, result))
+    deepStrictEqual(Cron.nextCandidate(cron, new Date("2024-03-29T02:30:00.000+01:00")), {
+      _tag: "Exact",
+      scheduled: scheduled(2024, 3, 30),
+      date: new Date("2024-03-30T02:30:00.000+01:00")
+    })
+
+    // Berlin jumps from 01:59 to 03:00 on March 31. The scheduled 02:30 has
+    // no matching instant, so the candidate exposes the interpretations on
+    // either side of the gap: 01:30 with "earlier" and 03:30 with "later".
+    deepStrictEqual(Cron.nextCandidate(cron, new Date("2024-03-30T02:30:00.000+01:00")), {
+      _tag: "Gap",
+      scheduled: scheduled(2024, 3, 31),
+      earlier: new Date("2024-03-31T01:30:00.000+01:00"),
+      later: new Date("2024-03-31T03:30:00.000+02:00")
+    })
+
+    // Berlin repeats 02:00-02:59 on October 27. Both 02:30 instants literally
+    // match, and the candidate keeps them in chronological order.
+    deepStrictEqual(Cron.nextCandidate(cron, new Date("2024-10-26T02:30:00.000+02:00")), {
+      _tag: "Fold",
+      scheduled: scheduled(2024, 10, 27),
+      earlier: new Date("2024-10-27T02:30:00.000+02:00"),
+      later: new Date("2024-10-27T02:30:00.000+01:00"),
+      start: new Date("2024-10-27T02:00:00.000+01:00"),
+      end: new Date("2024-10-27T03:00:00.000+01:00")
+    })
   })
 
-  it("next remains strict when started in the second fall-back occurrence", () => {
+  it("matches candidate variants", () => {
     const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
-    const after = new Date("2024-10-27T02:00:00.000+01:00")
-    const result = next(cron, after)
+    const candidate = Cron.nextCandidate(cron, new Date("2024-03-30T02:30:00.000+01:00"))
+    const result = Cron.matchCandidate(candidate, {
+      onExact: () => "exact",
+      onGap: () => "gap",
+      onFold: () => "fold"
+    })
 
-    deepStrictEqual(result, new Date("2024-10-28T02:30:00.000+01:00"))
-    assertTrue(result > after)
-    assertTrue(Cron.match(cron, result))
+    deepStrictEqual(result, "gap")
   })
 
-  it("prev finds preferred occurrences before the second fall-back occurrence", () => {
-    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
-    const before = new Date("2024-10-27T02:00:00.000+01:00")
-    const result = prev(cron, before)
-
-    deepStrictEqual(result, new Date("2024-10-27T02:30:00.000+02:00"))
-    assertTrue(result < before)
-    assertTrue(Cron.match(cron, result))
-  })
-
-  it("prev skips nonexistent occurrences when traversing a spring gap", () => {
-    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
-    const before = new Date("2024-03-31T03:00:00.000+02:00")
-    const result = prev(cron, before)
-
-    deepStrictEqual(result, new Date("2024-03-30T02:30:00.000+01:00"))
-    assertTrue(result < before)
-    assertTrue(Cron.match(cron, result))
-  })
-
-  it("handles large named-zone gaps and folds", () => {
+  it("classifies large historical offset transitions", () => {
     const apia = Cron.parseUnsafe("0 0 12 * * *", "Pacific/Apia")
-    const beforeApiaGap = new Date("2011-12-29T12:00:00.000-10:00")
-    const afterApiaGap = new Date("2011-12-31T12:00:00.000+14:00")
-    const apiaNext = next(apia, beforeApiaGap)
-    const apiaPrev = prev(apia, afterApiaGap)
-
-    deepStrictEqual(apiaNext, afterApiaGap)
-    deepStrictEqual(apiaPrev, beforeApiaGap)
-    assertTrue(apiaNext > beforeApiaGap)
-    assertTrue(apiaPrev < afterApiaGap)
-    assertTrue(Cron.match(apia, apiaNext))
-    assertTrue(Cron.match(apia, apiaPrev))
-
     const kwajalein = Cron.parseUnsafe("0 0 12 * * *", "Pacific/Kwajalein")
-    const secondFoldOccurrence = new Date("1969-09-30T01:00:00.000-12:00")
-    const kwajaleinNext = next(kwajalein, secondFoldOccurrence)
 
-    deepStrictEqual(kwajaleinNext, new Date("1969-10-01T12:00:00.000-12:00"))
-    assertTrue(kwajaleinNext > secondFoldOccurrence)
-    assertTrue(Cron.match(kwajalein, kwajaleinNext))
+    // Apia skipped December 30 entirely when its offset moved forward by 24
+    // hours. Noon has no matching instant, and its interpretations are the
+    // neighboring noons on December 29 and 31.
+    deepStrictEqual(Cron.nextCandidate(apia, new Date("2011-12-29T12:00:00.000-10:00")), {
+      _tag: "Gap",
+      scheduled: {
+        year: 2011,
+        month: 12,
+        day: 30,
+        hour: 12,
+        minute: 0,
+        second: 0,
+        millisecond: 0
+      },
+      earlier: new Date("2011-12-29T12:00:00.000-10:00"),
+      later: new Date("2011-12-31T12:00:00.000+14:00")
+    })
 
-    const everySecond = Cron.parseUnsafe("* * * * * *", "Pacific/Kwajalein")
-    const afterFold = next(everySecond, secondFoldOccurrence)
-    deepStrictEqual(afterFold, new Date("1969-10-01T00:00:00.000-12:00"))
-    assertTrue(afterFold > secondFoldOccurrence)
-    assertTrue(Cron.match(everySecond, afterFold))
+    // Kwajalein moved backward by 23 hours, so September 30 noon occurred
+    // twice. The repeated interval ends at local midnight on October 1.
+    deepStrictEqual(Cron.nextCandidate(kwajalein, new Date("1969-09-29T12:00:00.000+11:00")), {
+      _tag: "Fold",
+      scheduled: {
+        year: 1969,
+        month: 9,
+        day: 30,
+        hour: 12,
+        minute: 0,
+        second: 0,
+        millisecond: 0
+      },
+      earlier: new Date("1969-09-30T12:00:00.000+11:00"),
+      later: new Date("1969-09-30T12:00:00.000-12:00"),
+      start: new Date("1969-09-30T01:00:00.000-12:00"),
+      end: new Date("1969-10-01T00:00:00.000-12:00")
+    })
+  })
+
+  it("next and prev skip gap candidates because they have no literal match", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const nextResult = next(cron, new Date("2024-03-30T02:30:00.000+01:00"))
+    const prevResult = prev(cron, new Date("2024-03-31T04:00:00.000+02:00"))
+
+    // March 31 has no real 02:30. Literal traversal therefore moves between
+    // the matching occurrences on March 30 and April 1.
+    deepStrictEqual(nextResult, new Date("2024-04-01T02:30:00.000+02:00"))
+    deepStrictEqual(prevResult, new Date("2024-03-30T02:30:00.000+01:00"))
+    assertTrue(Cron.match(cron, nextResult))
+    assertTrue(Cron.match(cron, prevResult))
+  })
+
+  it("keeps independent matches at the boundaries of a gap", () => {
+    const cron = Cron.parseUnsafe("* * * * * *", "Europe/Berlin")
+    const beforeGap = new Date("2024-03-31T01:59:59.000+01:00")
+    const afterGap = new Date("2024-03-31T03:00:00.000+02:00")
+
+    // Every missing second is skipped, but 03:00 is a separate literal match
+    // and must not be skipped merely because it is also a gap interpretation.
+    deepStrictEqual(next(cron, beforeGap), afterGap)
+    deepStrictEqual(prev(cron, afterGap), beforeGap)
+  })
+
+  it("next and prev return both fold occurrences in instant order", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const earlier = new Date("2024-10-27T02:30:00.000+02:00")
+    const later = new Date("2024-10-27T02:30:00.000+01:00")
+
+    // The same wall time identifies two real matching instants. Literal
+    // traversal visits both rather than applying a scheduler's run-once policy.
+    deepStrictEqual(next(cron, new Date("2024-10-27T02:00:00.000+02:00")), earlier)
+    deepStrictEqual(next(cron, earlier), later)
+    deepStrictEqual(prev(cron, new Date("2024-10-27T03:00:00.000+01:00")), later)
+    deepStrictEqual(prev(cron, later), earlier)
+    assertTrue(Cron.match(cron, earlier))
+    assertTrue(Cron.match(cron, later))
+  })
+
+  it("merges dense fold occurrences in instant order", () => {
+    const cron = Cron.parseUnsafe("* * * * * *", "Europe/Berlin")
+
+    // During the first pass through the repeated hour, the following wall
+    // second occurs before the duplicate of the current second.
+    deepStrictEqual(
+      next(cron, new Date("2024-10-27T02:00:00.000+02:00")),
+      new Date("2024-10-27T02:00:01.000+02:00")
+    )
+    // During the second pass, the preceding wall second is newer than the
+    // duplicate from the first pass.
+    deepStrictEqual(
+      prev(cron, new Date("2024-10-27T02:59:59.000+01:00")),
+      new Date("2024-10-27T02:59:58.000+01:00")
+    )
+  })
+
+  it("applies configurable gap and fold policies", () => {
+    const daily = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const everySecond = Cron.parseUnsafe("* * * * * *", "Europe/Berlin")
+
+    // A scheduler can catch the nonexistent 02:30 up at its later, 03:30
+    // interpretation without changing the literal default of Cron.next.
+    deepStrictEqual(
+      Cron.next(daily, new Date("2024-03-30T02:30:00.000+01:00"), { gap: "later" }),
+      new Date("2024-03-31T03:30:00.000+02:00")
+    )
+    deepStrictEqual(
+      Cron.next(daily, new Date("2024-03-30T02:30:00.000+01:00"), { gap: "earlier" }),
+      new Date("2024-03-31T01:30:00.000+01:00")
+    )
+    deepStrictEqual(
+      Cron.prev(daily, new Date("2024-03-31T04:00:00.000+02:00"), { gap: "later" }),
+      new Date("2024-03-31T03:30:00.000+02:00")
+    )
+    deepStrictEqual(
+      Cron.prev(daily, new Date("2024-03-31T04:00:00.000+02:00"), { gap: "earlier" }),
+      new Date("2024-03-31T01:30:00.000+01:00")
+    )
+    // Run-once traversal continues through preferred first-pass occurrences,
+    // then jumps over the repeated pass when starting inside it.
+    deepStrictEqual(
+      Cron.next(everySecond, new Date("2024-10-27T02:00:00.000+02:00"), { fold: "earlier" }),
+      new Date("2024-10-27T02:00:01.000+02:00")
+    )
+    deepStrictEqual(
+      Cron.next(everySecond, new Date("2024-10-27T02:00:00.000+01:00"), { fold: "earlier" }),
+      new Date("2024-10-27T03:00:00.000+01:00")
+    )
+    // Selecting only the later stream starts at the beginning of that stream,
+    // while reverse traversal of only the earlier stream starts at its end.
+    deepStrictEqual(
+      Cron.next(everySecond, new Date("2024-10-27T02:30:00.000+02:00"), { fold: "later" }),
+      new Date("2024-10-27T02:00:00.000+01:00")
+    )
+    deepStrictEqual(
+      Cron.prev(everySecond, new Date("2024-10-27T02:30:00.000+01:00"), { fold: "earlier" }),
+      new Date("2024-10-27T02:59:59.000+02:00")
+    )
+  })
+
+  it("finds a later fold occurrence whose wall time is behind the cursor", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const duringFirstOccurrence = new Date("2024-10-27T02:45:00.000+02:00")
+
+    // The first 02:30 has passed in wall-clock order, but the repeated 02:30
+    // under the +01:00 offset is still forty-five minutes in the future.
+    deepStrictEqual(next(cron, duringFirstOccurrence), new Date("2024-10-27T02:30:00.000+01:00"))
+  })
+
+  it("prev includes a matching current second when only milliseconds are later", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "UTC")
+    const withinMatchingSecond = new Date("2024-01-01T02:30:00.500Z")
+
+    deepStrictEqual(prev(cron, withinMatchingSecond), new Date("2024-01-01T02:30:00.000Z"))
+  })
+
+  it("candidate traversal preserves fold interpretations around the second occurrence", () => {
+    const cron = Cron.parseUnsafe("0 30 2 * * *", "Europe/Berlin")
+    const secondTwoOClock = new Date("2024-10-27T02:00:00.000+01:00")
+    const expected: Cron.Candidate = {
+      _tag: "Fold",
+      scheduled: {
+        year: 2024,
+        month: 10,
+        day: 27,
+        hour: 2,
+        minute: 30,
+        second: 0,
+        millisecond: 0
+      },
+      earlier: new Date("2024-10-27T02:30:00.000+02:00"),
+      later: new Date("2024-10-27T02:30:00.000+01:00"),
+      start: new Date("2024-10-27T02:00:00.000+01:00"),
+      end: new Date("2024-10-27T03:00:00.000+01:00")
+    }
+
+    // At the second 02:00, the first 02:30 is already in the past while the
+    // second is still in the future. Both directions need the same fold data
+    // so their caller can choose by instant rather than misleading wall order.
+    deepStrictEqual(Cron.nextCandidate(cron, secondTwoOClock), expected)
+    deepStrictEqual(Cron.prevCandidate(cron, secondTwoOClock), expected)
   })
 
   it("handles utc timezone", () => {

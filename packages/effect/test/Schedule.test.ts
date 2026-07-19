@@ -328,6 +328,44 @@ describe("Schedule", () => {
         yield* Deferred.succeed(latch, void 0)
         yield* Fiber.join(fiber)
       }))
+
+    it.effect("catches up gap candidates at their later interpretation", () =>
+      Effect.gen(function*() {
+        const now = new Date("2024-03-30T02:30:00.000+01:00").getTime()
+        const catchUp = new Date("2024-03-31T03:30:00.000+02:00").getTime()
+        const step = yield* Schedule.toStep(Schedule.cron("0 30 2 * * *", "Europe/Berlin"))
+        const [, delay] = yield* step(now, undefined)
+
+        // Cron.next skips the nonexistent March 31 02:30, but an operational
+        // schedule should run that missed occurrence one hour later at 03:30.
+        assert.deepStrictEqual(delay, Duration.millis(catchUp - now))
+      }))
+
+    it.effect("runs a fold candidate once at its earlier interpretation", () =>
+      Effect.gen(function*() {
+        const earlier = new Date("2024-10-27T02:30:00.000+02:00").getTime()
+        const nextDay = new Date("2024-10-28T02:30:00.000+01:00").getTime()
+        const step = yield* Schedule.toStep(Schedule.cron("0 30 2 * * *", "Europe/Berlin"))
+        const [, delay] = yield* step(earlier, undefined)
+
+        // The earlier 02:30 has just run. Although Cron.next exposes the second
+        // matching 02:30, Schedule.cron applies run-once policy and waits until
+        // the following day's occurrence.
+        assert.deepStrictEqual(delay, Duration.millis(nextDay - earlier))
+      }))
+
+    it.effect("jumps over the remainder of a large fold after its earlier runs", () =>
+      Effect.gen(function*() {
+        const now = new Date("1969-09-30T01:00:00.000-12:00").getTime()
+        const foldEnd = new Date("1969-10-01T00:00:00.000-12:00").getTime()
+        const step = yield* Schedule.toStep(Schedule.cron("* * * * * *", "Pacific/Kwajalein"))
+        const [, delay] = yield* step(now, undefined)
+
+        // Kwajalein repeated 23 hours in 1969. All preferred occurrences in
+        // that interval happened before the clock moved back, so run-once
+        // scheduling jumps to the fold end rather than scanning every second.
+        assert.deepStrictEqual(delay, Duration.millis(foldEnd - now))
+      }))
   })
 
   describe("duration", () => {
