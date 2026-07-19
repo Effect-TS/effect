@@ -888,65 +888,45 @@ const foldBounds = (earlier: Date, later: Date, zone: DateTime.TimeZone): {
   }
 }
 
-const foldEndWallTime = (candidate: FoldCandidate, zone: DateTime.TimeZone): Date => {
-  return dateTime.makeZonedUnsafe(candidate.end, { timeZone: zone }).pipe(dateTime.toDate)
+const foldBoundaryWallTime = (boundary: Date, zone: DateTime.TimeZone): Date => {
+  return dateTime.makeZonedUnsafe(boundary, { timeZone: zone }).pipe(dateTime.toDate)
 }
 
-const foldStartWallTime = (candidate: FoldCandidate, zone: DateTime.TimeZone): Date => {
-  return dateTime.makeZonedUnsafe(candidate.start, { timeZone: zone }).pipe(dateTime.toDate)
-}
-
-const nextInFold = (
+const stepInCurrentFold = (
   cron: Cron,
   cursor: DateTime.DateTime.Input,
   cursorTime: number,
   fold: FoldCandidate,
+  direction: "next" | "prev",
   policy: TraversalOptions["fold"]
 ): Date | undefined => {
+  const reverse = direction === "prev"
   const duration = fold.later.getTime() - fold.earlier.getTime()
-  if (cursorTime < fold.start.getTime()) {
-    if (policy !== "later") {
-      const candidate = stepCronCandidate(cron, cursor, "next", false, false)
-      if (candidate._tag === "Fold" && candidate.earlier.getTime() > cursorTime) {
-        return candidate.earlier
+  const onFirstStream = reverse ? cursorTime >= fold.start.getTime() : cursorTime < fold.start.getTime()
+  const firstPolicy = reverse ? "later" : "earlier"
+  const secondPolicy = reverse ? "earlier" : "later"
+  const isBeyond = reverse ? (time: number) => time < cursorTime : (time: number) => time > cursorTime
+  if (onFirstStream) {
+    if (policy !== secondPolicy) {
+      const candidate = stepCronCandidate(cron, cursor, direction, "foldProbe")
+      const first = candidate._tag === "Fold" ? candidate[firstPolicy] : undefined
+      if (first !== undefined && isBeyond(first.getTime())) {
+        return first
       }
-      if (policy === "earlier") return undefined
+      if (policy === firstPolicy) return undefined
     }
     const candidate = stepCronCandidate(
       cron,
-      new Date(fold.start.getTime() - duration - 1_000),
-      "next",
-      false,
-      false
+      reverse ? fold.end : new Date(fold.start.getTime() - duration - 1_000),
+      direction,
+      "foldProbe"
     )
-    return candidate._tag === "Fold" ? candidate.later : undefined
+    return candidate._tag === "Fold" ? candidate[secondPolicy] : undefined
   }
-  if (policy === "earlier") return undefined
-  const candidate = stepCronCandidate(cron, cursor, "next", false, false)
-  return candidate._tag === "Fold" && candidate.later.getTime() > cursorTime ? candidate.later : undefined
-}
-
-const prevInFold = (
-  cron: Cron,
-  cursor: DateTime.DateTime.Input,
-  cursorTime: number,
-  fold: FoldCandidate,
-  policy: TraversalOptions["fold"]
-): Date | undefined => {
-  if (cursorTime >= fold.start.getTime()) {
-    if (policy !== "earlier") {
-      const candidate = stepCronCandidate(cron, cursor, "prev", false, false)
-      if (candidate._tag === "Fold" && candidate.later.getTime() < cursorTime) {
-        return candidate.later
-      }
-      if (policy === "later") return undefined
-    }
-    const candidate = stepCronCandidate(cron, fold.end, "prev", false, false)
-    return candidate._tag === "Fold" ? candidate.earlier : undefined
-  }
-  if (policy === "later") return undefined
-  const candidate = stepCronCandidate(cron, cursor, "prev", false, false)
-  return candidate._tag === "Fold" && candidate.earlier.getTime() < cursorTime ? candidate.earlier : undefined
+  if (policy === firstPolicy) return undefined
+  const candidate = stepCronCandidate(cron, cursor, direction, "foldProbe")
+  const second = candidate._tag === "Fold" ? candidate[secondPolicy] : undefined
+  return second !== undefined && isBeyond(second.getTime()) ? second : undefined
 }
 
 /**
@@ -1039,56 +1019,7 @@ export const prevCandidate = (cron: Cron, before?: DateTime.DateTime.Input): Can
  * @since 2.0.0
  */
 export const next = (cron: Cron, after?: DateTime.DateTime.Input, options?: TraversalOptions): Date => {
-  return nextWithOptions(cron, after ?? new Date(), options ?? {})
-}
-
-const nextWithOptions = (
-  cron: Cron,
-  initial: DateTime.DateTime.Input,
-  options: TraversalOptions
-): Date => {
-  let cursor = initial
-  const initialZoned = dateTime.makeZonedUnsafe(cursor, { timeZone: Option.getOrUndefined(cron.tz) })
-  const initialTime = dateTime.toEpochMillis(initialZoned)
-  const initialCandidate = candidateFromWallTime(dateTime.toDate(initialZoned), initialZoned.zone)
-  if (initialCandidate._tag === "Fold") {
-    const result = nextInFold(cron, cursor, initialTime, initialCandidate, options.fold)
-    if (result !== undefined) return result
-    cursor = new Date(initialCandidate.end.getTime() - 1_000)
-  }
-  while (true) {
-    const candidate = stepCronCandidate(cron, cursor, "next")
-    const cursorTime = dateTime.makeZonedUnsafe(cursor, {
-      timeZone: Option.getOrUndefined(cron.tz)
-    }).pipe(dateTime.toEpochMillis)
-    const result = matchCandidate(candidate, {
-      onExact: (candidate) => candidate.date,
-      onGap: (candidate) => {
-        const selected = options.gap === "earlier" ?
-          candidate.earlier :
-          options.gap === "later"
-          ? candidate.later
-          : undefined
-        if (selected !== undefined && selected.getTime() > cursorTime) {
-          return selected
-        }
-        if (match(cron, candidate.later)) {
-          return candidate.later
-        }
-        cursor = candidate.later
-        return undefined
-      },
-      onFold: (candidate) => {
-        const selected = options.fold === "later" ? candidate.later : candidate.earlier
-        if (selected.getTime() > cursorTime) return selected
-        cursor = candidate.later
-        return undefined
-      }
-    })
-    if (result !== undefined) {
-      return result
-    }
-  }
+  return traverse(cron, after ?? new Date(), "next", options ?? {})
 }
 
 /**
@@ -1119,55 +1050,66 @@ const nextWithOptions = (
  * @since 3.20.0
  */
 export const prev = (cron: Cron, before?: DateTime.DateTime.Input, options?: TraversalOptions): Date => {
-  return prevWithOptions(cron, before ?? new Date(), options ?? {})
+  return traverse(cron, before ?? new Date(), "prev", options ?? {})
 }
 
-const prevWithOptions = (
+const traverse = (
   cron: Cron,
   initial: DateTime.DateTime.Input,
+  direction: "next" | "prev",
   options: TraversalOptions
 ): Date => {
+  const reverse = direction === "prev"
+  const isBeyond = reverse
+    ? (time: number, cursor: number) => time < cursor
+    : (time: number, cursor: number) => time > cursor
   let cursor = initial
   const initialZoned = dateTime.makeZonedUnsafe(cursor, { timeZone: Option.getOrUndefined(cron.tz) })
   const initialTime = dateTime.toEpochMillis(initialZoned)
   const initialCandidate = candidateFromWallTime(dateTime.toDate(initialZoned), initialZoned.zone)
   if (initialCandidate._tag === "Fold") {
-    const result = prevInFold(cron, cursor, initialTime, initialCandidate, options.fold)
+    const result = stepInCurrentFold(cron, cursor, initialTime, initialCandidate, direction, options.fold)
     if (result !== undefined) return result
     const duration = initialCandidate.later.getTime() - initialCandidate.earlier.getTime()
-    cursor = new Date(initialCandidate.start.getTime() - duration)
+    cursor = reverse ?
+      new Date(initialCandidate.start.getTime() - duration) :
+      new Date(initialCandidate.end.getTime() - 1_000)
   }
   while (true) {
-    const candidate = stepCronCandidate(cron, cursor, "prev")
+    const candidate = stepCronCandidate(cron, cursor, direction)
     const cursorTime = dateTime.makeZonedUnsafe(cursor, {
       timeZone: Option.getOrUndefined(cron.tz)
     }).pipe(dateTime.toEpochMillis)
-    const result = matchCandidate(candidate, {
-      onExact: (candidate) => candidate.date,
-      onGap: (candidate) => {
+    switch (candidate._tag) {
+      case "Exact": {
+        return candidate.date
+      }
+      case "Gap": {
         const selected = options.gap === "earlier" ?
           candidate.earlier :
           options.gap === "later"
           ? candidate.later
           : undefined
-        if (selected !== undefined && selected.getTime() < cursorTime) {
+        if (selected !== undefined && isBeyond(selected.getTime(), cursorTime)) {
           return selected
         }
-        if (match(cron, candidate.earlier)) {
-          return candidate.earlier
+        const boundary = reverse ? candidate.earlier : candidate.later
+        if (match(cron, boundary)) {
+          return boundary
         }
-        cursor = candidate.earlier
-        return undefined
-      },
-      onFold: (candidate) => {
-        const selected = options.fold === "earlier" ? candidate.earlier : candidate.later
-        if (selected.getTime() < cursorTime) return selected
-        cursor = candidate.earlier
-        return undefined
+        cursor = boundary
+        break
       }
-    })
-    if (result !== undefined) {
-      return result
+      case "Fold": {
+        const selected = reverse ?
+          options.fold === "earlier" ? candidate.earlier : candidate.later :
+          options.fold === "later"
+          ? candidate.later
+          : candidate.earlier
+        if (isBeyond(selected.getTime(), cursorTime)) return selected
+        cursor = reverse ? candidate.earlier : candidate.later
+        break
+      }
     }
   }
 }
@@ -1176,8 +1118,7 @@ const stepCronCandidate = (
   cron: Cron,
   now: DateTime.DateTime.Input | undefined,
   direction: "next" | "prev",
-  includeCurrentFold = true,
-  scanCurrentFold = true
+  mode: "traverse" | "foldProbe" = "traverse"
 ): Candidate => {
   const tz = Option.getOrUndefined(cron.tz)
   const zoned = dateTime.makeZonedUnsafe(now ?? new Date(), {
@@ -1197,20 +1138,22 @@ const stepCronCandidate = (
   const current = dateTime.toDate(zoned)
   const currentCandidate = candidateFromWallTime(current, zoned.zone)
   if (
-    includeCurrentFold && current.getUTCMilliseconds() === 0 && currentCandidate._tag === "Fold" && match(cron, zoned)
+    mode === "traverse" && current.getUTCMilliseconds() === 0 && currentCandidate._tag === "Fold" && match(cron, zoned)
   ) {
     if (reverse ? currentCandidate.earlier.getTime() < start : currentCandidate.later.getTime() > start) {
       return currentCandidate
     }
   }
   if (
-    scanCurrentFold && !reverse && current.getUTCMilliseconds() === 0 && currentCandidate._tag === "Fold" &&
+    mode === "traverse" && !reverse && current.getUTCMilliseconds() === 0 && currentCandidate._tag === "Fold" &&
     currentCandidate.earlier.getTime() === start
   ) {
-    current.setTime(foldStartWallTime(currentCandidate, zoned.zone).getTime() - 1_000)
+    current.setTime(foldBoundaryWallTime(currentCandidate.start, zoned.zone).getTime() - 1_000)
   }
-  if (scanCurrentFold && reverse && currentCandidate._tag === "Fold" && currentCandidate.later.getTime() === start) {
-    current.setTime(foldEndWallTime(currentCandidate, zoned.zone).getTime())
+  if (
+    mode === "traverse" && reverse && currentCandidate._tag === "Fold" && currentCandidate.later.getTime() === start
+  ) {
+    current.setTime(foldBoundaryWallTime(currentCandidate.end, zoned.zone).getTime())
   }
   if (reverse && current.getUTCMilliseconds() > 0) {
     current.setUTCMilliseconds(0)
