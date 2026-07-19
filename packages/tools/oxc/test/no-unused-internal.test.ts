@@ -91,9 +91,7 @@ export interface Public {
       "packages/foo/src/Internal.ts": `/** @internal */
 export const internal = 1
 `,
-      "packages/foo/src/Public.ts": `import { internal } from "./Internal.ts"
-
-export { internal }
+      "packages/foo/src/Public.ts": `export { internal } from "./Internal.ts"
 `
     })
 

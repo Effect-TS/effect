@@ -5,6 +5,7 @@ import type { HttpServerRequest } from "../HttpServerRequest.ts"
 /** @internal */
 export const requestPreResponseHandlers = new WeakMap<object, PreResponseHandler>()
 
+/** @internal */
 export const appendPreResponseHandlerUnsafe = (request: HttpServerRequest, handler: PreResponseHandler): void => {
   const prev = requestPreResponseHandlers.get(request.source)
   const next: PreResponseHandler = prev ?

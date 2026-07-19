@@ -25,7 +25,10 @@ import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as Response from "./HttpServerResponse.ts"
-import { appendPreResponseHandlerUnsafe, requestPreResponseHandlers } from "./internal/preResponseHandler.ts"
+import {
+  appendPreResponseHandlerUnsafe as appendPreResponseHandlerUnsafeInternal,
+  requestPreResponseHandlers
+} from "./internal/preResponseHandler.ts"
 
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
@@ -192,15 +195,16 @@ export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Ef
     return Effect.void
   })
 
-export {
-  /**
-   * Registers a pre-response handler for the supplied HTTP server request.
-   *
-   * @category fiber refs
-   * @since 4.0.0
-   */
-  appendPreResponseHandlerUnsafe
-}
+/**
+ * Registers a pre-response handler for the supplied HTTP server request.
+ *
+ * @category fiber refs
+ * @since 4.0.0
+ */
+export const appendPreResponseHandlerUnsafe: (
+  request: HttpServerRequest,
+  handler: PreResponseHandler
+) => void = appendPreResponseHandlerUnsafeInternal
 
 /**
  * Runs an effect after registering a pre-response handler for the current HTTP server request.
