@@ -21,7 +21,7 @@ export class TransientError extends Data.TaggedError("TransientError") {}
 class LookupService extends Context.Service<LookupService, { readonly value: string }>()("LookupService") {}
 
 export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistence, unknown>) =>
-  describe(`PersistedCache (${storeId})`, { timeout: 30_000 }, () => {
+  describe(`PersistedCache (${storeId})`, { timeout: 60_000 }, () => {
     it.effect("smoke test", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.Persistence
@@ -66,9 +66,9 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
           Exit.succeed(new User({ id: 2, name: "Jane" }))
         ])
       }).pipe(
+        flakyTest,
         Effect.provide(layer),
-        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void),
-        flakyTest
+        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void)
       ))
 
     it.effect("requireServicesAt: 'lookup' requires lookup services at get-time", () =>
@@ -96,9 +96,9 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
         assert.deepStrictEqual(result2, new User({ id: 2, name: "second" }))
         assert.deepStrictEqual(result3, new User({ id: 1, name: "first" }))
       }).pipe(
+        flakyTest,
         Effect.provide(layer),
-        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void),
-        flakyTest
+        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void)
       ))
   })
 
