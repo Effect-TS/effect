@@ -16,6 +16,7 @@ import * as Channel from "../../Channel.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
+import * as ErrorReporter from "../../ErrorReporter.ts"
 import * as Exit from "../../Exit.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { constant, dual } from "../../Function.ts"
@@ -31,6 +32,8 @@ import type * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
 import * as UndefinedOr from "../../UndefinedOr.ts"
 import * as IncomingMessage from "./HttpIncomingMessage.ts"
+import * as HttpServerRespondable from "./HttpServerRespondable.ts"
+import * as HttpServerResponse from "./HttpServerResponse.ts"
 import * as MP from "./Multipasta.ts"
 
 /**
@@ -199,19 +202,30 @@ export class MultipartErrorReason extends Data.Error<{
   readonly cause?: unknown
 }> {}
 
+const responseStatusByReason = {
+  FileTooLarge: 413,
+  FieldTooLarge: 413,
+  BodyTooLarge: 413,
+  TooManyParts: 413,
+  InternalError: 500,
+  Parse: 400
+} as const satisfies Record<MultipartErrorReason["_tag"], number>
+
 /**
  * Error raised while parsing, streaming, or persisting multipart form data.
  *
  * **Details**
  *
- * The `reason` field contains the concrete `MultipartErrorReason`.
+ * The `reason` field contains the concrete `MultipartErrorReason`. When used as
+ * a server response, parse errors render as `400`, limit errors as `413`, and
+ * internal errors as `500`. Multipart errors are ignored by the error reporter.
  *
  * @category errors
  * @since 4.0.0
  */
 export class MultipartError extends Data.TaggedError("MultipartError")<{
   readonly reason: MultipartErrorReason
-}> {
+}> implements HttpServerRespondable.Respondable {
   /**
    * Creates a multipart error from a reason tag and optional cause.
    *
@@ -227,6 +241,22 @@ export class MultipartError extends Data.TaggedError("MultipartError")<{
    * @since 4.0.0
    */
   readonly [MultipartErrorTypeId] = MultipartErrorTypeId
+
+  override readonly [ErrorReporter.ignore] = true;
+
+  /**
+   * Converts the multipart error into an HTTP response based on its reason.
+   *
+   * **Details**
+   *
+   * Parse errors produce `400`, size and part-count limits produce `413`, and
+   * internal errors produce `500`.
+   *
+   * @since 4.0.0
+   */
+  [HttpServerRespondable.symbol]() {
+    return Effect.succeed(HttpServerResponse.empty({ status: responseStatusByReason[this.reason._tag] }))
+  }
 
   /**
    * Uses the concrete multipart error reason as the public message.

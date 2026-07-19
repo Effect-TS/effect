@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
-import { Effect, identity, Schema, Stream, Unify } from "effect"
+import { Effect, ErrorReporter, identity, Schema, Stream, Unify } from "effect"
 import { Multipart } from "effect/unstable/http"
+import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondable"
 import { deepStrictEqual, strictEqual } from "node:assert"
 
 describe("Multipart", () => {
@@ -57,6 +58,26 @@ describe("Multipart", () => {
 
       strictEqual(error._tag, "MultipartError")
       strictEqual(error.reason._tag, "TooManyParts")
+    }))
+
+  it.effect("responds based on the reason and is ignored by the ErrorReporter", () =>
+    Effect.gen(function*() {
+      const cases = [
+        ["FileTooLarge", 413],
+        ["FieldTooLarge", 413],
+        ["BodyTooLarge", 413],
+        ["TooManyParts", 413],
+        ["InternalError", 500],
+        ["Parse", 400]
+      ] as const
+
+      for (const [reason, status] of cases) {
+        const error = Multipart.MultipartError.fromReason(reason)
+        const response = yield* HttpServerRespondable.toResponse(error)
+
+        strictEqual(response.status, status)
+        strictEqual(ErrorReporter.isIgnored(error), true)
+      }
     }))
 
   describe("FileSchema", () => {
