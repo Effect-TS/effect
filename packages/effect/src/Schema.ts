@@ -12730,10 +12730,7 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * @since 4.0.0
  */
 export function fromJsonString<S extends Constraint>(schema: S): fromJsonString<S> {
-  const identifier = SchemaAST.resolveIdentifier(schema.ast)
   return String.annotate({
-    // Give the transport wrapper its own name so the decoded payload keeps its identifier.
-    identifier: identifier === undefined ? undefined : `${identifier}JsonString`,
     expected: "a string that will be decoded as JSON",
     contentMediaType: "application/json"
   }).pipe(decodeTo(schema, SchemaTransformation.fromJsonString))

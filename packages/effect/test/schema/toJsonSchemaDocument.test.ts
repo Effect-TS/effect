@@ -3551,10 +3551,10 @@ describe("toJsonSchemaDocument", () => {
         Schema.fromJsonString(MyEvent),
         {
           schema: {
-            "$ref": "#/$defs/MyEventJsonString"
+            "$ref": "#/$defs/MyEvent"
           },
           definitions: {
-            "MyEventJsonString": {
+            "MyEvent": {
               "type": "string",
               "contentMediaType": "application/json"
             }
