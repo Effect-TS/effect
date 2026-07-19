@@ -8,18 +8,18 @@ Fix doubled `Expected: Expected ...` prefixes in CLI `InvalidValue` error messag
 
 Before:
 
-```
+```text
 Invalid value for flag --size: "bogus". Expected: Expected "small" | "medium" | "large", got "bogus"
 ```
 
 After:
 
-```
+```text
 Invalid value for flag --size: "bogus". Expected: "small" | "medium" | "large"
 ```
 
 Schema-backed primitives (`integer`, `float`, `boolean`, `date`) keep their full schema decode sentence, so the decoded actual is still shown after `got`:
 
-```
+```text
 Invalid value for flag --count: "3.14". Expected an integer, got 3.14
 ```

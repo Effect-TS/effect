@@ -188,5 +188,19 @@ describe("Command errors", () => {
         `Invalid value for flag --count: "x". Expected: an integer`
       )
     })
+
+    it("does not double the prefix for a missing flag value", () => {
+      const error = new CliError.InvalidValue({
+        option: "count",
+        value: "",
+        expected: `Expected a string representing a finite number, got ""`,
+        kind: "flag"
+      })
+
+      assert.strictEqual(
+        error.message,
+        `Missing value for flag --count. Expected a string representing a finite number, got ""`
+      )
+    })
   })
 })
