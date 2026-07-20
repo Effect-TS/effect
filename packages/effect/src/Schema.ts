@@ -6806,10 +6806,6 @@ const getUUIDRegExp = (version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8): globalThis.RegE
   return /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|[fF]{8}-[fF]{4}-[fF]{4}-[fF]{4}-[fF]{12})$/
 }
 
-const IsUUIDPayload = Struct({
-  version: Union([Literals([1, 2, 3, 4, 5, 6, 7, 8]), Null])
-})
-
 /**
  * Validates that a string is a strict Universally Unique Identifier (UUID).
  *
@@ -6873,7 +6869,7 @@ export const isUUIDReviver: SchemaRepresentation.FilterReviver<{
   readonly version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | null
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isUUID",
-  IsUUIDPayload,
+  Struct({ version: Union([Literals([1, 2, 3, 4, 5, 6, 7, 8]), Null]) }),
   ({ annotations, payload }) => isUUID(payload.version ?? undefined, annotations)
 )
 
@@ -7097,10 +7093,6 @@ export const isBase64UrlReviver: SchemaRepresentation.FilterReviver<null> = Inte
   ({ annotations }) => isBase64Url(annotations)
 )
 
-const IsStartsWithPayload = Struct({ startsWith: String })
-const IsEndsWithPayload = Struct({ endsWith: String })
-const IsIncludesPayload = Struct({ includes: String })
-
 /**
  * Validates at runtime that a string starts with the specified literal prefix.
  *
@@ -7153,7 +7145,7 @@ export const isStartsWithReviver: SchemaRepresentation.FilterReviver<{
   readonly startsWith: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isStartsWith",
-  IsStartsWithPayload,
+  Struct({ startsWith: String }),
   ({ annotations, payload }) => isStartsWith(payload.startsWith, annotations)
 )
 
@@ -7209,7 +7201,7 @@ export const isEndsWithReviver: SchemaRepresentation.FilterReviver<{
   readonly endsWith: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isEndsWith",
-  IsEndsWithPayload,
+  Struct({ endsWith: String }),
   ({ annotations, payload }) => isEndsWith(payload.endsWith, annotations)
 )
 
@@ -7265,7 +7257,7 @@ export const isIncludesReviver: SchemaRepresentation.FilterReviver<{
   readonly includes: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isIncludes",
-  IsIncludesPayload,
+  Struct({ includes: String }),
   ({ annotations, payload }) => isIncludes(payload.includes, annotations)
 )
 
@@ -7485,20 +7477,23 @@ export const isUncapitalizedReviver: SchemaRepresentation.FilterReviver<null> = 
   ({ annotations }) => isUncapitalized(annotations)
 )
 
-const CanonicalNumberPayload = Number.check(
-  makeFilter<number>((value) => globalThis.Number.isFinite(value) && !globalThis.Object.is(value, -0))
-)
-const IsMultipleOfPayload = Struct({ divisor: CanonicalNumberPayload })
-const IsGreaterThanPayload = Struct({ exclusiveMinimum: CanonicalNumberPayload })
-const IsGreaterThanOrEqualToPayload = Struct({ minimum: CanonicalNumberPayload })
-const IsLessThanPayload = Struct({ exclusiveMaximum: CanonicalNumberPayload })
-const IsLessThanOrEqualToPayload = Struct({ maximum: CanonicalNumberPayload })
-const IsBetweenPayload = Struct({
-  minimum: CanonicalNumberPayload,
-  maximum: CanonicalNumberPayload,
-  exclusiveMinimum: optional(Literal(true)),
-  exclusiveMaximum: optional(Literal(true))
-})
+/**
+ * Type-level representation of {@link Finite}.
+ *
+ * @category Number
+ * @since 3.10.0
+ */
+export interface Finite extends Number {
+  readonly "Rebuild": Finite
+}
+
+/**
+ * Schema for finite numbers, rejecting `NaN`, `Infinity`, and `-Infinity`.
+ *
+ * @category Number
+ * @since 3.10.0
+ */
+export const Finite: Finite = make(SchemaAST.finite)
 
 /**
  * Validates that a number is finite (not `Infinity`, `-Infinity`, or `NaN`).
@@ -7804,7 +7799,7 @@ export const isGreaterThanReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMinimum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isGreaterThan",
-  IsGreaterThanPayload,
+  Struct({ exclusiveMinimum: Finite }),
   ({ annotations, payload }) => isGreaterThan(payload.exclusiveMinimum, annotations)
 )
 
@@ -7854,7 +7849,7 @@ export const isGreaterThanOrEqualToReviver: SchemaRepresentation.FilterReviver<{
   readonly minimum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isGreaterThanOrEqualTo",
-  IsGreaterThanOrEqualToPayload,
+  Struct({ minimum: Finite }),
   ({ annotations, payload }) => isGreaterThanOrEqualTo(payload.minimum, annotations)
 )
 
@@ -7904,7 +7899,7 @@ export const isLessThanReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMaximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLessThan",
-  IsLessThanPayload,
+  Struct({ exclusiveMaximum: Finite }),
   ({ annotations, payload }) => isLessThan(payload.exclusiveMaximum, annotations)
 )
 
@@ -7954,7 +7949,7 @@ export const isLessThanOrEqualToReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLessThanOrEqualTo",
-  IsLessThanOrEqualToPayload,
+  Struct({ maximum: Finite }),
   ({ annotations, payload }) => isLessThanOrEqualTo(payload.maximum, annotations)
 )
 
@@ -8027,7 +8022,12 @@ export const isBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMaximum?: true | undefined
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isBetween",
-  IsBetweenPayload,
+  Struct({
+    minimum: Finite,
+    maximum: Finite,
+    exclusiveMinimum: optional(Literal(true)),
+    exclusiveMaximum: optional(Literal(true))
+  }),
   ({ annotations, payload }) => isBetween(payload, annotations)
 )
 
@@ -8078,7 +8078,7 @@ export const isMultipleOfReviver: SchemaRepresentation.FilterReviver<{
   readonly divisor: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMultipleOf",
-  IsMultipleOfPayload,
+  Struct({ divisor: Finite }),
   ({ annotations, payload }) => isMultipleOf(payload.divisor, annotations)
 )
 
@@ -8209,17 +8209,6 @@ const CanonicalDatePayload = String.check(
     return !globalThis.Number.isNaN(date.getTime()) && date.toISOString() === value
   })
 )
-const IsGreaterThanDatePayload = Struct({ exclusiveMinimum: CanonicalDatePayload })
-const IsGreaterThanOrEqualToDatePayload = Struct({ minimum: CanonicalDatePayload })
-const IsLessThanDatePayload = Struct({ exclusiveMaximum: CanonicalDatePayload })
-const IsLessThanOrEqualToDatePayload = Struct({ maximum: CanonicalDatePayload })
-const IsBetweenDatePayload = Struct({
-  minimum: CanonicalDatePayload,
-  maximum: CanonicalDatePayload,
-  exclusiveMinimum: optional(Literal(true)),
-  exclusiveMaximum: optional(Literal(true))
-})
-
 function encodeDatePayload(date: globalThis.Date): string | number {
   return globalThis.Number.isNaN(date.getTime()) ? globalThis.Number.NaN : date.toISOString()
 }
@@ -8330,7 +8319,7 @@ export const isGreaterThanDateReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMinimum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isGreaterThanDate",
-  IsGreaterThanDatePayload,
+  Struct({ exclusiveMinimum: CanonicalDatePayload }),
   ({ annotations, payload }) => isGreaterThanDate(new globalThis.Date(payload.exclusiveMinimum), annotations)
 )
 
@@ -8385,7 +8374,7 @@ export const isGreaterThanOrEqualToDateReviver: SchemaRepresentation.FilterReviv
   readonly minimum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isGreaterThanOrEqualToDate",
-  IsGreaterThanOrEqualToDatePayload,
+  Struct({ minimum: CanonicalDatePayload }),
   ({ annotations, payload }) => isGreaterThanOrEqualToDate(new globalThis.Date(payload.minimum), annotations)
 )
 
@@ -8434,7 +8423,7 @@ export const isLessThanDateReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMaximum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLessThanDate",
-  IsLessThanDatePayload,
+  Struct({ exclusiveMaximum: CanonicalDatePayload }),
   ({ annotations, payload }) => isLessThanDate(new globalThis.Date(payload.exclusiveMaximum), annotations)
 )
 
@@ -8489,7 +8478,7 @@ export const isLessThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<
   readonly maximum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLessThanOrEqualToDate",
-  IsLessThanOrEqualToDatePayload,
+  Struct({ maximum: CanonicalDatePayload }),
   ({ annotations, payload }) => isLessThanOrEqualToDate(new globalThis.Date(payload.maximum), annotations)
 )
 
@@ -8558,7 +8547,12 @@ export const isBetweenDateReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMaximum?: true | undefined
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isBetweenDate",
-  IsBetweenDatePayload,
+  Struct({
+    minimum: CanonicalDatePayload,
+    maximum: CanonicalDatePayload,
+    exclusiveMinimum: optional(Literal(true)),
+    exclusiveMaximum: optional(Literal(true))
+  }),
   ({ annotations, payload }) =>
     isBetweenDate(
       {
@@ -8574,17 +8568,6 @@ export const isBetweenDateReviver: SchemaRepresentation.FilterReviver<{
 const CanonicalBigIntPayload = String.check(
   makeFilter<string>((value) => /^(?:0|-?[1-9]\d*)$/.test(value))
 )
-const IsGreaterThanBigIntPayload = Struct({ exclusiveMinimum: CanonicalBigIntPayload })
-const IsGreaterThanOrEqualToBigIntPayload = Struct({ minimum: CanonicalBigIntPayload })
-const IsLessThanBigIntPayload = Struct({ exclusiveMaximum: CanonicalBigIntPayload })
-const IsLessThanOrEqualToBigIntPayload = Struct({ maximum: CanonicalBigIntPayload })
-const IsBetweenBigIntPayload = Struct({
-  minimum: CanonicalBigIntPayload,
-  maximum: CanonicalBigIntPayload,
-  exclusiveMinimum: optional(Literal(true)),
-  exclusiveMaximum: optional(Literal(true))
-})
-
 /**
  * Validates that a BigInt is greater than the specified value (exclusive).
  *
@@ -8630,7 +8613,7 @@ export const isGreaterThanBigIntReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMinimum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isGreaterThanBigInt",
-  IsGreaterThanBigIntPayload,
+  Struct({ exclusiveMinimum: CanonicalBigIntPayload }),
   ({ annotations, payload }) => isGreaterThanBigInt(globalThis.BigInt(payload.exclusiveMinimum), annotations)
 )
 
@@ -8680,7 +8663,7 @@ export const isGreaterThanOrEqualToBigIntReviver: SchemaRepresentation.FilterRev
   readonly minimum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isGreaterThanOrEqualToBigInt",
-  IsGreaterThanOrEqualToBigIntPayload,
+  Struct({ minimum: CanonicalBigIntPayload }),
   ({ annotations, payload }) => isGreaterThanOrEqualToBigInt(globalThis.BigInt(payload.minimum), annotations)
 )
 
@@ -8729,7 +8712,7 @@ export const isLessThanBigIntReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMaximum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLessThanBigInt",
-  IsLessThanBigIntPayload,
+  Struct({ exclusiveMaximum: CanonicalBigIntPayload }),
   ({ annotations, payload }) => isLessThanBigInt(globalThis.BigInt(payload.exclusiveMaximum), annotations)
 )
 
@@ -8779,7 +8762,7 @@ export const isLessThanOrEqualToBigIntReviver: SchemaRepresentation.FilterRevive
   readonly maximum: string
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLessThanOrEqualToBigInt",
-  IsLessThanOrEqualToBigIntPayload,
+  Struct({ maximum: CanonicalBigIntPayload }),
   ({ annotations, payload }) => isLessThanOrEqualToBigInt(globalThis.BigInt(payload.maximum), annotations)
 )
 
@@ -8843,7 +8826,12 @@ export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
   readonly exclusiveMaximum?: true | undefined
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isBetweenBigInt",
-  IsBetweenBigIntPayload,
+  Struct({
+    minimum: CanonicalBigIntPayload,
+    maximum: CanonicalBigIntPayload,
+    exclusiveMinimum: optional(Literal(true)),
+    exclusiveMaximum: optional(Literal(true))
+  }),
   ({ annotations, payload }) =>
     isBetweenBigInt(
       {
@@ -8919,10 +8907,6 @@ export const isBetweenBigDecimal = makeIsBetween({
 })
 
 const CanonicalLength = Number.check(makeFilter<number>((value) => globalThis.Number.isInteger(value) && value >= 0))
-const IsMinLengthPayload = Struct({ minLength: CanonicalLength })
-const IsMaxLengthPayload = Struct({ maxLength: CanonicalLength })
-const IsLengthBetweenPayload = Struct({ minimum: CanonicalLength, maximum: CanonicalLength })
-
 /**
  * Validates that a value has at least the specified length. Works with strings
  * and arrays.
@@ -8991,7 +8975,7 @@ export const isMinLengthReviver: SchemaRepresentation.FilterReviver<{
   readonly minLength: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinLength",
-  IsMinLengthPayload,
+  Struct({ minLength: CanonicalLength }),
   ({ annotations, payload }) => isMinLength(payload.minLength, annotations)
 )
 
@@ -9077,7 +9061,7 @@ export const isMaxLengthReviver: SchemaRepresentation.FilterReviver<{
   readonly maxLength: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxLength",
-  IsMaxLengthPayload,
+  Struct({ maxLength: CanonicalLength }),
   ({ annotations, payload }) => isMaxLength(payload.maxLength, annotations)
 )
 
@@ -9149,13 +9133,9 @@ export const isLengthBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLengthBetween",
-  IsLengthBetweenPayload,
+  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
   ({ annotations, payload }) => isLengthBetween(payload.minimum, payload.maximum, annotations)
 )
-
-const IsMinSizePayload = Struct({ minSize: CanonicalLength })
-const IsMaxSizePayload = Struct({ maxSize: CanonicalLength })
-const IsSizeBetweenPayload = Struct({ minimum: CanonicalLength, maximum: CanonicalLength })
 
 /**
  * Validates that a value has at least the specified size. Works with values
@@ -9216,7 +9196,7 @@ export const isMinSizeReviver: SchemaRepresentation.FilterReviver<{
   readonly minSize: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinSize",
-  IsMinSizePayload,
+  Struct({ minSize: CanonicalLength }),
   ({ annotations, payload }) => isMinSize(payload.minSize, annotations)
 )
 
@@ -9279,7 +9259,7 @@ export const isMaxSizeReviver: SchemaRepresentation.FilterReviver<{
   readonly maxSize: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxSize",
-  IsMaxSizePayload,
+  Struct({ maxSize: CanonicalLength }),
   ({ annotations, payload }) => isMaxSize(payload.maxSize, annotations)
 )
 
@@ -9348,16 +9328,9 @@ export const isSizeBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isSizeBetween",
-  IsSizeBetweenPayload,
+  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
   ({ annotations, payload }) => isSizeBetween(payload.minimum, payload.maximum, annotations)
 )
-
-const IsMinPropertiesPayload = Struct({ minProperties: CanonicalLength })
-const IsMaxPropertiesPayload = Struct({ maxProperties: CanonicalLength })
-const IsPropertiesLengthBetweenPayload = Struct({
-  minimum: CanonicalLength,
-  maximum: CanonicalLength
-})
 
 /**
  * Validates that an object contains at least the specified number of
@@ -9418,7 +9391,7 @@ export const isMinPropertiesReviver: SchemaRepresentation.FilterReviver<{
   readonly minProperties: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinProperties",
-  IsMinPropertiesPayload,
+  Struct({ minProperties: CanonicalLength }),
   ({ annotations, payload }) => isMinProperties(payload.minProperties, annotations)
 )
 
@@ -9480,7 +9453,7 @@ export const isMaxPropertiesReviver: SchemaRepresentation.FilterReviver<{
   readonly maxProperties: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxProperties",
-  IsMaxPropertiesPayload,
+  Struct({ maxProperties: CanonicalLength }),
   ({ annotations, payload }) => isMaxProperties(payload.maxProperties, annotations)
 )
 
@@ -9549,7 +9522,7 @@ export const isPropertiesLengthBetweenReviver: SchemaRepresentation.FilterRevive
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isPropertiesLengthBetween",
-  IsPropertiesLengthBetweenPayload,
+  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
   ({ annotations, payload }) => isPropertiesLengthBetween(payload.minimum, payload.maximum, annotations)
 )
 
@@ -13114,24 +13087,6 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
 export function fromURLSearchParams<S extends Constraint>(schema: S): fromURLSearchParams<S> {
   return URLSearchParams.pipe(decodeTo(schema, SchemaTransformation.fromURLSearchParams))
 }
-
-/**
- * Type-level representation of {@link Finite}.
- *
- * @category Number
- * @since 3.10.0
- */
-export interface Finite extends Number {
-  readonly "Rebuild": Finite
-}
-
-/**
- * Schema for finite numbers, rejecting `NaN`, `Infinity`, and `-Infinity`.
- *
- * @category Number
- * @since 3.10.0
- */
-export const Finite: Finite = make(SchemaAST.finite)
 
 /**
  * Type-level representation of {@link Int}.
