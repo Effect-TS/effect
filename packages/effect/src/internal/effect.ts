@@ -532,7 +532,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   readonly _stack: Array<Primitive>
   readonly _observers: Array<(exit: Exit.Exit<A, E>) => void>
   _exit: Exit.Exit<A, E> | undefined
-  _currentExit: Exit.Exit<A, E> | undefined
   _children: Set<FiberImpl<any, any>> | undefined
   _interruptedCause: Cause.Cause<never> | undefined
   _yielded: Exit.Exit<any, any> | (() => void) | undefined
@@ -623,6 +622,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this._observers[i](exit)
     }
     this._observers.length = 0
+    this._stack.length = 0
+    this._children = undefined
+    this._dispatcher = undefined
+    this.context = Context.empty()
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
     const prevFiber = (globalThis as any)[currentFiberTypeId]
