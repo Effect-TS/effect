@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Refine existing type in Predicated.isTagged
+Refine existing type in Predicate.isTagged
