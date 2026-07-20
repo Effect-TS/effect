@@ -1,6 +1,6 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer } from "effect"
 import {
   Runner,
@@ -88,9 +88,92 @@ describe("SqlRunnerStorage", () => {
         }))
     })
   })
+
+  it.layer(
+    Layer.merge(
+      Layer.orDie(PgContainer.layerClient),
+      ShardingConfig.layer()
+    ),
+    { timeout: 60000 }
+  )("pg namespaced advisory locks", (it) => {
+    const shards = [
+      ShardId.make("default", 1),
+      ShardId.make("default", 2),
+      ShardId.make("default", 3)
+    ]
+
+    it.effect("isolates shard locks across prefixes when enabled", () =>
+      Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({
+          prefix: "cluster_a",
+          namespaceAdvisoryLocks: true
+        })
+        const storageB = yield* SqlRunnerStorage.make({
+          prefix: "cluster_b",
+          namespaceAdvisoryLocks: true
+        })
+
+        const acquiredA = yield* storageA.acquire(runnerAddress1, shards)
+        const acquiredB = yield* storageB.acquire(runnerAddress2, shards)
+        assert.deepStrictEqual(acquiredA.map((shard) => shard.id), [1, 2, 3])
+        assert.deepStrictEqual(acquiredB.map((shard) => shard.id), [1, 2, 3])
+      }).pipe(Effect.scoped))
+
+    it.effect("keeps locks exclusive for the same prefix when enabled", () =>
+      Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({
+          prefix: "shared",
+          namespaceAdvisoryLocks: true
+        })
+        const storageB = yield* SqlRunnerStorage.make({
+          prefix: "shared",
+          namespaceAdvisoryLocks: true
+        })
+
+        const acquiredA = yield* storageA.acquire(runnerAddress1, shards)
+        const acquiredB = yield* storageB.acquire(runnerAddress2, shards)
+        assert.deepStrictEqual(acquiredA.map((shard) => shard.id), [1, 2, 3])
+        assert.deepStrictEqual(acquiredB, [])
+      }).pipe(Effect.scoped))
+
+    it.effect("releases namespaced locks so another runner can acquire", () =>
+      Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({
+          prefix: "release_ns",
+          namespaceAdvisoryLocks: true
+        })
+        const storageB = yield* SqlRunnerStorage.make({
+          prefix: "release_ns",
+          namespaceAdvisoryLocks: true
+        })
+
+        assert.deepStrictEqual(
+          (yield* storageA.acquire(runnerAddress1, shards)).map((shard) => shard.id),
+          [1, 2, 3]
+        )
+        yield* storageA.release(runnerAddress1, ShardId.make("default", 2))
+
+        const reacquired = yield* storageB.acquire(runnerAddress2, [ShardId.make("default", 2)])
+        assert.deepStrictEqual(reacquired.map((shard) => shard.id), [2])
+      }).pipe(Effect.scoped))
+
+    it.effect("without the flag, different prefixes still share advisory locks", () =>
+      Effect.gen(function*() {
+        const storageA = yield* SqlRunnerStorage.make({ prefix: "legacy_a" })
+        const storageB = yield* SqlRunnerStorage.make({ prefix: "legacy_b" })
+
+        const acquiredA = yield* storageA.acquire(runnerAddress1, shards)
+        const acquiredB = yield* storageB.acquire(runnerAddress2, shards)
+        assert.deepStrictEqual(acquiredA.map((shard) => shard.id), [1, 2, 3])
+        // Documents the pre-fix collision: prefix-only isolation does not
+        // apply to PostgreSQL advisory lock keys unless namespacing is enabled.
+        assert.deepStrictEqual(acquiredB, [])
+      }).pipe(Effect.scoped))
+  })
 })
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
+const runnerAddress2 = RunnerAddress.make("localhost", 1235)
 
 const SqliteLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem

@@ -18,6 +18,7 @@ import * as SqlClient from "../sql/SqlClient.ts"
 import type { SqlError } from "../sql/SqlError.ts"
 import type * as Statement from "../sql/Statement.ts"
 import { PersistenceError } from "./ClusterError.ts"
+import { hashString } from "./internal/hash.ts"
 import { ResourceRef } from "./internal/resourceRef.ts"
 import * as RunnerStorage from "./RunnerStorage.ts"
 import * as ShardId from "./ShardId.ts"
@@ -42,10 +43,17 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled; other
  * dialects use rows in the locks table.
  *
+ * Set `namespaceAdvisoryLocks` when multiple clusters share one PostgreSQL
+ * database with different `prefix` values. Without it, PostgreSQL advisory
+ * lock keys ignore `prefix` and clusters can contend for the same shard locks.
+ * Enabling the flag changes the lock key space — restart the fleet together.
+ *
  * **Gotchas**
  *
  * Changing `prefix` changes both generated table names, so runners using
- * different prefixes do not share registrations or shard locks.
+ * different prefixes do not share registrations or shard locks. On PostgreSQL,
+ * table prefix alone does not isolate advisory locks unless
+ * `namespaceAdvisoryLocks` is enabled.
  *
  * @see {@link layer} for the default SQL-backed storage layer
  * @see {@link layerWith} for a SQL-backed storage layer with a custom table prefix
@@ -55,6 +63,7 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  */
 export const make = Effect.fnUntraced(function*(options: {
   readonly prefix?: string | undefined
+  readonly namespaceAdvisoryLocks?: boolean | undefined
 }) {
   const config = yield* ShardingConfig.ShardingConfig
   const shardGroups = ShardingConfig.shardGroupConfig(config)
@@ -62,6 +71,8 @@ export const make = Effect.fnUntraced(function*(options: {
   const disableAdvisoryLocks = config.shardLockDisableAdvisory
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const prefix = options?.prefix ?? "cluster"
+  const namespaceAdvisoryLocks = options?.namespaceAdvisoryLocks === true
+  const lockNamespace = hashString(prefix)
   const table = (name: string) => `${prefix}_${name}`
 
   const acquireLockConn = sql.onDialectOrElse({
@@ -323,7 +334,9 @@ export const make = Effect.fnUntraced(function*(options: {
         const acquiredShardIds: Array<string> = []
         const toAcquire = new Map(shardIds.map((shardId) => [lockNumbers.get(shardId)!, shardId]))
         const takenLocks = yield* conn.executeValues(
-          `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = ${pid} ORDER BY objid`,
+          namespaceAdvisoryLocks
+            ? `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = ${pid} AND classid = ${lockNamespace} ORDER BY objid`
+            : `SELECT objid FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = ${pid} ORDER BY objid`,
           []
         )
         for (let i = 0; i < takenLocks.length; i++) {
@@ -460,7 +473,10 @@ export const make = Effect.fnUntraced(function*(options: {
   const pgLocks = (shardIdsMap: Map<number, string>) =>
     Array.from(
       shardIdsMap.entries(),
-      ([lockNum, shardId]) => `pg_try_advisory_lock(${lockNum}) AS "${shardId}"`
+      ([lockNum, shardId]) =>
+        namespaceAdvisoryLocks
+          ? `pg_try_advisory_lock(${lockNamespace}, ${lockNum}) AS "${shardId}"`
+          : `pg_try_advisory_lock(${lockNum}) AS "${shardId}"`
     ).join(", ")
 
   const mysqlLocks = (shardIds: ReadonlyArray<string>) =>
@@ -592,9 +608,16 @@ export const make = Effect.fnUntraced(function*(options: {
             const lockNum = lockNumbers.get(shardId)!
             for (let i = 0; i < 5; i++) {
               const [conn] = yield* lockConn!.await
-              yield* conn.executeRaw(`SELECT pg_advisory_unlock(${lockNum})`, [])
+              yield* conn.executeRaw(
+                namespaceAdvisoryLocks
+                  ? `SELECT pg_advisory_unlock(${lockNamespace}, ${lockNum})`
+                  : `SELECT pg_advisory_unlock(${lockNum})`,
+                []
+              )
               const takenLocks = yield* conn.executeValues(
-                `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
+                namespaceAdvisoryLocks
+                  ? `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND classid = ${lockNamespace} AND objid = ${lockNum}`
+                  : `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted = true AND pid = pg_backend_pid() AND objid = ${lockNum}`,
                 []
               )
               if (takenLocks.length === 0) return
@@ -695,10 +718,14 @@ export const layer: Layer.Layer<
 /**
  * Layer that provides SQL-backed `RunnerStorage` using a custom table prefix.
  *
+ * Pass `namespaceAdvisoryLocks: true` when multiple clusters share one
+ * PostgreSQL database with different prefixes so advisory locks are isolated.
+ *
  * @category layers
  * @since 4.0.0
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
+  readonly namespaceAdvisoryLocks?: boolean | undefined
 }): Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig> =>
   Layer.effect(RunnerStorage.RunnerStorage)(make(options))
