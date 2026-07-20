@@ -193,13 +193,13 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
-  it("converts a union", () => {
-    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Union([Schema.String, Schema.Number]).ast), {
+  it("converts a union preserving member order", () => {
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Union([Schema.String, Schema.BigInt]).ast), {
       representation: {
         _tag: "Union",
         types: [
           { _tag: "String", checks: [] },
-          { _tag: "Number", checks: [] }
+          { _tag: "BigInt", checks: [] }
         ],
         mode: "anyOf",
         checks: []

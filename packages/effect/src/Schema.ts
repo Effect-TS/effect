@@ -15248,6 +15248,44 @@ function validateCanonicalObjectKeys(ast: SchemaAST.Objects): void {
   }
 }
 
+function makeReorder(getPriority: (ast: SchemaAST.AST) => number) {
+  return (types: ReadonlyArray<SchemaAST.AST>): ReadonlyArray<SchemaAST.AST> => {
+    // Create a map of original indices for O(1) lookup
+    const indexMap = new Map<SchemaAST.AST, number>()
+    for (let i = 0; i < types.length; i++) {
+      indexMap.set(SchemaAST.toEncoded(types[i]), i)
+    }
+
+    // Create a sorted copy of the types array
+    const sortedTypes = [...types].sort((a, b) => {
+      a = SchemaAST.toEncoded(a)
+      b = SchemaAST.toEncoded(b)
+      const pa = getPriority(a)
+      const pb = getPriority(b)
+      if (pa !== pb) return pa - pb
+      // If priorities are equal, maintain original order (stable sort)
+      return indexMap.get(a)! - indexMap.get(b)!
+    })
+
+    // Check if order changed by comparing arrays
+    const orderChanged = sortedTypes.some((ast, index) => ast !== types[index])
+
+    if (!orderChanged) return types
+    return sortedTypes
+  }
+}
+
+const toCodecJsonReorder = makeReorder((ast: SchemaAST.AST) => {
+  switch (ast._tag) {
+    case "BigInt":
+    case "Symbol":
+    case "UniqueSymbol":
+      return 0
+    default:
+      return 1
+  }
+})
+
 function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
   switch (ast._tag) {
     case "Declaration": {
@@ -15277,7 +15315,7 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
       return ast.recur(recur, identity)
     }
     case "Union": {
-      const sortedTypes = InternalSchema.jsonReorder(ast.types)
+      const sortedTypes = toCodecJsonReorder(ast.types)
       if (sortedTypes !== ast.types) {
         return new SchemaAST.Union(
           sortedTypes,
@@ -15559,7 +15597,7 @@ const xml = {
   }
 }
 
-function getStringTreePriority(ast: SchemaAST.AST): number {
+const toStringTreeReorder = makeReorder((ast: SchemaAST.AST) => {
   switch (ast._tag) {
     case "Null":
     case "Boolean":
@@ -15571,9 +15609,7 @@ function getStringTreePriority(ast: SchemaAST.AST): number {
     default:
       return 1
   }
-}
-
-const treeReorder = InternalSchema.makeReorder(getStringTreePriority)
+})
 
 function serializerTree(
   ast: SchemaAST.AST,
@@ -15616,7 +15652,7 @@ function serializerTree(
       return ast.recur(recur, identity)
     }
     case "Union": {
-      const sortedTypes = treeReorder(ast.types)
+      const sortedTypes = toStringTreeReorder(ast.types)
       if (sortedTypes !== ast.types) {
         return new SchemaAST.Union(
           sortedTypes,

@@ -5,7 +5,6 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
-import * as InternalSchema from "./schema.ts"
 
 /** @internal */
 export function toRepresentation(
@@ -483,7 +482,7 @@ function lowerASTs(
       case "Union":
         return {
           _tag: "Union",
-          types: InternalSchema.jsonReorder(ast.types).map((ast) => recur(ast)),
+          types: ast.types.map((ast) => recur(ast)),
           mode: ast.mode,
           checks,
           ...annotationsField(ast.annotations)
