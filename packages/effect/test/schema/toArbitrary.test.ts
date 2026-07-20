@@ -336,7 +336,7 @@ describe("Arbitrary generation", () => {
       FastCheck.assert(
         FastCheck.property(Schema.toArbitrary(schema), (o) =>
           globalThis.Reflect.ownKeys(o).length >= 2 &&
-          globalThis.Object.prototype.hasOwnProperty.call(o, key)),
+          globalThis.Object.hasOwn(o, key)),
         { numRuns: 100 }
       )
       verifyGeneration(schema)
@@ -989,7 +989,7 @@ describe("Arbitrary generation", () => {
       }).check(Schema.isMinProperties(1))
       assertInvariant(
         schema,
-        (o) => globalThis.Object.keys(o).length >= 1 && globalThis.Object.prototype.hasOwnProperty.call(o, "a")
+        (o) => globalThis.Object.keys(o).length >= 1 && globalThis.Object.hasOwn(o, "a")
       )
     })
 
