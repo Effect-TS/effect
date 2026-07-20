@@ -518,7 +518,12 @@ const handleResponse = (
   if (request.method === "HEAD") {
     nodeResponse.writeHead(response.status, headers)
     return Effect.callback<void>((resume) => {
-      nodeResponse.end(() => resume(Effect.void))
+      const done = () => {
+        nodeResponse.off("close", done)
+        resume(Effect.void)
+      }
+      nodeResponse.once("close", done)
+      nodeResponse.end(done)
     })
   }
   const body = response.body
