@@ -5479,7 +5479,6 @@ describe("Machine", () => {
       const childStopping = yield* Deferred.make<void>()
       const releaseChildStop = yield* Deferred.make<void>()
       const resetHandled = yield* Deferred.make<void>()
-      let stoppedOutcomes = 0
       const childLogic = Machine.logic({
         initial: "pending",
         run: () =>
@@ -5537,7 +5536,6 @@ describe("Machine", () => {
       yield* Deferred.await(resetHandled)
       yield* Effect.yieldNow
 
-      assert.strictEqual(stoppedOutcomes, 0)
       assert.deepStrictEqual(yield* actor.snapshot, {
         status: "active",
         state: { path: "Idle", value: new Idle({ userId: "user-1" }) }
@@ -5552,7 +5550,6 @@ describe("Machine", () => {
       const childStopping = yield* Deferred.make<void>()
       const releaseChildStop = yield* Deferred.make<void>()
       const joinDone = yield* Ref.make(false)
-      let stoppedOutcomes = 0
       const childLogic = Machine.logic({
         initial: "pending",
         run: () =>
@@ -5612,7 +5609,6 @@ describe("Machine", () => {
       yield* Deferred.succeed(releaseChildStop, void 0)
 
       assert.strictEqual(yield* Fiber.join(joinFiber), "request-1")
-      assert.strictEqual(stoppedOutcomes, 0)
       assert.deepStrictEqual(yield* actor.snapshot, {
         status: "done",
         state: { path: "Success", value: new Success({ requestId: "request-1" }) },

@@ -182,84 +182,82 @@ export const toProcessLogic: <
                 )
               )
             )
-          const startInvokeWatchers = (
+          const startInvokeWatchers = Effect.fnUntraced(function*(
             config: AnyInvokeConfig,
             child: internalRuntime.MachineRef<any, any, any, any>,
             key: string,
             token: symbol,
             scope: Scope.Closeable
-          ): Effect.Effect<void> =>
-            Effect.gen(function*() {
-              if (config.snapshot !== undefined) {
-                const mapSnapshot = config.snapshot
-                yield* child.changes.pipe(
-                  Stream.filter((snapshot) => snapshot.status === "active"),
-                  Stream.runForEach((snapshot) =>
-                    isCurrentInvoke(key, token).pipe(
-                      Effect.flatMap((isCurrent) => {
-                        if (!isCurrent) {
-                          return Effect.void
-                        }
-                        const mappedEvent = mapSnapshot({ id: config.id, snapshot })
-                        return mappedEvent === undefined
-                          ? Effect.void
-                          : context.self.send(mappedEvent as Machine.EventOf<Events>)
-                      })
-                    )
-                  ),
-                  Effect.forkIn(scope),
-                  Effect.asVoid
-                )
-              }
-              yield* internalRuntime.watch(child).pipe(
-                Stream.runForEach((outcome) =>
+          ) {
+            if (config.snapshot !== undefined) {
+              const mapSnapshot = config.snapshot
+              yield* child.changes.pipe(
+                Stream.filter((snapshot) => snapshot.status === "active"),
+                Stream.runForEach((snapshot) =>
                   isCurrentInvoke(key, token).pipe(
                     Effect.flatMap((isCurrent) => {
-                      if (!isCurrent || outcome._tag === "Stopped") {
+                      if (!isCurrent) {
                         return Effect.void
                       }
-                      if (outcome._tag === "Done") {
-                        return outcome.output === undefined
-                          ? Effect.void
-                          : context.self.send(outcome.output as Machine.EventOf<Events>).pipe(
-                            Effect.catchTag("StoppedError", () => Effect.void)
-                          )
-                      }
-                      return context.failCause(outcome.cause)
+                      const mappedEvent = mapSnapshot({ id: config.id, snapshot })
+                      return mappedEvent === undefined
+                        ? Effect.void
+                        : context.self.send(mappedEvent as Machine.EventOf<Events>)
                     })
                   )
                 ),
                 Effect.forkIn(scope),
                 Effect.asVoid
               )
-            })
-          const startInvoke = <StateId extends Machine.StateIdentifier<States>>(
+            }
+            yield* internalRuntime.watch(child).pipe(
+              Stream.runForEach((outcome) =>
+                isCurrentInvoke(key, token).pipe(
+                  Effect.flatMap((isCurrent) => {
+                    if (!isCurrent || outcome._tag === "Stopped") {
+                      return Effect.void
+                    }
+                    if (outcome._tag === "Done") {
+                      return outcome.output === undefined
+                        ? Effect.void
+                        : context.self.send(outcome.output as Machine.EventOf<Events>).pipe(
+                          Effect.catchTag("StoppedError", () => Effect.void)
+                        )
+                    }
+                    return context.failCause(outcome.cause)
+                  })
+                )
+              ),
+              Effect.forkIn(scope),
+              Effect.asVoid
+            )
+          })
+          const startInvoke = Effect.fnUntraced(function*<StateId extends Machine.StateIdentifier<States>>(
             path: StateId,
             config: AnyInvokeConfig,
             state: Machine.StateByIdentifier<States, StateId>,
             event: Machine.LifecycleEvent<Events>
-          ) =>
-            Effect.gen(function*() {
-              const token = Symbol()
-              const invokeId = String(config.id)
-              const key = makeInvokeSessionKey(path, invokeId)
-              const childId = makeInvokeChildId(path, invokeId)
-              const scope = yield* Scope.make("parallel")
-              yield* Ref.update(invokeSessions, (sessions) => HashMap.set(sessions, key, { token, scope, childId }))
-              const child = yield* context.spawn(
-                config.src({
-                  state,
-                  event,
-                  runtime: internalPlanner.runtimeFor<Machine.EventOf<Events>, Machine.EmitOf<Emits>>()
-                }),
-                { id: childId }
-              ).pipe(
-                Effect.onExit((exit) =>
-                  Exit.isFailure(exit) ? clearInvoke(key, token, Exit.failCause(exit.cause)) : Effect.void
-                )
+          ) {
+            const token = Symbol()
+            const invokeId = String(config.id)
+            const key = makeInvokeSessionKey(path, invokeId)
+            const childId = makeInvokeChildId(path, invokeId)
+            const scope = yield* Scope.make("parallel")
+            yield* Ref.update(invokeSessions, (sessions) => HashMap.set(sessions, key, { token, scope, childId }))
+            const child = yield* context.spawn(
+              config.src({
+                state,
+                event,
+                runtime: internalPlanner.runtimeFor<Machine.EventOf<Events>, Machine.EmitOf<Emits>>()
+              }),
+              { id: childId }
+            ).pipe(
+              Effect.onExit((exit) =>
+                Exit.isFailure(exit) ? clearInvoke(key, token, Exit.failCause(exit.cause)) : Effect.void
               )
-              yield* startInvokeWatchers(config, child, key, token, scope)
-            })
+            )
+            yield* startInvokeWatchers(config, child, key, token, scope)
+          })
           const startInvokes: (
             state: Machine.Snapshot<States>,
             paths: ReadonlyArray<string>,

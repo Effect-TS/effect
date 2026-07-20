@@ -4,6 +4,7 @@
  * @since 4.0.0
  */
 
+import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
@@ -12,6 +13,14 @@ import * as Machine from "../machine/Machine.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
 import type * as AtomRegistry from "./AtomRegistry.ts"
+
+/**
+ * Error returned when a machine command is issued before startup completes.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class NotReadyError extends Data.TaggedError("NotReadyError") {}
 
 type AtomSupportedRequirements = Scope.Scope | AtomRegistry.AtomRegistry
 
@@ -136,18 +145,23 @@ export interface MachineAtom<State, Event, Error = never, Output = never, StartE
   readonly state: Atom.Atom<AsyncResult.AsyncResult<State, StartError>>
 
   /**
-   * Writable atom that sends events to the machine.
+   * Writable atom that sends events to the machine. Writes before startup
+   * completes fail with `NotReadyError`.
    *
    * @since 4.0.0
    */
-  readonly send: Atom.Writable<AsyncResult.AsyncResult<void, StartError | Machine.StoppedError>, Event>
+  readonly send: Atom.Writable<
+    AsyncResult.AsyncResult<void, StartError | NotReadyError | Machine.StoppedError>,
+    Event
+  >
 
   /**
-   * Writable atom that stops the machine.
+   * Writable atom that stops the machine. Writes before startup completes fail
+   * with `NotReadyError`.
    *
    * @since 4.0.0
    */
-  readonly stop: Atom.Writable<AsyncResult.AsyncResult<void, StartError>, void>
+  readonly stop: Atom.Writable<AsyncResult.AsyncResult<void, StartError | NotReadyError>, void>
 }
 
 const makeFromRefAtom = <State, Event, Error, Output, StartError>(
@@ -188,11 +202,18 @@ const makeFromRefAtom = <State, Event, Error, Output, StartError>(
     })
   })
 
-  const send = Atom.writable<AsyncResult.AsyncResult<void, StartError | Machine.StoppedError>, Event>(
+  const send = Atom.writable<
+    AsyncResult.AsyncResult<void, StartError | NotReadyError | Machine.StoppedError>,
+    Event
+  >(
     (get) => AsyncResult.map(get(ref), () => undefined),
     (ctx, event: Event) => {
       const result = ctx.get(ref)
-      if (AsyncResult.isSuccess(result)) {
+      if (AsyncResult.isInitial(result)) {
+        ctx.setSelf(AsyncResult.fail(new NotReadyError()))
+      } else if (AsyncResult.isFailure(result)) {
+        ctx.setSelf(AsyncResult.map(result, () => undefined))
+      } else {
         Effect.runCallback(result.value.send(event), {
           onExit: (exit) =>
             ctx.setSelf(
@@ -203,11 +224,15 @@ const makeFromRefAtom = <State, Event, Error, Output, StartError>(
     }
   )
 
-  const stop = Atom.writable<AsyncResult.AsyncResult<void, StartError>, void>(
+  const stop = Atom.writable<AsyncResult.AsyncResult<void, StartError | NotReadyError>, void>(
     (get) => AsyncResult.map(get(ref), () => undefined),
     (ctx) => {
       const result = ctx.get(ref)
-      if (AsyncResult.isSuccess(result)) {
+      if (AsyncResult.isInitial(result)) {
+        ctx.setSelf(AsyncResult.fail(new NotReadyError()))
+      } else if (AsyncResult.isFailure(result)) {
+        ctx.setSelf(AsyncResult.map(result, () => undefined))
+      } else {
         Effect.runCallback(result.value.stop)
       }
     }

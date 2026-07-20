@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Data, Effect, Fiber, Layer, Option, Schema, Stream } from "effect"
+import { Cause, Context, Data, Deferred, Effect, Fiber, Layer, Option, Schema, Stream } from "effect"
 import { Machine } from "effect/unstable/machine"
 import { AsyncResult, Atom, AtomMachine, AtomRegistry } from "effect/unstable/reactivity"
 
@@ -70,6 +70,25 @@ const makeCounterMachine = () =>
     }
   })
 
+const makeDelayedCounterMachine = (release: Deferred.Deferred<void>) =>
+  Machine.make({
+    states: { Count, Done },
+    events: [Finish],
+    initial: () =>
+      Deferred.await(release).pipe(
+        Effect.as(MachineInitial.Count(new Count({ value: 0 })))
+      )
+  }).handle({
+    Count: {
+      on: {
+        Finish: ({ state, event }) => MachineInitial.Count(new Count({ value: state.value + event.by }))
+      }
+    },
+    Done: {
+      type: "final"
+    }
+  })
+
 describe("AtomMachine", () => {
   it.effect("exposes snapshots and sends events", () =>
     Effect.scoped(Effect.gen(function*() {
@@ -92,6 +111,58 @@ describe("AtomMachine", () => {
       assert.deepStrictEqual(state, {
         path: "Count",
         value: new Count({ value: 2 })
+      })
+    })))
+
+  it.effect("rejects sends while the machine is starting", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const registry = yield* makeRegistry
+      const release = yield* Deferred.make<void>()
+      const bridge = AtomMachine.make(makeDelayedCounterMachine(release))
+      yield* mount(registry, bridge.send)
+
+      yield* Effect.sync(() => registry.set(bridge.send, new Finish({ by: 2 })))
+
+      const result = yield* Effect.sync(() => registry.get(bridge.send))
+      assert(AsyncResult.isFailure(result))
+      const error = Cause.findErrorOption(result.cause)
+      assert(Option.isSome(error))
+      assert.instanceOf(error.value, AtomMachine.NotReadyError)
+
+      yield* Deferred.succeed(release, void 0)
+      const snapshot = yield* AtomRegistry.getResult(registry, bridge.snapshot)
+      assert.deepStrictEqual(snapshot, {
+        status: "active",
+        state: {
+          path: "Count",
+          value: new Count({ value: 0 })
+        }
+      })
+    })))
+
+  it.effect("rejects stops while the machine is starting", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const registry = yield* makeRegistry
+      const release = yield* Deferred.make<void>()
+      const bridge = AtomMachine.make(makeDelayedCounterMachine(release))
+      yield* mount(registry, bridge.stop)
+
+      yield* Effect.sync(() => registry.set(bridge.stop, undefined))
+
+      const result = yield* Effect.sync(() => registry.get(bridge.stop))
+      assert(AsyncResult.isFailure(result))
+      const error = Cause.findErrorOption(result.cause)
+      assert(Option.isSome(error))
+      assert.instanceOf(error.value, AtomMachine.NotReadyError)
+
+      yield* Deferred.succeed(release, void 0)
+      const snapshot = yield* AtomRegistry.getResult(registry, bridge.snapshot)
+      assert.deepStrictEqual(snapshot, {
+        status: "active",
+        state: {
+          path: "Count",
+          value: new Count({ value: 0 })
+        }
       })
     })))
 
