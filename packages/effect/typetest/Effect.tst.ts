@@ -793,6 +793,25 @@ describe("Effect.partition", () => {
   })
 })
 
+describe("Effect.reduce", () => {
+  it("data-first", () => {
+    const result = Effect.reduce(
+      [1, 2, 3],
+      "",
+      (acc, n) => string.pipe(Effect.map((value) => `${acc}${value}${n}`))
+    )
+    expect(result).type.toBe<Effect.Effect<string, "err-1", "dep-1">>()
+  })
+
+  it("data-last", () => {
+    const result = pipe(
+      [1, 2, 3],
+      Effect.reduce("", (acc, n) => string.pipe(Effect.map((value) => `${acc}${value}${n}`)))
+    )
+    expect(result).type.toBe<Effect.Effect<string, "err-1", "dep-1">>()
+  })
+})
+
 describe("Effect.findFirst", () => {
   it("data-first", () => {
     const result = Effect.findFirst(

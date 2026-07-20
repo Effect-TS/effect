@@ -4383,6 +4383,44 @@ export const partition: {
 )
 
 /** @internal */
+export const reduce: {
+  <Z, A, E, R>(
+    zero: Z,
+    f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
+  ): (elements: Iterable<A>) => Effect.Effect<Z, E, R>
+  <A, Z, E, R>(
+    elements: Iterable<A>,
+    zero: Z,
+    f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
+  ): Effect.Effect<Z, E, R>
+} = dual(
+  3,
+  <A, Z, E, R>(
+    elements: Iterable<A>,
+    zero: Z,
+    f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
+  ) => {
+    const arr = Arr.fromIterable(elements)
+    if (arr.length === 0) return succeed(zero)
+    return suspend(() => {
+      let index = 0
+      let state = zero
+      return map(
+        whileLoop({
+          while: () => index < arr.length,
+          body: () => f(state, arr[index], index),
+          step(next) {
+            state = next
+            index++
+          }
+        }),
+        () => state
+      )
+    })
+  }
+)
+
+/** @internal */
 export const validate: {
   <A, B, E, R>(
     f: (a: A, i: number) => Effect.Effect<B, E, R>,
