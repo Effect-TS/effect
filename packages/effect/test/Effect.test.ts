@@ -693,7 +693,7 @@ describe("Effect", () => {
     it.effect("runs sequentially from left to right and passes the index", () =>
       Effect.gen(function*() {
         const visited: Array<string> = []
-        const result = yield* Effect.reduce([1, 2, 3, 4, 5], 0, (acc, value, index) =>
+        const result = yield* Effect.reduce([1, 2, 3, 4, 5], () => 0, (acc, value, index) =>
           Effect.sync(() => {
             visited.push(`${index}:${value}`)
             return acc + value
@@ -708,7 +708,7 @@ describe("Effect", () => {
         const visited: Array<number> = []
         const result = yield* pipe(
           [1, 2, 3, 4, 5],
-          Effect.reduce(0, (acc, value) =>
+          Effect.reduce(() => 0, (acc, value) =>
             Effect.sync(() => visited.push(value)).pipe(
               Effect.andThen(value === 3 ? Effect.fail("fail") : Effect.succeed(acc + value))
             )),
@@ -721,8 +721,22 @@ describe("Effect", () => {
 
     it.effect("returns zero for an empty iterable", () =>
       Effect.gen(function*() {
-        const result = yield* Effect.reduce([], 42, (acc, value: number) => Effect.succeed(acc + value))
+        const result = yield* Effect.reduce([], () => 42, (acc, value: number) => Effect.succeed(acc + value))
         assert.strictEqual(result, 42)
+      }))
+
+    it.effect("evaluates zero lazily for each run", () =>
+      Effect.gen(function*() {
+        let evaluations = 0
+        const reduced = Effect.reduce([1], () => {
+          evaluations++
+          return [] as Array<number>
+        }, (acc, value) => Effect.succeed([...acc, value]))
+
+        assert.strictEqual(evaluations, 0)
+        assert.deepStrictEqual(yield* reduced, [1])
+        assert.deepStrictEqual(yield* reduced, [1])
+        assert.strictEqual(evaluations, 2)
       }))
   })
 

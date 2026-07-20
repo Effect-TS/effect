@@ -576,8 +576,9 @@ export const partition: {
  * **Details**
  *
  * The accumulator function receives the current accumulator, the current
- * element, and its zero-based index. An empty iterable succeeds with `zero`.
- * If a step fails, remaining elements are not processed.
+ * element, and its zero-based index. The `zero` function is evaluated each
+ * time the effect runs. An empty iterable succeeds with its result. If a step
+ * fails, remaining elements are not processed.
  *
  * **Example** (Summing values sequentially)
  *
@@ -586,7 +587,7 @@ export const partition: {
  *
  * const program = Effect.reduce(
  *   [1, 2, 3],
- *   0,
+ *   () => 0,
  *   (total, value, index) =>
  *     Console.log(`Adding ${value} at index ${index}`).pipe(
  *       Effect.as(total + value)
@@ -605,8 +606,15 @@ export const partition: {
  * @since 2.0.0
  */
 export const reduce: {
-  <Z, A, E, R>(zero: Z, f: (z: Z, a: A, i: number) => Effect<Z, E, R>): (elements: Iterable<A>) => Effect<Z, E, R>
-  <A, Z, E, R>(elements: Iterable<A>, zero: Z, f: (z: Z, a: A, i: number) => Effect<Z, E, R>): Effect<Z, E, R>
+  <Z, A, E, R>(
+    zero: LazyArg<Z>,
+    f: (z: Z, a: A, i: number) => Effect<Z, E, R>
+  ): (elements: Iterable<A>) => Effect<Z, E, R>
+  <A, Z, E, R>(
+    elements: Iterable<A>,
+    zero: LazyArg<Z>,
+    f: (z: Z, a: A, i: number) => Effect<Z, E, R>
+  ): Effect<Z, E, R>
 } = internal.reduce
 
 /**

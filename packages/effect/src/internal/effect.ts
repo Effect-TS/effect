@@ -4385,26 +4385,26 @@ export const partition: {
 /** @internal */
 export const reduce: {
   <Z, A, E, R>(
-    zero: Z,
+    zero: LazyArg<Z>,
     f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
   ): (elements: Iterable<A>) => Effect.Effect<Z, E, R>
   <A, Z, E, R>(
     elements: Iterable<A>,
-    zero: Z,
+    zero: LazyArg<Z>,
     f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
   ): Effect.Effect<Z, E, R>
 } = dual(
   3,
   <A, Z, E, R>(
     elements: Iterable<A>,
-    zero: Z,
+    zero: LazyArg<Z>,
     f: (z: Z, a: A, i: number) => Effect.Effect<Z, E, R>
   ) => {
     const arr = Arr.fromIterable(elements)
-    if (arr.length === 0) return succeed(zero)
+    if (arr.length === 0) return sync(zero)
     return suspend(() => {
       let index = 0
-      let state = zero
+      let state = zero()
       return map(
         whileLoop({
           while: () => index < arr.length,
