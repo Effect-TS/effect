@@ -17,6 +17,11 @@ export * as ClusterError from "./ClusterError.ts"
 /**
  * @since 4.0.0
  */
+export * as ClusterMachine from "./ClusterMachine.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as ClusterMetrics from "./ClusterMetrics.ts"
 
 /**

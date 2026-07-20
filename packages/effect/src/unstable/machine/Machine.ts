@@ -18,10 +18,12 @@ import type {
   InfiniteTransitionError,
   MachineSchemaDecodeError,
   MachineSchemaEncodeError,
+  ProcessLocalError,
   StartupError,
   StoppedError,
   UnhandledEventError
 } from "./internal/machineErrors.ts"
+import { ProcessLocalError as ProcessLocalErrorValue } from "./internal/machineErrors.ts"
 import * as Model from "./internal/machineModel.ts"
 import * as internalPlanner from "./internal/machinePlanner.ts"
 import * as internalProcess from "./internal/machineProcess.ts"
@@ -170,6 +172,14 @@ export {
    * @since 4.0.0
    */
   MachineSchemaEncodeError,
+  /**
+   * Error returned when standalone action execution attempts an operation that
+   * requires a managed machine process.
+   *
+   * @category errors
+   * @since 4.0.0
+   */
+  ProcessLocalError,
   /**
    * Error returned when a machine fails while running startup lifecycle
    * logic after the initial state has been computed.
@@ -3717,6 +3727,63 @@ export const plan: <
 export const action = <E, R>(
   effect: Effect.Effect<void, E, R>
 ): Effect.Effect<void, never, ActionRequirement<E, R>> => internalPlanner.action(effect)
+
+const processLocal = (operation: string): Effect.Effect<never> => Effect.die(new ProcessLocalErrorValue({ operation }))
+
+const standaloneProcessRuntime = internalRuntime.MachineRuntime.of({
+  self: {
+    id: "Machine.runActions",
+    sessionId: "Machine.runActions",
+    stop: processLocal("stop self"),
+    send: () => processLocal("send to self")
+  },
+  parent: undefined,
+  spawn: () => processLocal("spawn"),
+  sendParent: () => processLocal("send to parent"),
+  sendTo: () => processLocal("send to child"),
+  stopChild: () => processLocal("stop child"),
+  failCause: () => processLocal("fail process")
+} as internalRuntime.ProcessScope<any>)
+
+/**
+ * Runs staged machine actions sequentially with the supplied runtime.
+ *
+ * **When to use**
+ *
+ * Use when you implement a commit protocol around `plan` or `planInitial` and
+ * need to execute their staged actions before publishing the planned snapshot.
+ *
+ * **Gotchas**
+ *
+ * This function only runs actions. The caller remains responsible for
+ * publishing the planned state and delivering planned emitted events after all
+ * actions succeed. Process-local operations such as `spawn`, `sendTo`, and
+ * `stopChild` fail with `ProcessLocalError` because no managed machine process
+ * owns the actions.
+ *
+ * @see {@link plan} for creating a transition plan.
+ * @see {@link planInitial} for creating an initial plan.
+ * @category running
+ * @since 4.0.0
+ */
+export const runActions = <E, R, Events, Emits>(
+  actions: Iterable<Effect.Effect<void, E, R>>,
+  runtime: Runtime<Events, Emits>
+): Effect.Effect<
+  void,
+  E | ProcessLocalError,
+  Exclude<ExcludeCompatibleRuntime<R, Events, Emits>, MachineRuntimeRequirement>
+> =>
+  internalRuntime.provideMachineRuntime(
+    internalPlanner.runActions(actions, runtime),
+    standaloneProcessRuntime
+  ).pipe(
+    Effect.catchDefect((defect) =>
+      defect instanceof ProcessLocalErrorValue
+        ? Effect.fail(defect)
+        : Effect.die(defect)
+    )
+  )
 
 /**
  * Returns the typed runtime capability for the current machine.

@@ -79,6 +79,17 @@ export class ChildAlreadyExistsError extends Data.TaggedError("ChildAlreadyExist
 }> {}
 
 /**
+ * Error returned when standalone action execution attempts an operation that
+ * requires a managed machine process.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class ProcessLocalError extends Data.TaggedError("ProcessLocalError")<{
+  readonly operation: string
+}> {}
+
+/**
  * Error returned by `join` when a running machine is stopped before
  * producing an output.
  *

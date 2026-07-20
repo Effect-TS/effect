@@ -290,6 +290,20 @@ describe("Machine", () => {
     expect<Effect.Services<typeof started>>().type.toBe<never>()
   })
 
+  it("runActions owns process-local runtime requirements", () => {
+    const child = Machine.transition(0, (_state: number, _event: SignIn) => Effect.succeed(1))
+    const run = Machine.runActions(
+      [Machine.spawn(child).pipe(Effect.asVoid)],
+      {
+        raise: () => Effect.void,
+        sendParent: () => Effect.void
+      }
+    )
+
+    expect<Effect.Services<typeof run>>().type.toBe<never>()
+    expect<Effect.Error<typeof run>>().type.toBe<Machine.ProcessLocalError>()
+  })
+
   it("invoke requires one-shot outputs to be parent machine events or void", () => {
     const machine = Machine.make({
       states: UpStates.states,

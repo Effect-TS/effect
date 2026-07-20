@@ -3639,6 +3639,20 @@ describe("Machine", () => {
       assert.deepStrictEqual(yield* deferredLog.read, [])
     }))
 
+  it.effect("runActions rejects operations that require a managed machine process", () =>
+    Effect.gen(function*() {
+      const error = yield* Machine.runActions(
+        [Machine.spawn(Machine.effect(Effect.void)).pipe(Effect.asVoid)],
+        {
+          raise: () => Effect.void,
+          sendParent: () => Effect.void
+        }
+      ).pipe(Effect.flip)
+
+      assert.instanceOf(error, Machine.ProcessLocalError)
+      assert.strictEqual(error.operation, "spawn")
+    }))
+
   it.effect("planInitial uses the planning runtime for initial raised events", () =>
     Effect.gen(function*() {
       const machine = Machine.make({

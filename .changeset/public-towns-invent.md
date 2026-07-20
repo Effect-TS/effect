@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add the unstable Machine API and its AtomMachine reactivity integration.
+Add the unstable Machine API, snapshot persistence, and its AtomMachine and ClusterMachine integrations.
