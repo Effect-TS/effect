@@ -35,14 +35,33 @@ describe("Effect", () => {
         messages.push(message)
       })
 
-      yield* Effect.fail("boom").pipe(
+      const exit = yield* Effect.fail("boom").pipe(
         Effect.timeout(Duration.seconds(1)),
         Effect.exit,
         Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
         Effect.withUnhandledErrorLogLevel(Option.some(LogLevel.Error))
       )
 
+      deepStrictEqual(exit, Exit.fail("boom"))
       deepStrictEqual(messages, [])
+    }))
+  it.effect("preserves the unhandled error log level for user fibers", () =>
+    Effect.gen(function*() {
+      const messages: Array<unknown> = []
+      const logger = Logger.make(({ message }) => {
+        messages.push(message)
+      })
+
+      yield* Effect.gen(function*() {
+        const fiber = yield* Effect.fork(Effect.fail("boom"))
+        yield* Fiber.await(fiber)
+      }).pipe(
+        Effect.timeout(Duration.seconds(1)),
+        Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
+        Effect.withUnhandledErrorLogLevel(Option.some(LogLevel.Error))
+      )
+
+      deepStrictEqual(messages, ["Fiber terminated with an unhandled error"])
     }))
   it.live("timeout a long computation", () =>
     Effect.gen(function*() {
