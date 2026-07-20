@@ -604,26 +604,27 @@ export const timeoutTo = dual<
     core.fiberIdWith((parentFiberId) =>
       core.uninterruptibleMask((restore) =>
         fiberRuntime.raceFibersWith(
-          restore(self),
+          core.exit(restore(self)),
           core.interruptible(effect.sleep(duration)),
           {
             onSelfWin: (winner, loser) =>
               core.flatMap(
                 winner.await,
                 (exit) => {
-                  if (exit._tag === "Success") {
+                  const selfExit = core.exitFlatten(exit)
+                  if (selfExit._tag === "Success") {
                     return core.flatMap(
                       winner.inheritAll,
                       () =>
                         core.as(
                           core.interruptAsFiber(loser, parentFiberId),
-                          onSuccess(exit.value)
+                          onSuccess(selfExit.value)
                         )
                     )
                   } else {
                     return core.flatMap(
                       core.interruptAsFiber(loser, parentFiberId),
-                      () => core.exitFailCause(exit.cause)
+                      () => core.exitFailCause(selfExit.cause)
                     )
                   }
                 }
