@@ -19,6 +19,7 @@ import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const isDeno = "Deno" in globalThis
+const resolveIdentifierFallback = SchemaAST.resolveAt<string>("~identifier")
 
 const FiniteFromDate = Schema.Date.pipe(Schema.decodeTo(
   Schema.Number,
@@ -39,6 +40,63 @@ describe("Serializers", () => {
     it("treats Json as canonical", () => {
       strictEqual(Schema.toCodecJson(Schema.Json).ast, Schema.Json.ast)
       strictEqual(Schema.toCodecJson(Schema.MutableJson).ast, Schema.MutableJson.ast)
+    })
+
+    describe("identifier preservation", () => {
+      it("annotates a new canonical encoding with the effective type-side identifier", () => {
+        const schema = Schema.Number.check(Schema.isGreaterThan(0)).annotate({ identifier: "Positive" })
+        const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+        strictEqual(resolveIdentifierFallback(encoded), "Positive")
+      })
+
+      it("annotates an existing canonical encoding", () => {
+        const schema = Schema.FiniteFromString.annotate({ identifier: "Finite" })
+        const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+        strictEqual(resolveIdentifierFallback(encoded), "Finite")
+      })
+
+      it("does not overwrite an encoded-side identifier", () => {
+        const schema = Schema.FiniteFromString.pipe(
+          Schema.annotateEncoded({ identifier: "EncodedFinite" }),
+          Schema.annotate({ identifier: "Finite" })
+        )
+        const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+        strictEqual(SchemaAST.resolveIdentifier(encoded), "EncodedFinite")
+        strictEqual(resolveIdentifierFallback(encoded), undefined)
+      })
+
+      it("preserves the AST when the fallback identifier is unchanged", () => {
+        const schema = Schema.FiniteFromString.pipe(
+          Schema.annotateEncoded({ "~identifier": "Finite" }),
+          Schema.annotate({ identifier: "Finite" })
+        )
+
+        strictEqual(Schema.toCodecJson(schema).ast, schema.ast)
+      })
+
+      it("overwrites a different fallback identifier", () => {
+        const schema = Schema.FiniteFromString.pipe(
+          Schema.annotateEncoded({ "~identifier": "Previous" }),
+          Schema.annotate({ identifier: "Finite" })
+        )
+        const encoded = SchemaAST.getLastEncoding(Schema.toCodecJson(schema).ast)
+
+        strictEqual(resolveIdentifierFallback(encoded), "Finite")
+      })
+
+      it("propagates identifiers recursively", () => {
+        class Person extends Schema.Class<Person>("Person")({ name: Schema.String }) {}
+        const ast = Schema.toCodecJson(Schema.Struct({ person: Person })).ast
+
+        strictEqual(ast._tag, "Objects")
+        if (ast._tag === "Objects") {
+          const encoded = SchemaAST.getLastEncoding(ast.propertySignatures[0].type)
+          strictEqual(resolveIdentifierFallback(encoded), "Person")
+        }
+      })
     })
 
     it("should reorder the types in the Union based on the encoded side", async () => {

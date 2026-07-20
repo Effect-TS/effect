@@ -15246,11 +15246,30 @@ export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
   return make(toCodecJsonTop(schema.ast), { schema })
 }
 
-const toCodecJsonTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+const toCodecJsonTopBase = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
   const out = toCodecJsonBase(ast, toCodecJsonTop)
   const context = ast.context
   if (out === ast || context === undefined) return out
   return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
+})
+
+const toCodecJsonTop = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
+  const identifier = InternalAnnotations.resolveIdentifier(ast)
+  const out = toCodecJsonTopBase(ast)
+  if (identifier === undefined || out.encoding === undefined) return out
+
+  const encoded = SchemaAST.getLastEncoding(out)
+  if (
+    InternalAnnotations.resolveIdentifier(encoded) !== undefined ||
+    InternalAnnotations.resolveIdentifierFallback(encoded) === identifier
+  ) {
+    return out
+  }
+
+  const annotated = SchemaAST.annotate(encoded, {
+    [InternalAnnotations.identifierFallbackKey]: identifier
+  })
+  return SchemaAST.applyToSelfOrLastLinkEncoding(() => annotated)(out)
 })
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {

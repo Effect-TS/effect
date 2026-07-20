@@ -179,7 +179,7 @@ describe("LanguageModel", () => {
         }
       }))
 
-    it("resolves top-level $ref for class schemas in defaultCodecTransformer", () => {
+    it("resolves the canonical top-level $ref for class schemas in defaultCodecTransformer", () => {
       class Person extends Schema.Class<Person>("Person")({
         name: Schema.String
       }) {}
@@ -196,7 +196,7 @@ describe("LanguageModel", () => {
         required: ["name"],
         additionalProperties: false,
         $defs: {
-          Person: {
+          "PersonJsonEncoding": {
             type: "object",
             properties: {
               name: {

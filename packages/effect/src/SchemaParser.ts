@@ -31,8 +31,7 @@ const toConstructorAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
       const getLink = ast.annotations?.[SchemaAST.ClassTypeId]
       if (Predicate.isFunction(getLink)) {
         const link = getLink(ast.typeParameters)
-        const to = toConstructorAST(link.to)
-        return SchemaAST.replaceEncoding(ast, to === link.to ? [link] : [new SchemaAST.Link(to, link.transformation)])
+        return SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, toConstructorAST)])
       }
       return ast
     }

@@ -123,6 +123,19 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     assert.isFalse(runtime.includes("callback"))
   })
 
+  it("preserves fallback identifiers", () => {
+    const output = SchemaRepresentation.toCodeDocument({
+      representations: [{
+        _tag: "String",
+        checks: [],
+        annotations: { "~identifier": "Person" }
+      }],
+      references: {}
+    })
+
+    assertInclude(output.codes[0].runtime, `.annotate({ "~identifier": "Person" })`)
+  })
+
   it("emits tuple element and property annotations", () => {
     const document: SchemaRepresentation.MultiDocument = {
       representations: [

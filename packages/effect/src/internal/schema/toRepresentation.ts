@@ -234,6 +234,20 @@ interface ExternalDefinition {
   readonly body: SchemaAST.AST
 }
 
+// Preserve repeated structural nodes as references without adding noise for leaf nodes.
+function isShareable(ast: SchemaAST.AST): boolean {
+  return SchemaAST.isArrays(ast) ||
+    SchemaAST.isObjects(ast) ||
+    (SchemaAST.isUnion(ast) && ast.types.some(isShareable))
+}
+
+function resolveReferenceIdentifier(ast: SchemaAST.AST): string | undefined {
+  const identifier = InternalAnnotations.resolveIdentifier(ast)
+  if (identifier !== undefined) return identifier
+  const fallback = InternalAnnotations.resolveIdentifierFallback(ast)
+  return fallback === undefined ? undefined : `${fallback}JsonEncoding`
+}
+
 function lowerASTs(
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
   externalDefinitions: ReadonlyArray<ExternalDefinition>,
@@ -280,7 +294,7 @@ function lowerASTs(
   function visit(input: SchemaAST.AST): void {
     const ast = encoded ? SchemaAST.getLastEncoding(input) : input
     if (visited.has(ast)) {
-      if (ast._tag === "Arrays" || ast._tag === "Objects" || ast._tag === "Union") shared.add(ast)
+      if (isShareable(ast)) shared.add(ast)
       return
     }
     visited.add(ast)
@@ -334,7 +348,7 @@ function lowerASTs(
       }
     }
 
-    const identifier = ownedReference === undefined ? InternalAnnotations.resolveIdentifier(ast) : undefined
+    const identifier = ownedReference === undefined ? resolveReferenceIdentifier(ast) : undefined
     if (identifier !== undefined) {
       const reference = generateReference(identifier)
       referenceMap.set(ast, reference)

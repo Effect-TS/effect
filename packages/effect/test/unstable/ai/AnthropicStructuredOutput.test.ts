@@ -146,9 +146,7 @@ describe("toCodecAnthropic", () => {
       assertJsonSchema(Schema.Number, {
         "anyOf": [
           { "type": "number" },
-          { "type": "string", "enum": ["NaN"] },
-          { "type": "string", "enum": ["Infinity"] },
-          { "type": "string", "enum": ["-Infinity"] }
+          { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
         ]
       })
     })
@@ -477,7 +475,7 @@ describe("toCodecAnthropic", () => {
       "required": ["name"],
       "additionalProperties": false,
       "$defs": {
-        "Person": {
+        "PersonJsonEncoding": {
           "type": "object",
           "properties": {
             "name": { "type": "string" }

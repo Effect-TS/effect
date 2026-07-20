@@ -511,7 +511,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
   it("extracts shared Objects, Arrays, and Union schemas into references", () => {
     const object = Schema.Struct({ value: Schema.String })
     const array = Schema.Array(Schema.Number)
-    const union = Schema.Union([Schema.String, Schema.Number])
+    const union = Schema.Union([Schema.Struct({ value: Schema.String }), Schema.Null])
     const document = SchemaRepresentation.toRepresentation(
       Schema.Tuple([object, object, array, array, union, union]).ast
     )
@@ -551,14 +551,35 @@ describe("SchemaRepresentation.toRepresentation", () => {
         Union_: {
           _tag: "Union",
           types: [
-            { _tag: "String", checks: [] },
-            { _tag: "Number", checks: [] }
+            {
+              _tag: "Objects",
+              propertySignatures: [{
+                name: "value",
+                type: { _tag: "String", checks: [] },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: [],
+              checks: []
+            },
+            { _tag: "Null", checks: [] }
           ],
           mode: "anyOf",
           checks: []
         }
       }
     })
+  })
+
+  it("does not extract shared unions of leaf schemas", () => {
+    const union = Schema.Union([Schema.String, Schema.Number])
+    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([union, union]).ast)
+
+    assert.deepStrictEqual(document.references, {})
+    assert.strictEqual(document.representation._tag, "Arrays")
+    if (document.representation._tag === "Arrays") {
+      assert.deepStrictEqual(document.representation.elements.map((element) => element.type._tag), ["Union", "Union"])
+    }
   })
 
   it("does not extract structurally equivalent schemas with distinct ASTs", () => {
@@ -668,6 +689,29 @@ describe("SchemaRepresentation.toRepresentation", () => {
       checks: []
     })
     assert.deepStrictEqual(Object.keys(document.references), ["Node", "Node1"])
+  })
+
+  it("uses a fallback identifier for encoded representations", () => {
+    const schema = Schema.String.annotate({ "~identifier": "Person" })
+
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+      representation: { _tag: "Reference", $ref: "PersonJsonEncoding" },
+      references: {
+        PersonJsonEncoding: {
+          _tag: "String",
+          checks: [],
+          annotations: { "~identifier": "Person" }
+        }
+      }
+    })
+  })
+
+  it("prefers an identifier over a fallback identifier", () => {
+    const schema = Schema.String.annotate({ identifier: "EncodedPerson", "~identifier": "Person" })
+    const document = SchemaRepresentation.toRepresentation(schema.ast)
+
+    assert.deepStrictEqual(document.representation, { _tag: "Reference", $ref: "EncodedPerson" })
+    assert.deepStrictEqual(Object.keys(document.references), ["EncodedPerson"])
   })
 
   it("reuses the class reference", () => {

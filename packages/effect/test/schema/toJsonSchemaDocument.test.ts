@@ -124,26 +124,28 @@ describe("toJsonSchemaDocument", () => {
     )
   })
 
-  it("preserves shared canonical schemas with references", () => {
+  it("inlines shared canonical unions of leaf schemas", () => {
     assertJsonSchemaDocument(
       Schema.Struct({ left: Schema.Number, right: Schema.Number }),
       {
         schema: {
           type: "object",
           properties: {
-            left: { $ref: "#/$defs/Union_" },
-            right: { $ref: "#/$defs/Union_" }
+            left: {
+              anyOf: [
+                { type: "number" },
+                { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+              ]
+            },
+            right: {
+              anyOf: [
+                { type: "number" },
+                { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
+              ]
+            }
           },
           required: ["left", "right"],
           additionalProperties: false
-        },
-        definitions: {
-          Union_: {
-            anyOf: [
-              { type: "number" },
-              { type: "string", enum: ["Infinity", "-Infinity", "NaN"] }
-            ]
-          }
         }
       }
     )
@@ -3612,7 +3614,7 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("does not inherit the content schema identifier", () => {
+    it("preserves the content schema identifier as a canonical reference", () => {
       const MyEvent = Schema.Struct({
         value: Schema.String
       }).annotate({ identifier: "MyEvent" })
@@ -3621,8 +3623,13 @@ describe("toJsonSchemaDocument", () => {
         Schema.fromJsonString(MyEvent),
         {
           schema: {
-            "type": "string",
-            "contentMediaType": "application/json"
+            "$ref": "#/$defs/MyEventJsonEncoding"
+          },
+          definitions: {
+            "MyEventJsonEncoding": {
+              "type": "string",
+              "contentMediaType": "application/json"
+            }
           }
         }
       )
@@ -3653,7 +3660,7 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  it("Class", () => {
+  it("Class preserves its identifier as a canonical reference", () => {
     class A extends Schema.Class<A>("A")({
       a: Schema.String
     }) {}
@@ -3661,6 +3668,33 @@ describe("toJsonSchemaDocument", () => {
       A,
       {
         schema: {
+          "$ref": "#/$defs/AJsonEncoding"
+        },
+        definitions: {
+          "AJsonEncoding": {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" }
+            },
+            "required": ["a"],
+            "additionalProperties": false
+          }
+        }
+      },
+      { includeAnnotationKey: () => true }
+    )
+  })
+
+  it("ErrorClass preserves its identifier as a canonical reference", () => {
+    class E extends Schema.ErrorClass<E>("E")({
+      a: Schema.String
+    }) {}
+    assertJsonSchemaDocument(E, {
+      schema: {
+        "$ref": "#/$defs/EJsonEncoding"
+      },
+      definitions: {
+        "EJsonEncoding": {
           "type": "object",
           "properties": {
             "a": { "type": "string" }
@@ -3668,22 +3702,6 @@ describe("toJsonSchemaDocument", () => {
           "required": ["a"],
           "additionalProperties": false
         }
-      }
-    )
-  })
-
-  it("ErrorClass", () => {
-    class E extends Schema.ErrorClass<E>("E")({
-      a: Schema.String
-    }) {}
-    assertJsonSchemaDocument(E, {
-      schema: {
-        "type": "object",
-        "properties": {
-          "a": { "type": "string" }
-        },
-        "required": ["a"],
-        "additionalProperties": false
       }
     })
   })

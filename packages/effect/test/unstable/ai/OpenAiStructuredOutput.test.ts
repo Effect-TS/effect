@@ -224,9 +224,7 @@ describe("toCodecOpenAI", () => {
       assertJsonSchema(Schema.Number, {
         "anyOf": [
           { "type": "number" },
-          { "type": "string", "enum": ["NaN"] },
-          { "type": "string", "enum": ["Infinity"] },
-          { "type": "string", "enum": ["-Infinity"] }
+          { "type": "string", "enum": ["Infinity", "-Infinity", "NaN"] }
         ]
       })
     })
@@ -605,7 +603,7 @@ describe("toCodecOpenAI", () => {
       "required": ["name"],
       "additionalProperties": false,
       "$defs": {
-        "Person": {
+        "PersonJsonEncoding": {
           "type": "object",
           "properties": {
             "name": { "type": "string" }
