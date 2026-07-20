@@ -643,21 +643,10 @@ describe("toJsonSchemaDocument", () => {
                   "enum": ["Nanos"]
                 },
                 "value": {
-                  "type": "object",
-                  "properties": {
-                    "_tag": {
-                      "type": "string",
-                      "enum": ["BigInt"]
-                    },
-                    "value": {
-                      "type": "string",
-                      "allOf": [
-                        { "pattern": "^-?\\d+$" }
-                      ]
-                    }
-                  },
-                  "required": ["_tag", "value"],
-                  "additionalProperties": false
+                  "type": "string",
+                  "allOf": [
+                    { "pattern": "^-?\\d+$" }
+                  ]
                 }
               },
               "required": ["_tag", "value"],
@@ -818,21 +807,10 @@ describe("toJsonSchemaDocument", () => {
       schema,
       {
         schema: {
-          "type": "object",
-          "properties": {
-            "_tag": {
-              "type": "string",
-              "enum": ["BigInt"]
-            },
-            "value": {
-              "type": "string",
-              "allOf": [
-                { "pattern": "^-?\\d+$" }
-              ]
-            }
-          },
-          "required": ["_tag", "value"],
-          "additionalProperties": false
+          "type": "string",
+          "allOf": [
+            { "pattern": "^-?\\d+$" }
+          ]
         }
       }
     )
@@ -844,16 +822,10 @@ describe("toJsonSchemaDocument", () => {
       schema,
       {
         schema: {
-          "type": "object",
-          "properties": {
-            "_tag": {
-              "type": "string",
-              "enum": ["Symbol"]
-            },
-            "value": { "type": "string" }
-          },
-          "required": ["_tag", "value"],
-          "additionalProperties": false
+          "type": "string",
+          "allOf": [
+            { "pattern": "^Symbol\\((.*)\\)$" }
+          ]
         }
       }
     )
@@ -865,16 +837,10 @@ describe("toJsonSchemaDocument", () => {
       schema,
       {
         schema: {
-          "type": "object",
-          "properties": {
-            "_tag": {
-              "type": "string",
-              "enum": ["Symbol"]
-            },
-            "value": { "type": "string" }
-          },
-          "required": ["_tag", "value"],
-          "additionalProperties": false
+          "type": "string",
+          "allOf": [
+            { "pattern": "^Symbol\\((.*)\\)$" }
+          ]
         }
       }
     )
@@ -1832,19 +1798,8 @@ describe("toJsonSchemaDocument", () => {
         schema,
         {
           schema: {
-            "type": "object",
-            "properties": {
-              "_tag": {
-                "type": "string",
-                "enum": ["BigInt"]
-              },
-              "value": {
-                "type": "string",
-                "enum": ["1"]
-              }
-            },
-            "required": ["_tag", "value"],
-            "additionalProperties": false
+            "type": "string",
+            "enum": ["1"]
           }
         }
       )
@@ -1852,19 +1807,8 @@ describe("toJsonSchemaDocument", () => {
         schema.annotate({ description: "a" }),
         {
           schema: {
-            "type": "object",
-            "properties": {
-              "_tag": {
-                "type": "string",
-                "enum": ["BigInt"]
-              },
-              "value": {
-                "type": "string",
-                "enum": ["1"]
-              }
-            },
-            "required": ["_tag", "value"],
-            "additionalProperties": false
+            "type": "string",
+            "enum": ["1"]
           }
         }
       )
@@ -3468,21 +3412,10 @@ describe("toJsonSchemaDocument", () => {
           schema: {
             "anyOf": [
               {
-                "type": "object",
-                "properties": {
-                  "_tag": {
-                    "type": "string",
-                    "enum": ["BigInt"]
-                  },
-                  "value": {
-                    "type": "string",
-                    "allOf": [
-                      { "pattern": "^-?\\d+$" }
-                    ]
-                  }
-                },
-                "required": ["_tag", "value"],
-                "additionalProperties": false
+                "type": "string",
+                "allOf": [
+                  { "pattern": "^-?\\d+$" }
+                ]
               },
               { "type": "string" }
             ]

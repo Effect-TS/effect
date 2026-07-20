@@ -8,7 +8,7 @@ describe("SchemaRepresentation.fromJsonMultiDocument", () => {
       representations: [
         { _tag: "String", checks: [] },
         { _tag: "Number", checks: [] },
-        { _tag: "Literal", literal: { _tag: "BigInt", value: "1" }, checks: [] }
+        { _tag: "Literal", literal: "1", checks: [] }
       ],
       references: {}
     } as const

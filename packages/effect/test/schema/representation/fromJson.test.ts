@@ -215,7 +215,7 @@ describe("SchemaRepresentation.fromJson", () => {
       SchemaRepresentation.fromJson({
         representation: {
           _tag: "Literal",
-          literal: { _tag: "BigInt", value: "1" },
+          literal: "1",
           checks: []
         },
         references: {}
@@ -292,7 +292,7 @@ describe("SchemaRepresentation.fromJson", () => {
       SchemaRepresentation.fromJson({
         representation: {
           _tag: "UniqueSymbol",
-          symbol: { _tag: "Symbol", value: "acme/schema/key" },
+          symbol: "Symbol(acme/schema/key)",
           checks: []
         },
         references: {}
