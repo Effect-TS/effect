@@ -974,8 +974,8 @@ describe("toCodeDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String, Schema.Union([Schema.BigInt, Schema.Number])])`,
-            "`a${string}${bigint}` | `a${string}${number}` | `b${string}${bigint}` | `b${string}${number}`"
+            `Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String, Schema.Union([Schema.Number, Schema.BigInt])])`,
+            "`a${string}${number}` | `a${string}${bigint}` | `b${string}${number}` | `b${string}${bigint}`"
           )
         }
       )
