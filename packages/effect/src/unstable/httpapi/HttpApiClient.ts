@@ -1000,6 +1000,21 @@ function getEncodePayloadSchemaFromBody(
   if (cached !== undefined) {
     return cached
   }
+  if (HttpApiSchema.isStreamUint8Array(schema)) {
+    const out = $HttpBody.pipe(Schema.decodeTo(
+      schema,
+      SchemaTransformation.transformOrFail<Stream.Stream<Uint8Array, unknown>, HttpBody.HttpBody>({
+        decode(httpBody) {
+          return Effect.fail(new SchemaIssue.Forbidden(Option.some(httpBody), { message: "Encode only schema" }))
+        },
+        encode(stream) {
+          return Effect.succeed(HttpBody.stream(stream, schema.contentType))
+        }
+      })
+    ))
+    bodyFromPayloadCache.set(ast, out)
+    return out
+  }
   const encoding = HttpApiSchema.getPayloadEncoding(ast, method)
   const out = $HttpBody.pipe(Schema.decodeTo(
     schema,

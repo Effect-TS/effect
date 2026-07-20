@@ -1287,6 +1287,12 @@ function transformResponse(schema: Schema.Top): Schema.Top {
 }
 
 function transformPayload(schema: Schema.Top, method: HttpMethod): Schema.Top {
+  // Stream schemas carry their metadata on the schema object itself, so they
+  // must be preserved as-is for the client to detect them when encoding the
+  // request body
+  if (HttpApiSchema.isStreamSchema(schema)) {
+    return schema
+  }
   const encoding = HttpApiSchema.getPayloadEncoding(schema.ast, method)
   switch (encoding._tag) {
     case "Json":
