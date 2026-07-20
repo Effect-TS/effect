@@ -10,7 +10,7 @@ import * as Option from "../../../Option.ts"
 import { hasProperty } from "../../../Predicate.ts"
 import * as Schema from "../../../Schema.ts"
 import type { Machine } from "../Machine.ts"
-import { MachineSchemaDecodeError } from "./machineErrors.ts"
+import { MachineSchemaDecodeError, MachineSchemaEncodeError } from "./machineErrors.ts"
 
 export const TargetTypeId = "~effect/Machine/Target"
 
@@ -1031,3 +1031,256 @@ export const completeConfigurationEffect: <
     readonly completions: ReadonlyArray<FinalCompletion>
   }
 })
+
+const EncodedSnapshotSchema = Schema.Struct({
+  _tag: Schema.Literal("MachineSnapshot"),
+  active: Schema.Array(Schema.Struct({
+    path: Schema.String,
+    value: Schema.Unknown
+  })),
+  completed: Schema.optional(Schema.Array(Schema.Struct({
+    path: Schema.String,
+    output: Schema.optional(Schema.Unknown)
+  })))
+})
+
+const encodeBoundary = (
+  machine: Machine.Any,
+  schema: Schema.Top,
+  value: unknown,
+  options: {
+    readonly boundary: "state" | "output"
+    readonly state: string
+  }
+): Effect.Effect<unknown, MachineSchemaEncodeError, unknown> =>
+  Schema.encodeUnknownEffect(schema)(value).pipe(
+    Effect.mapError((cause) =>
+      new MachineSchemaEncodeError({
+        machineId: machine.id,
+        boundary: options.boundary,
+        state: options.state,
+        cause
+      })
+    )
+  )
+
+const decodeEncodedBoundary = (
+  machine: Machine.Any,
+  schema: Schema.Top,
+  value: unknown,
+  options: {
+    readonly boundary: "state" | "output"
+    readonly state: string
+  }
+): Effect.Effect<unknown, MachineSchemaDecodeError, unknown> =>
+  Schema.decodeUnknownEffect(schema)(value).pipe(
+    Effect.mapError((cause) =>
+      new MachineSchemaDecodeError({
+        machineId: machine.id,
+        boundary: options.boundary,
+        state: options.state,
+        cause
+      })
+    )
+  )
+
+const getCompletionSchema = (
+  machine: Machine.Any,
+  configuration: ActiveConfiguration,
+  path: string
+): Schema.Top => {
+  const node = getNode(machine, path)
+  if (node.type === "compound") {
+    const child = getActiveChildPath(machine, configuration, path)
+    if (child === undefined) {
+      throw new Error(`Machine expected completed state "${path}" to have an active child`)
+    }
+    return getCompletionSchema(machine, configuration, child)
+  }
+  return node.output ?? Schema.Void
+}
+
+const validateEncodedConfiguration = (
+  machine: Machine.Any,
+  configuration: ActiveConfiguration
+): Machine.Snapshot<any> => {
+  const snapshot = snapshotFromConfiguration(machine, configuration)
+  const normalized = configurationFromSnapshot(machine, snapshot)
+  if (
+    normalized.active.size !== configuration.active.size ||
+    Array.from(configuration.active).some((path) => !normalized.active.has(path))
+  ) {
+    throw new Error("Machine encoded snapshot contains states outside its active configuration")
+  }
+  return snapshot
+}
+
+const failEncodeCause = (
+  machine: Machine.Any,
+  cause: Cause.Cause<unknown>
+): Effect.Effect<never, MachineSchemaEncodeError> => {
+  const error = Cause.findErrorOption(cause)
+  return Option.isSome(error) && error.value instanceof MachineSchemaEncodeError
+    ? Effect.fail(error.value)
+    : Effect.fail(
+      new MachineSchemaEncodeError({
+        machineId: machine.id,
+        boundary: "configuration",
+        cause
+      })
+    )
+}
+
+const failDecodeCause = (
+  machine: Machine.Any,
+  cause: Cause.Cause<unknown>
+): Effect.Effect<never, MachineSchemaDecodeError> => {
+  const error = Cause.findErrorOption(cause)
+  return Option.isSome(error) && error.value instanceof MachineSchemaDecodeError
+    ? Effect.fail(error.value)
+    : Effect.fail(
+      new MachineSchemaDecodeError({
+        machineId: machine.id,
+        boundary: "configuration",
+        cause
+      })
+    )
+}
+
+export const encodeSnapshot = (
+  machine: Machine.Any,
+  snapshot: Machine.Snapshot<any>
+): Effect.Effect<Machine.EncodedSnapshot, MachineSchemaEncodeError, unknown> =>
+  Effect.gen(function*() {
+    const configuration = yield* normalizeConfigurationEffect(machine, snapshot).pipe(
+      Effect.mapError((error) =>
+        new MachineSchemaEncodeError({
+          machineId: machine.id,
+          boundary: error.boundary === "state" ? "state" : "configuration",
+          ...(error.state === undefined ? {} : { state: error.state }),
+          cause: error.cause
+        })
+      )
+    )
+    const completionPaths = new Set<string>()
+    for (const completion of snapshot.completed ?? []) {
+      if (completionPaths.has(completion.path)) {
+        throw new Error(`Machine snapshot contains duplicate completion "${completion.path}"`)
+      }
+      if (!configuration.active.has(completion.path) || !isActiveFinalNode(machine, configuration, completion.path)) {
+        throw new Error(`Machine snapshot contains invalid completion "${completion.path}"`)
+      }
+      completionPaths.add(completion.path)
+    }
+    const active: Array<Machine.EncodedSnapshotState> = []
+    for (
+      const path of Array.from(configuration.active).sort((left, right) => compareDocumentOrder(machine, left, right))
+    ) {
+      const node = getNode(machine, path)
+      active.push({
+        path,
+        value: yield* encodeBoundary(machine, node.schema, getActiveValue(configuration, path), {
+          boundary: "state",
+          state: path
+        })
+      })
+    }
+
+    const completed: Array<Machine.EncodedSnapshotCompletion> = []
+    for (
+      const [path, output] of Array.from(configuration.outputs).sort(([left], [right]) =>
+        compareDocumentOrder(machine, left, right)
+      )
+    ) {
+      if (!configuration.active.has(path) || !isActiveFinalNode(machine, configuration, path)) {
+        throw new Error(`Machine encoded snapshot contains invalid completion "${path}"`)
+      }
+      const encodedOutput = yield* encodeBoundary(
+        machine,
+        getCompletionSchema(machine, configuration, path),
+        output,
+        {
+          boundary: "output",
+          state: path
+        }
+      )
+      completed.push({
+        path,
+        ...(encodedOutput === undefined ? {} : { output: encodedOutput })
+      })
+    }
+
+    return {
+      _tag: "MachineSnapshot" as const,
+      active,
+      ...(completed.length === 0 ? {} : { completed })
+    }
+  }).pipe(Effect.catchCause((cause) => failEncodeCause(machine, cause)))
+
+export const decodeSnapshot = (
+  machine: Machine.Any,
+  encoded: unknown
+): Effect.Effect<Machine.Snapshot<any>, MachineSchemaDecodeError, unknown> =>
+  Effect.gen(function*() {
+    const decoded = yield* Schema.decodeUnknownEffect(EncodedSnapshotSchema)(encoded).pipe(
+      Effect.mapError((cause) =>
+        new MachineSchemaDecodeError({
+          machineId: machine.id,
+          boundary: "configuration",
+          cause
+        })
+      )
+    )
+    const active = new Set<string>()
+    const values = new Map<string, unknown>()
+    for (const entry of decoded.active) {
+      if (active.has(entry.path)) {
+        throw new Error(`Machine encoded snapshot contains duplicate state "${entry.path}"`)
+      }
+      const node = getNode(machine, entry.path)
+      active.add(entry.path)
+      values.set(
+        entry.path,
+        yield* decodeEncodedBoundary(machine, node.schema, entry.value, {
+          boundary: "state",
+          state: entry.path
+        })
+      )
+    }
+
+    const configuration: ActiveConfiguration = {
+      active,
+      values,
+      outputs: new Map()
+    }
+    const snapshot = validateEncodedConfiguration(machine, configuration)
+    const completions: Array<Machine.SnapshotCompletion> = []
+    const completionPaths = new Set<string>()
+    for (const completion of decoded.completed ?? []) {
+      if (completionPaths.has(completion.path)) {
+        throw new Error(`Machine encoded snapshot contains duplicate completion "${completion.path}"`)
+      }
+      if (!active.has(completion.path) || !isActiveFinalNode(machine, configuration, completion.path)) {
+        throw new Error(`Machine encoded snapshot contains invalid completion "${completion.path}"`)
+      }
+      completionPaths.add(completion.path)
+      completions.push({
+        path: completion.path,
+        output: yield* decodeEncodedBoundary(
+          machine,
+          getCompletionSchema(machine, configuration, completion.path),
+          completion.output,
+          {
+            boundary: "output",
+            state: completion.path
+          }
+        )
+      })
+    }
+    if (completions.length > 0) {
+      ;(snapshot as Machine.AtomicSnapshot<string, unknown> & {
+        completed: ReadonlyArray<Machine.SnapshotCompletion>
+      }).completed = completions
+    }
+    return snapshot
+  }).pipe(Effect.catchCause((cause) => failDecodeCause(machine, cause)))

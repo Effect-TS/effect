@@ -17,6 +17,7 @@ import type {
   ChildAlreadyExistsError,
   InfiniteTransitionError,
   MachineSchemaDecodeError,
+  MachineSchemaEncodeError,
   StartupError,
   StoppedError,
   UnhandledEventError
@@ -161,6 +162,14 @@ export {
    * @since 4.0.0
    */
   MachineSchemaDecodeError,
+  /**
+   * Error returned when a decoded machine snapshot cannot be encoded through
+   * its declared state or output schemas.
+   *
+   * @category errors
+   * @since 4.0.0
+   */
+  MachineSchemaEncodeError,
   /**
    * Error returned when a machine fails while running startup lifecycle
    * logic after the initial state has been computed.
@@ -1360,6 +1369,81 @@ export declare namespace Machine {
     : undefined
     : undefined
 
+  type OutputSchema<Node> = Node extends { readonly output: infer Output extends Schema.Top } ? Output : never
+
+  type DecodingServices<Current> = Current extends Schema.Top ? Current["DecodingServices"] : never
+
+  type EncodingServices<Current> = Current extends Schema.Top ? Current["EncodingServices"] : never
+
+  /**
+   * Services required to decode every state value and completion output in a
+   * machine snapshot.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type SnapshotDecodingServices<States extends StateSchemas> = StateIdentifier<States> extends infer StateId
+    ? StateId extends StateIdentifier<States> ?
+        | DecodingServices<SchemaByIdentifier<States, StateId>>
+        | DecodingServices<OutputSchema<NodeByIdentifier<States, StateId>>>
+    : never
+    : never
+
+  /**
+   * Services required to encode every state value and completion output in a
+   * machine snapshot.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type SnapshotEncodingServices<States extends StateSchemas> = StateIdentifier<States> extends infer StateId
+    ? StateId extends StateIdentifier<States> ?
+        | EncodingServices<SchemaByIdentifier<States, StateId>>
+        | EncodingServices<OutputSchema<NodeByIdentifier<States, StateId>>>
+    : never
+    : never
+
+  /**
+   * Encoded value for one active state path in a normalized machine snapshot.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface EncodedSnapshotState {
+    readonly path: string
+    readonly value: unknown
+  }
+
+  /**
+   * Encoded output for one completed state path in a normalized machine
+   * snapshot. An omitted output represents `undefined`.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface EncodedSnapshotCompletion {
+    readonly path: string
+    readonly output?: unknown
+  }
+
+  /**
+   * Normalized data representation of a machine snapshot.
+   *
+   * **Details**
+   *
+   * Active state and completion values use the encoded representations of
+   * their declared schemas. Runtime process state such as children, fibers,
+   * scopes, queues, and subscriptions is not included.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface EncodedSnapshot {
+    readonly _tag: "MachineSnapshot"
+    readonly active: ReadonlyArray<EncodedSnapshotState>
+    readonly completed?: ReadonlyArray<EncodedSnapshotCompletion>
+  }
+
   /**
    * Completed state path and its resolved output value.
    *
@@ -1381,6 +1465,8 @@ export declare namespace Machine {
    * experimental and is not a stable JSON persistence or wire format. Copies
    * must preserve decoded values such as `Schema.Class` instances; JSON and
    * `structuredClone` may not preserve those runtime contracts.
+   * Use {@link encodeSnapshot} and {@link decodeSnapshot} to cross a persistence
+   * or transport boundary.
    *
    * @category models
    * @since 4.0.0
@@ -3303,6 +3389,98 @@ export const make = <
   self.handle = makeHandle(self)
   return self
 }
+
+/**
+ * Encodes a decoded machine snapshot into a normalized data representation.
+ *
+ * **When to use**
+ *
+ * Use when you need to store or transport a statechart snapshot independently
+ * of its local machine runtime.
+ *
+ * **Details**
+ *
+ * Each active state value and completed output is encoded with the schema
+ * declared for its state path. The result contains no process-local runtime
+ * state.
+ *
+ * **Gotchas**
+ *
+ * The encoded snapshot does not contain the machine definition, machine
+ * version, running children, invoked process state, services, or subscriptions.
+ * Store machine identity and migration metadata alongside the result when the
+ * snapshot crosses deployment versions. Schema encoding does not by itself
+ * guarantee JSON-compatible values; schemas used with JSON-backed storage must
+ * have JSON-compatible encoded representations.
+ *
+ * @see {@link decodeSnapshot} for restoring an encoded snapshot.
+ * @category encoding
+ * @since 4.0.0
+ */
+export const encodeSnapshot: <
+  const States extends Machine.StateSchemas,
+  const Events extends ReadonlyArray<Machine.TaggedSchema>,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Input extends Schema.Top = typeof Schema.Void,
+  UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
+  E = never,
+  R = never,
+  InitialE = never,
+  InitialR = never,
+  FinalStates extends Machine.StateIdentifier<States> = never,
+  Output = never
+>(
+  machine: Machine<States, Events, Input, UnhandledStates, E, R, InitialE, InitialR, FinalStates, Output, Emits>,
+  snapshot: Machine.Snapshot<States>
+) => Effect.Effect<
+  Machine.EncodedSnapshot,
+  MachineSchemaEncodeError,
+  Machine.SnapshotEncodingServices<States>
+> = Model.encodeSnapshot as any
+
+/**
+ * Decodes a normalized data representation into a validated machine snapshot.
+ *
+ * **When to use**
+ *
+ * Use when you need to resume planning from a snapshot loaded from storage or
+ * received over a transport boundary.
+ *
+ * **Details**
+ *
+ * Decoding resolves every path against the supplied machine, decodes values
+ * with their state and output schemas, validates compound and parallel state
+ * relationships, and rebuilds the recursive in-memory snapshot.
+ *
+ * **Gotchas**
+ *
+ * Decoding restores logical statechart data only. It does not restart invoked
+ * processes, recreate spawned children, or restore a previous `MachineRef`.
+ *
+ * @see {@link encodeSnapshot} for creating the normalized representation.
+ * @category decoding
+ * @since 4.0.0
+ */
+export const decodeSnapshot: <
+  const States extends Machine.StateSchemas,
+  const Events extends ReadonlyArray<Machine.TaggedSchema>,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Input extends Schema.Top = typeof Schema.Void,
+  UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
+  E = never,
+  R = never,
+  InitialE = never,
+  InitialR = never,
+  FinalStates extends Machine.StateIdentifier<States> = never,
+  Output = never
+>(
+  machine: Machine<States, Events, Input, UnhandledStates, E, R, InitialE, InitialR, FinalStates, Output, Emits>,
+  encoded: unknown
+) => Effect.Effect<
+  Machine.Snapshot<States>,
+  MachineSchemaDecodeError,
+  Machine.SnapshotDecodingServices<States>
+> = Model.decodeSnapshot as any
 
 /**
  * Creates an invoked child process configuration for an active state.

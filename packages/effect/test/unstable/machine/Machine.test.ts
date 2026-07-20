@@ -115,6 +115,21 @@ const assertMachineSchemaDecodeError = (
   assert.isTrue(Schema.isSchemaError(actual.cause))
 }
 
+const assertMachineSchemaEncodeError = (
+  actual: unknown,
+  boundary: Machine.MachineSchemaEncodeError["boundary"],
+  options?: {
+    readonly state?: string
+  }
+) => {
+  assert.instanceOf(actual, Machine.MachineSchemaEncodeError)
+  assert.strictEqual(actual.boundary, boundary)
+  if (options?.state !== undefined) {
+    assert.strictEqual(actual.state, options.state)
+  }
+  assert.isTrue(Schema.isSchemaError(actual.cause))
+}
+
 const unsafeTagged = <A extends { readonly _tag: PropertyKey }>(value: A): A => value
 
 describe("Machine", () => {
@@ -154,6 +169,10 @@ describe("Machine", () => {
 
   class Duplicate extends Schema.TaggedClass<Duplicate>("Duplicate")("Duplicate", {
     value: Schema.String
+  }) {}
+
+  class EncodedCount extends Schema.TaggedClass<EncodedCount>("EncodedCount")("EncodedCount", {
+    count: Schema.NumberFromString
   }) {}
 
   class Payment extends Schema.TaggedClass<Payment>("Payment")("Payment", {
@@ -740,6 +759,268 @@ describe("Machine", () => {
         const planned = yield* Machine.planInitial(machine)
 
         assert.deepStrictEqual(planned.emittedEvents, [emitted])
+      }))
+  })
+
+  describe("snapshot encoding", () => {
+    it.effect("round-trips schema encoded state values", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({ count: EncodedCount })
+        const machine = Machine.make({
+          id: "Counter",
+          states: states.states,
+          events: [],
+          initial: () => states.initial.count(new EncodedCount({ count: 1 }))
+        })
+        const planned = yield* Machine.planInitial(machine)
+
+        const encoded = yield* Machine.encodeSnapshot(machine, planned.state)
+        const decoded = yield* Machine.decodeSnapshot(machine, JSON.parse(JSON.stringify(encoded)))
+
+        assert.deepStrictEqual(encoded, {
+          _tag: "MachineSnapshot",
+          active: [{
+            path: "count",
+            value: { _tag: "EncodedCount", count: "1" }
+          }]
+        })
+        assert.deepStrictEqual(decoded, planned.state)
+        assert.instanceOf(decoded.value, EncodedCount)
+      }))
+
+    it.effect("round-trips compound and parallel configurations", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({
+          fulfillment: {
+            schema: Fulfillment,
+            type: "parallel",
+            states: {
+              inventory: {
+                schema: Inventory,
+                initial: "checking",
+                states: {
+                  checking: CheckingInventory,
+                  reserved: InventoryReserved
+                }
+              },
+              shipping: {
+                schema: Shipping,
+                initial: "quoting",
+                states: {
+                  quoting: QuotingShipping,
+                  quoted: ShippingQuoted
+                }
+              }
+            }
+          }
+        })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () =>
+            states.initial.fulfillment(
+              new Fulfillment({ id: "fulfillment-1" }),
+              (fulfillment) =>
+                fulfillment
+                  .inventory(
+                    new Inventory({ warehouse: "warehouse-1" }),
+                    (inventory) => inventory.checking(new CheckingInventory({ sku: "sku-1" }))
+                  )
+                  .shipping(
+                    new Shipping({ address: "Main Street" }),
+                    (shipping) => shipping.quoting(new QuotingShipping({ postalCode: "12345" }))
+                  )
+            )
+        })
+        const planned = yield* Machine.planInitial(machine)
+
+        const encoded = yield* Machine.encodeSnapshot(machine, planned.state)
+        const decoded = yield* Machine.decodeSnapshot(machine, encoded)
+
+        assert.deepStrictEqual(encoded.active.map(({ path }) => path), [
+          "fulfillment",
+          "fulfillment.inventory",
+          "fulfillment.inventory.checking",
+          "fulfillment.shipping",
+          "fulfillment.shipping.quoting"
+        ])
+        assert.deepStrictEqual(decoded, planned.state)
+      }))
+
+    it.effect("encodes and decodes partial completion outputs", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({
+          all: {
+            schema: ParallelRoot,
+            type: "parallel",
+            states: {
+              left: {
+                schema: ParallelLeftDone,
+                type: "final",
+                output: Schema.NumberFromString
+              },
+              right: ParallelRightDone
+            }
+          }
+        })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () =>
+            states.initial.all(
+              new ParallelRoot({ id: "all" }),
+              (all) =>
+                all
+                  .left(new ParallelLeftDone({ id: "left" }))
+                  .right(new ParallelRightDone({ id: "right" }))
+            )
+        }).handle({
+          all: {
+            states: {
+              left: {
+                type: "final",
+                output: () => 1
+              }
+            }
+          }
+        })
+        const planned = yield* Machine.planInitial(machine)
+
+        const encoded = yield* Machine.encodeSnapshot(machine, planned.state)
+        const decoded = yield* Machine.decodeSnapshot(machine, encoded)
+
+        assert.deepStrictEqual(encoded.completed, [{ path: "all.left", output: "1" }])
+        assert.deepStrictEqual(decoded.completed, [{ path: "all.left", output: 1 }])
+      }))
+
+    it.effect("round-trips void completion outputs through JSON", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({
+          all: {
+            schema: ParallelRoot,
+            type: "parallel",
+            states: {
+              left: ParallelLeftDone,
+              right: ParallelRightDone
+            }
+          }
+        })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () =>
+            states.initial.all(
+              new ParallelRoot({ id: "all" }),
+              (all) =>
+                all
+                  .left(new ParallelLeftDone({ id: "left" }))
+                  .right(new ParallelRightDone({ id: "right" }))
+            )
+        }).handle({
+          all: {
+            states: {
+              left: {
+                type: "final"
+              }
+            }
+          }
+        })
+        const planned = yield* Machine.planInitial(machine)
+
+        const encoded = yield* Machine.encodeSnapshot(machine, planned.state)
+        const decoded = yield* Machine.decodeSnapshot(machine, JSON.parse(JSON.stringify(encoded)))
+
+        assert.deepStrictEqual(encoded.completed, [{ path: "all.left" }])
+        assert.deepStrictEqual(decoded.completed, [{ path: "all.left", output: undefined }])
+      }))
+
+    it.effect("rejects state values that cannot be encoded", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({ NonEmptyIdle })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () => states.initial.NonEmptyIdle(new NonEmptyIdle({ userId: "user-1" }))
+        })
+
+        const error = yield* Machine.encodeSnapshot(machine, {
+          path: "NonEmptyIdle",
+          value: unsafeTagged({ _tag: "NonEmptyIdle", userId: "" })
+        }).pipe(Effect.flip)
+
+        assertMachineSchemaEncodeError(error, "state", { state: "NonEmptyIdle" })
+      }))
+
+    it.effect("rejects invalid completion metadata during encoding", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({ NonEmptyIdle })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () => states.initial.NonEmptyIdle(new NonEmptyIdle({ userId: "user-1" }))
+        })
+
+        const error = yield* Machine.encodeSnapshot(machine, {
+          ...states.initial.NonEmptyIdle(new NonEmptyIdle({ userId: "user-1" })),
+          completed: [{ path: "missing", output: undefined }]
+        }).pipe(Effect.flip)
+
+        assert.instanceOf(error, Machine.MachineSchemaEncodeError)
+        assert.strictEqual(error.boundary, "configuration")
+      }))
+
+    it.effect("rejects encoded values that do not match their state schema", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({ NonEmptyIdle })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () => states.initial.NonEmptyIdle(new NonEmptyIdle({ userId: "user-1" }))
+        })
+
+        const error = yield* Machine.decodeSnapshot(machine, {
+          _tag: "MachineSnapshot",
+          active: [{
+            path: "NonEmptyIdle",
+            value: { _tag: "NonEmptyIdle", userId: "" }
+          }]
+        }).pipe(Effect.flip)
+
+        assertMachineSchemaDecodeError(error, "state", { state: "NonEmptyIdle" })
+      }))
+
+    it.effect("rejects encoded configurations with invalid state relationships", () =>
+      Effect.gen(function*() {
+        const states = Machine.defineStates({
+          payment: {
+            schema: Payment,
+            initial: "entering",
+            states: {
+              entering: EnteringPayment,
+              authorized: AuthorizedPayment
+            }
+          }
+        })
+        const machine = Machine.make({
+          states: states.states,
+          events: [],
+          initial: () =>
+            states.initial.payment(
+              new Payment({ id: "payment-1" }),
+              (payment) => payment.entering(new EnteringPayment({ amount: 1 }))
+            )
+        })
+
+        const error = yield* Machine.decodeSnapshot(machine, {
+          _tag: "MachineSnapshot",
+          active: [{
+            path: "payment.entering",
+            value: { _tag: "EnteringPayment", amount: 1 }
+          }]
+        }).pipe(Effect.flip)
+
+        assert.instanceOf(error, Machine.MachineSchemaDecodeError)
+        assert.strictEqual(error.boundary, "configuration")
       }))
   })
 

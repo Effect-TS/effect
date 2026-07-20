@@ -3,6 +3,20 @@ import * as Data from "../../../Data.ts"
 import type * as Schema from "../../../Schema.ts"
 
 /**
+ * Error returned when a decoded machine snapshot cannot be encoded through its
+ * declared state or output schemas.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class MachineSchemaEncodeError extends Data.TaggedError("MachineSchemaEncodeError")<{
+  readonly machineId: string | undefined
+  readonly boundary: "state" | "output" | "configuration"
+  readonly state?: string
+  readonly cause: Schema.SchemaError | Cause.Cause<unknown>
+}> {}
+
+/**
  * Error returned when a machine contract value does not match the schema or
  * structural configuration declared for a machine boundary.
  *

@@ -167,6 +167,27 @@ describe("Machine", () => {
     expect(machine.states).type.toBe<typeof UpStates.states>()
   })
 
+  it("encodes and decodes snapshots with typed effects", () => {
+    const machine = Machine.make({
+      states: UpStates.states,
+      events: [SignIn],
+      initial: () => UpStates.initial.down(new Down({}))
+    })
+
+    const encoded = Machine.encodeSnapshot(machine, UpStates.initial.down(new Down({})))
+    expect<Effect.Success<typeof encoded>>().type.toBe<Machine.Machine.EncodedSnapshot>()
+    expect<Effect.Error<typeof encoded>>().type.toBe<Machine.MachineSchemaEncodeError>()
+    expect<Effect.Services<typeof encoded>>().type.toBe<never>()
+
+    const decoded = Machine.decodeSnapshot(machine, {
+      _tag: "MachineSnapshot",
+      active: [{ path: "down", value: { _tag: "Down" } }]
+    })
+    expect<Effect.Success<typeof decoded>>().type.toBe<Machine.Machine.Snapshot<typeof UpStates.states>>()
+    expect<Effect.Error<typeof decoded>>().type.toBe<Machine.MachineSchemaDecodeError>()
+    expect<Effect.Services<typeof decoded>>().type.toBe<never>()
+  })
+
   it("planInitial carries external initial and lifecycle requirements", () => {
     const machine = Machine.make({
       states: UpStates.states,
