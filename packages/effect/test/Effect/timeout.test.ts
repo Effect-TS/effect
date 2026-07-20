@@ -6,6 +6,9 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
+import * as Logger from "effect/Logger"
+import * as LogLevel from "effect/LogLevel"
+import * as Option from "effect/Option"
 import * as TestClock from "effect/TestClock"
 
 describe("Effect", () => {
@@ -24,6 +27,22 @@ describe("Effect", () => {
           "TimeoutException: Operation timed out after '1s 500ms'"
         )
       )
+    }))
+  it.effect("does not log failures from its fibers as unhandled", () =>
+    Effect.gen(function*() {
+      const messages: Array<unknown> = []
+      const logger = Logger.make(({ message }) => {
+        messages.push(message)
+      })
+
+      yield* Effect.fail("boom").pipe(
+        Effect.timeout(Duration.seconds(1)),
+        Effect.exit,
+        Effect.provide(Logger.replace(Logger.defaultLogger, logger)),
+        Effect.withUnhandledErrorLogLevel(Option.some(LogLevel.Error))
+      )
+
+      deepStrictEqual(messages, [])
     }))
   it.live("timeout a long computation", () =>
     Effect.gen(function*() {

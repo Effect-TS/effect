@@ -651,6 +651,8 @@ export const timeoutTo = dual<
               ),
             otherScope: globalScope
           }
+        ).pipe(
+          core.withUnhandledErrorLogLevel(Option.none())
         )
       )
     )
