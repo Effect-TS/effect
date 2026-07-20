@@ -317,52 +317,16 @@ describe("SchemaRepresentation.toJson", () => {
     )
   })
 
-  it("encodes NaN structural values", () => {
-    const document: SchemaRepresentation.Document = {
-      representation: { _tag: "Literal", literal: Number.NaN, checks: [] },
-      references: {}
+  it("preserves string literals resembling non-finite numbers", () => {
+    for (const literal of ["NaN", "Infinity", "-Infinity"]) {
+      assert.deepStrictEqual(
+        SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.Literal(literal).ast)),
+        {
+          representation: { _tag: "Literal", literal, checks: [] },
+          references: {}
+        }
+      )
     }
-
-    assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
-      representation: {
-        _tag: "Literal",
-        literal: "NaN",
-        checks: []
-      },
-      references: {}
-    })
-  })
-
-  it("encodes positive infinity structural values", () => {
-    const document: SchemaRepresentation.Document = {
-      representation: { _tag: "Literal", literal: Number.POSITIVE_INFINITY, checks: [] },
-      references: {}
-    }
-
-    assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
-      representation: {
-        _tag: "Literal",
-        literal: "Infinity",
-        checks: []
-      },
-      references: {}
-    })
-  })
-
-  it("encodes negative infinity structural values", () => {
-    const document: SchemaRepresentation.Document = {
-      representation: { _tag: "Literal", literal: Number.NEGATIVE_INFINITY, checks: [] },
-      references: {}
-    }
-
-    assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
-      representation: {
-        _tag: "Literal",
-        literal: "-Infinity",
-        checks: []
-      },
-      references: {}
-    })
   })
 
   it("encodes global symbols", () => {

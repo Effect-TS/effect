@@ -54,13 +54,12 @@ const SuspendSchema = Schema.Struct({
   checks: Schema.Tuple([]),
   thunk: RepresentationSchema
 })
-const StringSchema = keywordSchema("String")
 const LiteralSchema = Schema.Struct({
   _tag: Schema.tag("Literal"),
   annotations: Schema.optional(AnnotationsSchema),
   checks: Schema.Array(CheckSchema),
   literal: Schema.Union([
-    Schema.Number,
+    Schema.Finite,
     Schema.BigInt,
     Schema.String,
     Schema.Boolean
@@ -144,14 +143,14 @@ const RepresentationUnion = Schema.Union([
   keywordSchema("Never"),
   keywordSchema("Unknown"),
   keywordSchema("Any"),
-  StringSchema,
+  keywordSchema("String"),
   keywordSchema("Number"),
   keywordSchema("Boolean"),
   keywordSchema("BigInt"),
   keywordSchema("Symbol"),
+  keywordSchema("ObjectKeyword"),
   LiteralSchema,
   UniqueSymbolSchema,
-  keywordSchema("ObjectKeyword"),
   EnumSchema,
   TemplateLiteralSchema,
   ArraysSchema,
