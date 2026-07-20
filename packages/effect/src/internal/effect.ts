@@ -624,7 +624,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._observers.length = 0
     this._stack.length = 0
     this._children = undefined
-    this._dispatcher = undefined
     this.context = Context.empty()
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
