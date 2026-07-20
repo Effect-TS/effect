@@ -110,8 +110,14 @@ describe("Serializers", () => {
       const serializer = Schema.toCodecJson(schema)
       const asserts = new TestSchema.Asserts(Schema.toCodecJson(serializer))
 
+      strictEqual(serializer.ast._tag, "Union")
+      if (serializer.ast._tag === "Union") {
+        strictEqual(SchemaAST.getLastEncoding(serializer.ast.types[0])._tag, "Objects")
+      }
+
       const decoding = asserts.decoding()
-      await decoding.succeed("1", "1a")
+      await decoding.succeed("1")
+      await decoding.succeed({ _tag: "BigInt", value: "1" }, "1a")
     })
 
     describe("schemas without encoding", () => {
@@ -524,7 +530,7 @@ describe("Serializers", () => {
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
         const encoding = asserts.encoding()
-        await encoding.succeed(Symbol.for("a"), "Symbol(a)")
+        await encoding.succeed(Symbol.for("a"), { _tag: "Symbol", value: "a" })
         await encoding.fail(
           Symbol("a"),
           "cannot serialize to string, Symbol is not registered"
@@ -535,7 +541,8 @@ describe("Serializers", () => {
         )
 
         const decoding = asserts.decoding()
-        await decoding.succeed("Symbol(a)", Symbol.for("a"))
+        await decoding.succeed({ _tag: "Symbol", value: "a" }, Symbol.for("a"))
+        await decoding.fail("Symbol(a)", `Expected object, got "Symbol(a)"`)
       })
 
       it("UniqueSymbol", async () => {
@@ -543,10 +550,11 @@ describe("Serializers", () => {
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
         const encoding = asserts.encoding()
-        await encoding.succeed(Symbol.for("a"), "Symbol(a)")
+        await encoding.succeed(Symbol.for("a"), { _tag: "Symbol", value: "a" })
 
         const decoding = asserts.decoding()
-        await decoding.succeed("Symbol(a)", Symbol.for("a"))
+        await decoding.succeed({ _tag: "Symbol", value: "a" }, Symbol.for("a"))
+        await decoding.fail("Symbol(a)", `Expected object, got "Symbol(a)"`)
       })
 
       it("BigInt", async () => {
@@ -554,10 +562,11 @@ describe("Serializers", () => {
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
         const encoding = asserts.encoding()
-        await encoding.succeed(1n, "1")
+        await encoding.succeed(1n, { _tag: "BigInt", value: "1" })
 
         const decoding = asserts.decoding()
-        await decoding.succeed("1", 1n)
+        await decoding.succeed({ _tag: "BigInt", value: "1" }, 1n)
+        await decoding.fail("1", `Expected object, got "1"`)
       })
 
       it("PropertyKey", async () => {
@@ -567,12 +576,13 @@ describe("Serializers", () => {
         const encoding = asserts.encoding()
         await encoding.succeed("a")
         await encoding.succeed(1)
-        await encoding.succeed(Symbol.for("a"), "Symbol(a)")
+        await encoding.succeed(Symbol.for("a"), { _tag: "Symbol", value: "a" })
 
         const decoding = asserts.decoding()
         await decoding.succeed("a")
         await decoding.succeed(1)
-        await decoding.succeed("Symbol(a)", Symbol.for("a"))
+        await decoding.succeed("Symbol(a)")
+        await decoding.succeed({ _tag: "Symbol", value: "a" }, Symbol.for("a"))
       })
 
       describe("Literal", () => {
@@ -614,10 +624,11 @@ describe("Serializers", () => {
           const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
 
           const encoding = asserts.encoding()
-          await encoding.succeed(1n, "1")
+          await encoding.succeed(1n, { _tag: "BigInt", value: "1" })
 
           const decoding = asserts.decoding()
-          await decoding.succeed("1", 1n)
+          await decoding.succeed({ _tag: "BigInt", value: "1" }, 1n)
+          await decoding.fail("1", `Expected object, got "1"`)
         })
       })
 
@@ -628,8 +639,21 @@ describe("Serializers", () => {
         const decoding = asserts.decoding()
         await decoding.fail(
           "-",
-          `Expected "a" | 1 | "2" | true, got "-"`
+          `Expected "a", got "-"`
         )
+      })
+
+      it("distinguishes string and bigint literals", async () => {
+        const schema = Schema.Literals(["1", 1n])
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed("1")
+        await encoding.succeed(1n, { _tag: "BigInt", value: "1" })
+
+        const decoding = asserts.decoding()
+        await decoding.succeed("1")
+        await decoding.succeed({ _tag: "BigInt", value: "1" }, 1n)
       })
 
       describe("TemplateLiteral", () => {
@@ -1252,8 +1276,14 @@ describe("Serializers", () => {
         const encoding = asserts.encoding()
         await encoding.succeed(Duration.infinity, { _tag: "Infinity" })
         await encoding.succeed(Duration.negativeInfinity, { _tag: "NegativeInfinity" })
-        await encoding.succeed(Duration.nanos(1000n), { _tag: "Nanos", value: "1000" })
-        await encoding.succeed(Duration.nanos(-1000n), { _tag: "Nanos", value: "-1000" })
+        await encoding.succeed(Duration.nanos(1000n), {
+          _tag: "Nanos",
+          value: { _tag: "BigInt", value: "1000" }
+        })
+        await encoding.succeed(Duration.nanos(-1000n), {
+          _tag: "Nanos",
+          value: { _tag: "BigInt", value: "-1000" }
+        })
         await encoding.succeed(Duration.millis(1), { _tag: "Millis", value: 1 })
         await encoding.succeed(Duration.millis(-1), { _tag: "Millis", value: -1 })
         await encoding.succeed(Duration.zero, { _tag: "Millis", value: 0 })
@@ -1263,8 +1293,14 @@ describe("Serializers", () => {
         await decoding.succeed({ _tag: "NegativeInfinity" }, Duration.negativeInfinity)
         await decoding.succeed({ _tag: "Millis", value: 1 }, Duration.millis(1))
         await decoding.succeed({ _tag: "Millis", value: -1 }, Duration.millis(-1))
-        await decoding.succeed({ _tag: "Nanos", value: "1000" }, Duration.nanos(1000n))
-        await decoding.succeed({ _tag: "Nanos", value: "-1000" }, Duration.nanos(-1000n))
+        await decoding.succeed(
+          { _tag: "Nanos", value: { _tag: "BigInt", value: "1000" } },
+          Duration.nanos(1000n)
+        )
+        await decoding.succeed(
+          { _tag: "Nanos", value: { _tag: "BigInt", value: "-1000" } },
+          Duration.nanos(-1000n)
+        )
       })
 
       it("DateTimeUtc", async () => {
@@ -1529,14 +1565,14 @@ describe("Serializers", () => {
         await encoding.succeed(
           new Map([[Option.some(Symbol.for("a")), new Date("2021-01-01")]]),
           [[
-            { _tag: "Some", value: "Symbol(a)" },
+            { _tag: "Some", value: { _tag: "Symbol", value: "a" } },
             "2021-01-01T00:00:00.000Z"
           ]]
         )
 
         const decoding = asserts.decoding()
         await decoding.succeed(
-          [[{ _tag: "Some", value: "Symbol(a)" }, "2021-01-01T00:00:00.000Z"]],
+          [[{ _tag: "Some", value: { _tag: "Symbol", value: "a" } }, "2021-01-01T00:00:00.000Z"]],
           new Map([[Option.some(Symbol.for("a")), new Date("2021-01-01")]])
         )
       })
@@ -1655,7 +1691,7 @@ describe("Serializers", () => {
         issues: [
           { path: ["a"], message: `Expected a value with a length of at least 1, got ""` },
           { path: ["c", 0], message: "Missing key" },
-          { path: ["Symbol(b)"], message: "Missing key" }
+          { path: [{ _tag: "Symbol", value: "b" }], message: "Missing key" }
         ]
       })
 
@@ -1664,7 +1700,7 @@ describe("Serializers", () => {
         issues: [
           { path: ["a"], message: `Expected a value with a length of at least 1, got ""` },
           { path: ["c", 0], message: "Missing key" },
-          { path: ["Symbol(b)"], message: "Missing key" }
+          { path: [{ _tag: "Symbol", value: "b" }], message: "Missing key" }
         ]
       }, failureResult)
     })

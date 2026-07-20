@@ -15312,11 +15312,10 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
     case "Void":
     case "Literal":
     case "Number":
-      return ast.toCodecJson()
     case "UniqueSymbol":
     case "Symbol":
     case "BigInt":
-      return ast.toCodecStringTree()
+      return ast.toCodecJson()
     case "Objects": {
       validateCanonicalObjectKeys(ast)
       return ast.recur(recur, identity)

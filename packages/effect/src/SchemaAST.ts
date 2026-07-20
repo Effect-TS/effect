@@ -1201,6 +1201,10 @@ export class UniqueSymbol extends Base {
     return replaceEncoding(this, [symbolToString])
   }
   /** @internal */
+  toCodecJson(): AST {
+    return replaceEncoding(this, [symbolToJson])
+  }
+  /** @internal */
   getExpected(): string {
     return globalThis.String(this.symbol)
   }
@@ -1267,7 +1271,7 @@ export class Literal extends Base {
   }
   /** @internal */
   toCodecJson(): AST {
-    return typeof this.literal === "bigint" ? literalToString(this) : this
+    return typeof this.literal === "bigint" ? literalBigIntToJson(this) : this
   }
   /** @internal */
   toCodecStringTree(): AST {
@@ -1287,6 +1291,22 @@ function literalToString(ast: Literal): Literal {
       new SchemaTransformation.Transformation(
         SchemaGetter.transform(() => ast.literal),
         SchemaGetter.transform(() => literalAsString)
+      )
+    )
+  ])
+}
+
+function literalBigIntToJson(ast: Literal): Literal {
+  const literalAsString = globalThis.String(ast.literal)
+  return replaceEncoding(ast, [
+    new Link(
+      new Objects([
+        new PropertySignature("_tag", new Literal("BigInt")),
+        new PropertySignature("value", new Literal(literalAsString))
+      ], []),
+      new SchemaTransformation.Transformation(
+        SchemaGetter.transform(() => ast.literal),
+        SchemaGetter.transform(() => ({ _tag: "BigInt", value: literalAsString }))
       )
     )
   ])
@@ -1486,6 +1506,10 @@ export class Symbol extends Base {
     return replaceEncoding(this, [symbolToString])
   }
   /** @internal */
+  toCodecJson(): AST {
+    return replaceEncoding(this, [symbolToJson])
+  }
+  /** @internal */
   getExpected(): string {
     return "symbol"
   }
@@ -1539,6 +1563,10 @@ export class BigInt extends Base {
   /** @internal */
   toCodecStringTree(): AST {
     return replaceEncoding(this, [bigIntToString])
+  }
+  /** @internal */
+  toCodecJson(): AST {
+    return replaceEncoding(this, [bigIntToJson])
   }
   /** @internal */
   getExpected(): string {
@@ -3709,6 +3737,17 @@ const bigIntToString = new Link(
   SchemaTransformation.bigintFromString
 )
 
+const bigIntToJson = new Link(
+  new Objects([
+    new PropertySignature("_tag", new Literal("BigInt")),
+    new PropertySignature("value", bigIntString)
+  ], []),
+  new SchemaTransformation.Transformation(
+    SchemaGetter.transform(({ value }: { readonly value: string }) => globalThis.BigInt(value)),
+    SchemaGetter.transform((value: bigint) => ({ _tag: "BigInt", value: globalThis.String(value) }))
+  )
+)
+
 const REGEXP_PATTERN = "Symbol\\((.*)\\)"
 
 const isStringSymbolRegExp = new globalThis.RegExp(`^${REGEXP_PATTERN}$`)
@@ -3723,17 +3762,29 @@ const symbolToString = new Link(
   symbolString,
   new SchemaTransformation.Transformation(
     SchemaGetter.transform((description) => globalThis.Symbol.for(isStringSymbolRegExp.exec(description)![1])),
-    SchemaGetter.transformOrFail((sym: symbol) => {
-      const key = globalThis.Symbol.keyFor(sym)
-      if (key !== undefined) {
-        return Effect.succeed(globalThis.String(sym))
-      }
-      return Effect.fail(
-        new SchemaIssue.Forbidden(Option.some(sym), { message: "cannot serialize to string, Symbol is not registered" })
-      )
-    })
+    SchemaGetter.transformOrFail((sym: symbol) => Effect.map(getSymbolKey(sym), () => globalThis.String(sym)))
   )
 )
+
+const symbolToJson = new Link(
+  new Objects([
+    new PropertySignature("_tag", new Literal("Symbol")),
+    new PropertySignature("value", string)
+  ], []),
+  new SchemaTransformation.Transformation(
+    SchemaGetter.transform(({ value }: { readonly value: string }) => globalThis.Symbol.for(value)),
+    SchemaGetter.transformOrFail((sym: symbol) => Effect.map(getSymbolKey(sym), (value) => ({ _tag: "Symbol", value })))
+  )
+)
+
+function getSymbolKey(sym: symbol) {
+  const key = globalThis.Symbol.keyFor(sym)
+  return key !== undefined ?
+    Effect.succeed(key) :
+    Effect.fail(
+      new SchemaIssue.Forbidden(Option.some(sym), { message: "cannot serialize to string, Symbol is not registered" })
+    )
+}
 
 /** @internal */
 export function isStringSymbol(annotations?: Schema.Annotations.Filter) {
