@@ -68,12 +68,16 @@ describe("toJsonSchemaDocument", () => {
         "Objects property names must be strings"
       )
     })
+  })
 
-    it("Record: unsupported index signature parameter", () => {
-      assertUnsupportedSchema(
-        Schema.Record(Schema.Symbol, Schema.Finite),
-        "Objects index signature parameters must not contain symbols"
-      )
+  it("Record(Symbol, Finite)", () => {
+    assertJsonSchemaDocument(Schema.Record(Schema.Symbol, Schema.Finite), {
+      schema: {
+        type: "object",
+        patternProperties: {
+          "^Symbol\\((.*)\\)$": { type: "number" }
+        }
+      }
     })
   })
 

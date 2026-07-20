@@ -3625,6 +3625,19 @@ const parameterFromPropertyKey = applyToSelfOrLastLinkEncoding((ast) => {
   }
 })
 
+/** @internal */
+export const parameterFromString = applyToSelfOrLastLinkEncoding((ast) => {
+  switch (ast._tag) {
+    default:
+      return ast
+    case "Symbol":
+    case "UniqueSymbol":
+      return ast.toCodecStringTree()
+    case "Union":
+      return ast.recur(parameterFromString)
+  }
+})
+
 const partFromString = applyToSelfOrLastLinkEncoding((ast) => {
   switch (ast._tag) {
     default:

@@ -15233,18 +15233,9 @@ function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Contex
     new SchemaAST.Context(context.isOptional, context.isMutable, undefined, context.annotations)
 }
 
-function containsSymbolKey(ast: SchemaAST.AST): boolean {
-  const projected = SchemaAST.getLastEncoding(ast)
-  return projected._tag === "Symbol" ||
-    (projected._tag === "Union" && projected.types.some(containsSymbolKey))
-}
-
-function validateCanonicalObjectKeys(ast: SchemaAST.Objects): void {
+function validateCanonicalObjectPropertyNames(ast: SchemaAST.Objects): void {
   if (ast.propertySignatures.some((ps) => typeof ps.name !== "string")) {
     throw new globalThis.Error("Objects property names must be strings", { cause: ast })
-  }
-  if (ast.indexSignatures.some((is) => containsSymbolKey(is.parameter))) {
-    throw new globalThis.Error("Objects index signature parameters must not contain symbols", { cause: ast })
   }
 }
 
@@ -15311,8 +15302,8 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
     case "BigInt":
       return ast.toCodecStringTree()
     case "Objects": {
-      validateCanonicalObjectKeys(ast)
-      return ast.recur(recur, identity)
+      validateCanonicalObjectPropertyNames(ast)
+      return ast.recur(recur, SchemaAST.parameterFromString)
     }
     case "Union": {
       const sortedTypes = toCodecJsonReorder(ast.types)
@@ -15648,8 +15639,8 @@ function serializerTree(
     case "BigInt":
       return ast.toCodecStringTree()
     case "Objects": {
-      validateCanonicalObjectKeys(ast)
-      return ast.recur(recur, identity)
+      validateCanonicalObjectPropertyNames(ast)
+      return ast.recur(recur, SchemaAST.parameterFromString)
     }
     case "Union": {
       const sortedTypes = toStringTreeReorder(ast.types)

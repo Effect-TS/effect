@@ -766,11 +766,20 @@ describe("Serializers", () => {
         })
       })
 
-      it("Record(Symbol, Date)", () => {
+      it("Record(Symbol, Date)", async () => {
         const schema = Schema.Record(Schema.Symbol, Schema.Date)
-        throws(
-          () => Schema.toCodecJson(schema),
-          "Objects index signature parameters must not contain symbols"
+        const asserts = new TestSchema.Asserts(Schema.toCodecJson(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(
+          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") },
+          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" }
+        )
+
+        const decoding = asserts.decoding()
+        await decoding.succeed(
+          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" },
+          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") }
         )
       })
 
@@ -2301,11 +2310,20 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         })
       })
 
-      it("Record(Symbol, Date)", () => {
+      it("Record(Symbol, Date)", async () => {
         const schema = Schema.Record(Schema.Symbol, Schema.Date)
-        throws(
-          () => Schema.toCodecStringTree(schema),
-          "Objects index signature parameters must not contain symbols"
+        const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(schema))
+
+        const encoding = asserts.encoding()
+        await encoding.succeed(
+          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") },
+          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" }
+        )
+
+        const decoding = asserts.decoding()
+        await decoding.succeed(
+          { "Symbol(a)": "2021-01-01T00:00:00.000Z", "Symbol(b)": "2021-01-01T00:00:00.000Z" },
+          { [Symbol.for("a")]: new Date("2021-01-01"), [Symbol.for("b")]: new Date("2021-01-01") }
         )
       })
 
@@ -3291,11 +3309,17 @@ line2</root>`
       )
     })
 
-    it("Record with Symbol Keys", () => {
+    it("Record with Symbol Keys", async () => {
+      const sym1 = Symbol.for("key1")
+      const sym2 = Symbol.for("key2")
       const schema = Schema.Record(Schema.Symbol, Schema.String)
-      throws(
-        () => Schema.toEncoderXml(schema),
-        "Objects index signature parameters must not contain symbols"
+      await assertXml(
+        schema,
+        { [sym1]: "value1", [sym2]: "value2" },
+        `<root>
+  <Symbol_key1_ data-name="Symbol(key1)">value1</Symbol_key1_>
+  <Symbol_key2_ data-name="Symbol(key2)">value2</Symbol_key2_>
+</root>`
       )
     })
 
