@@ -1996,7 +1996,7 @@ The result is a tagged union schema with built-in helpers based on the tag value
 
 ### Augmenting Tagged Unions
 
-The `asTaggedUnion` function enhances a tagged union schema by adding helper methods for working with its members.
+The `toTaggedUnion` function enhances a tagged union schema by adding helper methods for working with its members.
 
 You need to specify the name of the tag field used to differentiate between variants.
 
@@ -2022,6 +2022,8 @@ This helper has some advantages over a dedicated constructor:
 - You can choose among multiple possible tag fields if present.
 - It supports unions that include nested unions.
 
+Each member must have a unique discriminant property key. `toTaggedUnion` throws when it encounters a duplicate. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
+
 **Note**. If the tag is the standard `_tag` field, you can use `Schema.TaggedUnion` instead.
 
 #### Accessing Members by Tag
@@ -2034,6 +2036,18 @@ The `cases` property gives direct access to each member schema of the union.
 const A = tagged.cases.A
 const B = tagged.cases.B
 const C = tagged.cases.C
+```
+
+#### Accessing Discriminant Values
+
+The `discriminants` property contains the decoded discriminant values in the same order as the flattened union members. Its type preserves the exact tuple of values.
+
+**Example** (Deriving a literal schema from discriminants)
+
+```ts
+const Tags = Schema.Literals(tagged.discriminants)
+
+// Schema.Literals<readonly ["A", "B", "C"]>
 ```
 
 #### Checking Membership in a Subset of Tags

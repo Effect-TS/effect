@@ -8703,6 +8703,8 @@ pointed message
           ])
         ]).pipe(Schema.toTaggedUnion("_tag"))
 
+        deepStrictEqual(schema.discriminants, ["A", b, 1, "D"])
+
         // cases
         deepStrictEqual(schema.cases.A, schema.members[0])
         deepStrictEqual(schema.cases[b], schema.members[1])
@@ -8777,6 +8779,44 @@ pointed message
         // cases
         deepStrictEqual(schema.cases.TypeA, schema.members[0])
         deepStrictEqual(schema.cases.TypeB, schema.members[1])
+      })
+
+      it("should throw on duplicate discriminants", () => {
+        throws(
+          () =>
+            Schema.Union([
+              Schema.Struct({ event: Schema.Literal("A"), a: Schema.String }),
+              Schema.Union([
+                Schema.Struct({ event: Schema.Literal("B"), b: Schema.String }),
+                Schema.Struct({ event: Schema.Literal("A"), c: Schema.String })
+              ])
+            ]).pipe(Schema.toTaggedUnion("event")),
+          "Duplicate discriminant: A"
+        )
+        throws(
+          () =>
+            Schema.Union([
+              Schema.Struct({ event: Schema.Literal(1) }),
+              Schema.Struct({ event: Schema.Literal("1") })
+            ]).pipe(Schema.toTaggedUnion("event")),
+          "Duplicate discriminant: 1"
+        )
+      })
+
+      it("should collect no discriminants from an empty union", () => {
+        const schema = Schema.Union([]).pipe(Schema.toTaggedUnion("event"))
+
+        deepStrictEqual(schema.discriminants, [])
+      })
+
+      it("should support __proto__ as a discriminant", () => {
+        const member = Schema.Struct({ event: Schema.Literal("__proto__"), value: Schema.String })
+        const schema = Schema.Union([member]).pipe(Schema.toTaggedUnion("event"))
+
+        assertTrue(Object.hasOwn(schema.cases, "__proto__"))
+        strictEqual(schema.cases["__proto__"], member)
+        assertTrue(Object.hasOwn(schema.guards, "__proto__"))
+        assertTrue(schema.guards["__proto__"]({ event: "__proto__", value: "a" }))
       })
 
       it("should augment a union of classes", () => {

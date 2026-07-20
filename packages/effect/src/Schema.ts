@@ -35,6 +35,7 @@ import { identity, memoize } from "./Function.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
 import * as core from "./internal/core.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalArbitrary from "./internal/schema/arbitrary.ts"
 import * as InternalEquivalence from "./internal/schema/equivalence.ts"
@@ -6089,6 +6090,10 @@ type TaggedUnionUtils<
     Members
   >
 > = {
+  /**
+   * Discriminant values in flattened member order.
+   */
+  readonly discriminants: { readonly [I in keyof Flattened]: Flattened[I]["Type"][Tag] }
   readonly cases: Simplify<{ [M in Flattened[number] as M["Type"][Tag]]: M }>
   readonly isAnyOf: <const Keys>(
     keys: ReadonlyArray<Keys>
@@ -6123,7 +6128,12 @@ export type toTaggedUnion<
 > = Union<Members> & TaggedUnionUtils<Tag, Members>
 
 /**
- * Augments an existing {@link Union} of tagged structs with utility methods keyed by the discriminant field.
+ * Augments an existing {@link Union} of tagged structs with utility methods and an ordered tuple of discriminant
+ * values.
+ *
+ * **Gotchas**
+ *
+ * Throws if multiple members use the same discriminant property key.
  *
  * **Example** (Adding tagged-union utilities to an existing union)
  *
@@ -6151,12 +6161,14 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
     self: Union<Members>
   ): toTaggedUnion<Tag, Members> => {
     const cases: Record<PropertyKey, unknown> = {}
+    const discriminants: Array<PropertyKey> = []
+    const discriminantKeys = new Set<string | symbol>()
     const guards: Record<PropertyKey, (u: unknown) => boolean> = {}
     const isAnyOf = (keys: ReadonlyArray<PropertyKey>) => (value: Members[number]["Type"]) => keys.includes(value[tag])
 
     walk(self)
 
-    return Object.assign(self, { cases, isAnyOf, guards, match }) as any
+    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match }) as any
 
     function walk(schema: Constraint) {
       const ast = schema.ast
@@ -6172,8 +6184,14 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
       if (sentinels.length > 0) {
         const literal = sentinels.find((s) => s.key === tag)?.literal
         if (Predicate.isPropertyKey(literal)) {
-          cases[literal] = schema
-          guards[literal] = is(toType(schema))
+          const key = typeof literal === "number" ? globalThis.String(literal) : literal
+          if (discriminantKeys.has(key)) {
+            throw new globalThis.Error(`Duplicate discriminant: ${globalThis.String(literal)}`)
+          }
+          discriminantKeys.add(key)
+          discriminants.push(literal)
+          InternalRecord.set(cases, literal, schema)
+          InternalRecord.set(guards, literal, is(toType(schema)))
           return
         }
       }

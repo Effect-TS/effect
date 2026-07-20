@@ -14,7 +14,7 @@
 import * as DateTime from "./DateTime.ts"
 import * as Effect from "./Effect.ts"
 import * as Encoding from "./Encoding.ts"
-import * as internalRecord from "./internal/record.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Option from "./Option.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
@@ -1714,7 +1714,7 @@ function getOrCreateContainer(
     return current
   }
   const container = shouldBeArray ? [] : {}
-  internalRecord.set(self, key, container)
+  InternalRecord.set(self, key, container)
   return container
 }
 
@@ -1789,9 +1789,9 @@ export function makeTreeRecord<A>(
         if (hasOwn && Array.isArray(cur[token])) {
           cur[token].push(value)
         } else if (hasOwn) {
-          internalRecord.set(cur, token, [cur[token], value])
+          InternalRecord.set(cur, token, [cur[token], value])
         } else {
-          internalRecord.set(cur, token, value)
+          InternalRecord.set(cur, token, value)
         }
       } else {
         const next = tokens[i + 1]

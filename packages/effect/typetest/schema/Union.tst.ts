@@ -121,6 +121,8 @@ describe("Union", () => {
 
         const schema = original.pipe(Schema.toTaggedUnion("_tag"))
 
+        expect(schema.discriminants).type.toBe<readonly ["A", "C", "B"]>()
+
         expect(Schema.revealCodec(schema)).type.toBe<
           Schema.Codec<
             | { readonly _tag: "A"; readonly a: string }
@@ -159,6 +161,25 @@ describe("Union", () => {
             | { readonly kind: "b"; readonly b: string }
           >()
         }
+      })
+
+      it("should flatten discriminants", () => {
+        const schema = Schema.Union([
+          Schema.Struct({ event: Schema.Literal("A") }),
+          Schema.Union([
+            Schema.Struct({ event: Schema.Literal("B") }),
+            Schema.Struct({ event: Schema.Literal("C") })
+          ])
+        ]).pipe(Schema.toTaggedUnion("event"))
+
+        expect(schema.discriminants).type.toBe<readonly ["A", "B", "C"]>()
+        expect(Schema.Literals(schema.discriminants)).type.toBe<Schema.Literals<readonly ["A", "B", "C"]>>()
+      })
+
+      it("should support empty unions", () => {
+        const schema = Schema.Union([]).pipe(Schema.toTaggedUnion("event"))
+
+        expect(schema.discriminants).type.toBe<readonly []>()
       })
     })
 

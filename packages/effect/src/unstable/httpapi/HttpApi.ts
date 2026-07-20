@@ -10,7 +10,7 @@
  */
 import type { NonEmptyReadonlyArray } from "../../Array.ts"
 import * as Context from "../../Context.ts"
-import * as internalRecord from "../../internal/record.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Record from "../../Record.ts"
@@ -145,7 +145,7 @@ const Proto = {
   ) {
     const groups = { ...this.groups }
     for (const group of toAdd) {
-      internalRecord.set(groups, group.identifier, group)
+      InternalRecord.set(groups, group.identifier, group)
     }
     return makeProto({
       ...optionsFromApi(this),
@@ -159,7 +159,7 @@ const Proto = {
     const newGroups = { ...this.groups }
     for (const key in api.groups) {
       const group = api.groups[key]
-      internalRecord.set(
+      InternalRecord.set(
         newGroups,
         key,
         group.annotateMerge(Context.merge(api.annotations, group.annotations))

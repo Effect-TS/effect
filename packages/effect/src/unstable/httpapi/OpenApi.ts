@@ -13,7 +13,7 @@ import type { NonEmptyArray } from "../../Array.ts"
 import * as Context from "../../Context.ts"
 import * as Equal from "../../Equal.ts"
 import { constFalse } from "../../Function.ts"
-import * as internalRecord from "../../internal/record.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as JsonPatch from "../../JsonPatch.ts"
 import { escapeToken } from "../../JsonPointer.ts"
 import * as JsonSchema from "../../JsonSchema.ts"
@@ -483,7 +483,7 @@ export function fromApi<Id extends string, Groups extends HttpApiGroup.Constrain
       ) {
         const scheme = makeSecurityScheme(security)
         if (!Object.hasOwn(spec.components.securitySchemes, name)) {
-          internalRecord.set(spec.components.securitySchemes, name, scheme)
+          InternalRecord.set(spec.components.securitySchemes, name, scheme)
           return
         }
         if (
