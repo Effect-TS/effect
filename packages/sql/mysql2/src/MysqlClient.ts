@@ -197,15 +197,8 @@ export interface MysqlClientConfig {
   readonly poolConfig?: Mysql.PoolOptions | undefined
 
   /**
-   * Run every statement over the MySQL text protocol (`connection.query`) instead of prepared statements (`connection.execute` / `COM_STMT_PREPARE`).
-   *
-   * **Details**
-   *
-   * Some MySQL proxies do not support the binary protocol — e.g. Cloudflare
-   * Hyperdrive rejects every prepared statement with "Hyperdrive does not
-   * currently support MySQL COM_STMT_PREPARE messages". mysql2 still escapes
-   * parameters client-side on the text path, so parameterization is
-   * preserved.
+   * Use the text protocol instead of prepared statements, for proxies like
+   * Cloudflare Hyperdrive that do not support `COM_STMT_PREPARE`.
    */
   readonly disablePreparedStatements?: boolean | undefined
 
