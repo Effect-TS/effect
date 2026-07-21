@@ -42,9 +42,7 @@ describe("MysqlClient", () => {
         const TextClient = MysqlClient.layer({ url, disablePreparedStatements: true })
         const PreparedClient = MysqlClient.layer({ url })
 
-        // Server-side proof: `Com_stmt_prepare` counts every COM_STMT_PREPARE
-        // the server has seen. Always read it through a text-protocol client
-        // so the counter read itself never prepares.
+        // read through the text client so the counter read itself never prepares
         const globalPrepareCount = Effect.gen(function*() {
           const sql = yield* MysqlClient.MysqlClient
           const rows = yield* sql.unsafe<{ Value: string }>(
@@ -53,8 +51,6 @@ describe("MysqlClient", () => {
           return Number(rows[0].Value)
         }).pipe(Effect.provide(TextClient))
 
-        // Parameterized statements across every execution path: execute,
-        // executeValues, executeStream, and executeRaw.
         const workload = Effect.gen(function*() {
           const sql = yield* MysqlClient.MysqlClient
 
@@ -83,8 +79,6 @@ describe("MysqlClient", () => {
         const after = yield* globalPrepareCount
         assert.strictEqual(after - before, 0, `text-protocol workload prepared ${after - before} statement(s)`)
 
-        // Control: the same shape of parameterized query on a default client
-        // does prepare — proving the counter observes the protocol choice.
         const controlBefore = yield* globalPrepareCount
         yield* Effect.gen(function*() {
           const sql = yield* MysqlClient.MysqlClient

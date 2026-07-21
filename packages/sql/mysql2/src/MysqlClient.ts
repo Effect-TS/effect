@@ -194,19 +194,6 @@ export interface MysqlClientConfig {
   readonly maxConnections?: number | undefined
   readonly connectionTTL?: Duration.Input | undefined
 
-  /**
-   * Extra options passed through to `mysql2`'s `createPool`.
-   *
-   * **Details**
-   *
-   * Explicit config fields (`maxConnections`, `connectionTTL`, …) take
-   * precedence over the equivalent `poolConfig` entries. When `url` is set,
-   * the connection-identity fields (`uri`, `host`, `port`, `user`,
-   * `password`, `database`, `socketPath`) are dropped from `poolConfig` —
-   * the URL stays authoritative for where and how to connect — while
-   * pool/driver behavior options (`disableEval`, `waitForConnections`,
-   * `queueLimit`, …) still apply.
-   */
   readonly poolConfig?: Mysql.PoolOptions | undefined
 
   /**
@@ -326,11 +313,6 @@ export const make = (
       }
     }
 
-    // `url` is documented to override every other connection option, and
-    // mysql2 treats fields passed alongside `uri` as overrides of the parsed
-    // URL — so drop the connection-identity fields from `poolConfig` and keep
-    // only the pool/driver behavior options (`disableEval`,
-    // `waitForConnections`, `queueLimit`, ...).
     const {
       database: _database,
       host: _host,
