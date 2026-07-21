@@ -1,4 +1,4 @@
-import { Context, Effect, Schema } from "effect"
+import { Context, Effect, Option, Schema } from "effect"
 import { Machine } from "effect/unstable/machine"
 import { describe, expect, it } from "tstyche"
 
@@ -132,6 +132,33 @@ describe("Machine", () => {
       | "up.sync.syncing"
       | "down"
     >()
+  })
+
+  it("defineStates selects state values and snapshots with type-safe paths", () => {
+    const snapshot = UpStates.initial.up(
+      new Up({ id: "up-1" }),
+      (up) =>
+        up
+          .auth(
+            new Auth({ userId: "guest" }),
+            (auth) => auth.signedOut(new SignedOut({}))
+          )
+          .sync(
+            new Sync({ enabled: true }),
+            (sync) => sync.idle(new SyncIdle({}))
+          )
+    )
+
+    expect(UpStates.get(snapshot, "up")).type.toBe<Option.Option<Up>>()
+    expect(UpStates.get(snapshot, "up.auth.signedOut")).type.toBe<Option.Option<SignedOut>>()
+    expect(UpStates.getSnapshot(snapshot, "up.auth")).type.toBe<
+      Option.Option<Machine.Machine.SnapshotByIdentifier<typeof UpStates.states, "up.auth">>
+    >()
+    expect(UpStates.matches(snapshot, "up.sync.idle")).type.toBe<boolean>()
+    expect(UpStates.get).type.not.toBeCallableWith(snapshot, "up.missing")
+
+    const other = Machine.defineStates({ other: Down })
+    expect(UpStates.get).type.not.toBeCallableWith(other.initial.other(new Down({})), "up")
   })
 
   it("defineStates preserves declared compound initial keys", () => {
@@ -352,6 +379,33 @@ describe("Machine", () => {
     expect<Machine.ChildAlreadyExistsError>().type.toBeAssignableTo<
       Effect.Error<Effect.Success<typeof started>["join"]>
     >()
+  })
+
+  it("rejects invalid invoke outputs nested alongside valid sibling handlers", () => {
+    const machine = Machine.make({
+      states: UpStates.states,
+      events: [SignIn],
+      initial: () => UpStates.initial.down(new Down({}))
+    })
+
+    expect(machine.handle).type.not.toBeCallableWith({
+      up: {
+        states: {
+          auth: {
+            states: {
+              signedOut: {
+                invoke: () =>
+                  Machine.invoke({
+                    id: "invalid",
+                    src: () => Machine.effect(Effect.succeed(Option.some(1)))
+                  })
+              }
+            }
+          },
+          sync: {}
+        }
+      }
+    })
   })
 
   it("typed child addresses enforce their event protocol", () => {

@@ -7,6 +7,7 @@
 import type * as Cause from "../../Cause.ts"
 import * as Effect from "../../Effect.ts"
 import { PipeInspectableProto } from "../../internal/core.ts"
+import * as Option from "../../Option.ts"
 import type { Pipeable } from "../../Pipeable.ts"
 import { hasProperty } from "../../Predicate.ts"
 import type * as Schema from "../../Schema.ts"
@@ -656,6 +657,12 @@ type LocalTargetBuilderForScope<
 > = ChildrenOf<States, Scope> extends infer Children extends Machine.StateSchemas ?
     & LocalTargetBuilderWithPrefix<States, Children, Scope>
     & {
+      /**
+       * Updates the value of the state containing the local group and moves to
+       * one of the states inside it. Values in other active branches are kept.
+       *
+       * @since 4.0.0
+       */
       readonly with: <Result extends LocalTargetResultWithPrefix<States, Children, Scope>>(
         value: Machine.StateByIdentifier<States, Scope>,
         state: (
@@ -1146,6 +1153,36 @@ export declare namespace Machine {
   export interface DefinedStates<States extends StateSchemas> {
     readonly states: States
     readonly initial: InitialBuilder<States>
+
+    /**
+     * Returns the decoded value for an active state path.
+     *
+     * @since 4.0.0
+     */
+    readonly get: <Path extends StateIdentifier<States>>(
+      snapshot: Snapshot<States>,
+      path: Path
+    ) => Option.Option<StateByIdentifier<States, Path>>
+
+    /**
+     * Returns the snapshot for an active state path.
+     *
+     * @since 4.0.0
+     */
+    readonly getSnapshot: <Path extends StateIdentifier<States>>(
+      snapshot: Snapshot<States>,
+      path: Path
+    ) => Option.Option<SnapshotByIdentifier<States, Path>>
+
+    /**
+     * Returns whether a state path is active in the snapshot.
+     *
+     * @since 4.0.0
+     */
+    readonly matches: <Path extends StateIdentifier<States>>(
+      snapshot: Snapshot<States>,
+      path: Path
+    ) => boolean
   }
 
   /**
@@ -1760,8 +1797,35 @@ export declare namespace Machine {
     States extends StateSchemas,
     Source extends StateIdentifier<States>
   > {
+    /**
+     * Moves to another state in the same local group. The value of the state
+     * containing that group, and values in other active branches, are kept.
+     *
+     * @since 4.0.0
+     */
     readonly local: LocalTargetBuilder<States, Source>
+
+    /**
+     * Moves to a state elsewhere under the current top-level state. Parent
+     * values change only when their builder methods are explicitly called;
+     * other active branches are kept.
+     *
+     * @since 4.0.0
+     */
     readonly branch: BranchTargetBuilder<States, Source>
+
+    /**
+     * Moves to any top-level state by building its complete active state
+     * configuration.
+     *
+     * **Details**
+     *
+     * When the target contains nested states, an active child must be selected.
+     * When it contains parallel states, an active state must be provided for
+     * every region.
+     *
+     * @since 4.0.0
+     */
     readonly full: FullTargetBuilder<States>
   }
 
@@ -1809,6 +1873,13 @@ export declare namespace Machine {
     readonly state: StateByIdentifier<States, StateId>
     readonly event: EventByTag<Events, EventTag>
     readonly runtime: RuntimeEffect<Events, Emits>
+
+    /**
+     * Provides typed builders for choosing the next active state from this
+     * handler. Each builder documents which existing state values it keeps.
+     *
+     * @since 4.0.0
+     */
     readonly target: TargetBuilder<States, StateId>
   }
 
@@ -1872,6 +1943,14 @@ export declare namespace Machine {
     readonly state: StateByIdentifier<States, StateId>
     readonly event: LifecycleEvent<Events>
     readonly runtime: RuntimeEffect<Events, Emits>
+
+    /**
+     * Provides typed builders for choosing the next active state from this
+     * eventless handler. Each builder documents which existing state values it
+     * keeps.
+     *
+     * @since 4.0.0
+     */
     readonly target: TargetBuilder<States, StateId>
   }
 
@@ -1891,6 +1970,14 @@ export declare namespace Machine {
     readonly event: LifecycleEvent<Events>
     readonly output: CompletionOutputByIdentifier<States, StateId>
     readonly runtime: RuntimeEffect<Events, Emits>
+
+    /**
+     * Provides typed builders for choosing the next active state after this
+     * state completes. Each builder documents which existing state values it
+     * keeps.
+     *
+     * @since 4.0.0
+     */
     readonly target: TargetBuilder<States, StateId>
   }
 
@@ -2393,6 +2480,8 @@ export declare namespace Machine {
     readonly "~effect/Machine/HandlerError": Message
   }
 
+  type HandlerValidationErrors<Validation> = Validation extends HandlerValidationError<any> ? Validation : never
+
   type NodeHasDeclaredOutput<
     States extends StateSchemas,
     StateId extends StateIdentifier<States>
@@ -2544,7 +2633,7 @@ export declare namespace Machine {
     : [Exclude<InvokeOutput<InvokeReturn<Config>>, EventOf<Events> | void>] extends [never] ? unknown
     : HandlerValidationError<"Invoked child output must be a machine event or void">
 
-  type HandlerTreeNodeValidations<
+  type HandlerTreeNodeValidationErrors<
     AllStates extends StateSchemas,
     States extends StateSchemas,
     Events extends ReadonlyArray<TaggedSchema>,
@@ -2552,9 +2641,9 @@ export declare namespace Machine {
     Config,
     AvailableOutputStates extends StateIdentifier<AllStates>,
     Depth extends ReadonlyArray<unknown>
-  > = UnionToIntersection<
-    {
-      readonly [Key in Extract<Extract<keyof Config, string>, Extract<keyof States, string>>]: HandlerNodeValidation<
+  > = {
+    readonly [Key in Extract<Extract<keyof Config, string>, Extract<keyof States, string>>]: HandlerValidationErrors<
+      HandlerNodeValidation<
         AllStates,
         States[Key],
         Events,
@@ -2563,8 +2652,27 @@ export declare namespace Machine {
         AvailableOutputStates,
         Depth
       >
-    }[Extract<Extract<keyof Config, string>, Extract<keyof States, string>>]
-  >
+    >
+  }[Extract<Extract<keyof Config, string>, Extract<keyof States, string>>]
+
+  type HandlerTreeNodeValidations<
+    AllStates extends StateSchemas,
+    States extends StateSchemas,
+    Events extends ReadonlyArray<TaggedSchema>,
+    Prefix extends string,
+    Config,
+    AvailableOutputStates extends StateIdentifier<AllStates>,
+    Depth extends ReadonlyArray<unknown>
+  > = HandlerTreeNodeValidationErrors<
+    AllStates,
+    States,
+    Events,
+    Prefix,
+    Config,
+    AvailableOutputStates,
+    Depth
+  > extends infer Errors ? [Errors] extends [never] ? unknown : UnionToIntersection<Errors>
+    : never
 
   type HandlerTreeValidation<
     AllStates extends StateSchemas,
@@ -3342,6 +3450,32 @@ const makeTargetBuilder = <const States extends Machine.StateSchemas>(
     }) as Machine.TargetBuilder<States, Source>
 }
 
+const getSnapshotByPath = (
+  snapshot: Machine.AtomicSnapshot<string, unknown>,
+  path: string
+): Option.Option<Machine.AtomicSnapshot<string, unknown>> => {
+  if (snapshot.path === path) {
+    return Option.some(snapshot)
+  }
+  if (!path.startsWith(`${snapshot.path}.`)) {
+    return Option.none()
+  }
+  if (hasProperty(snapshot, "state") && Model.isSnapshot(snapshot.state)) {
+    return getSnapshotByPath(snapshot.state, path)
+  }
+  if (hasProperty(snapshot, "states") && typeof snapshot.states === "object" && snapshot.states !== null) {
+    for (const child of Object.values(snapshot.states)) {
+      if (Model.isSnapshot(child)) {
+        const result = getSnapshotByPath(child, path)
+        if (Option.isSome(result)) {
+          return result
+        }
+      }
+    }
+  }
+  return Option.none()
+}
+
 /**
  * Defines a state tree while preserving literal state paths.
  *
@@ -3383,7 +3517,13 @@ export const defineStates = <
   ..._validation: ValidateDefinedStates<NoInfer<States>>
 ): Machine.DefinedStates<States> => ({
   states: states as States,
-  initial: makeSnapshotBuilder(states as States, { mode: "initial", prefix: "" }) as Machine.InitialBuilder<States>
+  initial: makeSnapshotBuilder(states as States, { mode: "initial", prefix: "" }) as Machine.InitialBuilder<States>,
+  get: ((snapshot, path) =>
+    getSnapshotByPath(snapshot, path).pipe(
+      Option.map((snapshot) => snapshot.value)
+    )) as Machine.DefinedStates<States>["get"],
+  getSnapshot: getSnapshotByPath as unknown as Machine.DefinedStates<States>["getSnapshot"],
+  matches: (snapshot, path) => Option.isSome(getSnapshotByPath(snapshot, path))
 })
 
 /**

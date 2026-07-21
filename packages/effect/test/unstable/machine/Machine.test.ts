@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Data, Deferred, Effect, Fiber, Ref, Schema, Stream } from "effect"
+import { Cause, Context, Data, Deferred, Effect, Fiber, Option, Ref, Schema, Stream } from "effect"
 import { Machine } from "effect/unstable/machine"
 
 class DeferredLog extends Context.Service<DeferredLog, {
@@ -349,6 +349,57 @@ describe("Machine", () => {
       assert.strictEqual(planned.state.path, "idle")
       assert.deepStrictEqual(planned.state.value, new Idle({ userId: "user-1" }))
     }))
+
+  it("defineStates selects active compound and parallel state paths", () => {
+    const states = Machine.defineStates({
+      fulfillment: {
+        schema: Fulfillment,
+        type: "parallel",
+        states: {
+          inventory: {
+            schema: Inventory,
+            initial: "checking",
+            states: {
+              checking: CheckingInventory,
+              reserved: InventoryReserved
+            }
+          },
+          shipping: {
+            schema: Shipping,
+            initial: "quoting",
+            states: {
+              quoting: QuotingShipping,
+              quoted: ShippingQuoted
+            }
+          }
+        }
+      }
+    })
+    const fulfillment = new Fulfillment({ id: "fulfillment-1" })
+    const inventory = new Inventory({ warehouse: "warehouse-1" })
+    const checking = new CheckingInventory({ sku: "sku-1" })
+    const shipping = new Shipping({ address: "Main Street" })
+    const quoting = new QuotingShipping({ postalCode: "12345" })
+    const snapshot = states.initial.fulfillment(
+      fulfillment,
+      (fulfillment) =>
+        fulfillment
+          .inventory(inventory, (inventory) => inventory.checking(checking))
+          .shipping(shipping, (shipping) => shipping.quoting(quoting))
+    )
+
+    assert.deepStrictEqual(states.get(snapshot, "fulfillment"), Option.some(fulfillment))
+    assert.deepStrictEqual(states.get(snapshot, "fulfillment.inventory"), Option.some(inventory))
+    assert.deepStrictEqual(states.get(snapshot, "fulfillment.inventory.checking"), Option.some(checking))
+    assert.deepStrictEqual(states.get(snapshot, "fulfillment.shipping.quoting"), Option.some(quoting))
+    assert.deepStrictEqual(states.get(snapshot, "fulfillment.inventory.reserved"), Option.none())
+    assert.deepStrictEqual(
+      states.getSnapshot(snapshot, "fulfillment.inventory.checking"),
+      Option.some({ path: "fulfillment.inventory.checking", value: checking })
+    )
+    assert.strictEqual(states.matches(snapshot, "fulfillment.shipping"), true)
+    assert.strictEqual(states.matches(snapshot, "fulfillment.shipping.quoted"), false)
+  })
 
   it.effect("initial builder constructs effectful atomic initial snapshots", () =>
     Effect.gen(function*() {
