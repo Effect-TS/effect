@@ -12,6 +12,7 @@
 import * as Arr from "../../Array.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
+import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Scope from "../../Scope.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
@@ -574,6 +575,9 @@ export const make = Effect.fnUntraced(function*(options: {
         shardIds.length > 0 ?
           Effect.andThen(refreshShards(address, shardIds)) :
           Effect.as([]),
+        Effect.forkDetach({ startImmediately: true }),
+        Effect.flatMap(Fiber.join),
+        Effect.timeout(config.shardLockRefreshInterval),
         PersistenceError.refail,
         withTracerDisabled
       ),
