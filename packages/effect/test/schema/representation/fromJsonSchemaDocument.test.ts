@@ -2708,6 +2708,65 @@ describe("fromJsonSchemaDocument", () => {
         }
       )
     })
+
+    it("preserves annotations on a recursive $ref", () => {
+      assertFromJsonSchema(
+        {
+          schema: {
+            $ref: "#/$defs/Node",
+            $defs: {
+              Node: {
+                type: "object",
+                properties: {
+                  child: {
+                    $ref: "#/$defs/Node",
+                    description: "recursive child"
+                  }
+                },
+                required: ["child"],
+                additionalProperties: false
+              }
+            }
+          }
+        },
+        {
+          representation: {
+            _tag: "Reference",
+            $ref: "Node"
+          },
+          references: {
+            Node: {
+              _tag: "Suspend",
+              annotations: {
+                identifier: "Node"
+              },
+              checks: [],
+              thunk: {
+                _tag: "Objects",
+                propertySignatures: [{
+                  name: "child",
+                  type: {
+                    _tag: "Suspend",
+                    annotations: {
+                      description: "recursive child"
+                    },
+                    checks: [],
+                    thunk: {
+                      _tag: "Reference",
+                      $ref: "Node"
+                    }
+                  },
+                  isOptional: false,
+                  isMutable: false
+                }],
+                indexSignatures: [],
+                checks: []
+              }
+            }
+          }
+        }
+      )
+    })
   })
 
   describe("allOf", () => {

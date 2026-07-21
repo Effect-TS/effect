@@ -197,6 +197,10 @@ function translateJsonSchemaMultiDocument(
 ): SchemaRepresentation.MultiDocument {
   const definitionCache = new Map<string, ImportedJsonSchemaRepresentation>()
   const definitionsInProgress = new Set<string>()
+  const annotatedReferences: Array<{
+    readonly reference: SchemaRepresentation.Reference
+    readonly path: Path
+  }> = []
 
   function translateDefinition(key: string, path: Path): ImportedJsonSchemaRepresentation {
     const cached = definitionCache.get(key)
@@ -656,7 +660,7 @@ function translateJsonSchemaMultiDocument(
     let representation = on(schema, path)
     const annotations = jsonSchemaAnnotations(schema)
     if (annotations !== undefined && representation._tag === "Reference") {
-      resolveReference(representation, path)
+      annotatedReferences.push({ reference: representation, path })
     }
     representation = annotateJsonSchemaRepresentation(representation, annotations)
 
@@ -911,6 +915,9 @@ function translateJsonSchemaMultiDocument(
   const representations = document.schemas.map((schema, index) =>
     unknownJsonSchemas(recur(schema, singleRoot ? ["schema"] : ["schemas", index]))
   ) as [Representation, ...Array<Representation>]
+  for (const { reference, path } of annotatedReferences) {
+    resolveReference(reference, path)
+  }
   return { representations, references }
 }
 
