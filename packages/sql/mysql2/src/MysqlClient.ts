@@ -306,28 +306,16 @@ export const make = (
       }
     }
 
-    const {
-      database: _database,
-      host: _host,
-      password: _password,
-      port: _port,
-      socketPath: _socketPath,
-      uri: _uri,
-      user: _user,
-      ...poolBehaviorConfig
-    } = options.poolConfig ?? {}
-
     const pool = options.url
       ? Mysql.createPool({
-        ...poolBehaviorConfig,
         uri: Redacted.value(options.url),
         multipleStatements: true,
         supportBigNumbers: true,
-        connectionLimit: options.maxConnections ?? options.poolConfig?.connectionLimit,
+        connectionLimit: options.maxConnections!,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
-          : options.poolConfig?.idleTimeout
-      } as Mysql.PoolOptions)
+          : undefined as any
+      })
       : Mysql.createPool({
         ...options.poolConfig,
         host: options.host,

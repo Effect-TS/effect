@@ -9,10 +9,6 @@ Some MySQL proxies do not support the binary protocol — Cloudflare Hyperdrive 
 ```ts
 MysqlClient.layer({
   url: Redacted.make(env.HYPERDRIVE.connectionString),
-  disablePreparedStatements: true,
-  // mysql2's JIT row parsers use `new Function`, which workerd disallows
-  poolConfig: { disableEval: true }
+  disablePreparedStatements: true
 })
 ```
-
-`poolConfig` is now also applied when `url` is set (it was previously ignored on that path), so options like `disableEval` can be combined with a connection URI.
