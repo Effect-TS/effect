@@ -1,5 +1,44 @@
 # effect
 
+## 4.0.0-beta.100
+
+### Patch Changes
+
+- [#6501](https://github.com/Effect-TS/effect/pull/6501) [`c1288dd`](https://github.com/Effect-TS/effect/commit/c1288dd1a52a2811ab7df57fc4ce236c6be4c745) Thanks @gcanti! - Add a `discriminants` tuple to schemas augmented with `Schema.toTaggedUnion` and reject duplicate discriminant
+  property keys.
+
+- [#6475](https://github.com/Effect-TS/effect/pull/6475) [`2b58a3d`](https://github.com/Effect-TS/effect/commit/2b58a3dab6bc99776dddaf76e27d811e0f47f3d8) Thanks @fubhy! - Normalize cron month and weekday aliases independently of the host locale.
+
+- [#6492](https://github.com/Effect-TS/effect/pull/6492) [`6dc83f2`](https://github.com/Effect-TS/effect/commit/6dc83f26ddf20d48db28cf761dd8f3716e5273fb) Thanks @gcanti! - Preserve nested class construction when applying constructor defaults, closes [#6491](https://github.com/Effect-TS/effect/issues/6491).
+
+- [#6476](https://github.com/Effect-TS/effect/pull/6476) [`c1e2fe0`](https://github.com/Effect-TS/effect/commit/c1e2fe0cf93564f4d919e3998874c3e70b0cf30f) Thanks @fubhy! - Add `Cron` day and weekday intersection semantics in inspection representations.
+
+- [#6474](https://github.com/Effect-TS/effect/pull/6474) [`f3fbae8`](https://github.com/Effect-TS/effect/commit/f3fbae8d7bae0d77cb4f35a1598b26c58e3bf94d) Thanks @fubhy! - Validate `Cron.make` field constraints and treat weekday `7` as Sunday consistently with cron parsing.
+
+- [#6472](https://github.com/Effect-TS/effect/pull/6472) [`e000f80`](https://github.com/Effect-TS/effect/commit/e000f80fd55bcd8edc699fdbf4cd109004f4f754) Thanks @fubhy! - Fix `Cron.prev` day-of-month rollover across shorter months and non-leap years.
+
+- [#6471](https://github.com/Effect-TS/effect/pull/6471) [`f4ee765`](https://github.com/Effect-TS/effect/commit/f4ee7655ee052cf9ba726fd602bb87c89c7c62a9) Thanks @fubhy! - Fix `Cron.prev` weekday wrapping to always return a matching instant before the input.
+
+- [#6477](https://github.com/Effect-TS/effect/pull/6477) [`510b55f`](https://github.com/Effect-TS/effect/commit/510b55f3e21750685dbfd5f476a130c1c5af9dbd) Thanks @fubhy! - Make Cron equality and hashing include the optional timezone consistently.
+
+- [#6433](https://github.com/Effect-TS/effect/pull/6433) [`31d3fc4`](https://github.com/Effect-TS/effect/commit/31d3fc4327c50867bb8d881fa7353aeb03ea2826) Thanks @coyaSONG! - Fix the published declaration for `HttpEffect.appendPreResponseHandlerUnsafe`.
+
+- [#6487](https://github.com/Effect-TS/effect/pull/6487) [`875e618`](https://github.com/Effect-TS/effect/commit/875e618c3764a7b817ac863d0af86924449528f2) Thanks @rvaccone! - Fix doubled `Expected: Expected ...` prefixes in CLI `InvalidValue` error messages, closes [#6312](https://github.com/Effect-TS/effect/issues/6312).
+
+- [#6496](https://github.com/Effect-TS/effect/pull/6496) [`688d46a`](https://github.com/Effect-TS/effect/commit/688d46afd0ef923d983ad3d7385f52f217b28d70) Thanks @tim-smart! - Port `Effect.reduce` from Effect v3.
+
+- [#6480](https://github.com/Effect-TS/effect/pull/6480) [`6ff5023`](https://github.com/Effect-TS/effect/commit/6ff502363b9840a5a5ee0a24bc6cae734ac3a3eb) Thanks @fubhy! - Correct the diagnostic for cron step values above a field's maximum.
+
+- [#6484](https://github.com/Effect-TS/effect/pull/6484) [`c0333e7`](https://github.com/Effect-TS/effect/commit/c0333e7f755f42ddcca7051e029da8b4eed527bf) Thanks @tim-smart! - Fix fiber self-interuption from inside a running operation
+
+- [#6493](https://github.com/Effect-TS/effect/pull/6493) [`06e7e8c`](https://github.com/Effect-TS/effect/commit/06e7e8c66015ee318f871b9d2218dee82df2b108) Thanks @tim-smart! - Make multipart errors respond with an HTTP status based on their reason and ignore them in the error reporter.
+
+- [#6498](https://github.com/Effect-TS/effect/pull/6498) [`eb9b102`](https://github.com/Effect-TS/effect/commit/eb9b10256c8558881b441c2fef833b7037174400) Thanks @thewilkybarkid! - Don’t create a table when it’s not needed
+
+- [#6494](https://github.com/Effect-TS/effect/pull/6494) [`8b155da`](https://github.com/Effect-TS/effect/commit/8b155da06e0740c354ec562957a45ab65eb4573b) Thanks @tim-smart! - only interrupt cache lookup when all awaiters are gone
+
+- [#6495](https://github.com/Effect-TS/effect/pull/6495) [`3a87335`](https://github.com/Effect-TS/effect/commit/3a8733564c5db35271aa20564ed0d344daa2a79f) Thanks @tim-smart! - clean up more references on fiber exit
+
 ## 4.0.0-beta.99
 
 ### Patch Changes
