@@ -196,6 +196,19 @@ export interface MysqlClientConfig {
 
   readonly poolConfig?: Mysql.PoolOptions | undefined
 
+  /**
+   * Run every statement over the MySQL text protocol (`connection.query`) instead of prepared statements (`connection.execute` / `COM_STMT_PREPARE`).
+   *
+   * **Details**
+   *
+   * Some MySQL proxies do not support the binary protocol — e.g. Cloudflare
+   * Hyperdrive rejects every prepared statement with "Hyperdrive does not
+   * currently support MySQL COM_STMT_PREPARE messages". mysql2 still escapes
+   * parameters client-side on the text path, so parameterization is
+   * preserved.
+   */
+  readonly disablePreparedStatements?: boolean | undefined
+
   readonly spanAttributes?: Record<string, unknown> | undefined
 
   readonly transformResultNames?: ((str: string) => string) | undefined
@@ -218,6 +231,7 @@ export const make = (
         options.transformResultNames
       ).array :
       undefined
+    const defaultMethod: "execute" | "query" = options.disablePreparedStatements === true ? "query" : "execute"
 
     class ConnectionImpl implements Connection {
       readonly conn: Mysql.PoolConnection | Mysql.Pool
@@ -229,7 +243,7 @@ export const make = (
         sql: string,
         values?: ReadonlyArray<any>,
         rowsAsArray = false,
-        method: "execute" | "query" = "execute"
+        method: "execute" | "query" = defaultMethod
       ) {
         return Effect.callback<unknown, SqlError>((resume) => {
           const operation = method === "query" ? "executeUnprepared" : "execute"
@@ -253,7 +267,7 @@ export const make = (
         sql: string,
         values?: ReadonlyArray<any>,
         rowsAsArray = false,
-        method: "execute" | "query" = "execute"
+        method: "execute" | "query" = defaultMethod
       ) {
         return this.runRaw(sql, values, rowsAsArray, method).pipe(
           Effect.map((results) => Array.isArray(results) ? results : [])
@@ -301,6 +315,7 @@ export const make = (
 
     const pool = options.url
       ? Mysql.createPool({
+        ...options.poolConfig,
         uri: Redacted.value(options.url),
         multipleStatements: true,
         supportBigNumbers: true,
@@ -308,7 +323,7 @@ export const make = (
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
           : undefined as any
-      })
+      } as Mysql.PoolOptions)
       : Mysql.createPool({
         ...options.poolConfig,
         host: options.host,
