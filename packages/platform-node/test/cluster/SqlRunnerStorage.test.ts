@@ -46,7 +46,7 @@ describe("SqlRunnerStorage", () => {
         Effect.exit,
         Effect.forkChild({ startImmediately: true })
       )
-      yield* TestClock.adjust(1001)
+      yield* TestClock.adjust(101)
       const result = fiber.pollUnsafe()
       partitioned.current = false
       yield* Fiber.interrupt(fiber)
