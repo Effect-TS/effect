@@ -32,16 +32,6 @@ export class MysqlContainer extends Context.Service<
 
   static layerClient = this.client.pipe(Layer.provide(this.layer))
 
-  static layerClientTextProtocol = Layer.unwrap(
-    Effect.gen(function*() {
-      const container = yield* MysqlContainer
-      return MysqlClient.layer({
-        url: Redacted.make(container.getConnectionUri()),
-        disablePreparedStatements: true
-      })
-    })
-  ).pipe(Layer.provide(this.layer))
-
   static layerClientWithTransforms = Layer.unwrap(
     Effect.gen(function*() {
       const container = yield* MysqlContainer
