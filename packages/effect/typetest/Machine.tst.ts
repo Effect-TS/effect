@@ -329,6 +329,70 @@ describe("Machine", () => {
     })
   })
 
+  it("invoke factories receive typed state context and preserve child channels", () => {
+    const machine = Machine.make({
+      states: UpStates.states,
+      events: [SignIn],
+      initial: () => UpStates.initial.down(new Down({}))
+    }).handle({
+      down: {
+        invoke: ({ event, state }) => {
+          expect(state).type.toBe<Down>()
+          expect(event).type.toBe<SignIn | Machine.InitialEvent>()
+          return Machine.invoke({
+            id: "worker",
+            src: () => Machine.effect(Effect.as(DeferredRequirement, new SignIn({ userId: "user-1" })))
+          })
+        }
+      }
+    })
+    const started = Machine.start(machine)
+
+    expect<Effect.Services<typeof started>>().type.toBe<DeferredRequirement>()
+    expect<Machine.ChildAlreadyExistsError>().type.toBeAssignableTo<
+      Effect.Error<Effect.Success<typeof started>["join"]>
+    >()
+  })
+
+  it("typed child addresses enforce their event protocol", () => {
+    const worker = Machine.child<SignIn>("worker")
+    const child = Machine.transition(0, (_state: number, _event: SignIn) => Effect.succeed(1))
+
+    expect(Machine.sendTo).type.toBeCallableWith(worker, new SignIn({ userId: "user-1" }))
+    expect(Machine.sendTo).type.not.toBeCallableWith(worker, new Down({}))
+    expect(Machine.spawn).type.toBeCallableWith(child, { id: worker })
+    expect(Machine.spawn).type.not.toBeCallableWith(
+      Machine.transition(0, (_state: number, _event: Down) => Effect.succeed(1)),
+      { id: worker }
+    )
+  })
+
+  it("start exposes startup and runtime failure channels", () => {
+    const machine = Machine.make({
+      states: UpStates.states,
+      events: [SignIn],
+      initial: () => Effect.fail("initial-failed" as const)
+    }).handle({
+      down: {
+        on: {
+          SignIn: () => Effect.fail("transition-failed" as const)
+        }
+      }
+    })
+    const started = Machine.start(machine)
+
+    expect<"initial-failed">().type.toBeAssignableTo<Effect.Error<typeof started>>()
+    expect<Machine.MachineSchemaDecodeError>().type.toBeAssignableTo<Effect.Error<typeof started>>()
+    expect<Machine.StartupError>().type.toBeAssignableTo<Effect.Error<typeof started>>()
+    expect<"transition-failed">().type.toBeAssignableTo<Effect.Error<Effect.Success<typeof started>["join"]>>()
+    expect<Machine.InfiniteTransitionError>().type.toBeAssignableTo<
+      Effect.Error<Effect.Success<typeof started>["join"]>
+    >()
+    expect<Machine.UnhandledEventError>().type.toBeAssignableTo<
+      Effect.Error<Effect.Success<typeof started>["join"]>
+    >()
+  })
+
   it("plan and getters require snapshots", () => {
     const machine = Machine.make({
       states: UpStates.states,
@@ -1138,6 +1202,131 @@ describe("Machine", () => {
             initial: "missing",
             states: {
               signedOut: SignedOut
+            }
+          }
+        }
+      }
+    })
+  })
+
+  it("make validates raw state trees", () => {
+    expect(Machine.make).type.not.toBeCallableWith({
+      states: {
+        up: {
+          schema: Up,
+          initial: "missing",
+          states: {
+            auth: Auth
+          }
+        }
+      },
+      events: [],
+      initial: (): never => {
+        throw new Error("unreachable")
+      }
+    })
+  })
+
+  it("rejects handler trees beyond the supported inference depth", () => {
+    const States = Machine.defineStates({
+      root: {
+        schema: Up,
+        initial: "one",
+        states: {
+          one: {
+            schema: Auth,
+            initial: "two",
+            states: {
+              two: {
+                schema: Auth,
+                initial: "three",
+                states: {
+                  three: {
+                    schema: Auth,
+                    initial: "four",
+                    states: {
+                      four: {
+                        schema: Auth,
+                        initial: "five",
+                        states: {
+                          five: {
+                            schema: Auth,
+                            initial: "six",
+                            states: {
+                              six: {
+                                schema: Auth,
+                                initial: "seven",
+                                states: {
+                                  seven: {
+                                    schema: Auth,
+                                    initial: "eight",
+                                    states: {
+                                      eight: {
+                                        schema: Auth,
+                                        initial: "nine",
+                                        states: {
+                                          nine: SignedOut
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+    const machine = Machine.make({
+      states: States.states,
+      events: [],
+      initial: (): never => {
+        throw new Error("unreachable")
+      }
+    })
+
+    expect(machine.handle).type.not.toBeCallableWith({
+      root: {
+        states: {
+          one: {
+            states: {
+              two: {
+                states: {
+                  three: {
+                    states: {
+                      four: {
+                        states: {
+                          five: {
+                            states: {
+                              six: {
+                                states: {
+                                  seven: {
+                                    states: {
+                                      eight: {
+                                        states: {
+                                          nine: {}
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }

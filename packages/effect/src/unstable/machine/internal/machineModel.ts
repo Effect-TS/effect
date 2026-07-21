@@ -14,11 +14,6 @@ import { MachineSchemaDecodeError, MachineSchemaEncodeError } from "./machineErr
 
 export const TargetTypeId = "~effect/Machine/Target"
 
-export const getSchemaTag = (schema: Machine.TaggedSchema): PropertyKey | undefined => {
-  const tag = (schema as any).fields?._tag?.schema?.literal ?? (schema as any).fields?._tag?.ast?.literal
-  return typeof tag === "string" || typeof tag === "number" || typeof tag === "symbol" ? tag : undefined
-}
-
 export const getStateNodeDefinition = (
   path: string,
   definition: Machine.TaggedSchema | Machine.StateNodeConfig
@@ -92,7 +87,6 @@ export const compileStateNodes = (states: Machine.StateSchemas): Machine.StateNo
       const node = {
         path,
         key,
-        tag: getSchemaTag(definition.schema) ?? key,
         schema: definition.schema,
         output: definition.output,
         type: definition.type,
@@ -549,62 +543,6 @@ export const validateInitialConfiguration = (machine: Machine.Any, configuration
   }
 }
 
-export const configurationFromTargetPath = (
-  machine: Machine.Any,
-  current: ActiveConfiguration,
-  path: string,
-  value: { readonly _tag: PropertyKey },
-  providedValues: Readonly<Record<string, unknown>> | undefined
-): ActiveConfiguration => {
-  const node = getNode(machine, path)
-  const active = new Set<string>()
-  const values = new Map<string, unknown>()
-  const outputs = new Map<string, unknown>()
-  const paths = getPathToRoot(machine, node.path)
-  const pathSet = new Set(paths)
-
-  for (const currentPath of paths) {
-    active.add(currentPath)
-    if (currentPath === node.path) {
-      values.set(currentPath, value)
-    } else if (providedValues !== undefined && hasOwn(providedValues, currentPath)) {
-      values.set(currentPath, providedValues[currentPath])
-    } else if (current.values.has(currentPath)) {
-      values.set(currentPath, current.values.get(currentPath))
-    } else {
-      throw new Error(`Machine target "${node.path}" requires a value for ancestor state "${currentPath}"`)
-    }
-  }
-
-  for (const ancestor of paths) {
-    const ancestorNode = getNode(machine, ancestor)
-    if (ancestorNode.type === "parallel") {
-      for (const child of ancestorNode.children) {
-        if (pathSet.has(child) || !current.active.has(child)) {
-          continue
-        }
-        for (const activePath of current.active) {
-          if (isPathInSubtree(activePath, child)) {
-            active.add(activePath)
-            if (current.values.has(activePath)) {
-              values.set(activePath, current.values.get(activePath))
-            }
-            if (current.outputs.has(activePath)) {
-              outputs.set(activePath, current.outputs.get(activePath))
-            }
-          }
-        }
-      }
-    }
-  }
-
-  if (node.type === "compound" || node.type === "parallel") {
-    throw new Error(`Machine target "${node.path}" must include an active child state`)
-  }
-
-  return { active, values, outputs }
-}
-
 export const configurationFromTargetPathEffect = Effect.fnUntraced(function*(
   machine: Machine.Any,
   current: ActiveConfiguration,
@@ -661,26 +599,6 @@ export const configurationFromTargetPathEffect = Effect.fnUntraced(function*(
 
   return { active, values, outputs } as ActiveConfiguration
 })
-
-export const normalizeTargetConfiguration = <const States extends Machine.StateSchemas>(
-  machine: Machine.Any,
-  current: ActiveConfiguration,
-  target: Machine.Snapshot<States> | Machine.Target<States, Machine.StateIdentifier<States>>
-): ActiveConfiguration => {
-  if (isTarget(target)) {
-    return configurationFromTargetPath(
-      machine,
-      current,
-      target.path,
-      target.value as { readonly _tag: PropertyKey },
-      target.values as Readonly<Record<string, unknown>> | undefined
-    )
-  }
-  if (isSnapshot(target)) {
-    return configurationFromSnapshot(machine, target)
-  }
-  throw new Error("Machine expected transition target to be a snapshot or target builder result")
-}
 
 export const normalizeTargetConfigurationEffect = <const States extends Machine.StateSchemas>(
   machine: Machine.Any,
@@ -773,110 +691,6 @@ export const setCompletedOutput = (
     output,
     isNew: true
   }
-}
-
-export const resolveFinalOutput = <const Events extends ReadonlyArray<Machine.TaggedSchema>>(
-  machine: Machine.Any,
-  configuration: ActiveConfiguration,
-  path: string,
-  event: Machine.LifecycleEvent<Events>,
-  outputs?: Readonly<Record<string, unknown>>
-): unknown =>
-  getStateConfigByPath(machine, path)?.output?.({
-    state: getActiveValue(configuration, path),
-    event,
-    outputs
-  } as any)
-
-export const completeActiveFinalNode = <const Events extends ReadonlyArray<Machine.TaggedSchema>>(
-  machine: Machine.Any,
-  configuration: ActiveConfiguration,
-  path: string,
-  event: Machine.LifecycleEvent<Events>,
-  outputs: Map<string, unknown>,
-  completions: Array<FinalCompletion>
-): CompletionResult | undefined => {
-  if (!configuration.active.has(path)) {
-    return undefined
-  }
-  const node = getNode(machine, path)
-  if (node.type === "compound") {
-    const child = getActiveChildPath(machine, configuration, path)
-    if (child === undefined || !isDirectFinalPath(machine, child)) {
-      return undefined
-    }
-    const childCompletion = completeActiveFinalNode(machine, configuration, child, event, outputs, completions)
-    if (childCompletion === undefined) {
-      return undefined
-    }
-    const completion = setCompletedOutput(outputs, path, childCompletion.output)
-    if (completion.isNew) {
-      completions.push(completion)
-    }
-    return completion
-  }
-  if (node.type === "parallel") {
-    const regionOutputs: Record<string, unknown> = {}
-    let completed = true
-    for (const child of node.children) {
-      const childCompletion = completeActiveFinalNode(machine, configuration, child, event, outputs, completions)
-      if (childCompletion === undefined) {
-        completed = false
-      } else {
-        regionOutputs[getNode(machine, child).key] = childCompletion.output
-      }
-    }
-    if (!completed) {
-      return undefined
-    }
-    const completion = setCompletedOutput(
-      outputs,
-      path,
-      resolveFinalOutput(machine, configuration, path, event, regionOutputs)
-    )
-    if (completion.isNew) {
-      completions.push(completion)
-    }
-    return completion
-  }
-  if (!isDirectFinalPath(machine, path)) {
-    return undefined
-  }
-  const completion = setCompletedOutput(
-    outputs,
-    path,
-    resolveFinalOutput(machine, configuration, path, event)
-  )
-  if (completion.isNew) {
-    completions.push(completion)
-  }
-  return completion
-}
-
-export const completeConfiguration = <const Events extends ReadonlyArray<Machine.TaggedSchema>>(
-  machine: Machine.Any,
-  configuration: ActiveConfiguration,
-  event: Machine.LifecycleEvent<Events>
-): {
-  readonly configuration: ActiveConfiguration
-  readonly completions: ReadonlyArray<FinalCompletion>
-} => {
-  const outputs = new Map(configuration.outputs)
-  const completions: Array<FinalCompletion> = []
-  const completed = {
-    active: configuration.active,
-    values: configuration.values,
-    outputs
-  }
-  for (
-    const path of Array.from(completed.active).sort((left, right) => {
-      const depth = pathDepth(machine, right) - pathDepth(machine, left)
-      return depth === 0 ? compareDocumentOrder(machine, left, right) : depth
-    })
-  ) {
-    completeActiveFinalNode(machine, completed, path, event, outputs, completions)
-  }
-  return { configuration: completed, completions }
 }
 
 export const resolveFinalOutputEffect: <

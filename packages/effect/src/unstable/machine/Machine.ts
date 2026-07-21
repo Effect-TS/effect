@@ -87,6 +87,20 @@ type IsAny<A> = 0 extends (1 & A) ? true : false
 /**
  * A schema-first machine definition.
  *
+ * **Details**
+ *
+ * Machines support atomic, compound, parallel, and final states together with
+ * completion transitions, eventless transitions, raised events, actions,
+ * spawned children, and state-scoped invokes. Schemas validate machine
+ * boundaries while preserving decoded state, event, output, error, and service
+ * types throughout planning and execution.
+ *
+ * **Gotchas**
+ *
+ * History states, delayed transitions, and declarative first-class guards are
+ * not part of the current API. Conditional behavior can be expressed in typed
+ * handlers with ordinary TypeScript control flow.
+ *
  * @category models
  * @since 4.0.0
  */
@@ -101,7 +115,7 @@ export interface Machine<
   InitialR = never,
   FinalStates extends Machine.StateIdentifier<States> = never,
   Output = never,
-  Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   OutputStates extends Machine.StateIdentifier<States> = never
 > extends Pipeable {
   readonly [TypeId]: TypeId
@@ -1017,7 +1031,7 @@ export declare namespace Machine {
    * @category models
    * @since 4.0.0
    */
-  export type Any = Machine<any, any, any, any, any, any, any, any, any, any, any>
+  export type Any = Machine<any, any, any, any, any, any, any, any, any, any, any, any>
 
   /**
    * A schema whose decoded value contains a `_tag` discriminator.
@@ -1151,7 +1165,6 @@ export declare namespace Machine {
   export interface StateNode {
     readonly path: string
     readonly key: string
-    readonly tag: PropertyKey
     readonly schema: TaggedSchema
     readonly output: Schema.Top | undefined
     readonly type: "atomic" | "compound" | "parallel" | "final"
@@ -2031,7 +2044,10 @@ export declare namespace Machine {
    */
   export type InvokeReturn<Config> = "invoke" extends keyof Config
     ? Config extends { readonly invoke?: infer Invoke }
-      ? NonNullable<Invoke> extends ReadonlyArray<infer One> ? One : NonNullable<Invoke>
+      ? NonNullable<Invoke> extends (...args: any) => infer Resolved
+        ? NonNullable<Resolved> extends ReadonlyArray<infer One> ? One : NonNullable<Resolved>
+      : NonNullable<Invoke> extends ReadonlyArray<infer One> ? One
+      : NonNullable<Invoke>
     : never
     : never
   /**
@@ -2172,9 +2188,7 @@ export declare namespace Machine {
       readonly initialError: Types.Covariant<ChildInitialError>
     }
     readonly id: string
-    src(
-      context: InvokeContext<States, Events, Emits, StateId>
-    ): Logic<
+    src(): Logic<
       ChildState,
       ChildEvent,
       ChildError,
@@ -2201,6 +2215,29 @@ export declare namespace Machine {
       readonly initialError: Types.Covariant<InitialError>
     }
   }
+
+  /**
+   * State-bound configuration for invoked child processes.
+   *
+   * **Details**
+   *
+   * A function form receives the owning state's typed value and lifecycle
+   * event before constructing one or more invoke configurations.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export type InvokeDefinition<
+    States extends StateSchemas,
+    Events extends ReadonlyArray<TaggedSchema>,
+    Emits extends ReadonlyArray<TaggedSchema>,
+    StateId extends StateIdentifier<States>
+  > =
+    | AnyInvokeConfig<any, any, any, any>
+    | ReadonlyArray<AnyInvokeConfig<any, any, any, any>>
+    | ((context: InvokeContext<States, Events, Emits, StateId>) =>
+      | AnyInvokeConfig<any, any, any, any>
+      | ReadonlyArray<AnyInvokeConfig<any, any, any, any>>)
 
   type OutputHandlerConfig<
     States extends StateSchemas,
@@ -2245,7 +2282,7 @@ export declare namespace Machine {
     readonly type?: "active"
     readonly entry?: (context: StateActionContext<States, Events, Emits, StateId>) => StateActionResult<any, any>
     readonly exit?: (context: StateActionContext<States, Events, Emits, StateId>) => StateActionResult<any, any>
-    readonly invoke?: AnyInvokeConfig<any, any, any, any> | ReadonlyArray<AnyInvokeConfig<any, any, any, any>>
+    readonly invoke?: InvokeDefinition<States, Events, Emits, StateId>
     readonly always?: (context: AlwaysContext<States, Events, Emits, StateId>) => HandlerResult<States, any, any>
     readonly onDone?: (context: DoneContext<States, Events, Emits, StateId>) => HandlerResult<States, any, any>
     readonly on?: {
@@ -2434,19 +2471,35 @@ export declare namespace Machine {
     : HandlerValidationError<"Handler config contains an event key that does not exist">
     : unknown
 
+  type HandlerDepth = readonly [unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown]
+
+  type HandlerNextDepth<Depth extends ReadonlyArray<unknown>> = Depth extends
+    readonly [unknown, ...infer Rest extends ReadonlyArray<unknown>] ? Rest
+    : readonly []
+
   type HandlerChildrenValidation<
     AllStates extends StateSchemas,
     Node,
     Events extends ReadonlyArray<TaggedSchema>,
     Prefix extends string,
     Config,
-    AvailableOutputStates extends StateIdentifier<AllStates>
+    AvailableOutputStates extends StateIdentifier<AllStates>,
+    Depth extends ReadonlyArray<unknown>
   > = "states" extends keyof Config ?
-    Config extends { readonly states?: infer ChildrenConfig } ?
+    Depth extends readonly [] ? HandlerValidationError<"Handler nesting exceeds the supported depth">
+    : Config extends { readonly states?: infer ChildrenConfig } ?
       HandlerChildren<Node> extends infer Children extends StateSchemas ?
         [Children] extends [never] ?
           HandlerValidationError<"Handler config contains child states for a state that has no children">
-        : HandlerTreeValidation<AllStates, Children, Events, Prefix, NonNullable<ChildrenConfig>, AvailableOutputStates>
+        : HandlerTreeValidation<
+          AllStates,
+          Children,
+          Events,
+          Prefix,
+          NonNullable<ChildrenConfig>,
+          AvailableOutputStates,
+          HandlerNextDepth<Depth>
+        >
       : HandlerValidationError<"Handler config contains child states for a state that has no children">
     : unknown
     : unknown
@@ -2475,12 +2528,13 @@ export declare namespace Machine {
     Events extends ReadonlyArray<TaggedSchema>,
     StateId extends StateIdentifier<AllStates>,
     Config,
-    AvailableOutputStates extends StateIdentifier<AllStates>
+    AvailableOutputStates extends StateIdentifier<AllStates>,
+    Depth extends ReadonlyArray<unknown>
   > =
     & HandlerUnknownConfigKeyValidation<Config>
     & HandlerOnKeyValidation<Events, Config>
     & HandlerInvokeOutputValidation<Events, Config>
-    & HandlerChildrenValidation<AllStates, Node, Events, StateId, Config, AvailableOutputStates>
+    & HandlerChildrenValidation<AllStates, Node, Events, StateId, Config, AvailableOutputStates, Depth>
     & HandlerOutputRequirementValidation<AllStates, StateId, AvailableOutputStates, Config>
 
   type HandlerInvokeOutputValidation<
@@ -2496,7 +2550,8 @@ export declare namespace Machine {
     Events extends ReadonlyArray<TaggedSchema>,
     Prefix extends string,
     Config,
-    AvailableOutputStates extends StateIdentifier<AllStates>
+    AvailableOutputStates extends StateIdentifier<AllStates>,
+    Depth extends ReadonlyArray<unknown>
   > = UnionToIntersection<
     {
       readonly [Key in Extract<Extract<keyof Config, string>, Extract<keyof States, string>>]: HandlerNodeValidation<
@@ -2505,7 +2560,8 @@ export declare namespace Machine {
         Events,
         HandlerStateId<AllStates, JoinPath<Prefix, Key>>,
         Config[Key],
-        AvailableOutputStates
+        AvailableOutputStates,
+        Depth
       >
     }[Extract<Extract<keyof Config, string>, Extract<keyof States, string>>]
   >
@@ -2516,21 +2572,16 @@ export declare namespace Machine {
     Events extends ReadonlyArray<TaggedSchema>,
     Prefix extends string,
     Config,
-    AvailableOutputStates extends StateIdentifier<AllStates>
+    AvailableOutputStates extends StateIdentifier<AllStates>,
+    Depth extends ReadonlyArray<unknown> = HandlerDepth
   > =
     & HandlerUnknownStateKeyValidation<States, Config>
-    & HandlerTreeNodeValidations<AllStates, States, Events, Prefix, Config, AvailableOutputStates>
+    & HandlerTreeNodeValidations<AllStates, States, Events, Prefix, Config, AvailableOutputStates, Depth>
 
   type HandlerNodeChildrenConfig<Config> = "states" extends keyof Config ?
     Config extends { readonly states?: infer Children } ? NonNullable<Children>
     : never
     : never
-
-  type HandlerDepth = readonly [unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown]
-
-  type HandlerNextDepth<Depth extends ReadonlyArray<unknown>> = Depth extends
-    readonly [unknown, ...infer Rest extends ReadonlyArray<unknown>] ? Rest
-    : readonly []
 
   type HandlerTreeStateIds<
     AllStates extends StateSchemas,
@@ -2789,6 +2840,12 @@ export declare namespace Machine {
   /**
    * Adds state handlers from a root state object.
    *
+   * **Gotchas**
+   *
+   * Type inference traverses up to eight nested child-state objects. Deeper
+   * handler trees are rejected explicitly instead of silently dropping their
+   * error, service, final-state, or output channels.
+   *
    * @category combinators
    * @since 4.0.0
    */
@@ -2892,7 +2949,7 @@ export declare namespace Machine {
     readonly type?: "final" | "active"
     readonly entry?: (context: StateActionContext<States, Events, Emits, StateId>) => StateActionResult<E, R>
     readonly exit?: (context: StateActionContext<States, Events, Emits, StateId>) => StateActionResult<E, R>
-    readonly invoke?: AnyInvokeConfig<any, any, any, any> | ReadonlyArray<AnyInvokeConfig<any, any, any, any>>
+    readonly invoke?: InvokeDefinition<States, Events, Emits, StateId>
     readonly always?: (context: AlwaysContext<States, Events, Emits, StateId>) => HandlerResult<States, E, R>
     readonly onDone?: (context: DoneContext<States, Events, Emits, StateId>) => HandlerResult<States, E, R>
     readonly output?:
@@ -3005,15 +3062,31 @@ export const isMachine = (
 export const isFinal = <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema>,
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
   R = never,
   InitialE = never,
   InitialR = never,
-  FinalStates extends Machine.StateIdentifier<States> = never
+  FinalStates extends Machine.StateIdentifier<States> = never,
+  Output = never,
+  OutputStates extends Machine.StateIdentifier<States> = never
 >(
-  machine: Machine<States, Events, Input, UnhandledStates, E, R, InitialE, InitialR, FinalStates>,
+  machine: Machine<
+    States,
+    Events,
+    Input,
+    UnhandledStates,
+    E,
+    R,
+    InitialE,
+    InitialR,
+    FinalStates,
+    Output,
+    Emits,
+    OutputStates
+  >,
   state: Machine.Snapshot<States>
 ): state is Machine.SnapshotContainingFinal<States, FinalStates> => internalPlanner.isFinal(machine, state)
 
@@ -3320,8 +3393,9 @@ export const defineStates = <
  *
  * State and event schemas provide runtime boundary validation while their
  * decoded types drive handler, state, event, target, error, and service
- * inference. Call `handle` on the returned definition to implement state
- * behavior with ordinary TypeScript control flow.
+ * inference. State-tree validation is applied whether `states` comes from
+ * `defineStates` or is passed inline. Call `handle` on the returned definition
+ * to implement state behavior with ordinary TypeScript control flow.
  *
  * **Example** (Typed counter machine)
  *
@@ -3360,19 +3434,20 @@ export const defineStates = <
 export const make = <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = [],
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   InitialE = never,
   InitialR = never
 >(
   config: {
     readonly id?: string
-    readonly states: States
+    readonly states: States & DefineStateTreeInput<NoInfer<States>>
     readonly events: Events
     readonly emits?: Emits
     readonly input?: Input
     readonly initial: (...args: [...Machine.InputArgs<Input>]) => Machine.InitialResult<States, InitialE, InitialR>
-  }
+  },
+  ..._validation: ValidateDefinedStates<NoInfer<States>>
 ): Machine<
   States,
   Events,
@@ -3430,7 +3505,7 @@ export const make = <
 export const encodeSnapshot: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -3474,7 +3549,7 @@ export const encodeSnapshot: <
 export const decodeSnapshot: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -3507,6 +3582,10 @@ export const decodeSnapshot: <
  * Invoked child processes run while their owning state is active and are
  * stopped before the state exits. An unrecovered child failure fails the owning
  * machine; recover inside the child Effect when failure should become an event.
+ * The `src` callback is intentionally independent from its parent state. When
+ * construction depends on the typed state, lifecycle event, or runtime, use
+ * the state config factory form `invoke: (context) => Machine.invoke(...)` and
+ * close over that context from `src`.
  *
  * **Example** (Effect output as a parent event)
  *
@@ -3541,9 +3620,7 @@ export const invoke = <
 >(
   config: {
     readonly id: Id
-    readonly src: (
-      context: Machine.InvokeContext<any, any, any, any>
-    ) => Logic<
+    readonly src: () => Logic<
       ChildState,
       ChildEvent,
       ChildError,
@@ -3593,7 +3670,7 @@ export const invoke = <
 export const planInitial: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -3627,12 +3704,31 @@ export const planInitial: <
 export const enabled = <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema>,
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
-  R = never
+  R = never,
+  InitialE = never,
+  InitialR = never,
+  FinalStates extends Machine.StateIdentifier<States> = never,
+  Output = never,
+  OutputStates extends Machine.StateIdentifier<States> = never
 >(
-  machine: Machine<States, Events, Input, UnhandledStates, E, R>,
+  machine: Machine<
+    States,
+    Events,
+    Input,
+    UnhandledStates,
+    E,
+    R,
+    InitialE,
+    InitialR,
+    FinalStates,
+    Output,
+    Emits,
+    OutputStates
+  >,
   state: Machine.Snapshot<States>
 ): ReadonlyArray<Machine.TagOf<Events[number]>> => internalPlanner.enabled(machine, state)
 
@@ -3651,7 +3747,9 @@ export const enabled = <
  * `plan` returns data; it does not implement the runtime commit protocol. Run
  * actions sequentially, publish `next` only after they succeed, and then
  * deliver `emittedEvents`. A failed action must retain the previously
- * published state and suppress emissions.
+ * published state and suppress emissions. An external event with no enabled
+ * transition fails with `UnhandledEventError`; an unhandled event produced by
+ * `raise` is discarded while the current macrostep continues settling.
  *
  * @see {@link planInitial} for planning machine startup.
  * @see {@link start} for managed execution and lifecycle observation.
@@ -3661,7 +3759,7 @@ export const enabled = <
 export const plan: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -4072,7 +4170,7 @@ export const watch = <State, Event, Error = never, Output = never>(
 export const start: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,

@@ -840,22 +840,38 @@ export const getFinalOutputEffect = <
 export const isFinal = <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema>,
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
   R = never,
   InitialE = never,
   InitialR = never,
-  FinalStates extends Machine.StateIdentifier<States> = never
+  FinalStates extends Machine.StateIdentifier<States> = never,
+  Output = never,
+  OutputStates extends Machine.StateIdentifier<States> = never
 >(
-  machine: Machine<States, Events, Input, UnhandledStates, E, R, InitialE, InitialR, FinalStates>,
+  machine: Machine<
+    States,
+    Events,
+    Input,
+    UnhandledStates,
+    E,
+    R,
+    InitialE,
+    InitialR,
+    FinalStates,
+    Output,
+    Emits,
+    OutputStates
+  >,
   state: Machine.Snapshot<States>
 ): state is Machine.SnapshotContainingFinal<States, FinalStates> => isFinalState(machine, state)
 
 export const planInitial: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -881,7 +897,7 @@ export const planInitial: <
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -956,12 +972,31 @@ export const planInitial: <
 export const enabled = <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema>,
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
-  R = never
+  R = never,
+  InitialE = never,
+  InitialR = never,
+  FinalStates extends Machine.StateIdentifier<States> = never,
+  Output = never,
+  OutputStates extends Machine.StateIdentifier<States> = never
 >(
-  machine: Machine<States, Events, Input, UnhandledStates, E, R>,
+  machine: Machine<
+    States,
+    Events,
+    Input,
+    UnhandledStates,
+    E,
+    R,
+    InitialE,
+    InitialR,
+    FinalStates,
+    Output,
+    Emits,
+    OutputStates
+  >,
   state: Machine.Snapshot<States>
 ): ReadonlyArray<Machine.TagOf<Events[number]>> => {
   if (isFinalState(machine, state)) {
@@ -984,7 +1019,7 @@ export const enabled = <
 const microstep: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -1006,7 +1041,7 @@ const microstep: <
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -1112,7 +1147,7 @@ const microstep: <
 const settle: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -1136,7 +1171,7 @@ const settle: <
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -1234,15 +1269,20 @@ const settle: <
 
     const raisedEvent = yield* decodeEvent<Events>(machine, raisedEventValue)
     currentEvent = raisedEvent
+    const raisedSelections = selectEventTransitions<States, Events, Emits, E, R>(
+      machine,
+      currentState,
+      raisedEvent as Machine.EventByTag<Events, Machine.TagOf<Events[number]>>
+    )
+    if (raisedSelections.length === 0) {
+      shouldRunAlways = true
+      continue
+    }
     const raisedStep = yield* microstep(
       machine,
       currentState,
       raisedEvent,
-      selectEventTransitions<States, Events, Emits, E, R>(
-        machine,
-        currentState,
-        raisedEvent as Machine.EventByTag<Events, Machine.TagOf<Events[number]>>
-      )
+      raisedSelections
     )
     actions.push(...raisedStep.actions)
     raisedEvents.push(...raisedStep.raisedEvents)
@@ -1264,7 +1304,7 @@ const settle: <
 const macrostep: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -1284,7 +1324,7 @@ const macrostep: <
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,

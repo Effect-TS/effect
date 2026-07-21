@@ -4526,6 +4526,144 @@ describe("Machine", () => {
       })
     }))
 
+  it.effect("watch classifies every terminal runtime outcome", () =>
+    Effect.gen(function*() {
+      const collectOutcome = <State, Event, Error, Output>(
+        ref: Machine.MachineRef<State, Event, Error, Output>
+      ) =>
+        Machine.watch(ref).pipe(
+          Stream.runCollect,
+          Effect.map((outcomes) => Array.from(outcomes)[0]!)
+        )
+
+      const startWith = <Error>(effect: Effect.Effect<void, Error>) =>
+        Machine.start(
+          Machine.make({
+            states: { Idle },
+            events: [Submit],
+            input: Input,
+            initial: (input) => FlatInitial.Idle(new Idle({ userId: input.userId }))
+          }).handle({
+            Idle: {
+              on: {
+                Submit: () => effect
+              }
+            }
+          }),
+          { userId: "user-1" }
+        )
+
+      const done = yield* Machine.start(
+        Machine.make({
+          states: { Idle, Success: SuccessOutput },
+          events: [Submit],
+          input: Input,
+          initial: (input) => FlatInitial.Idle(new Idle({ userId: input.userId }))
+        }).handle({
+          Idle: {
+            on: {
+              Submit: () => FlatInitial.Success(new Success({ requestId: "request-1" }))
+            }
+          },
+          Success: {
+            type: "final",
+            output: ({ state }) => state.requestId
+          }
+        }),
+        { userId: "user-1" }
+      )
+      yield* done.send(new Submit({ value: "hello" }))
+      const doneOutcome = yield* collectOutcome(done)
+      assert.strictEqual(doneOutcome._tag, "Done")
+      if (doneOutcome._tag === "Done") {
+        assert.strictEqual(doneOutcome.output, "request-1")
+      }
+
+      const failure = yield* startWith(Effect.fail("failed" as const))
+      yield* failure.send(new Submit({ value: "hello" }))
+      const failureOutcome = yield* collectOutcome(failure)
+      assert.strictEqual(failureOutcome._tag, "Failure")
+      if (failureOutcome._tag === "Failure") {
+        assert.strictEqual(failureOutcome.error, "failed")
+      }
+
+      const defect = yield* startWith(Effect.die("defect"))
+      yield* defect.send(new Submit({ value: "hello" }))
+      const defectOutcome = yield* collectOutcome(defect)
+      assert.strictEqual(defectOutcome._tag, "Defect")
+      if (defectOutcome._tag === "Defect") {
+        assert.strictEqual(defectOutcome.defect, "defect")
+      }
+
+      const interrupted = yield* startWith(Effect.interrupt)
+      yield* interrupted.send(new Submit({ value: "hello" }))
+      const interruptedOutcome = yield* collectOutcome(interrupted)
+      assert.strictEqual(interruptedOutcome._tag, "Interrupted")
+      if (interruptedOutcome._tag === "Interrupted") {
+        assert.strictEqual(Cause.hasInterrupts(interruptedOutcome.cause), true)
+      }
+
+      const cause = yield* startWith(Effect.failCause(Cause.empty))
+      yield* cause.send(new Submit({ value: "hello" }))
+      const causeOutcome = yield* collectOutcome(cause)
+      assert.strictEqual(causeOutcome._tag, "Cause")
+      if (causeOutcome._tag === "Cause") {
+        assert.deepStrictEqual(causeOutcome.cause, Cause.empty)
+      }
+
+      const stopped = yield* startWith(Effect.void)
+      const stoppedFiber = yield* collectOutcome(stopped).pipe(Effect.forkChild)
+      yield* stopped.stop
+      const stoppedOutcome = yield* Fiber.join(stoppedFiber)
+      assert.strictEqual(stoppedOutcome._tag, "Stopped")
+    }))
+
+  it.effect("join and snapshots retain defect and interruption causes", () =>
+    Effect.gen(function*() {
+      const startWith = (effect: Effect.Effect<void>) =>
+        Machine.start(
+          Machine.make({
+            states: { Idle },
+            events: [Submit],
+            input: Input,
+            initial: (input) => FlatInitial.Idle(new Idle({ userId: input.userId }))
+          }).handle({
+            Idle: {
+              on: {
+                Submit: () => effect
+              }
+            }
+          }),
+          { userId: "user-1" }
+        )
+
+      const defect = yield* startWith(Effect.die("defect"))
+      yield* defect.send(new Submit({ value: "hello" }))
+      const defectExit = yield* Effect.exit(defect.join)
+      assert.strictEqual(defectExit._tag, "Failure")
+      if (defectExit._tag === "Failure") {
+        assert.strictEqual(Cause.hasDies(defectExit.cause), true)
+      }
+      const defectSnapshot = yield* defect.snapshot
+      assert.strictEqual(defectSnapshot.status, "error")
+      if (defectSnapshot.status === "error") {
+        assert.strictEqual(Cause.hasDies(defectSnapshot.cause), true)
+      }
+
+      const interrupted = yield* startWith(Effect.interrupt)
+      yield* interrupted.send(new Submit({ value: "hello" }))
+      const interruptedExit = yield* Effect.exit(interrupted.join)
+      assert.strictEqual(interruptedExit._tag, "Failure")
+      if (interruptedExit._tag === "Failure") {
+        assert.strictEqual(Cause.hasInterrupts(interruptedExit.cause), true)
+      }
+      const interruptedSnapshot = yield* interrupted.snapshot
+      assert.strictEqual(interruptedSnapshot.status, "error")
+      if (interruptedSnapshot.status === "error") {
+        assert.strictEqual(Cause.hasInterrupts(interruptedSnapshot.cause), true)
+      }
+    }))
+
   it.effect("start completes machine output from a final state", () =>
     Effect.gen(function*() {
       const machine = Machine.make({
@@ -4611,13 +4749,14 @@ describe("Machine", () => {
           }
         },
         Loading: {
-          invoke: Machine.invoke({
-            id: "request",
-            src: ({ state }) =>
-              Machine.effect(
-                Effect.succeed(new RequestSucceeded({ value: `done:${state.requestId}` }))
-              )
-          }),
+          invoke: ({ state }) =>
+            Machine.invoke({
+              id: "request",
+              src: () =>
+                Machine.effect(
+                  Effect.succeed(new RequestSucceeded({ value: `done:${state.requestId}` }))
+                )
+            }),
           on: {
             RequestSucceeded: ({ event }) => FlatInitial.Success(new Success({ requestId: event.value }))
           }
@@ -5057,13 +5196,14 @@ describe("Machine", () => {
           }
         },
         Loading: {
-          invoke: Machine.invoke({
-            id: "request",
-            src: ({ state }) =>
-              Machine.effect(
-                Effect.succeed(new RequestSucceeded({ value: `done:${state.requestId}` }))
-              )
-          }),
+          invoke: ({ state }) =>
+            Machine.invoke({
+              id: "request",
+              src: () =>
+                Machine.effect(
+                  Effect.succeed(new RequestSucceeded({ value: `done:${state.requestId}` }))
+                )
+            }),
           on: {
             RequestSucceeded: ({ event }) => FlatInitial.Success(new Success({ requestId: event.value }))
           }
@@ -5685,6 +5825,73 @@ describe("Machine", () => {
       assert.deepStrictEqual(yield* actor.snapshot, {
         status: "active",
         state: { path: "Loading", value: new Loading({ requestId: "request-2" }) }
+      })
+
+      yield* actor.stop
+    }))
+
+  it.effect("starts one invoke after multiple reentries in the same macrostep", () =>
+    Effect.gen(function*() {
+      const firstStarted = yield* Deferred.make<void>()
+      const secondStarted = yield* Deferred.make<void>()
+      const starts = yield* Ref.make(0)
+      const childLogic = Machine.logic({
+        initial: "pending",
+        run: () =>
+          Effect.gen(function*() {
+            const count = yield* Ref.updateAndGet(starts, (count) => count + 1)
+            if (count === 1) {
+              yield* Deferred.succeed(firstStarted, void 0)
+            } else if (count === 2) {
+              yield* Deferred.succeed(secondStarted, void 0)
+            }
+            return yield* Effect.never
+          })
+      })
+      const machine = Machine.make({
+        states: { Idle, Loading },
+        events: [Submit, Reset, Resolve],
+        input: Input,
+        initial: (input) => FlatInitial.Idle(new Idle({ userId: input.userId }))
+      }).handle({
+        Idle: {
+          on: {
+            Submit: () => FlatInitial.Loading(new Loading({ requestId: "request-1" }))
+          }
+        },
+        Loading: {
+          invoke: Machine.invoke({
+            id: "request",
+            src: () => childLogic
+          }),
+          on: {
+            Reset: {
+              reenter: true,
+              transition: Effect.fn(function*({ runtime }) {
+                const machine = yield* runtime
+                yield* machine.raise(new Resolve({}))
+                return FlatInitial.Loading(new Loading({ requestId: "request-2" }))
+              })
+            },
+            Resolve: {
+              reenter: true,
+              transition: () => FlatInitial.Loading(new Loading({ requestId: "request-3" }))
+            }
+          }
+        }
+      })
+
+      const actor = yield* Machine.start(machine, { userId: "user-1" })
+
+      yield* actor.send(new Submit({ value: "hello" }))
+      yield* Deferred.await(firstStarted)
+      yield* actor.send(new Reset({}))
+      yield* Deferred.await(secondStarted)
+
+      assert.strictEqual(yield* Ref.get(starts), 2)
+      assert.deepStrictEqual(yield* actor.snapshot, {
+        status: "active",
+        state: { path: "Loading", value: new Loading({ requestId: "request-3" }) }
       })
 
       yield* actor.stop
@@ -6319,6 +6526,38 @@ describe("Machine", () => {
 
       assert.deepStrictEqual(planned.next.value, new Success({ requestId: "request-1" }))
       assert.strictEqual(planned.microsteps.length, 2)
+    }))
+
+  it.effect("plan discards raised events that have no enabled transition", () =>
+    Effect.gen(function*() {
+      const machine = Machine.make({
+        states: { Idle, Loading },
+        events: [Submit, Reset],
+        input: Input,
+        initial: (input) => FlatInitial.Idle(new Idle({ userId: input.userId }))
+      }).handle({
+        Idle: {
+          on: {
+            Submit: Effect.fn(function*({ runtime }) {
+              const machine = yield* runtime
+              yield* machine.raise(new Reset({}))
+              return FlatInitial.Loading(new Loading({ requestId: "request-1" }))
+            })
+          }
+        }
+      })
+
+      const planned = yield* Machine.plan(
+        machine,
+        FlatInitial.Idle(new Idle({ userId: "user-1" })),
+        new Submit({ value: "hello" })
+      )
+
+      assert.deepStrictEqual(planned.next, {
+        path: "Loading",
+        value: new Loading({ requestId: "request-1" })
+      })
+      assert.strictEqual(planned.microsteps.length, 1)
     }))
 
   it.effect("send processes raised events from entry actions", () =>

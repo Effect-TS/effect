@@ -40,10 +40,15 @@ interface InvokeSession {
   readonly token: symbol
   readonly scope: Scope.Closeable
   readonly childId: string
+  readonly path: string
 }
 
-const getInvokes = (config: Machine.AnyStateConfig | undefined): ReadonlyArray<AnyInvokeConfig> => {
-  const invokes = config?.invoke
+const getInvokes = (
+  config: Machine.AnyStateConfig | undefined,
+  context: Machine.InvokeContext<any, any, any, any>
+): ReadonlyArray<AnyInvokeConfig> => {
+  const definition = config?.invoke
+  const invokes = typeof definition === "function" ? definition(context) : definition
   if (invokes === undefined) {
     return []
   }
@@ -53,7 +58,7 @@ const getInvokes = (config: Machine.AnyStateConfig | undefined): ReadonlyArray<A
 export const toProcessLogic: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -79,7 +84,7 @@ export const toProcessLogic: <
 > = <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
@@ -139,36 +144,29 @@ export const toProcessLogic: <
                 return Option.isSome(current) && current.value.token === token
               })
             )
+          const removeInvoke = (
+            key: string,
+            token: symbol | undefined,
+            exit: Exit.Exit<unknown, unknown>
+          ): Effect.Effect<void> =>
+            Ref.modify(invokeSessions, (sessions) => {
+              const current = HashMap.get(sessions, key)
+              return Option.isSome(current) && (token === undefined || current.value.token === token)
+                ? [current.value, HashMap.remove(sessions, key)] as const
+                : [undefined, sessions] as const
+            }).pipe(
+              Effect.flatMap((session) =>
+                session === undefined
+                  ? Effect.void
+                  : Scope.close(session.scope, exit).pipe(
+                    Effect.andThen(context.stopChild(session.childId))
+                  )
+              )
+            )
           const stopInvoke = (key: string, exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> =>
-            Ref.modify(invokeSessions, (sessions) => {
-              const current = HashMap.get(sessions, key)
-              return Option.isSome(current)
-                ? [current.value, HashMap.remove(sessions, key)] as const
-                : [undefined, sessions] as const
-            }).pipe(
-              Effect.flatMap((session) =>
-                session === undefined
-                  ? Effect.void
-                  : Scope.close(session.scope, exit).pipe(
-                    Effect.andThen(context.stopChild(session.childId))
-                  )
-              )
-            )
+            removeInvoke(key, undefined, exit)
           const clearInvoke = (key: string, token: symbol, exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> =>
-            Ref.modify(invokeSessions, (sessions) => {
-              const current = HashMap.get(sessions, key)
-              return Option.isSome(current) && current.value.token === token
-                ? [current.value, HashMap.remove(sessions, key)] as const
-                : [undefined, sessions] as const
-            }).pipe(
-              Effect.flatMap((session) =>
-                session === undefined
-                  ? Effect.void
-                  : Scope.close(session.scope, exit).pipe(
-                    Effect.andThen(context.stopChild(session.childId))
-                  )
-              )
-            )
+            removeInvoke(key, token, exit)
           const stopAllInvokes = (exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> =>
             Ref.modify(invokeSessions, (sessions) => [HashMap.toEntries(sessions), HashMap.empty()] as const).pipe(
               Effect.flatMap((sessions) =>
@@ -202,7 +200,9 @@ export const toProcessLogic: <
                       const mappedEvent = mapSnapshot({ id: config.id, snapshot })
                       return mappedEvent === undefined
                         ? Effect.void
-                        : context.self.send(mappedEvent as Machine.EventOf<Events>)
+                        : context.self.send(mappedEvent as Machine.EventOf<Events>).pipe(
+                          Effect.catchTag("StoppedError", () => Effect.void)
+                        )
                     })
                   )
                 ),
@@ -234,22 +234,16 @@ export const toProcessLogic: <
           })
           const startInvoke = Effect.fnUntraced(function*<StateId extends Machine.StateIdentifier<States>>(
             path: StateId,
-            config: AnyInvokeConfig,
-            state: Machine.StateByIdentifier<States, StateId>,
-            event: Machine.LifecycleEvent<Events>
+            config: AnyInvokeConfig
           ) {
             const token = Symbol()
             const invokeId = String(config.id)
             const key = makeInvokeSessionKey(path, invokeId)
             const childId = makeInvokeChildId(path, invokeId)
             const scope = yield* Scope.make("parallel")
-            yield* Ref.update(invokeSessions, (sessions) => HashMap.set(sessions, key, { token, scope, childId }))
+            yield* Ref.update(invokeSessions, (sessions) => HashMap.set(sessions, key, { token, scope, childId, path }))
             const child = yield* context.spawn(
-              config.src({
-                state,
-                event,
-                runtime: internalPlanner.runtimeFor<Machine.EventOf<Events>, Machine.EmitOf<Emits>>()
-              }),
+              config.src(),
               { id: childId }
             ).pipe(
               Effect.onExit((exit) =>
@@ -272,15 +266,14 @@ export const toProcessLogic: <
               internalPlanner.sortEntryPaths(machine, paths)
                 .filter((path) => configuration.active.has(path))
                 .flatMap((path) =>
-                  getInvokes(Model.getStateConfigByPath(machine, path)).map((config) =>
+                  getInvokes(Model.getStateConfigByPath(machine, path), {
+                    state: Model.getActiveValue(configuration, path),
+                    event,
+                    runtime: internalPlanner.runtimeFor<Machine.EventOf<Events>, Machine.EmitOf<Emits>>()
+                  }).map((config) =>
                     startInvoke(
                       path as Machine.StateIdentifier<States>,
-                      config,
-                      Model.getActiveValue(configuration, path) as Machine.StateByIdentifier<
-                        States,
-                        Machine.StateIdentifier<States>
-                      >,
-                      event
+                      config
                     ) as Effect.Effect<void, E | MachineSchemaDecodeError, R>
                   )
                 ),
@@ -288,13 +281,17 @@ export const toProcessLogic: <
             )
           })
           const stopInvokes = (paths: ReadonlyArray<string>): Effect.Effect<void> =>
-            Effect.all(
-              internalPlanner.sortExitPaths(machine, paths).flatMap((path) =>
-                getInvokes(Model.getStateConfigByPath(machine, path)).map((config) =>
-                  stopInvoke(makeInvokeSessionKey(path, String(config.id)), Exit.void)
+            Ref.get(invokeSessions).pipe(
+              Effect.flatMap((sessions) =>
+                Effect.all(
+                  internalPlanner.sortExitPaths(machine, paths).flatMap((path) =>
+                    HashMap.toEntries(sessions)
+                      .filter(([, session]) => session.path === path)
+                      .map(([key]) => stopInvoke(key, Exit.void))
+                  ),
+                  { discard: true, concurrency: "unbounded" }
                 )
-              ),
-              { discard: true, concurrency: "unbounded" }
+              )
             )
 
           return yield* Effect.gen(function*() {
@@ -313,6 +310,14 @@ export const toProcessLogic: <
                   const planned = yield* internalPlanner.plan(machine, current, event)
                   const changed = planned.microsteps.some((step) => step.changed)
                   const exitPaths = planned.microsteps.flatMap((step) => step.exitPaths)
+                  const entryEvents = new Map<string, Machine.LifecycleEvent<Events>>()
+                  for (const step of planned.microsteps) {
+                    if (step.changed) {
+                      for (const path of step.entryPaths) {
+                        entryEvents.set(path, step.event as Machine.LifecycleEvent<Events>)
+                      }
+                    }
+                  }
 
                   const runtime = internalPlanner.makeLiveRuntime<Machine.EventOf<Events>, Machine.EmitOf<Emits>>(
                     machine,
@@ -334,14 +339,8 @@ export const toProcessLogic: <
                     yield* stopAllInvokes(Exit.succeed(output))
                   } else {
                     if (changed) {
-                      for (const step of planned.microsteps) {
-                        if (step.changed) {
-                          yield* startInvokes(
-                            planned.next,
-                            step.entryPaths,
-                            step.event as Machine.LifecycleEvent<Events>
-                          )
-                        }
+                      for (const [path, entryEvent] of entryEvents) {
+                        yield* startInvokes(planned.next, [path], entryEvent)
                       }
                     }
                     yield* Effect.yieldNow
@@ -373,7 +372,7 @@ export const toProcessLogic: <
 export const start: <
   const States extends Machine.StateSchemas,
   const Events extends ReadonlyArray<Machine.TaggedSchema>,
-  const Emits extends ReadonlyArray<Machine.TaggedSchema> = any,
+  const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
   const Input extends Schema.Top = typeof Schema.Void,
   UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
   E = never,
