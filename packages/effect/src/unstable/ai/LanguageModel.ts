@@ -186,7 +186,10 @@ export interface Service {
  *
  * Different language model providers have varying constraints on the JSON
  * schemas they accept. A `CodecTransformer` rewrites a codec's encoded side to
- * satisfy those constraints while preserving the decoded type.
+ * satisfy those constraints while preserving the decoded type. A provider
+ * schema may be less restrictive than the codec when the provider cannot
+ * express every constraint; the returned codec remains authoritative for
+ * validating model output.
  *
  * @category models
  * @since 4.0.0
