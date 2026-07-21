@@ -319,10 +319,10 @@ export const make = (
         uri: Redacted.value(options.url),
         multipleStatements: true,
         supportBigNumbers: true,
-        connectionLimit: options.maxConnections!,
+        connectionLimit: options.maxConnections ?? options.poolConfig?.connectionLimit,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
-          : undefined as any
+          : options.poolConfig?.idleTimeout
       } as Mysql.PoolOptions)
       : Mysql.createPool({
         ...options.poolConfig,
@@ -335,10 +335,10 @@ export const make = (
           : undefined,
         multipleStatements: true,
         supportBigNumbers: true,
-        connectionLimit: options.maxConnections,
+        connectionLimit: options.maxConnections ?? options.poolConfig?.connectionLimit,
         idleTimeout: options.connectionTTL
           ? Duration.toMillis(Duration.fromInputUnsafe(options.connectionTTL))
-          : undefined
+          : options.poolConfig?.idleTimeout
       } as Mysql.PoolOptions)
 
     yield* Effect.acquireRelease(
