@@ -1,6 +1,6 @@
 import { JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "../../utils/assert.ts"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
 
 function toSchemaFromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
@@ -2587,6 +2587,28 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
+    it("does not combine annotation siblings with a $ref", () => {
+      const schema = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/A",
+          format: "custom",
+          $defs: {
+            A: { type: "number" }
+          }
+        })
+      )
+      const is = Schema.is(schema)
+      assertTrue(is(1))
+      assertFalse(is("a"))
+
+      const document = SchemaRepresentation.toRepresentation(schema.ast)
+      strictEqual(document.representation._tag, "Suspend")
+      if (document.representation._tag === "Suspend") {
+        deepStrictEqual(document.representation.annotations, { format: "custom" })
+        deepStrictEqual(document.representation.thunk, { _tag: "Reference", $ref: "A" })
+      }
+    })
+
     it("should preserve a $ref refined only by annotations as a stable suspend", () => {
       assertFromJsonSchema(
         {
@@ -2765,6 +2787,52 @@ describe("fromJsonSchemaDocument", () => {
             }
           }
         }
+      )
+    })
+
+    it("combines assertion siblings with a $ref", () => {
+      const schema = toSchemaFromJsonSchemaDocument(
+        JsonSchema.fromSchemaDraft2020_12({
+          $ref: "#/$defs/Name",
+          minLength: 2,
+          description: "name",
+          $defs: {
+            Name: { type: "string" }
+          }
+        })
+      )
+      const is = Schema.is(schema)
+      assertTrue(is("ab"))
+      assertFalse(is("a"))
+
+      const document = SchemaRepresentation.toRepresentation(schema.ast)
+      strictEqual(document.representation._tag, "String")
+      if (document.representation._tag === "String") {
+        deepStrictEqual(document.representation.annotations, { description: "name" })
+      }
+      deepStrictEqual(document.references, {})
+    })
+
+    it("rejects assertion siblings on a recursive $ref", () => {
+      throws(
+        () =>
+          SchemaRepresentation.fromJsonSchemaDocument(
+            JsonSchema.fromSchemaDraft2020_12({
+              $ref: "#/$defs/Node",
+              $defs: {
+                Node: {
+                  type: "object",
+                  properties: {
+                    child: {
+                      $ref: "#/$defs/Node",
+                      minProperties: 1
+                    }
+                  }
+                }
+              }
+            })
+          ),
+        `Unsupported assertion siblings on recursive reference Node\n  at ["definitions"]["Node"]["properties"]["child"]["$ref"]`
       )
     })
   })

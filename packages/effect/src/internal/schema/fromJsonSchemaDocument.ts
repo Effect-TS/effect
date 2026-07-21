@@ -50,6 +50,18 @@ const jsonSchemaObjectKeys = [
   "maxProperties"
 ]
 const jsonSchemaArrayKeys = ["items", "prefixItems", "additionalItems", "minItems", "maxItems", "uniqueItems"]
+const jsonSchemaAnnotationKeys = [
+  "title",
+  "description",
+  "default",
+  "examples",
+  "readOnly",
+  "writeOnly",
+  "format",
+  "contentEncoding",
+  "contentMediaType",
+  "contentSchema"
+] as const
 
 function isImportedJsonSchemaType(input: unknown): input is JsonSchema.Type {
   return typeof input === "string" && jsonSchemaTypes.has(input)
@@ -202,11 +214,18 @@ function translateJsonSchemaMultiDocument(
     readonly path: Path
   }> = []
 
-  function translateDefinition(key: string, path: Path): ImportedJsonSchemaRepresentation {
+  function translateDefinition(
+    key: string,
+    path: Path,
+    recursiveReferenceError?: string
+  ): ImportedJsonSchemaRepresentation {
     const cached = definitionCache.get(key)
     if (cached !== undefined) return cached
-    if (!Object.hasOwn(document.definitions, key) || definitionsInProgress.has(key)) {
+    if (!Object.hasOwn(document.definitions, key)) {
       throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
+    }
+    if (definitionsInProgress.has(key)) {
+      throw errorWithPath(recursiveReferenceError ?? `Invalid reference ${key}`, [...path, "$ref"])
     }
     definitionsInProgress.add(key)
     const representation = recur(document.definitions[key], ["definitions", key])
@@ -218,19 +237,20 @@ function translateJsonSchemaMultiDocument(
   function resolveReference(
     reference: SchemaRepresentation.Reference,
     path: Path,
+    options?: { readonly recursiveReferenceError?: string },
     seen: ReadonlySet<string> = new Set()
   ): ImportedJsonSchemaRepresentation {
     if (seen.has(reference.$ref)) {
       throw errorWithPath(`Invalid reference ${reference.$ref}`, [...path, "$ref"])
     }
     const nextSeen = new Set(seen).add(reference.$ref)
-    const representation = translateDefinition(reference.$ref, path)
+    const representation = translateDefinition(reference.$ref, path, options?.recursiveReferenceError)
     if (representation._tag === "Reference") {
-      return resolveReference(representation, path, nextSeen)
+      return resolveReference(representation, path, options, nextSeen)
     }
     if (representation._tag === "Suspend" && representation.thunk._tag === "Reference") {
       return annotateJsonSchemaRepresentation(
-        resolveReference(representation.thunk, path, nextSeen),
+        resolveReference(representation.thunk, path, options, nextSeen),
         representation.annotations
       )
     }
@@ -658,6 +678,23 @@ function translateJsonSchemaMultiDocument(
     }
 
     let representation = on(schema, path)
+    if (representation._tag === "Reference") {
+      const siblingSchema: JsonSchema.JsonSchema = { ...schema, $ref: undefined }
+      for (const key of jsonSchemaAnnotationKeys) {
+        delete siblingSchema[key]
+      }
+      const sibling = on(siblingSchema, path)
+      if (sibling._tag !== "Unknown") {
+        const reference = representation
+        representation = combine(
+          resolveReference(reference, path, {
+            recursiveReferenceError: `Unsupported assertion siblings on recursive reference ${reference.$ref}`
+          }),
+          sibling,
+          path
+        )
+      }
+    }
     const annotations = jsonSchemaAnnotations(schema)
     if (annotations !== undefined && representation._tag === "Reference") {
       annotatedReferences.push({ reference: representation, path })
