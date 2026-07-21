@@ -28,6 +28,32 @@ type ImportedJsonSchemaRepresentation = Extract<Representation, {
     | "Union"
 }>
 
+const never: ImportedJsonSchemaRepresentation = { _tag: "Never", checks: [] }
+const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] }
+const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
+
+function annotate(
+  representation: ImportedJsonSchemaRepresentation,
+  annotations: Schema.Annotations.Annotations | undefined
+): ImportedJsonSchemaRepresentation {
+  if (annotations === undefined) return representation
+  if (representation._tag === "Reference") {
+    return {
+      _tag: "Suspend",
+      annotations,
+      checks: [],
+      thunk: representation
+    }
+  }
+  return {
+    ...representation,
+    annotations: {
+      ...representation.annotations,
+      ...annotations
+    }
+  }
+}
+
 const jsonSchemaTypes = new Set([
   "null",
   "string",
@@ -95,6 +121,17 @@ function jsonSchemaFilter(
   }
 }
 
+function addNumberCheck(
+  checks: Array<Check>,
+  value: unknown,
+  id: string,
+  key: string
+): void {
+  if (typeof value === "number") {
+    checks.push(jsonSchemaFilter(id, { [key]: value }))
+  }
+}
+
 function jsonSchemaAnnotations(
   schema: JsonSchema.JsonSchema
 ): Schema.Annotations.Annotations | undefined {
@@ -110,28 +147,6 @@ function jsonSchemaAnnotations(
   if (typeof schema.contentMediaType === "string") annotations.contentMediaType = schema.contentMediaType
   if (SchemaAST.isJson(schema.contentSchema)) annotations.contentSchema = schema.contentSchema
   return Object.keys(annotations).length === 0 ? undefined : annotations
-}
-
-function annotateJsonSchemaRepresentation(
-  representation: ImportedJsonSchemaRepresentation,
-  annotations: Schema.Annotations.Annotations | undefined
-): ImportedJsonSchemaRepresentation {
-  if (annotations === undefined) return representation
-  if (representation._tag === "Reference") {
-    return {
-      _tag: "Suspend",
-      annotations,
-      checks: [],
-      thunk: representation
-    }
-  }
-  return {
-    ...representation,
-    annotations: {
-      ...representation.annotations,
-      ...annotations
-    }
-  }
 }
 
 function jsonDeclaration(
@@ -249,7 +264,7 @@ function translateJsonSchemaMultiDocument(
       return resolveReference(representation, path, options, nextSeen)
     }
     if (representation._tag === "Suspend" && representation.thunk._tag === "Reference") {
-      return annotateJsonSchemaRepresentation(
+      return annotate(
         resolveReference(representation.thunk, path, options, nextSeen),
         representation.annotations
       )
@@ -277,7 +292,7 @@ function translateJsonSchemaMultiDocument(
     left: ImportedJsonSchemaRepresentation,
     right: ImportedJsonSchemaRepresentation
   ): ImportedJsonSchemaRepresentation {
-    return annotateJsonSchemaRepresentation(
+    return annotate(
       representation,
       mergeAnnotations(annotationsOf(left), annotationsOf(right))
     )
@@ -305,39 +320,20 @@ function translateJsonSchemaMultiDocument(
   function combineChecks(
     left: ReadonlyArray<Check>,
     right: ReadonlyArray<Check>,
-    annotations: Schema.Annotations.Annotations | undefined
+    annotations: Schema.Annotations.Annotations | undefined,
+    deduplicate: ReadonlyArray<string> = []
   ): ReadonlyArray<Check> | undefined {
+    for (const id of deduplicate) {
+      if (left.some((check) => checkId(check) === id)) {
+        right = right.filter((check) => checkId(check) !== id)
+      }
+    }
     const checks = asChecks(right, annotations)
     return checks === undefined ? undefined : [...left, ...checks]
   }
 
   function checkId(check: Check): string | undefined {
     return check._tag === "Filter" ? check.representation?.id : undefined
-  }
-
-  function combineNumberChecks(
-    left: ReadonlyArray<Check>,
-    right: ReadonlyArray<Check>,
-    annotations: Schema.Annotations.Annotations | undefined
-  ): ReadonlyArray<Check> | undefined {
-    if (left.some((check) => checkId(check) === "effect/schema/isFinite")) {
-      right = right.filter((check) => checkId(check) !== "effect/schema/isFinite")
-    }
-    if (left.some((check) => checkId(check) === "effect/schema/isInt")) {
-      right = right.filter((check) => checkId(check) !== "effect/schema/isInt")
-    }
-    return combineChecks(left, right, annotations)
-  }
-
-  function combineArrayChecks(
-    left: ReadonlyArray<Check>,
-    right: ReadonlyArray<Check>,
-    annotations: Schema.Annotations.Annotations | undefined
-  ): ReadonlyArray<Check> | undefined {
-    if (left.some((check) => checkId(check) === "effect/schema/isUnique")) {
-      right = right.filter((check) => checkId(check) !== "effect/schema/isUnique")
-    }
-    return combineChecks(left, right, annotations)
   }
 
   function satisfiesPrimitiveCheck(check: Check, value: string | number): boolean | undefined {
@@ -381,6 +377,19 @@ function translateJsonSchemaMultiDocument(
       return false
     }
     return representation.checks.every((check) => satisfiesPrimitiveCheck(check, value as string | number))
+  }
+
+  function combinePrimitiveWithLiteral(
+    primitive:
+      | SchemaRepresentation.String
+      | SchemaRepresentation.Number
+      | SchemaRepresentation.Boolean,
+    literal: SchemaRepresentation.Literal
+  ): ImportedJsonSchemaRepresentation {
+    const satisfies = primitive._tag === "Boolean"
+      ? typeof literal.literal === "boolean"
+      : satisfiesLiteral(primitive, literal)
+    return satisfies ? combinedAnnotations(literal, primitive, literal) : never
   }
 
   function combineArrays(
@@ -500,13 +509,13 @@ function translateJsonSchemaMultiDocument(
     if (left._tag === "Reference") return combine(resolveReference(left, path), right, path)
     if (right._tag === "Reference") return combine(left, resolveReference(right, path), path)
     if (left._tag === "Suspend") {
-      return annotateJsonSchemaRepresentation(
+      return annotate(
         combine(left.thunk as ImportedJsonSchemaRepresentation, right, path),
         left.annotations
       )
     }
     if (right._tag === "Suspend") {
-      return annotateJsonSchemaRepresentation(
+      return annotate(
         combine(left, right.thunk as ImportedJsonSchemaRepresentation, path),
         right.annotations
       )
@@ -515,8 +524,8 @@ function translateJsonSchemaMultiDocument(
       const types = left.types
         .map((type, index) => combine(type as ImportedJsonSchemaRepresentation, right, [...path, "types", index]))
         .filter((type) => type._tag !== "Never")
-      if (types.length === 0) return { _tag: "Never", checks: [] }
-      return annotateJsonSchemaRepresentation({
+      if (types.length === 0) return never
+      return annotate({
         _tag: "Union",
         types,
         mode: left.mode,
@@ -529,24 +538,14 @@ function translateJsonSchemaMultiDocument(
       case "Null":
         return right._tag === "Null"
           ? combinedAnnotations({ _tag: "Null", checks: [...left.checks, ...right.checks] }, left, right)
-          : { _tag: "Never", checks: [] }
+          : never
       case "String":
         if (right._tag === "Literal") {
-          return satisfiesLiteral(left, right)
-            ? combinedAnnotations(
-              {
-                _tag: "Literal",
-                literal: right.literal,
-                checks: right.checks
-              },
-              left,
-              right
-            )
-            : { _tag: "Never", checks: [] }
+          return combinePrimitiveWithLiteral(left, right)
         }
-        if (right._tag !== "String") return { _tag: "Never", checks: [] }
+        if (right._tag !== "String") return never
         const stringChecks = combineChecks(left.checks, right.checks, right.annotations)
-        return annotateJsonSchemaRepresentation(
+        return annotate(
           {
             _tag: "String",
             checks: stringChecks ?? left.checks
@@ -555,21 +554,14 @@ function translateJsonSchemaMultiDocument(
         )
       case "Number":
         if (right._tag === "Literal") {
-          return satisfiesLiteral(left, right)
-            ? combinedAnnotations(
-              {
-                _tag: "Literal",
-                literal: right.literal,
-                checks: right.checks
-              },
-              left,
-              right
-            )
-            : { _tag: "Never", checks: [] }
+          return combinePrimitiveWithLiteral(left, right)
         }
-        if (right._tag !== "Number") return { _tag: "Never", checks: [] }
-        const numberChecks = combineNumberChecks(left.checks, right.checks, right.annotations)
-        return annotateJsonSchemaRepresentation(
+        if (right._tag !== "Number") return never
+        const numberChecks = combineChecks(left.checks, right.checks, right.annotations, [
+          "effect/schema/isFinite",
+          "effect/schema/isInt"
+        ])
+        return annotate(
           {
             _tag: "Number",
             checks: numberChecks ?? left.checks
@@ -578,17 +570,7 @@ function translateJsonSchemaMultiDocument(
         )
       case "Boolean":
         if (right._tag === "Literal") {
-          return typeof right.literal === "boolean"
-            ? combinedAnnotations(
-              {
-                _tag: "Literal",
-                literal: right.literal,
-                checks: right.checks
-              },
-              left,
-              right
-            )
-            : { _tag: "Never", checks: [] }
+          return combinePrimitiveWithLiteral(left, right)
         }
         return right._tag === "Boolean"
           ? combinedAnnotations(
@@ -599,7 +581,7 @@ function translateJsonSchemaMultiDocument(
             left,
             right
           )
-          : { _tag: "Never", checks: [] }
+          : never
       case "Literal":
         if (right._tag === "Literal") {
           return left.literal === right.literal
@@ -612,29 +594,21 @@ function translateJsonSchemaMultiDocument(
               left,
               right
             )
-            : { _tag: "Never", checks: [] }
+            : never
         }
         if (
           (right._tag === "String" || right._tag === "Number") && satisfiesLiteral(right, left) ||
           right._tag === "Boolean" && typeof left.literal === "boolean"
         ) {
-          return combinedAnnotations(
-            {
-              _tag: "Literal",
-              literal: left.literal,
-              checks: left.checks
-            },
-            left,
-            right
-          )
+          return combinedAnnotations(left, left, right)
         }
-        return { _tag: "Never", checks: [] }
+        return never
       case "Arrays": {
-        if (right._tag !== "Arrays") return { _tag: "Never", checks: [] }
+        if (right._tag !== "Arrays") return never
         const arrays = combineArrays(left, right, path)
-        if (arrays === undefined) return { _tag: "Never", checks: [] }
-        const arrayChecks = combineArrayChecks(left.checks, right.checks, right.annotations)
-        return annotateJsonSchemaRepresentation(
+        if (arrays === undefined) return never
+        const arrayChecks = combineChecks(left.checks, right.checks, right.annotations, ["effect/schema/isUnique"])
+        return annotate(
           {
             _tag: "Arrays",
             elements: arrays.elements,
@@ -645,9 +619,9 @@ function translateJsonSchemaMultiDocument(
         )
       }
       case "Objects": {
-        if (right._tag !== "Objects") return { _tag: "Never", checks: [] }
+        if (right._tag !== "Objects") return never
         const objectChecks = combineChecks(left.checks, right.checks, right.annotations)
-        return annotateJsonSchemaRepresentation(
+        return annotate(
           {
             _tag: "Objects",
             propertySignatures: combineProperties(left.propertySignatures, right.propertySignatures, path),
@@ -670,11 +644,11 @@ function translateJsonSchemaMultiDocument(
 
   function recur(input: unknown, path: Path): ImportedJsonSchemaRepresentation {
     if (input === false) {
-      return { _tag: "Never", checks: [] }
+      return never
     }
     const schema = enter(input)
     if (schema === undefined) {
-      return { _tag: "Unknown", checks: [] }
+      return unknown
     }
 
     let representation = on(schema, path)
@@ -699,7 +673,7 @@ function translateJsonSchemaMultiDocument(
     if (annotations !== undefined && representation._tag === "Reference") {
       annotatedReferences.push({ reference: representation, path })
     }
-    representation = annotateJsonSchemaRepresentation(representation, annotations)
+    representation = annotate(representation, annotations)
 
     if (Array.isArray(schema.allOf)) {
       for (let index = 0; index < schema.allOf.length; index++) {
@@ -800,7 +774,7 @@ function translateJsonSchemaMultiDocument(
           ? [recur(schema.items, [...path, "items"])]
           : schema.prefixItems !== undefined && typeof schema.maxItems === "number"
           ? []
-          : [{ _tag: "Unknown", checks: [] } as ImportedJsonSchemaRepresentation]
+          : [unknown]
         return {
           _tag: "Arrays",
           elements,
@@ -816,18 +790,14 @@ function translateJsonSchemaMultiDocument(
           checks: collectObjectChecks(schema, path)
         }
       default:
-        return { _tag: "Unknown", checks: [] }
+        return unknown
     }
   }
 
   function collectStringChecks(schema: JsonSchema.JsonSchema): Array<Check> {
     const checks: Array<Check> = []
-    if (typeof schema.minLength === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isMinLength", { minLength: schema.minLength }))
-    }
-    if (typeof schema.maxLength === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isMaxLength", { maxLength: schema.maxLength }))
-    }
+    addNumberCheck(checks, schema.minLength, "effect/schema/isMinLength", "minLength")
+    addNumberCheck(checks, schema.maxLength, "effect/schema/isMaxLength", "maxLength")
     if (typeof schema.pattern === "string") {
       checks.push(jsonSchemaFilter("effect/schema/isPattern", { source: schema.pattern, flags: "" }))
     }
@@ -836,33 +806,19 @@ function translateJsonSchemaMultiDocument(
 
   function collectNumberChecks(schema: JsonSchema.JsonSchema): Array<Check> {
     const checks: Array<Check> = []
-    if (typeof schema.minimum === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isGreaterThanOrEqualTo", { minimum: schema.minimum }))
-    }
-    if (typeof schema.maximum === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isLessThanOrEqualTo", { maximum: schema.maximum }))
-    }
-    if (typeof schema.exclusiveMinimum === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isGreaterThan", { exclusiveMinimum: schema.exclusiveMinimum }))
-    }
-    if (typeof schema.exclusiveMaximum === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isLessThan", { exclusiveMaximum: schema.exclusiveMaximum }))
-    }
-    if (typeof schema.multipleOf === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isMultipleOf", { divisor: schema.multipleOf }))
-    }
+    addNumberCheck(checks, schema.minimum, "effect/schema/isGreaterThanOrEqualTo", "minimum")
+    addNumberCheck(checks, schema.maximum, "effect/schema/isLessThanOrEqualTo", "maximum")
+    addNumberCheck(checks, schema.exclusiveMinimum, "effect/schema/isGreaterThan", "exclusiveMinimum")
+    addNumberCheck(checks, schema.exclusiveMaximum, "effect/schema/isLessThan", "exclusiveMaximum")
+    addNumberCheck(checks, schema.multipleOf, "effect/schema/isMultipleOf", "divisor")
     return checks
   }
 
   function collectArrayChecks(schema: JsonSchema.JsonSchema): Array<Check> {
     const checks: Array<Check> = []
     if (schema.prefixItems === undefined) {
-      if (typeof schema.minItems === "number") {
-        checks.push(jsonSchemaFilter("effect/schema/isMinLength", { minLength: schema.minItems }))
-      }
-      if (typeof schema.maxItems === "number") {
-        checks.push(jsonSchemaFilter("effect/schema/isMaxLength", { maxLength: schema.maxItems }))
-      }
+      addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
+      addNumberCheck(checks, schema.maxItems, "effect/schema/isMaxLength", "maxLength")
     }
     if (typeof schema.uniqueItems === "boolean") {
       checks.push(jsonSchemaFilter("effect/schema/isUnique", null))
@@ -912,12 +868,12 @@ function translateJsonSchemaMultiDocument(
     }
     if (schema.additionalProperties === undefined || schema.additionalProperties === true) {
       signatures.push({
-        parameter: { _tag: "String", checks: [] },
-        type: { _tag: "Unknown", checks: [] }
+        parameter: string,
+        type: unknown
       })
     } else if (typeof schema.additionalProperties === "object" && schema.additionalProperties !== null) {
       signatures.push({
-        parameter: { _tag: "String", checks: [] },
+        parameter: string,
         type: recur(schema.additionalProperties, [...path, "additionalProperties"])
       })
     }
@@ -929,12 +885,8 @@ function translateJsonSchemaMultiDocument(
     path: Path
   ): Array<Check> {
     const checks: Array<Check> = []
-    if (typeof schema.minProperties === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isMinProperties", { minProperties: schema.minProperties }))
-    }
-    if (typeof schema.maxProperties === "number") {
-      checks.push(jsonSchemaFilter("effect/schema/isMaxProperties", { maxProperties: schema.maxProperties }))
-    }
+    addNumberCheck(checks, schema.minProperties, "effect/schema/isMinProperties", "minProperties")
+    addNumberCheck(checks, schema.maxProperties, "effect/schema/isMaxProperties", "maxProperties")
     if (schema.propertyNames !== undefined) {
       checks.push(jsonSchemaFilter(
         "effect/schema/isPropertyNames",
