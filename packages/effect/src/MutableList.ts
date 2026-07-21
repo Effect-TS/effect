@@ -899,6 +899,10 @@ export const filter = <A>(self: MutableList<A>, f: (value: A, i: number) => bool
     }
     chunk = chunk.next
   }
+  if (array.length === 0) {
+    clear(self)
+    return
+  }
   self.head = self.tail = {
     array,
     mutable: true,
