@@ -130,6 +130,15 @@ export interface HeadersSchema extends Schema.declare<Headers, { readonly [x: st
 export const HeadersSchema: HeadersSchema = Schema.declare(
   isHeaders,
   {
+    representation: {
+      id: "effect/http/Headers",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Headers.HeadersSchema",
+      Type: "Headers.Headers",
+      importDeclarations: [`import * as Headers from "effect/unstable/http/Headers"`]
+    }),
     expected: "Headers",
     toEquivalence: () => Equivalence,
     toCodec: () =>

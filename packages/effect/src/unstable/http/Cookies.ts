@@ -65,6 +65,15 @@ export interface CookiesSchema extends Schema.declare<Cookies, Record.ReadonlyRe
 export const CookiesSchema: CookiesSchema = Schema.declare(
   isCookies,
   {
+    representation: {
+      id: "effect/http/Cookies",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Cookies.CookiesSchema",
+      Type: "Cookies.Cookies",
+      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+    }),
     expected: "Cookies",
     toCodecJson: () =>
       Schema.link<Cookies>()(
@@ -137,6 +146,15 @@ export interface CookieSchema extends Schema.declare<Cookie> {}
 export const CookieSchema: CookieSchema = Schema.declare(
   isCookie,
   {
+    representation: {
+      id: "effect/http/Cookie",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: "Cookies.CookieSchema",
+      Type: "Cookies.Cookie",
+      importDeclarations: [`import * as Cookies from "effect/unstable/http/Cookies"`]
+    }),
     expected: "Cookie"
   }
 )
