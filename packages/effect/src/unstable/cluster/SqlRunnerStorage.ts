@@ -588,6 +588,8 @@ export const make = Effect.fnUntraced(function*(options: {
   })
 
   const withLockOperationDeadline = Effect.fnUntraced(function*<A, E, R>(operation: Effect.Effect<A, E, R>) {
+    // Effect.timeout waits for the timed-out effect to finish interrupting.
+    // Timeout the join so unresponsive SQL cleanup cannot extend the deadline.
     const fiber = yield* Effect.forkIn(operation, layerScope, { startImmediately: true })
     return yield* Fiber.join(fiber).pipe(
       Effect.timeout(lockOperationInterval),
