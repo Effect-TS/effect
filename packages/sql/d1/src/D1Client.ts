@@ -27,6 +27,8 @@ import { SqlError, UnknownError } from "effect/unstable/sql/SqlError"
 import * as Statement from "effect/unstable/sql/Statement"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_QUERY_TEXT = "db.query.text"
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   new UnknownError({ cause, message, operation })
@@ -56,6 +58,30 @@ export type TypeId = "~@effect/sql-d1/D1Client"
 export interface D1Client extends Client.SqlClient {
   readonly [TypeId]: TypeId
   readonly config: D1ClientConfig
+
+  /**
+   * Executes SQL statements as a single atomic D1 batch and returns their row results in order.
+   *
+   * **When to use**
+   *
+   * Use when you have a fixed collection of statements that should run in one
+   * request and roll back together if any statement fails.
+   *
+   * **Gotchas**
+   *
+   * Statements should be created by this client so that query and result name
+   * transformations remain consistent.
+   *
+   * @since 4.0.0
+   */
+  readonly batch: <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
+    statements: Statements
+  ) => Effect.Effect<
+    {
+      readonly [K in keyof Statements]: Effect.Success<Statements[K]>
+    },
+    SqlError
+  >
 
   /** Not supported in d1 */
   readonly updateValues: never
@@ -104,6 +130,10 @@ export const make = (
     const transformRows = options.transformResultNames ?
       Statement.defaultTransforms(options.transformResultNames).array :
       undefined
+    const spanAttributes: Array<readonly [string, unknown]> = [
+      ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
+      [ATTR_DB_SYSTEM_NAME, "sqlite"]
+    ]
 
     const makeConnection = Effect.gen(function*() {
       const db = options.db
@@ -182,7 +212,68 @@ export const make = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
-      return identity<Connection>({
+      const makeBatch = (
+        transformRows: (<A extends object>(rows: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
+        getClient: () => D1Client
+      ) =>
+      <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
+        statements: Statements
+      ): Effect.Effect<
+        {
+          readonly [K in keyof Statements]: Effect.Success<Statements[K]>
+        },
+        SqlError
+      > => {
+        if (statements.length === 0) {
+          return Effect.succeed([]) as any
+        }
+        return Effect.useSpan(
+          "sql.execute",
+          { kind: "client" },
+          (span) =>
+            Effect.gen(function*() {
+              const compiled = yield* Effect.forEach(statements, (statement) =>
+                Effect.withFiber((fiber) => {
+                  const transformer = fiber.getRef(Statement.CurrentTransformer)
+                  if (transformer === undefined) {
+                    return Effect.succeed(statement.compile())
+                  }
+                  return Effect.map(
+                    transformer(statement, getClient(), fiber, span),
+                    (statement) => statement.compile()
+                  )
+                }))
+              for (const [key, value] of spanAttributes) {
+                span.attribute(key, value)
+              }
+              span.attribute(ATTR_DB_OPERATION_NAME, "batch")
+              span.attribute(ATTR_DB_QUERY_TEXT, compiled.map(([sql]) => sql).join("; "))
+
+              const prepared = yield* Effect.forEach(compiled, ([sql]) => Cache.get(prepareCache, sql))
+              const responses = yield* Effect.tryPromise({
+                try: () =>
+                  db.batch(prepared.map((statement, index) => statement.bind(...compiled[index][1]))).then(
+                    (responses) => {
+                      for (const response of responses) {
+                        if (response.error) {
+                          throw response.error
+                        }
+                      }
+                      return responses
+                    }
+                  ),
+                catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute batch", "execute") })
+              })
+
+              return responses.map((response) => {
+                const rows = response.results || []
+                return transformRows ? transformRows(rows as ReadonlyArray<Record<string, unknown>>) : rows
+              }) as any
+            })
+        ) as any
+      }
+
+      const connection = identity<Connection>({
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(runCached(sql, params), transformRows)
@@ -206,28 +297,45 @@ export const make = (
           return Stream.die("executeStream not implemented")
         }
       })
+      return { connection, makeBatch } as const
     })
 
-    const connection = yield* makeConnection
+    const { connection, makeBatch } = yield* makeConnection
     const acquirer = Effect.succeed(connection)
     const transactionAcquirer = Effect.die("transactions are not supported in D1")
 
-    return Object.assign(
+    let client!: D1Client
+    client = Object.assign(
       (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
-        spanAttributes: [
-          ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
-          [ATTR_DB_SYSTEM_NAME, "sqlite"]
-        ],
+        spanAttributes,
         transformRows
       })) as D1Client,
       {
         [TypeId]: TypeId as TypeId,
-        config: options
+        config: options,
+        batch: makeBatch(transformRows, () => client)
       }
     )
+
+    if (transformRows !== undefined) {
+      const withoutTransforms = client.withoutTransforms
+      Object.assign(client, {
+        withoutTransforms: () => {
+          let clientWithoutTransforms!: D1Client
+          clientWithoutTransforms = Object.assign(withoutTransforms.call(client), {
+            [TypeId]: TypeId as TypeId,
+            config: options,
+            batch: makeBatch(undefined, () => clientWithoutTransforms)
+          })
+          return clientWithoutTransforms
+        }
+      })
+    }
+
+    return client
   })
 
 /**
