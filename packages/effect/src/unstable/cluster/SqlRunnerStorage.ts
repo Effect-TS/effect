@@ -587,25 +587,24 @@ export const make = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
-    Effect.gen(function*() {
-      const fiber = yield* Effect.forkIn(operation, layerScope, { startImmediately: true })
-      return yield* Fiber.join(fiber).pipe(
-        Effect.timeout(lockOperationInterval),
-        Effect.ensuring(
-          Fiber.interrupt(fiber).pipe(
-            Effect.forkIn(layerScope, { startImmediately: true }),
-            Effect.asVoid
-          )
-        ),
-        Effect.tap(() =>
-          Effect.sync(() => {
-            lockConnRebuildNeeded = true
-          })
-        ),
-        Effect.onError(rebuildLockConn)
-      )
-    })
+  const withLockOperationDeadline = Effect.fnUntraced(function*<A, E, R>(operation: Effect.Effect<A, E, R>) {
+    const fiber = yield* Effect.forkIn(operation, layerScope, { startImmediately: true })
+    return yield* Fiber.join(fiber).pipe(
+      Effect.timeout(lockOperationInterval),
+      Effect.ensuring(
+        Fiber.interrupt(fiber).pipe(
+          Effect.forkIn(layerScope, { startImmediately: true }),
+          Effect.asVoid
+        )
+      ),
+      Effect.tap(() =>
+        Effect.sync(() => {
+          lockConnRebuildNeeded = true
+        })
+      ),
+      Effect.onError(rebuildLockConn)
+    )
+  })
 
   const releaseShard = sql.onDialectOrElse({
     pg: () => {

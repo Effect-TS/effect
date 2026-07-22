@@ -677,7 +677,7 @@ describe("Sharding shard lock failover", () => {
 
         assert.isAbove(storageState.acquireCalls.length, acquireCount)
         assert(storageState.acquireCalls.at(-1)!.some((shard) => shard.id === shardId.id))
-        expect(yield* client.GetUserVolatile({ id: 2 })).toEqual(new User({ id: 2, name: "User 2" }))
+        assert.deepStrictEqual(yield* client.GetUserVolatile({ id: 2 }), new User({ id: 2, name: "User 2" }))
         assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 2)
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
