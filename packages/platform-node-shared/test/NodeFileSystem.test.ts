@@ -1,12 +1,28 @@
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, it } from "@effect/vitest"
+import * as FileSystemTest from "effect-test/FileSystemTest"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
+import * as PlatformError from "effect/PlatformError"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
-import { testLayer } from "../../effect/test/FileSystem.test-utils.ts"
+
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+type NodeFile = FileSystem.File & { readonly fd: number }
+
+const assertNodeFileError = (error: PlatformError.PlatformError, method: string, fd: number) => {
+  assert.strictEqual(error._tag, "PlatformError")
+  if (!(error.reason instanceof PlatformError.SystemError)) {
+    return assert.fail("Expected a SystemError")
+  }
+  assert.strictEqual(error.reason.module, "FileSystem")
+  assert.strictEqual(error.reason.method, method)
+  assert.strictEqual(error.reason.pathOrDescriptor, fd)
+}
 
 const startWatch = <E, R>(
   fs: FileSystem.FileSystem,
@@ -41,8 +57,49 @@ const startWatch = <E, R>(
     return fiber
   })
 
-describe("FileSystem", () => {
-  testLayer(NodeFileSystem.layer)
+FileSystemTest.suite("node", NodeFileSystem.layer)
+
+it.layer(NodeFileSystem.layer)("FileSystem (node-specific)", (it) => {
+  it.effect("should report the descriptor when a file-handle scope closes", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      yield* fs.writeFileString(path, "content")
+
+      const file = yield* Effect.scoped(fs.open(path, { flag: "r+" }))
+      const nodeFile = file as NodeFile
+      const operations = [
+        ["stat", file.stat],
+        ["sync", file.sync],
+        ["read", file.read(new Uint8Array(1))],
+        ["readAlloc", file.readAlloc(1)],
+        ["truncate", file.truncate(0)],
+        ["write", file.write(new Uint8Array([1]))],
+        ["writeAll", file.writeAll(new Uint8Array([1]))]
+      ] as const
+
+      for (const [method, operation] of operations) {
+        assertNodeFileError(yield* Effect.flip(operation), method, nodeFile.fd)
+      }
+    }))
+
+  it.effect("should report the descriptor for invalid file-handle access", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+
+      const readable = yield* fs.open(path, { flag: "r" })
+      const readableFile = readable as NodeFile
+      assertNodeFileError(
+        yield* Effect.flip(readable.writeAll(encoder.encode("x"))),
+        "writeAll",
+        readableFile.fd
+      )
+
+      const writable = yield* fs.open(path, { flag: "w" })
+      const writableFile = writable as NodeFile
+      assertNodeFileError(yield* Effect.flip(writable.readAlloc(1)), "readAlloc", writableFile.fd)
+    }))
 
   it.effect("watch does not report nested changes when recursive is false", () =>
     Effect.gen(function*() {
@@ -58,9 +115,7 @@ describe("FileSystem", () => {
 
       const event = yield* Fiber.join(fiber)
       assert.strictEqual(event.path, "direct.txt")
-    }).pipe(
-      Effect.provide(NodeFileSystem.layer)
-    ))
+    }).pipe(Effect.scoped))
 
   it.effect("watch is non-recursive when options are omitted", () =>
     Effect.gen(function*() {
@@ -76,9 +131,7 @@ describe("FileSystem", () => {
 
       const event = yield* Fiber.join(fiber)
       assert.strictEqual(event.path, "direct.txt")
-    }).pipe(
-      Effect.provide(NodeFileSystem.layer)
-    ))
+    }).pipe(Effect.scoped))
 
   it.effect("watch reports nested changes when recursive is true", () =>
     Effect.gen(function*() {
@@ -93,7 +146,40 @@ describe("FileSystem", () => {
 
       const event = yield* Fiber.join(fiber)
       assert(event.path.endsWith("nested.txt"))
-    }).pipe(
-      Effect.provide(NodeFileSystem.layer)
-    ))
+    }).pipe(Effect.scoped))
+
+  it.effect("should read a pre-existing host file when the fixture exists", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const data = yield* fs.readFile(`${__dirname}/../../effect/test/fixtures/text.txt`)
+
+      assert.strictEqual(decoder.decode(data).trim(), "lorem ipsum dolar sit amet")
+    }))
+
+  it.effect("should keep the file-handle cursor when truncation does not shorten before it", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const file = yield* fs.open(path, { flag: "w+" })
+
+      yield* file.writeAll(encoder.encode("lorem ipsum dolor sit amet"))
+      yield* file.seek(6, "start")
+      yield* file.truncate(11)
+      yield* file.writeAll(encoder.encode("!"))
+
+      assert.strictEqual(yield* fs.readFileString(path), "lorem !psum")
+    }))
+
+  it.effect("should clamp the file-handle cursor when truncation shortens before it", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const file = yield* fs.open(path, { flag: "w+" })
+
+      yield* file.writeAll(encoder.encode("lorem ipsum dolor sit amet"))
+      yield* file.truncate(11)
+      yield* file.writeAll(encoder.encode("!"))
+
+      assert.strictEqual(yield* fs.readFileString(path), "lorem ipsum!")
+    }))
 })
