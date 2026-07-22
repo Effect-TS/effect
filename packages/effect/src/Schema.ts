@@ -3246,7 +3246,7 @@ export declare namespace Struct {
     S extends Side,
     O extends keyof F = SideOptionalKeys<F, S>,
     M extends keyof F = SideMutableKeys<F, S>
-  > = [O | M] extends [never] ? ReadonlySide<F, S>
+  > = [O | M] extends [never] ? Simplify<ReadonlySide<F, S>>
     : [M] extends [never] ? Simplify<SetOptional<ReadonlySide<F, S>, O>>
     : [O] extends [never] ? Simplify<SetMutable<ReadonlySide<F, S>, M>>
     : Simplify<
