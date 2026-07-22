@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Clock, DateTime, Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
+import { Clock, DateTime, Duration, Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { Message, MessageStorage, ShardId, ShardingConfig, Snowflake, SqlMessageStorage } from "effect/unstable/cluster"
 import { SqlClient } from "effect/unstable/sql"
@@ -192,14 +192,14 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveRequest(laterRequest)
 
           next = yield* storage.nextDeliverAt([shard1, shard2])
-          assert.deepStrictEqual(next, Option.some(earlier))
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(1)))
 
           next = yield* storage.nextDeliverAt([shard2])
-          assert.deepStrictEqual(next, Option.some(later))
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(2)))
 
           yield* storage.saveReply(yield* makeReply(earlierRequest))
           next = yield* storage.nextDeliverAt([shard1, shard2])
-          assert.deepStrictEqual(next, Option.some(later))
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(2)))
         }))
 
       it.effect("nextDeliverAt binds quote-bearing shard groups", () =>
@@ -218,7 +218,7 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveRequest(request)
 
           const next = yield* storage.nextDeliverAt([shard])
-          expect(next).toEqual(Option.some(deadline))
+          assert.deepStrictEqual(next, Option.some(Duration.minutes(1)))
         }))
 
       it.effect("repliesFor", () =>

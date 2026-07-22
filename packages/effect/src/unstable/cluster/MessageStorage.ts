@@ -14,6 +14,7 @@ import * as Arr from "../../Array.ts"
 import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
+import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import { constFalse, identity } from "../../Function.ts"
@@ -144,12 +145,15 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<Array<Message.Incoming<R>>, PersistenceError>
 
   /**
-   * Retrieves the earliest `deliverAt` of the scheduled messages for the
-   * specified shards that are not yet deliverable.
+   * Retrieves the delay until the earliest scheduled message for the
+   * specified shards becomes deliverable.
+   *
+   * The delay must measure when this implementation's `unprocessedMessages`
+   * predicate will consider the message due.
    */
   readonly nextDeliverAt: (
     shardIds: Iterable<ShardId.ShardId>
-  ) => Effect.Effect<Option.Option<number>, PersistenceError>
+  ) => Effect.Effect<Option.Option<Duration.Duration>, PersistenceError>
 
   /**
    * Reset the mailbox state for the provided shards.
@@ -386,6 +390,9 @@ export type Encoded = {
   /**
    * Retrieves the earliest `deliverAt` of the scheduled messages for the
    * given shards that is later than `now`.
+   *
+   * The returned time must use the same clock domain as this implementation's
+   * `unprocessedMessages` eligibility predicate.
    */
   readonly nextDeliverAt: (
     shardIds: Arr.NonEmptyArray<string>,
@@ -671,7 +678,14 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
     nextDeliverAt(shardIds) {
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.succeedNone
-      return Effect.suspend(() => encoded.nextDeliverAt(shards, clock.currentTimeMillisUnsafe()))
+      return Effect.suspend(() => encoded.nextDeliverAt(shards, clock.currentTimeMillisUnsafe())).pipe(
+        Effect.map((next) =>
+          Option.map(
+            next,
+            (deliverAt) => Duration.max(Duration.millis(deliverAt - clock.currentTimeMillisUnsafe()), Duration.zero)
+          )
+        )
+      )
     },
     resetAddress: encoded.resetAddress,
     clearAddress: encoded.clearAddress,

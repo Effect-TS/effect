@@ -227,6 +227,40 @@ describe.concurrent("Sharding", () => {
       assert(exit && Exit.isSuccess(exit))
     }).pipe(Effect.provide(TestSharding)))
 
+  it.effect("reads due messages while discovering the next deadline in the background", () =>
+    Effect.gen(function*() {
+      const queryStarted = yield* Deferred.make<void>()
+      const releaseQuery = yield* Deferred.make<void>()
+
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const client = makeClient("1")
+
+        const fiber = yield* client.GetUser({ id: 1 }).pipe(Effect.forkChild)
+        yield* Deferred.await(queryStarted)
+        yield* TestClock.adjust(1)
+
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+        const exit = fiber.pollUnsafe()
+        assert(exit && Exit.isSuccess(exit))
+        yield* Deferred.succeed(releaseQuery, undefined)
+      }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+        Layer.updateService(MessageStorage.MessageStorage, (storage) => ({
+          ...storage,
+          nextDeliverAt(shardIds) {
+            return Deferred.succeed(queryStarted, undefined).pipe(
+              Effect.andThen(Deferred.await(releaseQuery)),
+              Effect.andThen(storage.nextDeliverAt(shardIds))
+            )
+          }
+        })),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(TestShardingConfig)
+      )))
+    }))
+
   it.effect("arms a deadline wake before reading due messages", () =>
     Effect.gen(function*() {
       const blockedReadComplete = yield* Deferred.make<void>()

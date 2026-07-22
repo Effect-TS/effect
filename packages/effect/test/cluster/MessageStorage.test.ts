@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Clock, Context, DateTime, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
+import { Clock, Context, DateTime, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import {
   DeliverAt,
@@ -93,7 +93,7 @@ describe("MessageStorage", () => {
         )
 
         const next = yield* storage.nextDeliverAt([shard1, shard2])
-        assert.deepStrictEqual(next, Option.some(earlier))
+        assert.deepStrictEqual(next, Option.some(Duration.millis(60_000)))
       }).pipe(Effect.provide(MemoryLive)))
 
     it.effect("nextDeliverAt handles epoch zero across the due boundary", () =>
@@ -110,7 +110,7 @@ describe("MessageStorage", () => {
         )
 
         let next = yield* storage.nextDeliverAt([shard])
-        assert.deepStrictEqual(next, Option.some(0))
+        assert.deepStrictEqual(next, Option.some(Duration.millis(1)))
         let messages = yield* storage.unprocessedMessages([shard])
         assert.strictEqual(messages.length, 0)
 
@@ -119,6 +119,30 @@ describe("MessageStorage", () => {
         assert.isTrue(Option.isNone(next))
         messages = yield* storage.unprocessedMessages([shard])
         assert.strictEqual(messages.length, 1)
+      }).pipe(Effect.provide(MemoryLive)))
+
+    it.effect("nextDeliverAt accounts for lookup latency", () =>
+      Effect.gen(function*() {
+        yield* TestClock.setTime(0)
+        const driver = yield* MessageStorage.MemoryDriver
+        const storage = yield* MessageStorage.makeEncoded({
+          ...driver.encoded,
+          nextDeliverAt: (shardIds, now) =>
+            driver.encoded.nextDeliverAt(shardIds, now).pipe(Effect.delay(Duration.seconds(2)))
+        })
+        const shard = ShardId.make("default", 1)
+        yield* storage.saveRequest(
+          yield* makeRequest({
+            rpc: ScheduledRpc,
+            payload: new ScheduledPayload({ id: 1, deliverAt: DateTime.makeUnsafe(1000) }),
+            shardId: shard
+          })
+        )
+
+        const fiber = yield* storage.nextDeliverAt([shard]).pipe(Effect.forkChild)
+        yield* TestClock.adjust(2000)
+
+        assert.deepStrictEqual(yield* Fiber.join(fiber), Option.some(Duration.zero))
       }).pipe(Effect.provide(MemoryLive)))
 
     it.effect("nextDeliverAt ignores messages on other shards", () =>
