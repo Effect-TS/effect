@@ -21,8 +21,7 @@ import type {
   MachineSchemaEncodeError,
   ProcessLocalError,
   StartupError,
-  StoppedError,
-  UnhandledEventError
+  StoppedError
 } from "./internal/machineErrors.ts"
 import { ProcessLocalError as ProcessLocalErrorValue } from "./internal/machineErrors.ts"
 import * as Model from "./internal/machineModel.ts"
@@ -210,14 +209,7 @@ export {
    * @category errors
    * @since 4.0.0
    */
-  StoppedError,
-  /**
-   * Error returned when an event has no handler for the current state.
-   *
-   * @category errors
-   * @since 4.0.0
-   */
-  UnhandledEventError
+  StoppedError
 } from "./internal/machineErrors.ts"
 
 const RuntimeRequirementTypeId = "~effect/Machine/RuntimeRequirement"
@@ -1011,8 +1003,7 @@ export declare namespace ChildMachine {
         | InfiniteTransitionError
         | MachineSchemaDecodeError
         | StartupError
-        | StoppedError
-        | UnhandledEventError,
+        | StoppedError,
         Output | undefined
       >
     : never
@@ -4087,8 +4078,7 @@ export const invokeMachine: {
             | InfiniteTransitionError
             | MachineSchemaDecodeError
             | StartupError
-            | StoppedError
-            | UnhandledEventError,
+            | StoppedError,
             Output | undefined
           >
         ) => SnapshotEvent | undefined
@@ -4103,7 +4093,7 @@ export const invokeMachine: {
     SnapshotEvent,
     Machine.Snapshot<States>,
     Machine.EventOf<Events>,
-    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError | UnhandledEventError,
+    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError,
     ExcludeCompatibleRuntime<
       Exclude<ExecutionServices<InitialR | R>, internalRuntime.MachineRuntime>,
       Machine.EventOf<Events>,
@@ -4156,8 +4146,7 @@ export const invokeMachine: {
             | InfiniteTransitionError
             | MachineSchemaDecodeError
             | StartupError
-            | StoppedError
-            | UnhandledEventError,
+            | StoppedError,
             Output | undefined
           >
         ) => SnapshotEvent | undefined
@@ -4172,7 +4161,7 @@ export const invokeMachine: {
     SnapshotEvent,
     Machine.Snapshot<States>,
     Machine.EventOf<Events>,
-    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError | UnhandledEventError,
+    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError,
     ExcludeCompatibleRuntime<
       Exclude<ExecutionServices<InitialR | R>, internalRuntime.MachineRuntime>,
       Machine.EventOf<Events>,
@@ -4303,9 +4292,8 @@ export const enabled = <
  * `plan` returns data; it does not implement the runtime commit protocol. Run
  * actions sequentially, publish `next` only after they succeed, and then
  * deliver `emittedEvents`. A failed action must retain the previously
- * published state and suppress emissions. An external event with no enabled
- * transition fails with `UnhandledEventError`; an unhandled event produced by
- * `raise` is discarded while the current macrostep continues settling.
+ * published state and suppress emissions. Events with no enabled transition
+ * are ignored and produce an unchanged plan.
  *
  * @see {@link planInitial} for planning machine startup.
  * @see {@link start} for managed execution and lifecycle observation.
@@ -4345,7 +4333,7 @@ export const plan: <
     }>
     readonly output: Output | undefined
   },
-  E | InfiniteTransitionError | MachineSchemaDecodeError | UnhandledEventError,
+  E | InfiniteTransitionError | MachineSchemaDecodeError,
   ExcludeCompatibleRuntime<PlanningServices<R>, Machine.EventOf<Events>, Machine.EmitOf<Emits>>
 > = internalPlanner.plan as any
 
@@ -4773,8 +4761,7 @@ export const start: <
     | InfiniteTransitionError
     | MachineSchemaDecodeError
     | StartupError
-    | StoppedError
-    | UnhandledEventError,
+    | StoppedError,
     Output | undefined
   >,
   InitialE | ActionError<InitialR | R> | MachineSchemaDecodeError | StartupError | StoppedError,

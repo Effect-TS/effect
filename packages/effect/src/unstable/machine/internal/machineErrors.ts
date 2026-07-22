@@ -32,18 +32,6 @@ export class MachineSchemaDecodeError extends Data.TaggedError("MachineSchemaDec
 }> {}
 
 /**
- * Error returned when an event has no handler for the current state.
- *
- * @category errors
- * @since 4.0.0
- */
-export class UnhandledEventError extends Data.TaggedError("UnhandledEventError")<{
-  readonly machineId: string | undefined
-  readonly state: string
-  readonly event: string
-}> {}
-
-/**
  * Error returned when a machine does not stabilize within the maximum
  * number of macrostep iterations.
  *

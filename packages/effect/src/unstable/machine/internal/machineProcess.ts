@@ -13,13 +13,7 @@ import type * as Schema from "../../../Schema.ts"
 import * as Scope from "../../../Scope.ts"
 import * as Stream from "../../../Stream.ts"
 import type { ActionError, ExecutionServices, Machine, Runtime } from "../Machine.ts"
-import type {
-  InfiniteTransitionError,
-  MachineSchemaDecodeError,
-  StartupError,
-  StoppedError,
-  UnhandledEventError
-} from "./machineErrors.ts"
+import type { InfiniteTransitionError, MachineSchemaDecodeError, StartupError, StoppedError } from "./machineErrors.ts"
 import * as Model from "./machineModel.ts"
 import * as internalPlanner from "./machinePlanner.ts"
 import * as internalRuntime from "./machineRuntime.ts"
@@ -73,7 +67,7 @@ export const toProcessLogic: <
 ) => internalRuntime.ProcessLogic<
   Machine.Snapshot<States>,
   Machine.EventOf<Events>,
-  E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError | UnhandledEventError,
+  E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError,
   ExcludeCompatibleRuntime<
     Exclude<ExecutionServices<InitialR | R>, internalRuntime.MachineRuntime>,
     Machine.EventOf<Events>,
@@ -329,6 +323,9 @@ export const toProcessLogic: <
                   const event = yield* receive
                   const current = yield* state
                   const planned = yield* internalPlanner.plan(machine, current, event)
+                  if (planned.microsteps.length === 0) {
+                    return yield* Effect.yieldNow
+                  }
                   const changed = planned.microsteps.some((step) => step.changed)
                   const exitPaths = planned.microsteps.flatMap((step) => step.exitPaths)
                   const entryEvents = new Map<string, Machine.LifecycleEvent<Events>>()
@@ -380,7 +377,7 @@ export const toProcessLogic: <
   }) as internalRuntime.ProcessLogic<
     Machine.Snapshot<States>,
     Machine.EventOf<Events>,
-    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError | UnhandledEventError,
+    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError,
     ExcludeCompatibleRuntime<
       Exclude<ExecutionServices<InitialR | R>, internalRuntime.MachineRuntime>,
       Machine.EventOf<Events>,
@@ -415,8 +412,7 @@ export const start: <
     | InfiniteTransitionError
     | MachineSchemaDecodeError
     | StartupError
-    | StoppedError
-    | UnhandledEventError,
+    | StoppedError,
     Output | undefined
   >,
   InitialE | ActionError<InitialR | R> | MachineSchemaDecodeError | StartupError | StoppedError,

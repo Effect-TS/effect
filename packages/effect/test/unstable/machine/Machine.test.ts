@@ -4768,7 +4768,7 @@ describe("Machine", () => {
       })
     }))
 
-  it.effect("start surfaces transition failures through the machine lifecycle", () =>
+  it.effect("plan ignores events without an enabled transition", () =>
     Effect.gen(function*() {
       const machine = Machine.make({
         id: "UserMachine",
@@ -4784,28 +4784,13 @@ describe("Machine", () => {
         }
       })
 
-      const actor = yield* Machine.start(machine, { userId: "user-1" })
+      const state = FlatInitial.Idle(new Idle({ userId: "user-1" }))
+      const planned = yield* Machine.plan(machine, state, new Reset({}))
 
-      yield* actor.send(new Reset({}))
-
-      const error = yield* Effect.flip(actor.join)
-      assert.instanceOf(error, Machine.UnhandledEventError)
-      assert.strictEqual(error._tag, "UnhandledEventError")
-      assert.strictEqual(error.machineId, "UserMachine")
-      assert.strictEqual(error.state, "Idle")
-      assert.strictEqual(error.event, "Reset")
-
-      const snapshot = yield* actor.snapshot
-      assert.strictEqual(snapshot.status, "error")
-      if (snapshot.status === "error") {
-        assert.deepStrictEqual(snapshot.state.value, new Idle({ userId: "user-1" }))
-        const reason = snapshot.cause.reasons[0]
-        assert.ok(reason !== undefined)
-        assert.strictEqual(Cause.isFailReason(reason), true)
-        if (Cause.isFailReason(reason)) {
-          assert.instanceOf(reason.error, Machine.UnhandledEventError)
-        }
-      }
+      assert.deepStrictEqual(planned.next, state)
+      assert.deepStrictEqual(planned.actions, [])
+      assert.deepStrictEqual(planned.emittedEvents, [])
+      assert.deepStrictEqual(planned.microsteps, [])
     }))
 
   it.effect("start runs invoke configs", () =>
@@ -5349,7 +5334,7 @@ describe("Machine", () => {
       const childStates = Machine.defineStates({ Idle, Success: SuccessOutput })
       const child = Machine.make({
         states: childStates.states,
-        events: [Resolve],
+        events: [Resolve, Reset],
         emits: [RequestProgress],
         input: Input,
         initial: (input) => childStates.initial.Idle(new Idle({ userId: input.userId }))
@@ -5371,7 +5356,7 @@ describe("Machine", () => {
       const parentStates = Machine.defineStates({ Idle, Loading, Success: SuccessOutput })
       const parent = Machine.make({
         states: parentStates.states,
-        events: [Submit, Resolve, RequestProgress, ParentRequestProgress, RequestSucceeded],
+        events: [Submit, Resolve, Reset, RequestProgress, ParentRequestProgress, RequestSucceeded],
         initial: () => parentStates.initial.Idle(new Idle({ userId: "parent" }))
       }).handle({
         Idle: {
@@ -5390,6 +5375,7 @@ describe("Machine", () => {
             onDone: ({ output }) => new RequestSucceeded({ value: output ?? "missing" })
           }),
           on: {
+            Reset: () => Machine.action(Machine.sendTo(Child, new Reset({}))),
             Resolve: Effect.fn(function*() {
               yield* Machine.action(Machine.sendTo(Child, new Resolve({})))
             }),
@@ -5417,6 +5403,7 @@ describe("Machine", () => {
         Stream.runCollect
       )
       assert.strictEqual(activeChildren[0].value.id, "child-machine")
+      yield* actor.send(new Reset({}))
       yield* actor.send(new Resolve({}))
 
       assert.strictEqual(yield* actor.join, "child-output")
@@ -6383,7 +6370,7 @@ describe("Machine", () => {
       assert.strictEqual(error.state, "Idle")
     }))
 
-  it.effect("sending an event that is not handled by the current state fails", () =>
+  it.effect("ignores an event that is not handled by the current state", () =>
     Effect.gen(function*() {
       const machine = Machine.make({
         id: "UserMachine",
@@ -6407,18 +6394,14 @@ describe("Machine", () => {
       assert.deepStrictEqual((yield* actor.state).value, new Idle({ userId: "user-1" }))
 
       yield* actor.send(new Reset({}))
-      const error = yield* Effect.flip(actor.join)
+      const snapshot = yield* sendAndWaitForSnapshot(
+        actor,
+        new Submit({ value: "hello" }),
+        (snapshot) => snapshot.status === "active" && snapshot.state.path === "Loading"
+      )
 
-      assert.instanceOf(error, Machine.UnhandledEventError)
-      assert.strictEqual(error._tag, "UnhandledEventError")
-      assert.strictEqual(error.machineId, "UserMachine")
-      assert.strictEqual(error.state, "Idle")
-      assert.strictEqual(error.event, "Reset")
-      const snapshot = yield* actor.snapshot
-      assert.strictEqual(snapshot.status, "error")
-      if (snapshot.status === "error") {
-        assert.deepStrictEqual(snapshot.state.value, new Idle({ userId: "user-1" }))
-      }
+      assert.strictEqual(snapshot.status, "active")
+      assert.deepStrictEqual(snapshot.state, FlatInitial.Loading(new Loading({ requestId: "request-1" })))
     }))
 
   it.effect("handles required services in actions", () =>

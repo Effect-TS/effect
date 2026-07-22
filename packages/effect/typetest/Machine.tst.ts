@@ -627,8 +627,13 @@ describe("Machine", () => {
     expect<Machine.InfiniteTransitionError>().type.toBeAssignableTo<
       Effect.Error<Effect.Success<typeof started>["join"]>
     >()
-    expect<Machine.UnhandledEventError>().type.toBeAssignableTo<
-      Effect.Error<Effect.Success<typeof started>["join"]>
+    expect<Effect.Error<Effect.Success<typeof started>["join"]>>().type.toBe<
+      | "initial-failed"
+      | "transition-failed"
+      | Machine.InfiniteTransitionError
+      | Machine.MachineSchemaDecodeError
+      | Machine.StartupError
+      | Machine.StoppedError
     >()
   })
 
@@ -646,6 +651,14 @@ describe("Machine", () => {
         userId: "user-1"
       })
     )
+    const planned = Machine.plan(
+      machine,
+      UpStates.initial.down(new Down({})),
+      new SignIn({ userId: "user-1" })
+    )
+    expect<Effect.Error<typeof planned>>().type.toBe<
+      Machine.InfiniteTransitionError | Machine.MachineSchemaDecodeError
+    >()
     expect(Machine.enabled).type.toBeCallableWith(machine, UpStates.initial.down(new Down({})))
     expect(Machine.isFinal).type.toBeCallableWith(machine, UpStates.initial.down(new Down({})))
 

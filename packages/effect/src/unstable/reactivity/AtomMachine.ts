@@ -96,7 +96,6 @@ const startMachineAtomEffect = <
     | Machine.MachineSchemaDecodeError
     | Machine.StartupError
     | Machine.StoppedError
-    | Machine.UnhandledEventError
     | InitialE,
     Output | undefined
   >,
@@ -501,7 +500,6 @@ export const make: {
     | Machine.MachineSchemaDecodeError
     | Machine.StartupError
     | Machine.StoppedError
-    | Machine.UnhandledEventError
     | InitialE,
     Output | undefined,
     | InitialE
@@ -558,7 +556,6 @@ export const make: {
     | Machine.MachineSchemaDecodeError
     | Machine.StartupError
     | Machine.StoppedError
-    | Machine.UnhandledEventError
     | InitialE,
     Output | undefined,
     | InitialE

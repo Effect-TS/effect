@@ -10,12 +10,7 @@ import * as Effect from "../../../Effect.ts"
 import * as Option from "../../../Option.ts"
 import type * as Schema from "../../../Schema.ts"
 import type { ActionRequirement, InitialEvent as MachineInitialEvent, Machine, Runtime } from "../Machine.ts"
-import {
-  InfiniteTransitionError,
-  MachineSchemaDecodeError,
-  StartupError,
-  UnhandledEventError
-} from "./machineErrors.ts"
+import { InfiniteTransitionError, MachineSchemaDecodeError, StartupError } from "./machineErrors.ts"
 import {
   type ActiveConfiguration,
   compareDocumentOrder,
@@ -1050,7 +1045,7 @@ const microstep: <
   selections: ReadonlyArray<SelectedTransition<States, E, R, Context>>
 ) => Effect.Effect<
   MicrostepPlan<ActiveConfiguration, Machine.EventOf<Events>, E, R>,
-  E | MachineSchemaDecodeError | UnhandledEventError,
+  E | MachineSchemaDecodeError,
   R
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
@@ -1072,11 +1067,16 @@ const microstep: <
   selections: ReadonlyArray<SelectedTransition<States, E, R, Context>>
 ) {
   if (selections.length === 0) {
-    return yield* new UnhandledEventError({
-      machineId: machine.id,
-      state: String(getLeafPath(machine, state)),
-      event: String(event._tag)
-    })
+    return {
+      next: state,
+      event,
+      actions: [],
+      raisedEvents: [],
+      emittedEvents: [],
+      exitPaths: [],
+      entryPaths: [],
+      changed: false
+    }
   }
 
   const activeSelections = removePreemptedAncestorSelections(selections)
@@ -1180,7 +1180,7 @@ const settle: <
   microsteps: Array<MicrostepPlan<ActiveConfiguration, Machine.EventOf<Events>, E, R>>
 ) => Effect.Effect<
   MacrostepPlan<ActiveConfiguration, Machine.EventOf<Events>, E, R, Output>,
-  E | InfiniteTransitionError | MachineSchemaDecodeError | UnhandledEventError,
+  E | InfiniteTransitionError | MachineSchemaDecodeError,
   R
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
@@ -1333,7 +1333,7 @@ const macrostep: <
   event: Machine.EventOf<Events>
 ) => Effect.Effect<
   MacrostepPlan<Machine.Snapshot<States>, Machine.EventOf<Events>, E, R, Output>,
-  E | InfiniteTransitionError | MachineSchemaDecodeError | UnhandledEventError,
+  E | InfiniteTransitionError | MachineSchemaDecodeError,
   R
 > = Effect.fnUntraced(function*<
   const States extends Machine.StateSchemas,
@@ -1365,15 +1365,25 @@ const macrostep: <
   }
 
   const decodedEvent = yield* decodeEvent<Events>(machine, event)
+  const selections = selectEventTransitions<States, Events, Emits, E, R>(
+    machine,
+    configuration,
+    decodedEvent as Machine.EventByTag<Events, Machine.TagOf<Events[number]>>
+  )
+  if (selections.length === 0) {
+    return {
+      next: snapshot,
+      actions: [],
+      emittedEvents: [],
+      microsteps: [],
+      output: undefined
+    }
+  }
   const step = yield* microstep(
     machine,
     configuration,
     decodedEvent,
-    selectEventTransitions<States, Events, Emits, E, R>(
-      machine,
-      configuration,
-      decodedEvent as Machine.EventByTag<Events, Machine.TagOf<Events[number]>>
-    )
+    selections
   )
   const actions = [...step.actions]
   const raisedEvents = [...step.raisedEvents]
