@@ -6152,47 +6152,52 @@ This approach keeps patches independent from TypeScript types and uses the schem
 
 # Schema Representation
 
-The `SchemaRepresentation` module converts a `Schema` into a portable data structure and back again.
+The `SchemaRepresentation` module exposes the structural form used to inspect, persist, compile, and rebuild schemas.
+
+A representation is always a projection of one side of a schema. By default, `Schema.toRepresentation` and
+`SchemaRepresentation.toRepresentation` project the encoded side. Apply `Schema.toType` or `SchemaAST.toType` first when
+you need the decoded type side instead.
 
 Use it when you need to:
 
-- store schemas on disk (for example in a cache)
-- send schemas over the network
-- rebuild runtime schemas later
-- convert to JSON Schema (Draft 2020-12)
-- generate TypeScript code that recreates schemas
+- inspect the structural form of a schema
+- store schemas on disk or send them over the network
+- rebuild runtime schemas with an explicit set of revivers
+- compile live representations to JSON Schema Draft 2020-12
+- generate TypeScript code from live representations
 
 At a high level:
 
-- `toRepresentation` / `toRepresentations` turn a schema AST into a `Document` / `MultiDocument`
-- `toJson` / `fromJson` round-trip that document through JSON
-- `fromRepresentation` rebuilds a runtime `Schema` from the stored representation
-- `toJsonSchemaDocument` produces a Draft 2020-12 JSON Schema document
-- `toCodeDocument` prepares data for code generation (via `toMultiDocument`)
+- `Schema.toRepresentation(schema)` converts a schema to a `Document`
+- `SchemaRepresentation.toRepresentation(ast)` and `toRepresentations(asts)` convert schema ASTs to a `Document` or
+  `MultiDocument`
+- `toJson` / `fromJson` cross the persistence boundary
+- `fromRepresentation` / `fromRepresentations` rebuild runtime schemas using explicit revivers
+- `toJsonSchemaDocument` compiles a live `Document` to JSON Schema Draft 2020-12
+- `toCodeDocument` compiles a live `MultiDocument` to runtime and TypeScript source fragments
 
 ```mermaid
 flowchart TD
-    S[Schema] -->|toRepresentation|D{"SchemaRepresentation.Document"}
-    S -->|toRepresentations|MD{"SchemaRepresentation.MultiDocument"}
-    JS["JSON Schema (draft-07, draft-2020-12, openapi-3.0, openapi-3.1)"] -->JSD
-    JD --> JS
-    JD["JsonSchema.Document"] -->|fromJsonSchemaDocument|D
-    D <--> |"toJson / fromJson"|JSON
-    D --> |toJsonSchemaDocument|JD
-    D --> |fromRepresentation|S
-    MD --> |toCodeDocument|CodeDocument["CodeDocument"]
-    D --> |toMultiDocument|MD
-    MD --> |toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
-    MD <--> |"toJsonMultiDocument / fromJsonMultiDocument"|JSON
+    S[Schema] -->|Schema.toRepresentation|LD["live Document"]
+    AST[SchemaAST] -->|SchemaRepresentation.toRepresentation|LD
+    LD -->|toJson|JSON["JSON value"]
+    JSON -->|fromJson|PD["persisted Document"]
+    PD -->|"fromRepresentation + revivers"|S
+    LD -->|toJsonSchemaDocument|JD["JsonSchema.Document (draft-2020-12)"]
+    JD -->|fromJsonSchemaDocument|S
+    LD -->|toMultiDocument|LMD["live MultiDocument"]
+    SMD[SchemaMultiDocument] -->|fromSchemaMultiDocument|LMD
+    LMD -->|toCodeDocument|CodeDocument
+    LMD -->|toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
+    LMD -->|toJsonMultiDocument|JSON
 ```
 
 ## The data model
 
 ### `Representation`
 
-A `Representation` is a tagged object tree (`_tag` fields like `"String"`, `"Objects"`, `"Union"`, ...). It describes the _structure_ of a schema in a JSON-friendly way.
-
-Only a subset of schema features can be represented. See "Limitations" below.
+A `Representation` is a tagged object tree (`_tag` fields like `"String"`, `"Objects"`, `"Union"`, ...). It describes one
+structural side of a schema. Named or recursive nodes use `Reference` values instead of duplicating their definitions.
 
 ### `Document`
 
@@ -6209,126 +6214,240 @@ A `MultiDocument` stores multiple root representations that share the same `refe
 
 This is useful if you want to serialize a set of schemas together, or if you want to generate code for multiple schemas while emitting shared definitions only once.
 
-## Limitations
+### `SchemaMultiDocument`
 
-`SchemaRepresentation` is meant for schemas that can be described without user code.
+A `SchemaMultiDocument` contains live schemas plus a named definition map:
 
-That has a few consequences.
+```ts
+interface SchemaMultiDocument {
+  readonly schemas: readonly [Schema.Top, ...Array<Schema.Top>]
+  readonly definitions: Readonly<Record<string, Schema.Top>>
+}
+```
 
-### Transformations are not supported
+`fromJsonSchemaMultiDocument` returns this form. `fromSchemaMultiDocument` projects it to a `MultiDocument` while
+preserving explicit definitions, including definitions that are not reachable from a root.
 
-The representation format describes the schema's _shape_ and a set of known checks. It does not store transformation logic.
+## Projection and persistence boundaries
 
-Schemas that rely on transformations cannot be round-tripped, including:
+### Representations use the encoded side
 
-- `Schema.transform(...)`
-- `Schema.encodeTo(...)`
-- custom codecs or any schema that changes how values are encoded/decoded
+`toRepresentation` follows a schema's encoding chain and represents its last encoded side. It does not serialize the
+transformation functions.
 
-If you serialize a transformed schema, the transformation logic will be lost. When you rebuild it with `fromRepresentation`, you will only get the structural schema.
+```ts
+import { Schema } from "effect"
 
-> **Aside** (Why transformations are excluded)
->
-> A transformation is user code (functions). JSON cannot store functions, and serializing functions as strings would not be safe or portable.
+const encoded = Schema.toRepresentation(Schema.NumberFromString)
+console.log(encoded.representation._tag)
+// "String"
 
-### Only built-in checks can be represented
+const decoded = Schema.toRepresentation(Schema.toType(Schema.NumberFromString))
+console.log(decoded.representation._tag)
+// "Number"
+```
 
-Checks are stored as `Filter` / `FilterGroup` nodes with a small `meta` object.
+Consequently, rebuilding `encoded` produces a schema for the string representation; it does not recreate the original
+string-to-number transformation.
 
-Only checks that match the built-in meta definitions are supported, such as:
+### Live and persisted documents
 
-- string checks: `isMinLength`, `isPattern`, `isUUID`, ...
-- number checks: `isInt`, `isBetween`, `isMultipleOf`, ...
-- bigint checks: `isGreaterThanBigInt`, ...
-- array checks: `isLength`, `isUnique`, ...
-- object checks: `isMinProperties`, ...
-- date checks: `isBetweenDate`, ...
+A live `Document` can contain functions in its ordinary annotations. These callbacks allow compilers to handle custom
+behavior:
 
-Custom predicates (for example `Schema.filter((x) => ...)`) are not supported, because the representation has nowhere to store the function.
+- a check can provide `toJsonSchema`
+- a declaration or check can provide `toCode`
 
-### Annotations are filtered
+Functions cannot cross the JSON persistence boundary. `toJson` removes them and keeps only JSON-valued ordinary
+annotations. Nested JSON arrays and objects are preserved; a complete annotation value is omitted when it contains a
+function, `undefined`, `bigint`, a symbol, a cycle, or another non-JSON value.
 
-Annotations are stored as a record, but:
+Structural values such as bigint literals and registered unique symbols have dedicated canonical encodings. That does not
+make bigint or symbol values valid generic annotations.
 
-- only values that look like JSON primitives (plus `bigint` and `symbol` in the in-memory form) are kept
-- some annotation keys are dropped using an internal blacklist
+### Persistence identities
 
-In practice, documentation annotations like `title` and `description` are preserved, while complex values (functions, instances, nested objects) are ignored.
+Opaque declarations and checks need a stable identity before they can be persisted:
 
-### Declarations need a reviver
+```ts
+interface RepresentationAnnotation {
+  readonly id: string
+  readonly payload: Schema.Json
+}
 
-Some runtime schemas are represented as `Declaration` nodes. Rebuilding them requires a "reviver" function.
+interface CheckRepresentationAnnotation<S> extends RepresentationAnnotation {
+  readonly schemas?: ReadonlyArray<S>
+}
+```
 
-`fromRepresentation` ships with a default reviver (`toSchemaDefaultReviver`) that recognizes a fixed set of constructors, including:
+`id` selects a reviver, `payload` contains its JSON configuration, and a check can use `schemas` for schema dependencies.
+This replaces the previous closed set of check metadata. Custom declarations and checks are therefore persistable when
+they provide a representation identity and the consumer provides a matching reviver.
 
-- `effect/Option`, `effect/Result`, `effect/Exit`, ...
-- `ReadonlyMap`, `ReadonlySet`
-- `RegExp`, `URL`, `Date`
-- `FormData`, `URLSearchParams`, `Uint8Array`
-- `DateTime.Utc`, `effect/Duration`
+An unannotated custom declaration or leaf filter can still exist in a live representation, but `toJson` rejects it because
+there is no portable way to reconstruct its user code.
 
-If your document contains other declarations, pass a custom `reviver` to `fromRepresentation`.
+## Creating representations
 
-## JSON round-tripping
+Use `Schema.toRepresentation` when starting from a schema:
+
+```ts
+import { Schema } from "effect"
+
+const document = Schema.toRepresentation(
+  Schema.Struct({ name: Schema.NonEmptyString })
+)
+```
+
+Use the lower-level functions when working directly with ASTs or several roots:
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const document = SchemaRepresentation.toRepresentation(Schema.String.ast)
+
+const multiDocument = SchemaRepresentation.toRepresentations([
+  Schema.String.ast,
+  Schema.Number.ast
+])
+```
+
+Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. `toMultiDocument(document)`
+wraps a single document when a compiler requires multiple roots.
+
+## JSON persistence
 
 ### `toJson` / `fromJson`
 
-- `toJson(document)` returns JSON-compatible data (safe to `JSON.stringify`)
-- `fromJson(unknown)` validates and parses JSON data back into a `Document`
+`toJson(document)` projects and validates a live document, then returns a `Schema.Json` value suitable for storage or
+transport. `fromJson(input)` validates persisted JSON and returns a `Document`; it does not restore runtime callbacks.
 
-Internally, these functions use a canonical JSON codec for `Document$`. This is why values like `bigint` in annotations are encoded as strings in the JSON form and restored on decode.
+The multi-root equivalents are `toJsonMultiDocument` and `fromJsonMultiDocument`.
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const live = Schema.toRepresentation(
+  Schema.String.check(Schema.isMinLength(3))
+)
+
+const json = SchemaRepresentation.toJson(live)
+const persisted = SchemaRepresentation.fromJson(json)
+```
+
+Persisted `Declaration` and `Filter` nodes must contain a representation identity. `fromJson` validates the document but
+does not require the corresponding revivers until reconstruction.
 
 ## Rebuilding runtime schemas
 
 ### `fromRepresentation`
 
-`fromRepresentation(document)` walks the representation tree and recreates a runtime schema.
-
-What it does:
-
-- rebuilds the structural schema nodes (`Struct`, `Tuple`, `Union`, ...)
-- resolves references from `document.references`
-- supports recursive references using `Schema.suspend`
-- re-attaches stored annotations via `.annotate(...)` and `.annotateKey(...)`
-- re-applies supported checks via `.check(...)`
-
-If you need custom handling for declarations:
+`fromRepresentation` rebuilds structural nodes, resolves references, restores recursion, reattaches annotations, and
+reapplies checks. Revivers are resolved by `id`; none are installed implicitly, so the `revivers` array is required even
+when it is empty.
 
 ```ts
-SchemaRepresentation.fromRepresentation(document, {
-  reviver: (declaration, recur) => {
-    // Return a runtime schema to override how a Declaration is rebuilt.
-    // Return undefined to fall back to the default behavior.
-    return undefined
-  }
+import { Schema, SchemaRepresentation } from "effect"
+
+const json = SchemaRepresentation.toJson(
+  Schema.toRepresentation(
+    Schema.String.check(Schema.isMinLength(3))
+  )
+)
+
+const document = SchemaRepresentation.fromJson(json)
+const rebuilt = SchemaRepresentation.fromRepresentation(document, {
+  revivers: [Schema.isMinLengthReviver]
 })
+
+console.log(Schema.is(rebuilt)("abc"))
+// true
+console.log(Schema.is(rebuilt)("a"))
+// false
 ```
 
-## JSON Schema output
+Effect exports individual revivers next to the built-in declarations and checks they reconstruct, such as
+`Schema.OptionReviver`, `Schema.DateReviver`, and `Schema.isMinLengthReviver`. Supply every reviver required by the
+document; a missing or duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
 
-### `toJsonSchemaDocument` / `toJsonSchemaMultiDocument`
+`fromRepresentations` rebuilds every root and named definition in a `MultiDocument` and returns a `SchemaMultiDocument`.
 
-These functions convert a `Document` or `MultiDocument` into a Draft 2020-12 JSON Schema document.
+### Custom revivers
 
-This is useful for tooling that expects JSON Schema, or for producing OpenAPI-compatible schema pieces (depending on your pipeline).
+There are separate reviver contracts for opaque declarations, leaf filters, and opaque filter groups:
+
+- `DeclarationReviver<P>`
+- `FilterReviver<P>`
+- `FilterGroupReviver<P>`
+
+Use `makeDeclarationReviver`, `makeFilterReviver`, and `makeFilterGroupReviver` to infer `P` from `payloadSchema`.
+
+```ts
+import { Schema, SchemaRepresentation } from "effect"
+
+const id = "acme/schema/minLength"
+
+function minLength(
+  minimum: number,
+  annotations?: Schema.Annotations.Filter
+) {
+  return Schema.makeFilter<string>((value) => value.length >= minimum, {
+    ...annotations,
+    representation: { id, payload: { minimum } }
+  })
+}
+
+const minLengthReviver = SchemaRepresentation.makeFilterReviver(
+  id,
+  Schema.Struct({ minimum: Schema.Number }),
+  ({ annotations, payload }) => minLength(payload.minimum, annotations)
+)
+```
+
+The same reviver can then be included in the `revivers` array passed to `fromRepresentation` or
+`fromRepresentations`.
+
+## JSON Schema
+
+### Exporting JSON Schema
+
+For a runtime schema, prefer `Schema.toJsonSchemaDocument(schema)`. It first derives the schema's canonical JSON codec,
+then compiles its encoded representation to JSON Schema Draft 2020-12.
+
+At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
+`toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
+constraints. Opaque declarations that have not been structurally lowered compile to an unconstrained JSON Schema.
+
+Because compiler callbacks are not persisted, compile the live document before calling `toJson`, or rebuild and lower the
+schema with revivers first.
+
+### Importing JSON Schema
+
+`SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
+It does not return a representation document.
+
+`fromJsonSchemaMultiDocument` returns a `SchemaMultiDocument` containing all root schemas and definitions. Use
+`fromSchemaMultiDocument` when that result must be passed to a representation compiler.
+
+Import is best-effort: JSON Schema constructs are translated to Effect schemas where possible, but the result is not a
+lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node
+before it is translated.
 
 ## Code generation
 
 ### `toCodeDocument`
 
-`toCodeDocument` converts a `MultiDocument` into a structure that is convenient for generating TypeScript source.
+`toCodeDocument` compiles a live `MultiDocument` into runtime and TypeScript source fragments. It:
 
-It:
-
-- sorts references so non-recursive definitions can be emitted in dependency order
-- keeps recursive definitions separate (they must be emitted using `Schema.suspend`)
+- returns one `Code` value for each root
+- sorts non-recursive references in dependency order
+- keeps recursive references separate so callers can emit `Schema.suspend`
 - sanitizes reference names into valid JavaScript identifiers
-- collects extra artifacts that must be emitted (enums, symbols, imports)
+- collects symbol, enum, and import artifacts
 
-You can customize:
-
-- `sanitizeReference` to control how `$ref` strings become identifiers
-- `reviver` to generate custom code for `Declaration` nodes
+Opaque declarations and checks provide code through their `toCode` callbacks. `toCodeDocument` does not accept a
+reviver option. To generate code from persisted JSON, first reconstruct the schemas with `fromRepresentation` or
+`fromRepresentations`, then create a new live representation so the revivers can restore the callbacks.
 
 # Error Handling and Formatting
 
