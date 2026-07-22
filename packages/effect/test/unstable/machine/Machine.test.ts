@@ -5345,7 +5345,6 @@ describe("Machine", () => {
 
   it.effect("start composes a complete invoked machine with typed communication boundaries", () =>
     Effect.gen(function*() {
-      const Child = Machine.child<Resolve>("child-machine")
       const progress = yield* Ref.make<ReadonlyArray<string>>([])
       const childStates = Machine.defineStates({ Idle, Success: SuccessOutput })
       const child = Machine.make({
@@ -5368,6 +5367,7 @@ describe("Machine", () => {
           output: ({ state }) => state.requestId
         }
       })
+      const Child = Machine.child("child-machine", child)
       const parentStates = Machine.defineStates({ Idle, Loading, Success: SuccessOutput })
       const parent = Machine.make({
         states: parentStates.states,
@@ -5381,8 +5381,7 @@ describe("Machine", () => {
         },
         Loading: {
           invoke: Machine.invokeMachine({
-            id: Child,
-            machine: child,
+            child: Child,
             input: { userId: "child-user" },
             snapshot: ({ snapshot }) =>
               snapshot.state.path === "Idle"
@@ -5412,21 +5411,28 @@ describe("Machine", () => {
         new Submit({ value: "start" }),
         (snapshot) => snapshot.status === "active" && snapshot.state.path === "Loading"
       )
+      const activeChildren = yield* actor.childChanges(Child).pipe(
+        Stream.filter(Option.isSome),
+        Stream.take(1),
+        Stream.runCollect
+      )
+      assert.strictEqual(activeChildren[0].value.id, "child-machine")
       yield* actor.send(new Resolve({}))
 
       assert.strictEqual(yield* actor.join, "child-output")
+      assert(Option.isNone(yield* actor.child(Child)))
       assert.deepStrictEqual(yield* Ref.get(progress), ["snapshot", "emitted"])
     }))
 
   it.effect("invokeMachine rejects duplicate active child addresses", () =>
     Effect.gen(function*() {
-      const Child = Machine.child<never>("child-machine")
       const childStates = Machine.defineStates({ Idle })
       const child = Machine.make({
         states: childStates.states,
         events: [],
         initial: () => childStates.initial.Idle(new Idle({ userId: "child" }))
       })
+      const Child = Machine.child("child-machine", child)
       const parentStates = Machine.defineStates({ Loading })
       const parent = Machine.make({
         states: parentStates.states,
@@ -5435,8 +5441,8 @@ describe("Machine", () => {
       }).handle({
         Loading: {
           invoke: [
-            Machine.invokeMachine({ id: Child, machine: child }),
-            Machine.invokeMachine({ id: Child, machine: child })
+            Machine.invokeMachine({ child: Child }),
+            Machine.invokeMachine({ child: Child })
           ]
         }
       })

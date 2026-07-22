@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect"
+import { Context, Effect, Layer, type Option, Schema } from "effect"
 import { Machine } from "effect/unstable/machine"
 import { Atom, AtomMachine } from "effect/unstable/reactivity"
 import { describe, expect, it } from "tstyche"
@@ -21,6 +21,24 @@ const makeMachine = () =>
   })
 
 describe("AtomMachine", () => {
+  it("derives invoked child protocols from the child descriptor", () => {
+    const childMachine = makeMachine()
+    const Child = Machine.child("child", childMachine)
+    const parentMachine = Machine.make({
+      states: States.states,
+      events: [],
+      initial: () => States.initial.Idle(new Idle({}))
+    }).handle({
+      Idle: {
+        invoke: Machine.invokeMachine({ child: Child })
+      }
+    })
+    const child = AtomMachine.make(parentMachine).child(Child)
+
+    expect<Atom.Success<typeof child.ref>>().type.toBe<Option.Option<Machine.ChildMachine.Ref<typeof Child>>>()
+    expect<typeof child.send extends Atom.Writable<any, infer Event> ? Event : never>().type.toBe<Tick>()
+  })
+
   it("accepts machines without external requirements", () => {
     expect(AtomMachine.make).type.toBeCallableWith(makeMachine())
   })

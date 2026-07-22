@@ -90,6 +90,68 @@ const makeDelayedCounterMachine = (release: Deferred.Deferred<void>) =>
   })
 
 describe("AtomMachine", () => {
+  it.effect("reactively exposes an invoked child machine", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const registry = yield* makeRegistry
+      const childMachine = makeCounterMachine()
+      const Child = Machine.child("counter", childMachine)
+      const parent = Machine.make({
+        states: { Count, ValueRead },
+        events: [Finish, ReadValue],
+        initial: () => MachineInitial.Count(new Count({ value: 0 }))
+      }).handle({
+        Count: {
+          on: {
+            Finish: () => MachineInitial.ValueRead(new ValueRead({ value: "active" }))
+          }
+        },
+        ValueRead: {
+          invoke: Machine.invokeMachine({ child: Child }),
+          on: {
+            ReadValue: () => MachineInitial.Count(new Count({ value: 0 }))
+          }
+        }
+      })
+      const parentAtoms = AtomMachine.make(parent)
+      const childAtoms = parentAtoms.child(Child)
+      const parentRef = yield* AtomRegistry.getResult(registry, parentAtoms.ref)
+      const directChild = yield* parentRef.child(Child)
+      assert(Option.isNone(directChild))
+      yield* Effect.sync(() => registry.set(childAtoms.send, new Finish({ by: 1 })))
+      const inactiveSend = yield* Effect.sync(() => registry.get(childAtoms.send))
+      assert(AsyncResult.isFailure(inactiveSend))
+      const inactiveSendError = Cause.findErrorOption(inactiveSend.cause)
+      assert(Option.isSome(inactiveSendError))
+      assert.instanceOf(inactiveSendError.value, AtomMachine.ChildNotActiveError)
+      const childChange = yield* parentRef.childChanges(Child).pipe(
+        Stream.filter(Option.isSome),
+        Stream.take(1),
+        Stream.runCollect,
+        Effect.forkScoped
+      )
+      yield* mount(registry, childAtoms.state)
+      yield* Effect.sync(() => registry.set(parentAtoms.send, new Finish({ by: 0 })))
+      yield* waitForResult(registry, parentAtoms.state, (state) => state.path === "ValueRead")
+      yield* Fiber.join(childChange)
+      assert(Option.isSome(yield* parentRef.child(Child)))
+
+      const initial = yield* waitForResult(registry, childAtoms.state, Option.isSome)
+      assert(Option.isSome(initial))
+      assert.strictEqual(initial.value.value.value, 0)
+
+      yield* Effect.sync(() => registry.set(childAtoms.send, new Finish({ by: 2 })))
+      const updated = yield* waitForResult(
+        registry,
+        childAtoms.state,
+        (state) => Option.isSome(state) && state.value.value.value === 2
+      )
+      assert(Option.isSome(updated))
+
+      yield* Effect.sync(() => registry.set(parentAtoms.send, new ReadValue({})))
+      const inactive = yield* waitForResult(registry, childAtoms.ref, Option.isNone)
+      assert(Option.isNone(inactive))
+    })))
+
   it.effect("exposes snapshots and sends events", () =>
     Effect.scoped(Effect.gen(function*() {
       const registry = yield* makeRegistry

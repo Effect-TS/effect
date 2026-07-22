@@ -836,6 +836,14 @@ export interface MachineRef<out State, in Event, out Error = never, out Output =
   readonly join: Effect.Effect<Output, Error | StoppedError>
   readonly stop: Effect.Effect<void>
   readonly send: (event: Event) => Effect.Effect<void, StoppedError>
+  /** Returns the current directly owned child for a typed descriptor. */
+  readonly child: <Child extends ChildMachine.Any>(
+    child: Child
+  ) => Effect.Effect<Option.Option<ChildMachine.Ref<Child>>>
+  /** Streams activation, replacement, and removal of a directly owned child. */
+  readonly childChanges: <Child extends ChildMachine.Any>(
+    child: Child
+  ) => Stream.Stream<Option.Option<ChildMachine.Ref<Child>>>
 }
 
 /**
@@ -941,6 +949,83 @@ export declare namespace Logic {
 
 const ChildAddressTypeId = "~effect/Machine/ChildAddress"
 const ChildAddressCompatibilityErrorTypeId = "~effect/Machine/ChildAddressCompatibilityError"
+const ChildMachineTypeId = "~effect/Machine/ChildMachine"
+
+/**
+ * Typed descriptor for a complete machine invoked as a child.
+ *
+ * **Details**
+ *
+ * The descriptor carries the child's address and complete machine type. Pass
+ * the same value to `invokeMachine`, `sendTo`, and child lookup APIs so state,
+ * event, error, and output types are inferred without separate annotations.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface ChildMachine<Id extends string, M extends Machine.Any> {
+  readonly [ChildMachineTypeId]: typeof ChildMachineTypeId
+  readonly id: Id
+  readonly machine: M
+}
+
+/**
+ * Namespace containing type-level members associated with `ChildMachine`.
+ *
+ * @since 4.0.0
+ */
+export declare namespace ChildMachine {
+  /**
+   * Any typed child machine descriptor.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export type Any = ChildMachine<string, Machine.Any>
+
+  /**
+   * Running machine reference selected by a child descriptor.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Ref<Child> = Child extends ChildMachine<string, infer M> ? M extends Machine<
+      infer States,
+      infer Events,
+      any,
+      any,
+      infer E,
+      infer R,
+      infer InitialE,
+      infer InitialR,
+      any,
+      infer Output,
+      any,
+      any
+    > ? MachineRef<
+        Machine.Snapshot<States>,
+        Machine.EventOf<Events>,
+        | E
+        | InitialE
+        | ActionError<R | InitialR>
+        | InfiniteTransitionError
+        | MachineSchemaDecodeError
+        | StartupError
+        | StoppedError
+        | UnhandledEventError,
+        Output | undefined
+      >
+    : never
+    : never
+
+  /**
+   * Event accepted by the child selected by a descriptor.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Event<Child> = Ref<Child> extends MachineRef<any, infer Event, any, any> ? Event : never
+}
 
 /**
  * Parent-local address for a child process that can receive events.
@@ -3977,19 +4062,21 @@ export const invokeMachine: {
   >(
     config:
       & {
-        readonly id: Id
-        readonly machine: Machine<
-          States,
-          Events,
-          Input,
-          UnhandledStates,
-          E,
-          R,
-          InitialE,
-          InitialR,
-          FinalStates,
-          Output,
-          Emits
+        readonly child: ChildMachine<
+          Id,
+          Machine<
+            States,
+            Events,
+            Input,
+            UnhandledStates,
+            E,
+            R,
+            InitialE,
+            InitialR,
+            FinalStates,
+            Output,
+            Emits
+          >
         >
         readonly snapshot?: (
           context: Machine.InvokeSnapshotContext<
@@ -4008,7 +4095,6 @@ export const invokeMachine: {
         readonly onDone: (context: Machine.InvokeDoneContext<Output | undefined>) => DoneEvent | undefined
       }
       & InvokeMachineInput<Input>
-      & ChildAddress.Compatibility<Id, Machine.EventOf<Events>>
   ): Machine.InvokeConfig<
     any,
     any,
@@ -4045,19 +4131,21 @@ export const invokeMachine: {
   >(
     config:
       & {
-        readonly id: Id
-        readonly machine: Machine<
-          States,
-          Events,
-          Input,
-          UnhandledStates,
-          E,
-          R,
-          InitialE,
-          InitialR,
-          FinalStates,
-          Output,
-          Emits
+        readonly child: ChildMachine<
+          Id,
+          Machine<
+            States,
+            Events,
+            Input,
+            UnhandledStates,
+            E,
+            R,
+            InitialE,
+            InitialR,
+            FinalStates,
+            Output,
+            Emits
+          >
         >
         readonly snapshot?: (
           context: Machine.InvokeSnapshotContext<
@@ -4076,7 +4164,6 @@ export const invokeMachine: {
         readonly onDone?: never
       }
       & InvokeMachineInput<Input>
-      & ChildAddress.Compatibility<Id, Machine.EventOf<Events>>
   ): Machine.InvokeConfig<
     any,
     any,
@@ -4096,15 +4183,14 @@ export const invokeMachine: {
     Machine.EmitOf<Emits>
   >
 } = ((config: {
-  readonly id: string
-  readonly machine: Machine.Any
+  readonly child: ChildMachine.Any
   readonly input?: unknown
   readonly snapshot?: (context: Machine.InvokeSnapshotContext<any, any, any>) => unknown
   readonly onDone?: (context: Machine.InvokeDoneContext<any>) => unknown
 }) => {
-  const machine = config.machine
+  const machine = config.child.machine
   return {
-    id: config.id,
+    id: config.child.id,
     addressable: true,
     src: () =>
       machine.input === undefined
@@ -4503,12 +4589,24 @@ export const transition = <State, Event, Error = never, Requirements = never>(
   })
 
 /**
- * Creates a typed parent-local address for a child process.
+ * Creates a typed parent-local child address or complete machine descriptor.
+ *
+ * **When to use**
+ *
+ * Use with a complete machine to create the descriptor shared by
+ * `invokeMachine`, `sendTo`, and child lookup APIs. The one-argument form
+ * creates an event-only address for lower-level process logic.
  *
  * @category constructors
  * @since 4.0.0
  */
-export const child = <Event>(id: string): ChildAddress<Event> => id as ChildAddress<Event>
+export const child: {
+  <const Id extends string, M extends Machine.Any>(id: Id, machine: M): ChildMachine<Id, M>
+  <Event>(id: string): ChildAddress<Event>
+} = ((id: string, machine?: Machine.Any) =>
+  machine === undefined
+    ? id
+    : { [ChildMachineTypeId]: ChildMachineTypeId, id, machine }) as any
 
 /**
  * Spawns a child process owned by the currently running machine.
@@ -4583,12 +4681,20 @@ export const spawn: {
  * @category runtime
  * @since 4.0.0
  */
-export const sendTo: <Address extends string>(
-  id: Address,
-  event: ChildAddress.Event<Address>
-) => Effect.Effect<void, StoppedError, MachineRuntimeRequirement> =
-  ((id: string, event: unknown) =>
-    Effect.flatMap(internalRuntime.MachineRuntime, (runtime) => runtime.sendTo(id, event))) as any
+export const sendTo: {
+  <Child extends ChildMachine.Any>(
+    child: Child,
+    event: ChildMachine.Event<Child>
+  ): Effect.Effect<void, StoppedError, MachineRuntimeRequirement>
+  <Address extends string>(
+    id: Address,
+    event: ChildAddress.Event<Address>
+  ): Effect.Effect<void, StoppedError, MachineRuntimeRequirement>
+} = ((child: string | ChildMachine.Any, event: unknown) =>
+  Effect.flatMap(
+    internalRuntime.MachineRuntime,
+    (runtime) => runtime.sendTo(typeof child === "string" ? child : child.id, event)
+  )) as any
 
 /**
  * Stops a named child process of the running machine.
@@ -4596,8 +4702,13 @@ export const sendTo: <Address extends string>(
  * @category runtime
  * @since 4.0.0
  */
-export const stopChild: (id: string) => Effect.Effect<void, never, MachineRuntimeRequirement> =
-  ((id: string) => Effect.flatMap(internalRuntime.MachineRuntime, (runtime) => runtime.stopChild(id))) as any
+export const stopChild: (
+  child: string | ChildMachine.Any
+) => Effect.Effect<void, never, MachineRuntimeRequirement> = ((child: string | ChildMachine.Any) =>
+  Effect.flatMap(
+    internalRuntime.MachineRuntime,
+    (runtime) => runtime.stopChild(typeof child === "string" ? child : child.id)
+  )) as any
 
 /**
  * Returns a stream of terminal lifecycle outcomes for a running machine.

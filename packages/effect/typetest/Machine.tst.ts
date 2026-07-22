@@ -500,10 +500,11 @@ describe("Machine", () => {
         output: () => new SignIn({ userId: "child" })
       }
     })
-    const Child = Machine.child<SignIn>("child")
+    const Child = Machine.child("child", child)
+    expect(Machine.sendTo).type.toBeCallableWith(Child, new SignIn({ userId: "child" }))
+    expect(Machine.sendTo).type.not.toBeCallableWith(Child, new Down({}))
     const invocation = Machine.invokeMachine({
-      id: Child,
-      machine: child,
+      child: Child,
       input: { userId: "child" },
       snapshot: ({ snapshot }) => {
         expect(snapshot.state).type.toBe<Machine.Machine.Snapshot<typeof childStates.states>>()
@@ -522,8 +523,7 @@ describe("Machine", () => {
 
     expect(parent.handle).type.toBeCallableWith({ down: { invoke: invocation } })
     expect(Machine.invokeMachine).type.not.toBeCallableWith({
-      id: Child,
-      machine: child
+      child: Child
     })
 
     const incompatibleEmits = Machine.make({
@@ -541,8 +541,7 @@ describe("Machine", () => {
     expect(parent.handle).type.not.toBeCallableWith({
       down: {
         invoke: Machine.invokeMachine({
-          id: Child,
-          machine: incompatibleEmits,
+          child: Machine.child("incompatible", incompatibleEmits),
           input: { userId: "child" }
         })
       }
@@ -550,8 +549,7 @@ describe("Machine", () => {
     expect(parent.handle).type.not.toBeCallableWith({
       down: {
         invoke: Machine.invokeMachine({
-          id: Child,
-          machine: child,
+          child: Child,
           input: { userId: "child" },
           snapshot: () => new Down({})
         })
@@ -560,8 +558,7 @@ describe("Machine", () => {
     expect(parent.handle).type.not.toBeCallableWith({
       down: {
         invoke: Machine.invokeMachine({
-          id: Child,
-          machine: child,
+          child: Child,
           input: { userId: "child" },
           onDone: () => new Down({})
         })
