@@ -3053,15 +3053,16 @@ const getUsage = (usage: OpenAiSchema.ResponseUsage | null | undefined): Respons
 
   const inputTokens = usage.input_tokens
   const outputTokens = usage.output_tokens
-  const cachedTokens = getUsageTokenDetail(usage.input_tokens_details, "cached_tokens")
-  const reasoningTokens = getUsageTokenDetail(usage.output_tokens_details, "reasoning_tokens")
+  const cachedTokens = getUsageTokenDetail(usage.input_tokens_details, "cached_tokens") ?? 0
+  const cacheWriteTokens = getUsageTokenDetail(usage.input_tokens_details, "cache_write_tokens")
+  const reasoningTokens = getUsageTokenDetail(usage.output_tokens_details, "reasoning_tokens") ?? 0
 
   return {
     inputTokens: {
       uncached: inputTokens - cachedTokens,
       total: inputTokens,
       cacheRead: cachedTokens,
-      cacheWrite: undefined
+      cacheWrite: cacheWriteTokens
     },
     outputTokens: {
       total: outputTokens,
@@ -3092,8 +3093,8 @@ const toServiceTier = (value: string | undefined): {
   }
 }
 
-const getUsageTokenDetail = (details: unknown, key: string): number =>
-  Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : 0
+const getUsageTokenDetail = (details: unknown, key: string): number | undefined =>
+  Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : undefined
 
 const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
   tools: Tools,
