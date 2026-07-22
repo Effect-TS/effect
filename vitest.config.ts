@@ -184,6 +184,7 @@ export default defineConfig({
       ...project("@effect/sql-sqlite-node", "packages/sql/sqlite-node", !isDeno),
       ...project("@effect/sql-sqlite-react-native", "packages/sql/sqlite-react-native"),
       ...project("@effect/sql-sqlite-wasm", "packages/sql/sqlite-wasm"),
+      ...project("@effect/sql-tursodatabase", "packages/sql/tursodatabase", isNode),
       ...project("@effect/api-diff", "packages/tools/api-diff"),
       ...project("@effect/bundle", "packages/tools/bundle"),
       ...project("@effect/doctest", "packages/tools/doctest"),

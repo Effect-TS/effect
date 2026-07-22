@@ -75,6 +75,8 @@
       "@effect/sql-sqlite-react-native/*": ["./packages/sql/sqlite-react-native/src/*.ts"],
       "@effect/sql-sqlite-wasm": ["./packages/sql/sqlite-wasm/src/index.ts"],
       "@effect/sql-sqlite-wasm/*": ["./packages/sql/sqlite-wasm/src/*.ts"],
+      "@effect/sql-tursodatabase": ["./packages/sql/tursodatabase/src/index.ts"],
+      "@effect/sql-tursodatabase/*": ["./packages/sql/tursodatabase/src/*.ts"],
       "@effect/ai-codegen": ["./packages/tools/ai-codegen/src/index.ts"],
       "@effect/ai-codegen/*": ["./packages/tools/ai-codegen/src/*.ts"],
       "@effect/api-diff": ["./packages/tools/api-diff/src/Cli.ts"],
