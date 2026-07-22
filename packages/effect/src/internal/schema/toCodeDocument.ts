@@ -1,5 +1,5 @@
 import * as Arr from "../../Array.ts"
-import { formatPropertyKey } from "../../Formatter.ts"
+import { format, formatPropertyKey } from "../../Formatter.ts"
 import type * as Schema from "../../Schema.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
@@ -15,22 +15,17 @@ export function makeCode(runtime: string, Type: string): SchemaRepresentation.Co
   return { runtime, Type }
 }
 
-function renderNumber(value: number): string {
-  if (Number.isNaN(value)) return "NaN"
-  if (value === Infinity) return "Infinity"
-  if (value === -Infinity) return "-Infinity"
-  return globalThis.String(value)
-}
-
 function renderEmittableAnnotation(input: unknown): string | undefined {
-  if (input === null) return "null"
-  if (typeof input === "string") return JSON.stringify(input)
-  if (typeof input === "boolean") return globalThis.String(input)
-  if (typeof input === "number") return renderNumber(input)
-  if (typeof input === "bigint") return `${input}n`
+  if (
+    input === null ||
+    typeof input === "string" ||
+    typeof input === "boolean" ||
+    typeof input === "number" ||
+    typeof input === "bigint"
+  ) return format(input)
   if (typeof input === "symbol") {
     const key = globalThis.Symbol.keyFor(input)
-    return key === undefined ? undefined : `Symbol.for(${JSON.stringify(key)})`
+    return key === undefined ? undefined : `Symbol.for(${format(key)})`
   }
   if (typeof input !== "object") return undefined
   if (Array.isArray(input)) {
@@ -47,7 +42,7 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
   for (const [key, value] of Object.entries(input)) {
     const rendered = renderEmittableAnnotation(value)
     if (rendered === undefined) return undefined
-    entries.push(`${JSON.stringify(key)}: ${rendered}`)
+    entries.push(`${formatPropertyKey(key)}: ${rendered}`)
   }
   return `{ ${entries.join(", ")} }`
 }
@@ -60,7 +55,7 @@ function renderAnnotations(
   for (const [key, value] of Object.entries(annotations)) {
     if (InternalAnnotations.annotationExcludedKeys.has(key)) continue
     const rendered = renderEmittableAnnotation(value)
-    if (rendered !== undefined) entries.push(`${JSON.stringify(key)}: ${rendered}`)
+    if (rendered !== undefined) entries.push(`${formatPropertyKey(key)}: ${rendered}`)
   }
   return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`
 }
@@ -75,19 +70,6 @@ export function sanitizeJavaScriptIdentifier(input: string): string {
     : first >= "0" && first <= "9"
     ? `_${out}`
     : out
-}
-
-function renderLiteral(value: string | number | boolean | bigint): string {
-  switch (typeof value) {
-    case "string":
-      return JSON.stringify(value)
-    case "number":
-      return renderNumber(value)
-    case "boolean":
-      return globalThis.String(value)
-    case "bigint":
-      return `${value}n`
-  }
 }
 
 function isSimpleLiveLiteral(
@@ -324,8 +306,8 @@ export function toCodeDocument(
       identifier,
       code: makeCode(
         key === undefined
-          ? `Symbol(${description === undefined ? "" : JSON.stringify(description)})`
-          : `Symbol.for(${JSON.stringify(key)})`,
+          ? `Symbol(${description === undefined ? "" : format(description)})`
+          : `Symbol.for(${format(key)})`,
         `typeof ${identifier}`
       )
     })
@@ -355,13 +337,13 @@ export function toCodeDocument(
   function runtimeBrands(brands: ReadonlyArray<string>): string {
     return brands.length === 0
       ? ""
-      : `.pipe(${brands.map((brand) => `Schema.brand(${JSON.stringify(brand)})`).join(", ")})`
+      : `.pipe(${brands.map((brand) => `Schema.brand(${format(brand)})`).join(", ")})`
   }
 
   function typeBrands(brands: ReadonlyArray<string>): string {
     if (brands.length === 0) return ""
     addImport(`import type * as Brand from "effect/Brand"`)
-    return brands.map((brand) => ` & Brand.Brand<${JSON.stringify(brand)}>`).join("")
+    return brands.map((brand) => ` & Brand.Brand<${format(brand)}>`).join("")
   }
 
   function runtimeAnnotate(
@@ -479,7 +461,7 @@ export function toCodeDocument(
       case "Symbol":
         return makeCode("Schema.Symbol", "symbol")
       case "Literal": {
-        const literal = renderLiteral(representation.literal)
+        const literal = format(representation.literal)
         return makeCode(`Schema.Literal(${literal})`, literal)
       }
       case "UniqueSymbol": {
@@ -495,7 +477,7 @@ export function toCodeDocument(
           identifier,
           code: makeCode(
             `enum ${identifier} { ${
-              representation.enums.map(([name, value]) => `${JSON.stringify(name)} = ${renderLiteral(value)}`).join(
+              representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(
                 ", "
               )
             } }`,
@@ -590,7 +572,7 @@ export function toCodeDocument(
       case "Union": {
         if (representation.types.length === 0) return makeCode("Schema.Never", "never")
         if (representation.types.every(isSimpleLiveLiteral)) {
-          const literals = representation.types.map((literal) => renderLiteral(literal.literal))
+          const literals = representation.types.map((literal) => format(literal.literal))
           return literals.length === 1
             ? makeCode(`Schema.Literal(${literals[0]})`, literals[0])
             : makeCode(`Schema.Literals([${literals.join(", ")}])`, literals.join(" | "))
