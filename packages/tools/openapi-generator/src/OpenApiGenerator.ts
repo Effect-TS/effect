@@ -852,18 +852,21 @@ const transformMultipartSchema = (
     }
 
     if (typeof value.$ref === "string" && value.$ref.startsWith("#/components/schemas/")) {
-      const cached = cache.get(value.$ref)
+      const { $ref, ...siblings } = value
+      const withSiblings = (schema: unknown): unknown =>
+        Object.keys(siblings).length === 0 ? schema : { allOf: [schema, visit(siblings)] }
+      const cached = cache.get($ref)
       if (cached !== undefined) {
-        return cached
+        return withSiblings(cached)
       }
-      if (stack.has(value.$ref)) {
+      if (stack.has($ref)) {
         return value
       }
-      stack.add(value.$ref)
-      const transformed = visit(resolveSchemaReference(value.$ref, resolveRef))
-      stack.delete(value.$ref)
-      cache.set(value.$ref, transformed)
-      return transformed
+      stack.add($ref)
+      const transformed = visit(resolveRef($ref))
+      stack.delete($ref)
+      cache.set($ref, transformed)
+      return withSiblings(transformed)
     }
 
     if (isMultipartBinaryFile(value)) {
@@ -883,19 +886,6 @@ const transformMultipartSchema = (
   }
 
   return visit(schema) as JsonSchema.JsonSchema
-}
-
-const resolveSchemaReference = (ref: string, resolveRef: (ref: string) => unknown): unknown => {
-  let current: unknown = { $ref: ref }
-  const seen = new Set<string>()
-  while (Predicate.isObject(current) && typeof current.$ref === "string") {
-    if (seen.has(current.$ref)) {
-      return current
-    }
-    seen.add(current.$ref)
-    current = resolveRef(current.$ref)
-  }
-  return current
 }
 
 const isMultipartBinaryFile = (value: unknown): value is JsonSchema.JsonSchema =>

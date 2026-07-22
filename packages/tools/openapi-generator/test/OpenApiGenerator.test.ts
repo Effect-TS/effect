@@ -1542,6 +1542,144 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
         ]
       ))
 
+    it.effect("preserves multipart component reference siblings", () =>
+      assertHttpApiIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/upload": {
+              post: {
+                operationId: "upload",
+                parameters: [],
+                requestBody: {
+                  required: true,
+                  content: {
+                    "multipart/form-data": {
+                      schema: {
+                        type: "object",
+                        properties: {
+                          first: {
+                            $ref: "#/components/schemas/UploadBody",
+                            minProperties: 1,
+                            description: "First upload"
+                          },
+                          second: {
+                            $ref: "#/components/schemas/UploadBody",
+                            minProperties: 2,
+                            description: "Second upload"
+                          }
+                        },
+                        required: ["first", "second"],
+                        additionalProperties: false
+                      }
+                    }
+                  }
+                } as any,
+                responses: {
+                  200: {
+                    description: "Uploaded"
+                  }
+                },
+                tags: ["Payload"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              UploadBody: {
+                type: "object",
+                properties: {
+                  file: { type: "string", format: "binary" }
+                },
+                required: ["file"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Payload" }]
+        },
+        [
+          `"first": Schema.Struct({ "file": __HttpApiMultipartSingleFile })`,
+          `Schema.isMinProperties(1)`,
+          `"description": "First upload"`,
+          `"second": Schema.Struct({ "file": __HttpApiMultipartSingleFile })`,
+          `Schema.isMinProperties(2)`,
+          `"description": "Second upload"`
+        ]
+      ))
+
+    it.effect("preserves multipart component alias siblings", () =>
+      assertHttpApiIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/upload": {
+              post: {
+                operationId: "upload",
+                parameters: [],
+                requestBody: {
+                  required: true,
+                  content: {
+                    "multipart/form-data": {
+                      schema: {
+                        $ref: "#/components/schemas/UploadAlias"
+                      }
+                    }
+                  }
+                } as any,
+                responses: {
+                  200: {
+                    description: "Uploaded"
+                  }
+                },
+                tags: ["Payload"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {
+              UploadAlias: {
+                $ref: "#/components/schemas/UploadBody",
+                minProperties: 1,
+                description: "Aliased upload"
+              },
+              UploadBody: {
+                type: "object",
+                properties: {
+                  file: { type: "string", format: "binary" }
+                },
+                required: ["file"],
+                additionalProperties: false
+              }
+            },
+            securitySchemes: {}
+          },
+          security: [],
+          tags: [{ name: "Payload" }]
+        },
+        [
+          `export type UploadRequestFormData = { readonly "file": __HttpApiMultipartSingleFile }`,
+          `Schema.isMinProperties(1)`,
+          `"description": "Aliased upload"`
+        ],
+        [
+          `export type UploadAlias =`,
+          `export type UploadBody =`
+        ]
+      ))
+
     it.effect("maps multipart contentEncoding binary schemas (case-insensitive) to Multipart file schemas", () =>
       assertHttpApiIncludes(
         {
