@@ -1378,7 +1378,7 @@ export class Number extends Base {
     ) {
       return this
     }
-    return replaceEncoding(this, [numberToJson])
+    return replaceEncoding(this, [numberToJson(this.checks)])
   }
   /** @internal */
   toCodecStringTree(): AST {
@@ -1397,6 +1397,20 @@ function hasCheck(checks: ReadonlyArray<Check<unknown>>, id: string): boolean {
   return checks.some((check) =>
     check.annotations?.representation?.id === id ||
     (check._tag === "FilterGroup" && hasCheck(check.checks, id))
+  )
+}
+
+function numberToJson(checks: Checks | undefined): Link {
+  const encodedFinite = checks === undefined
+    ? finite
+    : appendChecks(finite, checks)
+
+  return new Link(
+    new Union([encodedFinite, nonFiniteLiterals], "anyOf"),
+    new SchemaTransformation.Transformation(
+      SchemaGetter.Number(),
+      SchemaGetter.transform((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))
+    )
   )
 }
 
@@ -2772,6 +2786,12 @@ const parseUnion = iterateEager<{
   }
 })
 
+const nonFiniteLiterals = new Union([
+  new Literal("Infinity"),
+  new Literal("-Infinity"),
+  new Literal("NaN")
+], "anyOf")
+
 function formatIsMutable(isMutable: boolean | undefined): string {
   return isMutable ? "" : "readonly "
 }
@@ -3020,22 +3040,8 @@ export function isFinite(annotations?: Schema.Annotations.Filter) {
   )
 }
 
-const nonFiniteLiterals = new Union([
-  new Literal("Infinity"),
-  new Literal("-Infinity"),
-  new Literal("NaN")
-], "anyOf")
-
 /** @internal */
 export const finite = appendChecks(number, [isFinite()])
-
-const numberToJson = new Link(
-  new Union([finite, nonFiniteLiterals], "anyOf"),
-  new SchemaTransformation.Transformation(
-    SchemaGetter.Number(),
-    SchemaGetter.transform((n) => globalThis.Number.isFinite(n) ? n : globalThis.String(n))
-  )
-)
 
 /**
  * Creates a {@link Filter} that validates strings by running `RegExp.test`.

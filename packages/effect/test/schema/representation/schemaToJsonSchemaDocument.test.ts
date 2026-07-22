@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 
-describe("Schema JSON Schema consumer", () => {
+describe("Schema.toJsonSchemaDocument", () => {
   it("keeps toRepresentation on the type side and projects the encoded side for JSON Schema", () => {
     const representation = Schema.toRepresentation(Schema.FiniteFromString)
     assert.strictEqual(representation.representation._tag, "Number")
@@ -20,6 +20,28 @@ describe("Schema JSON Schema consumer", () => {
       minItems: 1,
       maxItems: 1
     })
+  })
+
+  it("preserves Number checks on the finite encoded branch", () => {
+    assert.deepStrictEqual(
+      Schema.toJsonSchemaDocument(Schema.Number.check(Schema.isGreaterThan(0))),
+      {
+        dialect: "draft-2020-12",
+        schema: {
+          anyOf: [
+            {
+              type: "number",
+              allOf: [{ exclusiveMinimum: 0 }]
+            },
+            {
+              type: "string",
+              enum: ["Infinity", "-Infinity", "NaN"]
+            }
+          ]
+        },
+        definitions: {}
+      }
+    )
   })
 
   it("preserves output, references and generation options", () => {
