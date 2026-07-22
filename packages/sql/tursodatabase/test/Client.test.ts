@@ -2,6 +2,7 @@ import { TursoClient } from "@effect/sql-tursodatabase"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import { Reactivity } from "effect/unstable/reactivity"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 const makeClient = TursoClient.make({
   url: ":memory:"
@@ -92,4 +93,13 @@ describe("Client", () => {
       const rows = yield* sql<{ total_rows: number }>`select count(*) as total_rows FROM test`
       assert.deepStrictEqual(rows.at(0)?.total_rows, 1)
     }))
+
+  it.effect("honors SafeIntegers for .values queries", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, big INTEGER)`
+      yield* sql`INSERT INTO test (big) VALUES (9007199254740993)`
+      const rows = yield* sql`SELECT big FROM test`.values
+      assert.deepStrictEqual(rows, [[9007199254740993n]])
+    }).pipe(Effect.provideService(SqlClient.SafeIntegers, true)))
 })

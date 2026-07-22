@@ -135,7 +135,7 @@ export declare namespace TursoClientConfig {
  */
 export const make = (
   options: TursoClientConfig
-): Effect.Effect<TursoClient, never, Scope.Scope | Reactivity.Reactivity> =>
+): Effect.Effect<TursoClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
   Effect.gen(function*() {
     const compiler = Statement.makeCompilerSqlite(options.transformQueryNames)
     const transformRows = options.transformResultNames ?
@@ -152,9 +152,12 @@ export const make = (
     const db = "liveClient" in options
       ? options.liveClient
       : yield* Effect.acquireRelease(
-        Effect.promise(() => {
-          const { spanAttributes: _s, transformQueryNames: _q, transformResultNames: _r, url, ...opts } = options
-          return connect(url.toString(), opts as DatabaseOpts)
+        Effect.tryPromise({
+          try: () => {
+            const { spanAttributes: _s, transformQueryNames: _q, transformResultNames: _r, url, ...opts } = options
+            return connect(url.toString(), opts as DatabaseOpts)
+          },
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to open database", "openDatabase") })
         }),
         (db) => Effect.promise(() => db.close())
       )
@@ -193,15 +196,20 @@ export const make = (
       statement: StatementPromise,
       params: ReadonlyArray<unknown>
     ) =>
-      Effect.tryPromise({
-        try: async () => {
-          if (statement.reader) {
-            return await statement.raw(true).all(...params) as ReadonlyArray<ReadonlyArray<unknown>>
-          }
-          await statement.run(...params)
-          return []
-        },
-        catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
+      Effect.withFiber<ReadonlyArray<ReadonlyArray<unknown>>, SqlError>((fiber) => {
+        if (Context.get(fiber.context, Client.SafeIntegers)) {
+          statement.safeIntegers(true)
+        }
+        return Effect.tryPromise({
+          try: async () => {
+            if (statement.reader) {
+              return await statement.raw(true).all(...params) as ReadonlyArray<ReadonlyArray<unknown>>
+            }
+            await statement.run(...params)
+            return []
+          },
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
+        })
       })
 
     const run = (sql: string, params: ReadonlyArray<unknown>, raw = false) =>
@@ -271,7 +279,7 @@ export const make = (
  */
 export const layerConfig = (
   config: Config.Wrap<TursoClientConfig>
-): Layer.Layer<TursoClient | Client.SqlClient, Config.ConfigError> =>
+): Layer.Layer<TursoClient | Client.SqlClient, Config.ConfigError | SqlError> =>
   Layer.effectContext(
     Config.unwrap(config).pipe(
       Effect.flatMap(make),
@@ -291,7 +299,7 @@ export const layerConfig = (
  */
 export const layer = (
   config: TursoClientConfig
-): Layer.Layer<TursoClient | Client.SqlClient> =>
+): Layer.Layer<TursoClient | Client.SqlClient, SqlError> =>
   Layer.effectContext(
     Effect.map(make(config), (client) =>
       Context.make(TursoClient, client).pipe(
