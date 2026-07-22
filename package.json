@@ -75,28 +75,5 @@
     "vitest": "4.1.10",
     "vitest-websocket-mock": "^0.5.0",
     "zod": "^4.4.3"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "@changesets/assemble-release-plan": "patches/@changesets__assemble-release-plan.patch",
-      "@changesets/get-github-info": "patches/@changesets__get-github-info.patch"
-    },
-    "ignoredBuiltDependencies": [
-      "core-js",
-      "cpu-features",
-      "dprint",
-      "esbuild",
-      "lmdb",
-      "msgpackr-extract",
-      "msw",
-      "protobufjs",
-      "sharp",
-      "ssh2",
-      "unrs-resolver",
-      "workerd"
-    ],
-    "onlyBuiltDependencies": [
-      "better-sqlite3"
-    ]
   }
 }
