@@ -14446,7 +14446,7 @@ function getClassSchemaFactory<S extends Constraint>(
             terminal: from.terminal?.map((args: S["Type"]) => new self(args))
           }),
           toFormatter: ([from]: readonly [Formatter<S["Type"]>]) => (t: Self) => `${self.identifier}(${from(t)})`,
-          "~sentinels": SchemaAST.collectSentinels(from.ast),
+          [InternalAnnotations.SENTINELS_ANNOTATION_KEY]: SchemaAST.collectSentinels(from.ast),
           ...annotations
         }
       )

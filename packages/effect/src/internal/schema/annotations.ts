@@ -19,6 +19,23 @@ export const STRUCTURAL_ANNOTATION_KEY = "~structural"
 export const IDENTIFIER_FALLBACK_KEY = "~identifier"
 
 /** @internal */
+export const SENTINELS_ANNOTATION_KEY = "~sentinels"
+
+/** @internal */
+export const jsonSchemaAnnotationKeys = [
+  "title",
+  "description",
+  "default",
+  "examples",
+  "readOnly",
+  "writeOnly",
+  "format",
+  "contentEncoding",
+  "contentMediaType",
+  "contentSchema"
+] as const
+
+/** @internal */
 export const resolveIdentifier = resolveAt<string>("identifier")
 
 /** @internal */
@@ -47,8 +64,8 @@ export function collectBrands(annotations: Schema.Annotations.Annotations | unde
 
 /** @internal */
 export const annotationExcludedKeys = new Set([
-  "~sentinels",
-  "~structural",
+  SENTINELS_ANNOTATION_KEY,
+  STRUCTURAL_ANNOTATION_KEY,
   "representation",
   "arbitrary",
   "brands",
@@ -59,5 +76,6 @@ export const annotationExcludedKeys = new Set([
   "toFormatter",
   "toCodec",
   "toCodecJson",
+  "toCodecStringTree",
   "toCodecIso"
 ])

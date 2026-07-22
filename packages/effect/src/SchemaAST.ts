@@ -2488,7 +2488,7 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
     default:
       return []
     case "Declaration": {
-      const s = ast.annotations?.["~sentinels"]
+      const s = ast.annotations?.[InternalAnnotations.SENTINELS_ANNOTATION_KEY]
       return Array.isArray(s) ? s : []
     }
     case "Objects":

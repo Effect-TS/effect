@@ -16,16 +16,7 @@ type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnn
 const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.annotationExcludedKeys,
   InternalAnnotations.IDENTIFIER_FALLBACK_KEY,
-  "title",
-  "description",
-  "default",
-  "examples",
-  "readOnly",
-  "writeOnly",
-  "format",
-  "contentEncoding",
-  "contentMediaType",
-  "contentSchema"
+  ...InternalAnnotations.jsonSchemaAnnotationKeys
 ])
 
 function collectJsonSchemaAnnotations(

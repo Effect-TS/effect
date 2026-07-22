@@ -6,6 +6,7 @@ import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
+import * as InternalAnnotations from "./annotations.ts"
 import { fromRepresentation, fromRepresentations } from "./fromRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
@@ -76,19 +77,6 @@ const jsonSchemaObjectKeys = [
   "maxProperties"
 ]
 const jsonSchemaArrayKeys = ["items", "prefixItems", "additionalItems", "minItems", "maxItems", "uniqueItems"]
-const jsonSchemaAnnotationKeys = [
-  "title",
-  "description",
-  "default",
-  "examples",
-  "readOnly",
-  "writeOnly",
-  "format",
-  "contentEncoding",
-  "contentMediaType",
-  "contentSchema"
-] as const
-
 function isImportedJsonSchemaType(input: unknown): input is JsonSchema.Type {
   return typeof input === "string" && jsonSchemaTypes.has(input)
 }
@@ -654,7 +642,7 @@ function translateJsonSchemaMultiDocument(
     let representation = on(schema, path)
     if (representation._tag === "Reference") {
       const siblingSchema: JsonSchema.JsonSchema = { ...schema, $ref: undefined }
-      for (const key of jsonSchemaAnnotationKeys) {
+      for (const key of InternalAnnotations.jsonSchemaAnnotationKeys) {
         delete siblingSchema[key]
       }
       const sibling = on(siblingSchema, path)
