@@ -29,6 +29,7 @@ import {
   getInitialEntryPaths,
   getLeafPath,
   getNode,
+  getParentValues,
   getPathToRoot,
   getRootPath,
   isActiveFinalConfiguration,
@@ -389,11 +390,13 @@ const makeStateActionContext = <
   const Emits extends ReadonlyArray<Machine.TaggedSchema>,
   StateId extends Machine.StateIdentifier<States>
 >(
+  machine: Machine.Any,
   configuration: ActiveConfiguration,
   path: string,
   event: Machine.LifecycleEvent<Events>
 ): Machine.StateActionContext<States, Events, Emits, StateId> => ({
   state: getActiveValue(configuration, path) as Machine.StateByIdentifier<States, StateId>,
+  parents: getParentValues(machine, configuration, path) as Machine.ParentStateValues<States, StateId>,
   event,
   ...makePlanningCapabilities<Machine.EventOf<Events>, Machine.EmitOf<Emits>>()
 })
@@ -411,6 +414,7 @@ const makeTransitionContext = <
   event: Machine.EventByTag<Events, EventTag>
 ): Machine.HandlerContext<States, Events, Emits, StateId, EventTag, any, any> => ({
   state: getActiveValue(configuration, path) as Machine.StateByIdentifier<States, StateId>,
+  parents: getParentValues(machine, configuration, path) as Machine.ParentStateValues<States, StateId>,
   event,
   ...makePlanningCapabilities<Machine.EventOf<Events>, Machine.EmitOf<Emits>>(),
   target: machine.makeTargetBuilder(path as StateId)
@@ -429,6 +433,7 @@ const makeDoneContext = <
   output: unknown
 ): Machine.DoneContext<States, Events, Emits, StateId> => ({
   state: getActiveValue(configuration, path) as Machine.StateByIdentifier<States, StateId>,
+  parents: getParentValues(machine, configuration, path) as Machine.ParentStateValues<States, StateId>,
   event,
   output: output as Machine.CompletionOutputByIdentifier<States, StateId>,
   ...makePlanningCapabilities<Machine.EventOf<Events>, Machine.EmitOf<Emits>>(),
@@ -460,7 +465,12 @@ const collectStateActions = Effect.fnUntraced(function*<
     >(
       machine,
       machine.handlers[path]?.[key],
-      makeStateActionContext<States, Events, Emits, Machine.StateIdentifier<States>>(configuration, path, event)
+      makeStateActionContext<States, Events, Emits, Machine.StateIdentifier<States>>(
+        machine,
+        configuration,
+        path,
+        event
+      )
     )
     actions.push(...collected.actions)
     raisedEvents.push(...collected.raisedEvents)
@@ -513,6 +523,10 @@ const selectAlwaysTransitions = <
             >,
             context: {
               state: getActiveValue(configuration, path) as Machine.StateByIdentifier<
+                States,
+                Machine.StateIdentifier<States>
+              >,
+              parents: getParentValues(machine, configuration, path) as Machine.ParentStateValues<
                 States,
                 Machine.StateIdentifier<States>
               >,

@@ -134,6 +134,71 @@ describe("Machine", () => {
     >()
   })
 
+  it("machine contexts expose type-safe parent state values", () => {
+    const nested = null as unknown as SignedOutContext
+    expect(nested.parents).type.toBe<{
+      readonly up: Up
+      readonly "up.auth": Auth
+    }>()
+    expect(nested.parents.up).type.toBe<Up>()
+    expect(nested.parents["up.auth"]).type.toBe<Auth>()
+    expect(nested.parents).type.not.toHaveProperty("up.sync")
+
+    type NestedParents = {
+      readonly up: Up
+      readonly "up.auth": Auth
+    }
+    expect<
+      Machine.Machine.StateActionContext<
+        typeof UpStates.states,
+        readonly [typeof SignIn],
+        [],
+        "up.auth.signedOut"
+      >["parents"]
+    >().type.toBe<NestedParents>()
+    expect<
+      Machine.Machine.InvokeContext<
+        typeof UpStates.states,
+        readonly [typeof SignIn],
+        [],
+        "up.auth.signedOut"
+      >["parents"]
+    >().type.toBe<NestedParents>()
+    expect<
+      Machine.Machine.AlwaysContext<
+        typeof UpStates.states,
+        readonly [typeof SignIn],
+        [],
+        "up.auth.signedOut"
+      >["parents"]
+    >().type.toBe<NestedParents>()
+    expect<
+      Machine.Machine.DoneContext<
+        typeof UpStates.states,
+        readonly [typeof SignIn],
+        [],
+        "up.auth.signedOut"
+      >["parents"]
+    >().type.toBe<NestedParents>()
+    expect<
+      Machine.Machine.FinalOutputContext<
+        typeof UpStates.states,
+        readonly [typeof SignIn],
+        "up.auth.signedOut"
+      >["parents"]
+    >().type.toBe<NestedParents>()
+    expect<
+      Machine.Machine.ParallelOutputContext<
+        typeof UpStates.states,
+        readonly [typeof SignIn],
+        "up.auth.signedOut"
+      >["parents"]
+    >().type.toBe<NestedParents>()
+
+    const root = null as unknown as SignInContext
+    expect(root.parents).type.toBe<{}>()
+  })
+
   it("defineStates selects state values and snapshots with type-safe paths", () => {
     const snapshot = UpStates.initial.up(
       new Up({ id: "up-1" }),
@@ -151,14 +216,47 @@ describe("Machine", () => {
 
     expect(UpStates.get(snapshot, "up")).type.toBe<Option.Option<Up>>()
     expect(UpStates.get(snapshot, "up.auth.signedOut")).type.toBe<Option.Option<SignedOut>>()
+    expect(UpStates.getWithParents(snapshot, "up.auth.signedOut")).type.toBe<
+      Option.Option<{
+        readonly value: SignedOut
+        readonly parents: {
+          readonly up: Up
+          readonly "up.auth": Auth
+        }
+      }>
+    >()
+    expect(UpStates.getWithParents(snapshot, "up")).type.toBe<
+      Option.Option<{
+        readonly value: Up
+        readonly parents: {}
+      }>
+    >()
+    const path = "down" as "up.auth.signedOut" | "down"
+    expect(UpStates.getWithParents(snapshot, path)).type.toBe<
+      Option.Option<
+        | {
+          readonly value: SignedOut
+          readonly parents: {
+            readonly up: Up
+            readonly "up.auth": Auth
+          }
+        }
+        | {
+          readonly value: Down
+          readonly parents: {}
+        }
+      >
+    >()
     expect(UpStates.getSnapshot(snapshot, "up.auth")).type.toBe<
       Option.Option<Machine.Machine.SnapshotByIdentifier<typeof UpStates.states, "up.auth">>
     >()
     expect(UpStates.matches(snapshot, "up.sync.idle")).type.toBe<boolean>()
     expect(UpStates.get).type.not.toBeCallableWith(snapshot, "up.missing")
+    expect(UpStates.getWithParents).type.not.toBeCallableWith(snapshot, "up.missing")
 
     const other = Machine.defineStates({ other: Down })
     expect(UpStates.get).type.not.toBeCallableWith(other.initial.other(new Down({})), "up")
+    expect(UpStates.getWithParents).type.not.toBeCallableWith(other.initial.other(new Down({})), "up")
   })
 
   it("defineStates preserves declared compound initial keys", () => {

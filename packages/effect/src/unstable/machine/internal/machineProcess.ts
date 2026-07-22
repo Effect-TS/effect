@@ -268,6 +268,7 @@ export const toProcessLogic: <
                 .flatMap((path) =>
                   getInvokes(Model.getStateConfigByPath(machine, path), {
                     state: Model.getActiveValue(configuration, path),
+                    parents: Model.getParentValues(machine, configuration, path),
                     event,
                     runtime: internalPlanner.runtimeFor<Machine.EventOf<Events>, Machine.EmitOf<Emits>>()
                   }).map((config) =>

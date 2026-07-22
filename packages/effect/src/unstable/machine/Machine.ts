@@ -1165,6 +1165,21 @@ export declare namespace Machine {
     ) => Option.Option<StateByIdentifier<States, Path>>
 
     /**
+     * Returns the decoded value for an active state path together with all of
+     * its active parent values.
+     *
+     * **Details**
+     *
+     * Parent values are keyed by their full state paths.
+     *
+     * @since 4.0.0
+     */
+    readonly getWithParents: <Path extends StateIdentifier<States>>(
+      snapshot: Snapshot<States>,
+      path: Path
+    ) => Option.Option<StateWithParents<States, Path>>
+
+    /**
      * Returns the snapshot for an active state path.
      *
      * @since 4.0.0
@@ -1373,6 +1388,48 @@ export declare namespace Machine {
     States extends StateSchemas,
     StateId extends StateIdentifier<States>
   > = Extract<StateOf<States>, SchemaByIdentifier<States, StateId>["Type"]>
+
+  /**
+   * Extracts every parent state path from a state identifier.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type ParentStateIdentifier<StateId extends string> = StateId extends `${infer Parent}.${infer Child}`
+    ? Parent | (Child extends `${string}.${string}` ? `${Parent}.${ParentStateIdentifier<Child>}` : never)
+    : never
+
+  /**
+   * Maps every parent state path of a state identifier to its decoded value.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type ParentStateValues<
+    States extends StateSchemas,
+    StateId extends StateIdentifier<States>
+  > = StateId extends StateIdentifier<States> ? {
+      readonly [Parent in Extract<ParentStateIdentifier<StateId>, StateIdentifier<States>>]: StateByIdentifier<
+        States,
+        Parent
+      >
+    }
+    : never
+
+  /**
+   * Represents a decoded state value together with all of its parent values.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export type StateWithParents<
+    States extends StateSchemas,
+    StateId extends StateIdentifier<States>
+  > = StateId extends StateIdentifier<States> ? {
+      readonly value: StateByIdentifier<States, StateId>
+      readonly parents: ParentStateValues<States, StateId>
+    }
+    : never
 
   type UndefinedIfNever<A> = [A] extends [never] ? undefined : A
 
@@ -1871,6 +1928,7 @@ export declare namespace Machine {
     R
   > extends PlanningCapabilities<EventOf<Events>, EmitOf<Emits>> {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: EventByTag<Events, EventTag>
     readonly runtime: RuntimeEffect<Events, Emits>
 
@@ -1896,6 +1954,7 @@ export declare namespace Machine {
     StateId extends StateIdentifier<States>
   > extends PlanningCapabilities<EventOf<Events>, EmitOf<Emits>> {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: LifecycleEvent<Events>
     readonly runtime: RuntimeEffect<Events, Emits>
   }
@@ -1913,6 +1972,7 @@ export declare namespace Machine {
     StateId extends StateIdentifier<States>
   > {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: LifecycleEvent<Events>
     readonly runtime: RuntimeEffect<Events, Emits>
   }
@@ -1941,6 +2001,7 @@ export declare namespace Machine {
     StateId extends StateIdentifier<States>
   > extends PlanningCapabilities<EventOf<Events>, EmitOf<Emits>> {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: LifecycleEvent<Events>
     readonly runtime: RuntimeEffect<Events, Emits>
 
@@ -1967,6 +2028,7 @@ export declare namespace Machine {
     StateId extends StateIdentifier<States>
   > extends PlanningCapabilities<EventOf<Events>, EmitOf<Emits>> {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: LifecycleEvent<Events>
     readonly output: CompletionOutputByIdentifier<States, StateId>
     readonly runtime: RuntimeEffect<Events, Emits>
@@ -1993,6 +2055,7 @@ export declare namespace Machine {
     StateId extends StateIdentifier<States>
   > {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: LifecycleEvent<Events>
   }
 
@@ -2026,6 +2089,7 @@ export declare namespace Machine {
     StateId extends StateIdentifier<States>
   > {
     readonly state: StateByIdentifier<States, StateId>
+    readonly parents: ParentStateValues<States, StateId>
     readonly event: LifecycleEvent<Events>
     readonly outputs: ParallelOutputRegions<States, StateId>
   }
@@ -3452,7 +3516,8 @@ const makeTargetBuilder = <const States extends Machine.StateSchemas>(
 
 const getSnapshotByPath = (
   snapshot: Machine.AtomicSnapshot<string, unknown>,
-  path: string
+  path: string,
+  parents?: Record<string, unknown>
 ): Option.Option<Machine.AtomicSnapshot<string, unknown>> => {
   if (snapshot.path === path) {
     return Option.some(snapshot)
@@ -3460,13 +3525,16 @@ const getSnapshotByPath = (
   if (!path.startsWith(`${snapshot.path}.`)) {
     return Option.none()
   }
+  if (parents !== undefined) {
+    parents[snapshot.path] = snapshot.value
+  }
   if (hasProperty(snapshot, "state") && Model.isSnapshot(snapshot.state)) {
-    return getSnapshotByPath(snapshot.state, path)
+    return getSnapshotByPath(snapshot.state, path, parents)
   }
   if (hasProperty(snapshot, "states") && typeof snapshot.states === "object" && snapshot.states !== null) {
     for (const child of Object.values(snapshot.states)) {
       if (Model.isSnapshot(child)) {
-        const result = getSnapshotByPath(child, path)
+        const result = getSnapshotByPath(child, path, parents)
         if (Option.isSome(result)) {
           return result
         }
@@ -3522,6 +3590,12 @@ export const defineStates = <
     getSnapshotByPath(snapshot, path).pipe(
       Option.map((snapshot) => snapshot.value)
     )) as Machine.DefinedStates<States>["get"],
+  getWithParents: ((snapshot, path) => {
+    const parents: Record<string, unknown> = {}
+    return getSnapshotByPath(snapshot, path, parents).pipe(
+      Option.map((snapshot) => ({ value: snapshot.value, parents }))
+    )
+  }) as Machine.DefinedStates<States>["getWithParents"],
   getSnapshot: getSnapshotByPath as unknown as Machine.DefinedStates<States>["getSnapshot"],
   matches: (snapshot, path) => Option.isSome(getSnapshotByPath(snapshot, path))
 })

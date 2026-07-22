@@ -314,6 +314,20 @@ export const getActiveValue = (configuration: ActiveConfiguration, path: string)
   return configuration.values.get(path)
 }
 
+export const getParentValues = (
+  machine: Machine.Any,
+  configuration: ActiveConfiguration,
+  path: string
+): Readonly<Record<string, unknown>> => {
+  const parents: Record<string, unknown> = {}
+  const paths = getPathToRoot(machine, path)
+  for (let index = 0; index < paths.length - 1; index++) {
+    const parent = paths[index]
+    parents[parent] = getActiveValue(configuration, parent)
+  }
+  return parents
+}
+
 export const getInitialEntryPaths = (
   machine: Machine.Any,
   configuration: ActiveConfiguration
@@ -713,6 +727,7 @@ export const resolveFinalOutputEffect: <
   const node = getNode(machine, path)
   const output = getStateConfigByPath(machine, path)?.output?.({
     state: getActiveValue(configuration, path),
+    parents: getParentValues(machine, configuration, path),
     event,
     outputs
   } as any)

@@ -394,6 +394,21 @@ describe("Machine", () => {
     assert.deepStrictEqual(states.get(snapshot, "fulfillment.shipping.quoting"), Option.some(quoting))
     assert.deepStrictEqual(states.get(snapshot, "fulfillment.inventory.reserved"), Option.none())
     assert.deepStrictEqual(
+      states.getWithParents(snapshot, "fulfillment.inventory.checking"),
+      Option.some({
+        value: checking,
+        parents: {
+          fulfillment,
+          "fulfillment.inventory": inventory
+        }
+      })
+    )
+    assert.deepStrictEqual(
+      states.getWithParents(snapshot, "fulfillment"),
+      Option.some({ value: fulfillment, parents: {} })
+    )
+    assert.deepStrictEqual(states.getWithParents(snapshot, "fulfillment.inventory.reserved"), Option.none())
+    assert.deepStrictEqual(
       states.getSnapshot(snapshot, "fulfillment.inventory.checking"),
       Option.some({ path: "fulfillment.inventory.checking", value: checking })
     )
@@ -1245,7 +1260,8 @@ describe("Machine", () => {
           }),
           states: {
             entering: {
-              entry: Effect.fn(function*() {
+              entry: Effect.fn(function*({ parents }) {
+                assert.deepStrictEqual(parents, { payment: initialPayment })
                 const deferredLog = yield* DeferredLog
                 yield* Machine.action(deferredLog.push("entry:entering"))
               })
@@ -1296,7 +1312,10 @@ describe("Machine", () => {
           states: {
             entering: {
               on: {
-                Authorize: ({ event, target }) => target.local.authorized(new AuthorizedPayment({ code: event.code }))
+                Authorize: ({ event, parents, target }) => {
+                  assert.deepStrictEqual(parents, { payment })
+                  return target.local.authorized(new AuthorizedPayment({ code: event.code }))
+                }
               }
             }
           }
@@ -1354,7 +1373,10 @@ describe("Machine", () => {
             },
             authorized: {
               type: "final",
-              output: ({ state }) => state.code
+              output: ({ parents, state }) => {
+                assert.deepStrictEqual(parents, { payment })
+                return state.code
+              }
             }
           }
         }
@@ -5993,10 +6015,14 @@ describe("Machine", () => {
           }),
           states: {
             entering: {
-              invoke: Machine.invoke({
-                id: "request",
-                src: () => makeInvokeLogic("entering", enteringStarted)
-              }),
+              invoke: ({ parents, state }) => {
+                assert.deepStrictEqual(state, entering)
+                assert.deepStrictEqual(parents, { payment })
+                return Machine.invoke({
+                  id: "request",
+                  src: () => makeInvokeLogic("entering", enteringStarted)
+                })
+              },
               on: {
                 Authorize: ({ event, target }) => target.local.authorized(new AuthorizedPayment({ code: event.code }))
               }
