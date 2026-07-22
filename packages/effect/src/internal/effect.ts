@@ -4261,16 +4261,19 @@ const setInterruptible: (interruptible: boolean) => Primitive = makePrimitive({
 const setInterruptibleTrue = setInterruptible(true)
 const setInterruptibleFalse = setInterruptible(false)
 
+const setFiberInterruptible = (fiber: FiberImpl): Effect.Effect<never> | undefined => {
+  fiber.interruptible = true
+  fiber._stack.push(setInterruptibleFalse)
+  if (fiber._interruptedCause) return failCause(fiber._interruptedCause)
+}
+
 /** @internal */
 export const interruptible = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   withFiber((fiber) => {
     if (fiber.interruptible) return self
-    fiber.interruptible = true
-    fiber._stack.push(setInterruptibleFalse)
-    if (fiber._interruptedCause) return failCause(fiber._interruptedCause)
-    return self
+    return setFiberInterruptible(fiber) ?? self
   })
 
 /** @internal */
@@ -4298,9 +4301,9 @@ export const interruptibleMask = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   withFiber((fiber) => {
     if (fiber.interruptible) return f(identity)
-    fiber.interruptible = true
-    fiber._stack.push(setInterruptibleFalse)
-    return f(uninterruptible)
+    const interrupted = setFiberInterruptible(fiber)
+    const effect = f(uninterruptible)
+    return interrupted ?? effect
   })
 
 /** @internal */
