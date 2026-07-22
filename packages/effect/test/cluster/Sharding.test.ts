@@ -1,12 +1,17 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Array, Cause, Clock, Effect, Exit, Fiber, Layer, MutableRef, Option, Queue, Stream } from "effect"
+import { Array, Cause, Clock, Context, Effect, Exit, Fiber, Layer, MutableRef, Option, Queue, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import {
+  ClusterMetrics,
+  EntityId,
+  MachineId,
   MessageStorage,
+  Runner,
   RunnerAddress,
   RunnerHealth,
   Runners,
   RunnerStorage,
+  type ShardId,
   Sharding,
   ShardingConfig,
   Snowflake
@@ -581,6 +586,226 @@ describe.concurrent("Sharding", () => {
         Layer.provide(TestShardingConfig)
       )))
     }))
+})
+
+describe("Sharding shard lock failover", () => {
+  it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
+    Effect.gen(function*() {
+      const storageState: FailoverStorageState = {
+        blackholed: false,
+        assignSelf: true,
+        runner: undefined,
+        acquireCalls: [],
+        refreshCalls: [],
+        releaseCalls: []
+      }
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000,
+        entityTerminationTimeout: 30_000,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const entityState = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        while (!storageState.refreshCalls.some((call) => call.shards.length > 0)) {
+          yield* TestClock.adjust(100)
+        }
+
+        const entityFiber = yield* client.NeverVolatile().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(1)
+        assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 1)
+
+        const acquireCount = storageState.acquireCalls.length
+        const partitionedAt = yield* Clock.currentTimeMillis
+        storageState.blackholed = true
+
+        yield* TestClock.adjust(201)
+
+        assert.isFalse(sharding.hasShardId(shardId))
+        assert.isFalse(yield* sharding.isShutdown)
+        const entityExit = entityFiber.pollUnsafe()
+        assert(entityExit && Exit.hasInterrupts(entityExit))
+        assert.strictEqual(ClusterMetrics.shards.valueUnsafe(Context.empty()).value, BigInt(0))
+
+        const failedRefreshes = storageState.refreshCalls.filter((call) =>
+          call.at >= partitionedAt && call.shards.length > 0
+        )
+        assert.isAtMost(failedRefreshes.length, 2)
+
+        yield* TestClock.adjust(1000)
+        assert.strictEqual(storageState.acquireCalls.length, acquireCount)
+        assert(storageState.refreshCalls.some((call) => call.at >= partitionedAt && call.shards.length === 0))
+        assert(
+          storageState.refreshCalls
+            .filter((call) => call.at >= partitionedAt + 200)
+            .every((call) => call.shards.length === 0)
+        )
+
+        storageState.blackholed = false
+        yield* TestClock.adjust(101)
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+
+        assert.isAbove(storageState.acquireCalls.length, acquireCount)
+        assert(storageState.acquireCalls.at(-1)!.some((shard) => shard.id === shardId.id))
+        expect(yield* client.GetUserVolatile({ id: 2 })).toEqual(new User({ id: 2, name: "User 2" }))
+        assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 2)
+      }).pipe(Effect.provide(layer), Effect.scoped)
+    }))
+
+  it.effect("keeps the graceful timeout for normal shard reassignment", () =>
+    Effect.gen(function*() {
+      const storageState: FailoverStorageState = {
+        blackholed: false,
+        assignSelf: true,
+        runner: undefined,
+        acquireCalls: [],
+        refreshCalls: [],
+        releaseCalls: []
+      }
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 3000,
+        shardLockRefreshInterval: 100,
+        entityTerminationTimeout: 1000,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        const entityFiber = yield* client.NeverVolatile().pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(1)
+
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        while ((yield* sharding.activeEntityCount) > 0) {
+          yield* TestClock.adjust(1)
+        }
+
+        assert.isUndefined(entityFiber.pollUnsafe())
+        assert.strictEqual(storageState.releaseCalls.length, 0)
+        yield* TestClock.adjust(900)
+        assert.isUndefined(entityFiber.pollUnsafe())
+        assert.strictEqual(storageState.releaseCalls.length, 0)
+
+        for (let i = 0; i < 20 && entityFiber.pollUnsafe() === undefined; i++) {
+          yield* TestClock.adjust(10)
+        }
+        const entityExit = entityFiber.pollUnsafe()
+        assert(entityExit && Exit.hasInterrupts(entityExit))
+        assert.strictEqual(storageState.releaseCalls.length, 1)
+      }).pipe(Effect.provide(layer), Effect.scoped)
+    }))
+})
+
+interface FailoverStorageState {
+  blackholed: boolean
+  assignSelf: boolean
+  runner: Runner.Runner | undefined
+  readonly acquireCalls: Array<Array<ShardId.ShardId>>
+  readonly refreshCalls: Array<{
+    readonly at: number
+    readonly shards: Array<ShardId.ShardId>
+  }>
+  readonly releaseCalls: Array<ShardId.ShardId>
+}
+
+const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
+  RunnerStorage.RunnerStorage.of({
+    getRunners: Effect.sync(() => {
+      if (!state.runner) return []
+      if (state.assignSelf) return [[state.runner, true]]
+      return [[state.runner, false], [otherRunner, true]]
+    }),
+    register: (runner) =>
+      Effect.sync(() => {
+        state.runner = runner
+        return MachineId.make(1)
+      }),
+    unregister: () => Effect.void,
+    setRunnerHealth: () => Effect.void,
+    acquire: (_address, shardIds) =>
+      Effect.sync(() => {
+        const shards = globalThis.Array.from(shardIds)
+        state.acquireCalls.push(shards)
+        return shards
+      }),
+    refresh: (_address, shardIds) =>
+      Effect.suspend(() => {
+        const shards = globalThis.Array.from(shardIds)
+        state.refreshCalls.push({
+          at: clock.currentTimeMillisUnsafe(),
+          shards
+        })
+        return state.blackholed ? Effect.never : Effect.succeed(shards)
+      }),
+    release: (_address, shardId) =>
+      Effect.sync(() => {
+        state.releaseCalls.push(shardId)
+      }),
+    releaseAll: () => Effect.void
+  })
+
+const otherRunner = Runner.make({
+  address: RunnerAddress.make("localhost", 5678),
+  groups: ["default"],
+  weight: 1
 })
 
 const TestShardingConfig = ShardingConfig.layer({

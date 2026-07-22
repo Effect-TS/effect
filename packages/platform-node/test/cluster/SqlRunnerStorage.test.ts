@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Fiber, FileSystem, Layer } from "effect"
+import { Duration, Effect, Exit, FileSystem, Layer, Schedule } from "effect"
 import { TestClock } from "effect/testing"
 import {
   Runner,
@@ -18,10 +18,80 @@ import { PgContainer } from "../fixtures/pg-utils.ts"
 const StorageLive = SqlRunnerStorage.layer
 
 describe("SqlRunnerStorage", () => {
-  it.effect("refresh does not hang when the reserved connection stops responding", () => {
-    const partitioned = { current: false }
+  it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
+    const partitioned: PartitionState = {
+      current: false,
+      activeQueries: 0,
+      maxActiveQueries: 0,
+      interruptedQueries: 0
+    }
     const layer = StorageLive.pipe(
-      Layer.provideMerge(blackholeReservedConnection(partitioned)),
+      Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
+      Layer.provide(ShardingConfig.layer({
+        shardLockExpiration: 1000,
+        shardLockRefreshInterval: 100
+      }))
+    )
+
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const runner = Runner.make({
+        address: runnerAddress1,
+        groups: ["default"],
+        weight: 1
+      })
+      const shards = [ShardId.make("default", 1)]
+
+      yield* storage.register(runner, true)
+      yield* storage.acquire(runnerAddress1, shards)
+      partitioned.current = true
+
+      const expectDeadline = Effect.fnUntraced(function*(operation: Effect.Effect<unknown, unknown>) {
+        const [elapsed, exit] = yield* operation.pipe(
+          Effect.exit,
+          Effect.timed,
+          TestClock.withLive
+        )
+        assert(Exit.isFailure(exit))
+        assert.isAtLeast(Duration.toMillis(elapsed), 90)
+        assert.isBelow(Duration.toMillis(elapsed), 1000)
+        yield* Effect.sleep(20).pipe(TestClock.withLive)
+      })
+
+      yield* expectDeadline(storage.refresh(runnerAddress1, shards))
+      yield* expectDeadline(storage.refresh(runnerAddress1, shards))
+      yield* expectDeadline(storage.refresh(runnerAddress1, shards))
+
+      assert.isAtLeast(partitioned.interruptedQueries, 1)
+      assert.isAtMost(partitioned.maxActiveQueries, 1)
+
+      partitioned.current = false
+      expect(yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)).toEqual(shards)
+
+      partitioned.current = true
+      yield* expectDeadline(storage.acquire(runnerAddress1, [ShardId.make("default", 2)]))
+      partitioned.current = false
+      yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)
+
+      partitioned.current = true
+      yield* expectDeadline(storage.release(runnerAddress1, shards[0]))
+      partitioned.current = false
+      yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)
+      yield* storage.release(runnerAddress1, shards[0]).pipe(TestClock.withLive)
+
+      assert.strictEqual(partitioned.activeQueries, 0)
+    }).pipe(Effect.provide(layer))
+  }, 60_000)
+
+  it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
+    const partitioned: PartitionState = {
+      current: false,
+      activeQueries: 0,
+      maxActiveQueries: 0,
+      interruptedQueries: 0
+    }
+    const layer = StorageLive.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
         shardLockDisableAdvisory: true,
         shardLockExpiration: 1000,
@@ -41,17 +111,18 @@ describe("SqlRunnerStorage", () => {
       yield* storage.register(runner, true)
       yield* storage.acquire(runnerAddress1, shards)
       partitioned.current = true
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* Effect.sleep(150).pipe(TestClock.withLive)
 
-      const fiber = yield* storage.refresh(runnerAddress1, shards).pipe(
-        Effect.exit,
-        Effect.forkChild({ startImmediately: true })
-      )
-      yield* TestClock.adjust(101)
-      const result = fiber.pollUnsafe()
       partitioned.current = false
-      yield* Fiber.interrupt(fiber)
-
-      assert.isDefined(result, "refresh should complete before the shard lock expires")
+      expect(
+        yield* storage.refresh(runnerAddress1, shards).pipe(
+          Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
+          TestClock.withLive
+        )
+      ).toEqual(shards)
+      assert.isAtLeast(partitioned.interruptedQueries, 1)
+      assert.isAtMost(partitioned.maxActiveQueries, 1)
     }).pipe(Effect.provide(layer))
   }, 60_000)
   ;([
@@ -130,14 +201,39 @@ describe("SqlRunnerStorage", () => {
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
 
-const blackholeReservedConnection = (partitioned: { readonly current: boolean }) =>
+interface PartitionState {
+  current: boolean
+  activeQueries: number
+  maxActiveQueries: number
+  interruptedQueries: number
+}
+
+const blackholeReservedConnection = (partitioned: PartitionState, resumePending: boolean) =>
   Layer.effect(
     SqlClient.SqlClient,
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const wrapConnection = (connection: SqlConnection.Connection): SqlConnection.Connection => {
         const execute = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-          Effect.suspend(() => partitioned.current ? Effect.never : effect)
+          Effect.suspend(() => {
+            partitioned.activeQueries++
+            partitioned.maxActiveQueries = Math.max(partitioned.maxActiveQueries, partitioned.activeQueries)
+            return Effect.suspend(function waitForConnection(): Effect.Effect<A, E, R> {
+              if (!partitioned.current) return effect
+              return resumePending
+                ? Effect.andThen(Effect.sleep(5), waitForConnection)
+                : Effect.never
+            }).pipe(
+              Effect.onExit((exit) =>
+                Effect.sync(() => {
+                  partitioned.activeQueries--
+                  if (Exit.hasInterrupts(exit)) {
+                    partitioned.interruptedQueries++
+                  }
+                })
+              )
+            )
+          })
         return {
           ...connection,
           execute: (...args) => execute(connection.execute(...args)),
