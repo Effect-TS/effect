@@ -13,13 +13,16 @@ export function resolveAt<A>(key: string) {
 }
 
 /** @internal */
-export const identifierFallbackKey = "~identifier"
+export const STRUCTURAL_ANNOTATION_KEY = "~structural"
+
+/** @internal */
+export const IDENTIFIER_FALLBACK_KEY = "~identifier"
 
 /** @internal */
 export const resolveIdentifier = resolveAt<string>("identifier")
 
 /** @internal */
-export const resolveIdentifierFallback = resolveAt<string>(identifierFallbackKey)
+export const resolveIdentifierFallback = resolveAt<string>(IDENTIFIER_FALLBACK_KEY)
 
 /** @internal */
 export const resolveTitle = resolveAt<string>("title")

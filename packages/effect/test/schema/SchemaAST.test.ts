@@ -130,6 +130,48 @@ describe("SchemaAST", () => {
       strictEqual(ast.checks, undefined)
       strictEqual(ast.encodingChecks, undefined)
     })
+
+    it("preserves structural checks when contained type shape changes", () => {
+      const check = Schema.isMinProperties(1)
+      const schema = Schema.Struct({ a: Schema.NumberFromString }).check(check)
+
+      const ast = SchemaAST.toEncoded(schema.ast)
+
+      strictEqual(SchemaAST.isObjects(ast), true)
+      strictEqual(ast.checks?.[0], check)
+    })
+
+    it("preserves structural checks when contained element shape changes", () => {
+      const check = Schema.isMinLength(1)
+      const schema = Schema.Array(Schema.NumberFromString).check(check)
+
+      const ast = SchemaAST.toEncoded(schema.ast)
+
+      strictEqual(SchemaAST.isArrays(ast), true)
+      strictEqual(ast.checks?.[0], check)
+    })
+
+    it("preserves structural checks when a declaration type parameter shape changes", () => {
+      const check = Schema.isMinSize(1)
+      const schema = Schema.ReadonlySet(Schema.NumberFromString).check(check)
+
+      const ast = SchemaAST.toEncoded(schema.ast)
+
+      strictEqual(SchemaAST.isDeclaration(ast), true)
+      strictEqual(ast.checks?.[0], check)
+    })
+
+    it("preserves only the structural members of a mixed filter group", () => {
+      const structural = Schema.isMinProperties(1)
+      const group = structural.and(Schema.makeFilter<object>(() => true))
+      const schema = Schema.Struct({ a: Schema.NumberFromString }).check(group)
+
+      const ast = SchemaAST.toEncoded(schema.ast)
+
+      strictEqual(SchemaAST.isObjects(ast), true)
+      strictEqual(ast.checks?.length, 1)
+      strictEqual(ast.checks?.[0], structural)
+    })
   })
 
   describe("collectSentinels", () => {

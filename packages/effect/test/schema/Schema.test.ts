@@ -1835,66 +1835,6 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       })
     })
 
-    describe("Structural checks", () => {
-      it("Array + isMinLength", async () => {
-        const schema = Schema.Struct({
-          tags: Schema.Array(Schema.NonEmptyString).check(Schema.isMinLength(3))
-        })
-        const asserts = new TestSchema.Asserts(schema)
-
-        const decoding = asserts.decoding()
-        await decoding.fail(
-          {},
-          `Missing key
-  at ["tags"]`
-        )
-        const decodingAll = asserts.decoding({ parseOptions: { errors: "all" } })
-        await decodingAll.fail(
-          { tags: ["a", ""] },
-          `Expected a value with a length of at least 1, got ""
-  at ["tags"][1]
-Expected a value with a length of at least 3, got ["a",""]
-  at ["tags"]`
-        )
-      })
-
-      it("Record + isMaxProperties", async () => {
-        const schema = Schema.Record(Schema.String, Schema.Finite).check(Schema.isMaxProperties(2))
-        const asserts = new TestSchema.Asserts(schema)
-
-        const decoding = asserts.decoding()
-        await decoding.fail(
-          null,
-          `Expected object, got null`
-        )
-        const decodingAll = asserts.decoding({ parseOptions: { errors: "all" } })
-        await decodingAll.fail(
-          { a: 1, b: NaN, c: 3 },
-          `Expected a finite number, got NaN
-  at ["b"]
-Expected a value with at most 2 entries, got {"a":1,"b":NaN,"c":3}`
-        )
-      })
-
-      it("ReadonlyMap + isMaxSize", async () => {
-        const schema = Schema.ReadonlyMap(Schema.String, Schema.Finite).check(Schema.isMaxSize(2))
-        const asserts = new TestSchema.Asserts(schema)
-
-        const decoding = asserts.decoding()
-        await decoding.fail(
-          null,
-          `Expected ReadonlyMap, got null`
-        )
-        const decodingAll = asserts.decoding({ parseOptions: { errors: "all" } })
-        await decodingAll.fail(
-          new Map([["a", 1], ["b", NaN], ["c", 3]]),
-          `Expected a finite number, got NaN
-  at ["entries"][1][1]
-Expected a value with a size of at most 2, got Map([["a",1],["b",NaN],["c",3]])`
-        )
-      })
-    })
-
     describe("Array checks", () => {
       it("UniqueArray", async () => {
         const schema = Schema.UniqueArray(Schema.Struct({
@@ -2646,41 +2586,6 @@ Expected a value with a size of at most 2, got Map([["a",1],["b",NaN],["c",3]])`
         `Expected a length > 1, got {"a":"a"}`
       )
       await encoding.succeed({ a: "aa" }, { b: "aa" })
-    })
-
-    it(`Struct & encoding chain & structural checks should check the local value with errors: "all"`, async () => {
-      const local = Schema.Struct({ a: Schema.Finite }).check(Schema.isMaxProperties(1))
-      const schema = Schema.Struct({ b: Schema.Number, c: Schema.String }).pipe(
-        Schema.decodeTo(local, {
-          decode: SchemaGetter.transform<
-            { readonly a: number },
-            { readonly b: number; readonly c: string }
-          >((o) => ({ a: o.b })),
-          encode: SchemaGetter.transform<
-            { readonly b: number; readonly c: string },
-            { readonly a: number }
-          >((o) => ({ b: o.a, c: "" }))
-        })
-      )
-      assertTrue(SchemaAST.isObjects(schema.ast))
-      strictEqual(schema.ast.encoding?.length, 1)
-      strictEqual(schema.ast.checks?.length, 1)
-      const asserts = new TestSchema.Asserts(schema)
-
-      const decoding = asserts.decoding({ parseOptions: { errors: "all" } })
-      await decoding.fail(
-        { b: NaN, c: "extra" },
-        `Expected a finite number, got NaN
-  at ["a"]`
-      )
-
-      const encoding = asserts.encoding({ parseOptions: { errors: "all" } })
-      await encoding.fail(
-        { a: NaN },
-        `Expected a finite number, got NaN
-  at ["a"]`
-      )
-      await encoding.succeed({ a: 1 }, { b: 1, c: "" })
     })
 
     it("should work with withConstructorDefault", async () => {

@@ -15,7 +15,7 @@ type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnn
 
 const jsonSchemaAnnotationExcludedKeys = new Set([
   ...InternalAnnotations.annotationExcludedKeys,
-  InternalAnnotations.identifierFallbackKey,
+  InternalAnnotations.IDENTIFIER_FALLBACK_KEY,
   "title",
   "description",
   "default",

@@ -1025,11 +1025,6 @@ const recur = memoize(
         return parser(ou, options)
       }
     }
-    const isStructural = SchemaAST.isArrays(ast) || SchemaAST.isObjects(ast) ||
-      (SchemaAST.isDeclaration(ast) && ast.typeParameters.length > 0)
-    const structuralChecks = checks && isStructural ?
-      checks.filter((check) => check.annotations?.[SchemaAST.STRUCTURAL_ANNOTATION_KEY]) :
-      undefined
     return (ou, options) => {
       if (astOptions) {
         options = { ...options, ...astOptions }
@@ -1071,24 +1066,6 @@ const recur = memoize(
         }
 
         if (checks && !options?.disableChecks) {
-          if (options?.errors === "all" && structuralChecks && structuralChecks.length > 0 && Option.isSome(localOu)) {
-            sroa = mapSchemaIssueEffect(sroa, (issue) => {
-              const issues: Array<SchemaIssue.Issue> = []
-              SchemaAST.collectIssues(
-                structuralChecks,
-                localOu.value,
-                issues,
-                ast,
-                options
-              )
-              const out: SchemaIssue.Issue = Arr.isArrayNonEmpty(issues)
-                ? issue._tag === "Composite" && issue.ast === ast
-                  ? new SchemaIssue.Composite(ast, issue.actual, [...issue.issues, ...issues])
-                  : new SchemaIssue.Composite(ast, localOu, [issue, ...issues])
-                : issue
-              return out
-            })
-          }
           sroa = Effect.flatMapEager(sroa, (oa) => {
             if (Option.isSome(oa)) {
               const value = oa.value

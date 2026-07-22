@@ -3404,6 +3404,20 @@ export function isMutable(ast: AST): boolean {
   return ast.context?.isMutable ?? false
 }
 
+function isStructuralCheck(check: Check<any>): boolean {
+  return check.annotations?.[InternalAnnotations.STRUCTURAL_ANNOTATION_KEY] === true ||
+    check._tag === "FilterGroup" && check.checks.every(isStructuralCheck)
+}
+
+function extractStructuralChecks(checks: Checks): Checks | undefined {
+  function extract(check: Check<any>): Array<Check<any>> {
+    if (isStructuralCheck(check)) return [check]
+    return check._tag === "FilterGroup" ? check.checks.flatMap(extract) : []
+  }
+  const out = checks.flatMap(extract)
+  return Arr.isArrayNonEmpty(out) ? out : undefined
+}
+
 /**
  * Strips all encoding transformations from an AST, returning the decoded
  * (type-level) representation.
@@ -3435,13 +3449,16 @@ export const toType = memoize(<A extends AST>(ast: A): A => {
   }
   const out: any = ast
   const type = out.recur?.(toType) ?? out
-  const encodingChecks = type.encodingChecks
+  const encodingChecks: Checks | undefined = type.encodingChecks
   if (encodingChecks) {
+    const checks = type === ast
+      ? encodingChecks
+      : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
+      ? extractStructuralChecks(encodingChecks)
+      : undefined
     return modifyOwnPropertyDescriptors(type, (d) => {
       d.encodingChecks.value = undefined
-      if (type === ast) {
-        d.checks.value = combineChecks(type.checks, encodingChecks)
-      }
+      d.checks.value = combineChecks(type.checks, checks)
     })
   }
   return type
@@ -3810,9 +3827,6 @@ export function runChecks<T>(
 
 /** @internal */
 export const ClassTypeId = "~effect/Schema/Class"
-
-/** @internal */
-export const STRUCTURAL_ANNOTATION_KEY = "~structural"
 
 /**
  * Returns all annotations from the AST node.

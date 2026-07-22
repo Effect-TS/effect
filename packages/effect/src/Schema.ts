@@ -8948,7 +8948,7 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
       },
       toJsonSchema: ({ type }) => type === "array" ? { minItems: minLength } : { minLength },
       toCode: () => ({ runtime: `Schema.isMinLength(${minLength})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           minLength
@@ -9034,7 +9034,7 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
       },
       toJsonSchema: ({ type }) => type === "array" ? { maxItems: maxLength } : { maxLength },
       toCode: () => ({ runtime: `Schema.isMaxLength(${maxLength})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           maxLength
@@ -9104,7 +9104,7 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
           ? { allOf: [{ minItems: minimum }, { maxItems: maximum }] }
           : { allOf: [{ minLength: minimum }, { maxLength: maximum }] },
       toCode: () => ({ runtime: `Schema.isLengthBetween(${minimum}, ${maximum})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           minLength: minimum,
@@ -9169,7 +9169,7 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
       },
       toJsonSchema: () => ({}),
       toCode: () => ({ runtime: `Schema.isMinSize(${minSize})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           minLength: minSize
@@ -9232,7 +9232,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
       },
       toJsonSchema: () => ({}),
       toCode: () => ({ runtime: `Schema.isMaxSize(${maxSize})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           maxLength: maxSize
@@ -9299,7 +9299,7 @@ export function isSizeBetween(minimum: number, maximum: number, annotations?: An
       },
       toJsonSchema: () => ({}),
       toCode: () => ({ runtime: `Schema.isSizeBetween(${minimum}, ${maximum})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           minLength: minimum,
@@ -9364,7 +9364,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
       },
       toJsonSchema: () => ({ minProperties }),
       toCode: () => ({ runtime: `Schema.isMinProperties(${minProperties})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           minLength: minProperties
@@ -9426,7 +9426,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
       },
       toJsonSchema: () => ({ maxProperties }),
       toCode: () => ({ runtime: `Schema.isMaxProperties(${maxProperties})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           maxLength: maxProperties
@@ -9493,7 +9493,7 @@ export function isPropertiesLengthBetween(minimum: number, maximum: number, anno
       },
       toJsonSchema: () => ({ minProperties: minimum, maxProperties: maximum }),
       toCode: () => ({ runtime: `Schema.isPropertiesLengthBetween(${minimum}, ${maximum})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       arbitrary: {
         constraint: {
           minLength: minimum,
@@ -9570,7 +9570,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
       },
       toJsonSchema: ({ schemas }) => ({ propertyNames: schemas[0] }),
       toCode: ({ schemas }) => ({ runtime: `Schema.isPropertyNames(${schemas[0].runtime})` }),
-      [SchemaAST.STRUCTURAL_ANNOTATION_KEY]: true,
+      [InternalAnnotations.STRUCTURAL_ANNOTATION_KEY]: true,
       ...annotations
     }
   )
@@ -12583,6 +12583,11 @@ export const BigDecimalFromString: BigDecimalFromString = BigDecimalString.pipe(
   decodeTo(BigDecimal, SchemaTransformation.bigDecimalFromString)
 )
 
+const JsonString = String.annotate({
+  expected: "a string that will be decoded as JSON",
+  contentMediaType: "application/json"
+})
+
 /**
  * Type-level representation of {@link UnknownFromJsonString}.
  *
@@ -12658,10 +12663,7 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * @since 4.0.0
  */
 export function fromJsonString<S extends Constraint>(schema: S): fromJsonString<S> {
-  return String.annotate({
-    expected: "a string that will be decoded as JSON",
-    contentMediaType: "application/json"
-  }).pipe(decodeTo(schema, SchemaTransformation.fromJsonString))
+  return JsonString.pipe(decodeTo(schema, SchemaTransformation.fromJsonString))
 }
 
 /**
@@ -15222,7 +15224,7 @@ const toCodecJsonTop = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
   }
 
   const annotated = SchemaAST.annotate(encoded, {
-    [InternalAnnotations.identifierFallbackKey]: identifier
+    [InternalAnnotations.IDENTIFIER_FALLBACK_KEY]: identifier
   })
   return SchemaAST.applyToSelfOrLastLinkEncoding(() => annotated)(out)
 })
