@@ -479,6 +479,96 @@ describe("Machine", () => {
     >()
   })
 
+  it("invokeMachine composes complete machines with type-safe protocols", () => {
+    const ChildInput = Schema.Struct({ userId: Schema.String })
+    const childStates = Machine.defineStates({
+      done: {
+        schema: Down,
+        type: "final",
+        output: SignIn
+      }
+    })
+    const child = Machine.make({
+      states: childStates.states,
+      events: [SignIn],
+      emits: [SignIn],
+      input: ChildInput,
+      initial: () => childStates.initial.done(new Down({}))
+    }).handle({
+      done: {
+        type: "final",
+        output: () => new SignIn({ userId: "child" })
+      }
+    })
+    const Child = Machine.child<SignIn>("child")
+    const invocation = Machine.invokeMachine({
+      id: Child,
+      machine: child,
+      input: { userId: "child" },
+      snapshot: ({ snapshot }) => {
+        expect(snapshot.state).type.toBe<Machine.Machine.Snapshot<typeof childStates.states>>()
+        return new SignIn({ userId: "snapshot" })
+      },
+      onDone: ({ output }) => {
+        expect(output).type.toBe<SignIn | undefined>()
+        return output
+      }
+    })
+    const parent = Machine.make({
+      states: UpStates.states,
+      events: [SignIn],
+      initial: () => UpStates.initial.down(new Down({}))
+    })
+
+    expect(parent.handle).type.toBeCallableWith({ down: { invoke: invocation } })
+    expect(Machine.invokeMachine).type.not.toBeCallableWith({
+      id: Child,
+      machine: child
+    })
+
+    const incompatibleEmits = Machine.make({
+      states: childStates.states,
+      events: [SignIn],
+      emits: [Down],
+      input: ChildInput,
+      initial: () => childStates.initial.done(new Down({}))
+    }).handle({
+      done: {
+        type: "final",
+        output: () => new SignIn({ userId: "child" })
+      }
+    })
+    expect(parent.handle).type.not.toBeCallableWith({
+      down: {
+        invoke: Machine.invokeMachine({
+          id: Child,
+          machine: incompatibleEmits,
+          input: { userId: "child" }
+        })
+      }
+    })
+    expect(parent.handle).type.not.toBeCallableWith({
+      down: {
+        invoke: Machine.invokeMachine({
+          id: Child,
+          machine: child,
+          input: { userId: "child" },
+          snapshot: () => new Down({})
+        })
+      }
+    })
+    expect(parent.handle).type.not.toBeCallableWith({
+      down: {
+        invoke: Machine.invokeMachine({
+          id: Child,
+          machine: child,
+          input: { userId: "child" },
+          onDone: () => new Down({})
+        })
+      }
+    })
+  })
+
   it("rejects invalid invoke outputs nested alongside valid sibling handlers", () => {
     const machine = Machine.make({
       states: UpStates.states,

@@ -34,7 +34,7 @@ type ExcludeCompatibleRuntime<Requirements, Events, Emits> = Requirements extend
   : Requirements
   : Requirements
 
-type AnyInvokeConfig = Machine.InvokeConfig<any, any, any, any, any, any, any, any, any, any, any>
+type AnyInvokeConfig = Machine.InvokeConfig<any, any, any, any, any, any, any, any, any, any, any, any, any>
 
 interface InvokeSession {
   readonly token: symbol
@@ -165,8 +165,6 @@ export const toProcessLogic: <
             )
           const stopInvoke = (key: string, exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> =>
             removeInvoke(key, undefined, exit)
-          const clearInvoke = (key: string, token: symbol, exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> =>
-            removeInvoke(key, token, exit)
           const stopAllInvokes = (exit: Exit.Exit<unknown, unknown>): Effect.Effect<void> =>
             Ref.modify(invokeSessions, (sessions) => [HashMap.toEntries(sessions), HashMap.empty()] as const).pipe(
               Effect.flatMap((sessions) =>
@@ -218,9 +216,12 @@ export const toProcessLogic: <
                       return Effect.void
                     }
                     if (outcome._tag === "Done") {
-                      return outcome.output === undefined
+                      const mappedEvent = config.onDone === undefined
+                        ? outcome.output
+                        : config.onDone({ id: config.id, output: outcome.output })
+                      return mappedEvent === undefined
                         ? Effect.void
-                        : context.self.send(outcome.output as Machine.EventOf<Events>).pipe(
+                        : context.self.send(mappedEvent as Machine.EventOf<Events>).pipe(
                           Effect.catchTag("StoppedError", () => Effect.void)
                         )
                     }
@@ -239,15 +240,34 @@ export const toProcessLogic: <
             const token = Symbol()
             const invokeId = String(config.id)
             const key = makeInvokeSessionKey(path, invokeId)
-            const childId = makeInvokeChildId(path, invokeId)
+            const childId = config.addressable === true ? invokeId : makeInvokeChildId(path, invokeId)
             const scope = yield* Scope.make("parallel")
             yield* Ref.update(invokeSessions, (sessions) => HashMap.set(sessions, key, { token, scope, childId, path }))
+            const logic = config.src()
+            const sendParent = (event: unknown): Effect.Effect<void, StoppedError> =>
+              isCurrentInvoke(key, token).pipe(
+                Effect.flatMap((isCurrent) =>
+                  isCurrent ? context.self.send(event as Machine.EventOf<Events>) : Effect.void
+                )
+              )
             const child = yield* context.spawn(
-              config.src(),
+              {
+                initial: (childScope) => logic.initial({ ...childScope, sendParent }),
+                run: (childContext) => logic.run({ ...childContext, sendParent })
+              },
               { id: childId }
             ).pipe(
               Effect.onExit((exit) =>
-                Exit.isFailure(exit) ? clearInvoke(key, token, Exit.failCause(exit.cause)) : Effect.void
+                Exit.isFailure(exit)
+                  ? Ref.update(invokeSessions, (sessions) => {
+                    const current = HashMap.get(sessions, key)
+                    return Option.isSome(current) && current.value.token === token
+                      ? HashMap.remove(sessions, key)
+                      : sessions
+                  }).pipe(
+                    Effect.andThen(Scope.close(scope, Exit.failCause(exit.cause)))
+                  )
+                  : Effect.void
               )
             )
             yield* startInvokeWatchers(config, child, key, token, scope)

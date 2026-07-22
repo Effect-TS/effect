@@ -1989,6 +1989,17 @@ export declare namespace Machine {
   }
 
   /**
+   * Context passed to an invoked machine terminal output mapper.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface InvokeDoneContext<Output> {
+    readonly id: string
+    readonly output: Output
+  }
+
+  /**
    * Context passed to an eventless transition handler.
    *
    * @category models
@@ -2214,8 +2225,9 @@ export declare namespace Machine {
    * @category utility types
    * @since 4.0.0
    */
-  export type InvokeInitialError<Invoke> = Invoke extends AnyInvokeConfig<any, any, any, infer InitialError>
-    ? InitialError
+  export type InvokeInitialError<Invoke> = Invoke extends {
+    readonly [InvokeTypeId]: { readonly initialError: Types.Covariant<infer InitialError> }
+  } ? InitialError
     : InvokeLogic<Invoke> extends Logic<any, any, any, any, any, infer InitialError> ? InitialError
     : never
   /**
@@ -2224,7 +2236,9 @@ export declare namespace Machine {
    * @category utility types
    * @since 4.0.0
    */
-  export type InvokeRuntimeError<Invoke> = Invoke extends AnyInvokeConfig<any, infer Error, any, any> ? Error
+  export type InvokeRuntimeError<Invoke> = Invoke extends {
+    readonly [InvokeTypeId]: { readonly error: Types.Covariant<infer Error> }
+  } ? Error
     : InvokeLogic<Invoke> extends Logic<any, any, infer Error, any, any, any> ? Error
     : never
   /**
@@ -2233,7 +2247,9 @@ export declare namespace Machine {
    * @category utility types
    * @since 4.0.0
    */
-  export type InvokeOutput<Invoke> = Invoke extends AnyInvokeConfig<infer Output> ? Output
+  export type InvokeOutput<Invoke> = Invoke extends {
+    readonly [InvokeTypeId]: { readonly output: Types.Covariant<infer Output> }
+  } ? Output
     : InvokeLogic<Invoke> extends Logic<any, any, any, any, infer Output, any> ? Output
     : never
   /**
@@ -2242,9 +2258,31 @@ export declare namespace Machine {
    * @category utility types
    * @since 4.0.0
    */
-  export type InvokeServices<Invoke> = Invoke extends AnyInvokeConfig<any, any, infer Requirements, any> ? Requirements
+  export type InvokeServices<Invoke> = Invoke extends {
+    readonly [InvokeTypeId]: { readonly requirements: Types.Covariant<infer Requirements> }
+  } ? Requirements
     : InvokeLogic<Invoke> extends Logic<any, any, any, infer Requirements, any, any> ? Requirements
     : never
+  /**
+   * Extracts events emitted directly by an invoked child.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type InvokeEmits<Invoke> = Invoke extends {
+    readonly [InvokeTypeId]: { readonly emits: Types.Covariant<infer Emits> }
+  } ? Emits :
+    never
+  /**
+   * Extracts events returned by an invoked child snapshot mapper.
+   *
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type InvokeSnapshotEvent<Invoke> = Invoke extends {
+    readonly [InvokeTypeId]: { readonly snapshotEvent: Types.Covariant<infer Event> }
+  } ? Event :
+    never
   /**
    * Extracts the parent transition error contribution from invoked children.
    *
@@ -2330,15 +2368,21 @@ export declare namespace Machine {
     ChildError,
     ChildRequirements,
     ChildOutput,
-    ChildInitialError
+    ChildInitialError,
+    ChildEmits = never,
+    DeliveredOutput = ChildOutput
   > {
     readonly [InvokeTypeId]: {
-      readonly output: Types.Covariant<ChildOutput>
+      readonly output: Types.Covariant<DeliveredOutput>
+      readonly emits: Types.Covariant<ChildEmits>
+      readonly snapshotEvent: Types.Covariant<Event>
       readonly error: Types.Covariant<ChildError>
       readonly requirements: Types.Covariant<ChildRequirements>
       readonly initialError: Types.Covariant<ChildInitialError>
     }
     readonly id: string
+    /** @internal */
+    readonly addressable?: boolean
     src(): Logic<
       ChildState,
       ChildEvent,
@@ -2350,6 +2394,7 @@ export declare namespace Machine {
     snapshot?(
       context: InvokeSnapshotContext<ChildState, ChildError | ChildInitialError, ChildOutput>
     ): Event | undefined
+    onDone?(context: InvokeDoneContext<ChildOutput>): DeliveredOutput | undefined
   }
 
   /** @internal */
@@ -2357,10 +2402,14 @@ export declare namespace Machine {
     Output = unknown,
     Error = unknown,
     Requirements = unknown,
-    InitialError = unknown
+    InitialError = unknown,
+    Emits = never,
+    SnapshotEvent = never
   > {
     readonly [InvokeTypeId]: {
       readonly output: Types.Covariant<Output>
+      readonly emits: Types.Covariant<Emits>
+      readonly snapshotEvent: Types.Covariant<SnapshotEvent>
       readonly error: Types.Covariant<Error>
       readonly requirements: Types.Covariant<Requirements>
       readonly initialError: Types.Covariant<InitialError>
@@ -2384,11 +2433,11 @@ export declare namespace Machine {
     Emits extends ReadonlyArray<TaggedSchema>,
     StateId extends StateIdentifier<States>
   > =
-    | AnyInvokeConfig<any, any, any, any>
-    | ReadonlyArray<AnyInvokeConfig<any, any, any, any>>
+    | AnyInvokeConfig<any, any, any, any, any, any>
+    | ReadonlyArray<AnyInvokeConfig<any, any, any, any, any, any>>
     | ((context: InvokeContext<States, Events, Emits, StateId>) =>
-      | AnyInvokeConfig<any, any, any, any>
-      | ReadonlyArray<AnyInvokeConfig<any, any, any, any>>)
+      | AnyInvokeConfig<any, any, any, any, any, any>
+      | ReadonlyArray<AnyInvokeConfig<any, any, any, any, any, any>>)
 
   type OutputHandlerConfig<
     States extends StateSchemas,
@@ -2687,6 +2736,8 @@ export declare namespace Machine {
     & HandlerUnknownConfigKeyValidation<Config>
     & HandlerOnKeyValidation<Events, Config>
     & HandlerInvokeOutputValidation<Events, Config>
+    & HandlerInvokeEmitsValidation<Events, Config>
+    & HandlerInvokeSnapshotValidation<Events, Config>
     & HandlerChildrenValidation<AllStates, Node, Events, StateId, Config, AvailableOutputStates, Depth>
     & HandlerOutputRequirementValidation<AllStates, StateId, AvailableOutputStates, Config>
 
@@ -2696,6 +2747,21 @@ export declare namespace Machine {
   > = [InvokeReturn<Config>] extends [never] ? unknown
     : [Exclude<InvokeOutput<InvokeReturn<Config>>, EventOf<Events> | void>] extends [never] ? unknown
     : HandlerValidationError<"Invoked child output must be a machine event or void">
+
+  type HandlerInvokeEmitsValidation<
+    Events extends ReadonlyArray<TaggedSchema>,
+    Config
+  > = [InvokeReturn<Config>] extends [never] ? unknown
+    : [Exclude<InvokeEmits<InvokeReturn<Config>>, EventOf<Events>>] extends [never] ? unknown
+    : HandlerValidationError<"Invoked child emits events not accepted by the parent machine">
+
+  type HandlerInvokeSnapshotValidation<
+    Events extends ReadonlyArray<TaggedSchema>,
+    Config
+  > = [InvokeReturn<Config>] extends [never] ? unknown
+    : IsAny<InvokeSnapshotEvent<InvokeReturn<Config>>> extends true ? unknown
+    : [Exclude<InvokeSnapshotEvent<InvokeReturn<Config>>, EventOf<Events> | undefined>] extends [never] ? unknown
+    : HandlerValidationError<"Invoked child snapshot mapper must return a machine event or undefined">
 
   type HandlerTreeNodeValidationErrors<
     AllStates extends StateSchemas,
@@ -3859,6 +3925,196 @@ export const invoke = <
   ChildOutput,
   ChildInitialError
 > => ({ ...config, [InvokeTypeId]: undefined as any })
+
+type InvokeMachineInput<Input extends Schema.Top> = Input extends typeof Schema.Void ? {
+    readonly input?: never
+  }
+  : {
+    readonly input: Input["Type"]
+  }
+
+/**
+ * Creates an invoked child process from a complete statechart machine.
+ *
+ * **When to use**
+ *
+ * Use when a state should own another statechart machine and communicate with
+ * it through typed child events, emissions, snapshots, or terminal output.
+ *
+ * **Details**
+ *
+ * Child emissions are delivered directly to the parent as events. Active
+ * snapshots and terminal output can be mapped to parent events. The owning
+ * state controls the child lifetime.
+ *
+ * **Gotchas**
+ *
+ * Active invoked machines must have unique child addresses. A machine starts
+ * after its owning state's entry actions, so those actions cannot send events
+ * to a newly entered child. Unrecovered child failures fail the parent.
+ *
+ * @see {@link invoke} for invoking lower-level process logic.
+ * @see {@link sendTo} for sending events to the invoked machine.
+ * @category constructors
+ * @since 4.0.0
+ */
+export const invokeMachine: {
+  <
+    const States extends Machine.StateSchemas,
+    const Events extends ReadonlyArray<Machine.TaggedSchema>,
+    const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
+    const Input extends Schema.Top = typeof Schema.Void,
+    UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
+    E = never,
+    R = never,
+    InitialE = never,
+    InitialR = never,
+    FinalStates extends Machine.StateIdentifier<States> = never,
+    Output = never,
+    SnapshotEvent = never,
+    DoneEvent = never,
+    Id extends string = string
+  >(
+    config:
+      & {
+        readonly id: Id
+        readonly machine: Machine<
+          States,
+          Events,
+          Input,
+          UnhandledStates,
+          E,
+          R,
+          InitialE,
+          InitialR,
+          FinalStates,
+          Output,
+          Emits
+        >
+        readonly snapshot?: (
+          context: Machine.InvokeSnapshotContext<
+            Machine.Snapshot<States>,
+            | E
+            | InitialE
+            | ActionError<R | InitialR>
+            | InfiniteTransitionError
+            | MachineSchemaDecodeError
+            | StartupError
+            | StoppedError
+            | UnhandledEventError,
+            Output | undefined
+          >
+        ) => SnapshotEvent | undefined
+        readonly onDone: (context: Machine.InvokeDoneContext<Output | undefined>) => DoneEvent | undefined
+      }
+      & InvokeMachineInput<Input>
+      & ChildAddress.Compatibility<Id, Machine.EventOf<Events>>
+  ): Machine.InvokeConfig<
+    any,
+    any,
+    any,
+    any,
+    SnapshotEvent,
+    Machine.Snapshot<States>,
+    Machine.EventOf<Events>,
+    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError | UnhandledEventError,
+    ExcludeCompatibleRuntime<
+      Exclude<ExecutionServices<InitialR | R>, internalRuntime.MachineRuntime>,
+      Machine.EventOf<Events>,
+      Machine.EmitOf<Emits>
+    >,
+    Output | undefined,
+    InitialE | ActionError<InitialR | R> | MachineSchemaDecodeError | StartupError | StoppedError,
+    Machine.EmitOf<Emits>,
+    DoneEvent
+  >
+  <
+    const States extends Machine.StateSchemas,
+    const Events extends ReadonlyArray<Machine.TaggedSchema>,
+    const Emits extends ReadonlyArray<Machine.TaggedSchema> = readonly [],
+    const Input extends Schema.Top = typeof Schema.Void,
+    UnhandledStates extends Machine.StateIdentifier<States> = Machine.StateIdentifier<States>,
+    E = never,
+    R = never,
+    InitialE = never,
+    InitialR = never,
+    FinalStates extends Machine.StateIdentifier<States> = never,
+    Output = never,
+    SnapshotEvent = never,
+    Id extends string = string
+  >(
+    config:
+      & {
+        readonly id: Id
+        readonly machine: Machine<
+          States,
+          Events,
+          Input,
+          UnhandledStates,
+          E,
+          R,
+          InitialE,
+          InitialR,
+          FinalStates,
+          Output,
+          Emits
+        >
+        readonly snapshot?: (
+          context: Machine.InvokeSnapshotContext<
+            Machine.Snapshot<States>,
+            | E
+            | InitialE
+            | ActionError<R | InitialR>
+            | InfiniteTransitionError
+            | MachineSchemaDecodeError
+            | StartupError
+            | StoppedError
+            | UnhandledEventError,
+            Output | undefined
+          >
+        ) => SnapshotEvent | undefined
+        readonly onDone?: never
+      }
+      & InvokeMachineInput<Input>
+      & ChildAddress.Compatibility<Id, Machine.EventOf<Events>>
+  ): Machine.InvokeConfig<
+    any,
+    any,
+    any,
+    any,
+    SnapshotEvent,
+    Machine.Snapshot<States>,
+    Machine.EventOf<Events>,
+    E | ActionError<R> | InfiniteTransitionError | MachineSchemaDecodeError | StoppedError | UnhandledEventError,
+    ExcludeCompatibleRuntime<
+      Exclude<ExecutionServices<InitialR | R>, internalRuntime.MachineRuntime>,
+      Machine.EventOf<Events>,
+      Machine.EmitOf<Emits>
+    >,
+    Output | undefined,
+    InitialE | ActionError<InitialR | R> | MachineSchemaDecodeError | StartupError | StoppedError,
+    Machine.EmitOf<Emits>
+  >
+} = ((config: {
+  readonly id: string
+  readonly machine: Machine.Any
+  readonly input?: unknown
+  readonly snapshot?: (context: Machine.InvokeSnapshotContext<any, any, any>) => unknown
+  readonly onDone?: (context: Machine.InvokeDoneContext<any>) => unknown
+}) => {
+  const machine = config.machine
+  return {
+    id: config.id,
+    addressable: true,
+    src: () =>
+      machine.input === undefined
+        ? internalProcess.toProcessLogic(machine)
+        : internalProcess.toProcessLogic(machine, config.input),
+    snapshot: config.snapshot,
+    onDone: config.onDone,
+    [InvokeTypeId]: undefined as any
+  }
+}) as any
 
 /**
  * Plans the initial state for a machine without running deferred actions.

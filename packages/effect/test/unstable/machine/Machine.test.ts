@@ -5343,6 +5343,110 @@ describe("Machine", () => {
       })
     }))
 
+  it.effect("start composes a complete invoked machine with typed communication boundaries", () =>
+    Effect.gen(function*() {
+      const Child = Machine.child<Resolve>("child-machine")
+      const progress = yield* Ref.make<ReadonlyArray<string>>([])
+      const childStates = Machine.defineStates({ Idle, Success: SuccessOutput })
+      const child = Machine.make({
+        states: childStates.states,
+        events: [Resolve],
+        emits: [RequestProgress],
+        input: Input,
+        initial: (input) => childStates.initial.Idle(new Idle({ userId: input.userId }))
+      }).handle({
+        Idle: {
+          on: {
+            Resolve: Effect.fn(function*({ emit, target }) {
+              yield* emit(new RequestProgress({ id: "emitted", childState: "complete" }))
+              return target.full.Success(new Success({ requestId: "child-output" }))
+            })
+          }
+        },
+        Success: {
+          type: "final",
+          output: ({ state }) => state.requestId
+        }
+      })
+      const parentStates = Machine.defineStates({ Idle, Loading, Success: SuccessOutput })
+      const parent = Machine.make({
+        states: parentStates.states,
+        events: [Submit, Resolve, RequestProgress, ParentRequestProgress, RequestSucceeded],
+        initial: () => parentStates.initial.Idle(new Idle({ userId: "parent" }))
+      }).handle({
+        Idle: {
+          on: {
+            Submit: ({ target }) => target.full.Loading(new Loading({ requestId: "request-1" }))
+          }
+        },
+        Loading: {
+          invoke: Machine.invokeMachine({
+            id: Child,
+            machine: child,
+            input: { userId: "child-user" },
+            snapshot: ({ snapshot }) =>
+              snapshot.state.path === "Idle"
+                ? new ParentRequestProgress({ id: "snapshot", loaded: 0 })
+                : undefined,
+            onDone: ({ output }) => new RequestSucceeded({ value: output ?? "missing" })
+          }),
+          on: {
+            Resolve: Effect.fn(function*() {
+              yield* Machine.action(Machine.sendTo(Child, new Resolve({})))
+            }),
+            RequestProgress: ({ event }) => Machine.action(Ref.update(progress, (messages) => [...messages, event.id])),
+            ParentRequestProgress: ({ event }) =>
+              Machine.action(Ref.update(progress, (messages) => [...messages, event.id])),
+            RequestSucceeded: ({ event, target }) => target.full.Success(new Success({ requestId: event.value }))
+          }
+        },
+        Success: {
+          type: "final",
+          output: ({ state }) => state.requestId
+        }
+      })
+
+      const actor = yield* Machine.start(parent)
+      yield* sendAndWaitForSnapshot(
+        actor,
+        new Submit({ value: "start" }),
+        (snapshot) => snapshot.status === "active" && snapshot.state.path === "Loading"
+      )
+      yield* actor.send(new Resolve({}))
+
+      assert.strictEqual(yield* actor.join, "child-output")
+      assert.deepStrictEqual(yield* Ref.get(progress), ["snapshot", "emitted"])
+    }))
+
+  it.effect("invokeMachine rejects duplicate active child addresses", () =>
+    Effect.gen(function*() {
+      const Child = Machine.child<never>("child-machine")
+      const childStates = Machine.defineStates({ Idle })
+      const child = Machine.make({
+        states: childStates.states,
+        events: [],
+        initial: () => childStates.initial.Idle(new Idle({ userId: "child" }))
+      })
+      const parentStates = Machine.defineStates({ Loading })
+      const parent = Machine.make({
+        states: parentStates.states,
+        events: [],
+        initial: () => parentStates.initial.Loading(new Loading({ requestId: "request-1" }))
+      }).handle({
+        Loading: {
+          invoke: [
+            Machine.invokeMachine({ id: Child, machine: child }),
+            Machine.invokeMachine({ id: Child, machine: child })
+          ]
+        }
+      })
+
+      const actor = yield* Machine.start(parent)
+      const error = yield* Effect.flip(actor.join)
+
+      assert.instanceOf(error, Machine.ChildAlreadyExistsError)
+    }))
+
   it.effect("start maps invoked child failures to machine events", () =>
     Effect.gen(function*() {
       const error = new InvokeError({ message: "boom" })
