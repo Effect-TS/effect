@@ -3,6 +3,29 @@ import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 
 describe("OpenApi representation v2 consumer", () => {
+  it("uses canonical JSON codecs for additional declaration schemas", () => {
+    const AdditionalDate = Schema.Date.annotate({ identifier: "AdditionalDate" })
+    const Api = HttpApi.make("Api").annotate(HttpApi.AdditionalSchemas, [AdditionalDate])
+
+    assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
+      AdditionalDate: { $ref: "#/components/schemas/AdditionalDateJsonEncoding" },
+      AdditionalDateJsonEncoding: { type: "string" }
+    })
+  })
+
+  it("uses canonical JSON codecs for response declaration schemas", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("date", "/date", { success: Schema.Date })
+      )
+    )
+
+    assert.deepStrictEqual(
+      OpenApi.fromApi(Api).paths["/date"]?.get?.responses[200]?.content?.["application/json"]?.schema,
+      { type: "string" }
+    )
+  })
+
   it("projects request and response schemas to the encoded side", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

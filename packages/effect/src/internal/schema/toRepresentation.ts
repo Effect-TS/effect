@@ -8,19 +8,17 @@ import * as InternalAnnotations from "./annotations.ts"
 
 /** @internal */
 export function toRepresentation(
-  ast: SchemaAST.AST,
-  encoded = false
+  ast: SchemaAST.AST
 ): SchemaRepresentation.Document {
-  const { references, representations } = toRepresentations([ast], encoded)
+  const { references, representations } = toRepresentations([ast])
   return { representation: representations[0], references }
 }
 
 /** @internal */
 export function toRepresentations(
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
-  encoded = false
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
 ): SchemaRepresentation.MultiDocument {
-  return lowerASTs(encoded ? asts : Arr.map(asts, (ast) => SchemaAST.toType(ast)), [], encoded)
+  return lowerASTs(asts, [])
 }
 
 type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
@@ -249,8 +247,7 @@ function resolveReferenceIdentifier(ast: SchemaAST.AST): string | undefined {
 
 function lowerASTs(
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
-  externalDefinitions: ReadonlyArray<ExternalDefinition>,
-  encoded = false
+  externalDefinitions: ReadonlyArray<ExternalDefinition>
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const referenceMap = new Map<SchemaAST.AST, string>()
@@ -291,7 +288,7 @@ function lowerASTs(
   }
 
   function visit(input: SchemaAST.AST): void {
-    const ast = encoded ? SchemaAST.getLastEncoding(input) : input
+    const ast = SchemaAST.getLastEncoding(input)
     if (visited.has(ast)) {
       if (isShareable(ast)) shared.add(ast)
       return
@@ -340,11 +337,9 @@ function lowerASTs(
       return { _tag: "Reference", $ref: found }
     }
 
-    if (encoded) {
-      const projected = SchemaAST.getLastEncoding(ast)
-      if (projected !== ast) {
-        return recur(projected, ownedReference)
-      }
+    const projected = SchemaAST.getLastEncoding(ast)
+    if (projected !== ast) {
+      return recur(projected, ownedReference)
     }
 
     const identifier = ownedReference === undefined ? resolveReferenceIdentifier(ast) : undefined
@@ -446,7 +441,7 @@ function lowerASTs(
         return {
           _tag: "Arrays",
           elements: ast.elements.map((element) => {
-            const projected = encoded ? SchemaAST.getLastEncoding(element) : element
+            const projected = SchemaAST.getLastEncoding(element)
             const annotations = projected.context?.annotations
             return {
               isOptional: SchemaAST.isOptional(projected),
@@ -462,7 +457,7 @@ function lowerASTs(
         return {
           _tag: "Objects",
           propertySignatures: ast.propertySignatures.map((property) => {
-            const projected = encoded ? SchemaAST.getLastEncoding(property.type) : property.type
+            const projected = SchemaAST.getLastEncoding(property.type)
             const annotations = projected.context?.annotations
             return {
               name: property.name,

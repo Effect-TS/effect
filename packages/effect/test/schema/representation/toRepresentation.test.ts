@@ -208,22 +208,22 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
-  it("uses the type side of a transformation", () => {
+  it("uses the encoded side of a transformation", () => {
     assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.NumberFromString.ast), {
-      representation: { _tag: "Number", checks: [] },
+      representation: {
+        _tag: "String",
+        annotations: { expected: "a string that will be decoded as a number" },
+        checks: []
+      },
       references: {}
     })
   })
 
-  it("uses the encoded side only when the caller projects it", () => {
+  it("uses the type side when the caller projects it", () => {
     assert.deepStrictEqual(
-      SchemaRepresentation.toRepresentation(SchemaAST.toEncoded(Schema.NumberFromString.ast)),
+      SchemaRepresentation.toRepresentation(SchemaAST.toType(Schema.NumberFromString.ast)),
       {
-        representation: {
-          _tag: "String",
-          annotations: { expected: "a string that will be decoded as a number" },
-          checks: []
-        },
+        representation: { _tag: "Number", checks: [] },
         references: {}
       }
     )
@@ -717,7 +717,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
   it("reuses the class reference", () => {
     class User extends Schema.Class<User>("User")({ name: Schema.String }) {}
 
-    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([User, User]).ast)
+    const document = SchemaRepresentation.toRepresentation(SchemaAST.toType(Schema.Tuple([User, User]).ast))
     assert.deepStrictEqual(document.representation, {
       _tag: "Arrays",
       elements: [

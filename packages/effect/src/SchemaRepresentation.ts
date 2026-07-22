@@ -662,7 +662,11 @@ export interface CodeDocument {
 }
 
 /**
- * Lowers the type side of an AST to a live representation document.
+ * Lowers the encoded side of an AST to a live representation document.
+ *
+ * **Details**
+ *
+ * Apply `SchemaAST.toType` to the AST first to lower its type side instead.
  *
  * @category constructors
  * @since 4.0.0
@@ -672,7 +676,11 @@ export function toRepresentation(ast: SchemaAST.AST): Document {
 }
 
 /**
- * Lowers one or more AST type sides in a shared reference environment.
+ * Lowers one or more AST encoded sides in a shared reference environment.
+ *
+ * **Details**
+ *
+ * Apply `SchemaAST.toType` to an AST first to lower its type side instead.
  *
  * @category constructors
  * @since 4.0.0

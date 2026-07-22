@@ -15034,9 +15034,12 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
 // -----------------------------------------------------------------------------
 
 /**
- * Derives an intermediate `SchemaRepresentation.Document` from a schema. This
- * document is used internally by {@link toJsonSchemaDocument} and related
- * functions to produce JSON Schema output.
+ * Derives an intermediate `SchemaRepresentation.Document` from the encoded
+ * side of a schema.
+ *
+ * **Details**
+ *
+ * Use {@link toType} before this function to represent the type side instead.
  *
  * @category Representation
  * @since 4.0.0
@@ -15148,7 +15151,7 @@ export function toJsonSchemaDocument(
   schema: Constraint,
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
-  const document = InternalToRepresentation.toRepresentation(toCodecJsonTop(schema.ast), true)
+  const document = InternalToRepresentation.toRepresentation(toCodecJsonAST(schema.ast))
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
 
@@ -15200,19 +15203,20 @@ export interface toCodecJson<S extends Constraint> extends
  * @since 4.0.0
  */
 export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
-  return make(toCodecJsonTop(schema.ast), { schema })
+  return make(toCodecJsonAST(schema.ast), { schema })
 }
 
-const toCodecJsonTopBase = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  const out = toCodecJsonBase(ast, toCodecJsonTop)
+const toCodecJsonASTBase = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+  const out = toCodecJsonBase(ast, toCodecJsonAST)
   const context = ast.context
   if (out === ast || context === undefined) return out
   return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
 })
 
-const toCodecJsonTop = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
+/** @internal */
+export const toCodecJsonAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
   const identifier = InternalAnnotations.resolveIdentifier(ast)
-  const out = toCodecJsonTopBase(ast)
+  const out = toCodecJsonASTBase(ast)
   if (identifier === undefined || out.encoding === undefined) return out
 
   const encoded = SchemaAST.getLastEncoding(out)

@@ -2,9 +2,12 @@ import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
 
 describe("Schema.toJsonSchemaDocument", () => {
-  it("keeps toRepresentation on the type side and projects the encoded side for JSON Schema", () => {
+  it("uses the encoded side for representations and JSON Schema", () => {
     const representation = Schema.toRepresentation(Schema.FiniteFromString)
-    assert.strictEqual(representation.representation._tag, "Number")
+    assert.strictEqual(representation.representation._tag, "String")
+
+    const typeRepresentation = Schema.toRepresentation(Schema.toType(Schema.FiniteFromString))
+    assert.strictEqual(typeRepresentation.representation._tag, "Number")
 
     assert.deepStrictEqual(Schema.toJsonSchemaDocument(Schema.FiniteFromString), {
       dialect: "draft-2020-12",

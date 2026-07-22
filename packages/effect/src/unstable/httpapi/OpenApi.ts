@@ -219,7 +219,9 @@ type CompileSchemas = (
 
 const compileSchemas: CompileSchemas = (asts) =>
   JsonSchema.toMultiDocumentOpenApi3_1(
-    InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(InternalToRepresentation.toRepresentations(asts, true))
+    InternalToJsonSchemaDocument.toJsonSchemaMultiDocument(
+      InternalToRepresentation.toRepresentations(Arr.map(asts, Schema.toCodecJsonAST))
+    )
   )
 
 /**
