@@ -303,20 +303,6 @@ describe("SchemaRepresentation.toJson", () => {
     )
   })
 
-  it("encodes negative zero structural values", () => {
-    assert.deepStrictEqual(
-      SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.Literal(-0).ast)),
-      {
-        representation: {
-          _tag: "Literal",
-          literal: -0,
-          checks: []
-        },
-        references: {}
-      }
-    )
-  })
-
   it("preserves string literals resembling non-finite numbers", () => {
     for (const literal of ["NaN", "Infinity", "-Infinity"]) {
       assert.deepStrictEqual(

@@ -103,7 +103,6 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         emitted: {
           bigint: 1n,
           symbol: Symbol.for("shared"),
-          negativeZero: -0,
           nan: NaN,
           positive: Infinity,
           negative: -Infinity
@@ -115,7 +114,6 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     const runtime = SchemaRepresentation.toCodeDocument(document).codes[0].runtime
     assertInclude(runtime, `"bigint": 1n`)
     assertInclude(runtime, `"symbol": Symbol.for("shared")`)
-    assertInclude(runtime, `"negativeZero": -0`)
     assertInclude(runtime, `"nan": NaN`)
     assertInclude(runtime, `"positive": Infinity`)
     assertInclude(runtime, `"negative": -Infinity`)

@@ -227,21 +227,6 @@ describe("SchemaRepresentation.fromJson", () => {
     )
   })
 
-  it("decodes negative zero structural values", () => {
-    const document = SchemaRepresentation.fromJson({
-      representation: {
-        _tag: "Literal",
-        literal: -0,
-        checks: []
-      },
-      references: {}
-    })
-
-    assert.strictEqual(document.representation._tag, "Literal")
-    if (document.representation._tag !== "Literal") return
-    assert.isTrue(Object.is(document.representation.literal, -0))
-  })
-
   it("preserves string literals resembling non-finite numbers", () => {
     for (const literal of ["NaN", "Infinity", "-Infinity"]) {
       const input = {

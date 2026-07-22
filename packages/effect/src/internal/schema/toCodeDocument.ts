@@ -16,7 +16,6 @@ export function makeCode(runtime: string, Type: string): SchemaRepresentation.Co
 }
 
 function renderNumber(value: number): string {
-  if (Object.is(value, -0)) return "-0"
   if (Number.isNaN(value)) return "NaN"
   if (value === Infinity) return "Infinity"
   if (value === -Infinity) return "-Infinity"
