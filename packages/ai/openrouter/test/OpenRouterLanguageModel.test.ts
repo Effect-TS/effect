@@ -2,7 +2,7 @@ import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, Layer, Redacted, Ref, Schema } from "effect"
-import { LanguageModel, Prompt } from "effect/unstable/ai"
+import { LanguageModel, Prompt, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("OpenRouterLanguageModel", () => {
@@ -171,6 +171,42 @@ describe("OpenRouterLanguageModel", () => {
             }])
           }).pipe(Effect.provide(makeTestLayer())))
       })
+    })
+
+    describe("tool preparation", () => {
+      it.effect("passes raw JSON schema for dynamic tools", () =>
+        Effect.gen(function*() {
+          const inputSchema = {
+            type: "object",
+            properties: {
+              query: { type: "string" },
+              limit: { type: "number" }
+            },
+            required: ["query"],
+            additionalProperties: false
+          } as const
+
+          const DynamicTool = Tool.dynamic("DynamicTool", {
+            description: "A dynamic tool",
+            parameters: inputSchema
+          })
+
+          yield* LanguageModel.generateText({
+            prompt: "Use the dynamic tool",
+            toolkit: Toolkit.make(DynamicTool),
+            disableToolCallResolution: true
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+
+          const tool = body.tools?.find((entry: any) =>
+            entry.type === "function" && entry.function.name === "DynamicTool"
+          )
+          assert.isDefined(tool)
+          strictEqual(tool.function.description, "A dynamic tool")
+          deepStrictEqual(tool.function.parameters, inputSchema)
+        }).pipe(Effect.provide(makeTestLayer())))
     })
   })
 })

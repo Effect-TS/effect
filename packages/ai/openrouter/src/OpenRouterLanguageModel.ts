@@ -1612,7 +1612,7 @@ const prepareTools = Effect.fnUntraced(
 
     for (const tool of options.tools) {
       const description = Tool.getDescription(tool)
-      const parameters = yield* tryJsonSchema(tool.parametersSchema, "prepareTools", transformer)
+      const parameters = yield* tryToolJsonSchema(tool, "prepareTools", transformer)
       const strict = Tool.getStrictMode(tool) ?? null
 
       tools.push({
@@ -1773,6 +1773,12 @@ const tryJsonSchema = <S extends Schema.Constraint>(
 ) =>
   Effect.try({
     try: () => Tool.getJsonSchemaFromSchema(schema, { transformer }),
+    catch: (error) => unsupportedSchemaError(error, method)
+  })
+
+const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string, transformer: LanguageModel.CodecTransformer) =>
+  Effect.try({
+    try: () => Tool.getJsonSchema(tool, { transformer }),
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
