@@ -1316,12 +1316,15 @@ export const toWebHandler = <
         | Request.Only<"Requires", R>
         | Request.Only<"GlobalRequires", R>
       >
-    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>
+    ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR | GlobalProvided>
   }
 ): {
-  readonly handler: [HR] extends [never]
+  readonly handler: [Exclude<HR, GlobalProvided>] extends [never]
     ? ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
-    : ((request: globalThis.Request, context: Context.Context<HR>) => Promise<Response>)
+    : ((
+      request: globalThis.Request,
+      context: Context.Context<Exclude<HR, GlobalProvided>>
+    ) => Promise<Response>)
   readonly dispose: () => Promise<void>
 } => {
   let middleware: any = options?.middleware
