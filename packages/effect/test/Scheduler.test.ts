@@ -41,6 +41,69 @@ describe("Scheduler", () => {
       assert.deepStrictEqual(order, [1, 2, 3])
     }))
 
+  it("MixedScheduler runs the drained batch before rethrowing a task exception", () => {
+    const scheduled: Array<() => void> = []
+    const scheduler = new Scheduler.MixedScheduler("async", (task) => {
+      scheduled.push(task)
+      return () => {}
+    }).makeDispatcher()
+    const error = new Error("task failed")
+    const order: Array<string> = []
+
+    scheduler.scheduleTask(() => {
+      order.push("throwing")
+      scheduler.scheduleTask(() => order.push("next batch"), 0)
+      throw error
+    }, 0)
+    scheduler.scheduleTask(() => order.push("same priority"), 0)
+    scheduler.scheduleTask(() => order.push("different priority"), 1)
+
+    let caught: unknown
+    try {
+      scheduled[0]()
+    } catch (error) {
+      caught = error
+    }
+
+    assert.strictEqual(caught, error)
+    assert.deepStrictEqual(order, ["throwing", "same priority", "different priority"])
+
+    scheduled[1]()
+    assert.deepStrictEqual(order, ["throwing", "same priority", "different priority", "next batch"])
+  })
+
+  it("MixedScheduler aggregates multiple task exceptions after draining", () => {
+    const scheduled: Array<() => void> = []
+    const scheduler = new Scheduler.MixedScheduler("async", (task) => {
+      scheduled.push(task)
+      return () => {}
+    }).makeDispatcher()
+    const first = new Error("first")
+    const second = new Error("second")
+    const order: Array<number> = []
+
+    scheduler.scheduleTask(() => {
+      order.push(1)
+      throw first
+    }, 0)
+    scheduler.scheduleTask(() => {
+      order.push(2)
+      throw second
+    }, 1)
+    scheduler.scheduleTask(() => order.push(3), 2)
+
+    let caught: unknown
+    try {
+      scheduled[0]()
+    } catch (error) {
+      caught = error
+    }
+
+    assert.instanceOf(caught, AggregateError)
+    assert.deepStrictEqual(caught.errors, [first, second])
+    assert.deepStrictEqual(order, [1, 2, 3])
+  })
+
   it.effect("PreventSchedulerYield disables shouldYield checks", () =>
     Effect.gen(function*() {
       let calls = 0

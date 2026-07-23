@@ -133,7 +133,9 @@ class PriorityBuckets {
  *
  * `MixedScheduler` supports synchronous and asynchronous execution modes, uses
  * operation counts to decide when fibers should yield, and is the default
- * scheduler implementation.
+ * scheduler implementation. A dispatcher runs every task in an already-drained
+ * batch even if tasks throw. After the batch completes, it rethrows a single
+ * exception unchanged or reports multiple exceptions with an `AggregateError`.
  *
  * @category schedulers
  * @since 2.0.0
@@ -213,11 +215,21 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
    */
   runTasks() {
     const buckets = this.tasks.drain()
+    const errors: Array<unknown> = []
     for (let i = 0; i < buckets.length; i++) {
       const toRun = buckets[i][1]
       for (let j = 0; j < toRun.length; j++) {
-        toRun[j]()
+        try {
+          toRun[j]()
+        } catch (error) {
+          errors.push(error)
+        }
       }
+    }
+    if (errors.length === 1) {
+      throw errors[0]
+    } else if (errors.length > 1) {
+      throw new AggregateError(errors, "Multiple scheduler tasks failed")
     }
   }
 
