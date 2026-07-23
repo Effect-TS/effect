@@ -6253,7 +6253,13 @@ export const updateService: {
  *   const before = yield* CurrentNumber
  *   const during = yield* Effect.scoped(
  *     Effect.gen(function*() {
- *       yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1)
+ *       yield* Effect.updateServiceScoped(
+ *         CurrentNumber,
+ *         (value) => value + 1,
+ *         // Preserve a value installed after this scoped update
+ *         (original, updated, current) =>
+ *           current === updated ? original : current
+ *       )
  *       return yield* CurrentNumber
  *     })
  *   )
