@@ -501,10 +501,11 @@ export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
     if (self.state._tag === "Closed" || self.state.fiber === undefined) {
       return Effect.void
     }
+    const fiber = self.state.fiber
     return Effect.andThen(
-      restore(Fiber.interruptAs(self.state.fiber, internalFiberId)),
+      restore(Fiber.interruptAs(fiber, internalFiberId)),
       Effect.sync(() => {
-        if (self.state._tag === "Open") {
+        if (self.state._tag === "Open" && self.state.fiber === fiber) {
           self.state.fiber = undefined
         }
       })
