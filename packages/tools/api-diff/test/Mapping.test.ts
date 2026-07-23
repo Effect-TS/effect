@@ -24,7 +24,31 @@ describe("migration mapping", () => {
     const markdown = renderMigrationMarkdown(mapping)
     assert(markdown.includes("old/A -> new/A, new/B (barrel: new)"))
     assert(markdown.includes("new/C"))
-    assert(markdown.includes("old/A#catchSome -> new/A#catchFilter"))
+    assert(markdown.includes("A.catchSome -> A.catchFilter"))
+  })
+
+  it("renders APIs as grep-friendly code spellings", () => {
+    const markdown = renderMigrationMarkdown({
+      version: 1,
+      modules: [],
+      apis: [
+        {
+          from: { module: "effect/Effect", path: ["makeLatch"] },
+          to: { module: "effect/Latch", path: ["make"] }
+        },
+        {
+          from: { module: "effect/Stream", path: ["Stream", "Context"] },
+          to: { module: "effect/Stream", path: ["Services"] }
+        },
+        {
+          from: { module: "effect/Mailbox", path: ["Mailbox"] },
+          to: { module: "effect/Queue", path: ["Queue"] }
+        }
+      ]
+    })
+    assert(markdown.includes("Effect.makeLatch -> Latch.make"))
+    assert(markdown.includes("Stream.Context -> Stream.Services"))
+    assert(markdown.includes("Mailbox -> Queue.Queue"))
   })
 
   it("rejects duplicate sources and contradictory statuses", () => {

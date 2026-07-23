@@ -2,7 +2,7 @@
 
 Mapped modules: 289
 No counterpart: 44
-API renames: 54
+API renames: 53
 
 This file is generated from `migration/v3-to-v4.json`. Do not edit it directly.
 
@@ -347,61 +347,60 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ## API Renames
 
-Each line is `v3 API -> v4 API`.
+Each line is `v3 API -> v4 API`, using the namespaced spelling found in application code.
 
 ```text
-effect/Effect#async -> effect/Effect#callback
-effect/Effect#zipRight -> effect/Effect#andThen
-effect/Effect#zipLeft -> effect/Effect#tap
-effect/Effect#either -> effect/Effect#result
-effect/Effect#catchAll -> effect/Effect#catch
-effect/Effect#catchAllCause -> effect/Effect#catchCause
-effect/Effect#catchAllDefect -> effect/Effect#catchDefect
-effect/Effect#catchSome -> effect/Effect#catchFilter
-effect/Effect#catchIf -> effect/Effect#catchIf
-effect/Effect#optionFromOptional -> effect/Effect#catchNoSuchElement
-effect/Effect#catchSomeCause -> effect/Effect#catchCauseFilter
-effect/Effect#tapErrorCause -> effect/Effect#tapCause
-effect/Effect#ignoreLogged -> effect/Effect#ignore
-effect/Effect#unsafeMakeLatch -> effect/Latch#makeUnsafe
-effect/Effect#makeLatch -> effect/Latch#make
-effect/Layer#scoped -> effect/Layer#effect
-effect/Layer#scopedDiscard -> effect/Layer#effectDiscard
-effect/Layer#tapErrorCause -> effect/Layer#tapCause
-effect/Mailbox#Mailbox -> effect/Queue#Queue
-effect/Mailbox#make -> effect/Queue#make
-effect/Either#Either -> effect/Result#Result
-effect/Either#Either -> effect/Result#Result
-effect/Either#right -> effect/Result#succeed
-effect/Either#left -> effect/Result#fail
-effect/Scope#extend -> effect/Scope#provide
-effect/Effect#unsafeMakeSemaphore -> effect/Semaphore#makeUnsafe
-effect/Effect#makeSemaphore -> effect/Semaphore#make
-effect/Stream#Stream.Context -> effect/Stream#Services
-effect/StreamHaltStrategy#HaltStrategy -> effect/Stream#HaltStrategy
-effect/Stream#repeatEffect -> effect/Stream#fromEffectRepeat
-effect/Stream#repeatEffectWithSchedule -> effect/Stream#fromEffectSchedule
-effect/Stream#async -> effect/Stream#callback
-effect/Stream#asyncEffect -> effect/Stream#callback
-effect/Stream#asyncPush -> effect/Stream#callback
-effect/Stream#asyncScoped -> effect/Stream#callback
-effect/Stream#repeatEffectChunk -> effect/Stream#fromIterableEffectRepeat
-effect/Stream#fromChunk -> effect/Stream#fromArray
-effect/Stream#fromChunks -> effect/Stream#fromArrays
-effect/Stream#mapChunks -> effect/Stream#mapArray
-effect/Stream#mapChunksEffect -> effect/Stream#mapArrayEffect
-effect/Stream#either -> effect/Stream#result
-effect/Stream#flattenChunks -> effect/Stream#flattenArray
-effect/Stream#flattenIterables -> effect/Stream#flattenIterable
-effect/Stream#mergeEither -> effect/Stream#mergeResult
-effect/Stream#zipWithChunks -> effect/Stream#zipWithArray
-effect/Stream#bufferChunks -> effect/Stream#bufferArray
-effect/Stream#catchAllCause -> effect/Stream#catchCause
-effect/Stream#tapErrorCause -> effect/Stream#tapCause
-effect/Stream#catchAll -> effect/Stream#catch
-effect/Stream#catchSome -> effect/Stream#catchIf
-effect/Stream#catchSomeCause -> effect/Stream#catchCauseIf
-effect/Stream#combineChunks -> effect/Stream#combineArray
-effect/Stream#provideSomeLayer -> effect/Stream#provide
-effect/Stream#provideSomeContext -> effect/Stream#provide
+Effect.async -> Effect.callback
+Effect.zipRight -> Effect.andThen
+Effect.zipLeft -> Effect.tap
+Effect.either -> Effect.result
+Effect.catchAll -> Effect.catch
+Effect.catchAllCause -> Effect.catchCause
+Effect.catchAllDefect -> Effect.catchDefect
+Effect.catchSome -> Effect.catchFilter
+Effect.catchIf -> Effect.catchIf
+Effect.optionFromOptional -> Effect.catchNoSuchElement
+Effect.catchSomeCause -> Effect.catchCauseFilter
+Effect.tapErrorCause -> Effect.tapCause
+Effect.ignoreLogged -> Effect.ignore
+Effect.unsafeMakeLatch -> Latch.makeUnsafe
+Effect.makeLatch -> Latch.make
+Layer.scoped -> Layer.effect
+Layer.scopedDiscard -> Layer.effectDiscard
+Layer.tapErrorCause -> Layer.tapCause
+Mailbox -> Queue.Queue
+Mailbox.make -> Queue.make
+Either -> Result.Result
+Either.right -> Result.succeed
+Either.left -> Result.fail
+Scope.extend -> Scope.provide
+Effect.unsafeMakeSemaphore -> Semaphore.makeUnsafe
+Effect.makeSemaphore -> Semaphore.make
+Stream.Context -> Stream.Services
+StreamHaltStrategy.HaltStrategy -> Stream.HaltStrategy
+Stream.repeatEffect -> Stream.fromEffectRepeat
+Stream.repeatEffectWithSchedule -> Stream.fromEffectSchedule
+Stream.async -> Stream.callback
+Stream.asyncEffect -> Stream.callback
+Stream.asyncPush -> Stream.callback
+Stream.asyncScoped -> Stream.callback
+Stream.repeatEffectChunk -> Stream.fromIterableEffectRepeat
+Stream.fromChunk -> Stream.fromArray
+Stream.fromChunks -> Stream.fromArrays
+Stream.mapChunks -> Stream.mapArray
+Stream.mapChunksEffect -> Stream.mapArrayEffect
+Stream.either -> Stream.result
+Stream.flattenChunks -> Stream.flattenArray
+Stream.flattenIterables -> Stream.flattenIterable
+Stream.mergeEither -> Stream.mergeResult
+Stream.zipWithChunks -> Stream.zipWithArray
+Stream.bufferChunks -> Stream.bufferArray
+Stream.catchAllCause -> Stream.catchCause
+Stream.tapErrorCause -> Stream.tapCause
+Stream.catchAll -> Stream.catch
+Stream.catchSome -> Stream.catchIf
+Stream.catchSomeCause -> Stream.catchCauseIf
+Stream.combineChunks -> Stream.combineArray
+Stream.provideSomeLayer -> Stream.provide
+Stream.provideSomeContext -> Stream.provide
 ```

@@ -204,15 +204,30 @@ export const mappingModules = (
   }
 }
 
+const renderApiTarget = (target: ApiTarget, source: boolean): string => {
+  const moduleName = target.module.split("/").at(-1) ?? target.module
+  if (target.path[0] === moduleName && (target.path.length > 1 || source)) {
+    return target.path.join(".")
+  }
+  return [moduleName, ...target.path].join(".")
+}
+
 export const renderMigrationMarkdown = (mapping: MigrationMap): string => {
   const mapped = mapping.modules.filter((entry) => entry.from !== undefined)
   const added = mapping.modules.filter((entry) => entry.from === undefined)
+  const apiRenames = [
+    ...new Set(mapping.apis.map((entry) => {
+      const from = renderApiTarget(entry.from, true)
+      const to = entry.to === null ? "Removed" : renderApiTarget(entry.to, false)
+      return `${from} -> ${to}`
+    }))
+  ]
   const lines = [
     "# v3 to v4 Import and API Rename Maps",
     "",
     `Mapped modules: ${mapped.reduce((total, entry) => total + entry.to.length, 0)}`,
     `No counterpart: ${added.length}`,
-    `API renames: ${mapping.apis.length}`,
+    `API renames: ${apiRenames.length}`,
     "",
     "This file is generated from `migration/v3-to-v4.json`. Do not edit it directly.",
     "",
@@ -247,14 +262,10 @@ export const renderMigrationMarkdown = (mapping: MigrationMap): string => {
     "",
     "## API Renames",
     "",
-    "Each line is `v3 API -> v4 API`.",
+    "Each line is `v3 API -> v4 API`, using the namespaced spelling found in application code.",
     "",
     "```text",
-    ...mapping.apis.map((entry) => {
-      const from = `${entry.from.module}#${entry.from.path.join(".")}`
-      const to = entry.to === null ? "Removed" : `${entry.to.module}#${entry.to.path.join(".")}`
-      return `${from} -> ${to}`
-    }),
+    ...apiRenames,
     "```",
     ""
   ]
