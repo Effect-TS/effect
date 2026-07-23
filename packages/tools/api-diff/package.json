@@ -15,6 +15,10 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest"
   },
+  "dependencies": {
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^"
+  },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
     "@types/node": "^26.1.1",

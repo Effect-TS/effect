@@ -1,3 +1,8 @@
+import * as Data from "effect/Data"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as Command from "effect/unstable/cli/Command"
+import * as Flag from "effect/unstable/cli/Flag"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { diffSnapshots } from "./Diff.ts"
@@ -6,65 +11,32 @@ import { mappingModules, parseMigrationMap, renderMigrationMarkdown, validateMig
 import { renderMarkdownReport } from "./Report.ts"
 import { prepareSnapshot, resolveRef, writeSnapshotOutput } from "./Worktrees.ts"
 
-interface CliOptions {
-  readonly baseRef?: string | undefined
-  readonly headRef?: string | undefined
-  readonly mapping?: string | undefined
-  readonly output?: string | undefined
-  readonly writeMappingDoc?: string | undefined
-  readonly help: boolean
-}
+const baseRef = Flag.string("base-ref").pipe(
+  Flag.withDescription("Explicit base Git ref"),
+  Flag.optional
+)
 
-const usage = `Usage:
-  pnpm api-diff --base-ref <ref> --head-ref <ref> --mapping <file> --output <directory>
-  pnpm api-diff --mapping <file> --write-mapping-doc <file>
+const headRef = Flag.string("head-ref").pipe(
+  Flag.withDescription("Explicit head Git ref"),
+  Flag.optional
+)
 
-Options:
-  --base-ref <ref>          Explicit base Git ref
-  --head-ref <ref>          Explicit head Git ref
-  --mapping <file>          Versioned migration map JSON
-  --output <directory>      Report output directory
-  --write-mapping-doc <file>  Generate Markdown from the migration map
-  -h, --help                Show this help
-`
+const mapping = Flag.string("mapping").pipe(
+  Flag.withMetavar("FILE"),
+  Flag.withDescription("Versioned migration map JSON")
+)
 
-const parseArgs = (args: ReadonlyArray<string>): CliOptions => {
-  let baseRef: string | undefined
-  let headRef: string | undefined
-  let mapping: string | undefined
-  let output: string | undefined
-  let writeMappingDoc: string | undefined
-  let help = false
-  for (let index = 0; index < args.length; index++) {
-    const argument = args[index]!
-    if (argument === "--help" || argument === "-h") {
-      help = true
-      continue
-    }
-    if (
-      argument !== "--base-ref" && argument !== "--head-ref" && argument !== "--mapping" &&
-      argument !== "--output" && argument !== "--write-mapping-doc"
-    ) {
-      throw new Error(`Unknown option: ${argument}`)
-    }
-    const value = args[++index]
-    if (value === undefined || value.startsWith("-")) {
-      throw new Error(`Missing value for ${argument}`)
-    }
-    if (argument === "--base-ref") {
-      baseRef = value
-    } else if (argument === "--head-ref") {
-      headRef = value
-    } else if (argument === "--mapping") {
-      mapping = value
-    } else if (argument === "--output") {
-      output = value
-    } else {
-      writeMappingDoc = value
-    }
-  }
-  return { baseRef, headRef, mapping, output, writeMappingDoc, help }
-}
+const output = Flag.string("output").pipe(
+  Flag.withMetavar("DIRECTORY"),
+  Flag.withDescription("Report output directory"),
+  Flag.optional
+)
+
+const writeMappingDoc = Flag.string("write-mapping-doc").pipe(
+  Flag.withMetavar("FILE"),
+  Flag.withDescription("Generate Markdown from the migration map"),
+  Flag.optional
+)
 
 const findRepoRoot = (cwd: string): string => {
   let current = resolve(cwd)
@@ -82,49 +54,65 @@ const findRepoRoot = (cwd: string): string => {
 
 const absolute = (repoRoot: string, path: string): string => isAbsolute(path) ? path : resolve(repoRoot, path)
 
-export const runCli = (args: ReadonlyArray<string>, cwd = process.cwd()): void => {
-  const options = parseArgs(args)
-  if (options.help) {
-    process.stdout.write(usage)
-    return
-  }
-  if (options.mapping === undefined) {
-    throw new Error("--mapping is required")
-  }
-  const repoRoot = findRepoRoot(cwd)
+class ApiDiffError extends Data.TaggedError("ApiDiffError")<{
+  readonly message: string
+  readonly cause: unknown
+}> {}
+
+interface CliOptions {
+  readonly baseRef: Option.Option<string>
+  readonly headRef: Option.Option<string>
+  readonly mapping: string
+  readonly output: Option.Option<string>
+  readonly writeMappingDoc: Option.Option<string>
+}
+
+const runApiDiff = Effect.fnUntraced(function*(options: CliOptions) {
+  yield* Effect.try({
+    try: () => runApiDiffSync(options),
+    catch: (cause) =>
+      new ApiDiffError({
+        message: cause instanceof Error ? cause.message : String(cause),
+        cause
+      })
+  })
+})
+
+const runApiDiffSync = (options: CliOptions): void => {
+  const repoRoot = findRepoRoot(process.cwd())
   const mappingPath = absolute(repoRoot, options.mapping)
   const mapping = parseMigrationMap(mappingPath)
   const staticDiagnostics = validateMigrationMap(mapping, { repoRoot })
-  if (options.writeMappingDoc !== undefined) {
+  if (Option.isSome(options.writeMappingDoc)) {
     if (staticDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
       throw new Error(staticDiagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join("\n"))
     }
-    const output = absolute(repoRoot, options.writeMappingDoc)
+    const output = absolute(repoRoot, options.writeMappingDoc.value)
     mkdirSync(dirname(output), { recursive: true })
     writeFileSync(output, renderMigrationMarkdown(mapping))
     process.stdout.write(`Generated ${relative(repoRoot, output)}\n`)
     return
   }
-  if (options.baseRef === undefined || options.headRef === undefined || options.output === undefined) {
+  if (Option.isNone(options.baseRef) || Option.isNone(options.headRef) || Option.isNone(options.output)) {
     throw new Error("--base-ref, --head-ref, and --output are required for comparison")
   }
   if (staticDiagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     throw new Error(staticDiagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join("\n"))
   }
 
-  const baseSha = resolveRef(repoRoot, options.baseRef)
-  const headSha = resolveRef(repoRoot, options.headRef)
+  const baseSha = resolveRef(repoRoot, options.baseRef.value)
+  const headSha = resolveRef(repoRoot, options.headRef.value)
   const modules = mappingModules(mapping)
   const toolRoot = join(repoRoot, "tmp", "api-diff")
   const cacheRoot = join(toolRoot, "cache")
   const worktreesRoot = join(toolRoot, "worktrees")
-  process.stdout.write(`Base ${options.baseRef}: ${baseSha}\nHead ${options.headRef}: ${headSha}\n`)
+  process.stdout.write(`Base ${options.baseRef.value}: ${baseSha}\nHead ${options.headRef.value}: ${headSha}\n`)
   const base = prepareSnapshot({
     repoRoot,
     cacheRoot,
     worktreesRoot,
     name: "base",
-    ref: options.baseRef,
+    ref: options.baseRef.value,
     sha: baseSha,
     modules: modules.base
   })
@@ -133,12 +121,12 @@ export const runCli = (args: ReadonlyArray<string>, cwd = process.cwd()): void =
     cacheRoot,
     worktreesRoot,
     name: "head",
-    ref: options.headRef,
+    ref: options.headRef.value,
     sha: headSha,
     modules: modules.head
   })
   const mappingDiagnostics = validateMigrationMap(mapping, { base, head, repoRoot })
-  const output = absolute(repoRoot, options.output)
+  const output = absolute(repoRoot, options.output.value)
   mkdirSync(output, { recursive: true })
   writeSnapshotOutput(join(output, "base.snapshot.json"), base)
   writeSnapshotOutput(join(output, "head.snapshot.json"), head)
@@ -157,3 +145,14 @@ export const runCli = (args: ReadonlyArray<string>, cwd = process.cwd()): void =
     throw new Error("Generated Markdown report is empty")
   }
 }
+
+export const cli = Command.make("api-diff", {
+  baseRef,
+  headRef,
+  mapping,
+  output,
+  writeMappingDoc
+}).pipe(
+  Command.withDescription("Compare the consumer-visible TypeScript API of two repository revisions"),
+  Command.withHandler(runApiDiff)
+)

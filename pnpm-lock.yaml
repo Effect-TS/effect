@@ -712,6 +712,13 @@ importers:
         version: 26.1.1
 
   packages/tools/api-diff:
+    dependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform-node
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
     devDependencies:
       '@effect/vitest':
         specifier: workspace:^
