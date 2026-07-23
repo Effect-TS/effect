@@ -199,7 +199,7 @@ const readTSConfig = (fileName: string): Effect.Effect<
     const process = yield* Domain.Process
     const cwd = yield* process.cwd
     return yield* pipe(
-      Effect.promise(() => tsconfck.parse(path.resolve(cwd, fileName))).pipe(
+      Effect.tryPromise(() => tsconfck.parse(path.resolve(cwd, fileName))).pipe(
         Effect.map(({ tsconfig }) => tsconfig.compilerOptions ?? defaultCompilerOptions),
         Effect.mapError((error) =>
           new DocgenError({

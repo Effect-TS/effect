@@ -356,6 +356,7 @@ const defaultPrettierOptions: Prettier.Options = {
 }
 
 /**
+ * @category printers
  * @since 0.6.0
  */
 export const printFrontMatter = (module: Domain.Module, nav_order: number): string => {
@@ -367,6 +368,7 @@ parent: Modules
 }
 
 /**
+ * @category printers
  * @since 0.6.0
  */
 export function prettify(s: string) {

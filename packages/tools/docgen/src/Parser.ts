@@ -392,7 +392,10 @@ const parseExportStar = (ed: ast.ExportDeclaration) =>
 const parseNamedExports = (ed: ast.ExportDeclaration) => {
   const namedExports = ed.getNamedExports()
   if (namedExports.length === 0) {
-    return parseExportStar(ed).pipe(Effect.map(Array.of))
+    if (ed.getModuleSpecifier() !== undefined) {
+      return parseExportStar(ed).pipe(Effect.map(Array.of))
+    }
+    return Effect.succeed([])
   }
   return Effect.forEach(namedExports, parseExportSpecifier)
 }

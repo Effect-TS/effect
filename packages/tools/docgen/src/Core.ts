@@ -24,7 +24,7 @@ import * as Printer from "./Printer.ts"
  * files matching the provided `exclude` patterns.
  */
 const glob = (pattern: string, exclude: ReadonlyArray<string> = []) =>
-  Effect.promise(() =>
+  Effect.tryPromise(() =>
     Glob.glob(pattern, {
       ignore: exclude.slice(),
       withFileTypes: false
