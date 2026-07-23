@@ -133,7 +133,11 @@ class PriorityBuckets {
  *
  * `MixedScheduler` supports synchronous and asynchronous execution modes, uses
  * operation counts to decide when fibers should yield, and is the default
- * scheduler implementation.
+ * scheduler implementation. Its priority queue is optimized for a small set of
+ * priorities reused across tasks in each queued batch. Dynamic finite numeric
+ * priorities are ordered correctly, but high-cardinality priority sets are not
+ * a performance target because task insertion scans the queued priority buckets
+ * linearly.
  *
  * @category schedulers
  * @since 2.0.0
