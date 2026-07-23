@@ -6,6 +6,7 @@ import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
+import type * as ErrorReporter from "../ErrorReporter.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
@@ -58,6 +59,7 @@ import {
   contA,
   contAll,
   contE,
+  Die,
   evaluate,
   exitDie,
   exitFail,
@@ -502,6 +504,28 @@ const fiberIdStore = { id: 0 }
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
+const reportCompletionCallbackErrors = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  errors: ReadonlyArray<unknown>,
+  reporters: ReadonlySet<ErrorReporter.ErrorReporter>,
+  clock: Clock.Clock
+): void => {
+  try {
+    if (reporters.size === 0) return
+    const cause = causeFromReasons(errors.map((error) => new Die(error)))
+    const options = { cause, fiber, timestamp: clock.currentTimeNanosUnsafe() }
+    for (const reporter of reporters) {
+      try {
+        reporter.report(options)
+      } catch {
+        // Completion must not be corrupted by a failing reporter.
+      }
+    }
+  } catch {
+    // Completion must not be corrupted by a failing reporting dependency.
+  }
+}
+
 /** @internal */
 export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
@@ -617,14 +641,31 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
 
     this._exit = exit
-    this.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
-    for (let i = 0; i < this._observers.length; i++) {
-      this._observers[i](exit)
-    }
-    this._observers.length = 0
+    const context = this.context
+    const observers = this._observers.splice(0)
+    const runtimeMetrics = this.runtimeMetrics
+    const reporters = this.getRef(CurrentErrorReporters)
+    const clock = this.getRef(ClockRef)
     this._stack.length = 0
     this._children = undefined
     this.context = Context.empty()
+
+    let callbackErrors: Array<unknown> | undefined
+    try {
+      runtimeMetrics?.recordFiberEnd(context, exit)
+    } catch (error) {
+      ;(callbackErrors ??= []).push(error)
+    }
+    for (let i = 0; i < observers.length; i++) {
+      try {
+        observers[i](exit)
+      } catch (error) {
+        ;(callbackErrors ??= []).push(error)
+      }
+    }
+    if (callbackErrors !== undefined) {
+      reportCompletionCallbackErrors(this, callbackErrors, reporters, clock)
+    }
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
     const prevFiber = (globalThis as any)[currentFiberTypeId]
