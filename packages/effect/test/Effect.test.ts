@@ -98,6 +98,111 @@ describe("Effect", () => {
     assert.strictEqual(result, 1)
   })
 
+  describe("runFork RunOptions", () => {
+    it("does not evaluate a synchronous root with a pre-aborted signal", () => {
+      const controller = new AbortController()
+      controller.abort()
+      let evaluated = false
+
+      const fiber = Effect.runFork(
+        Effect.sync(() => {
+          evaluated = true
+        }),
+        { signal: controller.signal }
+      )
+
+      assert.isFalse(evaluated)
+      assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+    })
+
+    it("does not evaluate a yielding root with a pre-aborted signal", () => {
+      const controller = new AbortController()
+      controller.abort()
+      let evaluated = false
+
+      const fiber = Effect.runFork(
+        Effect.gen(function*() {
+          evaluated = true
+          yield* Effect.yieldNow
+        }),
+        { signal: controller.signal }
+      )
+
+      assert.isFalse(evaluated)
+      assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+    })
+
+    it("allows a pre-aborted uninterruptible root to complete", () => {
+      const controller = new AbortController()
+      controller.abort()
+
+      const fiber = Effect.runFork(Effect.succeed(1), {
+        signal: controller.signal,
+        uninterruptible: true
+      })
+
+      assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed(1))
+    })
+
+    it("delivers an abort during the initial synchronous segment", () => {
+      const controller = new AbortController()
+
+      const fiber = Effect.runFork(
+        Effect.sync(() => {
+          controller.abort()
+        }),
+        { signal: controller.signal }
+      )
+
+      assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+    })
+
+    it("invokes onFiberStart before synchronous completion", () => {
+      const events: Array<string> = []
+      let startedFiber: Fiber.Fiber<void> | undefined
+
+      const fiber = Effect.runFork(
+        Effect.sync(() => {
+          events.push("effect")
+        }),
+        {
+          onFiberStart: (fiber) => {
+            events.push("start")
+            startedFiber = fiber as Fiber.Fiber<void>
+            assert.isUndefined(fiber.pollUnsafe())
+          }
+        }
+      )
+
+      assert.strictEqual(startedFiber, fiber)
+      assert.deepStrictEqual(events, ["start", "effect"])
+    })
+
+    it.effect("invokes onFiberStart before asynchronous completion", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        let startedFiber: Fiber.Fiber<void> | undefined
+
+        const fiber = Effect.runFork(
+          Effect.gen(function*() {
+            events.push("effect")
+            yield* Effect.yieldNow
+          }),
+          {
+            onFiberStart: (fiber) => {
+              events.push("start")
+              startedFiber = fiber as Fiber.Fiber<void>
+              assert.isUndefined(fiber.pollUnsafe())
+            }
+          }
+        )
+
+        yield* Fiber.await(fiber)
+        assert.strictEqual(startedFiber, fiber)
+        assert.deepStrictEqual(events, ["start", "effect"])
+      }))
+  })
+
   it("acquireUseRelease interrupt", async () => {
     let acquire = false
     let use = false

@@ -8842,7 +8842,8 @@ export const fiberId: Effect<number> = internal.fiberId
  *
  * `signal` interrupts the fiber, `scheduler` provides the scheduler service,
  * `uninterruptible` starts the fiber uninterruptibly, and `onFiberStart`
- * receives the created fiber.
+ * receives the created fiber. Signal handling is installed and `onFiberStart`
+ * is invoked before the root effect begins evaluation.
  *
  * @see {@link runFork} for starting a fiber with these options
  * @see {@link runCallback} for callback-based running with these options

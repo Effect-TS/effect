@@ -5337,20 +5337,32 @@ export const runForkWith = <R>(context: Context.Context<R>) =>
     options?.scheduler ? Context.add(context, Scheduler.Scheduler, options.scheduler) : context,
     options?.uninterruptible !== true
   )
-  fiber.evaluate(effect as any)
-  if (fiber._exit) return fiber
 
-  if (options?.signal) {
-    if (options.signal.aborted) {
-      fiber.interruptUnsafe()
+  const signal = options?.signal
+  let preAborted = false
+  if (signal) {
+    if (signal.aborted) {
+      preAborted = true
     } else {
       const abort = () => fiber.interruptUnsafe()
-      options.signal.addEventListener("abort", abort, { once: true })
-      fiber.addObserver(() => options.signal!.removeEventListener("abort", abort))
+      signal.addEventListener("abort", abort, { once: true })
+      fiber.addObserver(() => signal.removeEventListener("abort", abort))
     }
   }
+  const start = () => {
+    if (preAborted) {
+      fiber.interruptUnsafe()
+    }
+    fiber.evaluate(effect as any)
+  }
   if (options?.onFiberStart) {
-    options.onFiberStart(fiber)
+    try {
+      options.onFiberStart(fiber)
+    } finally {
+      start()
+    }
+  } else {
+    start()
   }
   return fiber
 }
