@@ -832,6 +832,22 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     )
   })
 
+  it("supports __proto__ as a reference", () => {
+    const document = SchemaRepresentation.toJsonSchemaDocument(
+      SchemaRepresentation.toRepresentation(
+        Schema.String.annotate({ identifier: "__proto__" }).ast
+      )
+    )
+
+    assert.deepStrictEqual(document.schema, {
+      $ref: "#/$defs/__proto__"
+    })
+    assert.deepStrictEqual(Object.keys(document.definitions), ["__proto__"])
+    assert.deepStrictEqual(document.definitions["__proto__"], {
+      type: "string"
+    })
+  })
+
   it("reports missing references with their document path", () => {
     const document: SchemaRepresentation.Document = {
       representation: { _tag: "Reference", $ref: "Missing" },

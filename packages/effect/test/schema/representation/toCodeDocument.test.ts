@@ -1386,6 +1386,36 @@ describe("toCodeDocument", () => {
       })
     })
 
+    it("supports __proto__ as a recursive reference", () => {
+      const references = Object.fromEntries([["__proto__", {
+        _tag: "Objects",
+        propertySignatures: [{
+          name: "next",
+          type: { _tag: "Reference", $ref: "__proto__" },
+          isOptional: true,
+          isMutable: false
+        }],
+        indexSignatures: [],
+        checks: []
+      }]]) as SchemaRepresentation.References
+
+      assertMultiDocument({
+        representations: [{ _tag: "Reference", $ref: "__proto__" }],
+        references
+      }, {
+        codes: makeCode("__proto__", "__proto__"),
+        references: {
+          recursives: Object.fromEntries([[
+            "__proto__",
+            makeCode(
+              `Schema.Struct({ "next": Schema.optionalKey(Schema.suspend((): Schema.Codec<__proto__> => __proto__)) })`,
+              `{ readonly "next"?: __proto__ }`
+            )
+          ]])
+        }
+      })
+    })
+
     it("non-recursive", () => {
       assertSchema(
         {

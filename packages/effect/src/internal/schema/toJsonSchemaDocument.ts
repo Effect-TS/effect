@@ -6,6 +6,7 @@ import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
+import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
 
 type Path = ReadonlyArray<string | number>
@@ -142,7 +143,7 @@ function compileJsonSchema(
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
   for (const key of Object.keys(references)) {
-    definitions[key] = recur(references[key], ["references", key])
+    InternalRecord.set(definitions, key, recur(references[key], ["references", key]))
   }
   const schemas = Arr.map(representations, (representation, index) => recur(representation, rootPaths[index]))
   return { dialect: "draft-2020-12", schemas, definitions }
