@@ -3083,9 +3083,11 @@ describe("Effect", () => {
           yield* Effect.updateServiceScoped(
             CurrentValues,
             (values) => [...values, "scoped"],
-            (original, updated, current) => {
-              resetValues = [original, updated, current]
-              return [...original, ...current.filter((value) => !updated.includes(value))]
+            {
+              reset: (original, updated, current) => {
+                resetValues = [original, updated, current]
+                return [...original, ...current.filter((value) => !updated.includes(value))]
+              }
             }
           )
           yield* Effect.withFiber((fiber) =>

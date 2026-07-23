@@ -2114,21 +2114,26 @@ export const updateService: {
 /** @internal */
 export const updateServiceScoped = <I, A>(
   service: Context.Key<I, A>,
-  f: (value: A) => A,
-  reset?: ((original: A, updated: A, current: A) => A) | undefined
+  update: (value: A) => A,
+  options?: {
+    readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
+  } | undefined
 ): Effect.Effect<void, never, I | Scope.Scope> =>
   uninterruptible(withFiber((fiber) => {
     const original = Context.getUnsafe(fiber.context, service)
-    const updated = f(original)
+    const updated = update(original)
     fiber.setContext(Context.add(fiber.context, service, updated))
     return scopeAddFinalizerExit(Context.getUnsafe(fiber.context, scopeTag), (_) => {
-      fiber.setContext(
-        Context.add(
-          fiber.context,
-          service,
-          reset === undefined ? original : reset(original, updated, Context.getUnsafe(fiber.context, service))
-        )
-      )
+      const current = Context.getUnsafe(fiber.context, service)
+      // Check if the service was modified later in the program - avoid resetting
+      // the service to its original value unless an explicit reset method is specified
+      if (options?.reset === undefined && current !== updated) {
+        return void_
+      }
+      const next = options?.reset === undefined
+        ? original
+        : options.reset(original, updated, current)
+      fiber.setContext(Context.add(fiber.context, service, next))
       return void_
     })
   }))

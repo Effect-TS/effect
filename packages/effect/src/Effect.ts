@@ -6256,9 +6256,11 @@ export const updateService: {
  *       yield* Effect.updateServiceScoped(
  *         CurrentNumber,
  *         (value) => value + 1,
- *         // Optional: when omitted, the original value is restored
- *         (original, updated, current) =>
- *           Math.max(original, updated, current) + 1
+ *         {
+ *           // Optional: when omitted, the original value is restored
+ *           reset: (original, updated, current) =>
+ *             Math.max(original, updated, current) + 1
+ *         }
  *       )
  *       return yield* CurrentNumber
  *     })
@@ -6280,7 +6282,9 @@ export const updateService: {
 export const updateServiceScoped: <I, A>(
   service: Context.Key<I, A>,
   f: (value: A) => A,
-  reset?: ((original: A, updated: A, current: A) => A) | undefined
+  options?: {
+    readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
+  } | undefined
 ) => Effect<void, never, I | Scope> = internal.updateServiceScoped
 
 /**
