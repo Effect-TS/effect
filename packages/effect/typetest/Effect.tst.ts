@@ -623,13 +623,11 @@ describe("Effect.updateServiceScoped", () => {
     const result = Effect.updateServiceScoped(
       UpdateServiceScopedService,
       (value) => value + 1,
-      {
-        reset: (original, updated, current) => {
-          expect(original).type.toBe<number>()
-          expect(updated).type.toBe<number>()
-          expect(current).type.toBe<number>()
-          return current
-        }
+      (original, updated, current) => {
+        expect(original).type.toBe<number>()
+        expect(updated).type.toBe<number>()
+        expect(current).type.toBe<number>()
+        return current
       }
     )
     expect(result).type.toBe<Effect.Effect<void, never, UpdateServiceScopedService | Scope.Scope>>()

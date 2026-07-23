@@ -6274,9 +6274,7 @@ export const updateService: {
 export const updateServiceScoped: <I, A>(
   service: Context.Key<I, A>,
   f: (value: A) => A,
-  options?: {
-    readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
-  } | undefined
+  reset?: ((original: A, updated: A, current: A) => A) | undefined
 ) => Effect<void, never, I | Scope> = internal.updateServiceScoped
 
 /**
