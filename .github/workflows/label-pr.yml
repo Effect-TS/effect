@@ -1,0 +1,32 @@
+name: Label Pull Requests
+
+on:
+  pull_request_target:
+    branches: [main, v3]
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  label:
+    name: Label
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    timeout-minutes: 1
+    steps:
+      - name: Add Version Label
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const labels = {
+              main: "4.0",
+              v3: "3.0"
+            }
+            const label = labels[context.payload.pull_request.base.ref]
+
+            await github.rest.issues.addLabels({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [label]
+            })
