@@ -519,6 +519,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._children = undefined
     this._interruptedCause = undefined
     this._yielded = undefined
+    this._schedulerYieldTarget = undefined
     this._running = false
     this._deferredInterrupt = false
     this.runtimeMetrics?.recordFiberStart(this.context)
@@ -535,6 +536,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   _children: Set<FiberImpl<any, any>> | undefined
   _interruptedCause: Cause.Cause<never> | undefined
   _yielded: Exit.Exit<any, any> | (() => void) | undefined
+  _schedulerYieldTarget: Primitive | undefined
   _running: boolean
   _deferredInterrupt: boolean
 
@@ -589,6 +591,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       if (this._running) {
         this._deferredInterrupt = true
       } else {
+        this._schedulerYieldTarget = undefined
         this.evaluate(failCause(this._interruptedCause) as any)
       }
     }
@@ -631,28 +634,32 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     ;(globalThis as any)[currentFiberTypeId] = this
     const prevRunning = this._running
     this._running = true
-    let yielding = false
     let current: Primitive | Yield = effect
     this.currentOpCount = 0
     try {
       while (true) {
         if (this._deferredInterrupt) {
           this._deferredInterrupt = false
+          this._schedulerYieldTarget = undefined
           current = failCause(this._interruptedCause!) as any
         }
         this.currentOpCount++
         if (
-          !yielding &&
+          this._schedulerYieldTarget === undefined &&
           !this.currentPreventYield &&
           this.currentScheduler.shouldYield(this as any)
         ) {
-          yielding = true
           const prev = current
-          current = flatMap(yieldNow, () => prev as any) as any
+          this._schedulerYieldTarget = prev as Primitive
+          current = flatMap(schedulerYieldNow(), () => prev as any) as any
         }
+        const evaluated = current
         current = this.currentTracerContext
           ? this.currentTracerContext(current as any, this)
           : (current as any)[evaluate](this)
+        if (evaluated === this._schedulerYieldTarget) {
+          this._schedulerYieldTarget = undefined
+        }
         if (current === Yield) {
           const yielded = this._yielded!
           if (ExitTypeId in yielded) {
@@ -668,6 +675,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         }
       }
     } catch (error) {
+      this._schedulerYieldTarget = undefined
       if (!hasProperty(current, evaluate)) {
         return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
       }
@@ -717,7 +725,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.currentLogLevel = this.getRef(CurrentLogLevel)
     this.minimumLogLevel = this.getRef(MinimumLogLevel)
     this.currentStackFrame = context.mapUnsafe.get(CurrentStackFrame.key)
-    this.maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
+    const maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
+    this.maxOpsBeforeYield = Number.isFinite(maxOpsBeforeYield)
+      ? Math.max(1, Math.floor(maxOpsBeforeYield))
+      : Scheduler.MaxOpsBeforeYield.defaultValue()
     this.currentPreventYield = this.getRef(Scheduler.PreventSchedulerYield)
     this.runtimeMetrics = context.mapUnsafe.get(InternalMetric.FiberRuntimeMetricsKey)
     const currentTracer = context.mapUnsafe.get(Tracer.TracerKey)
@@ -976,6 +987,21 @@ export const yieldNowWith: (priority?: number) => Effect.Effect<void> = makePrim
 
 /** @internal */
 export const yieldNow: Effect.Effect<void> = yieldNowWith(0)
+
+const schedulerYieldNow: () => Effect.Effect<void> = makePrimitive({
+  op: "Yield",
+  [evaluate](fiber) {
+    let resumed = false
+    const resume = exitSucceed(undefined)
+    fiber.currentDispatcher.scheduleTask(() => {
+      if (resumed) return
+      fiber.evaluate(resume as any)
+    }, 0)
+    return fiber.yieldWith(() => {
+      resumed = true
+    })
+  }
+})
 
 /** @internal */
 export const succeedSome = <A>(a: A): Effect.Effect<Option.Option<A>> => succeed(Option.some(a))

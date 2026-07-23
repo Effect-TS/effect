@@ -250,6 +250,11 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
  * fairness by helping prevent long-running fibers from monopolizing the
  * execution thread.
  *
+ * Values are normalized when installed on a fiber. Finite values are rounded
+ * down and clamped to a minimum of `1`. `NaN` and positive or negative
+ * infinity use the default value of `2048`. Use {@link PreventSchedulerYield}
+ * instead when cooperative yielding should be disabled.
+ *
  * @see {@link PreventSchedulerYield} for bypassing scheduler yield checks entirely rather than tuning the operation budget
  *
  * @category references
