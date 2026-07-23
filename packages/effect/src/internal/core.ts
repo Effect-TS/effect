@@ -541,7 +541,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     }
     return cont
       ? cont[contE](cause, fiber, annotated ? undefined : this)
-      : fiber.yieldWith(annotated ? this : exitFailCause(cause))
+      : fiber.yieldWith(annotated ? exitFailCause(cause) : this)
   }
 })
 
