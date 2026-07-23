@@ -68,6 +68,7 @@ export interface Atom<A> extends Pipeable, Inspectable.Inspectable {
   readonly keepAlive: boolean
   readonly lazy: boolean
   readonly read: (get: AtomContext) => A
+  equals(value: A, next: A): boolean
   readonly refresh?: (f: <A>(atom: Atom<A>) => void) => void
   readonly label?: readonly [name: string, stack: string]
   readonly idleTTL?: number
@@ -229,6 +230,7 @@ const removeTtl = setIdleTTL(0)
 
 const AtomProto = {
   [TypeId]: TypeId,
+  equals: Object.is,
   ...PipeInspectableProto,
   toJSON(this: Atom<any>) {
     return {
@@ -1504,6 +1506,44 @@ export const setLazy: {
     ...self,
     lazy
   }))
+
+/**
+ * Returns a copy of an atom that uses a custom equality function to detect
+ * value changes.
+ *
+ * **Details**
+ *
+ * When an atom's value is rebuilt or written, the registry compares the new
+ * value against the current one to decide whether dependents and listeners
+ * should be notified. By default the comparison uses `Object.is`, so a
+ * structurally equal but referentially distinct value still triggers
+ * notifications. Providing an equality function lets the atom skip updates
+ * when the new value is equal to the current one.
+ *
+ * **Example** (Comparing values structurally)
+ *
+ * ```ts
+ * import { Atom } from "effect/unstable/reactivity"
+ *
+ * const point = Atom.make({ x: 0, y: 0 }).pipe(
+ *   Atom.withEquality<{ x: number; y: number }>((a, b) => a.x === b.x && a.y === b.y)
+ * )
+ * ```
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const withEquality: {
+  <A>(equals: (value: A, next: A) => boolean): <T extends Atom<A>>(self: T) => T
+  <T extends Atom<any>>(self: T, equals: (value: Type<T>, next: Type<T>) => boolean): T
+} = dual(
+  2,
+  <T extends Atom<any>>(self: T, equals: (value: Type<T>, next: Type<T>) => boolean): T =>
+    Object.assign(Object.create(Object.getPrototypeOf(self)), {
+      ...self,
+      equals
+    })
+)
 
 /**
  * Attaches a diagnostic label to an atom.

@@ -108,6 +108,49 @@ describe.sequential("Atom", () => {
     expect(second).toEqual(1)
   })
 
+  it("withEquality skips notifications for equivalent values", () => {
+    const point = Atom.make({ x: 0, y: 0 }).pipe(
+      Atom.withEquality<{ x: number; y: number }>((a, b) => a.x === b.x && a.y === b.y),
+      Atom.keepAlive
+    )
+    const r = AtomRegistry.make()
+    const initial = r.get(point)
+    let count = 0
+    r.subscribe(point, () => {
+      count++
+    })
+
+    r.set(point, { x: 0, y: 0 })
+    expect(count).toEqual(0)
+    expect(r.get(point)).toBe(initial)
+
+    r.set(point, { x: 1, y: 0 })
+    expect(count).toEqual(1)
+    expect(r.get(point)).toEqual({ x: 1, y: 0 })
+  })
+
+  it("withEquality skips invalidation of derived atoms", () => {
+    const point = Atom.make({ x: 0, y: 0 }).pipe(
+      Atom.withEquality<{ x: number; y: number }>((a, b) => a.x === b.x && a.y === b.y),
+      Atom.keepAlive
+    )
+    let builds = 0
+    const x = Atom.map(point, (p) => {
+      builds++
+      return p.x
+    })
+    const r = AtomRegistry.make()
+    r.subscribe(x, () => {})
+
+    expect(r.get(x)).toEqual(0)
+    expect(builds).toEqual(1)
+    r.set(point, { x: 0, y: 0 })
+    expect(builds).toEqual(1)
+    r.set(point, { x: 2, y: 0 })
+    expect(r.get(x)).toEqual(2)
+    expect(builds).toEqual(2)
+  })
+
   it("searchParam with schema reads initial query value", () => {
     const previousWindow = (globalThis as any).window
     const r = AtomRegistry.make()

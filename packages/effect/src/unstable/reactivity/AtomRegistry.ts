@@ -685,7 +685,7 @@ class NodeImpl<A> {
     }
 
     this.state = NodeState.valid
-    if (Object.is(this._value, value)) {
+    if (this.atom.equals(this._value, value)) {
       return
     }
 
