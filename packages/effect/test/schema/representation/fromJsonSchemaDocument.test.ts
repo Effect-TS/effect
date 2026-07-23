@@ -2795,8 +2795,12 @@ describe("fromJsonSchemaDocument", () => {
                     "elements": [],
                     "rest": [
                       {
-                        "_tag": "Reference",
-                        "$ref": "A"
+                        "_tag": "Suspend",
+                        "checks": [],
+                        "thunk": {
+                          "_tag": "Reference",
+                          "$ref": "A"
+                        }
                       }
                     ]
                   },

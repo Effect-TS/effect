@@ -34,6 +34,69 @@ describe("SchemaRepresentation.fromSchemaMultiDocument", () => {
     )
   })
 
+  it("preserves mutually recursive definitions", () => {
+    const schemas = SchemaRepresentation.fromJsonSchemaMultiDocument({
+      dialect: "draft-2020-12",
+      schemas: [{ $ref: "#/$defs/A" }],
+      definitions: {
+        A: {
+          type: "object",
+          properties: { b: { $ref: "#/$defs/B" } },
+          additionalProperties: false
+        },
+        B: {
+          type: "object",
+          properties: { a: { $ref: "#/$defs/A" } },
+          additionalProperties: false
+        }
+      }
+    })
+
+    assert.deepStrictEqual(SchemaRepresentation.fromSchemaMultiDocument(schemas), {
+      representations: [{ _tag: "Reference", $ref: "A" }],
+      references: {
+        A: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "b",
+            type: { _tag: "Reference", $ref: "B" },
+            isOptional: true,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: [],
+          annotations: { identifier: "A" }
+        },
+        B: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "a",
+            type: {
+              _tag: "Suspend",
+              checks: [],
+              thunk: { _tag: "Reference", $ref: "A" }
+            },
+            isOptional: true,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: [],
+          annotations: { identifier: "B" }
+        }
+      }
+    })
+  })
+
+  it("allows an identified suspended external definition", () => {
+    const Value = Schema.suspend(() => Schema.String).annotate({ identifier: "Value" })
+    const document = SchemaRepresentation.fromSchemaMultiDocument({
+      schemas: [Value],
+      definitions: { Value }
+    })
+
+    assert.deepStrictEqual(document.representations[0], { _tag: "Reference", $ref: "Value" })
+  })
+
   it("restores the identifier of an external definition", () => {
     const Value = Schema.Number
     const representation = SchemaRepresentation.fromSchemaMultiDocument({
@@ -49,6 +112,19 @@ describe("SchemaRepresentation.fromSchemaMultiDocument", () => {
       $ref: "Value"
     })
     assert.deepStrictEqual(Object.keys(SchemaRepresentation.fromSchemaMultiDocument(document).references), ["Value"])
+  })
+
+  it("rejects an identifier that collides with an external definition", () => {
+    const Root = Schema.Number.annotate({ identifier: "Value" })
+
+    assert.throws(
+      () =>
+        SchemaRepresentation.fromSchemaMultiDocument({
+          schemas: [Root],
+          definitions: { Value: Schema.String }
+        }),
+      /Duplicate identifier: "Value"/
+    )
   })
 
   it("supports __proto__ as an external definition key", () => {

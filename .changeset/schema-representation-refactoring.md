@@ -32,6 +32,7 @@ The representation pipeline is now open and compiler-extensible. The same encode
 - Add the named `FromJsonSchemaOptions` type for the importer `onEnter` callback.
 - Generate code from live `toCode` annotations on declarations and checks. Compiler callbacks receive generated type parameters or schema dependencies and can emit multiple import declarations.
 - Add import artifacts to `CodeDocument` and preserve all explicit definitions during multi-document code generation.
+- Reject distinct schemas that declare the same identifier instead of silently merging them or generating suffixed references.
 
 ### Canonical codecs and integrations
 

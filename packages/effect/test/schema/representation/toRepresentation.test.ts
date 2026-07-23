@@ -679,7 +679,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
-  it("assigns distinct references to recursive schemas with duplicate identifiers", () => {
+  it("rejects recursive schemas with duplicate identifiers", () => {
     interface First {
       readonly next?: First
     }
@@ -693,17 +693,25 @@ describe("SchemaRepresentation.toRepresentation", () => {
       next: Schema.optionalKey(Schema.suspend((): Schema.Codec<Second> => Second))
     }).annotate({ identifier: "Node" })
 
-    const document = SchemaRepresentation.toRepresentation(Schema.Tuple([First, Second]).ast)
-    assert.deepStrictEqual(document.representation, {
-      _tag: "Arrays",
-      elements: [
-        { type: { _tag: "Reference", $ref: "Node" }, isOptional: false },
-        { type: { _tag: "Reference", $ref: "Node1" }, isOptional: false }
-      ],
-      rest: [],
-      checks: []
-    })
-    assert.deepStrictEqual(Object.keys(document.references), ["Node", "Node1"])
+    assert.throws(
+      () => SchemaRepresentation.toRepresentation(Schema.Tuple([First, Second]).ast),
+      /Duplicate identifier: "Node"/
+    )
+  })
+
+  it("does not resolve an identifier below a check", () => {
+    const schema = Schema.String
+      .annotate({ identifier: "Text" })
+      .pipe(Schema.check(Schema.isMinLength(1)))
+    const document = SchemaRepresentation.toRepresentation(schema.ast)
+
+    assert.strictEqual(document.representation._tag, "String")
+    assert.deepStrictEqual(document.references, {})
+    if (document.representation._tag === "String") {
+      assert.deepStrictEqual(document.representation.annotations, { identifier: "Text" })
+      assert.strictEqual(document.representation.checks.length, 1)
+      assert.strictEqual(document.representation.checks[0].representation?.id, "effect/schema/isMinLength")
+    }
   })
 
   it("uses a fallback identifier for encoded representations", () => {

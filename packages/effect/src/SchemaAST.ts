@@ -3133,19 +3133,14 @@ export function getLastEncoding(ast: AST): AST {
 }
 
 /** @internal */
-export function annotateNode<A extends AST>(ast: A, annotations: Schema.Annotations.Annotations): A {
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.annotations.value = { ...d.annotations.value, ...annotations }
-  })
-}
-
-/** @internal */
 export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.Annotations): A {
   if (ast.checks) {
     const last = ast.checks[ast.checks.length - 1]
     return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
   }
-  return annotateNode(ast, annotations)
+  return modifyOwnPropertyDescriptors(ast, (d) => {
+    d.annotations.value = { ...d.annotations.value, ...annotations }
+  })
 }
 
 /** @internal */

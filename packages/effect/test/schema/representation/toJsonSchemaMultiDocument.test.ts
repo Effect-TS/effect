@@ -20,32 +20,32 @@ const StringRepresentation: SchemaRepresentation.Representation = {
 
 describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
   it("should handle multiple schemas", () => {
-    const A = Schema.String.annotate({ identifier: "id", description: "a" })
-    const B = Schema.String.annotate({ identifier: "id", description: "b" })
+    const A = Schema.String.annotate({ identifier: "A", description: "a" })
+    const B = Schema.String.annotate({ identifier: "B", description: "b" })
     const C = Schema.Tuple([A, B])
     const multiDocument = SchemaRepresentation.toRepresentations([A.ast, B.ast, C.ast])
     const jsonMultiDocument = SchemaRepresentation.toJsonSchemaMultiDocument(multiDocument)
     assert.deepStrictEqual(jsonMultiDocument, {
       dialect: "draft-2020-12",
       schemas: [
-        { "$ref": "#/$defs/id" },
-        { "$ref": "#/$defs/id1" },
+        { "$ref": "#/$defs/A" },
+        { "$ref": "#/$defs/B" },
         {
           "type": "array",
           "prefixItems": [
-            { "$ref": "#/$defs/id" },
-            { "$ref": "#/$defs/id1" }
+            { "$ref": "#/$defs/A" },
+            { "$ref": "#/$defs/B" }
           ],
           "minItems": 2,
           "maxItems": 2
         }
       ],
       definitions: {
-        id: {
+        A: {
           "type": "string",
           "description": "a"
         },
-        id1: {
+        B: {
           "type": "string",
           "description": "b"
         }

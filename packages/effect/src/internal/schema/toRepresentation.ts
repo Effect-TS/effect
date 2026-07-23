@@ -1,5 +1,4 @@
 import * as Arr from "../../Array.ts"
-import * as Equal from "../../Equal.ts"
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
@@ -35,11 +34,11 @@ export function fromSchemaMultiDocument(
 ): SchemaRepresentation.MultiDocument {
   const definitions = Object.entries(document.definitions).map(([key, schema]) => {
     const original = schema.ast
-    const encoded = SchemaAST.toEncoded(original)
+    const encoded = SchemaAST.getLastEncoding(original)
     const body = SchemaAST.isSuspend(encoded) ? encoded.thunk() : encoded
     return { key, original, encoded, body }
   })
-  const asts = Arr.map(document.schemas, (schema) => SchemaAST.toEncoded(schema.ast))
+  const asts = Arr.map(document.schemas, (schema) => schema.ast)
   return lowerASTs(asts, definitions)
 }
 
@@ -57,15 +56,27 @@ function isShareable(ast: SchemaAST.AST): boolean {
     (SchemaAST.isUnion(ast) && ast.types.some(isShareable))
 }
 
-function resolveReferenceIdentifier(ast: SchemaAST.AST): string | undefined {
+interface ReferenceIdentifier {
+  readonly identifier: string
+  readonly isFallback: boolean
+}
+
+function resolveReferenceIdentifier(ast: SchemaAST.AST): ReferenceIdentifier | undefined {
   const identifier = InternalAnnotations.resolveIdentifier(ast)
-  if (identifier !== undefined) return identifier
+  if (identifier !== undefined) return { identifier, isFallback: false }
   const fallback = InternalAnnotations.resolveIdentifierFallback(ast)
-  if (fallback !== undefined) return `${fallback}JsonEncoding`
-  const ownIdentifier = ast.annotations?.identifier
-  if (typeof ownIdentifier === "string") return ownIdentifier
-  const ownFallback = ast.annotations?.[InternalAnnotations.IDENTIFIER_FALLBACK_KEY]
-  return typeof ownFallback === "string" ? `${ownFallback}JsonEncoding` : undefined
+  return fallback === undefined ? undefined : { identifier: `${fallback}JsonEncoding`, isFallback: true }
+}
+
+function hasSameReferenceOwner(self: SchemaAST.AST, that: SchemaAST.AST): boolean {
+  if (self === that) return true
+  const selfKeys = Reflect.ownKeys(self)
+  const thatKeys = Reflect.ownKeys(that)
+  if (selfKeys.length !== thatKeys.length) return false
+  for (const key of selfKeys) {
+    if (key !== "context" && (self as any)[key] !== (that as any)[key]) return false
+  }
+  return true
 }
 
 function lowerASTs(
@@ -74,20 +85,17 @@ function lowerASTs(
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const referenceMap = new Map<SchemaAST.AST, string>()
+  const fallbackReferences: Array<readonly [SchemaAST.AST, string]> = []
+  const referenceOwners = new Map<string, SchemaAST.AST>()
   const externalReferences = new Set(externalDefinitions.map((definition) => definition.key))
-  const uniqueReferences = new Set(externalReferences)
   const visiting = new Set<SchemaAST.AST>()
   const visited = new Set<SchemaAST.AST>()
   const shared = new Set<SchemaAST.AST>()
-  const externalBodyReferences = new Map<SchemaAST.AST, string | null>()
 
   for (const definition of externalDefinitions) {
+    referenceOwners.set(definition.key, definition.body)
     referenceMap.set(definition.original, definition.key)
     referenceMap.set(definition.encoded, definition.key)
-    externalBodyReferences.set(
-      definition.body,
-      externalBodyReferences.has(definition.body) ? null : definition.key
-    )
   }
 
   for (const ast of asts) visit(ast)
@@ -101,13 +109,13 @@ function lowerASTs(
 
   return { representations, references }
 
-  function generateReference(prefix: string): string {
+  function generateReference(prefix: string, owner: SchemaAST.AST): string {
     let candidate = prefix
     let suffix = 0
-    while (uniqueReferences.has(candidate)) {
+    while (referenceOwners.has(candidate)) {
       candidate = `${prefix}${++suffix}`
     }
-    uniqueReferences.add(candidate)
+    referenceOwners.set(candidate, owner)
     return candidate
   }
 
@@ -118,6 +126,18 @@ function lowerASTs(
       return
     }
     visited.add(ast)
+    const referenceIdentifier = resolveReferenceIdentifier(ast)
+    if (referenceIdentifier !== undefined && !referenceIdentifier.isFallback) {
+      const owner = referenceOwners.get(referenceIdentifier.identifier)
+      if (owner === undefined) {
+        referenceOwners.set(referenceIdentifier.identifier, ast)
+      } else if (
+        referenceMap.get(ast) !== referenceIdentifier.identifier &&
+        !hasSameReferenceOwner(owner, ast)
+      ) {
+        throw new Error(`Duplicate identifier: ${JSON.stringify(referenceIdentifier.identifier)}`)
+      }
+    }
     visitChecks(ast.checks)
     switch (ast._tag) {
       case "Declaration":
@@ -149,19 +169,7 @@ function lowerASTs(
     ast: SchemaAST.AST,
     ownedReference?: string
   ): SchemaRepresentation.Representation {
-    let found = referenceMap.get(ast)
-    if (found === undefined && SchemaAST.isSuspend(ast)) {
-      const body = ast.thunk()
-      const bodyReference = referenceMap.get(body) ?? externalBodyReferences.get(body)
-      if (
-        bodyReference !== undefined &&
-        bodyReference !== null &&
-        InternalAnnotations.resolveIdentifier(ast) === bodyReference
-      ) {
-        found = bodyReference
-        referenceMap.set(ast, bodyReference)
-      }
-    }
+    const found = referenceMap.get(ast)
     if (found !== undefined && found !== ownedReference) {
       return { _tag: "Reference", $ref: found }
     }
@@ -171,39 +179,25 @@ function lowerASTs(
       return recur(projected, ownedReference)
     }
 
-    const externalReference = ast.annotations?.identifier
-    if (
-      ownedReference === undefined &&
-      typeof externalReference === "string" &&
-      externalReferences.has(externalReference)
-    ) {
-      referenceMap.set(ast, externalReference)
-      return { _tag: "Reference", $ref: externalReference }
-    }
-
-    const identifier = ownedReference === undefined ? resolveReferenceIdentifier(ast) : undefined
-    if (identifier !== undefined) {
-      const reference = generateReference(identifier)
+    const referenceIdentifier = ownedReference === undefined ? resolveReferenceIdentifier(ast) : undefined
+    if (referenceIdentifier !== undefined) {
+      const reference = getReference(referenceIdentifier, ast)
       referenceMap.set(ast, reference)
-      const representation = on(ast)
-      const existing = Object.hasOwn(references, identifier) ? references[identifier] : undefined
-      if (existing !== undefined && Equal.equals(representation, existing)) {
-        referenceMap.set(ast, identifier)
-        return { _tag: "Reference", $ref: identifier }
+      if (!Object.hasOwn(references, reference) && !externalReferences.has(reference)) {
+        InternalRecord.set(references, reference, on(ast))
       }
-      InternalRecord.set(references, reference, representation)
       return { _tag: "Reference", $ref: reference }
     }
 
     if (ownedReference === undefined && shared.has(ast)) {
-      const reference = generateReference(`${ast._tag}_`)
+      const reference = generateReference(`${ast._tag}_`, ast)
       referenceMap.set(ast, reference)
       InternalRecord.set(references, reference, on(ast))
       return { _tag: "Reference", $ref: reference }
     }
 
     if (visiting.has(ast)) {
-      const reference = generateReference(`${ast._tag}_`)
+      const reference = generateReference(`${ast._tag}_`, ast)
       referenceMap.set(ast, reference)
       return { _tag: "Reference", $ref: reference }
     }
@@ -219,6 +213,18 @@ function lowerASTs(
     }
 
     return representation
+  }
+
+  function getReference(referenceIdentifier: ReferenceIdentifier, ast: SchemaAST.AST): string {
+    if (!referenceIdentifier.isFallback) {
+      return referenceIdentifier.identifier
+    }
+    for (const [owner, reference] of fallbackReferences) {
+      if (hasSameReferenceOwner(owner, ast)) return reference
+    }
+    const reference = generateReference(referenceIdentifier.identifier, ast)
+    fallbackReferences.push([ast, reference])
+    return reference
   }
 
   function on(ast: SchemaAST.AST): SchemaRepresentation.Representation {

@@ -95,7 +95,6 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
       references: {
         A: {
           _tag: "String",
-          annotations: { identifier: "A" },
           checks: [{
             _tag: "Filter",
             representation: {
@@ -103,6 +102,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
               payload: { minLength: 1 }
             },
             annotations: {
+              identifier: "A",
               expected: "a value with a length of at least 1",
               "~structural": true,
               arbitrary: { constraint: { minLength: 1 } }
@@ -135,11 +135,11 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
       references: {
         A: {
           _tag: "Number",
-          annotations: { identifier: "A" },
           checks: [{
             _tag: "Filter",
             representation: { id: "effect/schema/isFinite", payload: null },
             annotations: {
+              identifier: "A",
               expected: "a finite number",
               arbitrary: { constraint: { noInfinity: true, noNaN: true } }
             },
@@ -148,11 +148,11 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
         },
         B: {
           _tag: "Number",
-          annotations: { identifier: "B" },
           checks: [{
             _tag: "Filter",
             representation: { id: "effect/schema/isFinite", payload: null },
             annotations: {
+              identifier: "B",
               expected: "a finite number",
               arbitrary: { constraint: { noInfinity: true, noNaN: true } }
             },
@@ -161,11 +161,11 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
         },
         C: {
           _tag: "Number",
-          annotations: { identifier: "C" },
           checks: [{
             _tag: "Filter",
             representation: { id: "effect/schema/isFinite", payload: null },
             annotations: {
+              identifier: "C",
               expected: "a finite number",
               arbitrary: { constraint: { noInfinity: true, noNaN: true } }
             },

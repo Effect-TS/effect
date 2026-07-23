@@ -274,6 +274,19 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     assert.strictEqual(schema.ast.annotations?.title, "Name")
   })
 
+  it("restores node annotations before checks", () => {
+    const schema = assertRepresentationRoundtrip(
+      Schema.String
+        .annotate({ title: "node" })
+        .check(minLengthCheck(2, { description: "check" })),
+      [minLengthReviver]
+    )
+
+    assert.strictEqual(schema.ast.annotations?.title, "node")
+    assert.strictEqual(schema.ast.checks?.[0].annotations?.description, "check")
+    assert.strictEqual(schema.ast.checks?.[0].annotations?.title, undefined)
+  })
+
   it("restores tuple element annotations", () => {
     const schema = revive(Schema.Tuple([Schema.String.annotateKey({ description: "element" })]))
     const representation = SchemaRepresentation.toRepresentation(schema.ast).representation

@@ -452,23 +452,12 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("should handle duplicate identifiers on different schemas with different representations", () => {
+    it("should reject duplicate identifiers on different schemas", () => {
       const S = Schema.Union([
         Schema.String.annotate({ identifier: "id", description: "a" }),
         Schema.String.annotate({ identifier: "id", description: "b" })
       ])
-      assertJsonSchemaDocument(S, {
-        schema: {
-          "anyOf": [
-            { "$ref": "#/$defs/id" },
-            { "$ref": "#/$defs/id1" }
-          ]
-        },
-        definitions: {
-          id: { "type": "string", "description": "a" },
-          id1: { "type": "string", "description": "b" }
-        }
-      })
+      throws(() => Schema.toJsonSchemaDocument(S), `Duplicate identifier: "id"`)
     })
 
     it("should handle duplicate identifiers on different schemas with the same representation", () => {

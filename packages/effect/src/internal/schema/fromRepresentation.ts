@@ -1,7 +1,7 @@
 import * as Arr from "../../Array.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
-import * as SchemaAST from "../../SchemaAST.ts"
+import type * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
@@ -22,12 +22,12 @@ class ReferenceSlot {
   readonly wrapper: Schema.Top
 
   constructor(key: string) {
-    this.wrapper = Schema.suspend((): Schema.Top => {
+    this.wrapper = Schema.suspend(() => {
       if (this.body === undefined) {
         throw new Error(`Reference ${key} was evaluated before it was resolved`)
       }
       return this.body
-    }).annotate({ identifier: key })
+    })
   }
 }
 
@@ -77,7 +77,7 @@ function revivePersisted(
 
     slot.resolving = true
     try {
-      slot.body = annotateNode(recur(references[key], ["references", key]), { identifier: key })
+      slot.body = annotate(recur(references[key], ["references", key]), { identifier: key })
       return slot.body
     } finally {
       slot.resolving = false
@@ -184,14 +184,11 @@ function revivePersisted(
     return Arr.isArrayNonEmpty(revived) ? schema.check(...revived) : schema as S["Rebuild"]
   }
 
-  function annotateNode(
+  function annotate(
     schema: Schema.Top,
     annotations: Schema.Annotations.Annotations | undefined
   ): Schema.Top {
-    if (annotations === undefined) {
-      return schema
-    }
-    return schema.rebuild(SchemaAST.annotateNode(schema.ast, annotations))
+    return annotations === undefined ? schema : schema.annotate(annotations)
   }
 
   function finishStructural(
@@ -200,7 +197,7 @@ function revivePersisted(
     path: Path
   ): Schema.Top {
     return appendChecks(
-      annotateNode(schema, representation.annotations),
+      annotate(schema, representation.annotations),
       representation.checks,
       [...path, "checks"]
     )
@@ -216,8 +213,15 @@ function revivePersisted(
       case "Declaration":
         return reviveDeclaration(representation, path)
       case "Suspend": {
-        const thunk = recur(representation.thunk, [...path, "thunk"])
-        return annotateNode(Schema.suspend(() => thunk), representation.annotations)
+        const thunkPath = [...path, "thunk"]
+        if (representation.thunk._tag === "Reference") {
+          const key = representation.thunk.$ref
+          resolveReference(key, thunkPath)
+          const slot = slots.get(key)!
+          return annotate(slot.wrapper, representation.annotations)
+        }
+        const thunk = recur(representation.thunk, thunkPath)
+        return annotate(Schema.suspend(() => thunk), representation.annotations)
       }
       case "Null":
         return finishStructural(Schema.Null, representation, path)
