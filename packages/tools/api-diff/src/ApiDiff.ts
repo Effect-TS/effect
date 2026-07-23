@@ -8,24 +8,14 @@ import * as Path from "effect/Path"
 import { diffSnapshots } from "./Diff.ts"
 import { ApiDiffError } from "./Error.ts"
 import { prettyJson } from "./Json.ts"
-import { decodeMigrationMap, mappingModules, renderMigrationMarkdown, validateMigrationMap } from "./Mapping.ts"
-import type { MappingDiagnostic, MigrationMap } from "./Model.ts"
 import { renderMarkdownReport } from "./Report.ts"
 import { Worktrees } from "./Worktrees.ts"
 
 export interface ApiDiffOptions {
   readonly baseRef: Option.Option<string>
   readonly headRef: Option.Option<string>
-  readonly mapping: string
   readonly output: Option.Option<string>
-  readonly writeMappingDoc: Option.Option<string>
 }
-
-const diagnosticMessage = (diagnostics: ReadonlyArray<MappingDiagnostic>): string =>
-  diagnostics
-    .filter((diagnostic) => diagnostic.severity === "error")
-    .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
-    .join("\n")
 
 export class ApiDiff extends Context.Service<ApiDiff, {
   readonly run: (options: ApiDiffOptions) => Effect.Effect<void, ApiDiffError>
@@ -59,57 +49,17 @@ export class ApiDiff extends Context.Service<ApiDiff, {
         }
       })
 
-      const readGuideSources = Effect.fnUntraced(function*(mapping: MigrationMap, repoRoot: string) {
-        const sources = new Map<string, string>()
-        const guides = new Set(mapping.apis.flatMap((entry) => entry.guide === undefined ? [] : [entry.guide]))
-        for (const guide of guides) {
-          const location = absolute(repoRoot, guide)
-          if (yield* fs.exists(location)) {
-            sources.set(guide, yield* fs.readFileString(location))
-          }
-        }
-        return sources
-      })
-
-      const failOnDiagnostics = (diagnostics: ReadonlyArray<MappingDiagnostic>): Effect.Effect<void, ApiDiffError> => {
-        const message = diagnosticMessage(diagnostics)
-        return message.length === 0 ? Effect.void : new ApiDiffError({ message })
-      }
-
       const runInternal = Effect.fnUntraced(function*(options: ApiDiffOptions) {
         const repoRoot = yield* findRepoRoot()
-        const mappingLocation = absolute(repoRoot, options.mapping)
-        const mappingSource = yield* fs.readFileString(mappingLocation)
-        const mapping = yield* decodeMigrationMap(mappingSource).pipe(
-          Effect.mapError((cause) =>
-            new ApiDiffError({
-              message: `Invalid migration map ${mappingLocation}`,
-              cause
-            })
-          )
-        )
-        const guideSources = yield* readGuideSources(mapping, repoRoot)
-        const staticDiagnostics = validateMigrationMap(mapping, { guideSources })
-
-        if (Option.isSome(options.writeMappingDoc)) {
-          yield* failOnDiagnostics(staticDiagnostics)
-          const output = absolute(repoRoot, options.writeMappingDoc.value)
-          yield* fs.makeDirectory(path.dirname(output), { recursive: true })
-          yield* fs.writeFileString(output, renderMigrationMarkdown(mapping))
-          yield* Console.log(`Generated ${path.relative(repoRoot, output)}`)
-          return
-        }
 
         if (Option.isNone(options.baseRef) || Option.isNone(options.headRef) || Option.isNone(options.output)) {
           return yield* new ApiDiffError({
             message: "--base-ref, --head-ref, and --output are required for comparison"
           })
         }
-        yield* failOnDiagnostics(staticDiagnostics)
 
         const baseSha = yield* worktrees.resolveRef(repoRoot, options.baseRef.value)
         const headSha = yield* worktrees.resolveRef(repoRoot, options.headRef.value)
-        const modules = mappingModules(mapping)
         const toolRoot = path.join(repoRoot, "tmp", "api-diff")
         const cacheRoot = path.join(toolRoot, "cache")
         const worktreesRoot = path.join(toolRoot, "worktrees")
@@ -122,8 +72,7 @@ export class ApiDiff extends Context.Service<ApiDiff, {
           worktreesRoot,
           name: "base",
           ref: options.baseRef.value,
-          sha: baseSha,
-          modules: modules.base
+          sha: baseSha
         })
         const head = yield* worktrees.prepareSnapshot({
           repoRoot,
@@ -131,12 +80,10 @@ export class ApiDiff extends Context.Service<ApiDiff, {
           worktreesRoot,
           name: "head",
           ref: options.headRef.value,
-          sha: headSha,
-          modules: modules.head
+          sha: headSha
         })
-        const mappingDiagnostics = validateMigrationMap(mapping, { base, guideSources, head })
         const output = absolute(repoRoot, options.output.value)
-        const diff = diffSnapshots(base, head, mapping, mappingDiagnostics)
+        const diff = diffSnapshots(base, head)
         const report = renderMarkdownReport(diff)
 
         yield* fs.makeDirectory(output, { recursive: true })
@@ -145,7 +92,6 @@ export class ApiDiff extends Context.Service<ApiDiff, {
         yield* fs.writeFileString(path.join(output, "diff.json"), prettyJson(diff))
         yield* fs.writeFileString(path.join(output, "report.md"), report)
         yield* Console.log(`Wrote ${path.relative(repoRoot, output)} (${diff.changes.length} changes)`)
-        yield* failOnDiagnostics(mappingDiagnostics)
         if (report.length === 0) {
           return yield* new ApiDiffError({ message: "Generated Markdown report is empty" })
         }

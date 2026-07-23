@@ -16,7 +16,6 @@ const renderChange = (change: ApiChange, level = 4): ReadonlyArray<string> => [
   `${"#".repeat(level)} ${change.classification}: \`${changeLabel(change)}\``,
   "",
   `Confidence: ${change.confidence.toFixed(3)} · ${change.authoritative ? "authoritative" : "review required"}`,
-  ...(change.guide === undefined ? [] : ["", `Migration guide: [${change.guide}](${change.guide})`]),
   ...(change.reviewNotes === undefined ? [] : ["", change.reviewNotes]),
   ...signature("Before", change.before),
   ...signature("After", change.after),
@@ -64,12 +63,7 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
   const moduleCounts = new Map<string, number>()
   for (const change of diff.changes) {
     const id = change.headApiId ?? change.baseApiId
-    const mappedModule = change.mapping === undefined
-      ? undefined
-      : "status" in change.mapping
-      ? change.mapping.from ?? change.mapping.to[0]
-      : change.mapping.from.module
-    const module = id?.split("#")[0] ?? mappedModule ?? "<package>"
+    const module = id?.split("#")[0] ?? "<package>"
     moduleCounts.set(module, (moduleCounts.get(module) ?? 0) + 1)
   }
   const lines: Array<string> = [
@@ -101,22 +95,8 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
         : `unstable/${unstable[1]}`
       return `| ${escapeCell(domain)} | ${escapeCell(module)} | ${count} |`
     }),
-    "",
-    "## Mapping validation",
     ""
   ]
-  if (diff.mappingDiagnostics.length === 0) {
-    lines.push("No mapping diagnostics.", "")
-  } else {
-    lines.push(
-      "| Severity | Code | Message |",
-      "| --- | --- | --- |",
-      ...diff.mappingDiagnostics.map((diagnostic) =>
-        `| ${diagnostic.severity} | ${diagnostic.code} | ${escapeCell(diagnostic.message)} |`
-      ),
-      ""
-    )
-  }
   const sections = [
     [
       "Stable API changes",

@@ -8,14 +8,13 @@ The first version will report structural API changes and review confidence. It w
 
 ## Success Criteria
 
-- Compare all modules in the v3-to-v4 import map.
+- Compare all public modules discovered in both revisions.
 - Consume production `.d.ts` files with internal declarations stripped.
 - Handle package consolidation, relocated modules, wildcard exports, barrels, and re-exports.
 - Detect additions, removals, moves, renames, and structural signature changes.
 - Represent overloads, generics, interfaces, classes, namespaces, and merged declarations.
 - Produce deterministic, versioned JSON and readable Markdown.
 - Record exact Git SHAs used for both snapshots.
-- Validate every explicit module and API mapping.
 - Never silently omit an unsupported public declaration.
 
 ## Architecture
@@ -28,7 +27,7 @@ The tool will have four logical stages:
 
 1. Prepare branch artifacts.
 2. Extract canonical API snapshots.
-3. Match and diff snapshots using migration mappings.
+3. Match and diff the independently discovered snapshots.
 4. Generate JSON and Markdown reports.
 
 ## Command
@@ -39,7 +38,6 @@ Add a root command with an interface similar to:
 pnpm api-diff \
   --base-ref origin/v3 \
   --head-ref origin/main \
-  --mapping migration/v3-to-v4.json \
   --output tmp/api-diff
 ```
 
@@ -85,50 +83,13 @@ Read the consumer-visible package metadata:
 - Exclude internal entrypoints.
 - Include both direct module and barrel import routes.
 
-The initial comparison scope is every source and target module represented in the structured migration map.
+The comparison scope is every consumer-visible entrypoint discovered in each revision.
 
-## Structured Migration Map
+## Independent Discovery
 
-Replace the Markdown-only mapping source with a versioned JSON model such as:
-
-```json
-{
-  "version": 1,
-  "modules": [
-    {
-      "from": "@effect/platform/HttpClient",
-      "to": ["effect/unstable/http/HttpClient"],
-      "status": "moved"
-    }
-  ],
-  "apis": [
-    {
-      "from": {
-        "module": "effect/Effect",
-        "path": ["catchAll"]
-      },
-      "to": {
-        "module": "effect/Effect",
-        "path": ["catch"]
-      }
-    }
-  ]
-}
-```
-
-The schema must support:
-
-- One-to-one moves.
-- One-to-many module splits.
-- Removed modules and APIs.
-- Explicit renames.
-- Suggested barrel routes.
-- Links to detailed migration guides.
-- Notes requiring manual migration.
-
-Generate `migration/v3-to-v4.md` from the structured data so JSON is the source of truth.
-
-Validation must reject missing targets, ambiguous API names, accidental duplicate sources, and contradictory mappings.
+Discover the complete public module set separately in each revision. The diff
+must not depend on a pre-existing migration inventory: removed modules and APIs,
+new v4 modules and APIs, and likely replacements are outputs of the comparison.
 
 ## Canonical API Snapshot
 
@@ -212,14 +173,13 @@ Snapshot extraction should use one pinned TypeScript compiler version to parse b
 
 Apply matching in this order:
 
-1. Exact export path under an explicitly mapped module.
-2. Explicit API rename or move mapping.
-3. Exact structural fingerprint within mapped modules.
-4. Name and structural similarity as a suggested match.
-5. Remaining base exports become removals.
-6. Remaining head exports become additions.
+1. Exact API identity.
+2. Exact structural fingerprints across public modules.
+3. Name and structural similarity as a suggested match.
+4. Remaining base exports become removals.
+5. Remaining head exports become additions.
 
-Suggested matches must include a confidence score and require review. They must never silently become authoritative mappings.
+Suggested matches must include a confidence score and require review.
 
 ## Diff Classification
 
@@ -250,8 +210,6 @@ Each change record will contain:
 - Before and after display signatures.
 - Structured AST delta.
 - Source locations.
-- Related explicit mapping.
-- Related migration guide.
 - Review notes.
 
 Do not classify changes as semver-breaking in the first version. Use labels such as `structural-change` and `review-required`.
@@ -264,13 +222,11 @@ The Markdown report should include:
 
 - Compared refs and SHAs.
 - Summary counts.
-- Mapping validation diagnostics.
 - Changes grouped by domain and module.
 - Renames and moves first.
 - Removals and additions next.
 - Signature changes with before/after declarations.
 - Suggested matches in a separate review section.
-- Links to existing topical migration guides.
 - Stable and unstable API sections.
 
 Documentation-only changes should not obscure structural API changes.
@@ -312,22 +268,19 @@ Add synthetic declaration fixtures covering:
 - Internal export exclusions.
 - Union normalization.
 - Parameter reordering.
-- One-to-many module mappings.
 - Unsupported syntax diagnostics.
 
 Add deterministic snapshot tests for the canonical JSON model.
 
 Add integration tests for the representative real modules without committing complete branch reports as test fixtures.
 
-Add mapping validation tests, including the existing conflicting `Effect.catchSome` guidance.
-
 ## Implementation Phases
 
 1. Implement and evaluate the representative-module prototype.
-2. Define the versioned snapshot and mapping schemas.
+2. Define the versioned snapshot schema.
 3. Implement package and entrypoint discovery.
 4. Implement semantic export extraction and canonical type AST serialization.
-5. Implement mapping validation and exact matching.
+5. Implement exact identity matching.
 6. Implement structural fingerprints and suggested matching.
 7. Implement AST diff classification.
 8. Implement JSON and Markdown reporters.
@@ -346,18 +299,16 @@ pnpm check
 pnpm api-diff \
   --base-ref origin/v3 \
   --head-ref origin/main \
-  --mapping migration/v3-to-v4.json \
   --output tmp/api-diff
 ```
 
 Verify:
 
 - Both refs resolve to the expected SHAs.
-- Every mapped module resolves.
 - No public declaration is silently skipped.
 - A repeated cached run produces identical snapshots and reports.
 - Temporary worktrees are removed.
-- The report separates authoritative mappings from suggestions.
+- The report separates exact matches from suggestions.
 - Representative report entries agree with the existing migration guides.
 
 ## Future Work

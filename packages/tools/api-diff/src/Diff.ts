@@ -1,23 +1,11 @@
 import { fingerprint, stableJson } from "./Json.ts"
-import type {
-  ApiChange,
-  ApiDiff,
-  ApiEntity,
-  ApiMapping,
-  ApiSnapshot,
-  ChangeClassification,
-  DeclarationModel,
-  MappingDiagnostic,
-  MigrationMap,
-  ModuleMapping
-} from "./Model.ts"
+import type { ApiChange, ApiDiff, ApiEntity, ApiSnapshot, ChangeClassification, DeclarationModel } from "./Model.ts"
 
 interface Match {
   readonly base: ApiEntity
   readonly head: ApiEntity
   readonly confidence: number
   readonly authoritative: boolean
-  readonly mapping?: ApiMapping | ModuleMapping
   readonly note?: string
 }
 
@@ -26,20 +14,6 @@ interface ApiGroup {
   readonly path: ReadonlyArray<string>
   readonly entities: ReadonlyArray<ApiEntity>
 }
-
-const targetEntities = (
-  snapshot: ApiSnapshot,
-  target: {
-    readonly module: string
-    readonly path: ReadonlyArray<string>
-    readonly bucket?: string | undefined
-  }
-): ReadonlyArray<ApiEntity> =>
-  snapshot.entities.filter((entity) =>
-    entity.module === target.module &&
-    entity.path.join(".") === target.path.join(".") &&
-    (target.bucket === undefined || entity.bucket === target.bucket)
-  )
 
 const pathName = (entity: ApiEntity): string => entity.path.at(-1) ?? ""
 
@@ -135,8 +109,7 @@ const groupName = (group: ApiGroup): string => group.path.at(-1) ?? ""
 
 const groupSimilarity = (
   base: ApiGroup,
-  head: ApiGroup,
-  mappedModules: ReadonlySet<string>
+  head: ApiGroup
 ): number => {
   const facets = base.entities.flatMap((baseEntity) => {
     const headEntity = head.entities.find((candidate) => candidate.bucket === baseEntity.bucket)
@@ -146,6 +119,8 @@ const groupSimilarity = (
     return 0
   }
   const sameKind = facets.filter(({ base, head }) => base.declarationKind === head.declarationKind).length /
+    facets.length
+  const sameFingerprint = facets.filter(({ base, head }) => base.fingerprint === head.fingerprint).length /
     facets.length
   const structure = facets.reduce(
     (total, { base, head }) => total + setSimilarity(entityFeatures(base), entityFeatures(head)),
@@ -162,7 +137,7 @@ const groupSimilarity = (
   const headModuleName = head.module.split("/").at(-1)?.toLowerCase()
   const mentionsHeadModule = headModuleName !== undefined &&
     facets.some(({ base }) => documentationTokens(base).has(headModuleName))
-  const moduleScore = base.module === head.module ? 0.25 : mappedModules.has(head.module) ? 0.15 : 0
+  const moduleScore = base.module === head.module ? 0.25 : 0
   const packageScore = base.entities[0]!.packageName === head.entities[0]!.packageName ? 0.05 : 0
   return Math.min(
     0.99,
@@ -170,6 +145,7 @@ const groupSimilarity = (
       (groupName(base) === groupName(head) ? 0.15 : 0) +
       moduleScore +
       packageScore +
+      0.4 * sameFingerprint +
       0.15 * sameKind +
       0.15 * structure +
       0.025 * documentation +
@@ -201,8 +177,6 @@ const makeChange = (
   delta,
   baseSource: match.base?.source,
   headSource: match.head?.source,
-  mapping: match.mapping,
-  guide: match.mapping?.guide,
   reviewNotes: match.note,
   authoritative: match.authoritative ?? true
 })
@@ -369,11 +343,7 @@ const movementChange = (match: Match): ApiChange | undefined => {
   return undefined
 }
 
-const moduleChanges = (
-  base: ApiSnapshot,
-  head: ApiSnapshot,
-  mapping: MigrationMap
-): ReadonlyArray<ApiChange> => {
+const moduleChanges = (base: ApiSnapshot, head: ApiSnapshot): ReadonlyArray<ApiChange> => {
   const changes: Array<ApiChange> = []
   const basePackages = new Set(base.packages)
   const headPackages = new Set(head.packages)
@@ -399,26 +369,26 @@ const moduleChanges = (
       })
     }
   }
-  for (const entry of mapping.modules) {
-    const classification = entry.status === "added"
-      ? "module-added"
-      : entry.status === "removed"
-      ? "module-removed"
-      : entry.status === "split"
-      ? "module-split"
-      : entry.status === "consolidated"
-      ? "module-consolidated"
-      : entry.status === "moved"
-      ? "module-moved"
-      : undefined
-    if (classification !== undefined) {
+  const baseModules = new Set(base.entrypoints.map((entrypoint) => entrypoint.module))
+  const headModules = new Set(head.entrypoints.map((entrypoint) => entrypoint.module))
+  for (const module of baseModules) {
+    if (!headModules.has(module)) {
       changes.push({
-        id: `change-${fingerprint([classification, entry.from, entry.to]).slice(0, 16)}`,
-        classification,
+        id: `change-${fingerprint(["module-removed", module]).slice(0, 16)}`,
+        classification: "module-removed",
         confidence: 1,
-        delta: { from: entry.from, to: entry.to },
-        mapping: entry,
-        guide: entry.guide,
+        delta: { from: module, to: [] },
+        authoritative: true
+      })
+    }
+  }
+  for (const module of headModules) {
+    if (!baseModules.has(module)) {
+      changes.push({
+        id: `change-${fingerprint(["module-added", module]).slice(0, 16)}`,
+        classification: "module-added",
+        confidence: 1,
+        delta: { to: [module] },
         authoritative: true
       })
     }
@@ -426,12 +396,7 @@ const moduleChanges = (
   return changes
 }
 
-export const diffSnapshots = (
-  base: ApiSnapshot,
-  head: ApiSnapshot,
-  mapping: MigrationMap,
-  mappingDiagnostics: ReadonlyArray<MappingDiagnostic>
-): ApiDiff => {
+export const diffSnapshots = (base: ApiSnapshot, head: ApiSnapshot): ApiDiff => {
   const unmatchedBase = new Map(base.entities.map((entity) => [entity.id, entity]))
   const unmatchedHead = new Map(head.entities.map((entity) => [entity.id, entity]))
   const matches: Array<Match> = []
@@ -454,92 +419,27 @@ export const diffSnapshots = (
     return true
   }
 
-  for (const moduleMapping of mapping.modules) {
-    if (moduleMapping.from === undefined) {
-      continue
-    }
-    const bases = base.entities.filter((entity) => entity.module === moduleMapping.from)
-    for (const baseEntity of bases) {
-      for (const targetModule of moduleMapping.to) {
-        const headEntity = head.entities.find((entity) =>
-          entity.module === targetModule &&
-          entity.path.join(".") === baseEntity.path.join(".") &&
-          entity.bucket === baseEntity.bucket
-        )
-        if (
-          addMatch(baseEntity, headEntity, {
-            confidence: 1,
-            authoritative: true,
-            mapping: moduleMapping
-          })
-        ) {
-          break
-        }
-      }
-    }
+  for (const baseEntity of unmatchedBase.values()) {
+    addMatch(baseEntity, unmatchedHead.get(baseEntity.id), {
+      confidence: 1,
+      authoritative: true
+    })
   }
 
-  for (const apiMapping of mapping.apis) {
-    if (apiMapping.to === null) {
-      continue
-    }
-    const bases = targetEntities(base, apiMapping.from)
-    const heads = targetEntities(head, apiMapping.to)
-    for (const baseEntity of bases) {
-      const headEntity = heads.find((candidate) =>
-        apiMapping.from.bucket !== undefined || candidate.bucket === baseEntity.bucket
-      )
-      addMatch(baseEntity, headEntity, {
-        confidence: 1,
-        authoritative: true,
-        mapping: apiMapping
-      })
-    }
-  }
-
-  for (const moduleMapping of mapping.modules) {
-    if (moduleMapping.from === undefined) {
-      continue
-    }
-    const bases = [...unmatchedBase.values()].filter((entity) => entity.module === moduleMapping.from)
-    const heads = [...unmatchedHead.values()].filter((entity) => moduleMapping.to.includes(entity.module))
-    for (const baseEntity of bases) {
-      const candidates = heads.filter((entity) =>
-        entity.bucket === baseEntity.bucket && entity.fingerprint === baseEntity.fingerprint &&
-        unmatchedHead.has(entity.id)
-      )
-      if (candidates.length === 1) {
-        addMatch(baseEntity, candidates[0], {
-          confidence: 0.98,
-          authoritative: true,
-          mapping: moduleMapping
-        })
-      }
-    }
-  }
-
-  const explicitlyRemoved = new Set(
-    mapping.apis
-      .filter((entry) => entry.to === null)
-      .flatMap((entry) => targetEntities(base, entry.from).map((entity) => entity.id))
-  )
   const headGroups = groupEntities(unmatchedHead.values())
   for (const baseGroup of groupEntities(unmatchedBase.values())) {
-    if (baseGroup.entities.every((entity) => explicitlyRemoved.has(entity.id))) {
-      continue
-    }
-    const mappedModules = new Set(
-      mapping.modules
-        .filter((entry) => entry.from === baseGroup.module)
-        .flatMap((entry) => entry.to)
-    )
     const ranked = headGroups
       .filter((group) =>
         groupName(group) === groupName(baseGroup) ||
         group.module === baseGroup.module ||
-        mappedModules.has(group.module)
+        baseGroup.entities.some((baseEntity) =>
+          group.entities.some((headEntity) =>
+            baseEntity.bucket === headEntity.bucket &&
+            baseEntity.fingerprint === headEntity.fingerprint
+          )
+        )
       )
-      .map((group) => ({ group, score: groupSimilarity(baseGroup, group, mappedModules) }))
+      .map((group) => ({ group, score: groupSimilarity(baseGroup, group) }))
       .filter(({ score }) => score > 0)
       .sort((left, right) =>
         right.score - left.score ||
@@ -553,7 +453,7 @@ export const diffSnapshots = (
     }
     for (const baseEntity of baseGroup.entities) {
       const headEntity = best.group.entities.find((candidate) => candidate.bucket === baseEntity.bucket)
-      if (headEntity !== undefined && !explicitlyRemoved.has(baseEntity.id)) {
+      if (headEntity !== undefined) {
         suggestedMatches.push({
           base: baseEntity,
           head: headEntity,
@@ -565,7 +465,7 @@ export const diffSnapshots = (
     }
   }
 
-  const changes = [...moduleChanges(base, head, mapping)]
+  const changes = [...moduleChanges(base, head)]
   for (const match of matches) {
     const movement = movementChange(match)
     if (movement !== undefined) {
@@ -598,8 +498,6 @@ export const diffSnapshots = (
     version: 1,
     base: { ref: base.ref, sha: base.sha },
     head: { ref: head.ref, sha: head.sha },
-    mappingVersion: mapping.version,
-    mappingDiagnostics,
     changes: changes.sort((left, right) =>
       left.classification.localeCompare(right.classification) ||
       (left.baseApiId ?? "").localeCompare(right.baseApiId ?? "") ||

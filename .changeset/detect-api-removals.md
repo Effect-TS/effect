@@ -2,4 +2,5 @@
 "@effect/api-diff": patch
 ---
 
-Report removed and newly added APIs while suggesting likely v4 replacements.
+Discover both revisions independently, report removed and newly added APIs, and
+suggest likely v4 replacements without a migration map.

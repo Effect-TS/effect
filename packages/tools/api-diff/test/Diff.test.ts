@@ -1,5 +1,5 @@
 import { diffSnapshots } from "@effect/api-diff/Diff"
-import type { ApiEntity, ApiSnapshot, DeclarationModel, MigrationMap } from "@effect/api-diff/Model"
+import type { ApiEntity, ApiSnapshot, DeclarationModel } from "@effect/api-diff/Model"
 import { renderMarkdownReport } from "@effect/api-diff/Report"
 import { assert, describe, it } from "@effect/vitest"
 
@@ -37,12 +37,12 @@ const snapshot = (ref: string, entities: ReadonlyArray<ApiEntity>): ApiSnapshot 
 describe("snapshot diff", () => {
   it("matches renames, classifies signature changes, and separates suggestions", () => {
     const base = snapshot("a", [
-      entity("old/A", "renamed", {
+      entity("old/A", "changed", {
         kind: "function",
-        name: "renamed",
+        name: "changed",
         parameters: [{ name: "value", type: { kind: "primitive", name: "string" }, optional: false, rest: false }],
         returnType: { kind: "primitive", name: "string" }
-      }, "same"),
+      }, "before"),
       entity("old/A", "similarName", {
         kind: "variable",
         name: "similarName",
@@ -56,32 +56,23 @@ describe("snapshot diff", () => {
       )
     ])
     const head = snapshot("b", [
-      entity("new/A", "replacement", {
+      entity("old/A", "changed", {
         kind: "function",
-        name: "replacement",
+        name: "changed",
         parameters: [
           { name: "value", type: { kind: "primitive", name: "string" }, optional: false, rest: false },
           { name: "count", type: { kind: "primitive", name: "number" }, optional: true, rest: false }
         ],
         returnType: { kind: "primitive", name: "number" }
       }, "different"),
-      entity("new/A", "similarNames", {
+      entity("old/A", "similarNames", {
         kind: "variable",
         name: "similarNames",
         type: { kind: "primitive", name: "number" }
       }, "y"),
-      entity("new/A", "added", { kind: "variable", name: "added", type: { kind: "primitive", name: "string" } }, "a")
+      entity("old/A", "added", { kind: "variable", name: "added", type: { kind: "primitive", name: "string" } }, "a")
     ])
-    const mapping: MigrationMap = {
-      version: 1,
-      modules: [{ from: "old/A", to: ["new/A"], status: "moved" }],
-      apis: [{
-        from: { module: "old/A", path: ["renamed"] },
-        to: { module: "new/A", path: ["replacement"] }
-      }]
-    }
-    const diff = diffSnapshots(base, head, mapping, [])
-    assert(diff.changes.some((change) => change.classification === "api-renamed" && change.authoritative))
+    const diff = diffSnapshots(base, head)
     assert(diff.changes.some((change) => change.classification === "parameter-added"))
     assert(diff.changes.some((change) => change.classification === "return-type-changed"))
     assert(diff.changes.some((change) => change.baseApiId?.includes("similarName") && !change.authoritative))
@@ -96,7 +87,7 @@ describe("snapshot diff", () => {
     const report = renderMarkdownReport(diff)
     assert(report.includes("Suggested replacements for removed APIs"))
     assert(report.includes(base.sha))
-    assert.deepStrictEqual(diff, diffSnapshots(base, head, mapping, []))
+    assert.deepStrictEqual(diff, diffSnapshots(base, head))
   })
 
   it("suggests replacements across modules and preserves class facets", () => {
@@ -156,17 +147,7 @@ describe("snapshot diff", () => {
     const layerMapService = entity("effect/LayerMap", "Service", variable("Service"), "layer-map-service")
     const diff = diffSnapshots(
       snapshot("a", [effectService, contextTagType, contextTagValue]),
-      snapshot("b", [contextServiceType, contextServiceValue, layerMapService]),
-      {
-        version: 1,
-        modules: [
-          { from: "effect/Effect", to: ["effect/Effect"], status: "unchanged" },
-          { from: "effect/Context", to: ["effect/Context"], status: "unchanged" },
-          { from: "effect/LayerMap", to: ["effect/LayerMap"], status: "unchanged" }
-        ],
-        apis: []
-      },
-      []
+      snapshot("b", [contextServiceType, contextServiceValue, layerMapService])
     )
     const suggestions = diff.changes.filter((change) => !change.authoritative)
     assert(suggestions.some((change) =>
@@ -199,16 +180,10 @@ describe("snapshot diff", () => {
       returnType: { kind: "primitive", name: "string" }
     })
     const before = entity("old/A", "ordered", signature("ordered", ["left", "right"]), "before")
-    const after = entity("new/A", "ordered", signature("ordered", ["right", "left"]), "after")
+    const after = entity("old/A", "ordered", signature("ordered", ["right", "left"]), "after")
     const diff = diffSnapshots(
       snapshot("a", [before]),
-      snapshot("b", [after]),
-      {
-        version: 1,
-        modules: [{ from: "old/A", to: ["new/A"], status: "moved" }],
-        apis: []
-      },
-      []
+      snapshot("b", [after])
     )
     assert(diff.changes.some((change) => change.classification === "parameter-reordered"))
   })

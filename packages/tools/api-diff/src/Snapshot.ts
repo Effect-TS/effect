@@ -698,7 +698,7 @@ export interface ExtractSnapshotOptions {
   readonly repoRoot: string
   readonly ref: string
   readonly sha: string
-  readonly modules: ReadonlyArray<string>
+  readonly modules?: ReadonlyArray<string>
 }
 
 export class SnapshotExtractionError extends Schema.TaggedErrorClass<SnapshotExtractionError>()(
@@ -841,8 +841,8 @@ const extractSnapshot = (
 
 export const snapshotCacheKey = (
   sha: string,
-  modules: ReadonlyArray<string>
-): string => fingerprint(["snapshot-v3", sha, ts.version, [...modules].sort()])
+  modules?: ReadonlyArray<string>
+): string => fingerprint(["snapshot-v4", sha, ts.version, modules === undefined ? "all" : [...modules].sort()])
 
 export class Snapshotter extends Context.Service<Snapshotter, {
   readonly extract: (options: ExtractSnapshotOptions) => Effect.Effect<

@@ -13,20 +13,9 @@ const headRef = Flag.string("head-ref").pipe(
   Flag.optional
 )
 
-const mapping = Flag.string("mapping").pipe(
-  Flag.withMetavar("FILE"),
-  Flag.withDescription("Versioned migration map JSON")
-)
-
 const output = Flag.string("output").pipe(
   Flag.withMetavar("DIRECTORY"),
   Flag.withDescription("Report output directory"),
-  Flag.optional
-)
-
-const writeMappingDoc = Flag.string("write-mapping-doc").pipe(
-  Flag.withMetavar("FILE"),
-  Flag.withDescription("Generate Markdown from the migration map"),
   Flag.optional
 )
 
@@ -38,9 +27,7 @@ const runApiDiff = Effect.fnUntraced(function*(options: ApiDiffOptions) {
 export const cli = Command.make("api-diff", {
   baseRef,
   headRef,
-  mapping,
-  output,
-  writeMappingDoc
+  output
 }).pipe(
   Command.withDescription("Compare the consumer-visible TypeScript API of two repository revisions"),
   Command.withHandler(runApiDiff)

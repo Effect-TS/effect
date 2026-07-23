@@ -104,52 +104,6 @@ export interface ApiSnapshot {
   readonly diagnostics: ReadonlyArray<SnapshotDiagnostic>
 }
 
-export const ModuleStatus = Schema.Literals(["added", "moved", "removed", "split", "consolidated", "unchanged"])
-
-export type ModuleStatus = typeof ModuleStatus.Type
-
-export const ModuleMapping = Schema.Struct({
-  from: Schema.optional(Schema.String),
-  to: Schema.Array(Schema.String),
-  status: ModuleStatus,
-  barrels: Schema.optional(Schema.Array(Schema.String)),
-  guide: Schema.optional(Schema.String),
-  note: Schema.optional(Schema.String)
-})
-
-export type ModuleMapping = typeof ModuleMapping.Type
-
-export const ApiTarget = Schema.Struct({
-  module: Schema.String,
-  path: Schema.Array(Schema.String),
-  bucket: Schema.optional(Bucket)
-})
-
-export type ApiTarget = typeof ApiTarget.Type
-
-export const ApiMapping = Schema.Struct({
-  from: ApiTarget,
-  to: Schema.NullOr(ApiTarget),
-  guide: Schema.optional(Schema.String),
-  note: Schema.optional(Schema.String)
-})
-
-export type ApiMapping = typeof ApiMapping.Type
-
-export const MigrationMap = Schema.Struct({
-  version: Schema.Literal(1),
-  modules: Schema.Array(ModuleMapping),
-  apis: Schema.Array(ApiMapping)
-})
-
-export type MigrationMap = typeof MigrationMap.Type
-
-export interface MappingDiagnostic {
-  readonly severity: "error" | "warning"
-  readonly code: string
-  readonly message: string
-}
-
 export type ChangeClassification =
   | "package-added"
   | "package-removed"
@@ -194,8 +148,6 @@ export interface ApiChange {
   readonly delta?: unknown
   readonly baseSource?: SourceLocation | undefined
   readonly headSource?: SourceLocation | undefined
-  readonly mapping?: ApiMapping | ModuleMapping | undefined
-  readonly guide?: string | undefined
   readonly reviewNotes?: string | undefined
   readonly authoritative: boolean
 }
@@ -204,7 +156,5 @@ export interface ApiDiff {
   readonly version: 1
   readonly base: { readonly ref: string; readonly sha: string }
   readonly head: { readonly ref: string; readonly sha: string }
-  readonly mappingVersion: number
-  readonly mappingDiagnostics: ReadonlyArray<MappingDiagnostic>
   readonly changes: ReadonlyArray<ApiChange>
 }

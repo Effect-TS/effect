@@ -32,6 +32,14 @@ describe("entrypoint discovery", () => {
         "@fixture/sample/Foo"
       ])
       assert.deepStrictEqual(result.missing, ["@fixture/sample/internal/Secret"])
+
+      const all = yield* discovery.discoverEntrypoints(root)
+      assert.deepStrictEqual(all.entrypoints.map((entrypoint) => entrypoint.module), [
+        "@fixture/sample",
+        "@fixture/sample/Foo",
+        "@fixture/sample/index"
+      ])
+      assert.deepStrictEqual(all.missing, [])
     }).pipe(Effect.provide(MainLayer)))
 
   it.effect("supports conditional export targets", () =>

@@ -19,7 +19,7 @@ export interface PrepareSnapshotOptions {
   readonly name: "base" | "head"
   readonly ref: string
   readonly sha: string
-  readonly modules: ReadonlyArray<string>
+  readonly modules?: ReadonlyArray<string>
 }
 
 export class Worktrees extends Context.Service<Worktrees, {
@@ -183,7 +183,7 @@ export class Worktrees extends Context.Service<Worktrees, {
                   repoRoot: worktree,
                   ref: options.ref,
                   sha: options.sha,
-                  modules: options.modules
+                  ...(options.modules === undefined ? {} : { modules: options.modules })
                 }).pipe(
                   Effect.mapError((cause) =>
                     cause instanceof ApiDiffError

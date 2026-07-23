@@ -23,7 +23,6 @@ interface PackageInfo {
   readonly name: string
   readonly root: string
   readonly manifest: PackageManifest
-  readonly declarationRoot: string
   readonly exports: unknown
 }
 
@@ -79,7 +78,7 @@ const moduleParts = (module: string, packages: ReadonlyArray<PackageInfo>): {
 export class Discovery extends Context.Service<Discovery, {
   readonly discoverEntrypoints: (
     repoRoot: string,
-    requestedModules: ReadonlyArray<string>
+    requestedModules?: ReadonlyArray<string>
   ) => Effect.Effect<DiscoveryResult, ApiDiffError>
 }>()("@effect/api-diff/Discovery") {
   static readonly layer = Layer.effect(
@@ -138,7 +137,6 @@ export class Discovery extends Context.Service<Discovery, {
           packages.push({
             name: manifest.name,
             root: packed ? path.join(sourceRoot, "dist") : sourceRoot,
-            declarationRoot: packed ? path.join(sourceRoot, "dist") : path.join(sourceRoot, "dist"),
             exports: packed ? manifest.exports : (manifest.publishConfig?.exports ?? manifest.exports),
             manifest
           })
@@ -146,21 +144,22 @@ export class Discovery extends Context.Service<Discovery, {
         return packages.sort((left, right) => right.name.length - left.name.length)
       })
 
-      const targetToDeclaration = (packageInfo: PackageInfo, target: string): string => {
+      const targetToDeclaration = (packageInfo: PackageInfo, target: string): string | undefined => {
         const relativeTarget = target.replace(/^\.\//, "")
         const declaration = relativeTarget.endsWith(".d.ts")
           ? relativeTarget
           : relativeTarget.replace(/\.(?:mjs|cjs|js|mts|cts|ts)$/, ".d.ts")
-        return path.resolve(packageInfo.root, declaration)
+        return declaration.endsWith(".d.ts") ? path.resolve(packageInfo.root, declaration) : undefined
       }
 
       const expandPattern = Effect.fnUntraced(function*(
         packageInfo: PackageInfo,
         keyPattern: string,
         targetPattern: string,
-        requested: ReadonlySet<string>
+        requested: ReadonlySet<string> | undefined,
+        exportsMap: Readonly<Record<string, unknown>>
       ) {
-        const candidates = yield* walk(packageInfo.declarationRoot, (location) => location.endsWith(".d.ts"))
+        const candidates = yield* walk(packageInfo.root, (location) => location.endsWith(".d.ts"))
         const targetNormalized = targetPattern.endsWith(".d.ts")
           ? targetPattern
           : targetPattern.replace(/\.(?:mjs|cjs|js|mts|cts|ts)$/, ".d.ts")
@@ -173,7 +172,10 @@ export class Discovery extends Context.Service<Discovery, {
           }
           const key = keyPattern.replace("*", capture)
           const module = key === "." ? packageInfo.name : `${packageInfo.name}${key.slice(1)}`
-          if (requested.has(module)) {
+          const excluded = Object.entries(exportsMap).some(([excludedKey, excludedTarget]) =>
+            excludedTarget === null && matchPattern(excludedKey, key) !== undefined
+          )
+          if (!excluded && (requested === undefined || requested.has(module))) {
             entries.push({ packageName: packageInfo.name, module, declarationFile })
           }
         }
@@ -182,54 +184,60 @@ export class Discovery extends Context.Service<Discovery, {
 
       const discoverEntrypointsInternal = Effect.fnUntraced(function*(
         repoRoot: string,
-        requestedModules: ReadonlyArray<string>
+        requestedModules?: ReadonlyArray<string>
       ) {
         const packages = yield* packagesIn(repoRoot)
-        const requested = new Set(requestedModules)
+        const requested = requestedModules === undefined ? undefined : new Set(requestedModules)
         const output = new Map<string, Entrypoint>()
 
-        for (const module of requested) {
-          const parts = moduleParts(module, packages)
-          if (
-            parts === undefined ||
-            typeof parts.packageInfo.exports !== "object" ||
-            parts.packageInfo.exports === null
-          ) {
-            continue
-          }
-          const exportsMap = parts.packageInfo.exports as Record<string, unknown>
-          const exact = Object.prototype.hasOwnProperty.call(exportsMap, parts.key)
-            ? exportedTarget(exportsMap[parts.key])
-            : undefined
-          if (typeof exact === "string") {
-            const declarationFile = targetToDeclaration(parts.packageInfo, exact)
-            if ((yield* fs.exists(declarationFile)) && (yield* fs.stat(declarationFile)).type === "File") {
-              output.set(module, { packageName: parts.packageInfo.name, module, declarationFile })
-            }
-            continue
-          }
-          if (exact === null) {
-            continue
-          }
-          for (const [keyPattern, rawTarget] of Object.entries(exportsMap)) {
-            if (!keyPattern.includes("*")) {
+        if (requested !== undefined) {
+          for (const module of requested) {
+            const parts = moduleParts(module, packages)
+            if (
+              parts === undefined ||
+              typeof parts.packageInfo.exports !== "object" ||
+              parts.packageInfo.exports === null
+            ) {
               continue
             }
-            const capture = matchPattern(keyPattern, parts.key)
-            const target = exportedTarget(rawTarget)
-            if (capture === undefined || typeof target !== "string") {
-              continue
-            }
-            const exclusions = Object.entries(exportsMap).some(([excludedKey, excludedTarget]) =>
-              excludedTarget === null && matchPattern(excludedKey, parts.key) !== undefined
-            )
-            if (exclusions) {
-              continue
-            }
-            if (target.includes("*")) {
-              const declarationFile = targetToDeclaration(parts.packageInfo, target.replace("*", capture))
-              if (yield* fs.exists(declarationFile)) {
+            const exportsMap = parts.packageInfo.exports as Record<string, unknown>
+            const exact = Object.prototype.hasOwnProperty.call(exportsMap, parts.key)
+              ? exportedTarget(exportsMap[parts.key])
+              : undefined
+            if (typeof exact === "string") {
+              const declarationFile = targetToDeclaration(parts.packageInfo, exact)
+              if (
+                declarationFile !== undefined &&
+                (yield* fs.exists(declarationFile)) &&
+                (yield* fs.stat(declarationFile)).type === "File"
+              ) {
                 output.set(module, { packageName: parts.packageInfo.name, module, declarationFile })
+              }
+              continue
+            }
+            if (exact === null) {
+              continue
+            }
+            for (const [keyPattern, rawTarget] of Object.entries(exportsMap)) {
+              if (!keyPattern.includes("*")) {
+                continue
+              }
+              const capture = matchPattern(keyPattern, parts.key)
+              const target = exportedTarget(rawTarget)
+              if (capture === undefined || typeof target !== "string") {
+                continue
+              }
+              const exclusions = Object.entries(exportsMap).some(([excludedKey, excludedTarget]) =>
+                excludedTarget === null && matchPattern(excludedKey, parts.key) !== undefined
+              )
+              if (exclusions) {
+                continue
+              }
+              if (target.includes("*")) {
+                const declarationFile = targetToDeclaration(parts.packageInfo, target.replace("*", capture))
+                if (declarationFile !== undefined && (yield* fs.exists(declarationFile))) {
+                  output.set(module, { packageName: parts.packageInfo.name, module, declarationFile })
+                }
               }
             }
           }
@@ -239,10 +247,29 @@ export class Discovery extends Context.Service<Discovery, {
           if (typeof packageInfo.exports !== "object" || packageInfo.exports === null) {
             continue
           }
-          for (const [keyPattern, rawTarget] of Object.entries(packageInfo.exports as Record<string, unknown>)) {
+          const exportsMap = packageInfo.exports as Record<string, unknown>
+          for (const [keyPattern, rawTarget] of Object.entries(exportsMap)) {
             const target = exportedTarget(rawTarget)
+            if (
+              !keyPattern.includes("*") &&
+              typeof target === "string" &&
+              (requested === undefined || requested.has(
+                keyPattern === "." ? packageInfo.name : `${packageInfo.name}${keyPattern.slice(1)}`
+              ))
+            ) {
+              const module = keyPattern === "." ? packageInfo.name : `${packageInfo.name}${keyPattern.slice(1)}`
+              const declarationFile = targetToDeclaration(packageInfo, target)
+              if (
+                declarationFile !== undefined &&
+                !output.has(module) &&
+                (yield* fs.exists(declarationFile)) &&
+                (yield* fs.stat(declarationFile)).type === "File"
+              ) {
+                output.set(module, { packageName: packageInfo.name, module, declarationFile })
+              }
+            }
             if (keyPattern.includes("*") && typeof target === "string" && target.includes("*")) {
-              for (const entry of yield* expandPattern(packageInfo, keyPattern, target, requested)) {
+              for (const entry of yield* expandPattern(packageInfo, keyPattern, target, requested, exportsMap)) {
                 if (!output.has(entry.module)) {
                   output.set(entry.module, entry)
                 }
@@ -253,13 +280,13 @@ export class Discovery extends Context.Service<Discovery, {
 
         return {
           entrypoints: [...output.values()].sort((left, right) => left.module.localeCompare(right.module)),
-          missing: requestedModules.filter((module) => !output.has(module)).sort()
+          missing: requestedModules?.filter((module) => !output.has(module)).sort() ?? []
         }
       })
 
       const discoverEntrypoints = (
         repoRoot: string,
-        requestedModules: ReadonlyArray<string>
+        requestedModules?: ReadonlyArray<string>
       ): Effect.Effect<DiscoveryResult, ApiDiffError> =>
         discoverEntrypointsInternal(repoRoot, requestedModules).pipe(
           Effect.mapError((cause) =>
