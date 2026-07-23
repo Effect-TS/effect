@@ -816,7 +816,7 @@ const prepareMessages = Effect.fnUntraced(
         case "system": {
           messages.push({
             role: getSystemMessageMode(config.model as string),
-            content: message.content
+            content: [{ type: "input_text", text: message.content }]
           })
           break
         }
